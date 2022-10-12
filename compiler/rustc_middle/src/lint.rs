@@ -286,17 +286,12 @@ pub fn explain_lint_level_source(
 ///
 /// ## `decorate` signature
 ///
-/// Signature of `decorate` may be confusing at first, for instance what's the
-/// point of returning `&'b mut DiagnosticBuilder<'a, ()>` if the original can
-/// be used instead?
-/// ```ignore pseudo-code
-/// _ = decorate(&mut diag);
-/// /* use `diag` here again */
-/// ```
+/// The return value of `decorate` is ignored by this function. So what is the
+/// point of returning `&'b mut DiagnosticBuilder<'a, ()>`?
 ///
-/// There 2 reasons for such choice signature.
+/// There are 2 reasons for this signature.
 ///
-/// First off all, it prevents accidental use `.emit()` -- it's clear that the
+/// First off all, it prevents accidental use of `.emit()` -- it's clear that the
 /// builder will be later used and shouldn't be emitted right away (this is
 /// especially important because the old API expected you to call `.emit()` in
 /// the closure).
