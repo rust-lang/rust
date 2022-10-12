@@ -1283,7 +1283,7 @@ impl<'tcx> InferCtxt<'tcx> {
         assert!(old_value.is_none());
     }
 
-    /// Process the region constraints and return any any errors that
+    /// Process the region constraints and return any errors that
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
