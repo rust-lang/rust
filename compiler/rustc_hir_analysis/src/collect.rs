@@ -1582,13 +1582,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
     }
 
-    // The panic_no_unwind function called by TerminatorKind::Abort will never
-    // unwind. If the panic handler that it invokes unwind then it will simply
-    // call the panic handler again.
-    if Some(did.to_def_id()) == tcx.lang_items().panic_no_unwind() {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-    }
-
     let supported_target_features = tcx.supported_target_features(LOCAL_CRATE);
 
     let mut inline_span = None;
@@ -1649,7 +1642,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 )
                 .emit();
             }
-        } else if attr.has_name(sym::rustc_allocator_nounwind) {
+        } else if attr.has_name(sym::rustc_nounwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
         } else if attr.has_name(sym::rustc_reallocator) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR;

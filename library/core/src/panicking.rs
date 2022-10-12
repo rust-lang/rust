@@ -29,6 +29,73 @@
 use crate::fmt;
 use crate::panic::{Location, PanicInfo};
 
+// First we define the two main entry points that all panics go through.
+// In the end both are just convenience wrappers around `panic_impl`.
+
+/// The entry point for panicking with a formatted message.
+///
+/// This is designed to reduce the amount of code required at the call
+/// site as much as possible (so that `panic!()` has as low an impact
+/// on (e.g.) the inlining of other functions as possible), by moving
+/// the actual formatting into this shared place.
+#[cold]
+// If panic_immediate_abort, inline the abort call,
+// otherwise avoid inlining because of it is cold path.
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[lang = "panic_fmt"] // needed for const-evaluated panics
+#[rustc_do_not_const_check] // hooked by const-eval
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+    // that gets resolved to the `#[panic_handler]` function.
+    extern "Rust" {
+        #[lang = "panic_impl"]
+        fn panic_impl(pi: &PanicInfo<'_>) -> !;
+    }
+
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), true);
+
+    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+    unsafe { panic_impl(&pi) }
+}
+
+/// Like panic_fmt, but without unwinding and track_caller to reduce the impact on codesize.
+/// Also just works on `str`, as a `fmt::Arguments` needs more space to be passed.
+#[cold]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(bootstrap), rustc_nounwind)]
+#[cfg_attr(bootstrap, rustc_allocator_nounwind)]
+pub fn panic_str_nounwind(msg: &'static str) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+    // that gets resolved to the `#[panic_handler]` function.
+    extern "Rust" {
+        #[lang = "panic_impl"]
+        fn panic_impl(pi: &PanicInfo<'_>) -> !;
+    }
+
+    // PanicInfo with the `can_unwind` flag set to false forces an abort.
+    let pieces = [msg];
+    let fmt = fmt::Arguments::new_v1(&pieces, &[]);
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), false);
+
+    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+    unsafe { panic_impl(&pi) }
+}
+
+// Next we define a bunch of higher-level wrappers that all bottom out in the two core functions
+// above.
+
 /// The underlying implementation of libcore's `panic!` macro when no formatting is used.
 #[cold]
 // never inline unless panic_immediate_abort to avoid code
@@ -84,62 +151,17 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
     panic!("index out of bounds: the len is {len} but the index is {index}")
 }
 
-// This function is called directly by the codegen backend, and must not have
-// any extra arguments (including those synthesized by track_caller).
+/// Panic because we cannot unwind out of a function.
+///
+/// This function is called directly by the codegen backend, and must not have
+/// any extra arguments (including those synthesized by track_caller).
 #[cold]
 #[inline(never)]
 #[lang = "panic_no_unwind"] // needed by codegen for panic in nounwind function
+#[cfg_attr(not(bootstrap), rustc_nounwind)]
+#[cfg_attr(bootstrap, rustc_allocator_nounwind)]
 fn panic_no_unwind() -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
-        super::intrinsics::abort()
-    }
-
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
-    }
-
-    // PanicInfo with the `can_unwind` flag set to false forces an abort.
-    let fmt = format_args!("panic in a function that cannot unwind");
-    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), false);
-
-    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-    unsafe { panic_impl(&pi) }
-}
-
-/// The entry point for panicking with a formatted message.
-///
-/// This is designed to reduce the amount of code required at the call
-/// site as much as possible (so that `panic!()` has as low an impact
-/// on (e.g.) the inlining of other functions as possible), by moving
-/// the actual formatting into this shared place.
-#[cold]
-// If panic_immediate_abort, inline the abort call,
-// otherwise avoid inlining because of it is cold path.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[track_caller]
-#[lang = "panic_fmt"] // needed for const-evaluated panics
-#[rustc_do_not_const_check] // hooked by const-eval
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
-pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
-        super::intrinsics::abort()
-    }
-
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
-    }
-
-    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), true);
-
-    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
-    unsafe { panic_impl(&pi) }
+    panic_str_nounwind("panic in a function that cannot unwind")
 }
 
 /// This function is used instead of panic_fmt in const eval.
