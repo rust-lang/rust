@@ -35,7 +35,7 @@ use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, Tr
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::getopts;
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::{config, DiagnosticOutput, Session};
+use rustc_session::{config, Session};
 use rustc_session::{early_error, early_error_no_abort, early_warn};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
@@ -147,19 +147,21 @@ pub struct RunCompiler<'a, 'b> {
     at_args: &'a [String],
     callbacks: &'b mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    emitter: Option<Box<dyn Write + Send>>,
     make_codegen_backend:
         Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
 }
 
 impl<'a, 'b> RunCompiler<'a, 'b> {
     pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
-        Self { at_args, callbacks, file_loader: None, emitter: None, make_codegen_backend: None }
+        Self { at_args, callbacks, file_loader: None, make_codegen_backend: None }
     }
 
     /// Set a custom codegen backend.
     ///
-    /// Used by cg_clif.
+    /// Has no uses within this repository, but is used by bjorn3 for "the
+    /// hotswapping branch of cg_clif" for "setting the codegen backend from a
+    /// custom driver where the custom codegen backend has arbitrary data."
+    /// (See #102759.)
     pub fn set_make_codegen_backend(
         &mut self,
         make_codegen_backend: Option<
@@ -170,17 +172,11 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         self
     }
 
-    /// Emit diagnostics to the specified location.
-    ///
-    /// Used by RLS.
-    pub fn set_emitter(&mut self, emitter: Option<Box<dyn Write + Send>>) -> &mut Self {
-        self.emitter = emitter;
-        self
-    }
-
     /// Load files from sources other than the file system.
     ///
-    /// Used by RLS.
+    /// Has no uses within this repository, but may be used in the future by
+    /// bjorn3 for "hooking rust-analyzer's VFS into rustc at some point for
+    /// running rustc without having to save". (See #102759.)
     pub fn set_file_loader(
         &mut self,
         file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
@@ -191,27 +187,19 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
 
     /// Parse args and run the compiler.
     pub fn run(self) -> interface::Result<()> {
-        run_compiler(
-            self.at_args,
-            self.callbacks,
-            self.file_loader,
-            self.emitter,
-            self.make_codegen_backend,
-        )
+        run_compiler(self.at_args, self.callbacks, self.file_loader, self.make_codegen_backend)
     }
 }
 fn run_compiler(
     at_args: &[String],
     callbacks: &mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    emitter: Option<Box<dyn Write + Send>>,
     make_codegen_backend: Option<
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
 ) -> interface::Result<()> {
     let args = args::arg_expand_all(at_args);
 
-    let diagnostic_output = emitter.map_or(DiagnosticOutput::Default, DiagnosticOutput::Raw);
     let Some(matches) = handle_options(&args) else { return Ok(()) };
 
     let sopts = config::build_session_options(&matches);
@@ -233,7 +221,6 @@ fn run_compiler(
         output_file: ofile,
         output_dir: odir,
         file_loader,
-        diagnostic_output,
         lint_caps: Default::default(),
         parse_sess_created: None,
         register_lints: None,

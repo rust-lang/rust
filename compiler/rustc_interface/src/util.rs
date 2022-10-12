@@ -18,7 +18,7 @@ use rustc_session::config::{self, CrateType};
 use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::CrateConfig;
-use rustc_session::{early_error, filesearch, output, DiagnosticOutput, Session};
+use rustc_session::{early_error, filesearch, output, Session};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::FileLoader;
@@ -65,7 +65,6 @@ pub fn create_session(
     sopts: config::Options,
     cfg: FxHashSet<(String, Option<String>)>,
     check_cfg: CheckCfg,
-    diagnostic_output: DiagnosticOutput,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     input_path: Option<PathBuf>,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -104,7 +103,6 @@ pub fn create_session(
         input_path,
         bundle,
         descriptions,
-        diagnostic_output,
         lint_caps,
         file_loader,
         target_override,

@@ -17,7 +17,7 @@ use rustc_session::config::{self, CheckCfg, ErrorOutputType, Input, OutputFilena
 use rustc_session::early_error;
 use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
-use rustc_session::{DiagnosticOutput, Session};
+use rustc_session::Session;
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 use std::path::PathBuf;
@@ -247,7 +247,6 @@ pub struct Config {
     pub output_dir: Option<PathBuf>,
     pub output_file: Option<PathBuf>,
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    pub diagnostic_output: DiagnosticOutput,
 
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
@@ -284,7 +283,6 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
         config.opts,
         config.crate_cfg,
         config.crate_check_cfg,
-        config.diagnostic_output,
         config.file_loader,
         config.input_path.clone(),
         config.lint_caps,

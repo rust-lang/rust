@@ -17,7 +17,7 @@ use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, Switc
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::{build_session, getopts, DiagnosticOutput, Session};
+use rustc_session::{build_session, getopts, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::SourceFileHashAlgorithm;
@@ -40,16 +40,7 @@ fn build_session_options_and_crate_config(matches: getopts::Matches) -> (Options
 fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
     let registry = registry::Registry::new(&[]);
     let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-    let sess = build_session(
-        sessopts,
-        None,
-        None,
-        registry,
-        DiagnosticOutput::Default,
-        Default::default(),
-        None,
-        None,
-    );
+    let sess = build_session(sessopts, None, None, registry, Default::default(), None, None);
     (sess, cfg)
 }
 
