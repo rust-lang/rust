@@ -134,6 +134,13 @@ fn h1(hash: u64) -> usize {
     hash as usize
 }
 
+// Constant for h2 function that grabing the top 7 bits of the hash.
+const MIN_HASH_LEN: usize = if mem::size_of::<usize>() < mem::size_of::<u64>() {
+    mem::size_of::<usize>()
+} else {
+    mem::size_of::<u64>()
+};
+
 /// Secondary hash function, saved in the low 7 bits of the control byte.
 #[inline]
 #[allow(clippy::cast_possible_truncation)]
@@ -141,8 +148,8 @@ fn h2(hash: u64) -> u8 {
     // Grab the top 7 bits of the hash. While the hash is normally a full 64-bit
     // value, some hash functions (such as FxHash) produce a usize result
     // instead, which means that the top 32 bits are 0 on 32-bit platforms.
-    let hash_len = usize::min(mem::size_of::<usize>(), mem::size_of::<u64>());
-    let top7 = hash >> (hash_len * 8 - 7);
+    // So we use MIN_HASH_LEN constant to handle this.
+    let top7 = hash >> (MIN_HASH_LEN * 8 - 7);
     (top7 & 0x7f) as u8 // truncation
 }
 
@@ -230,11 +237,15 @@ struct TableLayout {
 
 impl TableLayout {
     #[inline]
-    fn new<T>() -> Self {
+    const fn new<T>() -> Self {
         let layout = Layout::new::<T>();
         Self {
             size: layout.size(),
-            ctrl_align: usize::max(layout.align(), Group::WIDTH),
+            ctrl_align: if layout.align() > Group::WIDTH {
+                layout.align()
+            } else {
+                Group::WIDTH
+            },
         }
     }
 
@@ -259,16 +270,6 @@ impl TableLayout {
             ctrl_offset,
         ))
     }
-}
-
-/// Returns a Layout which describes the allocation required for a hash table,
-/// and the offset of the control bytes in the allocation.
-/// (the offset is also one past last element of buckets)
-///
-/// Returns `None` if an overflow occurs.
-#[cfg_attr(feature = "inline-more", inline)]
-fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
-    TableLayout::new::<T>().calculate_layout_for(buckets)
 }
 
 /// A reference to a hash table bucket containing a `T`.
@@ -296,9 +297,11 @@ impl<T> Clone for Bucket<T> {
 }
 
 impl<T> Bucket<T> {
+    const IS_ZERO_SIZED_TYPE: bool = mem::size_of::<T>() == 0;
+
     #[inline]
     unsafe fn from_base_index(base: NonNull<T>, index: usize) -> Self {
-        let ptr = if mem::size_of::<T>() == 0 {
+        let ptr = if Self::IS_ZERO_SIZED_TYPE {
             // won't overflow because index must be less than length
             (index + 1) as *mut T
         } else {
@@ -310,7 +313,7 @@ impl<T> Bucket<T> {
     }
     #[inline]
     unsafe fn to_base_index(&self, base: NonNull<T>) -> usize {
-        if mem::size_of::<T>() == 0 {
+        if Self::IS_ZERO_SIZED_TYPE {
             self.ptr.as_ptr() as usize - 1
         } else {
             offset_from(base.as_ptr(), self.ptr.as_ptr())
@@ -318,7 +321,7 @@ impl<T> Bucket<T> {
     }
     #[inline]
     pub fn as_ptr(&self) -> *mut T {
-        if mem::size_of::<T>() == 0 {
+        if Self::IS_ZERO_SIZED_TYPE {
             // Just return an arbitrary ZST pointer which is properly aligned
             mem::align_of::<T>() as *mut T
         } else {
@@ -327,7 +330,7 @@ impl<T> Bucket<T> {
     }
     #[inline]
     unsafe fn next_n(&self, offset: usize) -> Self {
-        let ptr = if mem::size_of::<T>() == 0 {
+        let ptr = if Self::IS_ZERO_SIZED_TYPE {
             (self.ptr.as_ptr() as usize + offset) as *mut T
         } else {
             self.ptr.as_ptr().sub(offset)
@@ -419,6 +422,9 @@ impl<T> RawTable<T, Global> {
 }
 
 impl<T, A: Allocator + Clone> RawTable<T, A> {
+    const TABLE_LAYOUT: TableLayout = TableLayout::new::<T>();
+    const DATA_NEEDS_DROP: bool = mem::needs_drop::<T>();
+
     /// Creates a new empty hash table without allocating any memory, using the
     /// given allocator.
     ///
@@ -447,7 +453,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         Ok(Self {
             table: RawTableInner::new_uninitialized(
                 alloc,
-                TableLayout::new::<T>(),
+                Self::TABLE_LAYOUT,
                 buckets,
                 fallibility,
             )?,
@@ -465,7 +471,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         Ok(Self {
             table: RawTableInner::fallible_with_capacity(
                 alloc,
-                TableLayout::new::<T>(),
+                Self::TABLE_LAYOUT,
                 capacity,
                 fallibility,
             )?,
@@ -499,7 +505,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// Deallocates the table without dropping any entries.
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn free_buckets(&mut self) {
-        self.table.free_buckets(TableLayout::new::<T>());
+        self.table.free_buckets(Self::TABLE_LAYOUT);
     }
 
     /// Returns pointer to one past last element of data table.
@@ -599,7 +605,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     }
 
     unsafe fn drop_elements(&mut self) {
-        if mem::needs_drop::<T>() && !self.is_empty() {
+        if Self::DATA_NEEDS_DROP && !self.is_empty() {
             for item in self.iter() {
                 item.drop();
             }
@@ -687,8 +693,8 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
                 additional,
                 &|table, index| hasher(table.bucket::<T>(index).as_ref()),
                 fallibility,
-                TableLayout::new::<T>(),
-                if mem::needs_drop::<T>() {
+                Self::TABLE_LAYOUT,
+                if Self::DATA_NEEDS_DROP {
                     Some(mem::transmute(ptr::drop_in_place::<T> as unsafe fn(*mut T)))
                 } else {
                     None
@@ -710,7 +716,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
                 capacity,
                 &|table, index| hasher(table.bucket::<T>(index).as_ref()),
                 fallibility,
-                TableLayout::new::<T>(),
+                Self::TABLE_LAYOUT,
             )
         }
     }
@@ -1027,10 +1033,11 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             None
         } else {
             // Avoid `Option::unwrap_or_else` because it bloats LLVM IR.
-            let (layout, ctrl_offset) = match calculate_layout::<T>(self.table.buckets()) {
-                Some(lco) => lco,
-                None => unsafe { hint::unreachable_unchecked() },
-            };
+            let (layout, ctrl_offset) =
+                match Self::TABLE_LAYOUT.calculate_layout_for(self.table.buckets()) {
+                    Some(lco) => lco,
+                    None => unsafe { hint::unreachable_unchecked() },
+                };
             Some((
                 unsafe { NonNull::new_unchecked(self.table.ctrl.as_ptr().sub(ctrl_offset)) },
                 layout,
@@ -1739,7 +1746,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
         // to make sure we drop only the elements that have been
         // cloned so far.
         let mut guard = guard((0, &mut *self), |(index, self_)| {
-            if mem::needs_drop::<T>() && !self_.is_empty() {
+            if Self::DATA_NEEDS_DROP && !self_.is_empty() {
                 for i in 0..=*index {
                     if self_.is_bucket_full(i) {
                         self_.bucket(i).drop();
@@ -2027,6 +2034,8 @@ pub struct RawIter<T> {
 }
 
 impl<T> RawIter<T> {
+    const DATA_NEEDS_DROP: bool = mem::needs_drop::<T>();
+
     /// Refresh the iterator so that it reflects a removal from the given bucket.
     ///
     /// For the iterator to remain valid, this method must be called once
@@ -2144,7 +2153,7 @@ impl<T> RawIter<T> {
     }
 
     unsafe fn drop_elements(&mut self) {
-        if mem::needs_drop::<T>() && self.len() != 0 {
+        if Self::DATA_NEEDS_DROP && self.len() != 0 {
             for item in self {
                 item.drop();
             }
