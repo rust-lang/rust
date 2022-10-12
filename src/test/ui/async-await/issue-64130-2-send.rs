@@ -1,7 +1,7 @@
 #![feature(negative_impls)]
 // edition:2018
 
-// This tests the the specialized async-await-specific error when futures don't implement an
+// This tests the specialized async-await-specific error when futures don't implement an
 // auto trait (which is specifically Send) due to some type that was captured.
 
 struct Foo;
