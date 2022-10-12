@@ -270,6 +270,16 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start }
                 if is_niche_after_nonniche(tag_scalar, niche_start, niche_variants, bx.cx()) =>
             {
+                let (niche_llty, tag) = match tag_scalar.primitive() {
+                    // Operations on u8/u16 directly result in some additional movzxs, pretend the tag
+                    // is cast_to type (usize) instead.
+                    // FIXUP this is very x86 specific assumption
+                    Int(Integer::I8 | Integer::I16, _) => {
+                        (cast_to, bx.intcast(tag, cast_to, false))
+                    }
+                    _ => (niche_llty, tag),
+                };
+
                 let is_untagged = bx.icmp(
                     IntPredicate::IntULT,
                     tag,
@@ -593,8 +603,7 @@ fn round_up_const_value_to_alignment<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 /// Are all niche variants encoded in tag greater than the actual untagged tag values (so that we
 /// can avoid the "relative discriminant" and we can simply `< niche_start` to ask whether it's
-/// untagged or not). Also check if last _variant_ value fits in the _tag_'s type.
-//  Perhaps we can store this as flag in TagEncoding::Niche instead of recomputing?
+/// untagged or not).
 fn is_niche_after_nonniche(
     tag: Scalar,
     niche_start: u128,
@@ -606,17 +615,5 @@ fn is_niche_after_nonniche(
         return false;
     }
     let n_variants = niche_variants.end().as_u32() - niche_variants.start().as_u32();
-    match tag.primitive() {
-        Int(int, _) => {
-            if niche_start.checked_add(n_variants as u128) != Some(tag_range.end) {
-                return false;
-            }
-            match int {
-                Integer::I8 if niche_variants.end().as_u32() > u8::MAX as u32 => false,
-                Integer::I16 if niche_variants.end().as_u32() > u16::MAX as u32 => false,
-                _ => true,
-            }
-        }
-        _ => false,
-    }
+    niche_start.checked_add(n_variants as u128) == Some(tag_range.end)
 }
