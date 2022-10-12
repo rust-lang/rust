@@ -189,6 +189,11 @@ trigger_files = [
     "src/tools/bump-stage0",
 ]
 
+[autolabel."T-style"]
+trigger_files = [
+    "src/doc/style-guide",
+]
+
 [autolabel."A-translation"]
 trigger_files = [
     "compiler/rustc_error_messages",
