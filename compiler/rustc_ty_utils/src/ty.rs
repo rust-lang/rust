@@ -85,9 +85,13 @@ fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
 ///     - a type parameter or projection whose Sizedness can't be known
 ///     - a tuple of type parameters or projections, if there are multiple
 ///       such.
-///     - an Error, if a type contained itself. The representability
-///       check should catch this case.
-fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstraint<'_> {
+///     - an Error, if a type is infinitely sized
+fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
+    if let Some(def_id) = def_id.as_local() {
+        if matches!(tcx.representability(def_id), ty::Representability::Infinite) {
+            return tcx.intern_type_list(&[tcx.ty_error()]);
+        }
+    }
     let def = tcx.adt_def(def_id);
 
     let result = tcx.mk_type_list(
@@ -99,7 +103,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstrain
 
     debug!("adt_sized_constraint: {:?} => {:?}", def, result);
 
-    ty::AdtSizedConstraint(result)
+    result
 }
 
 /// See `ParamEnv` struct definition for details.

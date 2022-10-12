@@ -380,7 +380,6 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
-    let _ = tcx.representability(def_id);
 
     if def.repr().simd() {
         check_simd(tcx, span, def_id);
@@ -394,7 +393,6 @@ fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
-    let _ = tcx.representability(def_id);
     check_transparent(tcx, span, def);
     check_union_fields(tcx, span, def_id);
     check_packed(tcx, span, def);
@@ -1489,7 +1487,6 @@ fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: L
 
     detect_discriminant_duplicate(tcx, def.discriminants(tcx).collect(), vs, sp);
 
-    let _ = tcx.representability(def_id);
     check_transparent(tcx, sp, def);
 }
 

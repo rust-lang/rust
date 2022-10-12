@@ -3,7 +3,7 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::Representability;
-use rustc_middle::ty::{self, AdtSizedConstraint, DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc_query_system::query::QueryInfo;
 use rustc_query_system::Value;
 use rustc_span::def_id::LocalDefId;
@@ -27,18 +27,6 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
             std::mem::transmute::<ty::SymbolName<'tcx>, ty::SymbolName<'_>>(ty::SymbolName::new(
                 tcx, "<error>",
             ))
-        }
-    }
-}
-
-impl<'tcx> Value<TyCtxt<'tcx>> for AdtSizedConstraint<'_> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo]) -> Self {
-        // SAFETY: This is never called when `Self` is not `AdtSizedConstraint<'tcx>`.
-        // FIXME: Represent the above fact in the trait system somehow.
-        unsafe {
-            std::mem::transmute::<AdtSizedConstraint<'tcx>, AdtSizedConstraint<'_>>(
-                AdtSizedConstraint(tcx.intern_type_list(&[tcx.ty_error()])),
-            )
         }
     }
 }

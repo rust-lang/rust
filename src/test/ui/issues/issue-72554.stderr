@@ -3,7 +3,7 @@ error[E0072]: recursive type `ElemDerived` has infinite size
    |
 LL | pub enum ElemDerived {
    | ^^^^^^^^^^^^^^^^^^^^
-...
+LL |
 LL |     A(ElemDerived)
    |       ----------- recursive without indirection
    |
@@ -12,20 +12,6 @@ help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
 LL |     A(Box<ElemDerived>)
    |       ++++           +
 
-error[E0391]: cycle detected when computing drop-check constraints for `ElemDerived`
-  --> $DIR/issue-72554.rs:4:1
-   |
-LL | pub enum ElemDerived {
-   | ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: ...which immediately requires computing drop-check constraints for `ElemDerived` again
-note: cycle used when computing drop-check constraints for `Elem`
-  --> $DIR/issue-72554.rs:11:1
-   |
-LL | pub enum Elem {
-   | ^^^^^^^^^^^^^
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0072, E0391.
-For more information about an error, try `rustc --explain E0072`.
+For more information about this error, try `rustc --explain E0072`.
