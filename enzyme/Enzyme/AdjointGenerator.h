@@ -10300,24 +10300,6 @@ public:
           }
         }
       }
-
-      if (funcName == "lgamma" || funcName == "lgammaf" ||
-          funcName == "lgammal" || funcName == "lgamma_r" ||
-          funcName == "lgammaf_r" || funcName == "lgammal_r" ||
-          funcName == "__lgamma_r_finite" || funcName == "__lgammaf_r_finite" ||
-          funcName == "__lgammal_r_finite") {
-        if (gutils->knownRecomputeHeuristic.find(orig) !=
-            gutils->knownRecomputeHeuristic.end()) {
-          if (!gutils->knownRecomputeHeuristic[orig]) {
-            gutils->cacheForReverse(BuilderZ, newCall,
-                                    getIndex(orig, CacheType::Self));
-          }
-        }
-        if (Mode == DerivativeMode::ReverseModePrimal ||
-            gutils->isConstantInstruction(orig)) {
-          return;
-        }
-      }
     }
 #if LLVM_VERSION_MAJOR >= 11
     if (auto assembly = dyn_cast<InlineAsm>(orig->getCalledOperand()))
