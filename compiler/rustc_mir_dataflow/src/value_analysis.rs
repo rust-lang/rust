@@ -114,8 +114,13 @@ pub trait ValueAnalysis<'tcx> {
                 // (A2)
                 state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
             }
+            StatementKind::Retag(..) => {
+                // A retag modifies the provenance of references. Currently references are only
+                // tracked if `-Zunsound-mir-opts` is given, but this might change in the future.
+                // However, it is still unclear how retags should be handled:
+                // https://github.com/rust-lang/rust/pull/101168#discussion_r985304895
+            }
             StatementKind::Nop
-            | StatementKind::Retag(..)
             | StatementKind::FakeRead(..)
             | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..) => (),
