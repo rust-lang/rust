@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::numeric_literal;
 use clippy_utils::source::snippet_opt;
+use clippy_utils::{get_parent_node, numeric_literal};
 use if_chain::if_chain;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{
     intravisit::{walk_expr, walk_stmt, Visitor},
-    Body, Expr, ExprKind, HirId, Lit, Stmt, StmtKind,
+    Body, Expr, ExprKind, HirId, ItemKind, Lit, Node, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::{
@@ -55,7 +55,12 @@ declare_lint_pass!(DefaultNumericFallback => [DEFAULT_NUMERIC_FALLBACK]);
 
 impl<'tcx> LateLintPass<'tcx> for DefaultNumericFallback {
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
-        let mut visitor = NumericFallbackVisitor::new(cx);
+        let is_parent_const = if let Some(Node::Item(item)) = get_parent_node(cx.tcx, body.id().hir_id) {
+            matches!(item.kind, ItemKind::Const(..))
+        } else {
+            false
+        };
+        let mut visitor = NumericFallbackVisitor::new(cx, is_parent_const);
         visitor.visit_body(body);
     }
 }
@@ -68,9 +73,13 @@ struct NumericFallbackVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'tcx>) -> Self {
+    fn new(cx: &'a LateContext<'tcx>, is_parent_const: bool) -> Self {
         Self {
-            ty_bounds: vec![TyBound::Nothing],
+            ty_bounds: vec![if is_parent_const {
+                TyBound::Any
+            } else {
+                TyBound::Nothing
+            }],
             cx,
         }
     }
@@ -192,13 +201,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
-            StmtKind::Local(local) => {
-                if local.ty.is_some() {
-                    self.ty_bounds.push(TyBound::Any);
-                } else {
-                    self.ty_bounds.push(TyBound::Nothing);
-                }
-            },
+            StmtKind::Local(local) if local.ty.is_some() => self.ty_bounds.push(TyBound::Any),
 
             _ => self.ty_bounds.push(TyBound::Nothing),
         }
