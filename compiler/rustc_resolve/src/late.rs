@@ -1969,7 +1969,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     None
                 }
             })
-            .map(|res| res.expect_full_res())
+            .and_then(|res| res.full_res())
             .filter(|res| {
                 // Permit the types that unambiguously always
                 // result in the same type constructor being used
