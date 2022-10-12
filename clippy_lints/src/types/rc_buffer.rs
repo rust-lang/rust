@@ -9,6 +9,7 @@ use rustc_span::symbol::sym;
 use super::RC_BUFFER;
 
 pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
+    let app = Applicability::Unspecified;
     if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
         if let Some(alternate) = match_buffer_type(cx, qpath) {
             span_lint_and_sugg(
@@ -18,7 +19,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 "usage of `Rc<T>` when T is a buffer type",
                 "try",
                 format!("Rc<{alternate}>"),
-                Applicability::MachineApplicable,
+                app,
             );
         } else {
             let Some(ty) = qpath_generic_tys(qpath).next() else { return false };
@@ -31,7 +32,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 Some(ty) => ty.span,
                 None => return false,
             };
-            let mut applicability = Applicability::MachineApplicable;
+            let mut applicability = app;
             span_lint_and_sugg(
                 cx,
                 RC_BUFFER,
@@ -42,7 +43,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                     "Rc<[{}]>",
                     snippet_with_applicability(cx, inner_span, "..", &mut applicability)
                 ),
-                Applicability::MachineApplicable,
+                app,
             );
             return true;
         }
@@ -55,7 +56,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 "usage of `Arc<T>` when T is a buffer type",
                 "try",
                 format!("Arc<{alternate}>"),
-                Applicability::MachineApplicable,
+                app,
             );
         } else if let Some(ty) = qpath_generic_tys(qpath).next() {
             let Some(id) = path_def_id(cx, ty) else { return false };
@@ -67,7 +68,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 Some(ty) => ty.span,
                 None => return false,
             };
-            let mut applicability = Applicability::MachineApplicable;
+            let mut applicability = app;
             span_lint_and_sugg(
                 cx,
                 RC_BUFFER,
@@ -78,7 +79,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                     "Arc<[{}]>",
                     snippet_with_applicability(cx, inner_span, "..", &mut applicability)
                 ),
-                Applicability::MachineApplicable,
+                app,
             );
             return true;
         }
