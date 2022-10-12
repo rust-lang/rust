@@ -221,9 +221,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```ignore (extern-declaration)
-    /// # fn main() {
-    /// use std::ffi::CStr;
-    /// use std::os::raw::c_char;
+    /// use std::ffi::{c_char, CStr};
     ///
     /// extern "C" {
     ///     fn my_string() -> *const c_char;
@@ -233,7 +231,18 @@ impl CStr {
     ///     let slice = CStr::from_ptr(my_string());
     ///     println!("string returned: {}", slice.to_str().unwrap());
     /// }
-    /// # }
+    /// ```
+    ///
+    /// ```
+    /// #![feature(const_cstr_methods)]
+    ///
+    /// use std::ffi::{c_char, CStr};
+    ///
+    /// const HELLO_PTR: *const c_char = {
+    ///     const BYTES: &[u8] = b"Hello, world!\0";
+    ///     BYTES.as_ptr().cast()
+    /// };
+    /// const HELLO: &CStr = unsafe { CStr::from_ptr(HELLO_PTR) };
     /// ```
     ///
     /// [valid]: core::ptr#safety
