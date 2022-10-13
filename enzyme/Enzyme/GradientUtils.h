@@ -2273,7 +2273,7 @@ public:
                 ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
                 ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
 #if LLVM_VERSION_MAJOR > 7
-            auto vptr = BuilderM.CreateGEP(vt->getElementType(), ptr, Idxs);
+            auto vptr = BuilderM.CreateGEP(addingType, ptr, Idxs);
 #else
             auto vptr = BuilderM.CreateGEP(ptr, Idxs);
 #endif
