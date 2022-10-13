@@ -1511,7 +1511,7 @@ impl char {
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
         // Bitwise or can avoid need for branches in compiled code.
-        matches!(*self, '0'..='9') || matches!(*self as u32 | 0x20, 0x61..=0x7a)
+        matches!(*self, '0'..='9') || matches!(*self as u32 | 0x20, 0x61..=0x66)
     }
 
     /// Checks if the value is an ASCII punctuation character:
