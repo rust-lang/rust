@@ -131,6 +131,7 @@ mod generics;
 mod impls_ty;
 mod instance;
 mod list;
+mod opaque_types;
 mod parameterized;
 mod rvalue_scopes;
 mod structural_impls;
@@ -1299,6 +1300,34 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
             other_span: other.span,
             sub: sub_diag,
         });
+    }
+
+    #[instrument(level = "debug", skip(tcx), ret)]
+    pub fn remap_generic_params_to_declaration_params(
+        self,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        // typeck errors have subpar spans for opaque types, so delay error reporting until borrowck.
+        ignore_errors: bool,
+    ) -> Self {
+        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
+
+        // Use substs to build up a reverse map from regions to their
+        // identity mappings. This is necessary because of `impl
+        // Trait` lifetimes are computed by replacing existing
+        // lifetimes with 'static and remapping only those used in the
+        // `impl Trait` return type, resulting in the parameters
+        // shifting.
+        let id_substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+        debug!(?id_substs);
+        let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> =
+            substs.iter().enumerate().map(|(index, subst)| (subst, id_substs[index])).collect();
+        debug!("map = {:#?}", map);
+
+        // Convert the type from the function into a type valid outside
+        // the function, by replacing invalid regions with 'static,
+        // after producing an error for each of them.
+        self.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span, ignore_errors))
     }
 }
 

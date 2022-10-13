@@ -565,6 +565,11 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
         /// checked against it (we also carry the span of that first
         /// type).
         found: Option<ty::OpaqueHiddenType<'tcx>>,
+
+        /// In the presence of dead code, typeck may figure out a hidden type
+        /// while borrowck will now. We collect these cases here and check at
+        /// the end that we actually found a type that matches (modulo regions).
+        typeck_types: Vec<ty::OpaqueHiddenType<'tcx>>,
     }
 
     impl ConstraintLocator<'_> {
@@ -591,18 +596,23 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
                 self.found = Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: self.tcx.ty_error() });
                 return;
             }
-            if !tables.concrete_opaque_types.contains_key(&self.def_id) {
+            let Some(&typeck_hidden_ty) = tables.concrete_opaque_types.get(&self.def_id) else {
                 debug!("no constraints in typeck results");
                 return;
+            };
+            if self.typeck_types.iter().all(|prev| prev.ty != typeck_hidden_ty.ty) {
+                self.typeck_types.push(typeck_hidden_ty);
             }
+
             // Use borrowck to get the type with unerased regions.
             let concrete_opaque_types = &self.tcx.mir_borrowck(item_def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
             if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
                 debug!(?concrete_type, "found constraint");
-                if let Some(prev) = self.found {
-                    if concrete_type.ty != prev.ty && !(concrete_type, prev).references_error() {
+                if let Some(prev) = &mut self.found {
+                    if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {
                         prev.report_mismatch(&concrete_type, self.tcx);
+                        prev.ty = self.tcx.ty_error();
                     }
                 } else {
                     self.found = Some(concrete_type);
@@ -649,7 +659,7 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let scope = tcx.hir().get_defining_scope(hir_id);
-    let mut locator = ConstraintLocator { def_id: def_id, tcx, found: None };
+    let mut locator = ConstraintLocator { def_id: def_id, tcx, found: None, typeck_types: vec![] };
 
     debug!(?scope);
 
@@ -679,16 +689,26 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
         }
     }
 
-    match locator.found {
-        Some(hidden) => hidden.ty,
-        None => {
-            tcx.sess.emit_err(UnconstrainedOpaqueType {
-                span: tcx.def_span(def_id),
-                name: tcx.item_name(tcx.local_parent(def_id).to_def_id()),
-            });
-            tcx.ty_error()
+    let Some(hidden) = locator.found else {
+        tcx.sess.emit_err(UnconstrainedOpaqueType {
+            span: tcx.def_span(def_id),
+            name: tcx.item_name(tcx.local_parent(def_id).to_def_id()),
+        });
+        return tcx.ty_error();
+    };
+
+    // Only check against typeck if we didn't already error
+    if !hidden.ty.references_error() {
+        for concrete_type in locator.typeck_types {
+            if tcx.erase_regions(concrete_type.ty) != tcx.erase_regions(hidden.ty)
+                && !(concrete_type, hidden).references_error()
+            {
+                hidden.report_mismatch(&concrete_type, tcx);
+            }
         }
     }
+
+    hidden.ty
 }
 
 fn find_opaque_ty_constraints_for_rpit(
@@ -789,20 +809,15 @@ fn find_opaque_ty_constraints_for_rpit(
             // the `concrete_opaque_types` table.
             tcx.ty_error()
         } else {
-            table
-                .concrete_opaque_types
-                .get(&def_id)
-                .copied()
-                .unwrap_or_else(|| {
-                    // We failed to resolve the opaque type or it
-                    // resolves to itself. We interpret this as the
-                    // no values of the hidden type ever being constructed,
-                    // so we can just make the hidden type be `!`.
-                    // For backwards compatibility reasons, we fall back to
-                    // `()` until we the diverging default is changed.
-                    Some(tcx.mk_diverging_default())
-                })
-                .expect("RPIT always have a hidden type from typeck")
+            table.concrete_opaque_types.get(&def_id).map(|ty| ty.ty).unwrap_or_else(|| {
+                // We failed to resolve the opaque type or it
+                // resolves to itself. We interpret this as the
+                // no values of the hidden type ever being constructed,
+                // so we can just make the hidden type be `!`.
+                // For backwards compatibility reasons, we fall back to
+                // `()` until we the diverging default is changed.
+                tcx.mk_diverging_default()
+            })
         }
     })
 }

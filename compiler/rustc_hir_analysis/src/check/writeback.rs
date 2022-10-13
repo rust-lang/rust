@@ -536,33 +536,36 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let opaque_types =
             self.fcx.infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
         for (opaque_type_key, decl) in opaque_types {
-            let hidden_type = match decl.origin {
-                hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
-                    let ty = self.resolve(decl.hidden_type.ty, &decl.hidden_type.span);
-                    struct RecursionChecker {
-                        def_id: LocalDefId,
-                    }
-                    impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
-                        type BreakTy = ();
-                        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                            if let ty::Opaque(def_id, _) = *t.kind() {
-                                if def_id == self.def_id.to_def_id() {
-                                    return ControlFlow::Break(());
-                                }
-                            }
-                            t.super_visit_with(self)
+            let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);
+            let opaque_type_key = self.resolve(opaque_type_key, &decl.hidden_type.span);
+
+            struct RecursionChecker {
+                def_id: LocalDefId,
+            }
+            impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
+                type BreakTy = ();
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                    if let ty::Opaque(def_id, _) = *t.kind() {
+                        if def_id == self.def_id.to_def_id() {
+                            return ControlFlow::Break(());
                         }
                     }
-                    if ty
-                        .visit_with(&mut RecursionChecker { def_id: opaque_type_key.def_id })
-                        .is_break()
-                    {
-                        return;
-                    }
-                    Some(ty)
+                    t.super_visit_with(self)
                 }
-                hir::OpaqueTyOrigin::TyAlias => None,
-            };
+            }
+            if hidden_type
+                .visit_with(&mut RecursionChecker { def_id: opaque_type_key.def_id })
+                .is_break()
+            {
+                continue;
+            }
+
+            let hidden_type = hidden_type.remap_generic_params_to_declaration_params(
+                opaque_type_key,
+                self.fcx.infcx.tcx,
+                true,
+            );
+
             self.typeck_results.concrete_opaque_types.insert(opaque_type_key.def_id, hidden_type);
         }
     }
