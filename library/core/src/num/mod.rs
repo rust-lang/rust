@@ -688,7 +688,8 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
-        matches!(*self, b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f')
+        // Bitwise or can avoid need for branches in compiled code.
+        matches!(*self, b'0'..=b'9') || matches!(*self | 0x20, b'a'..=b'z')
     }
 
     /// Checks if the value is an ASCII punctuation character:
