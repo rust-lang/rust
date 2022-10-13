@@ -165,30 +165,19 @@ impl<T, A: Allocator> RawVec<T, A> {
         }
     }
 
+    // The constraints on this method are much the same as those on
+    // `grow_amortized`, but this method is usually instantiated less often so
+    // it's less critical.
     #[cfg(not(no_global_oom_handling))]
-    fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {
+    fn allocate_in(capacity: usize, init: AllocInit, mut alloc: A) -> Self {
         // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
         if T::IS_ZST || capacity == 0 {
             Self::new_in(alloc)
         } else {
-            // We avoid `unwrap_or_else` here because it bloats the amount of
-            // LLVM IR generated.
-            let layout = match Layout::array::<T>(capacity) {
-                Ok(layout) => layout,
-                Err(_) => capacity_overflow(),
-            };
-            match alloc_guard(layout.size()) {
-                Ok(_) => {}
-                Err(_) => capacity_overflow(),
-            }
-            let result = match init {
-                AllocInit::Uninitialized => alloc.allocate(layout),
-                AllocInit::Zeroed => alloc.allocate_zeroed(layout),
-            };
-            let ptr = match result {
-                Ok(ptr) => ptr,
-                Err(_) => handle_alloc_error(layout),
-            };
+            let layout = Layout::array::<T>(capacity);
+
+            // `finish_allocate_in` is non-generic over `T`.
+            let ptr = finish_allocate_in(layout, init, &mut alloc);
 
             // Allocators currently return a `NonNull<[u8]>` whose length
             // matches the size requested. If that ever changes, the capacity
@@ -470,6 +459,35 @@ where
     };
 
     memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
+}
+
+// Like `finish_grow`, this function is outside `RawVec` to minimize compile
+// times.
+#[inline(never)]
+fn finish_allocate_in<A>(
+    layout: Result<Layout, LayoutError>,
+    init: AllocInit,
+    alloc: &mut A,
+) -> NonNull<[u8]>
+where
+    A: Allocator,
+{
+    let layout = match layout {
+        Ok(layout) => layout,
+        Err(_) => capacity_overflow(),
+    };
+    match alloc_guard(layout.size()) {
+        Ok(_) => {}
+        Err(_) => capacity_overflow(),
+    }
+    let result = match init {
+        AllocInit::Uninitialized => alloc.allocate(layout),
+        AllocInit::Zeroed => alloc.allocate_zeroed(layout),
+    };
+    match result {
+        Ok(ptr) => ptr,
+        Err(_) => handle_alloc_error(layout),
+    }
 }
 
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
