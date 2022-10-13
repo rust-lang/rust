@@ -212,10 +212,12 @@ fn configure_and_expand(
 
         // Create the config for macro expansion
         let recursion_limit = get_recursion_limit(pre_configured_attrs, sess);
+        let expansion_growth_limit = get_expansion_growth_limit(&krate.attrs, sess);
         let cfg = rustc_expand::expand::ExpansionConfig {
             crate_name: crate_name.to_string(),
             features,
             recursion_limit,
+            expansion_growth_limit,
             trace_mac: sess.opts.unstable_opts.trace_macros,
             should_test: sess.is_test_crate(),
             span_debug: sess.opts.unstable_opts.span_debug,
@@ -1006,4 +1008,18 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
         );
     }
     rustc_middle::middle::limits::get_recursion_limit(krate_attrs, sess)
+}
+
+fn get_expansion_growth_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {
+    if let Some(attr) = krate_attrs
+        .iter()
+        .find(|attr| attr.has_name(sym::expansion_growth_limit) && attr.value_str().is_none())
+    {
+        validate_attr::emit_fatal_malformed_builtin_attribute(
+            &sess.parse_sess,
+            attr,
+            sym::expansion_growth_limit,
+        );
+    }
+    rustc_middle::middle::limits::get_expansion_growth_limit(krate_attrs, sess)
 }

@@ -621,12 +621,52 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.trace_macros_diag();
     }
 
+    fn error_expansion_growth_limit(&mut self) {
+        let expn_data = self.cx.current_expansion.id.expn_data();
+        let suggested_limit = match self.cx.ecfg.expansion_growth_limit {
+            Limit(0) => Limit(2),
+            limit => limit * 2,
+        };
+
+        self.cx
+            .struct_span_err(
+                expn_data.call_site,
+                &format!(
+                    "expansion grow limit reached while expanding `{}`",
+                    expn_data.kind.descr()
+                ),
+            )
+            .help(&format!(
+                "consider increasing the expansion grow limit by adding a \
+                 `#![expansion_growth_limit = \"{}\"]` attribute to your crate (`{}`)",
+                suggested_limit, self.cx.ecfg.crate_name,
+            ))
+            .emit();
+        self.cx.trace_macros_diag();
+    }
+
     /// A macro's expansion does not fit in this fragment kind.
     /// For example, a non-type macro in a type position.
     fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::MacCall, span: Span) {
         self.cx.emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
 
         self.cx.trace_macros_diag();
+    }
+
+    fn reduce_expansion_growth_limit(&mut self, tokens_solved_size: usize) -> Result<(), ()> {
+        let expansion_limit =
+            self.cx.reduced_expansion_growth_limit.unwrap_or(self.cx.ecfg.expansion_growth_limit);
+        if !expansion_limit.value_within_limit(tokens_solved_size) {
+            if self.cx.reduced_expansion_growth_limit.is_none() {
+                self.error_expansion_growth_limit();
+            }
+
+            // Reduce the recursion limit by half each time it triggers.
+            self.cx.reduced_recursion_limit = Some(expansion_limit / 2);
+
+            return Err(());
+        }
+        Ok(())
     }
 
     fn expand_invoc(
@@ -658,6 +698,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
+                    if self.reduce_expansion_growth_limit(mac.args.inner_tokens().len()).is_err() {
+                        return ExpandResult::Ready(fragment_kind.dummy(span));
+                    }
+                    let prev = self.cx.current_expansion.prior_type_ascription;
+                    self.cx.current_expansion.prior_type_ascription = mac.prior_type_ascription;
                     let tok_result = expander.expand(self.cx, span, mac.args.tokens.clone());
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
@@ -1979,6 +2024,7 @@ pub struct ExpansionConfig<'feat> {
     pub crate_name: String,
     pub features: &'feat Features,
     pub recursion_limit: Limit,
+    pub expansion_growth_limit: Limit,
     pub trace_mac: bool,
     /// If false, strip `#[test]` nodes
     pub should_test: bool,
@@ -1994,6 +2040,7 @@ impl ExpansionConfig<'_> {
             crate_name,
             features,
             recursion_limit: Limit::new(1024),
+            expansion_growth_limit: Limit::new(1500),
             trace_mac: false,
             should_test: false,
             span_debug: false,

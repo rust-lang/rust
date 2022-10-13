@@ -21,6 +21,7 @@ use std::num::IntErrorKind;
 pub fn provide(providers: &mut Providers) {
     providers.limits = |tcx, ()| Limits {
         recursion_limit: get_recursion_limit(tcx.hir().krate_attrs(), tcx.sess),
+        expansion_growth_limit: get_expansion_growth_limit(tcx.hir().krate_attrs(), tcx.sess),
         move_size_limit: get_limit(
             tcx.hir().krate_attrs(),
             tcx.sess,
@@ -38,6 +39,10 @@ pub fn provide(providers: &mut Providers) {
 
 pub fn get_recursion_limit(krate_attrs: &[Attribute], sess: &Session) -> Limit {
     get_limit(krate_attrs, sess, sym::recursion_limit, 128)
+}
+
+pub fn get_expansion_growth_limit(krate_attrs: &[Attribute], sess: &Session) -> Limit {
+    get_limit(krate_attrs, sess, sym::expansion_growth_limit, 1500)
 }
 
 fn get_limit(krate_attrs: &[Attribute], sess: &Session, name: Symbol, default: usize) -> Limit {

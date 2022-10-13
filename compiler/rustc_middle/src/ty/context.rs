@@ -1165,6 +1165,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.limits(()).recursion_limit
     }
 
+    pub fn expansion_growth_limit(self) -> Limit {
+        self.limits(()).expansion_growth_limit
+    }
+
     pub fn move_size_limit(self) -> Limit {
         self.limits(()).move_size_limit
     }

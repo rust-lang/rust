@@ -700,6 +700,7 @@ symbols! {
         existential_type,
         exp2f32,
         exp2f64,
+        expansion_growth_limit,
         expect,
         expected,
         expf32,

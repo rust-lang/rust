@@ -130,6 +130,8 @@ pub struct Limits {
     pub move_size_limit: Limit,
     /// The maximum length of types during monomorphization.
     pub type_length_limit: Limit,
+    /// FIXME(vincenzopalazzo) add docs
+    pub expansion_growth_limit: Limit,
 }
 
 pub struct CompilerIO {
