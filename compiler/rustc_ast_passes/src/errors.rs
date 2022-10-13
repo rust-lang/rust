@@ -663,7 +663,10 @@ pub struct EqualityConstraintToAssocConstraintSuggestion {
 }
 
 impl AddToDiagnostic for EqualityConstraintToAssocConstraintSuggestion {
-    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         diag.set_arg("assoc_ty", self.assoc_ty);
         diag.multipart_suggestion(
             fluent::ast_passes::assoc_constraint_suggestion,
