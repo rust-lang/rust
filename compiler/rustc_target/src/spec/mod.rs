@@ -1190,6 +1190,9 @@ supported_targets! {
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
 
+    ("armv7-unknown-trusty", armv7_unknown_trusty),
+    ("aarch64-unknown-trusty", aarch64_unknown_trusty),
+
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32im-unknown-none-elf", riscv32im_unknown_none_elf),
     ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),

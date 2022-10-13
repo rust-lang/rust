@@ -223,6 +223,7 @@ target | std | host | notes
 `aarch64-unknown-netbsd` | ✓ | ✓ |
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
 `aarch64-unknown-redox` | ? |  | ARM64 Redox OS
+[`aarch64-unknown-trusty`](platform-support/trusty.md) | ? |  |
 `aarch64-uwp-windows-msvc` | ? |  |
 `aarch64-wrs-vxworks` | ? |  |
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
@@ -242,6 +243,7 @@ target | std | host | notes
 [`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | ARMv7 Linux with uClibc, hardfloat
 `armv7-unknown-freebsd` | ✓ | ✓ | ARMv7 FreeBSD
 `armv7-unknown-netbsd-eabihf` | ✓ | ✓ |
+[`armv7-unknown-trusty`](platform-support/trusty.md) | ? |  |
 `armv7-wrs-vxworks-eabihf` | ? |  |
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat

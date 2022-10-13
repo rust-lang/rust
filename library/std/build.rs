@@ -21,6 +21,7 @@ fn main() {
         || target.contains("fuchsia")
         || (target.contains("sgx") && target.contains("fortanix"))
         || target.contains("hermit")
+        || target.contains("trusty")
         || target.contains("l4re")
         || target.contains("redox")
         || target.contains("haiku")
