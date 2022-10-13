@@ -372,7 +372,41 @@ pub struct FailedWriteError {
 #[derive(Diagnostic)]
 #[diag(metadata::missing_native_library)]
 pub struct MissingNativeLibrary<'a> {
-    pub libname: &'a str,
+    libname: &'a str,
+    #[subdiagnostic]
+    suggest_name: Option<SuggestLibraryName<'a>>,
+}
+
+impl<'a> MissingNativeLibrary<'a> {
+    pub fn new(libname: &'a str, verbatim: bool) -> Self {
+        // if it looks like the user has provided a complete filename rather just the bare lib name,
+        // then provide a note that they might want to try trimming the name
+        let suggested_name = if !verbatim {
+            if let Some(libname) = libname.strip_prefix("lib") && let Some(libname) = libname.strip_suffix(".a") {
+                // this is a unix style filename so trim prefix & suffix
+                Some(libname)
+            } else if let Some(libname) = libname.strip_suffix(".lib") {
+                // this is a Windows style filename so just trim the suffix
+                Some(libname)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Self {
+            libname,
+            suggest_name: suggested_name
+                .map(|suggested_name| SuggestLibraryName { suggested_name }),
+        }
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[help(metadata::only_provide_library_name)]
+pub struct SuggestLibraryName<'a> {
+    suggested_name: &'a str,
 }
 
 #[derive(Diagnostic)]
