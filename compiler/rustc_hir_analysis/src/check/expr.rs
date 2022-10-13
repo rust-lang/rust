@@ -1051,8 +1051,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 rhs_expr,
             ) = lhs.kind
             {
+                // if x == 1 && y == 2 { .. }
+                //                 +
                 let actual_lhs_ty = self.check_expr(&rhs_expr);
                 (Applicability::MaybeIncorrect, self.can_coerce(rhs_ty, actual_lhs_ty))
+            } else if let ExprKind::Binary(
+                Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+                lhs_expr,
+                _,
+            ) = rhs.kind
+            {
+                // if x == 1 && y == 2 { .. }
+                //       +
+                let actual_rhs_ty = self.check_expr(&lhs_expr);
+                (Applicability::MaybeIncorrect, self.can_coerce(actual_rhs_ty, lhs_ty))
             } else {
                 (Applicability::MaybeIncorrect, false)
             };

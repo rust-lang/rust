@@ -637,7 +637,9 @@ pub trait PrettyPrinter<'tcx>:
                 p!(print_def_path(def_id, &[]));
             }
             ty::Projection(ref data) => {
-                if self.tcx().def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder {
+                if !(self.tcx().sess.verbose() || NO_QUERIES.with(|q| q.get()))
+                    && self.tcx().def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder
+                {
                     return self.pretty_print_opaque_impl_type(data.item_def_id, data.substs);
                 } else {
                     p!(print(data))

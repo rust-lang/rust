@@ -581,17 +581,24 @@ fn object_ty_for_trait<'tcx>(
     });
     debug!(?trait_predicate);
 
-    let elaborated_predicates = elaborate_trait_ref(tcx, trait_ref).filter_map(|obligation| {
-        debug!(?obligation);
-        let pred = obligation.predicate.to_opt_poly_projection_pred()?;
-        Some(pred.map_bound(|p| {
-            ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
-                item_def_id: p.projection_ty.item_def_id,
-                substs: p.projection_ty.substs,
-                term: p.term,
-            })
-        }))
-    });
+    let mut elaborated_predicates: Vec<_> = elaborate_trait_ref(tcx, trait_ref)
+        .filter_map(|obligation| {
+            debug!(?obligation);
+            let pred = obligation.predicate.to_opt_poly_projection_pred()?;
+            Some(pred.map_bound(|p| {
+                ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
+                    item_def_id: p.projection_ty.item_def_id,
+                    substs: p.projection_ty.substs,
+                    term: p.term,
+                })
+            }))
+        })
+        .collect();
+    // NOTE: Since #37965, the existential predicates list has depended on the
+    // list of predicates to be sorted. This is mostly to enforce that the primary
+    // predicate comes first.
+    elaborated_predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
+    elaborated_predicates.dedup();
 
     let existential_predicates = tcx
         .mk_poly_existential_predicates(iter::once(trait_predicate).chain(elaborated_predicates));
