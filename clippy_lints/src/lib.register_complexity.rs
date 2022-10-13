@@ -13,6 +13,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(double_parens::DOUBLE_PARENS),
     LintId::of(explicit_write::EXPLICIT_WRITE),
     LintId::of(format::USELESS_FORMAT),
+    LintId::of(format_args::UNUSED_FORMAT_SPECS),
     LintId::of(functions::TOO_MANY_ARGUMENTS),
     LintId::of(int_plus_one::INT_PLUS_ONE),
     LintId::of(lifetimes::EXTRA_UNUSED_LIFETIMES),

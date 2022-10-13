@@ -164,6 +164,7 @@ store.register_lints(&[
     format_args::FORMAT_IN_FORMAT_ARGS,
     format_args::TO_STRING_IN_FORMAT_ARGS,
     format_args::UNINLINED_FORMAT_ARGS,
+    format_args::UNUSED_FORMAT_SPECS,
     format_impl::PRINT_IN_FORMAT_IMPL,
     format_impl::RECURSIVE_FORMAT_IMPL,
     format_push_string::FORMAT_PUSH_STRING,
