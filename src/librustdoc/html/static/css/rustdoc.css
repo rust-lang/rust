@@ -692,14 +692,11 @@ pre, .rustdoc.source .example-wrap {
 
 .item-info {
 	display: block;
-}
-
-.content .item-info code {
-	font-size: 0.875rem;
-}
-
-.content .item-info {
 	margin-left: 24px;
+}
+
+.item-info code {
+	font-size: 0.875rem;
 }
 
 #main-content > .item-info {
@@ -1945,7 +1942,7 @@ in storage.js plus the media query with (min-width: 701px)
 	}
 
 	/* Align summary-nested and unnested item-info gizmos. */
-	.content .impl-items > .item-info {
+	.impl-items > .item-info {
 		margin-left: 34px;
 	}
 }
