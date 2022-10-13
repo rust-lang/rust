@@ -373,7 +373,7 @@ pub(crate) struct MissingSemicolonBeforeArray {
 pub(crate) struct MissingDotDot {
     #[primary_span]
     pub token_span: Span,
-    #[suggestion_verbose(applicability = "maybe-incorrect", code = "..")]
+    #[suggestion(applicability = "maybe-incorrect", code = "..", style = "verbose")]
     pub sugg_span: Span,
 }
 
