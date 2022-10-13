@@ -197,13 +197,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // create all the steps directly in MIR with operations all backends need to support anyway.
                 let (source, ty) = if let ty::Adt(adt_def, ..) = source.ty.kind() && adt_def.is_enum() {
                     let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
-                    let place = unpack!(block = this.as_place(block, source));
+                    let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
                     let discr = this.temp(discr_ty, source.span);
                     this.cfg.push_assign(
                         block,
                         source_info,
                         discr,
-                        Rvalue::Discriminant(place),
+                        Rvalue::Discriminant(temp.into()),
                     );
 
                     (Operand::Move(discr), discr_ty)
