@@ -78,7 +78,7 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 ///
 /// If you make any major changes (such as adding new values or changing default values), please
 /// ensure that the associated PR ID is added to the end of this list.
-pub const CONFIG_CHANGE_HISTORY: &[usize] = &[115898];
+pub const CONFIG_CHANGE_HISTORY: &[usize] = &[115898, 116998];
 
 /// Extra --check-cfg to add when building
 /// (Mode restriction, config name, config values (if any))

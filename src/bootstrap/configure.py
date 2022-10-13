@@ -97,20 +97,7 @@ v("llvm-root", None, "set LLVM root")
 v("llvm-config", None, "set path to llvm-config")
 v("llvm-filecheck", None, "set path to LLVM's FileCheck utility")
 v("python", "build.python", "set path to python")
-v("android-cross-path", "target.arm-linux-androideabi.android-ndk",
-  "Android NDK standalone path (deprecated)")
-v("i686-linux-android-ndk", "target.i686-linux-android.android-ndk",
-  "i686-linux-android NDK standalone path")
-v("arm-linux-androideabi-ndk", "target.arm-linux-androideabi.android-ndk",
-  "arm-linux-androideabi NDK standalone path")
-v("armv7-linux-androideabi-ndk", "target.armv7-linux-androideabi.android-ndk",
-  "armv7-linux-androideabi NDK standalone path")
-v("thumbv7neon-linux-androideabi-ndk", "target.thumbv7neon-linux-androideabi.android-ndk",
-  "thumbv7neon-linux-androideabi NDK standalone path")
-v("aarch64-linux-android-ndk", "target.aarch64-linux-android.android-ndk",
-  "aarch64-linux-android NDK standalone path")
-v("x86_64-linux-android-ndk", "target.x86_64-linux-android.android-ndk",
-  "x86_64-linux-android NDK standalone path")
+v("android-ndk", "build.android-ndk", "set path to Android NDK")
 v("musl-root", "target.x86_64-unknown-linux-musl.musl-root",
   "MUSL root installation directory (deprecated)")
 v("musl-root-x86_64", "target.x86_64-unknown-linux-musl.musl-root",
