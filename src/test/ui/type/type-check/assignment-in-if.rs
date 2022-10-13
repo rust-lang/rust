@@ -53,4 +53,10 @@ fn main() {
         //~| ERROR mismatched types
         println!("{}", x);
     }
+
+    if x = 1 && x == 1 {
+        //~^ ERROR mismatched types
+        //~| ERROR mismatched types
+        println!("{}", x);
+    }
 }
