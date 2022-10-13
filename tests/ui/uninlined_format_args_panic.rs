@@ -1,12 +1,14 @@
+// revisions: edition2018 edition2021
+//[edition2018] edition:2018
+//[edition2021] edition:2021
 // run-rustfix
-// edition:2018
 
 #![warn(clippy::uninlined_format_args)]
 
 fn main() {
     let var = 1;
 
-    println!("val='{var}'");
+    println!("val='{}'", var);
 
     if var > 0 {
         panic!("p1 {}", var);
