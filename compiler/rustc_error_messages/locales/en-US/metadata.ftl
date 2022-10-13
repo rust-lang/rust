@@ -165,6 +165,8 @@ metadata_failed_write_error =
 metadata_missing_native_library =
     could not find native static library `{$libname}`, perhaps an -L flag is missing?
 
+metadata_only_provide_library_name = only provide the library name `{$suggested_name}`, not the full filename
+
 metadata_failed_create_tempdir =
     couldn't create a temp dir: {$err}
 

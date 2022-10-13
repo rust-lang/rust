@@ -52,7 +52,7 @@ pub fn find_native_static_library(
         }
     }
 
-    sess.emit_fatal(MissingNativeLibrary { libname: name });
+    sess.emit_fatal(MissingNativeLibrary::new(name, verbatim.unwrap_or(false)));
 }
 
 fn find_bundled_library(
