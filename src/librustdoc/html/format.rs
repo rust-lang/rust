@@ -612,7 +612,7 @@ fn generate_macro_def_id_path(
     };
     if path.len() < 2 {
         // The minimum we can have is the crate name followed by the macro name. If shorter, then
-        // it means that that `relative` was empty, which is an error.
+        // it means that `relative` was empty, which is an error.
         debug!("macro path cannot be empty!");
         return Err(HrefError::NotInExternalCache);
     }

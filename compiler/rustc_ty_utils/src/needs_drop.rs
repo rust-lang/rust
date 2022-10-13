@@ -264,7 +264,7 @@ fn adt_consider_insignificant_dtor<'tcx>(
         if is_marked_insig {
             // In some cases like `std::collections::HashMap` where the struct is a wrapper around
             // a type that is a Drop type, and the wrapped type (eg: `hashbrown::HashMap`) lies
-            // outside stdlib, we might choose to still annotate the the wrapper (std HashMap) with
+            // outside stdlib, we might choose to still annotate the wrapper (std HashMap) with
             // `rustc_insignificant_dtor`, even if the type itself doesn't have a `Drop` impl.
             Some(DtorType::Insignificant)
         } else if adt_def.destructor(tcx).is_some() {

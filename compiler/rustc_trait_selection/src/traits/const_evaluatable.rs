@@ -101,7 +101,7 @@ impl<'tcx> ConstUnifyCtxt<'tcx> {
                         a_uv == b_uv
                     }
                     // FIXME(generic_const_exprs): We may want to either actually try
-                    // to evaluate `a_ct` and `b_ct` if they are are fully concrete or something like
+                    // to evaluate `a_ct` and `b_ct` if they are fully concrete or something like
                     // this, for now we just return false here.
                     _ => false,
                 }

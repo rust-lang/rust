@@ -885,7 +885,7 @@ fn is_useful<'p, 'tcx>(
             // that has the potential to trigger the `non_exhaustive_omitted_patterns` lint.
             // To understand the workings checkout `Constructor::split` and `SplitWildcard::new/into_ctors`
             if is_non_exhaustive_and_wild
-                // We check that the match has a wildcard pattern and that that wildcard is useful,
+                // We check that the match has a wildcard pattern and that wildcard is useful,
                 // meaning there are variants that are covered by the wildcard. Without the check
                 // for `witness_preference` the lint would trigger on `if let NonExhaustiveEnum::A = foo {}`
                 && usefulness.is_useful() && matches!(witness_preference, RealArm)

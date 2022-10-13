@@ -352,7 +352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// and that the path can be captured with required capture kind (depending on use in closure,
     /// move closure etc.)
     ///
-    /// Returns the set of of adjusted information along with the inferred closure kind and span
+    /// Returns the set of adjusted information along with the inferred closure kind and span
     /// associated with the closure kind inference.
     ///
     /// Note that we *always* infer a minimal kind, even if

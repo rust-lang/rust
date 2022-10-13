@@ -1629,7 +1629,7 @@ impl ExitStatusError {
     ///
     /// This is exactly like [`code()`](Self::code), except that it returns a `NonZeroI32`.
     ///
-    /// Plain `code`, returning a plain integer, is provided because is is often more convenient.
+    /// Plain `code`, returning a plain integer, is provided because it is often more convenient.
     /// The returned value from `code()` is indeed also nonzero; use `code_nonzero()` when you want
     /// a type-level guarantee of nonzeroness.
     ///
