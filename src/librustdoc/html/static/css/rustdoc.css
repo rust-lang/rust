@@ -808,9 +808,6 @@ table,
 	height: 34px;
 	margin-top: 4px;
 }
-.search-container > * {
-	height: 100%;
-}
 .search-results-title {
 	margin-top: 0;
 	white-space: nowrap;
