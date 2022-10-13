@@ -794,7 +794,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             todo.extend(static_roots);
             while let Some(id) = todo.pop() {
                 if reachable.insert(id) {
-                    // This is a new allocation, add the allocation it points to to `todo`.
+                    // This is a new allocation, add the allocation it points to `todo`.
                     if let Some((_, alloc)) = self.memory.alloc_map.get(id) {
                         todo.extend(
                             alloc.provenance().values().filter_map(|prov| prov.get_alloc_id()),

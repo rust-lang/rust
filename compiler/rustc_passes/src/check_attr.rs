@@ -268,7 +268,7 @@ impl CheckAttrVisitor<'_> {
             }
             // FIXME(#65833): We permit associated consts to have an `#[inline]` attribute with
             // just a lint, because we previously erroneously allowed it and some crates used it
-            // accidentally, to to be compatible with crates depending on them, we can't throw an
+            // accidentally, to be compatible with crates depending on them, we can't throw an
             // error here.
             Target::AssocConst => {
                 self.tcx.emit_spanned_lint(
@@ -376,7 +376,7 @@ impl CheckAttrVisitor<'_> {
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[allow_internal_unstable]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "naked");
@@ -456,7 +456,7 @@ impl CheckAttrVisitor<'_> {
             Target::Fn | Target::Method(..) | Target::ForeignFn | Target::Closure => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[track_caller]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 for attr in attrs {
@@ -485,7 +485,7 @@ impl CheckAttrVisitor<'_> {
             Target::Struct | Target::Enum | Target::Variant => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[non_exhaustive]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "non_exhaustive");
@@ -507,7 +507,7 @@ impl CheckAttrVisitor<'_> {
             Target::Trait => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[marker]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "marker");
@@ -566,7 +566,7 @@ impl CheckAttrVisitor<'_> {
             }
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[target_feature]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "target_feature");
@@ -1205,7 +1205,7 @@ impl CheckAttrVisitor<'_> {
             Target::Fn | Target::Method(..) | Target::ForeignFn | Target::Closure => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[cold]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "cold");
@@ -1247,7 +1247,7 @@ impl CheckAttrVisitor<'_> {
             Target::ForeignFn | Target::ForeignStatic => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[link_name]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "link_name");
@@ -1281,7 +1281,7 @@ impl CheckAttrVisitor<'_> {
             Target::ExternCrate => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[no_link]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "no_link");
@@ -1311,7 +1311,7 @@ impl CheckAttrVisitor<'_> {
             Target::Method(..) if self.is_impl_item(hir_id) => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[export_name]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "export_name");
@@ -1503,7 +1503,7 @@ impl CheckAttrVisitor<'_> {
             Target::Static | Target::Fn | Target::Method(..) => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[link_section]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "link_section");
@@ -1528,7 +1528,7 @@ impl CheckAttrVisitor<'_> {
             Target::Method(..) if self.is_impl_item(hir_id) => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[no_mangle]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "no_mangle");
@@ -1782,7 +1782,7 @@ impl CheckAttrVisitor<'_> {
             Target::MacroDef => true,
             // FIXME(#80564): We permit struct fields and match arms to have an
             // `#[allow_internal_unstable]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm => {
                 self.inline_attr_str_error_without_macro_def(
@@ -1877,7 +1877,7 @@ impl CheckAttrVisitor<'_> {
             }
             // FIXME(#80564): We permit struct fields and match arms to have an
             // `#[allow_internal_unstable]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to to be compatible
+            // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "allow_internal_unstable");

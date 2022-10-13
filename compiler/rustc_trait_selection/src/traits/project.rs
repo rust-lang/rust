@@ -566,7 +566,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                     .unwrap_or_else(|| ty.super_fold_with(self).into())
                 };
                 // For cases like #95134 we would like to catch overflows early
-                // otherwise they slip away away and cause ICE.
+                // otherwise they slip away and cause ICE.
                 let recursion_limit = self.tcx().recursion_limit();
                 if !recursion_limit.value_within_limit(self.depth)
                     // HACK: Don't overflow when running cargo doc see #100991

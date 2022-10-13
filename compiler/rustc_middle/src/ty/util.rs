@@ -958,7 +958,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Checks if `ty` has has a significant drop.
+    /// Checks if `ty` has a significant drop.
     ///
     /// Note that this method can return false even if `ty` has a destructor
     /// attached; even if that is the case then the adt has been marked with

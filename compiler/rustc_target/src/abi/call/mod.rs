@@ -47,7 +47,7 @@ pub enum PassMode {
     /// Pass the argument indirectly via a hidden pointer.
     /// The `extra_attrs` value, if any, is for the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
-    /// `on_stack` defines that the the value should be passed at a fixed
+    /// `on_stack` defines that the value should be passed at a fixed
     /// stack offset in accordance to the ABI rather than passed using a
     /// pointer. This corresponds to the `byval` LLVM argument attribute.
     Indirect { attrs: ArgAttributes, extra_attrs: Option<ArgAttributes>, on_stack: bool },

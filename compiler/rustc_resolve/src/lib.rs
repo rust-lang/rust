@@ -2060,7 +2060,7 @@ struct Finalize {
     /// Span of the whole path or some its characteristic fragment.
     /// E.g. span of `b` in `foo::{a, b, c}`, or full span for regular paths.
     path_span: Span,
-    /// Span of the path start, suitable for prepending something to to it.
+    /// Span of the path start, suitable for prepending something to it.
     /// E.g. span of `foo` in `foo::{a, b, c}`, or full span for regular paths.
     root_span: Span,
     /// Whether to report privacy errors or silently return "no resolution" for them,
