@@ -152,7 +152,8 @@ EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
 typedef uint8_t (*CustomRuleType)(int /*direction*/, CTypeTreeRef /*return*/,
                                   CTypeTreeRef * /*args*/,
                                   struct IntList * /*knownValues*/,
-                                  size_t /*numArgs*/, LLVMValueRef);
+                                  size_t /*numArgs*/, LLVMValueRef,
+                                  void* /*TA*/);
 EnzymeTypeAnalysisRef CreateTypeAnalysis(EnzymeLogicRef Log,
                                          char **customRuleNames,
                                          CustomRuleType *customRules,

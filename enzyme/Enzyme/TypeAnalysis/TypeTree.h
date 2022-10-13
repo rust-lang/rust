@@ -38,6 +38,7 @@
 #include <string>
 #include <vector>
 
+#include "../Utils.h"
 #include "BaseType.h"
 #include "ConcreteType.h"
 
@@ -362,7 +363,7 @@ public:
   }
 
   /// Prepend an offset to all mappings
-  TypeTree Only(int Off) const {
+  TypeTree Only(int Off, llvm::Instruction *orig) const {
     TypeTree Result;
     Result.minIndices.reserve(1 + minIndices.size());
     Result.minIndices.push_back(Off);
@@ -371,10 +372,22 @@ public:
 
     if (Result.minIndices.size() > EnzymeMaxTypeDepth) {
       Result.minIndices.pop_back();
-      if (EnzymeTypeWarning)
-        llvm::errs() << "not handling more than " << EnzymeMaxTypeDepth
-                     << " pointer lookups deep dt:" << str() << " only(" << Off
-                     << "): " << str() << "\n";
+      if (EnzymeTypeWarning) {
+        if (CustomErrorHandler) {
+          CustomErrorHandler("TypeAnalysisDepthLimit", wrap(orig),
+                             ErrorType::TypeDepthExceeded, this);
+        }
+        if (orig) {
+          EmitWarning("TypeAnalysisDepthLimit", *orig, *orig,
+                      " not handling more than ", EnzymeMaxTypeDepth,
+                      " pointer lookups deep dt: ", str(), " only(", Off, ")");
+        } else {
+          llvm::errs() << "not handling more than " << EnzymeMaxTypeDepth
+                       << " pointer lookups deep dt:" << str() << " only("
+                       << Off << "): "
+                       << "\n";
+        }
+      }
     }
 
     for (const auto &pair : mapping) {

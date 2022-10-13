@@ -72,14 +72,15 @@ enum class ErrorType {
   IllegalTypeAnalysis = 2,
   NoType = 3,
   IllegalFirstPointer = 4,
-  InternalError = 5
+  InternalError = 5,
+  TypeDepthExceeded = 6
 };
 
 extern "C" {
 /// Print additional debug info relevant to performance
 extern llvm::cl::opt<bool> EnzymePrintPerf;
 extern void (*CustomErrorHandler)(const char *, LLVMValueRef, ErrorType,
-                                  void *);
+                                  const void *);
 }
 
 llvm::SmallVector<llvm::Instruction *, 2> PostCacheStore(llvm::StoreInst *SI,

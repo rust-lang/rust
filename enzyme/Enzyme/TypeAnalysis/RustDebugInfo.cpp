@@ -37,16 +37,16 @@ TypeTree parseDIType(DIBasicType &Type, Instruction &I, DataLayout &DL) {
   std::string TypeName = Type.getName().str();
   TypeTree Result;
   if (TypeName == "f64") {
-    Result = TypeTree(Type::getDoubleTy(I.getContext())).Only(0);
+    Result = TypeTree(Type::getDoubleTy(I.getContext())).Only(0, &I);
   } else if (TypeName == "f32") {
-    Result = TypeTree(Type::getFloatTy(I.getContext())).Only(0);
+    Result = TypeTree(Type::getFloatTy(I.getContext())).Only(0, &I);
   } else if (TypeName == "i8" || TypeName == "i16" || TypeName == "i32" ||
              TypeName == "i64" || TypeName == "isize" || TypeName == "u8" ||
              TypeName == "u16" || TypeName == "u32" || TypeName == "u64" ||
              TypeName == "usize" || TypeName == "i128" || TypeName == "u128") {
-    Result = TypeTree(ConcreteType(BaseType::Integer)).Only(0);
+    Result = TypeTree(ConcreteType(BaseType::Integer)).Only(0, &I);
   } else {
-    Result = TypeTree(ConcreteType(BaseType::Unknown)).Only(0);
+    Result = TypeTree(ConcreteType(BaseType::Unknown)).Only(0, &I);
   }
   return Result;
 }
@@ -131,7 +131,7 @@ TypeTree parseDIType(DIDerivedType &Type, Instruction &I, DataLayout &DL) {
     } else {
       Result |= SubTT;
     }
-    return Result.Only(0);
+    return Result.Only(0, &I);
   } else if (Type.getTag() == dwarf::DW_TAG_member) {
 #if LLVM_VERSION_MAJOR >= 9
     DIType *SubType = Type.getBaseType();

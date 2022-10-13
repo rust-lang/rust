@@ -506,42 +506,9 @@ public:
 
     if (!vd.isKnown()) {
       auto ET = I.getType();
-      if (ET->isIntOrIntVectorTy()) {
-        vd = TypeTree(BaseType::Pointer).Only(-1);
-        goto known;
-      }
-      if (ET->isFPOrFPVectorTy()) {
-        vd = TypeTree(ConcreteType(ET->getScalarType())).Only(-1);
-        goto known;
-      }
       if (looseTypeAnalysis || true) {
-        while (1) {
-          if (auto ST = dyn_cast<StructType>(ET)) {
-            if (ST->getNumElements()) {
-              ET = ST->getElementType(0);
-              continue;
-            }
-          }
-          if (auto AT = dyn_cast<ArrayType>(ET)) {
-            ET = AT->getElementType();
-            continue;
-          }
-          break;
-        }
-        if (ET->isFPOrFPVectorTy()) {
-          vd = TypeTree(ConcreteType(ET->getScalarType())).Only(-1);
-          goto known;
-        }
-        if (ET->isPointerTy()) {
-          vd = TypeTree(BaseType::Pointer).Only(-1);
-          goto known;
-        }
-        if (ET->isIntOrIntVectorTy()) {
-          vd = TypeTree(BaseType::Pointer).Only(-1);
-          goto known;
-        }
+        vd = defaultTypeTreeForLLVM(ET, &I);
         EmitWarning("CannotDeduceType", I, "failed to deduce type of load ", I);
-        vd = TypeTree(BaseType::Pointer).Only(-1);
         goto known;
       }
       if (CustomErrorHandler) {
@@ -1904,10 +1871,20 @@ public:
           assert(looseTypeAnalysis);
           if (orig_inserted->getType()->isFPOrFPVectorTy())
             flt = orig_inserted->getType()->getScalarType();
-          else if (orig_inserted->getType()->isIntOrIntVectorTy())
+          else if (orig_inserted->getType()->isIntOrIntVectorTy() ||
+                   orig_inserted->getType()->isPointerTy())
             flt = nullptr;
-          else
-            TR.intType(size0, orig_inserted);
+          else {
+            if (CustomErrorHandler) {
+              std::string str;
+              raw_string_ostream ss(str);
+              ss << "Cannot deduce type of insertvalue " << IVI;
+              CustomErrorHandler(str.c_str(), wrap(&IVI), ErrorType::NoType,
+                                 &TR.analyzer);
+            }
+            EmitFailure("CannotDeduceType", IVI.getDebugLoc(), &IVI,
+                        "failed to deduce type of insertvalue ", IVI);
+          }
         }
         if (flt) {
           auto rule = [&](Value *prediff) {
@@ -3106,15 +3083,15 @@ public:
               break;
             }
             if (ET->isFPOrFPVectorTy()) {
-              vd = TypeTree(ConcreteType(ET->getScalarType())).Only(0);
+              vd = TypeTree(ConcreteType(ET->getScalarType())).Only(0, &MS);
               goto known;
             }
             if (ET->isPointerTy()) {
-              vd = TypeTree(BaseType::Pointer).Only(0);
+              vd = TypeTree(BaseType::Pointer).Only(0, &MS);
               goto known;
             }
             if (ET->isIntOrIntVectorTy()) {
-              vd = TypeTree(BaseType::Integer).Only(0);
+              vd = TypeTree(BaseType::Integer).Only(0, &MS);
               goto known;
             }
           }
@@ -3122,14 +3099,14 @@ public:
         if (auto gep = dyn_cast<GetElementPtrInst>(MS.getOperand(0))) {
           if (auto AT = dyn_cast<ArrayType>(gep->getSourceElementType())) {
             if (AT->getElementType()->isIntegerTy()) {
-              vd = TypeTree(BaseType::Integer).Only(0);
+              vd = TypeTree(BaseType::Integer).Only(0, &MS);
               goto known;
             }
           }
         }
         EmitWarning("CannotDeduceType", MS, "failed to deduce type of memset ",
                     MS);
-        vd = TypeTree(BaseType::Pointer).Only(0);
+        vd = TypeTree(BaseType::Pointer).Only(0, &MS);
         goto known;
       }
       if (CustomErrorHandler) {
@@ -3425,15 +3402,15 @@ public:
                 break;
               }
               if (ET->isFPOrFPVectorTy()) {
-                vd = TypeTree(ConcreteType(ET->getScalarType())).Only(0);
+                vd = TypeTree(ConcreteType(ET->getScalarType())).Only(0, &MTI);
                 goto known;
               }
               if (ET->isPointerTy()) {
-                vd = TypeTree(BaseType::Pointer).Only(0);
+                vd = TypeTree(BaseType::Pointer).Only(0, &MTI);
                 goto known;
               }
               if (ET->isIntOrIntVectorTy()) {
-                vd = TypeTree(BaseType::Integer).Only(0);
+                vd = TypeTree(BaseType::Integer).Only(0, &MTI);
                 goto known;
               }
             }
@@ -3441,7 +3418,7 @@ public:
           if (auto gep = dyn_cast<GetElementPtrInst>(val)) {
             if (auto AT = dyn_cast<ArrayType>(gep->getSourceElementType())) {
               if (AT->getElementType()->isIntegerTy()) {
-                vd = TypeTree(BaseType::Integer).Only(0);
+                vd = TypeTree(BaseType::Integer).Only(0, &MTI);
                 goto known;
               }
             }
@@ -3449,7 +3426,7 @@ public:
         }
         EmitWarning("CannotDeduceType", MTI, "failed to deduce type of copy ",
                     MTI);
-        vd = TypeTree(BaseType::Pointer).Only(0);
+        vd = TypeTree(BaseType::Pointer).Only(0, &MTI);
         goto known;
       }
       if (CustomErrorHandler) {
@@ -5476,7 +5453,7 @@ public:
                                          ->getSrcTy()
                                          ->getPointerElementType()
                                          ->getScalarType()))
-                   .Only(0);
+                   .Only(0, &call);
           goto knownF;
         }
       }

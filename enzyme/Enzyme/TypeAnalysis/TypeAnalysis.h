@@ -364,7 +364,7 @@ public:
            std::function<bool(int /*direction*/, TypeTree & /*returnTree*/,
                               llvm::ArrayRef<TypeTree> /*argTrees*/,
                               llvm::ArrayRef<std::set<int64_t>> /*knownValues*/,
-                              llvm::CallInst * /*call*/)>>
+                              llvm::CallInst * /*call*/, TypeAnalyzer *)>>
       CustomRules;
 
   /// Map of possible query states to TypeAnalyzer intermediate results
@@ -377,4 +377,6 @@ public:
   void clear();
 };
 
+TypeTree defaultTypeTreeForLLVM(llvm::Type *ET, llvm::Instruction *I,
+                                bool intIsPointer = true);
 #endif

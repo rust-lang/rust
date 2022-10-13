@@ -101,15 +101,15 @@ public:
       } else if (a.getType()->isPointerTy()) {
         auto et = a.getType()->getPointerElementType();
         if (et->isFPOrFPVectorTy()) {
-          dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
+          dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1, nullptr);
         } else if (et->isPointerTy()) {
-          dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
+          dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1, nullptr);
         }
       } else if (a.getType()->isIntOrIntVectorTy()) {
         dt = ConcreteType(BaseType::Integer);
       }
       type_args.Arguments.insert(
-          std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
+          std::pair<Argument *, TypeTree>(&a, dt.Only(-1, nullptr)));
       // TODO note that here we do NOT propagate constants in type info (and
       // should consider whether we should)
       type_args.KnownValues.insert(
@@ -122,14 +122,14 @@ public:
     } else if (F.getReturnType()->isPointerTy()) {
       auto et = F.getReturnType()->getPointerElementType();
       if (et->isFPOrFPVectorTy()) {
-        dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
+        dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1, nullptr);
       } else if (et->isPointerTy()) {
-        dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
+        dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1, nullptr);
       }
     } else if (F.getReturnType()->isIntOrIntVectorTy()) {
       dt = ConcreteType(BaseType::Integer);
     }
-    type_args.Return = dt.Only(-1);
+    type_args.Return = dt.Only(-1, nullptr);
 
     PreProcessCache PPC;
     TypeAnalysis TA(PPC.FAM);

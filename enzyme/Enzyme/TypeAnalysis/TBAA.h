@@ -400,7 +400,7 @@ static inline TypeTree parseTBAA(TBAAStructTypeNode AccessType, Instruction &I,
   if (auto *Id = dyn_cast<MDString>(AccessType.getId())) {
     auto CT = getTypeFromTBAAString(Id->getString().str(), I);
     if (CT.isKnown()) {
-      return TypeTree(CT).Only(-1);
+      return TypeTree(CT).Only(-1, &I);
     }
   }
 
@@ -425,7 +425,7 @@ static inline TypeTree parseTBAA(const MDNode *M, Instruction &I,
       return TypeTree();
     if (const MDString *Tag1 = dyn_cast<MDString>(M->getOperand(0))) {
       return TypeTree(getTypeFromTBAAString(Tag1->getString().str(), I))
-          .Only(0);
+          .Only(0, &I);
     }
     return TypeTree();
   }

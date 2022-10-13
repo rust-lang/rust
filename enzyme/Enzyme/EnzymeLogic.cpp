@@ -2956,20 +2956,37 @@ void createInvertedTerminator(DiffeGradientUtils *gutils,
               7) /
              8;
 
-    auto PNtype = gutils->TR.intType(size, orig, /*necessary*/ false);
+    auto PNtypeT = gutils->TR.query(orig);
+    auto PNtype = PNtypeT[{-1}];
 
     // TODO remove explicit type check and only use PNtype
     if (PNtype == BaseType::Anything || PNtype == BaseType::Pointer ||
-        orig->getType()->isPointerTy())
+        PNtype == BaseType::Integer || orig->getType()->isPointerTy())
       continue;
 
     Type *PNfloatType = PNtype.isFloat();
     if (!PNfloatType) {
-      if (looseTypeAnalysis) {
-        if (orig->getType()->isFPOrFPVectorTy())
-          PNfloatType = orig->getType()->getScalarType();
-        if (orig->getType()->isIntOrIntVectorTy())
+      // Try to use the 0-th elem for all elems
+      PNtype = PNtypeT[{0}];
+      bool legal = true;
+      for (size_t i = 1; i < size; i++) {
+        if (!PNtypeT[{i}].isFloat())
           continue;
+        PNtypeT[{i}].checkedOrIn(PNtype, /*pointerIntSame*/ true, legal);
+        if (!legal) {
+          break;
+        }
+      }
+      if (legal) {
+        PNfloatType = PNtype.isFloat();
+        if (!PNfloatType) {
+          if (looseTypeAnalysis) {
+            if (orig->getType()->isFPOrFPVectorTy())
+              PNfloatType = orig->getType()->getScalarType();
+            if (orig->getType()->isIntOrIntVectorTy())
+              continue;
+          }
+        }
       }
     }
     if (!PNfloatType) {

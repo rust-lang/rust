@@ -191,8 +191,8 @@ EnzymeTypeAnalysisRef CreateTypeAnalysis(EnzymeLogicRef Log,
     CustomRuleType rule = customRules[i];
     TA->CustomRules[customRuleNames[i]] =
         [=](int direction, TypeTree &returnTree, ArrayRef<TypeTree> argTrees,
-            ArrayRef<std::set<int64_t>> knownValues,
-            CallInst *call) -> uint8_t {
+            ArrayRef<std::set<int64_t>> knownValues, CallInst *call,
+            TypeAnalyzer *TA) -> uint8_t {
       CTypeTreeRef creturnTree = (CTypeTreeRef)(&returnTree);
       CTypeTreeRef *cargs = new CTypeTreeRef[argTrees.size()];
       IntList *kvs = new IntList[argTrees.size()];
@@ -206,8 +206,8 @@ EnzymeTypeAnalysisRef CreateTypeAnalysis(EnzymeLogicRef Log,
           j++;
         }
       }
-      uint8_t result =
-          rule(direction, creturnTree, cargs, kvs, argTrees.size(), wrap(call));
+      uint8_t result = rule(direction, creturnTree, cargs, kvs, argTrees.size(),
+                            wrap(call), TA);
       delete[] cargs;
       for (size_t i = 0; i < argTrees.size(); ++i) {
         delete[] kvs[i].data;
@@ -568,9 +568,19 @@ uint8_t EnzymeSetTypeTree(CTypeTreeRef dst, CTypeTreeRef src) {
 uint8_t EnzymeMergeTypeTree(CTypeTreeRef dst, CTypeTreeRef src) {
   return ((TypeTree *)dst)->orIn(*(TypeTree *)src, /*PointerIntSame*/ false);
 }
+uint8_t EnzymeCheckedMergeTypeTree(CTypeTreeRef dst, CTypeTreeRef src,
+                                   uint8_t *legalP) {
+  bool legal = true;
+  bool res =
+      ((TypeTree *)dst)
+          ->checkedOrIn(*(TypeTree *)src, /*PointerIntSame*/ false, legal);
+  *legalP = legal;
+  return res;
+}
 
 void EnzymeTypeTreeOnlyEq(CTypeTreeRef CTT, int64_t x) {
-  *(TypeTree *)CTT = ((TypeTree *)CTT)->Only(x);
+  // TODO only inst
+  *(TypeTree *)CTT = ((TypeTree *)CTT)->Only(x, nullptr);
 }
 void EnzymeTypeTreeData0Eq(CTypeTreeRef CTT) {
   *(TypeTree *)CTT = ((TypeTree *)CTT)->Data0();
