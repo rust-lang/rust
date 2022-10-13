@@ -1,5 +1,5 @@
 error: variables can be used directly in the `format!` string
-  --> $DIR/uninlined_format_args_2018.rs:9:5
+  --> $DIR/uninlined_format_args_panic.rs:11:5
    |
 LL |     println!("val='{}'", var);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
