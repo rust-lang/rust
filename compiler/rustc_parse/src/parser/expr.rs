@@ -20,9 +20,9 @@ use crate::errors::{
     InvalidNumLiteralSuffix, LabeledLoopInBreak, LeadingPlusNotSupported, LeftArrowOperator,
     LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
     MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm,
-    MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall,
-    NotAsNegationOperator, NotAsNegationOperatorSub, OctalFloatLiteralNotSupported,
-    OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
+    MissingDotDot, MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
+    NoFieldsForFnCall, NotAsNegationOperator, NotAsNegationOperatorSub,
+    OctalFloatLiteralNotSupported, OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
     RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, StructLiteralNotAllowedHere,
     StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
     UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
@@ -2897,6 +2897,21 @@ impl<'a> Parser<'a> {
                 }
                 self.recover_struct_comma_after_dotdot(exp_span);
                 break;
+            } else if self.token == token::DotDotDot {
+                // suggest `..v` instead of `...v`
+                let snapshot = self.create_snapshot_for_diagnostic();
+                let span = self.token.span;
+                self.bump();
+                match self.parse_expr() {
+                    Ok(_p) => {
+                        self.sess.emit_err(MissingDotDot { token_span: span, sugg_span: span });
+                        break;
+                    }
+                    Err(inner_err) => {
+                        inner_err.cancel();
+                        self.restore_snapshot(snapshot);
+                    }
+                }
             }
 
             let recovery_field = self.find_struct_error_after_field_looking_code();
