@@ -179,6 +179,8 @@ exclude_labels = [
 [autolabel."A-bootstrap"]
 trigger_files = [
     "x.py",
+    "x",
+    "x.ps1",
     "src/bootstrap",
     "src/tools/rust-installer",
 ]
