@@ -8,7 +8,7 @@ mod a {
 }
 
 macro_rules! import {
-    ($p: path) => (use $p {S, Z}); //~ERROR expected one of `::`, `;`, or `as`, found `{`
+    ($p: path) => (use $p {S, Z}); //~ ERROR expected one of `::`, `;`, or `as`, found `{`
 }
 
 import! { a::b::c }

@@ -6,5 +6,5 @@ use ufuncs::udrop;
 
 fn main() {
     udrop as fn([u8]);
-    //~^ERROR E0277
+    //~^ ERROR E0277
 }

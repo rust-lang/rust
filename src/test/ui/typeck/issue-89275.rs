@@ -1,7 +1,7 @@
 #![recursion_limit = "5"] // To reduce noise
 
-//expect mutability error when ambiguous traits are in scope
-//and not an overflow error on the span in the main function.
+// expect mutability error when ambiguous traits are in scope
+// and not an overflow error on the span in the main function.
 
 struct Ratio<T>(T);
 
@@ -25,5 +25,5 @@ fn downcast<'a, W: ?Sized>() -> &'a W {
 struct Other;
 
 fn main() {
-    let other: &mut Other = downcast();//~ERROR 28:29: 28:39: mismatched types [E0308]
+    let other: &mut Other = downcast(); //~ ERROR 28:29: 28:39: mismatched types [E0308]
 }

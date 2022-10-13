@@ -8,7 +8,7 @@ fn walk(mut value: &Foo) {
     loop {
         println!("{:?}", value);
         &Foo::Nested(Some(value)) = value else { break }; //~ ERROR invalid left-hand side of assignment
-        //~^ERROR <assignment> ... else { ... } is not allowed
+        //~^ ERROR <assignment> ... else { ... } is not allowed
     }
 }
 

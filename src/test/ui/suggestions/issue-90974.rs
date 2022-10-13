@@ -1,3 +1,3 @@
 fn main() {
-    println!("{}", (3.).recip()); //~ERROR
+    println!("{}", (3.).recip()); //~ ERROR
 }

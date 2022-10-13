@@ -4,7 +4,7 @@ macro_rules! foo {
     () => {};
     ( $( $i:ident = $($j:ident),+ );* ) => { $( $( $i = $j; )* )* };
     //~^ ERROR meta-variable repeats with
-    ( $( $($j:ident),+ );* ) => { $( $( $j; )+ )+ }; //~ERROR meta-variable repeats with
+    ( $( $($j:ident),+ );* ) => { $( $( $j; )+ )+ }; //~ ERROR meta-variable repeats with
 }
 
 macro_rules! bar {
@@ -14,7 +14,7 @@ macro_rules! bar {
             () => {};
             ( $( $i:ident = $($j:ident),+ );* ) => { $( $( $i = $j; )* )* };
             //~^ ERROR meta-variable repeats with
-            ( $( $($j:ident),+ );* ) => { $( $( $j; )+ )+ }; //~ERROR meta-variable repeats with
+            ( $( $($j:ident),+ );* ) => { $( $( $j; )+ )+ }; //~ ERROR meta-variable repeats with
         }
     };
     ( $( $i:ident = $($j:ident),+ );* ) => {

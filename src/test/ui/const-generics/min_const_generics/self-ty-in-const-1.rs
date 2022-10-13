@@ -1,5 +1,5 @@
 trait Foo {
-    fn t1() -> [u8; std::mem::size_of::<Self>()]; //~ERROR generic parameters
+    fn t1() -> [u8; std::mem::size_of::<Self>()]; //~ ERROR generic parameters
 }
 
 struct Bar<T>(T);
@@ -9,7 +9,7 @@ impl Bar<u8> {
 }
 
 impl<T> Bar<T> {
-    fn t3() -> [u8; std::mem::size_of::<Self>()] {} //~ERROR generic `Self`
+    fn t3() -> [u8; std::mem::size_of::<Self>()] {} //~ ERROR generic `Self`
 }
 
 trait Baz {

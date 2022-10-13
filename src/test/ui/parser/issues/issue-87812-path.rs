@@ -1,6 +1,6 @@
 macro_rules! foo {
     ( $f:path ) => {{
-        let _: usize = $f; //~ERROR
+        let _: usize = $f; //~ ERROR
     }};
 }
 

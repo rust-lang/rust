@@ -24,15 +24,15 @@ pub mod foo {
     pub fn bar() {}
 }
 
-/// [`ambiguous`] is ambiguous. //~ERROR `ambiguous`
+/// [`ambiguous`] is ambiguous. //~ ERROR `ambiguous`
 ///
-/// [ambiguous] is ambiguous. //~ERROR ambiguous
+/// [ambiguous] is ambiguous. //~ ERROR ambiguous
 ///
-/// [`multi_conflict`] is a three-way conflict. //~ERROR `multi_conflict`
+/// [`multi_conflict`] is a three-way conflict. //~ ERROR `multi_conflict`
 ///
-/// Ambiguous [type_and_value]. //~ERROR type_and_value
+/// Ambiguous [type_and_value]. //~ ERROR type_and_value
 ///
-/// Ambiguous non-implied shortcut link [`foo::bar`]. //~ERROR `foo::bar`
+/// Ambiguous non-implied shortcut link [`foo::bar`]. //~ ERROR `foo::bar`
 pub struct Docs {}
 
 /// [true] //~ ERROR `true` is both a module and a builtin type

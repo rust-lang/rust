@@ -9,6 +9,6 @@ fn main() {
     let _x = if true {
         FakeResult::Ok(FakeResult::Ok(()))
     } else {
-        FakeResult::Ok(FakeResult::Ok(())) //~ERROR E0308
+        FakeResult::Ok(FakeResult::Ok(())) //~ ERROR E0308
     };
 }

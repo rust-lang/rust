@@ -13,7 +13,7 @@
 fn main() {
     // We want to suggest the properly-balanced expression `1 / (2 + 3)`, not
     // the malformed `1 / (2 + 3`
-    let _a = (1 / (2 + 3)); //~ERROR unnecessary parentheses
+    let _a = (1 / (2 + 3)); //~ ERROR unnecessary parentheses
     f();
 }
 

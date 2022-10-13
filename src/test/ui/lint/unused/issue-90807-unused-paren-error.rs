@@ -4,6 +4,6 @@
 #![deny(unused_parens)]
 
 fn main() {
-    for _ in (1..loop { break 2 }) {} //~ERROR
-    for _ in (1..match () { () => 2 }) {} //~ERROR
+    for _ in (1..loop { break 2 }) {} //~ ERROR
+    for _ in (1..match () { () => 2 }) {} //~ ERROR
 }

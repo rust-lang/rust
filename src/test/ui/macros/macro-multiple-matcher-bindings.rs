@@ -4,8 +4,8 @@
 #![allow(unused_macros)]
 
 macro_rules! foo1 {
-    ($a:ident, $a:ident) => {}; //~ERROR duplicate matcher binding
-    ($a:ident, $a:path) => {};  //~ERROR duplicate matcher binding
+    ($a:ident, $a:ident) => {}; //~ ERROR duplicate matcher binding
+    ($a:ident, $a:path) => {};  //~ ERROR duplicate matcher binding
 }
 
 macro_rules! foo2 {
@@ -14,8 +14,8 @@ macro_rules! foo2 {
 }
 
 macro_rules! foo3 {
-    ($a:ident, $($a:ident),*) => {}; //~ERROR duplicate matcher binding
-    ($($a:ident)+ # $($($a:path),+);*) => {}; //~ERROR duplicate matcher binding
+    ($a:ident, $($a:ident),*) => {}; //~ ERROR duplicate matcher binding
+    ($($a:ident)+ # $($($a:path),+);*) => {}; //~ ERROR duplicate matcher binding
 }
 
 fn main() {}

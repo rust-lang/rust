@@ -4,7 +4,7 @@
 struct Foo;
 
 impl Foo {
-    type Bar = isize; //~ERROR inherent associated types are unstable
+    type Bar = isize; //~ ERROR inherent associated types are unstable
 }
 
 fn main() {}

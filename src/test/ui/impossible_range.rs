@@ -8,13 +8,13 @@ pub fn main() {
     0..;
     ..1;
     0..1;
-    ..=; //~ERROR inclusive range with no end
-         //~^HELP use `..` instead
+    ..=; //~ ERROR inclusive range with no end
+         //~^ HELP use `..` instead
 }
 
 fn _foo1() {
     ..=1;
     0..=1;
-    0..=; //~ERROR inclusive range with no end
-          //~^HELP use `..` instead
+    0..=; //~ ERROR inclusive range with no end
+          //~^ HELP use `..` instead
 }

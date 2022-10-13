@@ -17,7 +17,7 @@ declare_lint! {
 
 struct Foo;
 
-impl LintPass for Foo { //~ERROR implementing `LintPass` by hand
+impl LintPass for Foo { //~ ERROR implementing `LintPass` by hand
     fn name(&self) -> &'static str {
         "Foo"
     }
@@ -27,7 +27,7 @@ macro_rules! custom_lint_pass_macro {
     () => {
         struct Custom;
 
-        impl LintPass for Custom { //~ERROR implementing `LintPass` by hand
+        impl LintPass for Custom { //~ ERROR implementing `LintPass` by hand
             fn name(&self) -> &'static str {
                 "Custom"
             }

@@ -12,5 +12,5 @@ fn gimme<F: Foo>() { }
 fn main() {
     gimme::<i32>();
     gimme::<u32>();
-    gimme::<f32>(); //~ERROR the trait bound `f32: Foo` is not satisfied
+    gimme::<f32>(); //~ ERROR the trait bound `f32: Foo` is not satisfied
 }

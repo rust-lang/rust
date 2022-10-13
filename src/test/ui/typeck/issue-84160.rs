@@ -3,7 +3,7 @@ fn mismatched_types_with_reference(x: &u32) -> &u32 {
         return x;
     }
     return "test";
-    //~^ERROR mismatched types
+    //~^ ERROR mismatched types
 }
 
 fn main() {}

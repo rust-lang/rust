@@ -12,7 +12,7 @@ impl Baz for u16 {
 
 impl<T> Baz for Bar<T> {
     fn hey() {
-        let _: [u8; std::mem::size_of::<Self>()]; //~ERROR generic `Self`
+        let _: [u8; std::mem::size_of::<Self>()]; //~ ERROR generic `Self`
     }
 }
 

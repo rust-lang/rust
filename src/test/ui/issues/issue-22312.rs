@@ -9,7 +9,7 @@ pub trait Array2D: Index<usize> + Sized {
         }
         let i = y * self.columns() + x;
         let indexer = &(*self as &dyn Index<usize, Output = <Self as Index<usize>>::Output>);
-        //~^ERROR non-primitive cast
+        //~^ ERROR non-primitive cast
         Some(indexer.index(i))
     }
 }

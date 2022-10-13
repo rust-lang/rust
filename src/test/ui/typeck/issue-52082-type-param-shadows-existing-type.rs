@@ -29,17 +29,17 @@ impl Eq for Point
     fn equals_ref<Point>(a: &Point, b: &Point) -> bool
     {
         a.x == b.x && a.y == b.y //~ ERROR no field `x` on type `&Point` [E0609]
-                                 //~|ERROR no field `x` on type `&Point` [E0609]
-                                 //~|ERROR no field `y` on type `&Point` [E0609]
-                                 //~|ERROR no field `y` on type `&Point` [E0609]
+                                 //~| ERROR no field `x` on type `&Point` [E0609]
+                                 //~| ERROR no field `y` on type `&Point` [E0609]
+                                 //~| ERROR no field `y` on type `&Point` [E0609]
     }
 
     fn equals_val<Point>(a: Point, b: Point) -> bool
     {
         a.x == b.x && a.y == b.y //~ ERROR no field `x` on type `Point` [E0609]
-                                 //~|ERROR no field `x` on type `Point` [E0609]
-                                 //~|ERROR no field `y` on type `Point` [E0609]
-                                 //~|ERROR no field `y` on type `Point` [E0609]
+                                 //~| ERROR no field `x` on type `Point` [E0609]
+                                 //~| ERROR no field `y` on type `Point` [E0609]
+                                 //~| ERROR no field `y` on type `Point` [E0609]
     }
 }
 

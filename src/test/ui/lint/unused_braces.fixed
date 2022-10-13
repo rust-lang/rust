@@ -8,7 +8,7 @@ fn consume<T>(_: T) {}
 
 fn main() {
     let _ = 7;
-    //~^WARN unnecessary parentheses
+    //~^ WARN unnecessary parentheses
 
     // Do not emit a lint in these cases,
     // as we have to be careful with

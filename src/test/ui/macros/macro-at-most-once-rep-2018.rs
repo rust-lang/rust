@@ -8,7 +8,7 @@ macro_rules! foo {
 
 // The Kleene op `?` does not admit a separator before it.
 macro_rules! baz {
-    ($(a),?) => {}; //~ERROR the `?` macro repetition operator
+    ($(a),?) => {}; //~ ERROR the `?` macro repetition operator
 }
 
 macro_rules! barplus {
@@ -26,15 +26,15 @@ pub fn main() {
     foo!(a?a); //~ ERROR no rules expected the token `?`
     foo!(a?a?a); //~ ERROR no rules expected the token `?`
 
-    barplus!(); //~ERROR unexpected end of macro invocation
-    barplus!(a); //~ERROR unexpected end of macro invocation
+    barplus!(); //~ ERROR unexpected end of macro invocation
+    barplus!(a); //~ ERROR unexpected end of macro invocation
     barplus!(a?); //~ ERROR no rules expected the token `?`
     barplus!(a?a); //~ ERROR no rules expected the token `?`
     barplus!(a+);
     barplus!(+);
 
-    barstar!(); //~ERROR unexpected end of macro invocation
-    barstar!(a); //~ERROR unexpected end of macro invocation
+    barstar!(); //~ ERROR unexpected end of macro invocation
+    barstar!(a); //~ ERROR unexpected end of macro invocation
     barstar!(a?); //~ ERROR no rules expected the token `?`
     barstar!(a?a); //~ ERROR no rules expected the token `?`
     barstar!(a*);

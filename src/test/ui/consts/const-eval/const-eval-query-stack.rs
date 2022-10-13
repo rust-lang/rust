@@ -14,7 +14,7 @@
 
 #![allow(unconditional_panic)]
 
-const X: i32 = 1 / 0; //~ERROR constant
+const X: i32 = 1 / 0; //~ ERROR constant
 
 fn main() {
     let x: &'static i32 = &X;

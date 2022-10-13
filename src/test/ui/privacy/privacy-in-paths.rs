@@ -21,9 +21,9 @@ pub mod baz {
     fn f() {}
 
     fn g() {
-        ::foo::bar::baz::f(); //~ERROR module `bar` is private
-        ::foo::bar::S::f(); //~ERROR module `bar` is private
-        <() as ::foo::T>::Assoc::f(); //~ERROR trait `T` is private
+        ::foo::bar::baz::f(); //~ ERROR module `bar` is private
+        ::foo::bar::S::f(); //~ ERROR module `bar` is private
+        <() as ::foo::T>::Assoc::f(); //~ ERROR trait `T` is private
     }
 }
 

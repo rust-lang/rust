@@ -12,12 +12,12 @@ impl Foo {
 fn main() {
     let mut x = Foo;
     let y = &mut x;
-    Foo::bar(&x); //~ERROR cannot borrow `x`
+    Foo::bar(&x); //~ ERROR cannot borrow `x`
     y.use_mut();
 
     let mut x = Foo;
     let y = &mut x;
-    Foo::baz(&mut x); //~ERROR cannot borrow `x`
+    Foo::baz(&mut x); //~ ERROR cannot borrow `x`
     y.use_mut();
 }
 

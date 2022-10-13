@@ -19,9 +19,9 @@ fn main() {
         let y = *x;
         drop_unsized(y);
         println!("{}", &x);
-        //~^ERROR borrow of moved value
+        //~^ ERROR borrow of moved value
         println!("{}", &y);
-        //~^ERROR borrow of moved value
+        //~^ ERROR borrow of moved value
     }
 
     {
@@ -29,15 +29,15 @@ fn main() {
         let y = *x;
         y.foo();
         println!("{}", &x);
-        //~^ERROR borrow of moved value
+        //~^ ERROR borrow of moved value
         println!("{}", &y);
-        //~^ERROR borrow of moved value
+        //~^ ERROR borrow of moved value
     }
 
     {
         let x = "hello".to_owned().into_boxed_str();
         x.foo();
         println!("{}", &x);
-        //~^ERROR borrow of moved value
+        //~^ ERROR borrow of moved value
     }
 }

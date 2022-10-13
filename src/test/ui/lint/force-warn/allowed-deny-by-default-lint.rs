@@ -6,6 +6,6 @@
 #![allow(mutable_transmutes)]
 fn main() {
     unsafe {
-        let y = std::mem::transmute::<&i32, &mut i32>(&5); //~WARN: undefined behavior
+        let y = std::mem::transmute::<&i32, &mut i32>(&5); //~ WARN: undefined behavior
     }
 }

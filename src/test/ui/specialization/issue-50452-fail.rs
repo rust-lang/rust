@@ -8,7 +8,7 @@ pub trait Foo {
 impl Foo for i32 {}
 impl Foo for i64 {
     fn foo() {}
-    //~^ERROR `foo` specializes an item from a parent `impl`
+    //~^ ERROR `foo` specializes an item from a parent `impl`
 }
 impl<T> Foo for T {
     fn foo() {}

@@ -5,7 +5,7 @@ extern crate proc_macro_type_error;
 
 use proc_macro_type_error::hello;
 
-#[hello] //~ERROR mismatched types
+#[hello] //~ ERROR mismatched types
 fn abc() {}
 
 fn x(_: &mut i32) {}

@@ -6,7 +6,7 @@ struct Foo<'s> {
 
 impl Foo<'_> {
     fn new(bar: &mut Bar) -> Self {
-        Foo { bar } //~ERROR
+        Foo { bar } //~ ERROR
     }
 }
 

@@ -3,7 +3,7 @@
 macro_rules! foo {
     ( $f:block ) => {
         '_l: loop {
-            break '_l $f; //~ERROR
+            break '_l $f; //~ ERROR
         }
     };
 }

@@ -10,5 +10,5 @@ impl Drop for NontrivialDrop {
 }
 
 fn main() {
-    let _ = NontrivialDrop; //~WARNING non-binding let on a type that implements `Drop`
+    let _ = NontrivialDrop; //~ WARNING non-binding let on a type that implements `Drop`
 }

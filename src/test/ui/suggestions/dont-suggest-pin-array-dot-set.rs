@@ -11,5 +11,5 @@
 // the receiver), but the function call on line 14 supplies three.
 fn main() {
     let mut a = [0u8; 1];
-    a.set(0, 3); //~ERROR
+    a.set(0, 3); //~ ERROR
 }

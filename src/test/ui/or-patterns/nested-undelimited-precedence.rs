@@ -16,7 +16,7 @@ fn foo() {
     // ok
     let b @ (A | B): E = A;
 
-    let b @ A | B: E = A; //~ERROR `b` is not bound in all patterns
+    let b @ A | B: E = A; //~ ERROR `b` is not bound in all patterns
     //~^ ERROR top-level or-patterns are not allowed
 }
 
@@ -31,13 +31,13 @@ fn bar() {
     // ok
     let (A(x) | B(x)): F = A(3);
 
-    let &A(_) | B(_): F = A(3); //~ERROR mismatched types
+    let &A(_) | B(_): F = A(3); //~ ERROR mismatched types
     //~^ ERROR top-level or-patterns are not allowed
-    let &&A(_) | B(_): F = A(3); //~ERROR mismatched types
+    let &&A(_) | B(_): F = A(3); //~ ERROR mismatched types
     //~^ ERROR top-level or-patterns are not allowed
-    let &mut A(_) | B(_): F = A(3); //~ERROR mismatched types
+    let &mut A(_) | B(_): F = A(3); //~ ERROR mismatched types
     //~^ ERROR top-level or-patterns are not allowed
-    let &&mut A(_) | B(_): F = A(3); //~ERROR mismatched types
+    let &&mut A(_) | B(_): F = A(3); //~ ERROR mismatched types
     //~^ ERROR top-level or-patterns are not allowed
 }
 

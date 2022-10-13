@@ -15,7 +15,7 @@ impl DroppingSlice<'_> {
 fn main() {
     let mut v = vec![1, 2, 3, 4];
     for x in DroppingSlice(&*v).iter() {
-        v.push(*x); //~ERROR
+        v.push(*x); //~ ERROR
         break;
     }
 }

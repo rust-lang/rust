@@ -59,7 +59,7 @@ unsafe fn parent_sibling_borrow() {
 
 unsafe fn parent_sibling_move() {
     let u = U { x: ManuallyDrop::new(((MockVec::new(), MockVec::new()), MockVec::new())) };
-    let a = u.x.0; //~ERROR cannot move out of dereference
+    let a = u.x.0; //~ ERROR cannot move out of dereference
     let a = u.x;
     let b = u.y; //~ ERROR use of moved value: `u`
 }
@@ -73,7 +73,7 @@ unsafe fn grandparent_sibling_borrow() {
 
 unsafe fn grandparent_sibling_move() {
     let u = U { x: ManuallyDrop::new(((MockVec::new(), MockVec::new()), MockVec::new())) };
-    let a = (u.x.0).0; //~ERROR cannot move out of dereference
+    let a = (u.x.0).0; //~ ERROR cannot move out of dereference
     let a = u.x;
     let b = u.y; //~ ERROR use of moved value: `u`
 }

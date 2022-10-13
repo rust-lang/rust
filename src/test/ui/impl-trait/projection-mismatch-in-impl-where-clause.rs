@@ -11,7 +11,7 @@ pub trait Test {}
 impl<T> Test for T where T: Super<Assoc = ()> {}
 
 fn test() -> impl Test {
-    //~^ERROR type mismatch resolving `<() as Super>::Assoc == ()`
+    //~^ ERROR type mismatch resolving `<() as Super>::Assoc == ()`
     ()
 }
 

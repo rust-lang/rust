@@ -65,7 +65,7 @@ enum ExtraDeriveTokens {
 enum TwoDefaultAttrs {
     #[default]
     #[default]
-    Foo, //~ERROR multiple `#[default]` attributes
+    Foo, //~ ERROR multiple `#[default]` attributes
     Bar,
 }
 
@@ -75,7 +75,7 @@ enum ManyDefaultAttrs {
     #[default]
     #[default]
     #[default]
-    Foo, //~ERROR multiple `#[default]` attributes
+    Foo, //~ ERROR multiple `#[default]` attributes
     Bar,
 }
 

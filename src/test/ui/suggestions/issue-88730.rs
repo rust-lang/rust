@@ -9,8 +9,8 @@ enum Foo {
     D,
 }
 
-fn foo(C: Foo) {} //~ERROR
+fn foo(C: Foo) {} //~ ERROR
 
 fn main() {
-    let C = Foo::D; //~ERROR
+    let C = Foo::D; //~ ERROR
 }

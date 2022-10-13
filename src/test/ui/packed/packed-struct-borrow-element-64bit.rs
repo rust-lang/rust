@@ -12,7 +12,7 @@ struct Foo4C {
 #[warn(unaligned_references)]
 pub fn main() {
     let foo = Foo4C { bar: 1, baz: 2 };
-    let brw = &foo.baz; //~WARN reference to packed field is unaligned
+    let brw = &foo.baz; //~ WARN reference to packed field is unaligned
     //~^ previously accepted
     assert_eq!(*brw, 2);
 }

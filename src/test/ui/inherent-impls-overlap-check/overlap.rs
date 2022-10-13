@@ -17,7 +17,7 @@ struct Foo {}
 
 repeat::repeat_with_idents!(impl Foo { fn IDENT() {} });
 
-impl Foo { fn hello() {} } //~ERROR duplicate definitions with name `hello`
+impl Foo { fn hello() {} } //~ ERROR duplicate definitions with name `hello`
 impl Foo { fn hello() {} }
 
 // Transitive overlap
@@ -28,7 +28,7 @@ repeat::repeat_with_idents!(impl Foo2 { fn IDENT() {} });
 
 impl Foo2 {
     fn bar() {}
-    fn hello2() {} //~ERROR duplicate definitions with name `hello2`
+    fn hello2() {} //~ ERROR duplicate definitions with name `hello2`
 }
 
 impl Foo2 {
@@ -43,8 +43,8 @@ struct Foo3 {}
 repeat::repeat_with_idents!(impl Foo3 { fn IDENT() {} });
 
 impl Foo3 {
-    fn bar() {} //~ERROR duplicate definitions with name `bar`
-    fn hello3() {} //~ERROR duplicate definitions with name `hello3`
+    fn bar() {} //~ ERROR duplicate definitions with name `bar`
+    fn hello3() {} //~ ERROR duplicate definitions with name `hello3`
 }
 
 impl Foo3 {
@@ -64,7 +64,7 @@ repeat::repeat_with_idents!(impl Bar<A> { fn IDENT() {} });
 impl Bar<A> { fn foo() {} fn bar2() {} }
 impl Bar<B> {
     fn foo() {}
-    fn bar2() {} //~ERROR duplicate definitions with name `bar2`
+    fn bar2() {} //~ ERROR duplicate definitions with name `bar2`
 }
 impl Bar<B> { fn bar2() {} }
 

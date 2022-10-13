@@ -13,7 +13,7 @@ fn also_ok() {
 fn fail() {
     loop {
         let x: i32;
-        let _ = x + 1; //~ERROR [E0381]
+        let _ = x + 1; //~ ERROR [E0381]
     }
 }
 

@@ -15,6 +15,6 @@ impl Foo {
 }
 
 fn main() {
-    let x : Foo::Bar; //~ERROR ambiguous associated type
+    let x : Foo::Bar; //~ ERROR ambiguous associated type
     x = 0isize;
 }

@@ -13,7 +13,7 @@ struct MyRc<T: ?Sized> {
     _boo: NotPhantomData<T>,
 }
 
-impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<MyRc<U>> for MyRc<T>{ } //~ERROR
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<MyRc<U>> for MyRc<T>{ } //~ ERROR
 
 fn main() {
     let data = [1, 2, 3];
