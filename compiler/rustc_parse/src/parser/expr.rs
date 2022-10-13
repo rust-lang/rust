@@ -2880,7 +2880,7 @@ impl<'a> Parser<'a> {
         };
 
         while self.token != token::CloseDelim(close_delim) {
-            if self.eat(&token::DotDot) {
+            if self.eat(&token::DotDot) || self.recover_struct_fileds_dots(close_delim) {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(&token::CloseDelim(close_delim)) {
@@ -2897,21 +2897,6 @@ impl<'a> Parser<'a> {
                 }
                 self.recover_struct_comma_after_dotdot(exp_span);
                 break;
-            } else if self.token == token::DotDotDot {
-                // suggest `..v` instead of `...v`
-                let snapshot = self.create_snapshot_for_diagnostic();
-                let span = self.token.span;
-                self.bump();
-                match self.parse_expr() {
-                    Ok(_p) => {
-                        self.sess.emit_err(MissingDotDot { token_span: span, sugg_span: span });
-                        break;
-                    }
-                    Err(inner_err) => {
-                        inner_err.cancel();
-                        self.restore_snapshot(snapshot);
-                    }
-                }
             }
 
             let recovery_field = self.find_struct_error_after_field_looking_code();
@@ -3040,6 +3025,18 @@ impl<'a> Parser<'a> {
             comma: self.token.span,
         });
         self.recover_stmt();
+    }
+
+    fn recover_struct_fileds_dots(&mut self, close_delim: Delimiter) -> bool {
+        if !self.look_ahead(1, |t| *t == token::CloseDelim(close_delim))
+            && self.eat(&token::DotDotDot)
+        {
+            // recover from typo of `...`, suggest `..`
+            let span = self.prev_token.span;
+            self.sess.emit_err(MissingDotDot { token_span: span, sugg_span: span });
+            return true;
+        }
+        false
     }
 
     /// Parses `ident (COLON expr)?`.
