@@ -1605,9 +1605,6 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
             new ActivityAnalyzer(*this, directions));
     Hypothesis->ActiveValues.insert(Val);
     if (auto VI = dyn_cast<Instruction>(Val)) {
-      for (auto V : DeducingPointers) {
-        // UpHypothesis->InsertConstantValue(TR, V);
-      }
       if (UpHypothesis->isInstructionInactiveFromOrigin(TR, VI)) {
         Hypothesis->DeducingPointers.insert(Val);
         if (EnzymePrintActivity)
@@ -2000,9 +1997,6 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
       // UpHypothesis.ConstantValues.insert(val);
       if (DeducingPointers.size() == 0)
         UpHypothesis->insertConstantsFrom(TR, *Hypothesis);
-      for (auto V : DeducingPointers) {
-        // UpHypothesis->InsertConstantValue(TR, V);
-      }
       assert(directions & UP);
       bool ActiveUp = !isa<Argument>(Val) &&
                       !UpHypothesis->isInstructionInactiveFromOrigin(TR, Val);

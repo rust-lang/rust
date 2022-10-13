@@ -7099,32 +7099,6 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
   if (!EnzymeRematerialize)
     return;
 
-  // If promoted, stack or GC allocations don't need to be preserved
-  // for an explicit free
-  bool stackOrGC = false;
-  {
-    auto TmpOrig =
-#if LLVM_VERSION_MAJOR >= 12
-        getUnderlyingObject(V, 100);
-#else
-        GetUnderlyingObject(V, newFunc->getParent()->getDataLayout(), 100);
-#endif
-    StringRef funcName = "";
-    if (auto CI = dyn_cast<CallInst>(TmpOrig))
-      if (Function *originCall = getFunctionFromCall(CI))
-        funcName = originCall->getName();
-    if (isa<AllocaInst>(TmpOrig) ||
-        (isa<Instruction>(TmpOrig) &&
-         hasMetadata(cast<Instruction>(TmpOrig), "enzyme_fromstack")) ||
-        funcName == "jl_alloc_array_1d" || funcName == "jl_alloc_array_2d" ||
-        funcName == "jl_alloc_array_3d" || funcName == "jl_array_copy" ||
-        funcName == "ijl_alloc_array_1d" || funcName == "ijl_alloc_array_2d" ||
-        funcName == "ijl_alloc_array_3d" || funcName == "ijl_array_copy" ||
-        funcName == "julia.gc_alloc_obj" || funcName == "jl_gc_alloc_typed" ||
-        funcName == "ijl_gc_alloc_typed")
-      stackOrGC = true;
-  }
-
   // For the piece of memory V allocated within this scope, it will be
   // initialized in some way by the (augmented) forward pass. Loads and other
   // load-like operations will either require the allocation V itself to be

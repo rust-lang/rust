@@ -2970,9 +2970,9 @@ void createInvertedTerminator(DiffeGradientUtils *gutils,
       PNtype = PNtypeT[{0}];
       bool legal = true;
       for (size_t i = 1; i < size; i++) {
-        if (!PNtypeT[{i}].isFloat())
+        if (!PNtypeT[{(int)i}].isFloat())
           continue;
-        PNtypeT[{i}].checkedOrIn(PNtype, /*pointerIntSame*/ true, legal);
+        PNtypeT[{(int)i}].checkedOrIn(PNtype, /*pointerIntSame*/ true, legal);
         if (!legal) {
           break;
         }
