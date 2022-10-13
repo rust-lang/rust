@@ -18,6 +18,8 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
 use rustc_middle::ty::query::Providers;
 
 mod check_attr;
@@ -39,6 +41,8 @@ mod reachable;
 pub mod stability;
 mod upvars;
 mod weak_lang_items;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     check_attr::provide(providers);

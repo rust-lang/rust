@@ -55,7 +55,7 @@ pub(crate) struct VarNeedNotMut {
 #[derive(Diagnostic)]
 #[diag(borrowck_var_cannot_escape_closure)]
 #[note]
-#[note(cannot_escape)]
+#[note(borrowck_cannot_escape)]
 pub(crate) struct FnMutError {
     #[primary_span]
     pub span: Span,
@@ -223,7 +223,7 @@ pub(crate) struct MoveBorrow<'a> {
     pub borrow_place: &'a str,
     pub value_place: &'a str,
     #[primary_span]
-    #[label(move_label)]
+    #[label(borrowck_move_label)]
     pub span: Span,
     #[label]
     pub borrow_span: Span,

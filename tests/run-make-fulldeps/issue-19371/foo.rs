@@ -53,6 +53,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         output_file: Some(output),
         output_dir: None,
         file_loader: None,
+        locale_resources: &[],
         lint_caps: Default::default(),
         parse_sess_created: None,
         register_lints: None,

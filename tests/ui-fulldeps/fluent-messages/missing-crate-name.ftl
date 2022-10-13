@@ -1,2 +1,2 @@
 with-hyphens = 1234
-test-crate_foo = abcd
+no-crate_foo = abcd

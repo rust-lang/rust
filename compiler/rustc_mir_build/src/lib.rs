@@ -25,6 +25,11 @@ pub mod thir;
 
 use rustc_middle::ty::query::Providers;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
+
+fluent_messages! { "../locales/en-US.ftl" }
+
 pub fn provide(providers: &mut Providers) {
     providers.check_match = thir::pattern::check_match;
     providers.lit_to_const = thir::constant::lit_to_const;

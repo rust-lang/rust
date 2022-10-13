@@ -99,9 +99,11 @@ pub mod structured_errors;
 mod variance;
 
 use rustc_errors::{struct_span_err, ErrorGuaranteed};
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
+use rustc_macros::fluent_messages;
 use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -117,6 +119,8 @@ use std::ops::Not;
 
 use astconv::AstConv;
 use bounds::Bounds;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     const ERROR_HEAD: &str = "C-variadic function must have a compatible calling convention";

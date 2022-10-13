@@ -30,8 +30,10 @@ pub fn main() {
     assert_eq!(gravy::foo(), 10);
 }
 
+static TEST_LOCALE_RESOURCES: &[&str] = &[rustc_parse::DEFAULT_LOCALE_RESOURCE];
+
 fn parse() {
-    let parse_session = ParseSess::new(FilePathMapping::empty());
+    let parse_session = ParseSess::new(TEST_LOCALE_RESOURCES, FilePathMapping::empty());
 
     let path = Path::new(file!());
     let path = path.canonicalize().unwrap();

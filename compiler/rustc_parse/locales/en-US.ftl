@@ -93,6 +93,26 @@ parse_do_catch_syntax_removed = found removed `do catch` syntax
 parse_float_literal_requires_integer_part = float literals must have an integer part
     .suggestion = must have an integer part
 
+parse_invalid_int_literal_width = invalid width `{$width}` for integer literal
+    .help = valid widths are 8, 16, 32, 64 and 128
+
+parse_invalid_num_literal_base_prefix = invalid base prefix for number literal
+    .note = base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+    .suggestion = try making the prefix lowercase
+
+parse_invalid_num_literal_suffix = invalid suffix `{$suffix}` for number literal
+    .label = invalid suffix `{$suffix}`
+    .help = the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+parse_invalid_float_literal_width = invalid width `{$width}` for float literal
+    .help = valid widths are 32 and 64
+
+parse_invalid_float_literal_suffix = invalid suffix `{$suffix}` for float literal
+    .label = invalid suffix `{$suffix}`
+    .help = valid suffixes are `f32` and `f64`
+
+parse_int_literal_too_large = integer literal is too large
+
 parse_missing_semicolon_before_array = expected `;`, found `[`
     .suggestion = consider adding `;` here
 
@@ -218,6 +238,14 @@ parse_struct_literal_not_allowed_here = struct literals are not allowed here
     .suggestion = surround the struct literal with parentheses
 
 parse_invalid_interpolated_expression = invalid interpolated expression
+
+parse_hexadecimal_float_literal_not_supported = hexadecimal float literal is not supported
+parse_octal_float_literal_not_supported = octal float literal is not supported
+parse_binary_float_literal_not_supported = binary float literal is not supported
+parse_not_supported = not supported
+
+parse_invalid_literal_suffix = suffixes on {$kind} literals are invalid
+    .label = invalid suffix `{$suffix}`
 
 parse_invalid_literal_suffix_on_tuple_index = suffixes on a tuple index are invalid
     .label = invalid suffix `{$suffix}`

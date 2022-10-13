@@ -9,6 +9,7 @@ use rustc_session::config;
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
+use crate::fluent_generated as fluent;
 use crate::locator::CrateFlavor;
 
 #[derive(Diagnostic)]
@@ -491,7 +492,7 @@ impl IntoDiagnostic<'_> for MultipleCandidates {
         self,
         handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(rustc_errors::fluent::metadata_multiple_candidates);
+        let mut diag = handler.struct_err(fluent::metadata_multiple_candidates);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("flavor", self.flavor);
         diag.code(error_code!(E0464));
@@ -590,7 +591,7 @@ impl IntoDiagnostic<'_> for InvalidMetadataFiles {
         self,
         handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(rustc_errors::fluent::metadata_invalid_meta_files);
+        let mut diag = handler.struct_err(fluent::metadata_invalid_meta_files);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("add_info", self.add_info);
         diag.code(error_code!(E0786));
@@ -619,7 +620,7 @@ impl IntoDiagnostic<'_> for CannotFindCrate {
         self,
         handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(rustc_errors::fluent::metadata_cannot_find_crate);
+        let mut diag = handler.struct_err(fluent::metadata_cannot_find_crate);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("current_crate", self.current_crate);
         diag.set_arg("add_info", self.add_info);
@@ -630,32 +631,32 @@ impl IntoDiagnostic<'_> for CannotFindCrate {
             && self.locator_triple != TargetTriple::from_triple(config::host_triple())
         {
             if self.missing_core {
-                diag.note(rustc_errors::fluent::metadata_target_not_installed);
+                diag.note(fluent::metadata_target_not_installed);
             } else {
-                diag.note(rustc_errors::fluent::metadata_target_no_std_support);
+                diag.note(fluent::metadata_target_no_std_support);
             }
             // NOTE: this suggests using rustup, even though the user may not have it installed.
             // That's because they could choose to install it; or this may give them a hint which
             // target they need to install from their distro.
             if self.missing_core {
-                diag.help(rustc_errors::fluent::metadata_consider_downloading_target);
+                diag.help(fluent::metadata_consider_downloading_target);
             }
             // Suggest using #![no_std]. #[no_core] is unstable and not really supported anyway.
             // NOTE: this is a dummy span if `extern crate std` was injected by the compiler.
             // If it's not a dummy, that means someone added `extern crate std` explicitly and
             // `#![no_std]` won't help.
             if !self.missing_core && self.span.is_dummy() {
-                diag.note(rustc_errors::fluent::metadata_std_required);
+                diag.note(fluent::metadata_std_required);
             }
             if self.is_nightly_build {
-                diag.help(rustc_errors::fluent::metadata_consider_building_std);
+                diag.help(fluent::metadata_consider_building_std);
             }
         } else if self.crate_name == self.profiler_runtime {
-            diag.note(rustc_errors::fluent::metadata_compiler_missing_profiler);
+            diag.note(fluent::metadata_compiler_missing_profiler);
         } else if self.crate_name.as_str().starts_with("rustc_") {
-            diag.help(rustc_errors::fluent::metadata_install_missing_components);
+            diag.help(fluent::metadata_install_missing_components);
         }
-        diag.span_label(self.span, rustc_errors::fluent::metadata_cant_find_crate);
+        diag.span_label(self.span, fluent::metadata_cant_find_crate);
         diag
     }
 }

@@ -339,7 +339,7 @@ pub struct InclusiveRangeWithNoEnd {
 #[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_trait_fn_async, code = "E0706")]
 #[note]
-#[note(note2)]
+#[note(ast_lowering_note2)]
 pub struct TraitFnAsync {
     #[primary_span]
     pub fn_span: Span,
