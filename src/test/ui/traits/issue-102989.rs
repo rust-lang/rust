@@ -1,5 +1,6 @@
+//~ ERROR can't find crate for `profiler_builtins`
 // compile-flags: -Cinstrument-coverage
-//~^ ERROR can't find crate for `profiler_builtins`
+// normalize-stderr-test "loaded from .*libcore-.*.rlib" -> "loaded from SYSROOT/libcore-*.rlib"
 
 #![no_core]
 #![feature(no_core, lang_items)]
