@@ -1,5 +1,5 @@
 error: `self` parameter is only allowed in associated functions
-  --> $DIR/issue-102989.rs:9:15
+  --> $DIR/issue-102989.rs:10:15
    |
 LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    |               ^^^^ not semantically valid as function parameter
@@ -7,13 +7,13 @@ LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    = note: associated functions are those in `impl` or `trait` definitions
 
 error[E0412]: cannot find type `Struct` in this scope
-  --> $DIR/issue-102989.rs:9:22
+  --> $DIR/issue-102989.rs:10:22
    |
 LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    |                      ^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `x` in this scope
-  --> $DIR/issue-102989.rs:13:13
+  --> $DIR/issue-102989.rs:14:13
    |
 LL |     let x = x << 1;
    |             ^ help: a local variable with a similar name exists: `f`
@@ -25,13 +25,13 @@ error[E0463]: can't find crate for `profiler_builtins`
    = note: the compiler may have been built without the profiler runtime
 
 error[E0152]: found duplicate lang item `sized`
-  --> $DIR/issue-102989.rs:7:1
+  --> $DIR/issue-102989.rs:8:1
    |
 LL | trait Sized { }
    | ^^^^^^^^^^^
    |
    = note: the lang item is first defined in crate `core`.
-   = note: first definition in `core` loaded from $BUILD_DIR/aarch64-apple-darwin/stage1/lib/rustlib/aarch64-apple-darwin/lib/libcore-500f4c12402b1108.rlib
+   = note: first definition in `core` loaded from SYSROOT/libcore-*.rlib
    = note: second definition in the local crate (`issue_102989`)
 
 error: `#[panic_handler]` function required, but not found
@@ -42,7 +42,7 @@ error: language item required, but not found: `eh_personality`
    = help: you may be able to compile for a target that doesn't need `eh_personality`, specify a target with `--target` or in `.cargo/config`
 
 error[E0277]: the size for values of type `{integer}` cannot be known at compilation time
-  --> $DIR/issue-102989.rs:13:15
+  --> $DIR/issue-102989.rs:14:15
    |
 LL |     let x = x << 1;
    |               ^^ doesn't have a size known at compile-time
@@ -50,7 +50,7 @@ LL |     let x = x << 1;
    = help: the trait `core::marker::Sized` is not implemented for `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-102989.rs:9:42
+  --> $DIR/issue-102989.rs:10:42
    |
 LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    |    ----------                            ^^^^ expected `&u32`, found `()`
@@ -58,7 +58,7 @@ LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    |    implicitly returns `()` as its body has no tail or `return` expression
    |
 note: consider returning one of these bindings
-  --> $DIR/issue-102989.rs:9:30
+  --> $DIR/issue-102989.rs:10:30
    |
 LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    |                              ^
