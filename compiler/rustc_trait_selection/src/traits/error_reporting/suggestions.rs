@@ -2937,19 +2937,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::BinOp { rhs_span: Some(span), is_lit, .. } if *is_lit => span,
             _ => return,
         };
-        match (
-            trait_ref.skip_binder().self_ty().kind(),
-            trait_ref.skip_binder().substs.type_at(1).kind(),
-        ) {
-            (ty::Float(_), ty::Infer(InferTy::IntVar(_))) => {
-                err.span_suggestion_verbose(
-                    rhs_span.shrink_to_hi(),
-                    "consider using a floating-point literal by writing it with `.0`",
-                    ".0",
-                    Applicability::MaybeIncorrect,
-                );
-            }
-            _ => {}
+        if let ty::Float(_) = trait_ref.skip_binder().self_ty().kind()
+            && let ty::Infer(InferTy::IntVar(_)) = trait_ref.skip_binder().substs.type_at(1).kind()
+        {
+            err.span_suggestion_verbose(
+                rhs_span.shrink_to_hi(),
+                "consider using a floating-point literal by writing it with `.0`",
+                ".0",
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 

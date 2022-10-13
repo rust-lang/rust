@@ -1,0 +1,72 @@
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/issue-102989.rs:10:15
+   |
+LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |               ^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error[E0412]: cannot find type `Struct` in this scope
+  --> $DIR/issue-102989.rs:10:22
+   |
+LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |                      ^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-102989.rs:14:13
+   |
+LL |     let x = x << 1;
+   |             ^ help: a local variable with a similar name exists: `f`
+
+error: `profiler_builtins` crate (required by compiler options) is not compatible with crate attribute `#![no_core]`
+
+error[E0463]: can't find crate for `profiler_builtins`
+   |
+   = note: the compiler may have been built without the profiler runtime
+
+error[E0152]: found duplicate lang item `sized`
+  --> $DIR/issue-102989.rs:8:1
+   |
+LL | trait Sized { }
+   | ^^^^^^^^^^^
+   |
+   = note: the lang item is first defined in crate `core`.
+   = note: first definition in `core` loaded from SYSROOT/libcore-*.rlib
+   = note: second definition in the local crate (`issue_102989`)
+
+error: `#[panic_handler]` function required, but not found
+
+error: language item required, but not found: `eh_personality`
+   |
+   = note: this can occur when a binary crate with `#![no_std]` is compiled for a target where `eh_personality` is defined in the standard library
+   = help: you may be able to compile for a target that doesn't need `eh_personality`, specify a target with `--target` or in `.cargo/config`
+
+error[E0277]: the size for values of type `{integer}` cannot be known at compilation time
+  --> $DIR/issue-102989.rs:14:15
+   |
+LL |     let x = x << 1;
+   |               ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `core::marker::Sized` is not implemented for `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-102989.rs:10:42
+   |
+LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |    ----------                            ^^^^ expected `&u32`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+note: consider returning one of these bindings
+  --> $DIR/issue-102989.rs:10:30
+   |
+LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |                              ^
+...
+LL |     let x = x << 1;
+   |         ^
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0152, E0277, E0308, E0412, E0425, E0463.
+For more information about an error, try `rustc --explain E0152`.
