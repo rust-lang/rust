@@ -3,6 +3,7 @@ use std::path::Path;
 
 use super::build_sysroot;
 use super::config;
+use super::prepare;
 use super::utils::{cargo_command, spawn_and_wait};
 use super::SysrootKind;
 
@@ -35,9 +36,8 @@ pub(crate) fn run(
     );
 
     eprintln!("Running abi-cafe");
-    let mut abi_cafe_path = env::current_dir().unwrap();
-    abi_cafe_path.push("abi-cafe");
-    env::set_current_dir(&abi_cafe_path.clone()).unwrap();
+    let abi_cafe_path = prepare::ABI_CAFE.source_dir();
+    env::set_current_dir(abi_cafe_path.clone()).unwrap();
 
     let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
 

@@ -1,5 +1,6 @@
 use super::build_sysroot;
 use super::config;
+use super::prepare;
 use super::rustc_info::get_wrapper_file_name;
 use super::utils::{cargo_command, hyperfine_command, spawn_and_wait, spawn_and_wait_with_input};
 use build_system::SysrootKind;
@@ -217,7 +218,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::new("test.rust-random/rand", &|runner| {
-        runner.in_dir(["rand"], |runner| {
+        runner.in_dir(prepare::RAND.source_dir(), |runner| {
             runner.run_cargo("clean", []);
 
             if runner.host_triple == runner.target_triple {
@@ -230,7 +231,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         });
     }),
     TestCase::new("bench.simple-raytracer", &|runner| {
-        runner.in_dir(["simple-raytracer"], |runner| {
+        runner.in_dir(prepare::SIMPLE_RAYTRACER.source_dir(), |runner| {
             let run_runs = env::var("RUN_RUNS").unwrap_or("10".to_string()).parse().unwrap();
 
             if runner.host_triple == runner.target_triple {
@@ -273,19 +274,28 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         });
     }),
     TestCase::new("test.libcore", &|runner| {
-        runner.in_dir(["build_sysroot", "sysroot_src", "library", "core", "tests"], |runner| {
-            runner.run_cargo("clean", []);
+        runner.in_dir(
+            std::env::current_dir()
+                .unwrap()
+                .join("build_sysroot")
+                .join("sysroot_src")
+                .join("library")
+                .join("core")
+                .join("tests"),
+            |runner| {
+                runner.run_cargo("clean", []);
 
-            if runner.host_triple == runner.target_triple {
-                runner.run_cargo("test", []);
-            } else {
-                eprintln!("Cross-Compiling: Not running tests");
-                runner.run_cargo("build", ["--tests"]);
-            }
-        });
+                if runner.host_triple == runner.target_triple {
+                    runner.run_cargo("test", []);
+                } else {
+                    eprintln!("Cross-Compiling: Not running tests");
+                    runner.run_cargo("build", ["--tests"]);
+                }
+            },
+        );
     }),
     TestCase::new("test.regex-shootout-regex-dna", &|runner| {
-        runner.in_dir(["regex"], |runner| {
+        runner.in_dir(prepare::REGEX.source_dir(), |runner| {
             runner.run_cargo("clean", []);
 
             // newer aho_corasick versions throw a deprecation warning
@@ -336,7 +346,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         });
     }),
     TestCase::new("test.regex", &|runner| {
-        runner.in_dir(["regex"], |runner| {
+        runner.in_dir(prepare::REGEX.source_dir(), |runner| {
             runner.run_cargo("clean", []);
 
             // newer aho_corasick versions throw a deprecation warning
@@ -367,7 +377,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         });
     }),
     TestCase::new("test.portable-simd", &|runner| {
-        runner.in_dir(["portable-simd"], |runner| {
+        runner.in_dir(prepare::PORTABLE_SIMD.source_dir(), |runner| {
             runner.run_cargo("clean", []);
             runner.run_cargo("build", ["--all-targets", "--target", &runner.target_triple]);
 
@@ -506,16 +516,8 @@ impl TestRunner {
         }
     }
 
-    fn in_dir<'a, I, F>(&self, dir: I, callback: F)
-    where
-        I: IntoIterator<Item = &'a str>,
-        F: FnOnce(&TestRunner),
-    {
+    fn in_dir(&self, new: impl AsRef<Path>, callback: impl FnOnce(&TestRunner)) {
         let current = env::current_dir().unwrap();
-        let mut new = current.clone();
-        for d in dir {
-            new.push(d);
-        }
 
         env::set_current_dir(new).unwrap();
         callback(self);
