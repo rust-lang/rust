@@ -42,7 +42,7 @@ pub fn get_recursion_limit(krate_attrs: &[Attribute], sess: &Session) -> Limit {
 }
 
 pub fn get_expansion_growth_limit(krate_attrs: &[Attribute], sess: &Session) -> Limit {
-    get_limit(krate_attrs, sess, sym::expansion_growth_limit, 1500)
+    get_limit(krate_attrs, sess, sym::expansion_growth_limit, 6000)
 }
 
 fn get_limit(krate_attrs: &[Attribute], sess: &Session, name: Symbol, default: usize) -> Limit {

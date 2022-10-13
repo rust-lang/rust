@@ -130,7 +130,10 @@ pub struct Limits {
     pub move_size_limit: Limit,
     /// The maximum length of types during monomorphization.
     pub type_length_limit: Limit,
-    /// FIXME(vincenzopalazzo) add docs
+    /// The maximum blocks a const expression can evaluate.
+    pub const_eval_limit: Limit,
+    /// The maximum tokens limit for potentially infinitely resolving
+    /// a macros that add infinite tokens inside the buffer.
     pub expansion_growth_limit: Limit,
 }
 

@@ -1,0 +1,19 @@
+error: expansion grow limit reached while expanding `from_cow_impls!`
+  --> $DIR/issue-95698.rs:7:9
+   |
+LL | /         from_cow_impls!(
+LL | |             $( $from, Cow::from ),+
+LL | |         );
+   | |_________^
+...
+LL | / from_cow_impls!(
+LL | |     &'a [u8], /*callback,*/
+LL | |     Vec<u8>, /*callback,*/
+LL | | );
+   | |_- in this macro invocation
+   |
+   = help: consider increasing the expansion grow limit by adding a `#![expansion_growth_limit = "12000"]` attribute to your crate (`issue_95698`)
+   = note: this error originates in the macro `from_cow_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

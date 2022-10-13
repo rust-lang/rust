@@ -2040,7 +2040,7 @@ impl ExpansionConfig<'_> {
             crate_name,
             features,
             recursion_limit: Limit::new(1024),
-            expansion_growth_limit: Limit::new(1500),
+            expansion_growth_limit: Limit::new(6000),
             trace_mac: false,
             should_test: false,
             span_debug: false,
