@@ -361,6 +361,9 @@ changelog-seen = 2
 # this is not intended to be used during local development.
 #metrics = false
 
+# Specify the location of the Android NDK. Used when targeting Android.
+#android-ndk = "/path/to/android-ndk-r25b"
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -734,12 +737,6 @@ changelog-seen = 2
 # static link to `libunwind.a` provided by system. Due to the limitation of glibc,
 # it must link to `libgcc_eh.a` to get a working output, and this option have no effect.
 #llvm-libunwind = 'no' if Linux, 'in-tree' if Fuchsia
-
-# If this target is for Android, this option will be required to specify where
-# the NDK for the target lives. This is used to find the C compiler to link and
-# build native code.
-# See `src/bootstrap/cc_detect.rs` for details.
-#android-ndk = <none> (path)
 
 # Build the sanitizer runtimes for this target.
 # This option will override the same option under [build] section.
