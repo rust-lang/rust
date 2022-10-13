@@ -1,4 +1,4 @@
-// Test for for diagnostic improvement issue #75907, extern crate
+// Test for diagnostic improvement issue #75907, extern crate
 // aux-build:issue-75907.rs
 
 extern crate issue_75907 as a;

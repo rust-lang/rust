@@ -1739,11 +1739,15 @@ impl TargetOptions {
                     self.lld_flavor_json,
                     self.linker_is_gnu_json,
                 );
-                match linker_flavor {
-                    LinkerFlavor::Gnu(_, Lld::Yes)
-                    | LinkerFlavor::Darwin(_, Lld::Yes)
-                    | LinkerFlavor::Msvc(Lld::Yes) => {}
-                    _ => add_link_args_iter(args, linker_flavor, args_json.iter().cloned()),
+                // Normalize to no lld to avoid asserts.
+                let linker_flavor = match linker_flavor {
+                    LinkerFlavor::Gnu(cc, _) => LinkerFlavor::Gnu(cc, Lld::No),
+                    LinkerFlavor::Darwin(cc, _) => LinkerFlavor::Darwin(cc, Lld::No),
+                    LinkerFlavor::Msvc(_) => LinkerFlavor::Msvc(Lld::No),
+                    _ => linker_flavor,
+                };
+                if !args.contains_key(&linker_flavor) {
+                    add_link_args_iter(args, linker_flavor, args_json.iter().cloned());
                 }
             }
         }
