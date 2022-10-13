@@ -1,10 +1,11 @@
 use crate::errors::{InvalidMetaItem, SuffixedLiteralInAttribute};
+use crate::fluent_generated as fluent;
 
 use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
-use rustc_errors::{error_code, fluent, Diagnostic, IntoDiagnostic, PResult};
+use rustc_errors::{error_code, Diagnostic, IntoDiagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use std::convert::TryInto;
 use thin_vec::ThinVec;
@@ -68,10 +69,10 @@ impl<'a> Parser<'a> {
                             token::CommentKind::Block => OuterAttributeType::DocBlockComment,
                         },
                     ) {
-                        err.note(fluent::note);
+                        err.note(fluent::parse_note);
                         err.span_suggestion_verbose(
                             replacement_span,
-                            fluent::suggestion,
+                            fluent::parse_suggestion,
                             "",
                             rustc_errors::Applicability::MachineApplicable,
                         );
@@ -175,10 +176,10 @@ impl<'a> Parser<'a> {
             Ok(Some(item)) => {
                 // FIXME(#100717)
                 err.set_arg("item", item.kind.descr());
-                err.span_label(item.span, fluent::label_does_not_annotate_this);
+                err.span_label(item.span, fluent::parse_label_does_not_annotate_this);
                 err.span_suggestion_verbose(
                     replacement_span,
-                    fluent::sugg_change_inner_to_outer,
+                    fluent::parse_sugg_change_inner_to_outer,
                     match attr_type {
                         OuterAttributeType::Attribute => "",
                         OuterAttributeType::DocBlockComment => "*",
@@ -204,8 +205,8 @@ impl<'a> Parser<'a> {
                         attr_sp,
                         fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
                     );
-                    diag.span_label(attr_sp, fluent::label_attr)
-                        .span_label(prev_doc_comment_span, fluent::label_prev_doc_comment);
+                    diag.span_label(attr_sp, fluent::parse_label_attr)
+                        .span_label(prev_doc_comment_span, fluent::parse_label_prev_doc_comment);
                     diag
                 }
                 Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => {
@@ -213,8 +214,8 @@ impl<'a> Parser<'a> {
                         attr_sp,
                         fluent::parse_inner_attr_not_permitted_after_outer_attr,
                     );
-                    diag.span_label(attr_sp, fluent::label_attr)
-                        .span_label(prev_outer_attr_sp, fluent::label_prev_attr);
+                    diag.span_label(attr_sp, fluent::parse_label_attr)
+                        .span_label(prev_outer_attr_sp, fluent::parse_label_prev_attr);
                     diag
                 }
                 Some(InnerAttrForbiddenReason::InCodeBlock) | None => {

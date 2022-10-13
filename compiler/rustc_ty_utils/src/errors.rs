@@ -16,7 +16,7 @@ pub struct NeedsDropOverflow<'tcx> {
 pub struct GenericConstantTooComplex {
     #[primary_span]
     pub span: Span,
-    #[note(maybe_supported)]
+    #[note(ty_utils_maybe_supported)]
     pub maybe_supported: Option<()>,
     #[subdiagnostic]
     pub sub: GenericConstantTooComplexSub,

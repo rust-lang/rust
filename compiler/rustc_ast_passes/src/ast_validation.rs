@@ -13,7 +13,7 @@ use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{error_code, fluent, pluralize, struct_span_err, Applicability};
+use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
@@ -30,6 +30,7 @@ use std::ops::{Deref, DerefMut};
 use thin_vec::thin_vec;
 
 use crate::errors::*;
+use crate::fluent_generated as fluent;
 
 const MORE_EXTERN: &str =
     "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
@@ -1723,12 +1724,12 @@ pub(crate) enum ForbiddenLetReason {
     /// `let` is not valid and the source environment is not important
     GenericForbidden,
     /// A let chain with the `||` operator
-    #[note(not_supported_or)]
+    #[note(ast_passes_not_supported_or)]
     NotSupportedOr(#[primary_span] Span),
     /// A let chain with invalid parentheses
     ///
     /// For example, `let 1 = 1 && (expr && expr)` is allowed
     /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
-    #[note(not_supported_parentheses)]
+    #[note(ast_passes_not_supported_parentheses)]
     NotSupportedParentheses(#[primary_span] Span),
 }

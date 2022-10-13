@@ -116,7 +116,7 @@ pub(crate) fn new_handler(
     unstable_opts: &UnstableOptions,
 ) -> rustc_errors::Handler {
     let fallback_bundle =
-        rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES, false);
     let emitter: Box<dyn Emitter + sync::Send> = match error_format {
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -254,6 +254,7 @@ pub(crate) fn create_config(
         output_file: None,
         output_dir: None,
         file_loader: None,
+        locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES,
         lint_caps,
         parse_sess_created: None,
         register_lints: Some(Box::new(crate::lint::register_lints)),

@@ -8,6 +8,7 @@ use crate::errors::{
     TrailingVertNotAllowed, UnexpectedLifetimeInPattern, UnexpectedVertVertBeforeFunctionParam,
     UnexpectedVertVertInPattern,
 };
+use crate::fluent_generated as fluent;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
@@ -17,9 +18,7 @@ use rustc_ast::{
     PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{
-    fluent, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
-};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};

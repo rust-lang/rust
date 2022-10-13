@@ -1,6 +1,6 @@
+use crate::fluent_generated as fluent;
 use rustc_errors::{
-    fluent, AddToDiagnostic, Diagnostic, ErrorGuaranteed, Handler, IntoDiagnostic,
-    SubdiagnosticMessage,
+    AddToDiagnostic, Diagnostic, ErrorGuaranteed, Handler, IntoDiagnostic, SubdiagnosticMessage,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::lint::Level;
@@ -116,7 +116,7 @@ impl IntoDiagnostic<'_> for CheckNameUnknown {
         let mut diag = handler.struct_err(fluent::lint_check_name_unknown);
         diag.code(rustc_errors::error_code!(E0602));
         if let Some(suggestion) = self.suggestion {
-            diag.help(fluent::help);
+            diag.help(fluent::lint_help);
             diag.set_arg("suggestion", suggestion);
         }
         diag.set_arg("lint_name", self.lint_name);

@@ -33,20 +33,7 @@ hir_analysis_field_already_declared =
     .label = field already declared
     .previous_decl_label = `{$field_name}` first declared here
 
-hir_analysis_copy_impl_on_type_with_dtor =
-    the trait `Copy` may not be implemented for this type; the type has a destructor
-    .label = `Copy` not allowed on types with destructors
-
-hir_analysis_multiple_relaxed_default_bounds =
-    type parameter has more than one relaxed default bound, only one is supported
-
-hir_analysis_copy_impl_on_non_adt =
-    the trait `Copy` may not be implemented for this type
-    .label = type is not a structure or enumeration
-
-hir_analysis_trait_object_declared_with_no_traits =
-    at least one trait is required for an object type
-    .alias_span = this alias does not contain a trait
+hir_analysis_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
 hir_analysis_ambiguous_lifetime_bound =
     ambiguous lifetime bound, explicit lifetime bound required
@@ -67,6 +54,25 @@ hir_analysis_value_of_associated_struct_already_specified =
 
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}
+
+hir_analysis_manual_implementation =
+    manual implementations of `{$trait_name}` are experimental
+    .label = manual implementations of `{$trait_name}` are experimental
+    .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+hir_analysis_substs_on_overridden_impl = could not resolve substs on overridden impl
+
+hir_analysis_unused_extern_crate =
+    unused extern crate
+    .suggestion = remove it
+
+hir_analysis_extern_crate_not_idiomatic =
+    `extern crate` is not idiomatic in the new edition
+    .suggestion = convert it to a `{$msg_code}`
+
+hir_analysis_trait_object_declared_with_no_traits =
+    at least one trait is required for an object type
+    .alias_span = this alias does not contain a trait
 
 hir_analysis_missing_type_params =
     the type {$parameterCount ->
@@ -90,20 +96,16 @@ hir_analysis_missing_type_params =
     } to {$parameters}
     .note = because of the default `Self` reference, type parameters must be specified on object types
 
-hir_analysis_manual_implementation =
-    manual implementations of `{$trait_name}` are experimental
-    .label = manual implementations of `{$trait_name}` are experimental
-    .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
+hir_analysis_copy_impl_on_type_with_dtor =
+    the trait `Copy` may not be implemented for this type; the type has a destructor
+    .label = `Copy` not allowed on types with destructors
 
-hir_analysis_substs_on_overridden_impl = could not resolve substs on overridden impl
+hir_analysis_multiple_relaxed_default_bounds =
+    type parameter has more than one relaxed default bound, only one is supported
 
-hir_analysis_unused_extern_crate =
-    unused extern crate
-    .suggestion = remove it
-
-hir_analysis_extern_crate_not_idiomatic =
-    `extern crate` is not idiomatic in the new edition
-    .suggestion = convert it to a `{$msg_code}`
+hir_analysis_copy_impl_on_non_adt =
+    the trait `Copy` may not be implemented for this type
+    .label = type is not a structure or enumeration
 
 hir_analysis_const_impl_for_non_const_trait =
     const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`

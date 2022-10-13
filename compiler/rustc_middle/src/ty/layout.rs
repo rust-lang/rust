@@ -1,3 +1,4 @@
+use crate::fluent_generated as fluent;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitable};
@@ -182,16 +183,16 @@ impl IntoDiagnostic<'_, !> for LayoutError<'_> {
         match self {
             LayoutError::Unknown(ty) => {
                 diag.set_arg("ty", ty);
-                diag.set_primary_message(rustc_errors::fluent::middle_unknown_layout);
+                diag.set_primary_message(fluent::middle_unknown_layout);
             }
             LayoutError::SizeOverflow(ty) => {
                 diag.set_arg("ty", ty);
-                diag.set_primary_message(rustc_errors::fluent::middle_values_too_big);
+                diag.set_primary_message(fluent::middle_values_too_big);
             }
             LayoutError::NormalizationFailure(ty, e) => {
                 diag.set_arg("ty", ty);
                 diag.set_arg("failure_ty", e.get_type_for_failure());
-                diag.set_primary_message(rustc_errors::fluent::middle_cannot_be_normalized);
+                diag.set_primary_message(fluent::middle_cannot_be_normalized);
             }
         }
         diag

@@ -12,6 +12,9 @@
 #[macro_use]
 extern crate tracing;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
+
 mod callbacks;
 mod errors;
 pub mod interface;
@@ -27,3 +30,5 @@ pub use queries::Queries;
 
 #[cfg(test)]
 mod tests;
+
+fluent_messages! { "../locales/en-US.ftl" }

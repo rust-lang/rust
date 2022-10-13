@@ -18,6 +18,7 @@ use crate::errors::{
     UseEqInstead,
 };
 
+use crate::fluent_generated as fluent;
 use crate::lexer::UnmatchedBrace;
 use crate::parser;
 use rustc_ast as ast;
@@ -32,10 +33,9 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, FatalError, Handler, MultiSpan,
-    PResult,
+    pluralize, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed,
+    FatalError, Handler, IntoDiagnostic, MultiSpan, PResult,
 };
-use rustc_errors::{pluralize, Diagnostic, ErrorGuaranteed, IntoDiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
