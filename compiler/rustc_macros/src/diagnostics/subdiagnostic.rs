@@ -86,7 +86,7 @@ impl SubdiagnosticDeriveBuilder {
             gen impl rustc_errors::AddToDiagnostic for @Self {
                 fn add_to_diagnostic_with<__F>(self, #diag: &mut rustc_errors::Diagnostic, #f: __F)
                 where
-                    __F: Fn(
+                    __F: core::ops::Fn(
                         &mut rustc_errors::Diagnostic,
                         rustc_errors::SubdiagnosticMessage
                     ) -> rustc_errors::SubdiagnosticMessage,
