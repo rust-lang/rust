@@ -164,7 +164,9 @@ infer_region_explanation = {$pref_kind ->
 }
 
 infer_mismatched_static_lifetime = incompatible lifetime on type
-infer_msl_impl_note = ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
+infer_does_not_outlive_static_from_impl = ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
+infer_implicit_static_lifetime_note = this has an implicit `'static` lifetime requirement
+infer_implicit_static_lifetime_suggestion = consider relaxing the implicit `'static` requirement
 infer_msl_introduces_static = introduces a `'static` lifetime requirement
 infer_msl_unmet_req = because this has an unmet lifetime requirement
 infer_msl_trait_note = this has an implicit `'static` lifetime requirement
