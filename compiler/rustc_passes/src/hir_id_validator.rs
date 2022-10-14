@@ -143,6 +143,16 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
             });
         }
 
+        if let Some(owner_hir_id) = self.hir_map.find_parent_node(hir_id) &&
+            owner_hir_id.local_id >= hir_id.local_id && hir_id.local_id != ItemLocalId::from_u32(0) {
+            self.error(|| {
+                format!(
+                    "HirIdValidator: The local_id {} 's parent local_id {} is not smaller than children",
+                    self.hir_map.node_to_string(hir_id),
+                    self.hir_map.node_to_string(owner_hir_id),
+                )
+            });
+        }
         self.hir_ids_seen.insert(hir_id.local_id);
     }
 
