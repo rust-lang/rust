@@ -198,6 +198,10 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
 
         // If the type being assigned needs dropped, then the mutation counts as a borrow
         // since it is essentially doing `Drop::drop(&mut x); x = new_value;`.
+        //
+        // FIXME(drop-tracking): We need to be more responsible about inference
+        // variables here, since `needs_drop` is a "raw" type query, i.e. it
+        // basically requires types to have been fully resolved.
         if assignee_place.place.base_ty.needs_drop(self.tcx, self.param_env) {
             self.places
                 .borrowed
