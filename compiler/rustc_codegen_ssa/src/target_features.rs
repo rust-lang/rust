@@ -13,17 +13,25 @@ pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 // if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted
 
 const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
     ("aclass", Some(sym::arm_target_feature)),
-    ("mclass", Some(sym::arm_target_feature)),
-    ("rclass", Some(sym::arm_target_feature)),
-    ("dsp", Some(sym::arm_target_feature)),
-    ("neon", Some(sym::arm_target_feature)),
+    ("aes", Some(sym::arm_target_feature)),
     ("crc", Some(sym::arm_target_feature)),
     ("crypto", Some(sym::arm_target_feature)),
-    ("aes", Some(sym::arm_target_feature)),
-    ("sha2", Some(sym::arm_target_feature)),
-    ("i8mm", Some(sym::arm_target_feature)),
+    ("d32", Some(sym::arm_target_feature)),
     ("dotprod", Some(sym::arm_target_feature)),
+    ("dsp", Some(sym::arm_target_feature)),
+    ("fp-armv8", Some(sym::arm_target_feature)),
+    ("i8mm", Some(sym::arm_target_feature)),
+    ("mclass", Some(sym::arm_target_feature)),
+    ("neon", Some(sym::arm_target_feature)),
+    ("rclass", Some(sym::arm_target_feature)),
+    ("sha2", Some(sym::arm_target_feature)),
+    // This is needed for inline assembly, but shouldn't be stabilized as-is
+    // since it should be enabled per-function using #[instruction_set], not
+    // #[target_feature].
+    ("thumb-mode", Some(sym::arm_target_feature)),
+    ("thumb2", Some(sym::arm_target_feature)),
     ("v5te", Some(sym::arm_target_feature)),
     ("v6", Some(sym::arm_target_feature)),
     ("v6k", Some(sym::arm_target_feature)),
@@ -33,104 +41,97 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("vfp2", Some(sym::arm_target_feature)),
     ("vfp3", Some(sym::arm_target_feature)),
     ("vfp4", Some(sym::arm_target_feature)),
-    ("fp-armv8", Some(sym::arm_target_feature)),
-    // This is needed for inline assembly, but shouldn't be stabilized as-is
-    // since it should be enabled per-function using #[instruction_set], not
-    // #[target_feature].
-    ("thumb-mode", Some(sym::arm_target_feature)),
-    ("thumb2", Some(sym::arm_target_feature)),
-    ("d32", Some(sym::arm_target_feature)),
+    // tidy-alphabetical-end
 ];
 
 const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // FEAT_AdvSimd & FEAT_FP
-    ("neon", None),
-    // FEAT_FP16
-    ("fp16", None),
-    // FEAT_SVE
-    ("sve", None),
+    // tidy-alphabetical-start
+    // FEAT_AES
+    ("aes", None),
+    // FEAT_BF16
+    ("bf16", None),
+    // FEAT_BTI
+    ("bti", None),
     // FEAT_CRC
     ("crc", None),
-    // FEAT_RAS
-    ("ras", None),
-    // FEAT_LSE
-    ("lse", None),
-    // FEAT_RDM
-    ("rdm", None),
-    // FEAT_RCPC
-    ("rcpc", None),
-    // FEAT_RCPC2
-    ("rcpc2", None),
-    // FEAT_DotProd
-    ("dotprod", None),
-    // FEAT_TME
-    ("tme", None),
-    // FEAT_FHM
-    ("fhm", None),
     // FEAT_DIT
     ("dit", None),
-    // FEAT_FLAGM
-    ("flagm", None),
-    // FEAT_SSBS
-    ("ssbs", None),
-    // FEAT_SB
-    ("sb", None),
-    // FEAT_PAUTH (address authentication)
-    ("paca", None),
-    // FEAT_PAUTH (generic authentication)
-    ("pacg", None),
+    // FEAT_DotProd
+    ("dotprod", None),
     // FEAT_DPB
     ("dpb", None),
     // FEAT_DPB2
     ("dpb2", None),
-    // FEAT_SVE2
-    ("sve2", None),
-    // FEAT_SVE2_AES
-    ("sve2-aes", None),
-    // FEAT_SVE2_SM4
-    ("sve2-sm4", None),
-    // FEAT_SVE2_SHA3
-    ("sve2-sha3", None),
-    // FEAT_SVE2_BitPerm
-    ("sve2-bitperm", None),
-    // FEAT_FRINTTS
-    ("frintts", None),
-    // FEAT_I8MM
-    ("i8mm", None),
     // FEAT_F32MM
     ("f32mm", None),
     // FEAT_F64MM
     ("f64mm", None),
-    // FEAT_BF16
-    ("bf16", None),
-    // FEAT_RAND
-    ("rand", None),
-    // FEAT_BTI
-    ("bti", None),
-    // FEAT_MTE
-    ("mte", None),
-    // FEAT_JSCVT
-    ("jsconv", None),
     // FEAT_FCMA
     ("fcma", None),
-    // FEAT_AES
-    ("aes", None),
+    // FEAT_FHM
+    ("fhm", None),
+    // FEAT_FLAGM
+    ("flagm", None),
+    // FEAT_FP16
+    ("fp16", None),
+    // FEAT_FRINTTS
+    ("frintts", None),
+    // FEAT_I8MM
+    ("i8mm", None),
+    // FEAT_JSCVT
+    ("jsconv", None),
+    // FEAT_LOR
+    ("lor", None),
+    // FEAT_LSE
+    ("lse", None),
+    // FEAT_MTE
+    ("mte", None),
+    // FEAT_AdvSimd & FEAT_FP
+    ("neon", None),
+    // FEAT_PAUTH (address authentication)
+    ("paca", None),
+    // FEAT_PAUTH (generic authentication)
+    ("pacg", None),
+    // FEAT_PAN
+    ("pan", None),
+    // FEAT_PMUv3
+    ("pmuv3", None),
+    // FEAT_RAND
+    ("rand", None),
+    // FEAT_RAS
+    ("ras", None),
+    // FEAT_RCPC
+    ("rcpc", None),
+    // FEAT_RCPC2
+    ("rcpc2", None),
+    // FEAT_RDM
+    ("rdm", None),
+    // FEAT_SB
+    ("sb", None),
     // FEAT_SHA1 & FEAT_SHA256
     ("sha2", None),
     // FEAT_SHA512 & FEAT_SHA3
     ("sha3", None),
     // FEAT_SM3 & FEAT_SM4
     ("sm4", None),
-    // FEAT_PAN
-    ("pan", None),
-    // FEAT_LOR
-    ("lor", None),
-    // FEAT_VHE
-    ("vh", None),
-    // FEAT_PMUv3
-    ("pmuv3", None),
     // FEAT_SPE
     ("spe", None),
+    // FEAT_SSBS
+    ("ssbs", None),
+    // FEAT_SVE
+    ("sve", None),
+    // FEAT_SVE2
+    ("sve2", None),
+    // FEAT_SVE2_AES
+    ("sve2-aes", None),
+    // FEAT_SVE2_BitPerm
+    ("sve2-bitperm", None),
+    // FEAT_SVE2_SHA3
+    ("sve2-sha3", None),
+    // FEAT_SVE2_SM4
+    ("sve2-sm4", None),
+    // FEAT_TME
+    ("tme", None),
     ("v8.1a", Some(sym::aarch64_ver_target_feature)),
     ("v8.2a", Some(sym::aarch64_ver_target_feature)),
     ("v8.3a", Some(sym::aarch64_ver_target_feature)),
@@ -138,6 +139,9 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("v8.5a", Some(sym::aarch64_ver_target_feature)),
     ("v8.6a", Some(sym::aarch64_ver_target_feature)),
     ("v8.7a", Some(sym::aarch64_ver_target_feature)),
+    // FEAT_VHE
+    ("vh", None),
+    // tidy-alphabetical-end
 ];
 
 const AARCH64_TIED_FEATURES: &[&[&str]] = &[
@@ -145,6 +149,7 @@ const AARCH64_TIED_FEATURES: &[&[&str]] = &[
 ];
 
 const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
     ("adx", None),
     ("aes", None),
     ("avx", None),
@@ -194,69 +199,80 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("xsavec", None),
     ("xsaveopt", None),
     ("xsaves", None),
+    // tidy-alphabetical-end
 ];
 
 const HEXAGON_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
     ("hvx", Some(sym::hexagon_target_feature)),
     ("hvx-length128b", Some(sym::hexagon_target_feature)),
+    // tidy-alphabetical-end
 ];
 
 const POWERPC_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
     ("altivec", Some(sym::powerpc_target_feature)),
     ("power8-altivec", Some(sym::powerpc_target_feature)),
-    ("power9-altivec", Some(sym::powerpc_target_feature)),
     ("power8-vector", Some(sym::powerpc_target_feature)),
+    ("power9-altivec", Some(sym::powerpc_target_feature)),
     ("power9-vector", Some(sym::powerpc_target_feature)),
     ("vsx", Some(sym::powerpc_target_feature)),
+    // tidy-alphabetical-end
 ];
 
 const MIPS_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
     ("fp64", Some(sym::mips_target_feature)),
     ("msa", Some(sym::mips_target_feature)),
     ("virt", Some(sym::mips_target_feature)),
+    // tidy-alphabetical-end
 ];
 
 const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    ("m", Some(sym::riscv_target_feature)),
+    // tidy-alphabetical-start
     ("a", Some(sym::riscv_target_feature)),
     ("c", Some(sym::riscv_target_feature)),
-    ("f", Some(sym::riscv_target_feature)),
     ("d", Some(sym::riscv_target_feature)),
     ("e", Some(sym::riscv_target_feature)),
+    ("f", Some(sym::riscv_target_feature)),
+    ("m", Some(sym::riscv_target_feature)),
     ("v", Some(sym::riscv_target_feature)),
-    ("zfinx", Some(sym::riscv_target_feature)),
-    ("zdinx", Some(sym::riscv_target_feature)),
-    ("zhinx", Some(sym::riscv_target_feature)),
-    ("zhinxmin", Some(sym::riscv_target_feature)),
-    ("zfh", Some(sym::riscv_target_feature)),
-    ("zfhmin", Some(sym::riscv_target_feature)),
     ("zba", Some(sym::riscv_target_feature)),
     ("zbb", Some(sym::riscv_target_feature)),
     ("zbc", Some(sym::riscv_target_feature)),
-    ("zbs", Some(sym::riscv_target_feature)),
     ("zbkb", Some(sym::riscv_target_feature)),
     ("zbkc", Some(sym::riscv_target_feature)),
     ("zbkx", Some(sym::riscv_target_feature)),
+    ("zbs", Some(sym::riscv_target_feature)),
+    ("zdinx", Some(sym::riscv_target_feature)),
+    ("zfh", Some(sym::riscv_target_feature)),
+    ("zfhmin", Some(sym::riscv_target_feature)),
+    ("zfinx", Some(sym::riscv_target_feature)),
+    ("zhinx", Some(sym::riscv_target_feature)),
+    ("zhinxmin", Some(sym::riscv_target_feature)),
+    ("zk", Some(sym::riscv_target_feature)),
+    ("zkn", Some(sym::riscv_target_feature)),
     ("zknd", Some(sym::riscv_target_feature)),
     ("zkne", Some(sym::riscv_target_feature)),
     ("zknh", Some(sym::riscv_target_feature)),
+    ("zkr", Some(sym::riscv_target_feature)),
+    ("zks", Some(sym::riscv_target_feature)),
     ("zksed", Some(sym::riscv_target_feature)),
     ("zksh", Some(sym::riscv_target_feature)),
-    ("zkr", Some(sym::riscv_target_feature)),
-    ("zkn", Some(sym::riscv_target_feature)),
-    ("zks", Some(sym::riscv_target_feature)),
-    ("zk", Some(sym::riscv_target_feature)),
     ("zkt", Some(sym::riscv_target_feature)),
+    // tidy-alphabetical-end
 ];
 
 const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    ("simd128", None),
+    // tidy-alphabetical-start
     ("atomics", Some(sym::wasm_target_feature)),
-    ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
     ("bulk-memory", Some(sym::wasm_target_feature)),
     ("mutable-globals", Some(sym::wasm_target_feature)),
+    ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
     ("reference-types", Some(sym::wasm_target_feature)),
     ("sign-ext", Some(sym::wasm_target_feature)),
+    ("simd128", None),
+    // tidy-alphabetical-end
 ];
 
 const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];
