@@ -7,6 +7,7 @@
 #![feature(const_assume)]
 #![feature(const_black_box)]
 #![feature(const_bool_to_option)]
+#![feature(const_caller_location)]
 #![feature(const_cell_into_inner)]
 #![feature(const_convert)]
 #![feature(const_heap)]
@@ -20,6 +21,7 @@
 #![feature(const_ptr_write)]
 #![feature(const_trait_impl)]
 #![feature(const_likely)]
+#![feature(const_location_fields)]
 #![feature(core_intrinsics)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
@@ -131,6 +133,7 @@ mod nonzero;
 mod num;
 mod ops;
 mod option;
+mod panic;
 mod pattern;
 mod pin;
 mod pin_macro;
