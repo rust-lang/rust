@@ -551,6 +551,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                 format!("{{{}}}", reg.name())
             }
         }
+        // The constraints can be retrieved from
+        // https://llvm.org/docs/LangRef.html#supported-constraint-code-list
         InlineAsmRegOrRegClass::RegClass(reg) => match reg {
             InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => "w",
@@ -624,6 +626,8 @@ fn modifier_to_llvm(
     reg: InlineAsmRegClass,
     modifier: Option<char>,
 ) -> Option<char> {
+    // The modifiers can be retrieved from
+    // https://llvm.org/docs/LangRef.html#asm-template-argument-modifiers
     match reg {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => modifier,
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg)

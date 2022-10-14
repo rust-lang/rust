@@ -732,8 +732,6 @@ fn check_opaque_meets_bounds<'tcx>(
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
-    let hidden_type = tcx.bound_type_of(def_id.to_def_id()).subst(tcx, substs);
-
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let defining_use_anchor = match *origin {
         hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
@@ -748,14 +746,26 @@ fn check_opaque_meets_bounds<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
     let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
 
+    // `ReErased` regions appear in the "parent_substs" of closures/generators.
+    // We're ignoring them here and replacing them with fresh region variables.
+    // See tests in ui/type-alias-impl-trait/closure_{parent_substs,wf_outlives}.rs.
+    //
+    // FIXME: Consider wrapping the hidden type in an existential `Binder` and instantiating it
+    // here rather than using ReErased.
+    let hidden_ty = tcx.bound_type_of(def_id.to_def_id()).subst(tcx, substs);
+    let hidden_ty = tcx.fold_regions(hidden_ty, |re, _dbi| match re.kind() {
+        ty::ReErased => infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)),
+        _ => re,
+    });
+
     let misc_cause = traits::ObligationCause::misc(span, hir_id);
 
-    match infcx.at(&misc_cause, param_env).eq(opaque_ty, hidden_type) {
+    match infcx.at(&misc_cause, param_env).eq(opaque_ty, hidden_ty) {
         Ok(infer_ok) => ocx.register_infer_ok_obligations(infer_ok),
         Err(ty_err) => {
             tcx.sess.delay_span_bug(
                 span,
-                &format!("could not unify `{hidden_type}` with revealed type:\n{ty_err}"),
+                &format!("could not unify `{hidden_ty}` with revealed type:\n{ty_err}"),
             );
         }
     }
@@ -764,7 +774,7 @@ fn check_opaque_meets_bounds<'tcx>(
     // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
     // hidden type is well formed even without those bounds.
     let predicate =
-        ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_type.into())).to_predicate(tcx);
+        ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_ty.into())).to_predicate(tcx);
     ocx.register_obligation(Obligation::new(misc_cause, param_env, predicate));
 
     // Check that all obligations are satisfied by the implementation's
