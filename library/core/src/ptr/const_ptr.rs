@@ -761,7 +761,10 @@ impl<T: ?Sized> *const T {
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
         unsafe {
-            assert_unsafe_precondition!([T](this: *const T, origin: *const T) => this >= origin)
+            assert_unsafe_precondition!(
+                "ptr::sub_ptr requires `this >= origin`",
+                [T](this: *const T, origin: *const T) => this >= origin
+            )
         };
 
         let pointee_size = mem::size_of::<T>();

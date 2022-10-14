@@ -2203,7 +2203,7 @@ extern "rust-intrinsic" {
 /// the occasional mistake, and this check should help them figure things out.
 #[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
+    ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
         if cfg!(debug_assertions) {
             // allow non_snake_case to allow capturing const generics
             #[allow(non_snake_case)]
@@ -2211,7 +2211,9 @@ macro_rules! assert_unsafe_precondition {
             fn runtime$(<$($tt)*>)?($($i:$ty),*) {
                 if !$e {
                     // don't unwind to reduce impact on code size
-                    ::core::panicking::panic_str_nounwind("unsafe precondition violated");
+                    ::core::panicking::panic_str_nounwind(
+                        concat!("unsafe precondition(s) violated: ", $name)
+                    );
                 }
             }
             #[allow(non_snake_case)]
@@ -2350,7 +2352,10 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     // SAFETY: the safety contract for `copy_nonoverlapping` must be
     // upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!([T](src: *const T, dst: *mut T, count: usize) =>
+        assert_unsafe_precondition!(
+            "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
+            and the specified memory ranges do not overlap",
+            [T](src: *const T, dst: *mut T, count: usize) =>
             is_aligned_and_not_null(src)
                 && is_aligned_and_not_null(dst)
                 && is_nonoverlapping(src, dst, count)
@@ -2436,8 +2441,11 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!([T](src: *const T, dst: *mut T) =>
-            is_aligned_and_not_null(src) && is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::copy requires that both pointer arguments are aligned aligned and non-null",
+            [T](src: *const T, dst: *mut T) =>
+            is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)
+        );
         copy(src, dst, count)
     }
 }
@@ -2505,7 +2513,10 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::write_bytes requires that the destination pointer is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         write_bytes(dst, val, count)
     }
 }

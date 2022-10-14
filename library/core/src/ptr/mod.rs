@@ -889,7 +889,10 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     // SAFETY: the caller must guarantee that `x` and `y` are
     // valid for writes and properly aligned.
     unsafe {
-        assert_unsafe_precondition!([T](x: *mut T, y: *mut T, count: usize) =>
+        assert_unsafe_precondition!(
+            "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
+            and the specified memory ranges do not overlap",
+            [T](x: *mut T, y: *mut T, count: usize) =>
             is_aligned_and_not_null(x)
                 && is_aligned_and_not_null(y)
                 && is_nonoverlapping(x, y, count)
@@ -986,7 +989,10 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // and cannot overlap `src` since `dst` must point to a distinct
     // allocated object.
     unsafe {
-        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::replace requires that the pointer argument is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         mem::swap(&mut *dst, &mut src); // cannot overlap
     }
     src
@@ -1117,7 +1123,10 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // Also, since we just wrote a valid value into `tmp`, it is guaranteed
     // to be properly initialized.
     unsafe {
-        assert_unsafe_precondition!([T](src: *const T) => is_aligned_and_not_null(src));
+        assert_unsafe_precondition!(
+            "ptr::read requires that the pointer argument is aligned and non-null",
+            [T](src: *const T) => is_aligned_and_not_null(src)
+        );
         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
         tmp.assume_init()
     }
@@ -1311,7 +1320,10 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
-        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::write requires that the pointer argument is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         copy_nonoverlapping(&src as *const T, dst, 1);
         intrinsics::forget(src);
     }
@@ -1475,7 +1487,10 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
-        assert_unsafe_precondition!([T](src: *const T) => is_aligned_and_not_null(src));
+        assert_unsafe_precondition!(
+            "ptr::read_volatile requires that the pointer argument is aligned and non-null",
+            [T](src: *const T) => is_aligned_and_not_null(src)
+        );
         intrinsics::volatile_load(src)
     }
 }
@@ -1546,7 +1561,10 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
-        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::write_volatile requires that the pointer argument is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         intrinsics::volatile_store(dst, src);
     }
 }
