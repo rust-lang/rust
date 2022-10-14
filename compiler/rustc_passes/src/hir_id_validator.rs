@@ -85,6 +85,10 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
                 .filter(|&i| !self.hir_ids_seen.contains(ItemLocalId::from_u32(i)))
                 .collect();
 
+            //span_bug!(self.hir_map.span(), "{}\nchild_span:{:?}", message, child_span);
+            println!("missing ids number: {:?}", missing.len());
+            println!("missing ids: {:?}", missing);
+
             // Try to map those to something more useful
             let mut missing_items = Vec::with_capacity(missing.len());
 
@@ -143,16 +147,16 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
             });
         }
 
+        let debug_log = std::env::var("RUSTC_LOG");
         if let Some(owner_hir_id) = self.hir_map.find_parent_node(hir_id) &&
-            owner_hir_id.local_id >= hir_id.local_id && hir_id.local_id != ItemLocalId::from_u32(0) {
-            self.error(|| {
-                format!(
-                    "HirIdValidator: The local_id {} 's parent local_id {} is not smaller than children",
-                    self.hir_map.node_to_string(hir_id),
-                    self.hir_map.node_to_string(owner_hir_id),
-                )
-            });
+            owner_hir_id.local_id >= hir_id.local_id && hir_id.local_id != ItemLocalId::from_u32(0) &&
+            debug_log.is_ok() {
+                let message = format!("HirIdValidator: The parent local_id `{}` is not smaller than children id: {:?}",
+                                        self.hir_map.node_to_string(owner_hir_id), hir_id.local_id);
+                let child_span = self.hir_map.span(hir_id);
+                span_bug!(self.hir_map.span(owner_hir_id), "{}\nchild_span:{:?}", message, child_span);
         }
+
         self.hir_ids_seen.insert(hir_id.local_id);
     }
 

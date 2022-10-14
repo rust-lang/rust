@@ -18,9 +18,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         b: &Block,
         targeted_by_break: bool,
     ) -> hir::Block<'hir> {
-        let (stmts, expr) = self.lower_stmts(&b.stmts);
-        let rules = self.lower_block_check_mode(&b.rules);
         let hir_id = self.lower_node_id(b.id);
+        debug!("yukang lower_block_noalloc hir_id={:?}", hir_id);
+        let rules = self.lower_block_check_mode(&b.rules);
+        let (stmts, expr) = self.lower_stmts(&b.stmts);
+        if stmts.len() > 0 {
+            debug!("yukang lower_block_noalloc stmts={:?}", stmts);
+        } else {
+            debug!("yukang lower_block_noalloc stmts is empty");
+        }
         hir::Block { hir_id, stmts, expr, rules, span: self.lower_span(b.span), targeted_by_break }
     }
 
@@ -28,12 +34,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         mut ast_stmts: &[Stmt],
     ) -> (&'hir [hir::Stmt<'hir>], Option<&'hir hir::Expr<'hir>>) {
+        debug!("yukang lower_stmts ast_stmts={:?}", ast_stmts);
         let mut stmts = SmallVec::<[hir::Stmt<'hir>; 8]>::new();
         let mut expr = None;
         while let [s, tail @ ..] = ast_stmts {
             match s.kind {
                 StmtKind::Local(ref local) => {
                     let hir_id = self.lower_node_id(s.id);
+                    debug!("yukang local hir_id={:?}", hir_id);
                     let local = self.lower_local(local);
                     self.alias_attrs(hir_id, local.hir_id);
                     let kind = hir::StmtKind::Local(local);
@@ -44,8 +52,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
                         |(i, item_id)| {
                             let hir_id = match i {
-                                0 => self.lower_node_id(s.id),
-                                _ => self.next_id(),
+                                0 => {
+                                    debug!("yukang lower_node_id {:?}", s.id);
+                                    let id = self.lower_node_id(s.id);
+                                    debug!("yukang lower_node_id id={:?}", id);
+                                    id
+                                }
+                                _ => {
+                                    debug!("yukang lower_stmts item_id={:?}", item_id);
+                                    let id = self.next_id();
+                                    debug!("yukang lower_stmts id={:?}", id);
+                                    id
+                                }
                             };
                             let kind = hir::StmtKind::Item(item_id);
                             let span = self.lower_span(s.span);
@@ -54,11 +72,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ));
                 }
                 StmtKind::Expr(ref e) => {
-                    let e = self.lower_expr(e);
                     if tail.is_empty() {
-                        expr = Some(e);
+                        expr = Some(self.lower_expr(e));
                     } else {
                         let hir_id = self.lower_node_id(s.id);
+                        debug!("yukang lower_stmts hir_id={:?}", hir_id);
+                        let e = self.lower_expr(e);
                         self.alias_attrs(hir_id, e.hir_id);
                         let kind = hir::StmtKind::Expr(e);
                         let span = self.lower_span(s.span);
@@ -66,8 +85,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 }
                 StmtKind::Semi(ref e) => {
-                    let e = self.lower_expr(e);
                     let hir_id = self.lower_node_id(s.id);
+                    let e = self.lower_expr(e);
                     self.alias_attrs(hir_id, e.hir_id);
                     let kind = hir::StmtKind::Semi(e);
                     let span = self.lower_span(s.span);
@@ -86,8 +105,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .ty
             .as_ref()
             .map(|t| self.lower_ty(t, &ImplTraitContext::Disallowed(ImplTraitPosition::Variable)));
-        let init = l.kind.init().map(|init| self.lower_expr(init));
         let hir_id = self.lower_node_id(l.id);
+        let init = l.kind.init().map(|init| self.lower_expr(init));
         let pat = self.lower_pat(&l.pat);
         let els = if let LocalKind::InitElse(_, els) = &l.kind {
             Some(self.lower_block(els, false))

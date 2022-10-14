@@ -31,6 +31,36 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
         ensure_sufficient_stack(|| {
+            // Desugar `ExprForLoop`
+            // from: `[opt_ident]: for <pat> in <head> <body>`
+            if let ExprKind::ForLoop(ref pat, ref head, ref body, opt_label) = e.kind {
+                return self.lower_expr_for(e, pat, head, body, opt_label);
+            }
+
+            if let ExprKind::Paren(ref ex) = e.kind {
+                let mut ex = self.lower_expr_mut(ex);
+                // Include parens in span, but only if it is a super-span.
+                if e.span.contains(ex.span) {
+                    ex.span = self.lower_span(e.span);
+                }
+                // Merge attributes into the inner expression.
+                if !e.attrs.is_empty() {
+                    let old_attrs =
+                        self.attrs.get(&ex.hir_id.local_id).map(|la| *la).unwrap_or(&[]);
+                    self.attrs.insert(
+                        ex.hir_id.local_id,
+                        &*self.arena.alloc_from_iter(
+                            e.attrs
+                                .iter()
+                                .map(|a| self.lower_attr(a))
+                                .chain(old_attrs.iter().cloned()),
+                        ),
+                    );
+                }
+                return ex;
+            }
+
+            let hir_id = self.lower_node_id(e.id);
             let kind = match e.kind {
                 ExprKind::Box(ref inner) => hir::ExprKind::Box(self.lower_expr(inner)),
                 ExprKind::Array(ref exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -48,7 +78,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     if e.attrs.get(0).map_or(false, |a| a.has_name(sym::rustc_box)) {
                         if let [inner] = &args[..] && e.attrs.len() == 1 {
                             let kind = hir::ExprKind::Box(self.lower_expr(&inner));
-                            let hir_id = self.lower_node_id(e.id);
                             return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
                         } else {
                             self.tcx.sess.emit_err(RustcBoxAttributeError { span: e.span });
@@ -281,38 +310,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Yield(ref opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
                 ExprKind::Err => hir::ExprKind::Err,
                 ExprKind::Try(ref sub_expr) => self.lower_expr_try(e.span, sub_expr),
-                ExprKind::Paren(ref ex) => {
-                    let mut ex = self.lower_expr_mut(ex);
-                    // Include parens in span, but only if it is a super-span.
-                    if e.span.contains(ex.span) {
-                        ex.span = self.lower_span(e.span);
-                    }
-                    // Merge attributes into the inner expression.
-                    if !e.attrs.is_empty() {
-                        let old_attrs =
-                            self.attrs.get(&ex.hir_id.local_id).map(|la| *la).unwrap_or(&[]);
-                        self.attrs.insert(
-                            ex.hir_id.local_id,
-                            &*self.arena.alloc_from_iter(
-                                e.attrs
-                                    .iter()
-                                    .map(|a| self.lower_attr(a))
-                                    .chain(old_attrs.iter().cloned()),
-                            ),
-                        );
-                    }
-                    return ex;
-                }
-
-                // Desugar `ExprForLoop`
-                // from: `[opt_ident]: for <pat> in <head> <body>`
-                ExprKind::ForLoop(ref pat, ref head, ref body, opt_label) => {
-                    return self.lower_expr_for(e, pat, head, body, opt_label);
-                }
-                ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
+                ExprKind::MacCall(_) | _ => panic!("{:?} shouldn't exist here", e.span),
             };
 
-            let hir_id = self.lower_node_id(e.id);
+            //let hir_id = self.lower_node_id(e.id);
             self.lower_attrs(hir_id, &e.attrs);
             hir::Expr { hir_id, kind, span: self.lower_span(e.span) }
         })
@@ -480,8 +481,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let lowered_cond = self.with_loop_condition_scope(|t| t.lower_cond(cond));
         let then = self.lower_block_expr(body);
         let expr_break = self.expr_break(span, AttrVec::new());
-        let stmt_break = self.stmt_expr(span, expr_break);
-        let else_blk = self.block_all(span, arena_vec![self; stmt_break], None);
         let else_expr = self.arena.alloc(self.expr_block(else_blk, AttrVec::new()));
         let if_kind = hir::ExprKind::If(lowered_cond, self.arena.alloc(then), Some(else_expr));
         let if_expr = self.expr(span, if_kind, AttrVec::new());
@@ -1495,8 +1494,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Some(<pat>) => <body>,
         let some_arm = {
             let some_pat = self.pat_some(pat_span, pat);
-            let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
-            let body_expr = self.arena.alloc(self.expr_block(body_block, AttrVec::new()));
+            //let body_block = || self.with_loop_scope(e.id, |this| this.lower_block(body, false));
+            let body_expr = self.arena.alloc(self.expr_block(
+                |this| this.with_loop_scope(e.id, |this| this.lower_block(body, false)),
+                AttrVec::new(),
+            ));
             self.arm(some_pat, body_expr)
         };
 
@@ -1881,17 +1883,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn expr_block_empty(&mut self, span: Span) -> &'hir hir::Expr<'hir> {
-        let blk = self.block_all(span, &[], None);
-        let expr = self.expr_block(blk, AttrVec::new());
+        //let blk = || self.block_all(span, &[], None);
+        let expr = self.expr_block(|this| this.block_all(span, &[], None), AttrVec::new());
         self.arena.alloc(expr)
     }
 
     pub(super) fn expr_block(
         &mut self,
-        b: &'hir hir::Block<'hir>,
+        //b: &'hir hir::Block<'hir>,
+        gen_block: impl FnOnce(&mut Self) -> &'hir hir::Block<'hir>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
-        self.expr(b.span, hir::ExprKind::Block(b, None), attrs)
+        let hir_id = self.next_id();
+        debug!("yuakng expr hir_id: {:?}", hir_id);
+        self.lower_attrs(hir_id, &attrs);
+        let b = gen_block(self);
+        hir::Expr { hir_id, kind: hir::ExprKind::Block(b, None), span: self.lower_span(b.span) }
+        //self.expr(b.span, hir::ExprKind::Block(b, None), attrs)
     }
 
     pub(super) fn expr(
@@ -1900,7 +1908,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         kind: hir::ExprKind<'hir>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
+        debug!("yukang expr({:?}, {:?})", span, kind);
         let hir_id = self.next_id();
+        debug!("yuakng expr hir_id: {:?}", hir_id);
         self.lower_attrs(hir_id, &attrs);
         hir::Expr { hir_id, kind, span: self.lower_span(span) }
     }

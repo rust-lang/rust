@@ -270,7 +270,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let asyncness = header.asyncness;
                     let body_id =
                         this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
-
+                    debug!("yukang finished lower_maybe_async_body");
                     let mut itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, id, &mut itctx, |this| {
                         let ret_id = asyncness.opt_return_id();
@@ -751,6 +751,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_field_def(&mut self, (index, f): (usize, &FieldDef)) -> hir::FieldDef<'hir> {
+        let hir_id = self.lower_node_id(f.id);
         let ty = if let TyKind::Path(ref qself, ref path) = f.ty.kind {
             let t = self.lower_path_ty(
                 &f.ty,
@@ -763,7 +764,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         } else {
             self.lower_ty(&f.ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type))
         };
-        let hir_id = self.lower_node_id(f.id);
         self.lower_attrs(hir_id, &f.attrs);
         hir::FieldDef {
             span: self.lower_span(f.span),
@@ -882,6 +882,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
         // Since `default impl` is not yet implemented, this is always true in impls.
+        let hir_id = self.lower_node_id(i.id);
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
 
@@ -930,7 +931,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::MacCall(..) => panic!("`TyMac` should have been expanded by now"),
         };
 
-        let hir_id = self.lower_node_id(i.id);
         self.lower_attrs(hir_id, &i.attrs);
         let item = hir::ImplItem {
             owner_id: hir_id.expect_owner(),
@@ -1072,7 +1072,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (Async::Yes { closure_id, .. }, Some(body)) => (closure_id, body),
             _ => return self.lower_fn_body_block(span, decl, body),
         };
-
+        debug!("yukang continue Lower");
         self.lower_body(|this| {
             let mut parameters: Vec<hir::Param<'_>> = Vec::new();
             let mut statements: Vec<hir::Stmt<'_>> = Vec::new();
@@ -1240,13 +1240,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     //   drop-temps { <user-body> }
                     // }
                     // ```
-                    let body = this.block_all(
+                  /*   let body = this.block_all(
                         desugared_span,
                         this.arena.alloc_from_iter(statements),
                         Some(user_body),
-                    );
+                    ); */
 
-                    this.expr_block(body, AttrVec::new())
+                    this.expr_block(|this| {
+                        this.block_all(
+                            desugared_span,
+                            this.arena.alloc_from_iter(statements),
+                            Some(user_body),
+                        )
+                    }, AttrVec::new())
                 },
             );
 

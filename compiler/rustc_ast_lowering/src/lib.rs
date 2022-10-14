@@ -2326,8 +2326,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Lowers a block directly to an expression, presuming that it
     /// has no attributes and is not targeted by a `break`.
     fn lower_block_expr(&mut self, b: &Block) -> hir::Expr<'hir> {
-        let block = self.lower_block(b, false);
-        self.expr_block(block, AttrVec::new())
+        //let block = || self.lower_block(b, false);
+        self.expr_block(|this| this.lower_block(b, false), AttrVec::new())
     }
 
     fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen {
