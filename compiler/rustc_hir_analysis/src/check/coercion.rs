@@ -777,6 +777,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         }
 
+        // Check the obligations of the cast -- for example, when casting
+        // `usize` to `dyn* Clone + 'static`:
         let obligations = predicates
             .iter()
             .map(|predicate| {
@@ -787,7 +789,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let predicate = predicate.with_self_ty(self.tcx, a);
                 Obligation::new(self.cause.clone(), self.param_env, predicate)
             })
-            // Enforce the region bound `'static` (e.g., `usize: 'static`, in our example).
+            // Enforce the region bound (e.g., `usize: 'static`, in our example).
             .chain([Obligation::new(
                 self.cause.clone(),
                 self.param_env,
