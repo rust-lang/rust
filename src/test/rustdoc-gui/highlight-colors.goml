@@ -1,0 +1,57 @@
+// This test checks the highlight colors in the source code pages.
+goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+show-text: true
+
+local-storage: {"rustdoc-theme": "ayu", "rustdoc-use-system-theme": "false"}
+reload:
+
+assert-css: ("pre.rust .kw", {"color": "rgb(255, 119, 51)"}, ALL)
+assert-css: ("pre.rust .kw-2", {"color": "rgb(255, 119, 51)"}, ALL)
+assert-css: ("pre.rust .prelude-ty", {"color": "rgb(105, 242, 223)"}, ALL)
+assert-css: ("pre.rust .prelude-val", {"color": "rgb(255, 119, 51)"}, ALL)
+assert-css: ("pre.rust .lifetime", {"color": "rgb(255, 119, 51)"}, ALL)
+assert-css: ("pre.rust .number", {"color": "rgb(184, 204, 82)"}, ALL)
+assert-css: ("pre.rust .string", {"color": "rgb(184, 204, 82)"}, ALL)
+assert-css: ("pre.rust .bool-val", {"color": "rgb(255, 119, 51)"}, ALL)
+assert-css: ("pre.rust .self", {"color": "rgb(54, 163, 217)"}, ALL)
+assert-css: ("pre.rust .attribute", {"color": "rgb(230, 225, 207)"}, ALL)
+assert-css: ("pre.rust .macro", {"color": "rgb(163, 122, 204)"}, ALL)
+assert-css: ("pre.rust .question-mark", {"color": "rgb(255, 144, 17)"}, ALL)
+assert-css: ("pre.rust .comment", {"color": "rgb(120, 135, 151)"}, ALL)
+assert-css: ("pre.rust .doccomment", {"color": "rgb(161, 172, 136)"}, ALL)
+
+local-storage: {"rustdoc-theme": "dark"}
+reload:
+
+assert-css: ("pre.rust .kw", {"color": "rgb(171, 138, 193)"}, ALL)
+assert-css: ("pre.rust .kw-2", {"color": "rgb(118, 154, 203)"}, ALL)
+assert-css: ("pre.rust .prelude-ty", {"color": "rgb(118, 154, 203)"}, ALL)
+assert-css: ("pre.rust .prelude-val", {"color": "rgb(238, 104, 104)"}, ALL)
+assert-css: ("pre.rust .lifetime", {"color": "rgb(217, 127, 38)"}, ALL)
+assert-css: ("pre.rust .number", {"color": "rgb(131, 163, 0)"}, ALL)
+assert-css: ("pre.rust .string", {"color": "rgb(131, 163, 0)"}, ALL)
+assert-css: ("pre.rust .bool-val", {"color": "rgb(238, 104, 104)"}, ALL)
+assert-css: ("pre.rust .self", {"color": "rgb(238, 104, 104)"}, ALL)
+assert-css: ("pre.rust .attribute", {"color": "rgb(238, 104, 104)"}, ALL)
+assert-css: ("pre.rust .macro", {"color": "rgb(62, 153, 159)"}, ALL)
+assert-css: ("pre.rust .question-mark", {"color": "rgb(255, 144, 17)"}, ALL)
+assert-css: ("pre.rust .comment", {"color": "rgb(141, 141, 139)"}, ALL)
+assert-css: ("pre.rust .doccomment", {"color": "rgb(140, 163, 117)"}, ALL)
+
+local-storage: {"rustdoc-theme": "light"}
+reload:
+
+assert-css: ("pre.rust .kw", {"color": "rgb(137, 89, 168)"}, ALL)
+assert-css: ("pre.rust .kw-2", {"color": "rgb(66, 113, 174)"}, ALL)
+assert-css: ("pre.rust .prelude-ty", {"color": "rgb(66, 113, 174)"}, ALL)
+assert-css: ("pre.rust .prelude-val", {"color": "rgb(200, 40, 41)"}, ALL)
+assert-css: ("pre.rust .lifetime", {"color": "rgb(183, 101, 20)"}, ALL)
+assert-css: ("pre.rust .number", {"color": "rgb(113, 140, 0)"}, ALL)
+assert-css: ("pre.rust .string", {"color": "rgb(113, 140, 0)"}, ALL)
+assert-css: ("pre.rust .bool-val", {"color": "rgb(200, 40, 41)"}, ALL)
+assert-css: ("pre.rust .self", {"color": "rgb(200, 40, 41)"}, ALL)
+assert-css: ("pre.rust .attribute", {"color": "rgb(200, 40, 41)"}, ALL)
+assert-css: ("pre.rust .macro", {"color": "rgb(62, 153, 159)"}, ALL)
+assert-css: ("pre.rust .question-mark", {"color": "rgb(255, 144, 17)"}, ALL)
+assert-css: ("pre.rust .comment", {"color": "rgb(142, 144, 140)"}, ALL)
+assert-css: ("pre.rust .doccomment", {"color": "rgb(77, 77, 76)"}, ALL)
