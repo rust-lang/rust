@@ -199,7 +199,7 @@ h1, h2, h3, h4, h5, h6,
 .out-of-band,
 span.since,
 a.srclink,
-#help-button > button,
+#help-button > a,
 details.rustdoc-toggle.top-doc > summary,
 details.rustdoc-toggle.non-exhaustive > summary,
 .scraped-example-title,
@@ -974,32 +974,33 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--main-color);
 }
 
-#help-button .popover {
+/* use larger max-width for help popover, but not for help.html */
+#help.popover {
 	max-width: 600px;
 }
 
-#help-button .popover::before {
+#help.popover::before {
 	right: 48px;
 }
 
-#help-button dt {
+#help dt {
 	float: left;
 	clear: left;
 	display: block;
 	margin-right: 0.5rem;
 }
-#help-button span.top, #help-button span.bottom {
+#help span.top, #help span.bottom {
 	text-align: center;
 	display: block;
 	font-size: 1.125rem;
 }
-#help-button span.top {
+#help span.top {
 	margin: 10px 0;
 	border-bottom: 1px solid var(--border-color);
 	padding-bottom: 4px;
 	margin-bottom: 6px;
 }
-#help-button span.bottom {
+#help span.bottom {
 	clear: both;
 	border-top: 1px solid var(--border-color);
 }
@@ -1433,7 +1434,7 @@ h3.variant {
 	outline: none;
 }
 
-#settings-menu > a, #help-button > button, #copy-path {
+#settings-menu > a, #help-button > a, #copy-path {
 	padding: 5px;
 	width: 33px;
 	border: 1px solid var(--border-color);
@@ -1442,7 +1443,7 @@ h3.variant {
 	line-height: 1.5;
 }
 
-#settings-menu > a, #help-button > button {
+#settings-menu > a, #help-button > a {
 	padding: 5px;
 	height: 100%;
 	display: block;
@@ -1490,7 +1491,7 @@ input:checked + .slider {
 	background-color: var(--settings-input-color);
 }
 
-#help-button > button {
+#help-button > a {
 	text-align: center;
 	/* Rare exception to specifying font sizes in rem. Since this is acting
 	   as an icon, it's okay to specify their sizes in pixels. */

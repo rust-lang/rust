@@ -33,7 +33,7 @@ assert-css: (
     {"border-color": "rgb(197, 197, 197)"},
 )
 assert-css: (
-    "#help-button > button",
+    "#help-button > a",
     {
         "color": "rgb(255, 255, 255)",
         "border-color": "rgb(92, 103, 115)",
@@ -47,7 +47,7 @@ assert-css: (
 )
 // Only "border-color" should change.
 assert-css: (
-    "#help-button:hover > button",
+    "#help-button:hover > a",
     {
         "color": "rgb(255, 255, 255)",
         "border-color": "rgb(224, 224, 224)",
@@ -113,7 +113,7 @@ assert-css: (
     {"border-color": "rgb(221, 221, 221)"},
 )
 assert-css: (
-    "#help-button > button",
+    "#help-button > a",
     {
         "color": "rgb(0, 0, 0)",
         "border-color": "rgb(224, 224, 224)",
@@ -127,7 +127,7 @@ assert-css: (
 )
 // Only "border-color" should change.
 assert-css: (
-    "#help-button:hover > button",
+    "#help-button:hover > a",
     {
         "color": "rgb(0, 0, 0)",
         "border-color": "rgb(255, 185, 0)",
@@ -193,7 +193,7 @@ assert-css: (
     {"border-color": "rgb(0, 0, 0)"},
 )
 assert-css: (
-    "#help-button > button",
+    "#help-button > a",
     {
         "color": "rgb(0, 0, 0)",
         "border-color": "rgb(224, 224, 224)",
@@ -207,7 +207,7 @@ assert-css: (
 )
 // Only "border-color" should change.
 assert-css: (
-    "#help-button:hover > button",
+    "#help-button:hover > a",
     {
         "color": "rgb(0, 0, 0)",
         "border-color": "rgb(113, 113, 113)",
@@ -222,7 +222,7 @@ assert-css: (
 assert-css: (
     "#settings-menu > a",
     {
-        "color": "rgb(56, 115, 173)",
+        "color": "rgb(0, 0, 0)",
         "border-color": "rgb(224, 224, 224)",
         "background-color": "rgb(255, 255, 255)",
     },
@@ -236,7 +236,7 @@ assert-css: (
 assert-css: (
     "#settings-menu:hover > a",
     {
-        "color": "rgb(56, 115, 173)",
+        "color": "rgb(0, 0, 0)",
         "border-color": "rgb(113, 113, 113)",
         "background-color": "rgb(255, 255, 255)",
     },
