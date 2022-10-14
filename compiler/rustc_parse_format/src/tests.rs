@@ -58,6 +58,21 @@ fn invalid06() {
 }
 
 #[test]
+fn invalid_position() {
+    musterr("{18446744073709551616}");
+}
+
+#[test]
+fn invalid_width() {
+    musterr("{:18446744073709551616}");
+}
+
+#[test]
+fn invalid_precision() {
+    musterr("{:.18446744073709551616}");
+}
+
+#[test]
 fn format_nothing() {
     same(
         "{}",
