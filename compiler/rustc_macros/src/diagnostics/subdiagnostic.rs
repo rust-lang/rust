@@ -309,6 +309,8 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     report_error_if_not_applied_to_span(attr, &info)?;
 
                     let binding = info.binding.binding.clone();
+                    // FIXME(#100717): support `Option<Span>` on `primary_span` like in the
+                    // diagnostic derive
                     self.span_field.set_once(binding, span);
                 }
 
