@@ -126,14 +126,12 @@ impl<CTX> HashStable<CTX> for LangItem {
 }
 
 /// Extracts the first `lang = "$name"` out of a list of attributes.
-/// The attributes `#[panic_handler]` and `#[alloc_error_handler]`
-/// are also extracted out when found.
+/// The `#[panic_handler]` attribute is also extracted out when found.
 pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| {
         Some(match attr {
             _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span),
             _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span),
-            _ if attr.has_name(sym::alloc_error_handler) => (sym::oom, attr.span),
             _ => return None,
         })
     })
@@ -240,7 +238,6 @@ language_item_table! {
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn,             GenericRequirement::None;
     BoxFree,                 sym::box_free,            box_free_fn,                Target::Fn,             GenericRequirement::Minimum(1);
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);
-    Oom,                     sym::oom,                 oom,                        Target::Fn,             GenericRequirement::None;
     AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;
 
     Start,                   sym::start,               start_fn,                   Target::Fn,             GenericRequirement::Exact(1);

@@ -344,6 +344,16 @@ pub struct NoMultipleGlobalAlloc {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_no_multiple_alloc_error_handler)]
+pub struct NoMultipleAllocErrorHandler {
+    #[primary_span]
+    #[label]
+    pub span2: Span,
+    #[label(metadata_prev_alloc_error_handler)]
+    pub span1: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(metadata_conflicting_global_alloc)]
 pub struct ConflictingGlobalAlloc {
     pub crate_name: Symbol,
@@ -351,8 +361,23 @@ pub struct ConflictingGlobalAlloc {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_conflicting_alloc_error_handler)]
+pub struct ConflictingAllocErrorHandler {
+    pub crate_name: Symbol,
+    pub other_crate_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(metadata_global_alloc_required)]
 pub struct GlobalAllocRequired;
+
+#[derive(Diagnostic)]
+#[diag(metadata_alloc_func_required)]
+pub struct AllocFuncRequired;
+
+#[derive(Diagnostic)]
+#[diag(metadata_missing_alloc_error_handler)]
+pub struct MissingAllocErrorHandler;
 
 #[derive(Diagnostic)]
 #[diag(metadata_no_transitive_needs_dep)]

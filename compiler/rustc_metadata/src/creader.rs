@@ -1,8 +1,10 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
 use crate::errors::{
-    ConflictingGlobalAlloc, CrateNotPanicRuntime, GlobalAllocRequired, NoMultipleGlobalAlloc,
-    NoPanicStrategy, NoTransitiveNeedsDep, NotProfilerRuntime, ProfilerBuiltinsNeedsCore,
+    AllocFuncRequired, ConflictingAllocErrorHandler, ConflictingGlobalAlloc, CrateNotPanicRuntime,
+    GlobalAllocRequired, MissingAllocErrorHandler, NoMultipleAllocErrorHandler,
+    NoMultipleGlobalAlloc, NoPanicStrategy, NoTransitiveNeedsDep, NotProfilerRuntime,
+    ProfilerBuiltinsNeedsCore,
 };
 use crate::locator::{CrateError, CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
@@ -41,8 +43,13 @@ pub struct CStore {
     /// This crate needs an allocator and either provides it itself, or finds it in a dependency.
     /// If the above is true, then this field denotes the kind of the found allocator.
     allocator_kind: Option<AllocatorKind>,
+    /// This crate needs an allocation error handler and either provides it itself, or finds it in a dependency.
+    /// If the above is true, then this field denotes the kind of the found allocator.
+    alloc_error_handler_kind: Option<AllocatorKind>,
     /// This crate has a `#[global_allocator]` item.
     has_global_allocator: bool,
+    /// This crate has a `#[alloc_error_handler]` item.
+    has_alloc_error_handler: bool,
 
     /// This map is used to verify we get no hash conflicts between
     /// `StableCrateId` values.
@@ -197,8 +204,16 @@ impl CStore {
         self.allocator_kind
     }
 
+    pub(crate) fn alloc_error_handler_kind(&self) -> Option<AllocatorKind> {
+        self.alloc_error_handler_kind
+    }
+
     pub(crate) fn has_global_allocator(&self) -> bool {
         self.has_global_allocator
+    }
+
+    pub(crate) fn has_alloc_error_handler(&self) -> bool {
+        self.has_alloc_error_handler
     }
 
     pub fn report_unused_deps(&self, tcx: TyCtxt<'_>) {
@@ -247,7 +262,9 @@ impl<'a> CrateLoader<'a> {
                 metas: IndexVec::from_elem_n(None, 1),
                 injected_panic_runtime: None,
                 allocator_kind: None,
+                alloc_error_handler_kind: None,
                 has_global_allocator: false,
+                has_alloc_error_handler: false,
                 stable_crate_ids,
                 unused_externs: Vec::new(),
             },
@@ -792,6 +809,13 @@ impl<'a> CrateLoader<'a> {
             }
             spans => !spans.is_empty(),
         };
+        self.cstore.has_alloc_error_handler = match &*alloc_error_handler_spans(&self.sess, krate) {
+            [span1, span2, ..] => {
+                self.sess.emit_err(NoMultipleAllocErrorHandler { span2: *span2, span1: *span1 });
+                true
+            }
+            spans => !spans.is_empty(),
+        };
 
         // Check to see if we actually need an allocator. This desire comes
         // about through the `#![needs_allocator]` attribute and is typically
@@ -832,22 +856,48 @@ impl<'a> CrateLoader<'a> {
                 }
             }
         }
+        let mut alloc_error_handler =
+            self.cstore.has_alloc_error_handler.then(|| Symbol::intern("this crate"));
+        for (_, data) in self.cstore.iter_crate_data() {
+            if data.has_alloc_error_handler() {
+                match alloc_error_handler {
+                    Some(other_crate) => {
+                        self.sess.emit_err(ConflictingAllocErrorHandler {
+                            crate_name: data.name(),
+                            other_crate_name: other_crate,
+                        });
+                    }
+                    None => alloc_error_handler = Some(data.name()),
+                }
+            }
+        }
 
         if global_allocator.is_some() {
             self.cstore.allocator_kind = Some(AllocatorKind::Global);
-            return;
+        } else {
+            // Ok we haven't found a global allocator but we still need an
+            // allocator. At this point our allocator request is typically fulfilled
+            // by the standard library, denoted by the `#![default_lib_allocator]`
+            // attribute.
+            if !self.sess.contains_name(&krate.attrs, sym::default_lib_allocator)
+                && !self.cstore.iter_crate_data().any(|(_, data)| data.has_default_lib_allocator())
+            {
+                self.sess.emit_err(GlobalAllocRequired);
+            }
+            self.cstore.allocator_kind = Some(AllocatorKind::Default);
         }
 
-        // Ok we haven't found a global allocator but we still need an
-        // allocator. At this point our allocator request is typically fulfilled
-        // by the standard library, denoted by the `#![default_lib_allocator]`
-        // attribute.
-        if !self.sess.contains_name(&krate.attrs, sym::default_lib_allocator)
-            && !self.cstore.iter_crate_data().any(|(_, data)| data.has_default_lib_allocator())
-        {
-            self.sess.emit_err(GlobalAllocRequired);
+        if alloc_error_handler.is_some() {
+            self.cstore.alloc_error_handler_kind = Some(AllocatorKind::Global);
+        } else {
+            // The alloc crate provides a default allocation error handler if
+            // one isn't specified.
+            if !self.sess.features_untracked().default_alloc_error_handler {
+                self.sess.emit_err(AllocFuncRequired);
+                self.sess.emit_note(MissingAllocErrorHandler);
+            }
+            self.cstore.alloc_error_handler_kind = Some(AllocatorKind::Default);
         }
-        self.cstore.allocator_kind = Some(AllocatorKind::Default);
     }
 
     fn inject_dependency_if(
@@ -1019,6 +1069,29 @@ fn global_allocator_spans(sess: &Session, krate: &ast::Crate) -> Vec<Span> {
     }
 
     let name = Symbol::intern(&AllocatorKind::Global.fn_name(sym::alloc));
+    let mut f = Finder { sess, name, spans: Vec::new() };
+    visit::walk_crate(&mut f, krate);
+    f.spans
+}
+
+fn alloc_error_handler_spans(sess: &Session, krate: &ast::Crate) -> Vec<Span> {
+    struct Finder<'a> {
+        sess: &'a Session,
+        name: Symbol,
+        spans: Vec<Span>,
+    }
+    impl<'ast, 'a> visit::Visitor<'ast> for Finder<'a> {
+        fn visit_item(&mut self, item: &'ast ast::Item) {
+            if item.ident.name == self.name
+                && self.sess.contains_name(&item.attrs, sym::rustc_std_internal_symbol)
+            {
+                self.spans.push(item.span);
+            }
+            visit::walk_item(self, item)
+        }
+    }
+
+    let name = Symbol::intern(&AllocatorKind::Global.fn_name(sym::oom));
     let mut f = Finder { sess, name, spans: Vec::new() };
     visit::walk_crate(&mut f, krate);
     f.spans
