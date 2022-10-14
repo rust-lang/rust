@@ -6,19 +6,19 @@ use super::{
     SemiColonMode, SeqSep, TokenExpectType, TokenType, TrailingToken,
 };
 use crate::errors::{
-    ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncMoveOrderIncorrect,
-    BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct, ComparisonInterpretedAsGeneric,
-    ComparisonOrShiftInterpretedAsGenericSugg, DoCatchSyntaxRemoved, DotDotDot, EqFieldInit,
-    ExpectedElseBlock, ExpectedEqForLetExpr, ExpectedExpressionFoundLet,
-    FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt,
-    IfExpressionLetSomeSub, IfExpressionMissingCondition, IfExpressionMissingThenBlock,
-    IfExpressionMissingThenBlockSub, InvalidBlockMacroSegment, InvalidComparisonOperator,
-    InvalidComparisonOperatorSub, InvalidInterpolatedExpression, InvalidLiteralSuffixOnTupleIndex,
-    InvalidLogicalOperator, InvalidLogicalOperatorSub, LabeledLoopInBreak, LeadingPlusNotSupported,
-    LeftArrowOperator, LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath,
-    MalformedLoopLabel, MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg,
-    MissingCommaAfterMatchArm, MissingDotDot, MissingInInForLoop, MissingInInForLoopSub,
-    MissingSemicolonBeforeArray, NoFieldsForFnCall, NotAsNegationOperator,
+    ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncBlockIn2015,
+    AsyncMoveOrderIncorrect, BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct,
+    ComparisonInterpretedAsGeneric, ComparisonOrShiftInterpretedAsGenericSugg,
+    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedEqForLetExpr,
+    ExpectedExpressionFoundLet, FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart,
+    FoundExprWouldBeStmt, IfExpressionLetSomeSub, IfExpressionMissingCondition,
+    IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub, InvalidBlockMacroSegment,
+    InvalidComparisonOperator, InvalidComparisonOperatorSub, InvalidInterpolatedExpression,
+    InvalidLiteralSuffixOnTupleIndex, InvalidLogicalOperator, InvalidLogicalOperatorSub,
+    LabeledLoopInBreak, LeadingPlusNotSupported, LeftArrowOperator, LifetimeInBorrowExpression,
+    MacroInvocationWithQualifiedPath, MalformedLoopLabel, MatchArmBodyWithoutBraces,
+    MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm, MissingDotDot, MissingInInForLoop,
+    MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall, NotAsNegationOperator,
     NotAsNegationOperatorSub, OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
     RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, StructLiteralNotAllowedHere,
     StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedIfWithIf,
@@ -2926,7 +2926,7 @@ impl<'a> Parser<'a> {
 
         let mut async_block_err = |e: &mut Diagnostic, span: Span| {
             recover_async = true;
-            e.span_label(span, "`async` blocks are only allowed in Rust 2018 or later");
+            AsyncBlockIn2015 { span }.add_to_diagnostic(e);
             HelpUseLatestEdition::new().add_to_diagnostic(e);
         };
 
