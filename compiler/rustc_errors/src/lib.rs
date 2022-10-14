@@ -51,6 +51,7 @@ use termcolor::{Color, ColorSpec};
 pub mod annotate_snippet_emitter_writer;
 mod diagnostic;
 mod diagnostic_builder;
+mod diagnostic_impls;
 pub mod emitter;
 pub mod json;
 mod lock;
@@ -371,10 +372,11 @@ impl fmt::Display for ExplicitBug {
 impl error::Error for ExplicitBug {}
 
 pub use diagnostic::{
-    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgFromDisplay,
-    DiagnosticArgValue, DiagnosticId, DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
+    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
+    DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
 pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, Noted};
+pub use diagnostic_impls::DiagnosticArgFromDisplay;
 use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.
