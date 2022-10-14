@@ -641,3 +641,24 @@ struct BJ {
     span: Span,
     r#type: String,
 }
+
+/// with a doc comment on the type..
+#[derive(Subdiagnostic)]
+#[label(parser::add_paren)]
+struct BK {
+    /// ..and the field
+    #[primary_span]
+    span: Span,
+}
+
+/// with a doc comment on the type..
+#[derive(Subdiagnostic)]
+enum BL {
+    /// ..and the variant..
+    #[label(parser::add_paren)]
+    Foo {
+        /// ..and the field
+        #[primary_span]
+        span: Span,
+    }
+}

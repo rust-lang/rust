@@ -477,7 +477,12 @@ impl SubdiagnosticKind {
     pub(super) fn from_attr(
         attr: &Attribute,
         fields: &impl HasFieldMap,
-    ) -> Result<(SubdiagnosticKind, Option<Path>), DiagnosticDeriveError> {
+    ) -> Result<Option<(SubdiagnosticKind, Option<Path>)>, DiagnosticDeriveError> {
+        // Always allow documentation comments.
+        if is_doc_comment(attr) {
+            return Ok(None);
+        }
+
         let span = attr.span().unwrap();
 
         let name = attr.path.segments.last().unwrap().ident.to_string();
@@ -526,7 +531,9 @@ impl SubdiagnosticKind {
                     | SubdiagnosticKind::Note
                     | SubdiagnosticKind::Help
                     | SubdiagnosticKind::Warn
-                    | SubdiagnosticKind::MultipartSuggestion { .. } => return Ok((kind, None)),
+                    | SubdiagnosticKind::MultipartSuggestion { .. } => {
+                        return Ok(Some((kind, None)));
+                    }
                     SubdiagnosticKind::Suggestion { .. } => {
                         throw_span_err!(span, "suggestion without `code = \"...\"`")
                     }
@@ -626,7 +633,7 @@ impl SubdiagnosticKind {
             | SubdiagnosticKind::MultipartSuggestion { .. } => {}
         }
 
-        Ok((kind, slug))
+        Ok(Some((kind, slug)))
     }
 }
 
@@ -653,4 +660,8 @@ impl quote::IdentFragment for SubdiagnosticKind {
 /// call (like `span_label`).
 pub(super) fn should_generate_set_arg(field: &Field) -> bool {
     field.attrs.is_empty()
+}
+
+pub(super) fn is_doc_comment(attr: &Attribute) -> bool {
+    attr.path.segments.last().unwrap().ident.to_string() == "doc"
 }
