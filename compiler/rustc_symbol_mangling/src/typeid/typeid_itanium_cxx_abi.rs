@@ -540,7 +540,7 @@ fn encode_ty<'tcx>(
             let mut s = String::new();
             let def_id = adt_def.0.did;
             if options.contains(EncodeTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c() {
-                // For for cross-language CFI support, the encoding must be compatible at the FFI
+                // For cross-language CFI support, the encoding must be compatible at the FFI
                 // boundary. For instance:
                 //
                 //     struct type1 {};

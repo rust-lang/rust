@@ -464,7 +464,7 @@ fn copy_sanitizers(
         builder.copy(&runtime.path, &dst);
 
         if target == "x86_64-apple-darwin" || target == "aarch64-apple-darwin" {
-            // Update the library’s install name to reflect that it has has been renamed.
+            // Update the library’s install name to reflect that it has been renamed.
             apple_darwin_update_library_name(&dst, &format!("@rpath/{}", &runtime.name));
             // Upon renaming the install name, the code signature of the file will invalidate,
             // so we will sign it again.

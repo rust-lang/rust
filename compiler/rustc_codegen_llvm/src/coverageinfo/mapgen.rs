@@ -129,7 +129,7 @@ impl CoverageMapGenerator {
             // LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
             // requires setting the first filename to the compilation directory.
             // Since rustc generates coverage maps with relative paths, the
-            // compilation directory can be combined with the the relative paths
+            // compilation directory can be combined with the relative paths
             // to get absolute paths, if needed.
             let working_dir = tcx
                 .sess

@@ -65,7 +65,7 @@ pub(crate) fn get_file_name(crate_name: &str, crate_type: &str) -> String {
 }
 
 /// Similar to `get_file_name`, but converts any dashes (`-`) in the `crate_name` to
-/// underscores (`_`). This is specially made for the the rustc and cargo wrappers
+/// underscores (`_`). This is specially made for the rustc and cargo wrappers
 /// which have a dash in the name, and that is not allowed in a crate name.
 pub(crate) fn get_wrapper_file_name(crate_name: &str, crate_type: &str) -> String {
     let crate_name = crate_name.replace('-', "_");
