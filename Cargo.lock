@@ -297,7 +297,7 @@ dependencies = [
  "cargo-test-macro",
  "cargo-test-support",
  "cargo-util",
- "clap 4.0.9",
+ "clap 4.0.15",
  "crates-io",
  "curl",
  "curl-sys",
@@ -439,7 +439,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-util"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "core-foundation",
@@ -602,9 +602,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.0.9"
+version = "4.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30607dd93c420c6f1f80b544be522a0238a7db35e6a12968d28910983fee0df0"
+checksum = "6bf8832993da70a4c6d13c581f4463c2bdda27b9bf1c5498dc4365543abe6d6f"
 dependencies = [
  "atty",
  "bitflags",
