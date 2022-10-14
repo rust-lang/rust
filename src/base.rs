@@ -112,7 +112,13 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         context.add_command_line_option("-mavx");
 
         for arg in &tcx.sess.opts.cg.llvm_args {
-            context.add_command_line_option(arg);
+            if arg.starts_with("--x86-asm-syntax=") {
+                // LLVM uses the two same arguments as GCC: `att` and `intel`.
+                let syntax = arg.splitn(2, '=').skip(1).next().expect("missing argument");
+                context.add_command_line_option(&format!("-masm={}", syntax));
+            } else {
+                context.add_command_line_option(arg);
+            }
         }
         // NOTE: This is needed to compile the file src/intrinsic/archs.rs during a bootstrap of rustc.
         context.add_command_line_option("-fno-var-tracking-assignments");
