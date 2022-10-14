@@ -1642,8 +1642,8 @@ impl<T> AtomicPtr<T> {
     /// and the argument `val`, and stores a pointer with provenance of the
     /// current pointer and the resulting address.
     ///
-    /// This is equivalent equivalent to using [`map_addr`] to atomically
-    /// perform `ptr = ptr.map_addr(|a| a | val)`. This can be used in tagged
+    /// This is equivalent to using [`map_addr`] to atomically perform
+    /// `ptr = ptr.map_addr(|a| a | val)`. This can be used in tagged
     /// pointer schemes to atomically set tag bits.
     ///
     /// **Caveat**: This operation returns the previous value. To compute the
@@ -1693,8 +1693,8 @@ impl<T> AtomicPtr<T> {
     /// pointer, and the argument `val`, and stores a pointer with provenance of
     /// the current pointer and the resulting address.
     ///
-    /// This is equivalent equivalent to using [`map_addr`] to atomically
-    /// perform `ptr = ptr.map_addr(|a| a & val)`. This can be used in tagged
+    /// This is equivalent to using [`map_addr`] to atomically perform
+    /// `ptr = ptr.map_addr(|a| a & val)`. This can be used in tagged
     /// pointer schemes to atomically unset tag bits.
     ///
     /// **Caveat**: This operation returns the previous value. To compute the
@@ -1743,8 +1743,8 @@ impl<T> AtomicPtr<T> {
     /// pointer, and the argument `val`, and stores a pointer with provenance of
     /// the current pointer and the resulting address.
     ///
-    /// This is equivalent equivalent to using [`map_addr`] to atomically
-    /// perform `ptr = ptr.map_addr(|a| a ^ val)`. This can be used in tagged
+    /// This is equivalent to using [`map_addr`] to atomically perform
+    /// `ptr = ptr.map_addr(|a| a ^ val)`. This can be used in tagged
     /// pointer schemes to atomically toggle tag bits.
     ///
     /// **Caveat**: This operation returns the previous value. To compute the

@@ -287,7 +287,7 @@ impl ExitStatus {
         // SuS and POSIX) say a wait status is, but Fuchsia apparently uses a u64, so it won't
         // necessarily fit.
         //
-        // It seems to me that that the right answer would be to provide std::os::fuchsia with its
+        // It seems to me that the right answer would be to provide std::os::fuchsia with its
         // own ExitStatusExt, rather that trying to provide a not very convincing imitation of
         // Unix.  Ie, std::os::unix::process:ExitStatusExt ought not to exist on Fuchsia.  But
         // fixing this up that is beyond the scope of my efforts now.

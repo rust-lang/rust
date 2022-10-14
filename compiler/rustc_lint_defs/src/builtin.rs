@@ -3937,7 +3937,7 @@ declare_lint! {
     ///
     /// The compiler disables the automatic implementation if an explicit one
     /// exists for given type constructor. The exact rules governing this
-    /// are currently unsound and quite subtle and and will be modified in the future.
+    /// are currently unsound, quite subtle, and will be modified in the future.
     /// This change will cause the automatic implementation to be disabled in more
     /// cases, potentially breaking some code.
     pub SUSPICIOUS_AUTO_TRAIT_IMPLS,

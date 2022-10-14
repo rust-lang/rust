@@ -2232,7 +2232,7 @@ impl<'a> Parser<'a> {
     ///
     /// When encountering code like `foo::< bar + 3 >` or `foo::< bar - baz >` we suggest
     /// `foo::<{ bar + 3 }>` and `foo::<{ bar - baz }>`, respectively. We only provide a suggestion
-    /// if we think that that the resulting expression would be well formed.
+    /// if we think that the resulting expression would be well formed.
     pub fn recover_const_arg(
         &mut self,
         start: Span,
