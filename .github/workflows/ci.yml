@@ -19,7 +19,7 @@ jobs:
       - name: Check out wasix-libc
         uses: actions/checkout@v3
         with:
-          repository: john-sharratt/wasix-libc
+          repository: wasmerio/wasix-libc
           ref: main
           path: wasix-libc
           submodules: 'recursive'
@@ -34,7 +34,7 @@ jobs:
       - name: Check out cargo-wasix
         uses: actions/checkout@v3
         with:
-          repository: john-sharratt/cargo-wasix
+          repository: wasmerio/cargo-wasix
           ref: main
           path: cargo-wasix
 
@@ -96,7 +96,7 @@ jobs:
       - name: Check out cargo-wasix
         uses: actions/checkout@v3
         with:
-          repository: john-sharratt/cargo-wasix
+          repository: wasmerio/cargo-wasix
           ref: main
           path: cargo-wasix
 
