@@ -1240,19 +1240,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     //   drop-temps { <user-body> }
                     // }
                     // ```
-                  /*   let body = this.block_all(
+                    /*   let body = this.block_all(
                         desugared_span,
                         this.arena.alloc_from_iter(statements),
                         Some(user_body),
                     ); */
 
-                    this.expr_block(|this| {
-                        this.block_all(
-                            desugared_span,
-                            this.arena.alloc_from_iter(statements),
-                            Some(user_body),
-                        )
-                    }, AttrVec::new())
+                    this.expr_block(
+                        |this| {
+                            this.block_all(
+                                desugared_span,
+                                this.arena.alloc_from_iter(statements),
+                                Some(user_body),
+                            )
+                        },
+                        AttrVec::new(),
+                    )
                 },
             );
 

@@ -1000,6 +1000,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: &ImplTraitContext,
     ) -> hir::TypeBinding<'hir> {
         debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", constraint, itctx);
+        let hir_id = self.lower_node_id(constraint.id);
         // lower generic arguments of identifier in constraint
         let gen_args = if let Some(ref gen_args) = constraint.gen_args {
             let gen_args_ctor = match gen_args {
@@ -1095,7 +1096,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         hir::TypeBinding {
-            hir_id: self.lower_node_id(constraint.id),
+            hir_id,
             ident: self.lower_ident(constraint.ident),
             gen_args,
             kind,
@@ -1222,6 +1223,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             && let Some(partial_res) = self.resolver.get_partial_res(t.id)
             && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = partial_res.full_res()
         {
+            let hir_id = self.next_id();
             let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
                 let poly_trait_ref = this.ast_arena.ptr.alloc(PolyTraitRef {
                     bound_generic_params: vec![],
@@ -1237,7 +1239,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 (bounds, lifetime_bound)
             });
             let kind = hir::TyKind::TraitObject(bounds, &lifetime_bound, TraitObjectSyntax::None);
-            return hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.next_id() };
+            return hir::Ty { kind, span: self.lower_span(t.span), hir_id };
         }
 
         let id = self.lower_node_id(t.id);
@@ -1254,6 +1256,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_ty_direct(&mut self, t: &Ty, itctx: &ImplTraitContext) -> hir::Ty<'hir> {
+        if let TyKind::Paren(ref ty) = t.kind {
+            return self.lower_ty_direct(ty, itctx);
+        }
+        if let TyKind::Path(ref qself, ref path) = t.kind {
+            return self.lower_path_ty(t, qself, path, ParamMode::Explicit, itctx);
+        }
+        // alloc hir_id
+        let hir_id = self.lower_node_id(t.id);
         let kind = match t.kind {
             TyKind::Infer => hir::TyKind::Infer,
             TyKind::Err => hir::TyKind::Err,
@@ -1289,12 +1299,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Tup(ref tys) => hir::TyKind::Tup(
                 self.arena.alloc_from_iter(tys.iter().map(|ty| self.lower_ty_direct(ty, itctx))),
             ),
-            TyKind::Paren(ref ty) => {
-                return self.lower_ty_direct(ty, itctx);
-            }
-            TyKind::Path(ref qself, ref path) => {
-                return self.lower_path_ty(t, qself, path, ParamMode::Explicit, itctx);
-            }
             TyKind::ImplicitSelf => {
                 let hir_id = self.next_id();
                 let res = self.expect_full_res(t.id);
@@ -1414,9 +1418,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 );
                 hir::TyKind::Err
             }
+            _ => panic!("unexpected type: {:?}", t),
         };
 
-        hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.lower_node_id(t.id) }
+        hir::Ty { kind, span: self.lower_span(t.span), hir_id: hir_id }
     }
 
     /// Lowers a `ReturnPositionOpaqueTy` (`-> impl Trait`) or a `TypeAliasesOpaqueTy` (`type F =
@@ -2069,6 +2074,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         mut nested_impl_trait_context: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
+        let hir_id = self.next_id();
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
             FnRetTy::Ty(ty) => {
@@ -2092,7 +2098,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // ::std::future::Future<future_params>
             hir::LangItem::Future,
             self.lower_span(span),
-            self.next_id(),
+            hir_id,
             future_args,
         )
     }
@@ -2128,6 +2134,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ident: Ident,
         res: LifetimeRes,
     ) -> &'hir hir::Lifetime {
+        let hir_id = self.lower_node_id(id);
         let name = match res {
             LifetimeRes::Param { param, .. } => {
                 let p_name = ParamName::Plain(ident);
@@ -2148,11 +2155,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         debug!(?name);
-        self.arena.alloc(hir::Lifetime {
-            hir_id: self.lower_node_id(id),
-            span: self.lower_span(span),
-            name,
-        })
+        self.arena.alloc(hir::Lifetime { hir_id, span: self.lower_span(span), name })
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2180,9 +2183,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     #[instrument(level = "trace", skip(self))]
     fn lower_generic_param(&mut self, param: &GenericParam) -> hir::GenericParam<'hir> {
+        let hir_id = self.lower_node_id(param.id);
         let (name, kind) = self.lower_generic_param_kind(param);
 
-        let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs);
         hir::GenericParam {
             hir_id,
@@ -2237,11 +2240,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_trait_ref(&mut self, p: &TraitRef, itctx: &ImplTraitContext) -> hir::TraitRef<'hir> {
+        let hir_id = self.lower_node_id(p.ref_id);
         let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit, itctx) {
             hir::QPath::Resolved(None, path) => path,
             qpath => panic!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
         };
-        hir::TraitRef { path, hir_ref_id: self.lower_node_id(p.ref_id) }
+        hir::TraitRef { path, hir_ref_id: hir_id }
     }
 
     #[instrument(level = "debug", skip(self))]

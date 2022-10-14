@@ -185,6 +185,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: &ImplTraitContext,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
+        let hir_id = self.lower_node_id(segment.id);
         let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
             match **generic_args {
                 GenericArgs::AngleBracketed(ref data) => {
@@ -254,7 +255,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let res = self.expect_full_res(segment.id);
-        let hir_id = self.lower_node_id(segment.id);
         debug!(
             "lower_path_segment: ident={:?} original-id={:?} new-id={:?}",
             segment.ident, segment.id, hir_id,

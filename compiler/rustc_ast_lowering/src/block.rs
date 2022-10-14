@@ -52,18 +52,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
                         |(i, item_id)| {
                             let hir_id = match i {
-                                0 => {
-                                    debug!("yukang lower_node_id {:?}", s.id);
-                                    let id = self.lower_node_id(s.id);
-                                    debug!("yukang lower_node_id id={:?}", id);
-                                    id
-                                }
-                                _ => {
-                                    debug!("yukang lower_stmts item_id={:?}", item_id);
-                                    let id = self.next_id();
-                                    debug!("yukang lower_stmts id={:?}", id);
-                                    id
-                                }
+                                0 => self.lower_node_id(s.id),
+                                _ => self.next_id(),
                             };
                             let kind = hir::StmtKind::Item(item_id);
                             let span = self.lower_span(s.span);

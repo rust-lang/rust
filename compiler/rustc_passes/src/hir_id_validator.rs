@@ -147,14 +147,15 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
             });
         }
 
-        let debug_log = std::env::var("RUSTC_LOG");
-        if let Some(owner_hir_id) = self.hir_map.find_parent_node(hir_id) &&
-            owner_hir_id.local_id >= hir_id.local_id && hir_id.local_id != ItemLocalId::from_u32(0) &&
-            debug_log.is_ok() {
-                let message = format!("HirIdValidator: The parent local_id `{}` is not smaller than children id: {:?}",
-                                        self.hir_map.node_to_string(owner_hir_id), hir_id.local_id);
-                let child_span = self.hir_map.span(hir_id);
-                span_bug!(self.hir_map.span(owner_hir_id), "{}\nchild_span:{:?}", message, child_span);
+        let debug_log = std::env::var("RUSTC_LOG_HIR");
+        if debug_log.is_ok() {
+            if let Some(owner_hir_id) = self.hir_map.find_parent_node(hir_id) &&
+                owner_hir_id.local_id >= hir_id.local_id && hir_id.local_id != ItemLocalId::from_u32(0) {
+                    let message = format!("HirIdValidator: The parent local_id `{}` is not smaller than children id: {:?}",
+                                            self.hir_map.node_to_string(owner_hir_id), hir_id.local_id);
+                    let child_span = self.hir_map.span(hir_id);
+                    span_bug!(self.hir_map.span(owner_hir_id), "{}\nchild_span:{:?}", message, child_span);
+            }
         }
 
         self.hir_ids_seen.insert(hir_id.local_id);

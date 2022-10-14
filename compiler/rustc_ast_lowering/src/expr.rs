@@ -592,6 +592,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         async_gen_kind: hir::AsyncGeneratorKind,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
+        let hir_id = self.lower_node_id(closure_node_id);
+
         let output = match ret_ty {
             Some(ty) => hir::FnRetTy::Return(
                 self.lower_ty(&ty, &ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock)),
@@ -1476,6 +1478,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::Expr<'hir> {
+        let hir_id = self.lower_node_id(e.id);
         let head = self.lower_expr_mut(head);
         let pat = self.lower_pat(pat);
         let for_span =
@@ -1532,8 +1535,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::LoopSource::ForLoop,
             self.lower_span(for_span.with_hi(head.span.hi())),
         );
-        let loop_expr =
-            self.arena.alloc(hir::Expr { hir_id: self.lower_node_id(e.id), kind, span: for_span });
+        let loop_expr = self.arena.alloc(hir::Expr { hir_id, kind, span: for_span });
 
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);

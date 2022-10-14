@@ -302,6 +302,9 @@ impl<'hir> Map<'hir> {
             Some(self.tcx.hir_owner_parent(id.owner))
         } else {
             let owner = self.tcx.hir_owner_nodes(id.owner).as_owner()?;
+            if usize::from(id.local_id) >= owner.nodes.len() {
+                return None;
+            }
             let node = owner.nodes[id.local_id].as_ref()?;
             let hir_id = HirId { owner: id.owner, local_id: node.parent };
             // HIR indexing should have checked that.
