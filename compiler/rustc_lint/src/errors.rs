@@ -88,32 +88,11 @@ pub struct BuiltinEllpisisInclusiveRangePatterns {
     pub replace: String,
 }
 
+#[derive(Subdiagnostic)]
+#[note(lint::requested_level)]
 pub struct RequestedLevel {
     pub level: Level,
     pub lint_name: String,
-}
-
-impl AddToDiagnostic for RequestedLevel {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        diag.note(fluent::lint::requested_level);
-        diag.set_arg(
-            "level",
-            match self.level {
-                Level::Allow => "-A",
-                Level::Warn => "-W",
-                Level::ForceWarn(_) => "--force-warn",
-                Level::Deny => "-D",
-                Level::Forbid => "-F",
-                Level::Expect(_) => {
-                    unreachable!("lints with the level of `expect` should not run this code");
-                }
-            },
-        );
-        diag.set_arg("lint_name", self.lint_name);
-    }
 }
 
 #[derive(Diagnostic)]

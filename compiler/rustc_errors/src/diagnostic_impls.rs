@@ -1,14 +1,14 @@
 use crate::{
     fluent, DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg,
 };
-use rustc_target::abi::TargetDataLayoutErrors;
-use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
-
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_hir as hir;
+use rustc_lint_defs::Level;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
+use rustc_target::abi::TargetDataLayoutErrors;
+use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use std::borrow::Cow;
 use std::fmt;
 use std::num::ParseIntError;
@@ -152,6 +152,21 @@ impl IntoDiagnosticArg for ast::token::Token {
 impl IntoDiagnosticArg for ast::token::TokenKind {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(pprust::token_kind_to_string(&self))
+    }
+}
+
+impl IntoDiagnosticArg for Level {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Borrowed(match self {
+            Level::Allow => "-A",
+            Level::Warn => "-W",
+            Level::ForceWarn(_) => "--force-warn",
+            Level::Deny => "-D",
+            Level::Forbid => "-F",
+            Level::Expect(_) => {
+                unreachable!("lints with the level of `expect` should not run this code");
+            }
+        }))
     }
 }
 
