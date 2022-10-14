@@ -1,0 +1,63 @@
+From b87c1ec3fa398646f042a68f0ce0f7d09c1348c7 Mon Sep 17 00:00:00 2001
+From: Aurelien Jarno <aurelien@aurel32.net>
+Date: Tue, 21 Jun 2016 23:59:37 +0200
+Subject: [PATCH 2/2] MIPS, SPARC: more fixes to the vfork aliases in
+ libpthread.so
+
+Commit 43c29487 tried to fix the vfork aliases in libpthread.so on MIPS
+and SPARC, but failed to do it correctly, introducing an ABI change.
+
+This patch does the remaining changes needed to align the MIPS and SPARC
+vfork implementations with the other architectures. That way the the
+alpha version of pt-vfork.S works correctly for MIPS and SPARC. The
+changes for alpha were done in 82aab97c.
+
+Changelog:
+	* sysdeps/unix/sysv/linux/mips/vfork.S (__vfork): Rename into
+	__libc_vfork.
+	(__vfork) [IS_IN (libc)]: Remove alias.
+	(__libc_vfork) [IS_IN (libc)]: Define as an alias.
+	* sysdeps/unix/sysv/linux/sparc/sparc32/vfork.S: Likewise.
+	* sysdeps/unix/sysv/linux/sparc/sparc64/vfork.S: Likewise.
+---
+ sysdeps/unix/sysv/linux/mips/vfork.S | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/sysdeps/unix/sysv/linux/mips/vfork.S b/sysdeps/unix/sysv/linux/mips/vfork.S
+index c0c0ce699159..1867c8626ebe 100644
+--- a/sysdeps/unix/sysv/linux/mips/vfork.S
++++ b/sysdeps/unix/sysv/linux/mips/vfork.S
+@@ -31,13 +31,13 @@
+ LOCALSZ= 1
+ FRAMESZ= (((NARGSAVE+LOCALSZ)*SZREG)+ALSZ)&ALMASK
+ GPOFF= FRAMESZ-(1*SZREG)
+-NESTED(__vfork,FRAMESZ,sp)
++NESTED(__libc_vfork,FRAMESZ,sp)
+ #ifdef __PIC__
+ 	SETUP_GP
+ #endif
+ 	PTR_SUBU sp, FRAMESZ
+ 	cfi_adjust_cfa_offset (FRAMESZ)
+-	SETUP_GP64_REG (a5, __vfork)
++	SETUP_GP64_REG (a5, __libc_vfork)
+ #ifdef __PIC__
+ 	SAVE_GP (GPOFF)
+ #endif
+@@ -104,10 +104,10 @@ L(error):
+ 	RESTORE_GP64_REG
+ 	j		__syscall_error
+ #endif
+-	END(__vfork)
++	END(__libc_vfork)
+ 
+ #if IS_IN (libc)
+-libc_hidden_def(__vfork)
+-weak_alias (__vfork, vfork)
+-strong_alias (__vfork, __libc_vfork)
++weak_alias (__libc_vfork, vfork)
++strong_alias (__libc_vfork, __vfork)
++libc_hidden_def (__vfork)
+ #endif
+-- 
+2.37.3
+
