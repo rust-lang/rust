@@ -692,7 +692,7 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some(NotClone(99))); // The separator.
     /// assert_eq!(it.next(), Some(NotClone(1)));  // The next element from `v`.
     /// assert_eq!(it.next(), Some(NotClone(99))); // The separator.
-    /// assert_eq!(it.next(), Some(NotClone(2)));  // The last element from from `v`.
+    /// assert_eq!(it.next(), Some(NotClone(2)));  // The last element from `v`.
     /// assert_eq!(it.next(), None);               // The iterator is finished.
     /// ```
     ///

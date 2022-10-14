@@ -414,7 +414,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let typeck_root_def_id = self.infcx.tcx.typeck_root_def_id(self.mir_def.did.to_def_id());
 
-        // If this is is a 'root' body (not a closure/generator/inline const), then
+        // If this is a 'root' body (not a closure/generator/inline const), then
         // there are no extern regions, so the local regions start at the same
         // position as the (empty) sub-list of extern regions
         let first_local_index = if self.mir_def.did.to_def_id() == typeck_root_def_id {

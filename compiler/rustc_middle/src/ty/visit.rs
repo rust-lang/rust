@@ -10,8 +10,7 @@
 //!
 //! There are three groups of traits involved in each traversal.
 //! - `TypeVisitable`. This is implemented once for many types, including:
-//!   - Types of interest, for which the the methods delegate to the
-//!     visitor.
+//!   - Types of interest, for which the methods delegate to the visitor.
 //!   - All other types, including generic containers like `Vec` and `Option`.
 //!     It defines a "skeleton" of how they should be visited.
 //! - `TypeSuperVisitable`. This is implemented only for each type of interest,

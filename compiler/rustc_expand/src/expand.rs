@@ -327,7 +327,7 @@ impl InvocationKind {
     fn placeholder_visibility(&self) -> Option<ast::Visibility> {
         // HACK: For unnamed fields placeholders should have the same visibility as the actual
         // fields because for tuple structs/variants resolve determines visibilities of their
-        // constructor using these field visibilities before attributes on them are are expanded.
+        // constructor using these field visibilities before attributes on them are expanded.
         // The assumption is that the attribute expansion cannot change field visibilities,
         // and it holds because only inert attributes are supported in this position.
         match self {

@@ -64,7 +64,7 @@ pub struct ConstEvalErr<'tcx> {
 impl<'tcx> ConstEvalErr<'tcx> {
     /// Turn an interpreter error into something to report to the user.
     /// As a side-effect, if RUSTC_CTFE_BACKTRACE is set, this prints the backtrace.
-    /// Should be called only if the error is actually going to to be reported!
+    /// Should be called only if the error is actually going to be reported!
     pub fn new<'mir, M: Machine<'mir, 'tcx>>(
         ecx: &InterpCx<'mir, 'tcx, M>,
         error: InterpErrorInfo<'tcx>,
