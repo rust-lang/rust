@@ -41,7 +41,8 @@ impl SubdiagnosticDeriveBuilder {
                 }
             }
 
-            if matches!(ast.data, syn::Data::Enum(..)) {
+            let is_enum = matches!(ast.data, syn::Data::Enum(..));
+            if is_enum {
                 for attr in &ast.attrs {
                     // Always allow documentation comments.
                     if is_doc_comment(attr) {
@@ -67,6 +68,7 @@ impl SubdiagnosticDeriveBuilder {
                     span_field: None,
                     applicability: None,
                     has_suggestion_parts: false,
+                    is_enum,
                 };
                 builder.into_tokens().unwrap_or_else(|v| v.to_compile_error())
             });
@@ -127,6 +129,9 @@ struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     /// Set to true when a `#[suggestion_part]` field is encountered, used to generate an error
     /// during finalization if still `false`.
     has_suggestion_parts: bool,
+
+    /// Set to true when this variant is an enum variant rather than just the body of a struct.
+    is_enum: bool,
 }
 
 impl<'parent, 'a> HasFieldMap for SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
@@ -457,10 +462,16 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     pub fn into_tokens(&mut self) -> Result<TokenStream, DiagnosticDeriveError> {
         let kind_slugs = self.identify_kind()?;
         if kind_slugs.is_empty() {
-            throw_span_err!(
-                self.variant.ast().ident.span().unwrap(),
-                "subdiagnostic kind not specified"
-            );
+            if self.is_enum {
+                // It's okay for a variant to not be a subdiagnostic at all..
+                return Ok(quote! {});
+            } else {
+                // ..but structs should always be _something_.
+                throw_span_err!(
+                    self.variant.ast().ident.span().unwrap(),
+                    "subdiagnostic kind not specified"
+                );
+            }
         };
 
         let kind_stats: KindsStatistics = kind_slugs.iter().map(|(kind, _slug)| kind).collect();
