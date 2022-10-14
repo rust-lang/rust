@@ -34,7 +34,7 @@ jobs:
       - name: Check out cargo-wasix
         uses: actions/checkout@v3
         with:
-          repository: theduke/cargo-wasix
+          repository: john-sharratt/cargo-wasix
           ref: main
           path: cargo-wasix
 
@@ -96,7 +96,7 @@ jobs:
       - name: Check out cargo-wasix
         uses: actions/checkout@v3
         with:
-          repository: theduke/cargo-wasix
+          repository: john-sharratt/cargo-wasix
           ref: main
           path: cargo-wasix
 
