@@ -32,8 +32,8 @@ pub const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
 pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
-        CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => true,
-        CrateType::Dylib | CrateType::Rlib | CrateType::ProcMacro => false,
+        CrateType::Executable | CrateType::Dylib | CrateType::Staticlib | CrateType::Cdylib => true,
+        CrateType::Rlib | CrateType::ProcMacro => false,
     }
 }
 
@@ -73,17 +73,6 @@ fn prepare_lto(
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
     if cgcx.lto != Lto::ThinLocal {
-        if cgcx.opts.cg.prefer_dynamic {
-            diag_handler
-                .struct_err("cannot prefer dynamic linking when performing LTO")
-                .note(
-                    "only 'staticlib', 'bin', and 'cdylib' outputs are \
-                               supported with LTO",
-                )
-                .emit();
-            return Err(FatalError);
-        }
-
         // Make sure we actually can run LTO
         for crate_type in cgcx.crate_types.iter() {
             if !crate_type_allows_lto(*crate_type) {
@@ -92,7 +81,23 @@ fn prepare_lto(
                                             static library outputs",
                 );
                 return Err(e);
+            } else if *crate_type == CrateType::Dylib {
+                if !cgcx.opts.unstable_opts.dylib_lto {
+                    return Err(diag_handler
+                        .fatal("lto cannot be used for `dylib` crate type without `-Zdylib-lto`"));
+                }
             }
+        }
+
+        if cgcx.opts.cg.prefer_dynamic && !cgcx.opts.unstable_opts.dylib_lto {
+            diag_handler
+                .struct_err("cannot prefer dynamic linking when performing LTO")
+                .note(
+                    "only 'staticlib', 'bin', and 'cdylib' outputs are \
+                               supported with LTO",
+                )
+                .emit();
+            return Err(FatalError);
         }
 
         for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
