@@ -252,9 +252,13 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             ) => {
                 // For shortcircuiting operators, mark the RHS as a terminating
                 // scope since it only executes conditionally.
-                terminating(r.hir_id.local_id);
-            }
 
+                // `Let` expressions (in a let-chain) shouldn't be terminating, as their temporaries
+                // should live beyond the immediate expression
+                if !matches!(r.kind, hir::ExprKind::Let(_)) {
+                    terminating(r.hir_id.local_id);
+                }
+            }
             hir::ExprKind::If(_, ref then, Some(ref otherwise)) => {
                 terminating(then.hir_id.local_id);
                 terminating(otherwise.hir_id.local_id);
