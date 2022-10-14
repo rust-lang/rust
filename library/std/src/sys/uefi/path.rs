@@ -91,7 +91,7 @@ pub(crate) fn device_path_to_path(path: &mut device_path::Protocol) -> io::Resul
                 r_efi::efi::Boolean::FALSE,
             )
         };
-        let ucs2_iter = match unsafe { crate::sys_common::args::WStrUnits::new(path_ucs2) } {
+        let ucs2_iter = match unsafe { crate::sys_common::wstr::WStrUnits::new(path_ucs2) } {
             None => break,
             Some(x) => x,
         };

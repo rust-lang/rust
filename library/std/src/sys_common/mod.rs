@@ -20,8 +20,6 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(target_os = "uefi", target_os = "windows"))]
-pub mod args;
 pub mod backtrace;
 pub mod fs;
 pub mod io;
@@ -35,7 +33,6 @@ pub mod thread_info;
 pub mod thread_local_dtor;
 pub mod thread_parker;
 pub mod wstr;
-pub mod ucs2;
 pub mod wtf8;
 
 cfg_if::cfg_if! {

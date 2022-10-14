@@ -64,7 +64,7 @@ fn main() {
     } else {
         let mut modes = vec![
             "silent-thread",
-            "loud-thread"
+            "loud-thread",
         ];
 
         // On linux it looks like the main thread can sometimes grow its stack

@@ -79,3 +79,8 @@ struct UefiBuf {
     pub len: u32,
     pub buf: *mut c_void,
 }
+
+// FIXME: Maybe add std::os::io APIs from Windows.
+pub fn is_terminal<T>(_: T) -> bool {
+    false
+}

@@ -1,4 +1,4 @@
-FROM fedora:36
+FROM fedora:37
 
 RUN dnf update -y && dnf install -y \
       bc \
@@ -28,7 +28,9 @@ WORKDIR /tmp
 RUN mkdir rootfs
 
 # Copy over startup script
-COPY scripts/qemu_uefi.nsh rootfs/startup.nsh
+RUN echo "@echo -off\n" \
+         "fs0:\n" \
+         "testd --sequential" > rootfs/startup.nsh
 
 # This is here in case we want to use some other version/source for OVMF
 RUN mkdir OVMF

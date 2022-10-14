@@ -1,3 +1,7 @@
+//! Contains most of the shared UEFI specific stuff. Some of this might be moved to `std::os::uefi`
+//! if needed but no point in adding extra public API when there is not Std support for UEFI in the
+//! first place
+
 use r_efi::efi::{EventNotify, Guid, Tpl};
 
 use crate::alloc::{AllocError, Allocator, Global, Layout};

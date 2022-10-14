@@ -42,14 +42,11 @@ static TEST: AtomicUsize = AtomicUsize::new(0);
 const RETRY_INTERVAL: u64 = 1;
 const NUMBER_OF_RETRIES: usize = 5;
 
-const NUMBER_OF_TRIES: usize = 5;
-
 #[derive(Copy, Clone)]
 struct Config {
     verbose: bool,
     sequential: bool,
     bind: SocketAddr,
-    staticlink: bool,
 }
 
 impl Config {
@@ -62,7 +59,6 @@ impl Config {
             } else {
                 ([10, 0, 2, 15], 12345).into()
             },
-            staticlink: false,
         }
     }
 
@@ -83,9 +79,6 @@ impl Config {
                 "--help" | "-h" => {
                     show_help();
                     std::process::exit(0);
-                }
-                "--staticlink" => {
-                    config.staticlink = true;
                 }
                 arg => panic!("unknown argument: {}, use `--help` for known arguments", arg),
             }
@@ -272,21 +265,20 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     cmd.args(args);
     cmd.envs(env);
 
+    // On windows, libraries are just searched in the executable directory,
+    // system directories, PWD, and PATH, in that order. PATH is the only one
+    // we can change for this.
+    let library_path = if cfg!(windows) { "PATH" } else { "LD_LIBRARY_PATH" };
+
     // Support libraries were uploaded to `work` earlier, so make sure that's
     // in `LD_LIBRARY_PATH`. Also include our own current dir which may have
     // had some libs uploaded.
     let mut paths = vec![work.to_owned(), path.clone()];
 
-    if !config.staticlink {
-        // On windows, libraries are just searched in the executable directory,
-        // system directories, PWD, and PATH, in that order. PATH is the only one
-        // we can change for this.
-        let library_path = if cfg!(windows) { "PATH" } else { "LD_LIBRARY_PATH" };
-        if let Some(library_path) = env::var_os(library_path) {
-            paths.extend(env::split_paths(&library_path));
-        }
-        cmd.env(library_path, env::join_paths(paths).unwrap());
+    if let Some(library_path) = env::var_os(library_path) {
+        paths.extend(env::split_paths(&library_path));
     }
+    cmd.env(library_path, env::join_paths(paths).unwrap());
 
     // Some tests assume RUST_TEST_TMPDIR exists
     cmd.env("RUST_TEST_TMPDIR", tmp.to_owned());

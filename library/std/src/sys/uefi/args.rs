@@ -6,7 +6,7 @@ use crate::ffi::OsString;
 use crate::fmt;
 use crate::path::PathBuf;
 use crate::sync::OnceLock;
-use crate::sys_common::args::{parse_lp_cmd_line, WStrUnits};
+use crate::sys_common::wstr::WStrUnits;
 use crate::vec;
 use r_efi::efi::protocols::loaded_image;
 
@@ -33,6 +33,13 @@ pub fn args() -> Args {
         }
     });
     Args { parsed_args_list: vec_args.clone().into_iter() }
+}
+
+pub(crate) fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
+    _lp_cmd_line: Option<WStrUnits<'a>>,
+    _exe_name: F,
+) -> Vec<OsString> {
+    todo!()
 }
 
 impl fmt::Debug for Args {
