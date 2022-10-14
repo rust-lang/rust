@@ -24,6 +24,11 @@ jobs:
           path: wasix-libc
           submodules: 'recursive'
 
+      - name: OS Setup (Ubuntu)
+        run: |
+          sudo apt-get update 
+          sudo apt-get install -y build-essential curl wget xz-utils git python3
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -64,6 +69,7 @@ jobs:
         os: [self-hosted-ubuntu, macos-12, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
+
       - name: Download wasix-libc artifact
         uses: actions/download-artifact@v3
         with:
@@ -101,6 +107,13 @@ jobs:
           path: cargo-wasix
 
       # Linux!
+
+      - name: Setup (Ubuntu)
+        shell: bash
+        if: matrix.os == 'self-hosted-ubuntu' || matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl wget xz-utils git python3 ninja-build cmake
 
       - name: Build (Linux)
         shell: bash
