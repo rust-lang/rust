@@ -544,7 +544,6 @@ pub struct ExplicitLifetimeRequired<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum ActualImplExplNotes {
-    // Field names have to be different across Expected* and ButActually variants
     #[note(infer::actual_impl_expl_expected_signature_two)]
     ExpectedSignatureTwo {
         leading_ellipsis: bool,
@@ -731,7 +730,7 @@ pub struct TraitPlaceholderMismatch {
     pub def_id: String,
     pub trait_def_id: String,
 
-    #[subdiagnostic]
+    #[subdiagnostic(eager)]
     pub actual_impl_expl_notes: Vec<ActualImplExplNotes>,
 }
 
@@ -740,12 +739,17 @@ pub struct ConsiderBorrowingParamHelp {
 }
 
 impl AddToDiagnostic for ConsiderBorrowingParamHelp {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, f: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
-            type_param_span.push_span_label(span, fluent::infer::tid_consider_borriwing);
+            // Seems like we can't call f() here as Into<DiagnosticMessage> is required
+            type_param_span.push_span_label(span, fluent::infer::tid_consider_borrowing);
         }
-        diag.span_help(type_param_span, fluent::infer::tid_param_help);
+        let msg = f(diag, fluent::infer::tid_param_help.into());
+        diag.span_help(type_param_span, msg);
     }
 }
 
@@ -779,14 +783,19 @@ pub struct DynTraitConstraintSuggestion {
 }
 
 impl AddToDiagnostic for DynTraitConstraintSuggestion {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, f: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         let mut multi_span: MultiSpan = vec![self.span].into();
         multi_span.push_span_label(self.span, fluent::infer::dtcs_has_lifetime_req_label);
         multi_span.push_span_label(self.ident.span, fluent::infer::dtcs_introduces_requirement);
-        diag.span_note(multi_span, fluent::infer::dtcs_has_req_note);
+        let msg = f(diag, fluent::infer::dtcs_has_req_note.into());
+        diag.span_note(multi_span, msg);
+        let msg = f(diag, fluent::infer::dtcs_suggestion.into());
         diag.span_suggestion_verbose(
             self.span.shrink_to_hi(),
-            fluent::infer::dtcs_suggestion,
+            msg,
             " + '_",
             Applicability::MaybeIncorrect,
         );
@@ -820,7 +829,10 @@ pub struct ReqIntroducedLocations {
 }
 
 impl AddToDiagnostic for ReqIntroducedLocations {
-    fn add_to_diagnostic(mut self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(mut self, diag: &mut Diagnostic, f: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         for sp in self.spans {
             self.span.push_span_label(sp, fluent::infer::ril_introduced_here);
         }
@@ -829,7 +841,8 @@ impl AddToDiagnostic for ReqIntroducedLocations {
             self.span.push_span_label(self.fn_decl_span, fluent::infer::ril_introduced_by);
         }
         self.span.push_span_label(self.cause_span, fluent::infer::ril_because_of);
-        diag.span_note(self.span, fluent::infer::ril_static_introduced_by);
+        let msg = f(diag, fluent::infer::ril_static_introduced_by.into());
+        diag.span_note(self.span, msg);
     }
 }
 
@@ -838,7 +851,10 @@ pub struct MoreTargeted {
 }
 
 impl AddToDiagnostic for MoreTargeted {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _f: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         diag.code(rustc_errors::error_code!(E0772));
         diag.set_primary_message(fluent::infer::more_targeted);
         diag.set_arg("ident", self.ident);

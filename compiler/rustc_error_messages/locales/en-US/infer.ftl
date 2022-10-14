@@ -258,7 +258,7 @@ infer_trait_impl_diff = `impl` item signature doesn't match `trait` item signatu
                {"   "}found `{$found}`
 
 infer_tid_rel_help = verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
-infer_tid_consider_borriwing = consider borrowing this type parameter in the trait
+infer_tid_consider_borrowing = consider borrowing this type parameter in the trait
 infer_tid_param_help = the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
 
 infer_dtcs_has_lifetime_req_label = this has an implicit `'static` lifetime requirement
