@@ -1456,7 +1456,6 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));")]
         /// ```
@@ -1551,7 +1550,6 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        ///
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_sub(2), (3, false));")]
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT), "::MAX, true));")]
         /// ```

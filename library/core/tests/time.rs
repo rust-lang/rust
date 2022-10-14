@@ -467,3 +467,11 @@ fn duration_const() {
     const SATURATING_MUL: Duration = MAX.saturating_mul(2);
     assert_eq!(SATURATING_MUL, MAX);
 }
+
+#[test]
+fn from_neg_zero() {
+    assert_eq!(Duration::try_from_secs_f32(-0.0), Ok(Duration::ZERO));
+    assert_eq!(Duration::try_from_secs_f64(-0.0), Ok(Duration::ZERO));
+    assert_eq!(Duration::from_secs_f32(-0.0), Duration::ZERO);
+    assert_eq!(Duration::from_secs_f64(-0.0), Duration::ZERO);
+}

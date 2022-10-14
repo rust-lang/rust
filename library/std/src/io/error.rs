@@ -387,7 +387,7 @@ pub enum ErrorKind {
 impl ErrorKind {
     pub(crate) fn as_str(&self) -> &'static str {
         use ErrorKind::*;
-        // Strictly alphabetical, please.  (Sadly rustfmt cannot do this yet.)
+        // tidy-alphabetical-start
         match *self {
             AddrInUse => "address in use",
             AddrNotAvailable => "address not available",
@@ -431,6 +431,7 @@ impl ErrorKind {
             WouldBlock => "operation would block",
             WriteZero => "write zero",
         }
+        // tidy-alphabetical-end
     }
 }
 
@@ -481,6 +482,7 @@ impl Error {
     /// originate from the OS itself. The `error` argument is an arbitrary
     /// payload which will be contained in this [`Error`].
     ///
+    /// Note that this function allocates memory on the heap.
     /// If no extra payload is required, use the `From` conversion from
     /// `ErrorKind`.
     ///
@@ -495,7 +497,7 @@ impl Error {
     /// // errors can also be created from other errors
     /// let custom_error2 = Error::new(ErrorKind::Interrupted, custom_error);
     ///
-    /// // creating an error without payload
+    /// // creating an error without payload (and without memory allocation)
     /// let eof_error = Error::from(ErrorKind::UnexpectedEof);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
