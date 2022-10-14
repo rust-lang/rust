@@ -58,6 +58,37 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                 == item2.ident(self.tcx).normalize_to_macros_2_0()
     }
 
+    fn check_for_duplicate_items_in_impl(&self, impl_: DefId) {
+        let impl_items = self.tcx.associated_items(impl_);
+
+        let mut seen_items = FxHashMap::default();
+        for impl_item in impl_items.in_definition_order() {
+            let span = self.tcx.def_span(impl_item.def_id);
+            let ident = impl_item.ident(self.tcx);
+
+            let norm_ident = ident.normalize_to_macros_2_0();
+            match seen_items.entry(norm_ident) {
+                Entry::Occupied(entry) => {
+                    let former = entry.get();
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        span,
+                        E0592,
+                        "duplicate definitions with name `{}`",
+                        ident,
+                    );
+                    err.span_label(span, format!("duplicate definitions for `{}`", ident));
+                    err.span_label(*former, format!("other definition for `{}`", ident));
+
+                    err.emit();
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(span);
+                }
+            }
+        }
+    }
+
     fn check_for_common_items_in_impls(
         &self,
         impl1: DefId,
@@ -133,12 +164,6 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
         let impls = self.tcx.inherent_impls(id.def_id);
 
-        // If there is only one inherent impl block,
-        // there is nothing to overlap check it with
-        if impls.len() <= 1 {
-            return;
-        }
-
         let overlap_mode = OverlapMode::get(self.tcx, id.def_id.to_def_id());
 
         let impls_items = impls
@@ -152,6 +177,8 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         const ALLOCATING_ALGO_THRESHOLD: usize = 500;
         if impls.len() < ALLOCATING_ALGO_THRESHOLD {
             for (i, &(&impl1_def_id, impl_items1)) in impls_items.iter().enumerate() {
+                self.check_for_duplicate_items_in_impl(impl1_def_id);
+
                 for &(&impl2_def_id, impl_items2) in &impls_items[(i + 1)..] {
                     if self.impls_have_common_items(impl_items1, impl_items2) {
                         self.check_for_overlapping_inherent_impls(
@@ -290,6 +317,8 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                 impl_blocks.sort_unstable();
                 for (i, &impl1_items_idx) in impl_blocks.iter().enumerate() {
                     let &(&impl1_def_id, impl_items1) = &impls_items[impl1_items_idx];
+                    self.check_for_duplicate_items_in_impl(impl1_def_id);
+
                     for &impl2_items_idx in impl_blocks[(i + 1)..].iter() {
                         let &(&impl2_def_id, impl_items2) = &impls_items[impl2_items_idx];
                         if self.impls_have_common_items(impl_items1, impl_items2) {
