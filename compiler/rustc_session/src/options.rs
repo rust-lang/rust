@@ -1295,6 +1295,8 @@ options! {
         an additional `.html` file showing the computed coverage spans."),
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
+    emit_invariant_markers: bool = (false, parse_bool, [UNTRACKED],
+        "emit `llvm.invariant` markers, which may enable better optimization (default: no)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
     emit_thin_lto: bool = (true, parse_bool, [TRACKED],

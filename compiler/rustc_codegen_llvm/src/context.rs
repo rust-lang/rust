@@ -629,6 +629,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
 
         let i8p = self.type_i8p();
+        let unitp = self.type_ptr_to(self.type_struct(&[], false));
         let void = self.type_void();
         let i1 = self.type_i1();
         let t_i8 = self.type_i8();
@@ -839,6 +840,9 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, i8p) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, i8p) -> void);
+
+        ifn!("llvm.invariant.start.p0i8", fn(t_i64, i8p) -> unitp);
+        ifn!("llvm.invariant.end.p0i8", fn(unitp, t_i64, i8p) -> void);
 
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);

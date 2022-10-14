@@ -310,6 +310,9 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// Called for `StorageDead`
     fn lifetime_end(&mut self, ptr: Self::Value, size: Size);
 
+    fn invariant_start(&mut self, ptr: Self::Value, size: Size) -> Self::Value;
+    fn invariant_end(&mut self, marker_ptr: Self::Value, value_ptr: Self::Value, size: Size);
+
     fn instrprof_increment(
         &mut self,
         fn_name: Self::Value,

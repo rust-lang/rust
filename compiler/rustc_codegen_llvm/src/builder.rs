@@ -1113,6 +1113,21 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.call_lifetime_intrinsic("llvm.lifetime.end.p0i8", ptr, size);
     }
 
+    fn invariant_start(&mut self, value_ptr: &'ll Value, size: Size) -> &'ll Value {
+        let size = size.bytes();
+        let value_ptr = self.pointercast(value_ptr, self.cx.type_i8p());
+        self.call_intrinsic("llvm.invariant.start.p0i8", &[self.cx.const_u64(size), value_ptr])
+    }
+
+    fn invariant_end(&mut self, marker_ptr: &'ll Value, value_ptr: &'ll Value, size: Size) {
+        let size = size.bytes();
+        let value_ptr = self.pointercast(value_ptr, self.cx.type_i8p());
+        self.call_intrinsic(
+            "llvm.invariant.end.p0i8",
+            &[marker_ptr, self.cx.const_u64(size), value_ptr],
+        );
+    }
+
     fn instrprof_increment(
         &mut self,
         fn_name: &'ll Value,

@@ -249,6 +249,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Generates code for a `Resume` terminator.
     fn codegen_resume_terminator(&mut self, helper: TerminatorCodegenHelper<'tcx>, mut bx: Bx) {
+        self.emit_invariant_end_markers(&mut bx);
+
         if let Some(funclet) = helper.funclet(self) {
             bx.cleanup_ret(funclet, None);
         } else {
@@ -306,6 +308,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn codegen_return_terminator(&mut self, mut bx: Bx) {
+        self.emit_invariant_end_markers(&mut bx);
+
         // Call `va_end` if this is the definition of a C-variadic function.
         if self.fn_abi.c_variadic {
             // The `VaList` "spoofed" argument is just after all the real arguments.
@@ -1719,6 +1723,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.locals[index] = LocalRef::Operand(Some(op));
                 self.debug_introduce_local(bx, index);
             }
+        }
+    }
+}
+
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    fn emit_invariant_end_markers(&mut self, bx: &mut Bx) {
+        for invariant_value in self.invariant_values.iter().rev() {
+            bx.invariant_end(
+                invariant_value.marker_ptr,
+                invariant_value.value_ptr,
+                invariant_value.size,
+            )
         }
     }
 }

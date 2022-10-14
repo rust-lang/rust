@@ -1,9 +1,11 @@
 use crate::traits::*;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
+use rustc_middle::mir::{self, Mutability};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable, TypeVisitable};
-use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_span::DUMMY_SP;
+use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::abi::Size;
 
 use std::iter;
 
@@ -87,6 +89,11 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// Caller location propagated if this function has `#[track_caller]`.
     caller_location: Option<OperandRef<'tcx, Bx::Value>>,
+
+    /// Information about pointers that are known immutable for the entire execution of the
+    /// function. We need to keep this information around so that we can call `invariant_end()`
+    /// before exiting this function.
+    invariant_values: Vec<InvariantValue<Bx::Value>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -101,6 +108,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             value,
         )
     }
+}
+
+/// Information about pointers that are known immutable for the entire execution of the
+/// function. We need to keep this information around so that we can call `invariant_end()`
+/// before exiting this function.
+struct InvariantValue<V> {
+    marker_ptr: V,
+    value_ptr: V,
+    size: Size,
 }
 
 enum LocalRef<'tcx, V> {
@@ -178,6 +194,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         debug_context,
         per_local_var_debug_info: None,
         caller_location: None,
+        invariant_values: vec![],
     };
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut bx);
@@ -325,6 +342,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     PassMode::Direct(_) => {
                         let llarg = bx.get_param(llarg_idx);
                         llarg_idx += 1;
+                        emit_invariant_markers_for(bx, fx, arg, llarg);
                         return local(OperandRef::from_immediate_or_packed_pair(
                             bx, llarg, arg.layout,
                         ));
@@ -396,6 +414,23 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     args
+}
+
+fn emit_invariant_markers_for<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    fx: &mut FunctionCx<'a, 'tcx, Bx>,
+    arg: &ArgAbi<'tcx, Ty<'tcx>>,
+    value_ptr: Bx::Value,
+) {
+    if bx.sess().opts.unstable_opts.emit_invariant_markers {
+        if let ty::Ref(_, subty, Mutability::Not) = arg.layout.ty.kind() {
+            if subty.is_freeze(bx.tcx().at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
+                let size = bx.cx().layout_of(*subty).size;
+                let marker_ptr = bx.invariant_start(value_ptr, size);
+                fx.invariant_values.push(InvariantValue { marker_ptr, value_ptr, size });
+            }
+        }
+    }
 }
 
 mod analyze;

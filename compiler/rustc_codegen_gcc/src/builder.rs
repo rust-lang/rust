@@ -1235,6 +1235,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
+    fn invariant_start(&mut self, _value_ptr: RValue<'gcc>, _size: Size) -> RValue<'gcc> {
+        // TODO
+        unimplemented!()
+    }
+
+    fn invariant_end(&mut self, _marker_ptr: RValue<'gcc>, _value_ptr: RValue<'gcc>, _size: Size) {
+        // TODO
+        unimplemented!()
+    }
+
     fn call(
         &mut self,
         _typ: Type<'gcc>,
