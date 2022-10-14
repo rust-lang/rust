@@ -1,9 +1,6 @@
-//~ ERROR can't find crate for `profiler_builtins`
-// compile-flags: -Cinstrument-coverage
 // normalize-stderr-test "loaded from .*libcore-.*.rlib" -> "loaded from SYSROOT/libcore-*.rlib"
 
-#![no_core]
-#![feature(no_core, lang_items)]
+#![feature(lang_items)]
 #[lang="sized"]
 trait Sized { } //~ ERROR found duplicate lang item `sized`
 
