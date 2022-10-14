@@ -1156,6 +1156,17 @@ impl Handler {
         self.create_bug(bug).emit()
     }
 
+    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, Noted>) -> Noted {
+        self.create_note(note).emit()
+    }
+
+    pub fn create_note<'a>(
+        &'a self,
+        note: impl IntoDiagnostic<'a, Noted>,
+    ) -> DiagnosticBuilder<'a, Noted> {
+        note.into_diagnostic(self)
+    }
+
     fn emit_diag_at_span(
         &self,
         mut diag: Diagnostic,
