@@ -237,7 +237,6 @@ enum V {
         var: String,
     },
     B {
-    //~^ ERROR subdiagnostic kind not specified
         #[primary_span]
         span: Span,
         var: String,
