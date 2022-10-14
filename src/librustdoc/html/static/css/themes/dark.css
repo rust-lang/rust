@@ -36,6 +36,20 @@
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--search-color: #111;
+	--code-highlight-kw-color: #ab8ac1;
+	--code-highlight-kw-2-color: #769acb;
+	--code-highlight-lifetime-color: #d97f26;
+	--code-highlight-prelude-color: #769acb;
+	--code-highlight-prelude-val-color: #ee6868;
+	--code-highlight-number-color: #83a300;
+	--code-highlight-string-color: #83a300;
+	--code-highlight-literal-color: #ee6868;
+	--code-highlight-attribute-color: #ee6868;
+	--code-highlight-self-color: #ee6868;
+	--code-highlight-macro-color: #3e999f;
+	--code-highlight-question-mark-color: #ff9011;
+	--code-highlight-comment-color: #8d8d8b;
+	--code-highlight-doc-comment-color: #8ca375;
 }
 
 .slider {
@@ -62,9 +76,6 @@ input:focus + .slider {
 
 .content .item-info::before { color: #ccc; }
 
-pre.rust .comment { color: #8d8d8b; }
-pre.rust .doccomment { color: #8ca375; }
-
 body.source .example-wrap pre.rust a {
 	background: #333;
 }
@@ -85,18 +96,6 @@ details.rustdoc-toggle > summary::before {
 }
 
 .src-line-numbers :target { background-color: transparent; }
-
-/* Code highlighting */
-pre.rust .kw { color: #ab8ac1; }
-pre.rust .kw-2, pre.rust .prelude-ty { color: #769acb; }
-pre.rust .number, pre.rust .string { color: #83a300; }
-pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .attribute { color: #ee6868; }
-pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
-pre.rust .lifetime { color: #d97f26; }
-pre.rust .question-mark {
-	color: #ff9011;
-}
 
 pre.example-line-numbers {
 	border-color: #4a4949;
