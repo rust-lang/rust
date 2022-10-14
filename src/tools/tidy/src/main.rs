@@ -90,7 +90,9 @@ fn main() {
         check!(edition, &compiler_path);
         check!(edition, &library_path);
 
+        check!(alphabetical, &src_path);
         check!(alphabetical, &compiler_path);
+        check!(alphabetical, &library_path);
 
         let collected = {
             while handles.len() >= concurrency.get() {
