@@ -842,7 +842,6 @@ export function run(ctx: Ctx): Cmd {
         item.detail = "rerun";
         prevRunnable = item;
         const task = await createTask(item.runnable, ctx.config);
-        ctx.cargoWorkspaceRootForCurrentRun = item.cargoWorkspaceRoot;
         return await vscode.tasks.executeTask(task);
     };
 }
@@ -946,7 +945,4 @@ export function linkToCommand(ctx: Ctx): Cmd {
             await vscode.commands.executeCommand(command, ...args);
         }
     };
-}
-export function getCargoWorkspaceDir(ctx: Ctx): Cmd {
-    return async () => ctx.cargoWorkspaceRootForCurrentRun;
 }
