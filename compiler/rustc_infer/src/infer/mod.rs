@@ -1840,9 +1840,8 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
 }
 
 /// Replace `{integer}` with `i32` and `{float}` with `f64`.
-/// Used only for diagnostics.
-struct InferenceLiteralEraser<'tcx> {
-    tcx: TyCtxt<'tcx>,
+pub struct InferenceLiteralEraser<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> TypeFolder<'tcx> for InferenceLiteralEraser<'tcx> {

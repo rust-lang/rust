@@ -6,8 +6,12 @@ use crate::{
 use hir::{def_id::DefId, Body, HirId, HirIdMap};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_middle::hir::place::{PlaceBase, Projection, ProjectionKind};
+use rustc_infer::infer::InferenceLiteralEraser;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
+use rustc_middle::{
+    hir::place::{PlaceBase, Projection, ProjectionKind},
+    ty::{TypeFoldable, TypeVisitable},
+};
 
 pub(super) fn find_consumed_and_borrowed<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -196,13 +200,13 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
             return;
         }
 
+        // Regions are not needed to prove if something needs drop
+        let ty = self.tcx.erase_regions(assignee_place.place.base_ty);
+        // All int/float types are trivially drop, so those infer variables can be erased
+        let ty = ty.fold_with(&mut InferenceLiteralEraser { tcx: self.tcx });
         // If the type being assigned needs dropped, then the mutation counts as a borrow
         // since it is essentially doing `Drop::drop(&mut x); x = new_value;`.
-        //
-        // FIXME(drop-tracking): We need to be more responsible about inference
-        // variables here, since `needs_drop` is a "raw" type query, i.e. it
-        // basically requires types to have been fully resolved.
-        if assignee_place.place.base_ty.needs_drop(self.tcx, self.param_env) {
+        if ty.needs_infer() || ty.needs_drop(self.tcx, self.param_env) {
             self.places
                 .borrowed
                 .insert(TrackedValue::from_place_with_projections_allowed(assignee_place));

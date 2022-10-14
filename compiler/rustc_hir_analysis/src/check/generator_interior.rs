@@ -378,9 +378,11 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         let ty = self.fcx.typeck_results.borrow().expr_ty_adjusted_opt(expr);
         let may_need_drop = |ty: Ty<'tcx>| {
-            // Avoid ICEs in needs_drop.
             let ty = self.fcx.resolve_vars_if_possible(ty);
+            // Regions are not needed to prove if something needs drop
             let ty = self.fcx.tcx.erase_regions(ty);
+            // All int/float types are trivially drop, so those infer variables can be erased
+            let ty = self.fcx.resolve_numeric_literals_with_default(ty);
             if ty.needs_infer() {
                 return true;
             }
