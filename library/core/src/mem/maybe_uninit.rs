@@ -647,7 +647,7 @@ impl<T> MaybeUninit<T> {
     /// implements the [`Copy`] trait or not. When using multiple copies of the
     /// data (by calling `assume_init_read` multiple times, or first calling
     /// `assume_init_read` and then [`assume_init`]), it is your responsibility
-    /// to ensure that that data may indeed be duplicated.
+    /// to ensure that data may indeed be duplicated.
     ///
     /// [inv]: #initialization-invariant
     /// [`assume_init`]: MaybeUninit::assume_init

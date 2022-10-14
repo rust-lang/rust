@@ -17,7 +17,7 @@ pub struct Foo {
 
 // Going from an aggregate struct to another type currently requires Copy to
 // enable the TrustedRandomAccess specialization. Without it optimizations do not yet
-// reliably recognize the loops as noop for for repr(C) or non-Copy structs.
+// reliably recognize the loops as noop for repr(C) or non-Copy structs.
 #[derive(Copy, Clone)]
 pub struct Bar {
     a: u64,

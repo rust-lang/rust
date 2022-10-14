@@ -1514,7 +1514,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                     // as we currently do not supply the parent generics to anonymous constants
                     // but do allow `ConstKind::Param`.
                     //
-                    // `const_eval_poly` tries to to first substitute generic parameters which
+                    // `const_eval_poly` tries to first substitute generic parameters which
                     // results in an ICE while manually constructing the constant and using `eval`
                     // does nothing for `ConstKind::Param`.
                     let ct = ty::Const::from_anon_const(cx.tcx, def_id);

@@ -72,7 +72,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     //
     // - Unconstrained ints are replaced with `i32`.
     //
-    // - Unconstrained floats are replaced with with `f64`.
+    // - Unconstrained floats are replaced with `f64`.
     //
     // - Non-numerics may get replaced with `()` or `!`, depending on
     //   how they were categorized by `calculate_diverging_fallback`

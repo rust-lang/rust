@@ -364,8 +364,23 @@ pub trait TraitWithNoDocblocks {
 pub struct TypeWithNoDocblocks;
 
 impl TypeWithNoDocblocks {
+    fn x() -> Option<Self> {
+        Some(Self)
+    }
+    fn y() -> Option<u32> {
+        // code comment
+        let t = Self::x()?;
+        Some(0)
+    }
+}
+
+impl TypeWithNoDocblocks {
     pub fn first_fn(&self) {}
-    pub fn second_fn(&self) {}
+    pub fn second_fn<'a>(&'a self) {
+        let x = 12;
+        let y = "a";
+        let z = false;
+    }
 }
 
 pub unsafe fn unsafe_fn() {}

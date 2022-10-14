@@ -210,7 +210,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
     }
 
     /// For an expression with an uninhabited return type (e.g. a function that returns !),
-    /// this adds a self edge to to the CFG to model the fact that the function does not
+    /// this adds a self edge to the CFG to model the fact that the function does not
     /// return.
     fn handle_uninhabited_return(&mut self, expr: &Expr<'tcx>) {
         let ty = self.typeck_results.expr_ty(expr);

@@ -13,8 +13,7 @@
 //!
 //! There are three groups of traits involved in each traversal.
 //! - `TypeFoldable`. This is implemented once for many types, including:
-//!   - Types of interest, for which the the methods delegate to the
-//!     folder.
+//!   - Types of interest, for which the methods delegate to the folder.
 //!   - All other types, including generic containers like `Vec` and `Option`.
 //!     It defines a "skeleton" of how they should be folded.
 //! - `TypeSuperFoldable`. This is implemented only for each type of interest,

@@ -76,7 +76,7 @@ pub fn compute_float<F: RawFloat>(q: i64, mut w: u64) -> BiasedFp {
         return BiasedFp { f: mantissa, e: power2 };
     }
     // Need to handle rounding ties. Normally, we need to round up,
-    // but if we fall right in between and and we have an even basis, we
+    // but if we fall right in between and we have an even basis, we
     // need to round down.
     //
     // This will only occur if:

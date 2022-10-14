@@ -537,7 +537,7 @@ pub(crate) fn link(
     mut modules: Vec<ModuleCodegen<ModuleLlvm>>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     use super::lto::{Linker, ModuleBuffer};
-    // Sort the modules by name to ensure to ensure deterministic behavior.
+    // Sort the modules by name to ensure deterministic behavior.
     modules.sort_by(|a, b| a.name.cmp(&b.name));
     let (first, elements) =
         modules.split_first().expect("Bug! modules must contain at least one module.");
