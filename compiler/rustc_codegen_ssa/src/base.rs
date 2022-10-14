@@ -270,8 +270,11 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     dst_ty: Ty<'tcx>,
     old_info: Option<Bx::Value>,
 ) -> (Bx::Value, Bx::Value) {
-    debug!("unsize_ptr: {:?} => {:?}", src_ty_and_layout.ty, dst_ty);
-    assert!(matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)));
+    debug!("cast_to_dyn_star: {:?} => {:?}", src_ty_and_layout.ty, dst_ty);
+    assert!(
+        matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
+        "destination type must be a dyn*"
+    );
     // FIXME(dyn-star): this is probably not the best way to check if this is
     // a pointer, and really we should ensure that the value is a suitable
     // pointer earlier in the compilation process.
