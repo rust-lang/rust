@@ -29,7 +29,8 @@ fn is_close_bracket(c: char) -> bool {
     matches!(c, ')' | ']' | '}')
 }
 
-const START_COMMENT: &str = "// tidy-alphabetical-start";
+// Don't let tidy check this here :D
+const START_COMMENT: &str = concat!("// tidy-alphabetical", "-start");
 const END_COMMENT: &str = "// tidy-alphabetical-end";
 
 fn check_section<'a>(
@@ -47,7 +48,7 @@ fn check_section<'a>(
         if line.contains(START_COMMENT) {
             tidy_error!(
                 bad,
-                "{file}:{} found `// tidy-alphabetical-start` expecting `// tidy-alphabetical-end`",
+                "{file}:{} found `{START_COMMENT}` expecting `{END_COMMENT}`",
                 line_idx
             )
         }
@@ -102,10 +103,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             if line.contains(START_COMMENT) {
                 check_section(file, &mut lines, bad);
                 if lines.peek().is_none() {
-                    tidy_error!(
-                        bad,
-                        "{file}: reached end of file expecting `// tidy-alphabetical-end`"
-                    )
+                    tidy_error!(bad, "{file}: reached end of file expecting `{END_COMMENT}`")
                 }
             }
         }
