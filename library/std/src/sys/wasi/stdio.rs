@@ -4,7 +4,7 @@ use super::fd::WasiFd;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
 use crate::os::raw;
-use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd};
+use crate::os::wasi::io::{AsRawFd, FromRawFd};
 
 pub struct Stdin;
 pub struct Stdout;
@@ -20,22 +20,6 @@ impl AsRawFd for Stdin {
     #[inline]
     fn as_raw_fd(&self) -> raw::c_int {
         0
-    }
-}
-
-impl AsFd for Stdin {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(0) }
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-impl<'a> AsFd for io::StdinLock<'a> {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        // SAFETY: user code should not close stdin out from under the standard library
-        unsafe { BorrowedFd::borrow_raw(0) }
     }
 }
 
@@ -67,22 +51,6 @@ impl AsRawFd for Stdout {
     }
 }
 
-impl AsFd for Stdout {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(1) }
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-impl<'a> AsFd for io::StdoutLock<'a> {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        // SAFETY: user code should not close stdout out from under the standard library
-        unsafe { BorrowedFd::borrow_raw(1) }
-    }
-}
-
 impl io::Write for Stdout {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         self.write_vectored(&[IoSlice::new(data)])
@@ -111,22 +79,6 @@ impl AsRawFd for Stderr {
     #[inline]
     fn as_raw_fd(&self) -> raw::c_int {
         2
-    }
-}
-
-impl AsFd for Stderr {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(2) }
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-impl<'a> AsFd for io::StderrLock<'a> {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        // SAFETY: user code should not close stderr out from under the standard library
-        unsafe { BorrowedFd::borrow_raw(2) }
     }
 }
 
