@@ -1279,7 +1279,7 @@ macro_rules! try_from_secs {
         const MANT_MASK: $bits_ty = (1 << $mant_bits) - 1;
         const EXP_MASK: $bits_ty = (1 << $exp_bits) - 1;
 
-        if $secs.is_sign_negative() {
+        if $secs < 0.0 {
             return Err(FromFloatSecsError { kind: FromFloatSecsErrorKind::Negative });
         }
 
