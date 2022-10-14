@@ -75,6 +75,11 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
 
+        "--asm-tests")
+            funcs+=(asm_tests)
+            shift
+            ;;
+
         "--extended-tests")
             funcs+=(extended_sysroot_tests)
             shift
@@ -197,6 +202,40 @@ function std_tests() {
     $RUSTC example/mod_bench.rs --crate-type bin --target $TARGET_TRIPLE
 }
 
+function setup_rustc() {
+    rust_toolchain=$(cat rust-toolchain | grep channel | sed 's/channel = "\(.*\)"/\1/')
+
+    git clone https://github.com/rust-lang/rust.git || true
+    cd rust
+    git fetch
+    git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(')
+    export RUSTFLAGS=
+
+    rm config.toml || true
+
+    cat > config.toml <<EOF
+[rust]
+codegen-backends = []
+deny-warnings = false
+
+[build]
+cargo = "$(which cargo)"
+local-rebuild = true
+rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
+EOF
+
+    rustc -V | cut -d' ' -f3 | tr -d '('
+    git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(') src/test
+}
+
+function asm_tests() {
+    setup_rustc
+
+    echo "[TEST] rustc test suite"
+    RUSTC_ARGS="-Zpanic-abort-tests -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
+    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 src/test/assembly/asm --rustc-args "$RUSTC_ARGS"
+}
+
 # FIXME(antoyo): linker gives multiple definitions error on Linux
 #echo "[BUILD] sysroot in release mode"
 #./build_sysroot/build_sysroot.sh --release
@@ -288,29 +327,7 @@ function test_rustc() {
     echo
     echo "[TEST] rust-lang/rust"
 
-    rust_toolchain=$(cat rust-toolchain | grep channel | sed 's/channel = "\(.*\)"/\1/')
-
-    git clone https://github.com/rust-lang/rust.git || true
-    cd rust
-    git fetch
-    git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(')
-    export RUSTFLAGS=
-
-    rm config.toml || true
-
-    cat > config.toml <<EOF
-[rust]
-codegen-backends = []
-deny-warnings = false
-
-[build]
-cargo = "$(which cargo)"
-local-rebuild = true
-rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
-EOF
-
-    rustc -V | cut -d' ' -f3 | tr -d '('
-    git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(') src/test
+    setup_rustc
 
     for test in $(rg -i --files-with-matches "//(\[\w+\])?~|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" src/test/ui); do
       rm $test
@@ -380,6 +397,7 @@ function all() {
     mini_tests
     build_sysroot
     std_tests
+    asm_tests
     test_libcore
     extended_sysroot_tests
     test_rustc
