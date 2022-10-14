@@ -2540,7 +2540,7 @@ impl SubstParam {
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(Crate, 72); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 48);
@@ -2550,4 +2550,5 @@ mod size_asserts {
     static_assert_size!(ItemKind, 88);
     static_assert_size!(PathSegment, 40);
     static_assert_size!(Type, 48);
+    // tidy-alphabetical-end
 }
