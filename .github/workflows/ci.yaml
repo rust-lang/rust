@@ -43,7 +43,7 @@ jobs:
           rustup component add rustfmt rust-src
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+        uses: Swatinem/rust-cache@76686c56f2b581d1bb5bda44b51f7e24bd9b8b8e
 
       - name: Compile
         run: cargo test --no-run --locked
@@ -73,7 +73,7 @@ jobs:
           rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+        uses: Swatinem/rust-cache@76686c56f2b581d1bb5bda44b51f7e24bd9b8b8e
 
       - name: Check
         run: |
