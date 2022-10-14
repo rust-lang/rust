@@ -490,4 +490,23 @@ unsafe impl CrateRoot for () {}
 // SAFETY: ok
 unsafe impl CrateRoot for (i32) {}
 
+fn issue_9142() {
+    // SAFETY: ok
+    let _ =
+        // we need this comment to avoid rustfmt putting
+        // it all on one line
+        unsafe {};
+
+    // SAFETY: this is more than one level away, so it should warn
+    let _ = {
+        if unsafe { true } {
+            todo!();
+        } else {
+            let bar = unsafe {};
+            todo!();
+            bar
+        }
+    };
+}
+
 fn main() {}
