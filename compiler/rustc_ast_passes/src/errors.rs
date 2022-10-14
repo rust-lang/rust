@@ -16,23 +16,6 @@ pub struct ForbiddenLet {
     pub(crate) reason: ForbiddenLetReason,
 }
 
-impl AddToDiagnostic for ForbiddenLetReason {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        match self {
-            Self::GenericForbidden => {}
-            Self::NotSupportedOr(span) => {
-                diag.span_note(span, fluent::ast_passes::not_supported_or);
-            }
-            Self::NotSupportedParentheses(span) => {
-                diag.span_note(span, fluent::ast_passes::not_supported_parentheses);
-            }
-        }
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_let_stable)]
 #[note]
