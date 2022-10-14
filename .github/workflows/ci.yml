@@ -192,7 +192,8 @@ jobs:
         env:
           WASIX_NO_UPDATE_REPOS: '1'
           WASIX_COMPONENTS: rust
-          WASIX_RUST_HOST: x86_64-pc-windows-gnu
+          # WASIX_RUST_HOST: x86_64-pc-windows-gnu
+          WASIX_RUST_HOST: x86_64-pc-windows-msvc
         run: |
           cd cargo-wasix
           # NOTE: must unset GITHUB_ACTIONS env var, because Rst bootstrap checks for it.
@@ -203,7 +204,7 @@ jobs:
         uses: actions/upload-artifact@v3
         if: matrix.os == 'windows-latest'
         with:
-          name: rust-toolchain-x86_64-pc-windows-gnu
+          name: rust-toolchain-x86_64-pc-windows-msvc
           path: |
-            wasix-rust/build/x86_64-pc-windows-gnu/stage2
-            !wasix-rust/build/x86_64-pc-windows-gnu/stage2/lib/rustlib/src
+            wasix-rust/build/x86_64-pc-windows-msvc/stage2
+            !wasix-rust/build/x86_64-pc-windows-msvc/stage2/lib/rustlib/src
