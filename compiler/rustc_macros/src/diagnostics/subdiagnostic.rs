@@ -5,9 +5,9 @@ use crate::diagnostics::error::{
     DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    build_field_mapping, new_code_ident, report_error_if_not_applied_to_applicability,
-    report_error_if_not_applied_to_span, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap, SetOnce,
-    SpannedOption, SubdiagnosticKind,
+    build_field_mapping, is_doc_comment, new_code_ident,
+    report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span, FieldInfo,
+    FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -43,6 +43,11 @@ impl SubdiagnosticDeriveBuilder {
 
             if matches!(ast.data, syn::Data::Enum(..)) {
                 for attr in &ast.attrs {
+                    // Always allow documentation comments.
+                    if is_doc_comment(attr) {
+                        continue;
+                    }
+
                     span_err(
                         attr.span().unwrap(),
                         "unsupported type attribute for subdiagnostic enum",
@@ -173,7 +178,11 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let mut kind_slugs = vec![];
 
         for attr in self.variant.ast().attrs {
-            let (kind, slug) = SubdiagnosticKind::from_attr(attr, self)?;
+            let Some((kind, slug)) = SubdiagnosticKind::from_attr(attr, self)? else {
+                // Some attributes aren't errors - like documentation comments - but also aren't
+                // subdiagnostics.
+                continue;
+            };
 
             let Some(slug) = slug else {
                 let name = attr.path.segments.last().unwrap().ident.to_string();
@@ -227,6 +236,11 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         ast.attrs
             .iter()
             .map(|attr| {
+                // Always allow documentation comments.
+                if is_doc_comment(attr) {
+                    return quote! {};
+                }
+
                 let info = FieldInfo {
                     binding,
                     ty: inner_ty.inner_type().unwrap_or(&ast.ty),

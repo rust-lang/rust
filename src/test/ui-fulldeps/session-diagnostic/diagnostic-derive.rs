@@ -749,3 +749,12 @@ struct SubdiagnosticEagerSuggestion {
     #[subdiagnostic(eager)]
     sub: SubdiagnosticWithSuggestion,
 }
+
+/// with a doc comment on the type..
+#[derive(Diagnostic)]
+#[diag(compiletest::example, code = "E0123")]
+struct WithDocComment {
+    /// ..and the field
+    #[primary_span]
+    span: Span,
+}
