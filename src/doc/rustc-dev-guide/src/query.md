@@ -180,19 +180,13 @@ the big macro invocation in
 
 ```rust,ignore
 rustc_queries! {
-    Other {
-        /// Records the type of every item.
-        query type_of(key: DefId) -> Ty<'tcx> {
-            cache { key.is_local() }
-        }
+    /// Records the type of every item.
+    query type_of(key: DefId) -> Ty<'tcx> {
+        cache { key.is_local() }
     }
-
     ...
 }
 ```
-
-Queries are grouped into categories (`Other`, `Codegen`, `TypeChecking`, etc.).
-Each group contains one or more queries.
 
 A query definition has the following form:
 
@@ -260,26 +254,16 @@ impl<'tcx> QueryConfig for type_of<'tcx> {
 }
 ```
 
-There is an additional trait that you may wish to implement called
-[`self::config::QueryDescription`][QueryDescription]. This trait is
-used during cycle errors to give a "human readable" name for the query,
-so that we can summarize what was happening when the cycle occurred.
-Implementing this trait is optional if the query key is `DefId`, but
-if you *don't* implement it, you get a pretty generic error ("processing `foo`...").
-You can put new impls into the `config` module. They look something like this:
+There is an additional trait with more methods called
+[`self::config::QueryDescription`][QueryDescription]. This trait contains a few
+extra methods which are used by the query system.
 
 [QueryConfig]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_system/query/config/trait.QueryConfig.html
 [QueryDescription]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_system/query/config/trait.QueryDescription.html
 
-```rust,ignore
-impl<'tcx> QueryDescription for queries::type_of<'tcx> {
-    fn describe(tcx: TyCtxt, key: DefId) -> String {
-        format!("computing the type of `{}`", tcx.def_path_str(key))
-    }
-}
-```
 
-Another option is to add `desc` modifier:
+Queries also have a description, which is specified using the `desc` modifier.
+This description is shown to the user when cycle errors happen.
 
 ```rust,ignore
 rustc_queries! {
@@ -291,8 +275,6 @@ rustc_queries! {
     }
 }
 ```
-
-`rustc_queries` macro will generate an appropriate `impl` automatically.
 
 ## External links
 
