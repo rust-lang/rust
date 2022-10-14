@@ -1,4 +1,5 @@
 // run-pass
+// compile-flags: -Z validate-mir
 #![feature(let_chains)]
 
 use std::cell::RefCell;
