@@ -21,14 +21,15 @@ LL |     type Quux = u32;
 LL |     type Quux = u32;
    |     ^^^^^^^^^^^^^^^^ duplicate definition
 
-error[E0201]: duplicate definitions with name `bar`:
+error[E0592]: duplicate definitions with name `bar`
   --> $DIR/E0201.rs:5:5
    |
 LL |     fn bar(&self) -> bool { self.0 > 5 }
-   |     --------------------- previous definition of `bar` here
+   |     --------------------- other definition for `bar`
 LL |     fn bar() {}
-   |     ^^^^^^^^ duplicate definition
+   |     ^^^^^^^^ duplicate definitions for `bar`
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0201`.
+Some errors have detailed explanations: E0201, E0592.
+For more information about an error, try `rustc --explain E0201`.
