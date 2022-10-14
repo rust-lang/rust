@@ -419,6 +419,7 @@ dependencies = [
  "rand",
  "regex",
  "rustc-workspace-hack",
+ "rustc_version",
  "shell-escape",
  "smallvec",
  "ui_test",
