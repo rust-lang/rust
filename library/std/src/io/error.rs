@@ -387,7 +387,7 @@ pub enum ErrorKind {
 impl ErrorKind {
     pub(crate) fn as_str(&self) -> &'static str {
         use ErrorKind::*;
-        // Strictly alphabetical, please.  (Sadly rustfmt cannot do this yet.)
+        // tidy-alphabetical-start
         match *self {
             AddrInUse => "address in use",
             AddrNotAvailable => "address not available",
@@ -431,6 +431,7 @@ impl ErrorKind {
             WouldBlock => "operation would block",
             WriteZero => "write zero",
         }
+        // tidy-alphabetical-end
     }
 }
 
