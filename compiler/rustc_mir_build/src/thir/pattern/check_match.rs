@@ -370,8 +370,12 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
             // Check if the let source is while, for there is no alternative place to put a prefix,
             // and we shouldn't lint.
+            // For let guards inside a match, prefixes might use bindings of the match pattern,
+            // so can't always be moved out.
+            // FIXME: Add checking whether the bindings are actually used in the prefix,
+            // and lint if they are not.
             let let_source = let_source_parent(self.tcx, top, None);
-            if !matches!(let_source, LetSource::WhileLet) {
+            if !matches!(let_source, LetSource::WhileLet | LetSource::IfLetGuard) {
                 // Emit the lint
                 let prefix = &chain_refutabilities[..until];
                 lint_affix(prefix, "leading", "outside of the construct");
@@ -1151,10 +1155,14 @@ fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> L
 
     let parent_parent = hir.get_parent_node(parent);
     let parent_parent_node = hir.get(parent_parent);
-    if let hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), span, .. }) =
-        parent_parent_node
-    {
-        return LetSource::LetElse(*span);
+    match parent_parent_node {
+        hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), span, .. }) => {
+            return LetSource::LetElse(*span);
+        }
+        hir::Node::Arm(hir::Arm { guard: Some(hir::Guard::If(_)), .. }) => {
+            return LetSource::IfLetGuard;
+        }
+        _ => {}
     }
 
     let parent_parent_parent = hir.get_parent_node(parent_parent);
