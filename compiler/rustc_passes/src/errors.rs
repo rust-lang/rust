@@ -272,6 +272,10 @@ pub struct DocTestUnknown {
 pub struct DocTestTakesList;
 
 #[derive(LintDiagnostic)]
+#[diag(passes::doc_cfg_hide_takes_list)]
+pub struct DocCfgHideTakesList;
+
+#[derive(LintDiagnostic)]
 #[diag(passes::doc_primitive)]
 pub struct DocPrimitive;
 

@@ -934,6 +934,22 @@ impl CheckAttrVisitor<'_> {
         is_valid
     }
 
+    /// Check that the `#![doc(cfg_hide(...))]` attribute only contains a list of attributes.
+    /// Returns `true` if valid.
+    fn check_doc_cfg_hide(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
+        if meta.meta_item_list().is_some() {
+            true
+        } else {
+            self.tcx.emit_spanned_lint(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                errors::DocCfgHideTakesList,
+            );
+            false
+        }
+    }
+
     /// Runs various checks on `#[doc]` attributes. Returns `true` if valid.
     ///
     /// `specified_inline` should be initialized to `None` and kept for the scope
@@ -983,6 +999,13 @@ impl CheckAttrVisitor<'_> {
                         | sym::html_no_source
                         | sym::test
                             if !self.check_attr_crate_level(attr, meta, hir_id) =>
+                        {
+                            is_valid = false;
+                        }
+
+                        sym::cfg_hide
+                            if !self.check_attr_crate_level(attr, meta, hir_id)
+                                || !self.check_doc_cfg_hide(meta, hir_id) =>
                         {
                             is_valid = false;
                         }

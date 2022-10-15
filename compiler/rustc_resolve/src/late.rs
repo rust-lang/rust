@@ -224,22 +224,14 @@ enum LifetimeUseSet {
 
 #[derive(Copy, Clone, Debug)]
 enum LifetimeRibKind {
-    /// This rib acts as a barrier to forbid reference to lifetimes of a parent item.
-    Item,
-
+    // -- Ribs introducing named lifetimes
+    //
     /// This rib declares generic parameters.
+    /// Only for this kind the `LifetimeRib::bindings` field can be non-empty.
     Generics { binder: NodeId, span: Span, kind: LifetimeBinderKind },
 
-    /// FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
-    /// generics. We are disallowing this until we can decide on how we want to handle non-'static
-    /// lifetimes in const generics. See issue #74052 for discussion.
-    ConstGeneric,
-
-    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
-    /// This function will emit an error if `generic_const_exprs` is not enabled, the body identified by
-    /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
-    AnonConst,
-
+    // -- Ribs introducing unnamed lifetimes
+    //
     /// Create a new anonymous lifetime parameter and reference it.
     ///
     /// If `report_in_path`, report an error when encountering lifetime elision in a path:
@@ -256,16 +248,31 @@ enum LifetimeRibKind {
     /// ```
     AnonymousCreateParameter { binder: NodeId, report_in_path: bool },
 
+    /// Replace all anonymous lifetimes by provided lifetime.
+    Elided(LifetimeRes),
+
+    // -- Barrier ribs that stop lifetime lookup, or continue it but produce an error later.
+    //
     /// Give a hard error when either `&` or `'_` is written. Used to
     /// rule out things like `where T: Foo<'_>`. Does not imply an
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
     AnonymousReportError,
 
-    /// Replace all anonymous lifetimes by provided lifetime.
-    Elided(LifetimeRes),
-
     /// Signal we cannot find which should be the anonymous lifetime.
     ElisionFailure,
+
+    /// FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
+    /// generics. We are disallowing this until we can decide on how we want to handle non-'static
+    /// lifetimes in const generics. See issue #74052 for discussion.
+    ConstGeneric,
+
+    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
+    /// This function will emit an error if `generic_const_exprs` is not enabled, the body
+    /// identified by `body_id` is an anonymous constant and `lifetime_ref` is non-static.
+    AnonConst,
+
+    /// This rib acts as a barrier to forbid reference to lifetimes of a parent item.
+    Item,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -748,35 +755,31 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         match foreign_item.kind {
             ForeignItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
-                self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
-                    this.with_generic_param_rib(
-                        &generics.params,
-                        ItemRibKind(HasGenericParams::Yes(generics.span)),
-                        LifetimeRibKind::Generics {
-                            binder: foreign_item.id,
-                            kind: LifetimeBinderKind::Item,
-                            span: generics.span,
-                        },
-                        |this| visit::walk_foreign_item(this, foreign_item),
-                    )
-                });
+                self.with_generic_param_rib(
+                    &generics.params,
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
+                    LifetimeRibKind::Generics {
+                        binder: foreign_item.id,
+                        kind: LifetimeBinderKind::Item,
+                        span: generics.span,
+                    },
+                    |this| visit::walk_foreign_item(this, foreign_item),
+                );
             }
             ForeignItemKind::Fn(box Fn { ref generics, .. }) => {
-                self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
-                    this.with_generic_param_rib(
-                        &generics.params,
-                        ItemRibKind(HasGenericParams::Yes(generics.span)),
-                        LifetimeRibKind::Generics {
-                            binder: foreign_item.id,
-                            kind: LifetimeBinderKind::Function,
-                            span: generics.span,
-                        },
-                        |this| visit::walk_foreign_item(this, foreign_item),
-                    )
-                });
+                self.with_generic_param_rib(
+                    &generics.params,
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
+                    LifetimeRibKind::Generics {
+                        binder: foreign_item.id,
+                        kind: LifetimeBinderKind::Function,
+                        span: generics.span,
+                    },
+                    |this| visit::walk_foreign_item(this, foreign_item),
+                );
             }
             ForeignItemKind::Static(..) => {
-                self.with_item_rib(|this| {
+                self.with_static_rib(|this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
             }
@@ -1391,9 +1394,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             return self.resolve_anonymous_lifetime(lifetime, false);
         }
 
-        let mut indices = (0..self.lifetime_ribs.len()).rev();
-        for i in &mut indices {
-            let rib = &self.lifetime_ribs[i];
+        let mut lifetime_rib_iter = self.lifetime_ribs.iter().rev();
+        while let Some(rib) = lifetime_rib_iter.next() {
             let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some(&(_, res)) = rib.bindings.get(&normalized_ident) {
                 self.record_lifetime_res(lifetime.id, res, LifetimeElisionCandidate::Named);
@@ -1423,9 +1425,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     } else {
                                         LifetimeUseSet::Many
                                     }),
-                                    LifetimeRibKind::Generics { .. }
-                                    | LifetimeRibKind::ConstGeneric
-                                    | LifetimeRibKind::AnonConst => None,
+                                    LifetimeRibKind::Generics { .. } => None,
+                                    LifetimeRibKind::ConstGeneric | LifetimeRibKind::AnonConst => {
+                                        span_bug!(ident.span, "unexpected rib kind: {:?}", rib.kind)
+                                    }
                                 })
                                 .unwrap_or(LifetimeUseSet::Many);
                             debug!(?use_ctxt, ?use_set);
@@ -1460,13 +1463,16 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     );
                     return;
                 }
-                _ => {}
+                LifetimeRibKind::AnonymousCreateParameter { .. }
+                | LifetimeRibKind::Elided(_)
+                | LifetimeRibKind::Generics { .. }
+                | LifetimeRibKind::ElisionFailure
+                | LifetimeRibKind::AnonymousReportError => {}
             }
         }
 
         let mut outer_res = None;
-        for i in indices {
-            let rib = &self.lifetime_ribs[i];
+        for rib in lifetime_rib_iter {
             let normalized_ident = ident.normalize_to_macros_2_0();
             if let Some((&outer, _)) = rib.bindings.get_key_value(&normalized_ident) {
                 outer_res = Some(outer);
@@ -1493,8 +1499,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             count: 1,
         };
         let elision_candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
-        for i in (0..self.lifetime_ribs.len()).rev() {
-            let rib = &mut self.lifetime_ribs[i];
+        for rib in self.lifetime_ribs.iter().rev() {
             debug!(?rib.kind);
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
@@ -1534,9 +1539,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     return;
                 }
                 LifetimeRibKind::Item => break,
-                LifetimeRibKind::Generics { .. }
-                | LifetimeRibKind::ConstGeneric
-                | LifetimeRibKind::AnonConst => {}
+                LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstGeneric => {}
+                LifetimeRibKind::AnonConst => {
+                    // There is always an `Elided(LifetimeRes::Static)` inside an `AnonConst`.
+                    span_bug!(lifetime.ident.span, "unexpected rib kind: {:?}", rib.kind)
+                }
             }
         }
         self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
@@ -1751,9 +1758,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
                         break;
                     }
-                    LifetimeRibKind::Generics { .. }
-                    | LifetimeRibKind::ConstGeneric
-                    | LifetimeRibKind::AnonConst => {}
+                    LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstGeneric => {}
+                    LifetimeRibKind::AnonConst => {
+                        // There is always an `Elided(LifetimeRes::Static)` inside an `AnonConst`.
+                        span_bug!(elided_lifetime_span, "unexpected rib kind: {:?}", rib.kind)
+                    }
                 }
             }
 
@@ -2204,7 +2213,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(_, ref ty, ref expr) => {
-                self.with_item_rib(|this| {
+                self.with_static_rib(|this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
                     });
@@ -2399,11 +2408,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.label_ribs.pop();
     }
 
-    fn with_item_rib(&mut self, f: impl FnOnce(&mut Self)) {
+    fn with_static_rib(&mut self, f: impl FnOnce(&mut Self)) {
         let kind = ItemRibKind(HasGenericParams::No);
-        self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
-            this.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
-        })
+        self.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
     }
 
     // HACK(min_const_generics,const_evaluatable_unchecked): We
@@ -3938,7 +3945,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         fn_id: NodeId,
         async_node_id: Option<(NodeId, Span)>,
     ) {
-        if let Some((async_node_id, _)) = async_node_id {
+        if let Some((async_node_id, span)) = async_node_id {
             let mut extra_lifetime_params =
                 self.r.extra_lifetime_params_map.get(&fn_id).cloned().unwrap_or_default();
             for rib in self.lifetime_ribs.iter().rev() {
@@ -3952,7 +3959,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             extra_lifetime_params.extend(earlier_fresh);
                         }
                     }
-                    _ => {}
+                    LifetimeRibKind::Generics { .. } => {}
+                    _ => {
+                        // We are in a function definition. We should only find `Generics`
+                        // and `AnonymousCreateParameter` inside the innermost `Item`.
+                        span_bug!(span, "unexpected rib kind: {:?}", rib.kind)
+                    }
                 }
             }
             self.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
