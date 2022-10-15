@@ -28,7 +28,7 @@ profile = { path = "../profile", version = "0.0.0" }
 [dev-dependencies]
 rayon = "1.5.3"
 expect-test = "1.4.0"
-proc-macro2 = "1.0.39"
+proc-macro2 = "1.0.47"
 quote = "1.0.20"
 ungrammar = "1.16.1"
 

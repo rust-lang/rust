@@ -4420,10 +4420,17 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "rustfix"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ecd2853d9e26988467753bd9912c3a126f642d05d229a4b53f5752ee36c56481"
+=======
+name = "proc-macro2"
+version = "1.0.47"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ea3d908b0e36316caf9e9e2c4625cdde190a7e6f440d794667ed17a1855e725"
+>>>>>>> Bump proc-macro2
 dependencies = [
  "anyhow",
  "log",
