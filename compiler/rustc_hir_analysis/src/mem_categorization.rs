@@ -292,7 +292,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
             adjustment::Adjust::NeverToAny
             | adjustment::Adjust::Pointer(_)
-            | adjustment::Adjust::Borrow(_) => {
+            | adjustment::Adjust::Borrow(_)
+            | adjustment::Adjust::DynStar => {
                 // Result is an rvalue.
                 Ok(self.cat_rvalue(expr.hir_id, expr.span, target))
             }
