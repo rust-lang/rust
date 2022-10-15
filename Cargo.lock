@@ -973,10 +973,17 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "crossbeam-deque"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6455c0ca19f0d2fbf751b908d5c55c1f5cbc65e03c4225427254b46890bdde1e"
+=======
+name = "home"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "747309b4b440c06d57b0b25f2aee03ee9b5e5397d288c60e21fc709bb98a7408"
+>>>>>>> Bump home
 dependencies = [
  "cfg-if 1.0.0",
  "crossbeam-epoch",
