@@ -1,4 +1,4 @@
-use rustdoc_json_types::{Item, ItemEnum, ItemKind, ItemSummary};
+use rustdoc_json_types::{ExternalItem, Item, ItemEnum, ItemKind};
 
 /// A univeral way to represent an [`ItemEnum`] or [`ItemKind`]
 #[derive(Debug)]
@@ -150,7 +150,7 @@ impl Kind {
         }
     }
 
-    pub fn from_summary(s: &ItemSummary) -> Self {
+    pub fn from_summary(s: &ExternalItem) -> Self {
         use Kind::*;
         match s.kind {
             ItemKind::AssocConst => AssocConst,

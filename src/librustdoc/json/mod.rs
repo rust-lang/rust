@@ -292,15 +292,14 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
             index: index.into_iter().collect(),
-            paths: self
+            external_index: self
                 .cache
-                .paths
+                .external_paths
                 .iter()
-                .chain(&self.cache.external_paths)
                 .map(|(&k, &(ref path, kind))| {
                     (
                         from_item_id(k.into(), self.tcx),
-                        types::ItemSummary {
+                        types::ExternalItem {
                             crate_id: k.krate.as_u32(),
                             path: path.iter().map(|s| s.to_string()).collect(),
                             kind: kind.into_tcx(self.tcx),

@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 22;
+pub const FORMAT_VERSION: u32 = 23;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -25,8 +25,8 @@ pub struct Crate {
     /// A collection of all items in the local crate as well as some external traits and their
     /// items that are referenced locally.
     pub index: HashMap<Id, Item>,
-    /// Maps IDs to fully qualified paths and other info helpful for generating links.
-    pub paths: HashMap<Id, ItemSummary>,
+    /// Maps external IDs to basic informations.
+    pub external_index: HashMap<Id, ExternalItem>,
     /// Maps `crate_id` of items to a crate name and html_root_url if it exists.
     pub external_crates: HashMap<u32, ExternalCrate>,
     /// A single version number to be used in the future when making backwards incompatible changes
@@ -45,7 +45,7 @@ pub struct ExternalCrate {
 /// question, or can be used by a tool that takes the json output of multiple crates to find
 /// the actual item definition with all the relevant info.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ItemSummary {
+pub struct ExternalItem {
     /// Can be used to look up the name and html_root_url of the crate this item came from in the
     /// `external_crates` map.
     pub crate_id: u32,
@@ -56,6 +56,10 @@ pub struct ItemSummary {
     /// defined. Currenty, this is the full path to where the item was defined. Eg
     /// [`String`] is currently `["alloc", "string", "String"]` and [`HashMap`] is
     /// `["std", "collections", "hash", "map", "HashMap"]`, but this is subject to change.
+    ///
+    /// Be aware that this field maybe be subject to change (like complete removal) in the
+    /// future, see issue <https://github.com/rust-lang/rust/issues/93522> and
+    /// <https://github.com/rust-lang/rust/pull/103085> for more information.
     pub path: Vec<String>,
     /// Whether this item is a struct, trait, macro, etc.
     pub kind: ItemKind,

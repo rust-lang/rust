@@ -90,7 +90,7 @@ impl<'a> Validator<'a> {
                 }
             }
         } else {
-            assert!(self.krate.paths.contains_key(id));
+            assert!(self.krate.external_index.contains_key(id));
         }
     }
 
@@ -424,7 +424,7 @@ impl<'a> Validator<'a> {
     fn kind_of(&mut self, id: &Id) -> Option<Kind> {
         if let Some(item) = self.krate.index.get(id) {
             Some(Kind::from_item(item))
-        } else if let Some(summary) = self.krate.paths.get(id) {
+        } else if let Some(summary) = self.krate.external_index.get(id) {
             Some(Kind::from_summary(summary))
         } else {
             None
