@@ -233,15 +233,15 @@ infer_actual_impl_expl_expected_other_nothing = {$leading_ellipsis ->
     *[false] {""}
 }`{$ty_or_sig}` must implement `{$trait_path}`
 
-infer_actual_impl_expl_but_actually_implements_trait = ...but it actually implements `{$trait_path_2}`{$has_lifetime ->
+infer_actual_impl_expl_but_actually_implements_trait = ...but it actually implements `{$trait_path}`{$has_lifetime ->
     [true] , for some specific lifetime `'{$lifetime}`
     *[false] {""}
 }
-infer_actual_impl_expl_but_actually_implemented_for_ty = ...but `{$trait_path_2}` is actually implemented for the type `{$ty}`{$has_lifetime ->
+infer_actual_impl_expl_but_actually_implemented_for_ty = ...but `{$trait_path}` is actually implemented for the type `{$ty}`{$has_lifetime ->
     [true] , for some specific lifetime `'{$lifetime}`
     *[false] {""}
 }
-infer_actual_impl_expl_but_actually_ty_implements = ...but `{$ty}` actually implements `{$trait_path_2}`{$has_lifetime ->
+infer_actual_impl_expl_but_actually_ty_implements = ...but `{$ty}` actually implements `{$trait_path}`{$has_lifetime ->
     [true] , for some specific lifetime `'{$lifetime}`
     *[false] {""}
 }

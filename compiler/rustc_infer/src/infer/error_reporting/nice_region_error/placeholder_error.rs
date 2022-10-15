@@ -474,27 +474,22 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             None => true,
         };
 
-        let trait_path_2 = actual_trait_ref.map(|tr| tr.print_only_trait_path()).to_string();
+        let trait_path = actual_trait_ref.map(|tr| tr.print_only_trait_path()).to_string();
         let ty = actual_trait_ref.map(|tr| tr.self_ty()).to_string();
         let has_lifetime = actual_has_vid.is_some();
         let lifetime = actual_has_vid.unwrap_or_default();
 
         let note_2 = if same_self_type {
-            ActualImplExplNotes::ButActuallyImplementsTrait { trait_path_2, has_lifetime, lifetime }
+            ActualImplExplNotes::ButActuallyImplementsTrait { trait_path, has_lifetime, lifetime }
         } else if passive_voice {
             ActualImplExplNotes::ButActuallyImplementedForTy {
-                trait_path_2,
+                trait_path,
                 ty,
                 has_lifetime,
                 lifetime,
             }
         } else {
-            ActualImplExplNotes::ButActuallyTyImplements {
-                trait_path_2,
-                ty,
-                has_lifetime,
-                lifetime,
-            }
+            ActualImplExplNotes::ButActuallyTyImplements { trait_path, ty, has_lifetime, lifetime }
         };
 
         vec![note_1, note_2]

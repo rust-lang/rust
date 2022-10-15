@@ -617,21 +617,16 @@ pub enum ActualImplExplNotes {
     #[note(infer::actual_impl_expl_expected_other_nothing)]
     ExpectedOtherNothing { leading_ellipsis: bool, ty_or_sig: String, trait_path: String },
     #[note(infer::actual_impl_expl_but_actually_implements_trait)]
-    ButActuallyImplementsTrait { trait_path_2: String, has_lifetime: bool, lifetime: usize },
+    ButActuallyImplementsTrait { trait_path: String, has_lifetime: bool, lifetime: usize },
     #[note(infer::actual_impl_expl_but_actually_implemented_for_ty)]
     ButActuallyImplementedForTy {
-        trait_path_2: String,
+        trait_path: String,
         has_lifetime: bool,
         lifetime: usize,
         ty: String,
     },
     #[note(infer::actual_impl_expl_but_actually_ty_implements)]
-    ButActuallyTyImplements {
-        trait_path_2: String,
-        has_lifetime: bool,
-        lifetime: usize,
-        ty: String,
-    },
+    ButActuallyTyImplements { trait_path: String, has_lifetime: bool, lifetime: usize, ty: String },
 }
 
 pub enum ActualImplExpectedKind {
