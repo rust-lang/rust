@@ -1256,10 +1256,17 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "ena"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7402b94a93c24e742487327a7cd839dc9d36fec9de9fb25b09f2dae459f36c3"
+=======
+name = "libmimalloc-sys"
+version = "0.1.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fc093ab289b0bfda3aa1bdfab9c9542be29c7ef385cfcbe77f8c9813588eb48"
+>>>>>>> Bump mimalloc
 dependencies = [
  "log",
 ]
@@ -1391,10 +1398,17 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "fluent-langneg"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c4ad0989667548f06ccd0e306ed56b61bd4d35458d54df5ec7587c0e8ed5e94"
+=======
+name = "mimalloc"
+version = "0.1.30"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76ce6a4b40d3bff9eb3ce9881ca0737a85072f9f975886082640cd46a75cdb35"
+>>>>>>> Bump mimalloc
 dependencies = [
  "unic-langid",
 ]
