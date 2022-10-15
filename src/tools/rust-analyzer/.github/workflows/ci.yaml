@@ -116,9 +116,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install Nodejs
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 16
 
       - name: Install xvfb
         if: matrix.os == 'ubuntu-latest'
