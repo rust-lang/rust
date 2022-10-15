@@ -46,6 +46,19 @@ cfg_if::cfg_if! {
     }
 }
 
+mod unsupported {
+    use crate::io;
+
+    pub fn unsupported<T>() -> io::Result<T> {
+        Err(unsupported_err())
+    }
+
+    pub fn unsupported_err() -> io::Error {
+        io::const_io_error!(io::ErrorKind::Unsupported, "operation not supported on this platform",)
+    }
+}
+
+
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
