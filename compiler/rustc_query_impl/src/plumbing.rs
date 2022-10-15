@@ -703,7 +703,7 @@ macro_rules! define_queries_struct {
                 span: Span,
                 query_id: u16,
                 key: *const (),
-                out: *mut (),
+                out: Option<std::ptr::NonNull<()>>,
                 mode: QueryMode,
             ) -> Option<()> {
                 let qcx = QueryCtxt { tcx, queries: self };
@@ -716,7 +716,11 @@ macro_rules! define_queries_struct {
                                 key.read()
                             };
                             let result = get_query::<queries::$name<'tcx>, _>(qcx, span, key, mode);
-                            result.map(|result| unsafe { out.cast::<<queries::$name<'tcx> as QueryConfig>::Stored>().write(result) })
+                            result.map(|result| unsafe {
+                                if let Some(out) = out {
+                                    out.as_ptr().cast::<<queries::$name<'tcx> as QueryConfig>::Stored>().write(result)
+                                }
+                            })
                         }
                     )*
                     id => bug!("Found invalid query id {id}"),

@@ -61,6 +61,7 @@ use rustc_target::spec::PanicStrategy;
 use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::ptr::NonNull;
 use std::sync::Arc;
 
 pub(crate) use rustc_query_system::query::QueryJobId;
@@ -232,14 +233,13 @@ macro_rules! define_callbacks {
 
                 // self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
                 let key = &key as *const query_keys::$name<'tcx>;
-                let mut out = MaybeUninit::<query_stored::$name<'tcx>>::uninit();
                 unsafe {
                     self.tcx.queries.execute(
                         self.tcx,
                         DUMMY_SP,
                         $query_id,
                         key.cast::<()>(),
-                        out.as_mut_ptr().cast::<()>(),
+                        None,
                         QueryMode::Ensure,
                     );
                 }
@@ -280,7 +280,7 @@ macro_rules! define_callbacks {
                         self.span,
                         $query_id,
                         key.cast::<()>(),
-                        out.as_mut_ptr().cast::<()>(),
+                        Some(NonNull::new_unchecked(out.as_mut_ptr().cast::<()>())),
                         QueryMode::Get,
                     ).unwrap();
                     out.assume_init()
@@ -344,7 +344,7 @@ macro_rules! define_callbacks {
                 span: Span,
                 query_id: u16,
                 key: *const (),
-                out: *mut (),
+                out: Option<NonNull<()>>,
                 mode: QueryMode,
             ) -> Option<()>;
 
