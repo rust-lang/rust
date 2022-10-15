@@ -670,7 +670,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn obligations_for_self_ty<'b>(
         &'b self,
         self_ty: ty::TyVid,
-    ) -> impl Iterator<Item = traits::PredicateObligation<'tcx>> + Captures<'tcx> + 'b {
+    ) -> impl DoubleEndedIterator<Item = traits::PredicateObligation<'tcx>> + Captures<'tcx> + 'b
+    {
         // FIXME: consider using `sub_root_var` here so we
         // can see through subtyping.
         let ty_var_root = self.root_var(self_ty);
