@@ -297,7 +297,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let mut query_description_stream = quote! {};
     let mut query_cached_stream = quote! {};
 
-    for query in queries.0 {
+    for (query_id, query) in queries.0.into_iter().enumerate() {
         let Query { name, arg, modifiers, .. } = &query;
         let result_full = &query.result;
         let result = match query.result {
@@ -344,10 +344,13 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         let span = name.span();
         let attribute_stream = quote_spanned! {span=> #(#attributes),*};
         let doc_comments = &query.doc_comments;
+
+        let query_id = u16::try_from(query_id).unwrap();
+
         // Add the query to the group
         query_stream.extend(quote! {
             #(#doc_comments)*
-            [#attribute_stream] fn #name(#arg) #result,
+            [#attribute_stream] fn #name #query_id(#arg) #result,
         });
 
         add_query_desc_cached_impl(&query, &mut query_description_stream, &mut query_cached_stream);

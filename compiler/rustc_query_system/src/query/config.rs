@@ -14,7 +14,7 @@ use std::hash::Hash;
 pub trait QueryConfig {
     const NAME: &'static str;
 
-    type Key: Eq + Hash + Clone + Debug;
+    type Key: Eq + Hash + Clone + Debug + Copy + Sized;
     type Value;
     type Stored: Clone;
 }

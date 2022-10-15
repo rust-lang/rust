@@ -444,9 +444,9 @@ macro_rules! expand_if_cached {
 macro_rules! define_queries {
     (
      $($(#[$attr:meta])*
-        [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+        [$($modifiers:tt)*] fn $name:ident $query_id:literal($($K:tt)*) -> $V:ty,)*) => {
         define_queries_struct! {
-            input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
+            input: ($(([$($modifiers)*] [$($attr)*] [$name $query_id]))*)
         }
 
         #[allow(nonstandard_style)]
@@ -656,7 +656,7 @@ impl<'tcx> Queries<'tcx> {
 
 macro_rules! define_queries_struct {
     (
-     input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
+     input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident $query_id:literal]))*)) => {
         #[derive(Default)]
         pub struct Queries<'tcx> {
             local_providers: Box<Providers>,
@@ -697,6 +697,33 @@ macro_rules! define_queries_struct {
                 tcx.dep_graph.try_mark_green(qcx, dep_node).is_some()
             }
 
+            unsafe fn execute(
+                &'tcx self,
+                tcx: TyCtxt<'tcx>,
+                span: Span,
+                query_id: u16,
+                key: *const (),
+                out: *mut (),
+                mode: QueryMode,
+            ) -> bool {
+                let qcx = QueryCtxt { tcx, queries: self };
+
+                match query_id {
+                    $(
+                        $query_id => {
+                            let key: query_keys::$name<'tcx> = unsafe {
+                                let key = key as *const query_keys::$name<'tcx>;
+                                key.read()
+                            };
+                            let result = get_query::<queries::$name<'tcx>, _>(qcx, span, key, mode);
+                            result.map(|result| unsafe { out.cast::<<queries::$name<'tcx> as QueryConfig>::Stored>().write(result) }).is_some()
+                        }
+                    )*
+                    id => bug!("Found invalid query id {id}"),
+                }
+            }
+
+            /*/
             $($(#[$attr])*
             #[inline(always)]
             #[tracing::instrument(level = "trace", skip(self, tcx), ret)]
@@ -710,6 +737,7 @@ macro_rules! define_queries_struct {
                 let qcx = QueryCtxt { tcx, queries: self };
                 get_query::<queries::$name<'tcx>, _>(qcx, span, key, mode)
             })*
+            */
         }
     };
 }

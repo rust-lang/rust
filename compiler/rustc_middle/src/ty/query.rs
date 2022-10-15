@@ -58,6 +58,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
+use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -177,7 +178,7 @@ macro_rules! opt_remap_env_constness {
 macro_rules! define_callbacks {
     (
      $($(#[$attr:meta])*
-        [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+        [$($modifiers:tt)*] fn $name:ident $query_id:literal($($K:tt)*) -> $V:ty,)*) => {
 
         // HACK(eddyb) this is like the `impl QueryConfig for queries::$name`
         // below, but using type aliases instead of associated types, to bypass
@@ -229,7 +230,22 @@ macro_rules! define_callbacks {
                     Err(()) => (),
                 }
 
-                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
+                // self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure).unwrap()
+                let key = &key as *const query_keys::$name<'tcx>;
+                let mut out = MaybeUninit::<query_stored::$name<'tcx>>::uninit();
+                unsafe {
+                    let success = self.tcx.queries.execute(
+                        self.tcx,
+                        DUMMY_SP,
+                        $query_id,
+                        key.cast::<()>(),
+                        out.as_mut_ptr().cast::<()>(),
+                        QueryMode::Ensure,
+                    );
+                    if !success {
+                        panic!("Failed to executed query");
+                    }
+                }
             })*
         }
 
@@ -258,7 +274,23 @@ macro_rules! define_callbacks {
                     Err(()) => (),
                 }
 
-                self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap()
+                // self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap()
+                let key = &key as *const query_keys::$name<'tcx>;
+                let mut out = MaybeUninit::<query_stored::$name<'tcx>>::uninit();
+                unsafe {
+                    let success = self.tcx.queries.execute(
+                        self.tcx,
+                        self.span,
+                        $query_id,
+                        key.cast::<()>(),
+                        out.as_mut_ptr().cast::<()>(),
+                        QueryMode::Get,
+                    );
+                    if !success {
+                        panic!("Failed to executed query");
+                    }
+                    out.assume_init()
+                }
             })*
         }
 
@@ -311,6 +343,18 @@ macro_rules! define_callbacks {
 
             fn try_mark_green(&'tcx self, tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool;
 
+            /// SAFETY: :ferrisClueless:
+            unsafe fn execute(
+                &'tcx self,
+                tcx: TyCtxt<'tcx>,
+                span: Span,
+                query_id: u16,
+                key: *const (),
+                out: *mut (),
+                mode: QueryMode,
+            ) -> bool;
+
+            /*
             $($(#[$attr])*
             fn $name(
                 &'tcx self,
@@ -319,6 +363,7 @@ macro_rules! define_callbacks {
                 key: query_keys::$name<'tcx>,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<'tcx>>;)*
+            */
         }
     };
 }
