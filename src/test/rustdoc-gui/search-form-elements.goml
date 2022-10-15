@@ -54,6 +54,14 @@ assert-css: (
         "background-color": "rgb(20, 25, 32)",
     },
 )
+// Link color inside
+click: "#help-button"
+assert-css: (
+    "#help a",
+    {
+        "color": "rgb(57, 175, 215)",
+    },
+)
 
 assert-css: (
     "#settings-menu",
@@ -62,7 +70,6 @@ assert-css: (
 assert-css: (
     "#settings-menu > a",
     {
-        "color": "rgb(255, 255, 255)",
         "border-color": "rgb(92, 103, 115)",
         "background-color": "rgb(20, 25, 32)",
     },
@@ -76,7 +83,6 @@ assert-css: (
 assert-css: (
     "#settings-menu:hover > a",
     {
-        "color": "rgb(255, 255, 255)",
         "border-color": "rgb(224, 224, 224)",
         "background-color": "rgb(20, 25, 32)",
     },
@@ -134,6 +140,14 @@ assert-css: (
         "background-color": "rgb(240, 240, 240)",
     },
 )
+// Link color inside
+click: "#help-button"
+assert-css: (
+    "#help a",
+    {
+        "color": "rgb(210, 153, 29)",
+    },
+)
 
 assert-css: (
     "#settings-menu",
@@ -142,7 +156,6 @@ assert-css: (
 assert-css: (
     "#settings-menu > a",
     {
-        "color": "rgb(0, 0, 0)",
         "border-color": "rgb(224, 224, 224)",
         "background-color": "rgb(240, 240, 240)",
     },
@@ -214,6 +227,14 @@ assert-css: (
         "background-color": "rgb(255, 255, 255)",
     },
 )
+// Link color inside
+click: "#help-button"
+assert-css: (
+    "#help a",
+    {
+        "color": "rgb(56, 115, 173)",
+    },
+)
 
 assert-css: (
     "#settings-menu",
@@ -222,7 +243,6 @@ assert-css: (
 assert-css: (
     "#settings-menu > a",
     {
-        "color": "rgb(0, 0, 0)",
         "border-color": "rgb(224, 224, 224)",
         "background-color": "rgb(255, 255, 255)",
     },
