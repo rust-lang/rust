@@ -216,6 +216,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::Ref(r_b, _, mutbl_b) => {
                 return self.coerce_borrowed_pointer(a, b, r_b, mutbl_b);
             }
+            ty::Dynamic(predicates, region, ty::DynStar) if self.tcx.features().dyn_star => {
+                return self.coerce_dyn_star(a, b, predicates, region);
+            }
             _ => {}
         }
 
@@ -743,6 +746,63 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         Ok(coercion)
+    }
+
+    fn coerce_dyn_star(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        b_region: ty::Region<'tcx>,
+    ) -> CoerceResult<'tcx> {
+        if !self.tcx.features().dyn_star {
+            return Err(TypeError::Mismatch);
+        }
+
+        if let ty::Dynamic(a_data, _, _) = a.kind()
+            && let ty::Dynamic(b_data, _, _) = b.kind()
+        {
+            if a_data.principal_def_id() == b_data.principal_def_id() {
+                return self.unify_and(a, b, |_| vec![]);
+            } else if !self.tcx().features().trait_upcasting {
+                let mut err = feature_err(
+                    &self.tcx.sess.parse_sess,
+                    sym::trait_upcasting,
+                    self.cause.span,
+                    &format!(
+                        "cannot cast `{a}` to `{b}`, trait upcasting coercion is experimental"
+                    ),
+                );
+                err.emit();
+            }
+        }
+
+        // Check the obligations of the cast -- for example, when casting
+        // `usize` to `dyn* Clone + 'static`:
+        let obligations = predicates
+            .iter()
+            .map(|predicate| {
+                // For each existential predicate (e.g., `?Self: Clone`) substitute
+                // the type of the expression (e.g., `usize` in our example above)
+                // and then require that the resulting predicate (e.g., `usize: Clone`)
+                // holds (it does).
+                let predicate = predicate.with_self_ty(self.tcx, a);
+                Obligation::new(self.cause.clone(), self.param_env, predicate)
+            })
+            // Enforce the region bound (e.g., `usize: 'static`, in our example).
+            .chain([Obligation::new(
+                self.cause.clone(),
+                self.param_env,
+                self.tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
+                    ty::OutlivesPredicate(a, b_region),
+                ))),
+            )])
+            .collect();
+
+        Ok(InferOk {
+            value: (vec![Adjustment { kind: Adjust::DynStar, target: b }], b),
+            obligations,
+        })
     }
 
     fn coerce_from_safe_fn<F, G>(
