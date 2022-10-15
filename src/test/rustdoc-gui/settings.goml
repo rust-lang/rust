@@ -1,4 +1,5 @@
-// This test ensures that the settings menu display is working as expected.
+// This test ensures that the settings menu display is working as expected and that
+// the settings page is also rendered as expected.
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
@@ -140,7 +141,13 @@ assert-css: ("#settings-menu .popover", {"display": "none"})
 // Now we go to the settings page to check that the CSS is loaded as expected.
 goto: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
-assert-css: (".setting-line .toggle .slider", {"width": "45px", "margin-right": "20px"})
+assert-css: (
+    ".setting-line .toggle .slider",
+    {"width": "45px", "margin-right": "20px", "border": "0px none rgb(0, 0, 0)"},
+)
+
+assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
+compare-elements-position: (".sub-container", "#settings", ("x"))
 
 // We now check the display with JS disabled.
 assert-false: "noscript section"
