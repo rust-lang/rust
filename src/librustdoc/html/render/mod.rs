@@ -2259,13 +2259,7 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
 }
 
 fn print_sidebar_title(buf: &mut Buffer, id: &str, title: &str) {
-    write!(
-        buf,
-        "<h3 class=\"sidebar-title\">\
-             <a href=\"#{}\">{}</a>\
-         </h3>",
-        id, title
-    );
+    write!(buf, "<h3><a href=\"#{}\">{}</a></h3>", id, title);
 }
 
 fn print_sidebar_block(
