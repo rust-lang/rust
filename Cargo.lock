@@ -973,9 +973,9 @@ dependencies = [
 
 [[package]]
 name = "notify"
-version = "5.0.0-pre.16"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "530f6314d6904508082f4ea424a0275cf62d341e118b313663f266429cb19693"
+checksum = "ed2c66da08abae1c024c01d635253e402341b4060a12e99b31c7594063bf490a"
 dependencies = [
  "bitflags",
  "crossbeam-channel",
