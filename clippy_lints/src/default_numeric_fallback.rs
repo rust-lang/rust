@@ -88,10 +88,9 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
     fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>, emit_hir_id: HirId) {
         if_chain! {
                 if !in_external_macro(self.cx.sess(), lit.span);
-                if let Some(explicit_ty_bounds) = self.ty_bounds.last();
+                if matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)));
                 if matches!(lit.node,
                             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed));
-                if !explicit_ty_bounds.0;
                 then {
                     let (suffix, is_float) = match lit_ty.kind() {
                         ty::Int(IntTy::I32) => ("i32", false),
