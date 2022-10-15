@@ -231,7 +231,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         for obligation in traits::elaborate_obligations(
             self.tcx,
-            self.obligations_for_self_ty(expected_vid).collect(),
+            // Reverse the obligations here, since `elaborate_*` uses a stack,
+            // and we want to keep inference generally in the same order of
+            // the registered obligations.
+            self.obligations_for_self_ty(expected_vid).rev().collect(),
         ) {
             debug!(?obligation.predicate);
             let bound_predicate = obligation.predicate.kind();
