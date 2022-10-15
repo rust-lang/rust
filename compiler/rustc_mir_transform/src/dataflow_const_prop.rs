@@ -73,16 +73,26 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                 });
 
                 if value_target.is_some() || overflow_target.is_some() {
-                    let (val, mut overflow) = self.binary_op(state, *op, left, right);
-
-                    if !self.propagate_overflow {
-                        overflow = FlatSet::Top;
-                    }
+                    let (val, overflow) = self.binary_op(state, *op, left, right);
 
                     if let Some(value_target) = value_target {
                         state.assign_idx(value_target, ValueOrPlaceOrRef::Value(val), self.map());
                     }
                     if let Some(overflow_target) = overflow_target {
+                        let overflow = match overflow {
+                            FlatSet::Top => FlatSet::Top,
+                            FlatSet::Elem(overflow) => {
+                                if overflow && !self.propagate_overflow {
+                                    FlatSet::Top
+                                } else {
+                                    self.wrap_scalar(
+                                        Scalar::from_bool(overflow),
+                                        self.tcx.types.bool,
+                                    )
+                                }
+                            }
+                            FlatSet::Bottom => FlatSet::Bottom,
+                        };
                         state.assign_idx(
                             overflow_target,
                             ValueOrPlaceOrRef::Value(overflow),
@@ -120,8 +130,8 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                 }
             }
             Rvalue::BinaryOp(op, box (left, right)) => {
+                // Overflows must be ignored here.
                 let (val, _overflow) = self.binary_op(state, *op, left, right);
-                // FIXME: Just ignore overflow here?
                 ValueOrPlaceOrRef::Value(val)
             }
             Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
@@ -230,16 +240,13 @@ impl<'tcx> ConstAnalysis<'tcx> {
         op: BinOp,
         left: &Operand<'tcx>,
         right: &Operand<'tcx>,
-    ) -> (FlatSet<ScalarTy<'tcx>>, FlatSet<ScalarTy<'tcx>>) {
+    ) -> (FlatSet<ScalarTy<'tcx>>, FlatSet<bool>) {
         let left = self.eval_operand(left, state);
         let right = self.eval_operand(right, state);
         match (left, right) {
             (FlatSet::Elem(left), FlatSet::Elem(right)) => {
                 match self.ecx.overflowing_binary_op(op, &left, &right) {
-                    Ok((val, overflow, ty)) => (
-                        self.wrap_scalar(val, ty),
-                        self.wrap_scalar(Scalar::from_bool(overflow), self.tcx.types.bool),
-                    ),
+                    Ok((val, overflow, ty)) => (self.wrap_scalar(val, ty), FlatSet::Elem(overflow)),
                     _ => (FlatSet::Top, FlatSet::Top),
                 }
             }
