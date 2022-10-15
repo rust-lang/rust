@@ -580,18 +580,18 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                 // region substs that are synthesized during AST lowering. These are substs
                 // that are appended to the parent substs (trait and trait method). However,
                 // we're trying to infer the unsubstituted type value of the RPITIT inside
-                // the *impl*, so we can later use the impl's method substitutions to normalize
-                // an RPITIT to a concrete type.
+                // the *impl*, so we can later use the impl's method substs to normalize
+                // an RPITIT to a concrete type (`confirm_impl_trait_in_trait_candidate`).
                 //
                 // Due to the design of RPITITs, during AST lowering, we have no idea that
-                // an impl method is satisfying a trait method with RPITITs in it. Therefore,
-                // we don't have a list ofearly-bound region substs for the RPITIT in the impl.
+                // an impl method corresponds to a trait method with RPITITs in it. Therefore,
+                // we don't have a list of early-bound region substs for the RPITIT in the impl.
                 // Since early region parameters are index-based, we can't just rebase these
-                // (trait method) early-bound region substs onto the impl, since region
-                // parameters are index-based, and there's no guarantee that the indices from
-                // the trait substs and impl substs line up -- so we subtract the number of
-                // trait substs and add the number of impl substs to *renumber* these early-
-                // bound regions to their corresponding indices in the impl's substitutions list.
+                // (trait method) early-bound region substs onto the impl, and there's no
+                // guarantee that the indices from the trait substs and impl substs line up.
+                // So to fix this, we subtract the number of trait substs and add the number of
+                // impl substs to *renumber* these early-bound regions to their corresponding
+                // indices in the impl's substitutions list.
                 //
                 // Also, we only need to account for a difference in trait and impl substs,
                 // since we previously enforce that the trait method and impl method have the
