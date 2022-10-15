@@ -204,6 +204,10 @@ jobs:
       - name: Set up MinGW
         uses: egor-tensin/setup-mingw@v2
         if: matrix.os == 'windows-2019'
+      
+      - name: Install ninja
+        if: matrix.os == 'windows-2019'
+        uses: seanmiddleditch/gha-setup-ninja@master
 
       - name: Build (Windows)
         shell: bash
