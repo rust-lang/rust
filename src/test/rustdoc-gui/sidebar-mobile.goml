@@ -13,7 +13,7 @@ click: ".sidebar-menu-toggle"
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 // Force the sidebar open by focusing a link inside it.
 // This makes it easier for keyboard users to get to it.
-focus: ".sidebar-title a"
+focus: ".sidebar-elems h3 a"
 assert-css: (".sidebar", {"display": "block", "left": "0px"})
 // When we tab out of the sidebar, close it.
 focus: ".search-input"
