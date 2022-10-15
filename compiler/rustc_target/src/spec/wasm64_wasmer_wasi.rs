@@ -9,12 +9,12 @@ pub fn target() -> Target {
     options.os = "wasi".into();
     options.vendor = "wasmer".into();
     options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &[
-        "-mwasm64",
         "--target=wasm64-wasi",
         // We need shared memory for multithreading
         "--shared-memory",
         "--no-check-features"
     ]);
+    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::No), &["-mwasm64"]);
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
     options.post_link_objects_self_contained = crt_objects::post_wasi_self_contained();
