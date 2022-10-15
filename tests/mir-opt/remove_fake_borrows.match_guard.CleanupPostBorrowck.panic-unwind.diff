@@ -13,8 +13,7 @@
       let mut _8: bool;
   
       bb0: {
--         FakeRead(ForMatchedPlace(None), _1);
-+         nop;
+          PlaceMention(_1);
           _3 = discriminant(_1);
           switchInt(move _3) -> [1: bb2, otherwise: bb1];
       }

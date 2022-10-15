@@ -60,6 +60,7 @@
   
       bb5: {
           StorageDead(_3);
+          PlaceMention(_1);
           _5 = discriminant(_1);
           switchInt(move _5) -> [0: bb6, otherwise: bb7];
       }

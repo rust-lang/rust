@@ -35,6 +35,7 @@
   
       bb1: {
           StorageDead(_2);
+          PlaceMention(_1);
           StorageLive(_4);
           _4 = move _1;
           goto -> bb2;
@@ -52,6 +53,7 @@
   
       bb3: {
           StorageDead(_8);
+          PlaceMention(_7);
           _10 = discriminant(_7);
           switchInt(move _10) -> [0: bb6, 1: bb4, otherwise: bb5];
       }

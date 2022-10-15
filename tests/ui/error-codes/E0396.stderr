@@ -16,8 +16,18 @@ LL |     match *INFALLIBLE {}
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
+error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
+  --> $DIR/E0396.rs:10:11
+   |
+LL |     match *INFALLIBLE {}
+   |           ^^^^^^^^^^^
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0658]: dereferencing raw mutable pointers in constants is unstable
-  --> $DIR/E0396.rs:13:36
+  --> $DIR/E0396.rs:14:36
    |
 LL |     const BAD: () = unsafe { match *INFALLIBLE {} };
    |                                    ^^^^^^^^^^^
@@ -25,6 +35,16 @@ LL |     const BAD: () = unsafe { match *INFALLIBLE {} };
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error: aborting due to 3 previous errors
+error[E0658]: dereferencing raw mutable pointers in constants is unstable
+  --> $DIR/E0396.rs:14:36
+   |
+LL |     const BAD: () = unsafe { match *INFALLIBLE {} };
+   |                                    ^^^^^^^^^^^
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

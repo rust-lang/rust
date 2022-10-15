@@ -12,6 +12,9 @@
 +     let mut _10: &&&bool;
 +     let mut _11: &&bool;
 +     let mut _12: &bool;
++     let mut _13: &&&bool;
++     let mut _14: &&bool;
++     let mut _15: &bool;
       scope 1 {
           debug b => _1;
           let _2: bool;
@@ -48,11 +51,16 @@
           _6 = &_7;
           _5 = &_6;
           _4 = &_5;
+-         PlaceMention((*(*(*(*_4)))));
 -         switchInt((*(*(*(*_4))))) -> [0: bb3, otherwise: bb4];
 +         _10 = deref_copy (*_4);
 +         _11 = deref_copy (*_10);
 +         _12 = deref_copy (*_11);
-+         switchInt((*_12)) -> [0: bb3, otherwise: bb4];
++         PlaceMention((*_12));
++         _13 = deref_copy (*_4);
++         _14 = deref_copy (*_13);
++         _15 = deref_copy (*_14);
++         switchInt((*_15)) -> [0: bb3, otherwise: bb4];
       }
   
       bb3: {
