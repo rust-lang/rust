@@ -25,7 +25,10 @@ error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-mut-borrow-linear-errors.rs:12:30
    |
 LL |             _ => { addr.push(&mut x); }
-   |                              ^^^^^^ `x` was mutably borrowed here in the previous iteration of the loop
+   |                    ----------^^^^^^-
+   |                    |         |
+   |                    |         `x` was mutably borrowed here in the previous iteration of the loop
+   |                    first borrow used here, in later iteration of loop
 
 error: aborting due to 3 previous errors
 
