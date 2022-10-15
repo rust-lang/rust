@@ -168,7 +168,9 @@ jobs:
         if: matrix.os == 'macos-12'
         with:
           name: rust-toolchain-x86_64-apple-darwin
-          path: wasix-rust/build/x86_64-apple-darwin/stage2
+          path: |
+            wasix-rust/build/x86_64-apple-darwin/stage2
+            !wasix-rust/build/x86_64-apple-darwin/stage2/lib/rustlib/src
 
       # Mac - aarch64
 
@@ -193,7 +195,9 @@ jobs:
         if: matrix.os == 'macos-12'
         with:
           name: rust-toolchain-aarch64-apple-darwin
-          path: wasix-rust/build/aarch64-apple-darwin/stage2
+          path: |
+            wasix-rust/build/aarch64-apple-darwin/stage2
+            !wasix-rust/build/aarch64-apple-darwin/stage2/lib/rustlib/src
 
       # Windows
 
