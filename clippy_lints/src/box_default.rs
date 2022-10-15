@@ -46,7 +46,7 @@ impl LateLintPass<'_> for BoxDefault {
             && !in_external_macro(cx.sess(), expr.span)
             && (expr.span.eq_ctxt(arg.span) || is_vec_expn(cx, arg))
             && seg.ident.name == sym::new
-            && path_def_id(cx, ty) == cx.tcx.lang_items().owned_box()
+            && path_def_id(cx, ty).map_or(false, |id| Some(id) == cx.tcx.lang_items().owned_box())
             && is_default_equivalent(cx, arg)
         {
             let arg_ty = cx.typeck_results().expr_ty(arg);
