@@ -201,6 +201,9 @@ function loadCss(cssFileName) {
     }
 
     getSettingsButton().onclick = event => {
+        if (event.ctrlKey || event.altKey || event.metaKey) {
+            return;
+        }
         addClass(getSettingsButton(), "rotate");
         event.preventDefault();
         // Sending request for the CSS and the JS files at the same time so it will
@@ -951,7 +954,11 @@ function loadCss(cssFileName) {
     } else {
         document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
             const target = event.target;
-            if (target.tagName !== "A" || target.parentElement.id !== HELP_BUTTON_ID) {
+            if (target.tagName !== "A" ||
+                target.parentElement.id !== HELP_BUTTON_ID ||
+                event.ctrlKey ||
+                event.altKey ||
+                event.metaKey) {
                 return;
             }
             event.preventDefault();
