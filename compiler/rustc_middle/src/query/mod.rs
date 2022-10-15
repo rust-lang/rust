@@ -4,6 +4,9 @@
 //! ["Queries: demand-driven compilation"](https://rustc-dev-guide.rust-lang.org/query.html).
 //! This chapter includes instructions for adding new queries.
 
+use crate::ty::{self, print::describe_as_module, TyCtxt};
+use rustc_span::def_id::LOCAL_CRATE;
+
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -1214,7 +1217,7 @@ rustc_queries! {
         desc { |tcx| "finding all vtable entries for trait {}", tcx.def_path_str(key.def_id()) }
     }
 
-    query vtable_trait_upcasting_coercion_new_vptr_slot(key: (ty::Ty<'tcx>, ty::Ty<'tcx>)) -> Option<usize> {
+    query vtable_trait_upcasting_coercion_new_vptr_slot(key: (Ty<'tcx>, Ty<'tcx>)) -> Option<usize> {
         desc { |tcx| "finding the slot within vtable for trait object {} vtable ptr during trait upcasting coercion from {} vtable",
             key.1, key.0 }
     }

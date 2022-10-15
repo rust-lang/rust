@@ -49,8 +49,6 @@ impl<CTX: QueryContext, K, V> QueryVTable<CTX, K, V> {
 pub trait QueryDescription<CTX: QueryContext>: QueryConfig {
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
-    fn describe(tcx: CTX, key: Self::Key) -> String;
-
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_state<'a>(tcx: CTX) -> &'a QueryState<Self::Key>
     where

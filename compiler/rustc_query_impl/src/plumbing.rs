@@ -298,7 +298,7 @@ pub(crate) fn create_query_frame<
     K: Copy + Key + for<'a> HashStable<StableHashingContext<'a>>,
 >(
     tcx: QueryCtxt<'tcx>,
-    do_describe: fn(QueryCtxt<'tcx>, K) -> String,
+    do_describe: fn(TyCtxt<'tcx>, K) -> String,
     key: K,
     kind: DepKind,
     name: &'static str,
@@ -307,7 +307,7 @@ pub(crate) fn create_query_frame<
     // Showing visible path instead of any path is not that important in production.
     let description = ty::print::with_no_visible_paths!(
         // Force filename-line mode to avoid invoking `type_of` query.
-        ty::print::with_forced_impl_filename_line!(do_describe(tcx, key))
+        ty::print::with_forced_impl_filename_line!(do_describe(tcx.tcx, key))
     );
     let description =
         if tcx.sess.verbose() { format!("{} [{}]", description, name) } else { description };
@@ -466,7 +466,10 @@ macro_rules! define_queries {
         }
 
         impl<'tcx> QueryDescription<QueryCtxt<'tcx>> for queries::$name<'tcx> {
-            rustc_query_description! { $name }
+            #[inline]
+            fn cache_on_disk(tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
+                ::rustc_middle::query::cached::$name(tcx, key)
+            }
 
             type Cache = query_storage::$name<'tcx>;
 
@@ -576,7 +579,7 @@ macro_rules! define_queries {
             use rustc_middle::ty::TyCtxt;
             use $crate::plumbing::{QueryStruct, QueryCtxt};
             use $crate::profiling_support::QueryKeyStringCache;
-            use rustc_query_system::query::{QueryDescription, QueryMap};
+            use rustc_query_system::query::QueryMap;
 
             pub(super) const fn dummy_query_struct<'tcx>() -> QueryStruct<'tcx> {
                 fn noop_try_collect_active_jobs(_: QueryCtxt<'_>, _: &mut QueryMap) -> Option<()> {
@@ -603,7 +606,7 @@ macro_rules! define_queries {
                     let make_query = |tcx, key| {
                         let kind = rustc_middle::dep_graph::DepKind::$name;
                         let name = stringify!($name);
-                        $crate::plumbing::create_query_frame(tcx, super::queries::$name::describe, key, kind, name)
+                        $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
                     };
                     tcx.queries.$name.try_collect_active_jobs(
                         tcx,

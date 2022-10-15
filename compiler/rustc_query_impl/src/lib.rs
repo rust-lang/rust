@@ -22,8 +22,7 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKindStruct};
 use rustc_middle::ty::query::{query_keys, query_storage, query_stored, query_values};
 use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine};
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::def_id::{LocalDefId, LOCAL_CRATE};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 #[macro_use]
@@ -44,14 +43,6 @@ pub use on_disk_cache::OnDiskCache;
 
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
-
-fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
-    if def_id.is_top_level_module() {
-        "top-level module".to_string()
-    } else {
-        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
-    }
-}
 
 rustc_query_append! { define_queries! }
 
