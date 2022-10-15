@@ -230,11 +230,11 @@ macro_rules! define_callbacks {
                     Err(()) => (),
                 }
 
-                // self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure).unwrap()
+                // self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
                 let key = &key as *const query_keys::$name<'tcx>;
                 let mut out = MaybeUninit::<query_stored::$name<'tcx>>::uninit();
                 unsafe {
-                    let success = self.tcx.queries.execute(
+                    self.tcx.queries.execute(
                         self.tcx,
                         DUMMY_SP,
                         $query_id,
@@ -242,9 +242,6 @@ macro_rules! define_callbacks {
                         out.as_mut_ptr().cast::<()>(),
                         QueryMode::Ensure,
                     );
-                    if !success {
-                        panic!("Failed to executed query");
-                    }
                 }
             })*
         }
@@ -278,17 +275,14 @@ macro_rules! define_callbacks {
                 let key = &key as *const query_keys::$name<'tcx>;
                 let mut out = MaybeUninit::<query_stored::$name<'tcx>>::uninit();
                 unsafe {
-                    let success = self.tcx.queries.execute(
+                    self.tcx.queries.execute(
                         self.tcx,
                         self.span,
                         $query_id,
                         key.cast::<()>(),
                         out.as_mut_ptr().cast::<()>(),
                         QueryMode::Get,
-                    );
-                    if !success {
-                        panic!("Failed to executed query");
-                    }
+                    ).unwrap();
                     out.assume_init()
                 }
             })*
@@ -352,7 +346,7 @@ macro_rules! define_callbacks {
                 key: *const (),
                 out: *mut (),
                 mode: QueryMode,
-            ) -> bool;
+            ) -> Option<()>;
 
             /*
             $($(#[$attr])*

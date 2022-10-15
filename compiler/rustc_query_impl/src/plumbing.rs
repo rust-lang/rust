@@ -705,7 +705,7 @@ macro_rules! define_queries_struct {
                 key: *const (),
                 out: *mut (),
                 mode: QueryMode,
-            ) -> bool {
+            ) -> Option<()> {
                 let qcx = QueryCtxt { tcx, queries: self };
 
                 match query_id {
@@ -716,7 +716,7 @@ macro_rules! define_queries_struct {
                                 key.read()
                             };
                             let result = get_query::<queries::$name<'tcx>, _>(qcx, span, key, mode);
-                            result.map(|result| unsafe { out.cast::<<queries::$name<'tcx> as QueryConfig>::Stored>().write(result) }).is_some()
+                            result.map(|result| unsafe { out.cast::<<queries::$name<'tcx> as QueryConfig>::Stored>().write(result) })
                         }
                     )*
                     id => bug!("Found invalid query id {id}"),
