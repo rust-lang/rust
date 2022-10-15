@@ -18,7 +18,7 @@ impl Lock {
             .read(true)
             .write(true)
             .create(create)
-            .mode(libc::S_IRWXU as u32)
+            .mode(0o600)
             .open(p)?;
 
         let mut operation = if exclusive { libc::LOCK_EX } else { libc::LOCK_SH };
