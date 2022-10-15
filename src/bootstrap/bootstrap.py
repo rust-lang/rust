@@ -318,6 +318,11 @@ def default_build_triple(verbose):
         'x86_64': 'x86_64'
     }
 
+    if (ostype == 'apple-darwin'
+        and cputype == 'x86_64'
+        and 'ARM64' in os.uname().version):
+        cputype = 'aarch64'
+
     # Consider the direct transformation first and then the special cases
     if cputype in cputype_mapper:
         cputype = cputype_mapper[cputype]
