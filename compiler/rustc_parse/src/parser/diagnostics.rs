@@ -1377,7 +1377,7 @@ impl<'a> Parser<'a> {
         let mut patches = Vec::new();
 
         if !pre_span.is_empty() {
-           patches.push((pre_span, String::new()));
+            patches.push((pre_span, String::new()));
         }
 
         patches.push((post_span, format!(" {}= 1", kind.op.chr())));
