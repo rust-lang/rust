@@ -855,6 +855,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "compiletest_rs"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -875,6 +876,14 @@ dependencies = [
  "tempfile",
  "tester",
  "winapi",
+=======
+name = "form_urlencoded"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9c384f161156f5260c24a097c56119f9be8c798586aecc13afbcbe7b7e26bf8"
+dependencies = [
+ "percent-encoding",
+>>>>>>> Bump url
 ]
 
 [[package]]
@@ -1068,6 +1077,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "curl"
 version = "0.4.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1080,6 +1090,15 @@ dependencies = [
  "schannel",
  "socket2",
  "winapi",
+=======
+name = "idna"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e14ddfc70884202db2244c223200c204c2bda1bc6e0998d11b5e024d657209e6"
+dependencies = [
+ "unicode-bidi",
+ "unicode-normalization",
+>>>>>>> Bump url
 ]
 
 [[package]]
@@ -1314,6 +1333,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "fallible-iterator"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1324,6 +1344,10 @@ name = "filetime"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d34cfa13a63ae058bfa601fe9e313bbdb3746427c1459185464ce0fcf62e1e8"
+=======
+name = "mbe"
+version = "0.0.0"
+>>>>>>> Bump url
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -1514,10 +1538,17 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "futures-sink"
 version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3055baccb68d74ff6480350f8d6eb8fcfa3aa11bdc1a1ae3afdd0514617d508"
+=======
+name = "percent-encoding"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
+>>>>>>> Bump url
 
 [[package]]
 name = "futures-task"
@@ -5420,13 +5451,12 @@ dependencies = [
 
 [[package]]
 name = "url"
-version = "2.2.2"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a507c383b2d33b5fc35d1861e77e6b383d158b2da5e14fe51b83dfedf6fd578c"
+checksum = "0d68c799ae75762b8c3fe375feb6600ef5602c883c5d21eb51c09f22b83c4643"
 dependencies = [
  "form_urlencoded",
  "idna",
- "matches",
  "percent-encoding",
  "serde",
 ]
