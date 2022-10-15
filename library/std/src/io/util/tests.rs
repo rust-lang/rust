@@ -2,8 +2,8 @@ use crate::cmp::{max, min};
 use crate::io::prelude::*;
 use crate::io::{
     copy, empty, repeat, sink, BorrowedBuf, BufWriter, Empty, Repeat, Result, SeekFrom, Sink,
-    DEFAULT_BUF_SIZE,
 };
+use crate::sys_common::io::DEFAULT_BUF_SIZE;
 
 use crate::mem::MaybeUninit;
 

@@ -1,9 +1,8 @@
 mod buffer;
 
 use crate::fmt;
-use crate::io::{
-    self, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
-};
+use crate::io::{self, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom, SizeHint};
+use crate::sys_common::io::DEFAULT_BUF_SIZE;
 use buffer::Buffer;
 
 /// The `BufReader<R>` struct adds buffering to any reader.

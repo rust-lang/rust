@@ -1,10 +1,9 @@
 use crate::error;
 use crate::fmt;
-use crate::io::{
-    self, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
-};
+use crate::io::{self, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write};
 use crate::mem;
 use crate::ptr;
+use crate::sys_common::io::DEFAULT_BUF_SIZE;
 
 /// Wraps a writer and buffers its output.
 ///

@@ -1,5 +1,6 @@
-use super::{BorrowedBuf, BufWriter, ErrorKind, Read, Result, Write, DEFAULT_BUF_SIZE};
+use super::{BorrowedBuf, BufWriter, ErrorKind, Read, Result, Write};
 use crate::mem::MaybeUninit;
+use crate::sys_common::io::{DEFAULT_BUF_SIZE, DEFAULT_STACK_BUF_SIZE};
 
 /// Copies the entire contents of a reader into a writer.
 ///
@@ -138,7 +139,7 @@ fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     reader: &mut R,
     writer: &mut W,
 ) -> Result<u64> {
-    let buf: &mut [_] = &mut [MaybeUninit::uninit(); DEFAULT_BUF_SIZE];
+    let buf: &mut [_] = &mut [MaybeUninit::uninit(); DEFAULT_STACK_BUF_SIZE];
     let mut buf: BorrowedBuf<'_> = buf.into();
 
     let mut len = 0;
