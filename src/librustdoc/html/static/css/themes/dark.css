@@ -153,12 +153,12 @@ kbd {
 	box-shadow: inset 0 -1px 0 #c6cbd1;
 }
 
-#settings-menu > a, #help-button > button {
+#settings-menu > a, #help-button > a {
 	color: #000;
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > button:hover, #help-button > button:focus {
+#help-button > a:hover, #help-button > a:focus {
 	border-color: #ffb900;
 }
 
