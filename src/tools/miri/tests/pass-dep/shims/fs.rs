@@ -404,6 +404,14 @@ fn test_directory() {
     let mut file_names = dir_iter.map(|e| e.unwrap().file_name()).collect::<Vec<_>>();
     file_names.sort_unstable();
     assert_eq!(file_names, vec!["test_file_1", "test_file_2"]);
+    // Test that read_dir metadata calls succeed
+    assert_eq!(
+        &[true, true],
+        &*read_dir(&dir_path)
+            .unwrap()
+            .map(|e| e.unwrap().metadata().unwrap().is_file())
+            .collect::<Vec<_>>()
+    );
     // Deleting the directory should fail, since it is not empty.
     assert_eq!(ErrorKind::DirectoryNotEmpty, remove_dir(&dir_path).unwrap_err().kind());
     // Clean up the files in the directory

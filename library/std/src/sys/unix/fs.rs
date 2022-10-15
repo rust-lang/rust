@@ -674,7 +674,10 @@ impl DirEntry {
         self.file_name_os_str().to_os_string()
     }
 
-    #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
+    #[cfg(all(
+        any(target_os = "linux", target_os = "emscripten", target_os = "android"),
+        not(miri)
+    ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
         let name = self.name_cstr().as_ptr();
@@ -695,7 +698,10 @@ impl DirEntry {
         Ok(FileAttr::from_stat64(stat))
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "emscripten", target_os = "android")))]
+    #[cfg(any(
+        not(any(target_os = "linux", target_os = "emscripten", target_os = "android")),
+        miri
+    ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         lstat(&self.path())
     }
