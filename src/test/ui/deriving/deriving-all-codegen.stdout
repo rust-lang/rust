@@ -46,13 +46,15 @@ impl ::core::default::Default for Empty {
 impl ::core::hash::Hash for Empty {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
 }
-impl ::core::marker::StructuralPartialEq for Empty {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Empty { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Empty {
     #[inline]
     fn eq(&self, other: &Empty) -> bool { true }
 }
-impl ::core::marker::StructuralEq for Empty {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for Empty { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Empty {
     #[inline]
@@ -115,7 +117,8 @@ impl ::core::hash::Hash for Point {
         ::core::hash::Hash::hash(&self.y, state)
     }
 }
-impl ::core::marker::StructuralPartialEq for Point {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Point { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Point {
     #[inline]
@@ -123,7 +126,8 @@ impl ::core::cmp::PartialEq for Point {
         self.x == other.x && self.y == other.y
     }
 }
-impl ::core::marker::StructuralEq for Point {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for Point { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Point {
     #[inline]
@@ -225,7 +229,8 @@ impl ::core::hash::Hash for Big {
         ::core::hash::Hash::hash(&self.b8, state)
     }
 }
-impl ::core::marker::StructuralPartialEq for Big {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Big { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Big {
     #[inline]
@@ -236,7 +241,8 @@ impl ::core::cmp::PartialEq for Big {
             self.b8 == other.b8
     }
 }
-impl ::core::marker::StructuralEq for Big {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for Big { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Big {
     #[inline]
@@ -345,13 +351,15 @@ impl ::core::hash::Hash for Unsized {
         ::core::hash::Hash::hash(&self.0, state)
     }
 }
-impl ::core::marker::StructuralPartialEq for Unsized {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Unsized { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Unsized {
     #[inline]
     fn eq(&self, other: &Unsized) -> bool { self.0 == other.0 }
 }
-impl ::core::marker::StructuralEq for Unsized {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for Unsized { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Unsized {
     #[inline]
@@ -410,13 +418,15 @@ impl ::core::hash::Hash for PackedCopy {
         ::core::hash::Hash::hash(&{ self.0 }, state)
     }
 }
-impl ::core::marker::StructuralPartialEq for PackedCopy {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for PackedCopy { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for PackedCopy {
     #[inline]
     fn eq(&self, other: &PackedCopy) -> bool { { self.0 } == { other.0 } }
 }
-impl ::core::marker::StructuralEq for PackedCopy {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for PackedCopy { }
 #[automatically_derived]
 impl ::core::cmp::Eq for PackedCopy {
     #[inline]
@@ -479,7 +489,8 @@ impl ::core::hash::Hash for PackedNonCopy {
         ::core::hash::Hash::hash(__self_0_0, state)
     }
 }
-impl ::core::marker::StructuralPartialEq for PackedNonCopy {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for PackedNonCopy { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for PackedNonCopy {
     #[inline]
@@ -489,7 +500,8 @@ impl ::core::cmp::PartialEq for PackedNonCopy {
         *__self_0_0 == *__self_1_0
     }
 }
-impl ::core::marker::StructuralEq for PackedNonCopy {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for PackedNonCopy { }
 #[automatically_derived]
 impl ::core::cmp::Eq for PackedNonCopy {
     #[inline]
@@ -540,7 +552,8 @@ impl ::core::hash::Hash for Enum0 {
         unsafe { ::core::intrinsics::unreachable() }
     }
 }
-impl ::core::marker::StructuralPartialEq for Enum0 {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Enum0 { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Enum0 {
     #[inline]
@@ -548,7 +561,8 @@ impl ::core::cmp::PartialEq for Enum0 {
         unsafe { ::core::intrinsics::unreachable() }
     }
 }
-impl ::core::marker::StructuralEq for Enum0 {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for Enum0 { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Enum0 {
     #[inline]
@@ -607,7 +621,8 @@ impl ::core::hash::Hash for Enum1 {
         }
     }
 }
-impl ::core::marker::StructuralPartialEq for Enum1 {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Enum1 { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Enum1 {
     #[inline]
@@ -618,7 +633,8 @@ impl ::core::cmp::PartialEq for Enum1 {
         }
     }
 }
-impl ::core::marker::StructuralEq for Enum1 {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for Enum1 { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Enum1 {
     #[inline]
@@ -676,13 +692,15 @@ impl ::core::default::Default for Fieldless1 {
 impl ::core::hash::Hash for Fieldless1 {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
 }
-impl ::core::marker::StructuralPartialEq for Fieldless1 {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Fieldless1 { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Fieldless1 {
     #[inline]
     fn eq(&self, other: &Fieldless1) -> bool { true }
 }
-impl ::core::marker::StructuralEq for Fieldless1 {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for Fieldless1 { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fieldless1 {
     #[inline]
@@ -743,7 +761,8 @@ impl ::core::hash::Hash for Fieldless {
         ::core::hash::Hash::hash(&__self_tag, state)
     }
 }
-impl ::core::marker::StructuralPartialEq for Fieldless {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Fieldless { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Fieldless {
     #[inline]
@@ -753,7 +772,8 @@ impl ::core::cmp::PartialEq for Fieldless {
         __self_tag == __arg1_tag
     }
 }
-impl ::core::marker::StructuralEq for Fieldless {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for Fieldless { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fieldless {
     #[inline]
@@ -838,7 +858,8 @@ impl ::core::hash::Hash for Mixed {
         }
     }
 }
-impl ::core::marker::StructuralPartialEq for Mixed {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Mixed { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Mixed {
     #[inline]
@@ -856,7 +877,8 @@ impl ::core::cmp::PartialEq for Mixed {
             }
     }
 }
-impl ::core::marker::StructuralEq for Mixed {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for Mixed { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Mixed {
     #[inline]
@@ -963,7 +985,8 @@ impl ::core::hash::Hash for Fielded {
         }
     }
 }
-impl ::core::marker::StructuralPartialEq for Fielded {}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Fielded { }
 #[automatically_derived]
 impl ::core::cmp::PartialEq for Fielded {
     #[inline]
@@ -982,7 +1005,8 @@ impl ::core::cmp::PartialEq for Fielded {
             }
     }
 }
-impl ::core::marker::StructuralEq for Fielded {}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for Fielded { }
 #[automatically_derived]
 impl ::core::cmp::Eq for Fielded {
     #[inline]
