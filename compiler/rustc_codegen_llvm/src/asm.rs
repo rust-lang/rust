@@ -130,7 +130,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     op_idx.insert(idx, constraints.len());
                     constraints.push(reg_to_llvm(reg, Some(&value.layout)));
                 }
-                InlineAsmOperandRef::InOut { reg, late: _, in_value, out_place: _ } => {
+                InlineAsmOperandRef::InOut { reg, late, in_value, out_place: _ } => {
                     let value = llvm_fixup_input(
                         self,
                         in_value.immediate(),
@@ -138,7 +138,16 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         &in_value.layout,
                     );
                     inputs.push(value);
-                    constraints.push(format!("{}", op_idx[&idx]));
+
+                    // In the case of fixed registers, we have the choice of
+                    // either using a tied operand or duplicating the constraint.
+                    // We prefer the latter because it matches the behavior of
+                    // Clang.
+                    if late && matches!(reg, InlineAsmRegOrRegClass::Reg(_)) {
+                        constraints.push(format!("{}", reg_to_llvm(reg, Some(&in_value.layout))));
+                    } else {
+                        constraints.push(format!("{}", op_idx[&idx]));
+                    }
                 }
                 InlineAsmOperandRef::SymFn { instance } => {
                     inputs.push(self.cx.get_fn(instance));
