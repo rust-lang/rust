@@ -138,6 +138,8 @@ regexes! {
     STDOUT:
     // Windows file paths
     r"\\"                           => "/",
+    // erase Stacked Borrows tags
+    "<[0-9]+>"                      => "<TAG>",
 }
 
 regexes! {
