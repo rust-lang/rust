@@ -58,11 +58,6 @@ jobs:
     - name: Set RUST_COMPILER_RT_ROOT
       run: echo "RUST_COMPILER_RT_ROOT="${{ env.workspace }}/llvm/compiler-rt >> $GITHUB_ENV
 
-    # https://github.com/actions/cache/issues/133
-    - name: Fixup owner of ~/.cargo/
-      # Don't remove the trailing /. It is necessary to follow the symlink.
-      run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
-
     - name: Cache cargo installed crates
       uses: actions/cache@v3
       with:
