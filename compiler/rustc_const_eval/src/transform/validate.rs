@@ -284,7 +284,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         this.fail(
                         location,
                         format!(
-                            "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is {:?}",
+                            "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is `{:?}`",
                             parent, f, ty, f_ty
                         )
                     )
