@@ -1,49 +1,5 @@
 use crate::sys::locks as imp;
 
-/// An OS-based mutual exclusion lock, meant for use in static variables.
-///
-/// This mutex has a const constructor ([`StaticMutex::new`]), does not
-/// implement `Drop` to cleanup resources, and causes UB when used reentrantly.
-///
-/// This mutex does not implement poisoning.
-///
-/// This is a wrapper around `imp::Mutex` that does *not* call `init()` and
-/// `destroy()`.
-pub struct StaticMutex(imp::Mutex);
-
-unsafe impl Sync for StaticMutex {}
-
-impl StaticMutex {
-    /// Creates a new mutex for use.
-    #[inline]
-    pub const fn new() -> Self {
-        Self(imp::Mutex::new())
-    }
-
-    /// Calls raw_lock() and then returns an RAII guard to guarantee the mutex
-    /// will be unlocked.
-    ///
-    /// It is undefined behaviour to call this function while locked by the
-    /// same thread.
-    #[inline]
-    pub unsafe fn lock(&'static self) -> StaticMutexGuard {
-        self.0.lock();
-        StaticMutexGuard(&self.0)
-    }
-}
-
-#[must_use]
-pub struct StaticMutexGuard(&'static imp::Mutex);
-
-impl Drop for StaticMutexGuard {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            self.0.unlock();
-        }
-    }
-}
-
 /// An OS-based mutual exclusion lock.
 ///
 /// This mutex cleans up its resources in its `Drop` implementation, may safely
