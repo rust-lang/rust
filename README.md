@@ -50,7 +50,7 @@ The supported element types are as follows:
 * **Masks:** 8-bit, 16-bit, 32-bit, 64-bit, and `usize`-sized masks
 
 Floating point, signed integers, and unsigned integers are the [primitive types](https://doc.rust-lang.org/core/primitive/index.html) you're already used to.
-The mask types are "truthy" values, like `bool`, but have an unspecified layout in the vector type and cannot be constructed outside of a vector.
+The mask types have elements that are "truthy" values, like `bool`, but have an unspecified layout because different architectures prefer different layouts for mask types.
 
 [simd-guide]: ./beginners-guide.md
 [zulip-project-portable-simd]: https://rust-lang.zulipchat.com/#narrow/stream/257879-project-portable-simd
