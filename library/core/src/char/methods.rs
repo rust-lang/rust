@@ -597,9 +597,14 @@ impl char {
     /// Returns the number of 16-bit code units this `char` would need if
     /// encoded in UTF-16.
     ///
+    /// That number of code units is always either 1 or 2, for unicode scalar values in
+    /// the [basic multilingual plane] or [supplementary planes] respectively.
+    ///
     /// See the documentation for [`len_utf8()`] for more explanation of this
     /// concept. This function is a mirror, but for UTF-16 instead of UTF-8.
     ///
+    /// [basic multilingual plane]: http://www.unicode.org/glossary/#basic_multilingual_plane
+    /// [supplementary planes]: http://www.unicode.org/glossary/#supplementary_planes
     /// [`len_utf8()`]: #method.len_utf8
     ///
     /// # Examples
