@@ -682,6 +682,22 @@ void calculateUnusedValuesInFunction(
     }
   }
 
+  std::function<bool(const llvm::Value *)> isNoNeed =
+      [&](const llvm::Value *v) {
+        if (auto C = dyn_cast<CastInst>(v))
+          return isNoNeed(C->getOperand(0));
+        if (auto C = dyn_cast<GetElementPtrInst>(v))
+          return isNoNeed(C->getOperand(0));
+        if (auto C = dyn_cast<LoadInst>(v))
+          return isNoNeed(C->getOperand(0));
+        if (auto arg = dyn_cast<Argument>(v)) {
+          if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
+            return true;
+          }
+        }
+        return false;
+      };
+
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
@@ -793,21 +809,14 @@ void calculateUnusedValuesInFunction(
         if (auto si = dyn_cast<StoreInst>(inst)) {
           if (isa<UndefValue>(si->getValueOperand()))
             return UseReq::Recur;
-#if LLVM_VERSION_MAJOR >= 12
-          auto at = getUnderlyingObject(si->getPointerOperand(), 100);
-#else
-          auto at = GetUnderlyingObject(
-              si->getPointerOperand(),
-              gutils->oldFunc->getParent()->getDataLayout(), 100);
-#endif
-          if (auto arg = dyn_cast<Argument>(at)) {
-            if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
-              return UseReq::Recur;
-            }
-          }
+          if (isNoNeed(si->getPointerOperand()))
+            return UseReq::Recur;
         }
 
         if (auto mti = dyn_cast<MemTransferInst>(inst)) {
+          if (isNoNeed(mti->getArgOperand(0)))
+            return UseReq::Recur;
+
 #if LLVM_VERSION_MAJOR >= 12
           auto at = getUnderlyingObject(mti->getArgOperand(1), 100);
 #else
@@ -815,11 +824,7 @@ void calculateUnusedValuesInFunction(
               mti->getArgOperand(1),
               gutils->oldFunc->getParent()->getDataLayout(), 100);
 #endif
-          if (auto arg = dyn_cast<Argument>(at)) {
-            if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
-              return UseReq::Recur;
-            }
-          }
+
           bool newMemory = false;
           if (isa<AllocaInst>(at))
             newMemory = true;
