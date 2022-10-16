@@ -4134,6 +4134,7 @@ Released 2018-09-13
 [`panic_in_result_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
 [`panic_params`]: https://rust-lang.github.io/rust-clippy/master/index.html#panic_params
 [`panicking_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#panicking_unwrap
+[`partial_pub_fields`]: https://rust-lang.github.io/rust-clippy/master/index.html#partial_pub_fields
 [`partialeq_ne_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#partialeq_ne_impl
 [`partialeq_to_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#partialeq_to_none
 [`path_buf_push_overwrite`]: https://rust-lang.github.io/rust-clippy/master/index.html#path_buf_push_overwrite

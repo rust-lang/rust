@@ -479,6 +479,7 @@ store.register_lints(&[
     panic_unimplemented::TODO,
     panic_unimplemented::UNIMPLEMENTED,
     panic_unimplemented::UNREACHABLE,
+    partial_pub_fields::PARTIAL_PUB_FIELDS,
     partialeq_ne_impl::PARTIALEQ_NE_IMPL,
     partialeq_to_none::PARTIALEQ_TO_NONE,
     pass_by_ref_or_value::LARGE_TYPES_PASSED_BY_VALUE,
