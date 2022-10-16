@@ -24,7 +24,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, SyntaxContext};
 
 use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::late::{PatternSource, Rib};
@@ -47,6 +47,7 @@ pub(crate) type Suggestion = (Vec<(Span, String)>, String, Applicability);
 /// similarly named label and whether or not it is reachable.
 pub(crate) type LabelSuggestion = (Ident, bool);
 
+#[derive(Debug)]
 pub(crate) enum SuggestionTarget {
     /// The target has a similar name as the name used by the programmer (probably a typo)
     SimilarlyNamed,
@@ -54,6 +55,7 @@ pub(crate) enum SuggestionTarget {
     SingleItem,
 }
 
+#[derive(Debug)]
 pub(crate) struct TypoSuggestion {
     pub candidate: Symbol,
     pub res: Res,
@@ -482,11 +484,12 @@ impl<'a> Resolver<'a> {
         module: Module<'a>,
         names: &mut Vec<TypoSuggestion>,
         filter_fn: &impl Fn(Res) -> bool,
+        ctxt: Option<SyntaxContext>,
     ) {
         for (key, resolution) in self.resolutions(module).borrow().iter() {
             if let Some(binding) = resolution.borrow().binding {
                 let res = binding.res();
-                if filter_fn(res) {
+                if filter_fn(res) && ctxt.map_or(true, |ctxt| ctxt == key.ident.span.ctxt()) {
                     names.push(TypoSuggestion::typo_from_res(key.ident.name, res));
                 }
             }
@@ -1181,10 +1184,10 @@ impl<'a> Resolver<'a> {
                 Scope::CrateRoot => {
                     let root_ident = Ident::new(kw::PathRoot, ident.span);
                     let root_module = this.resolve_crate_root(root_ident);
-                    this.add_module_candidates(root_module, &mut suggestions, filter_fn);
+                    this.add_module_candidates(root_module, &mut suggestions, filter_fn, None);
                 }
                 Scope::Module(module, _) => {
-                    this.add_module_candidates(module, &mut suggestions, filter_fn);
+                    this.add_module_candidates(module, &mut suggestions, filter_fn, None);
                 }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
@@ -1221,7 +1224,7 @@ impl<'a> Resolver<'a> {
                 Scope::StdLibPrelude => {
                     if let Some(prelude) = this.prelude {
                         let mut tmp_suggestions = Vec::new();
-                        this.add_module_candidates(prelude, &mut tmp_suggestions, filter_fn);
+                        this.add_module_candidates(prelude, &mut tmp_suggestions, filter_fn, None);
                         suggestions.extend(
                             tmp_suggestions
                                 .into_iter()
