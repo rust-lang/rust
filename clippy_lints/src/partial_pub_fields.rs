@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_ast::ast::*;
+use rustc_ast::ast::{Item, ItemKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -58,7 +58,7 @@ impl EarlyLintPass for PartialPubFields {
             if all_priv && field.vis.kind.is_pub() {
                 span_lint_and_help(
                     cx,
-                    &PARTIAL_PUB_FIELDS,
+                    PARTIAL_PUB_FIELDS,
                     field.vis.span,
                     msg,
                     None,
@@ -68,7 +68,7 @@ impl EarlyLintPass for PartialPubFields {
             } else if all_pub && !field.vis.kind.is_pub() {
                 span_lint_and_help(
                     cx,
-                    &PARTIAL_PUB_FIELDS,
+                    PARTIAL_PUB_FIELDS,
                     field.vis.span,
                     msg,
                     None,
