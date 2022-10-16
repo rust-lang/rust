@@ -4,7 +4,7 @@ Thir {
     blocks: [
         Block {
             targeted_by_break: false,
-            region_scope: Node(1),
+            region_scope: Node(2),
             opt_destruction_scope: None,
             span: $DIR/thir-tree.rs:4:15: 4:17 (#0),
             stmts: [],
@@ -16,7 +16,7 @@ Thir {
         Expr {
             ty: (),
             temp_lifetime: Some(
-                Node(2),
+                Node(1),
             ),
             span: $DIR/thir-tree.rs:4:15: 4:17 (#0),
             kind: Block {
@@ -26,17 +26,17 @@ Thir {
         Expr {
             ty: (),
             temp_lifetime: Some(
-                Node(2),
+                Node(1),
             ),
             span: $DIR/thir-tree.rs:4:15: 4:17 (#0),
             kind: Scope {
-                region_scope: Node(2),
+                region_scope: Node(1),
                 lint_level: Explicit(
                     HirId {
                         owner: OwnerId {
                             def_id: DefId(0:3 ~ thir_tree[8f1d]::main),
                         },
-                        local_id: 2,
+                        local_id: 1,
                     },
                 ),
                 value: e0,
@@ -45,11 +45,11 @@ Thir {
         Expr {
             ty: (),
             temp_lifetime: Some(
-                Node(2),
+                Node(1),
             ),
             span: $DIR/thir-tree.rs:4:15: 4:17 (#0),
             kind: Scope {
-                region_scope: Destruction(2),
+                region_scope: Destruction(1),
                 lint_level: Inherited,
                 value: e1,
             },
