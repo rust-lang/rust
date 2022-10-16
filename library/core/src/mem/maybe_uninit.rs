@@ -138,7 +138,7 @@ use crate::slice;
 ///     unsafe { mem::transmute::<_, [Vec<u32>; 1000]>(data) }
 /// };
 ///
-/// assert_eq!(&data[0], &[42]);
+/// assert_eq!(&data[42], &[42]);
 /// ```
 ///
 /// You can also work with partially initialized arrays, which could
@@ -148,10 +148,9 @@ use crate::slice;
 /// use std::mem::MaybeUninit;
 /// use std::ptr;
 ///
-/// // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
-/// // safe because the type we are claiming to have initialized here is a
-/// // bunch of `MaybeUninit`s, which do not require initialization.
-/// let mut data: [MaybeUninit<String>; 1000] = unsafe { MaybeUninit::uninit().assume_init() };
+/// // Create an uninitialized array of `MaybeUninit`.
+/// const UNINIT_STRING: MaybeUninit<String> = MaybeUninit::uninit();
+/// let mut data = [UNINIT_STRING; 1000];
 /// // Count the number of elements we have assigned.
 /// let mut data_len: usize = 0;
 ///
@@ -348,6 +347,10 @@ impl<T> MaybeUninit<T> {
     #[rustc_const_unstable(feature = "const_maybe_uninit_uninit_array", issue = "96097")]
     #[must_use]
     #[inline(always)]
+    #[deprecated(
+        since = "nightly",
+        note = "Use const array initialization instead or the transpose methods."
+    )]
     pub const fn uninit_array<const N: usize>() -> [Self; N] {
         // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
         unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() }
