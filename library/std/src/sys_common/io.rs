@@ -1,6 +1,8 @@
 // Bare metal platforms usually have very small amounts of RAM
 // (in the order of hundreds of KB)
 pub const DEFAULT_BUF_SIZE: usize = if cfg!(target_os = "espidf") { 512 } else { 8 * 1024 };
+// Stay under 4KiB on x86 to avoid probing the stack:
+// https://docs.rs/compiler_builtins/latest/compiler_builtins/probestack/index.html
 pub const DEFAULT_STACK_BUF_SIZE: usize = if cfg!(target_os = "espidf") { 512 } else { 3 * 1024 };
 
 #[cfg(test)]

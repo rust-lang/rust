@@ -1,7 +1,7 @@
 use super::{repeat, BorrowedBuf, Cursor, SeekFrom};
 use crate::cmp::{self, min};
 use crate::io::{self, IoSlice, IoSliceMut};
-use crate::io::{BufRead, BufReader, Read, Seek, Write};
+use crate::io::{copy, sink, BufRead, BufReader, Read, Seek, Write};
 use crate::mem::MaybeUninit;
 use crate::ops::Deref;
 
@@ -620,5 +620,27 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
         let mut buf: BorrowedBuf<'_> = buf.into();
 
         [255; 128].take(64).read_buf(buf.unfilled()).unwrap();
+    });
+}
+
+#[bench]
+fn io_copy_small(b: &mut test::Bencher) {
+    const COUNT: u64 = 64;
+
+    let mut writer = sink();
+    b.iter(|| {
+        let mut reader = repeat(42).take(COUNT);
+        assert_eq!(COUNT, copy(&mut reader, &mut writer).unwrap());
+    });
+}
+
+#[bench]
+fn io_copy_large(b: &mut test::Bencher) {
+    const COUNT: u64 = 1 << 25;
+
+    let mut writer = sink();
+    b.iter(|| {
+        let mut reader = repeat(42).take(COUNT);
+        assert_eq!(COUNT, copy(&mut reader, &mut writer).unwrap());
     });
 }
