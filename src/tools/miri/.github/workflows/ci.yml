@@ -62,7 +62,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo
 
       - name: Install rustup-toolchain-install-master
-        if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         shell: bash
         run: |
           cargo install -f rustup-toolchain-install-master
@@ -114,7 +114,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo
 
       - name: Install rustup-toolchain-install-master
-        if: ${{ steps.cache-npm.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         shell: bash
         run: |
           cargo install -f rustup-toolchain-install-master
