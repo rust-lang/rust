@@ -361,6 +361,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::RANGE_ZIP_WITH_LEN_INFO,
     crate::methods::REPEAT_ONCE_INFO,
     crate::methods::RESULT_MAP_OR_INTO_OPTION_INFO,
+    crate::methods::REWIND_INSTEAD_OF_SEEK_TO_START_INFO,
     crate::methods::SEARCH_IS_SOME_INFO,
     crate::methods::SHOULD_IMPLEMENT_TRAIT_INFO,
     crate::methods::SINGLE_CHAR_ADD_STR_INFO,

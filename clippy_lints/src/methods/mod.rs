@@ -68,6 +68,7 @@ mod or_then_unwrap;
 mod path_buf_push_overwrite;
 mod range_zip_with_len;
 mod repeat_once;
+mod rewind_instead_of_seek_to_start;
 mod search_is_some;
 mod single_char_add_str;
 mod single_char_insert_string;
@@ -3066,6 +3067,37 @@ declare_clippy_lint! {
     "iterating on map using `iter` when `keys` or `values` would do"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for jumps to the start of a stream that implements `Seek`
+    /// and uses the `seek` method providing `Start` as parameter.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Readability. There is a specific method that was implemented for
+    /// this exact scenario.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::io;
+    /// fn foo<T: io::Seek>(t: &mut T) {
+    ///     t.seek(io::SeekFrom::Start(0));
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use std::io;
+    /// fn foo<T: io::Seek>(t: &mut T) {
+    ///     t.rewind();
+    /// }
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub REWIND_INSTEAD_OF_SEEK_TO_START,
+    complexity,
+    "jumping to the start of stream using `seek` method"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -3190,6 +3222,7 @@ impl_lint_pass!(Methods => [
     VEC_RESIZE_TO_ZERO,
     VERBOSE_FILE_READS,
     ITER_KV_MAP,
+    REWIND_INSTEAD_OF_SEEK_TO_START,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3603,6 +3636,9 @@ impl Methods {
                 },
                 ("resize", [count_arg, default_arg]) => {
                     vec_resize_to_zero::check(cx, expr, count_arg, default_arg, span);
+                },
+                ("seek", [arg]) => {
+                    rewind_instead_of_seek_to_start::check(cx, expr, recv, arg, span);
                 },
                 ("sort", []) => {
                     stable_sort_primitive::check(cx, expr, recv);
