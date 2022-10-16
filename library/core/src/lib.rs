@@ -64,6 +64,7 @@
     not(test),
     any(not(feature = "miri-test-libstd"), test, doctest),
     no_fp_fmt_parse,
+    no_128_bit,
     target_pointer_width = "16",
     target_pointer_width = "32",
     target_pointer_width = "64",

@@ -4,7 +4,7 @@ macro_rules! uint_impl {
         $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
         $reversed:expr, $le_bytes:expr, $be_bytes:expr,
         $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr,
-        $bound_condition:expr) => {
+        $bound_condition:expr $(, #[$intrinsics_cfg:meta])?) => {
         /// The smallest value that can be represented by this integer type.
         ///
         /// # Examples
@@ -63,6 +63,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::from_str_radix(\"A\", 16), Ok(10));")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
+        $( #[$intrinsics_cfg] )?
         pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
             from_str_radix(src, radix)
         }

@@ -176,9 +176,12 @@ integer! { i8, u8 }
 integer! { i16, u16 }
 integer! { i32, u32 }
 integer! { i64, u64 }
+#[cfg(not(no_128_bit))]
 integer! { i128, u128 }
+
 macro_rules! debug {
-    ($($T:ident)*) => {$(
+    ($($( #[$cfg:meta] )? $T:ident)*) => {$(
+        $( #[$cfg] )?
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for $T {
             #[inline]
@@ -195,8 +198,30 @@ macro_rules! debug {
     )*};
 }
 debug! {
-  i8 i16 i32 i64 i128 isize
-  u8 u16 u32 u64 u128 usize
+  i8 i16 i32 i64 #[cfg(not(no_128_bit))] i128 isize
+  u8 u16 u32 u64 #[cfg(not(no_128_bit))] u128 usize
+}
+
+macro_rules! fake_debug {
+    ($($( #[$cfg:meta] )? $T:ident)*) => {$(
+        $( #[$cfg] )?
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::Debug for $T {
+            #[inline]
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                // Debug formats are not stable so this is a legitimate implementation.
+                // It would be possible to hexdump the contents instead, or to
+                // fail or panic, but for an application which has specifically
+                // recompiled core to avoid i128, the former seems unnecessary
+                // and the latter needlessly harmful.
+                f.write_str(stringify!($T))
+            }
+        }
+    )*}
+}
+fake_debug! {
+    #[cfg(no_128_bit)] i128
+    #[cfg(no_128_bit)] u128
 }
 
 // 2 digit decimal look up table
@@ -476,9 +501,11 @@ mod imp {
     impl_Exp!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named exp_u32);
     impl_Exp!(i64, u64 as u64 via to_u64 named exp_u64);
 }
+#[cfg(not(no_128_bit))]
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
 /// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
+#[cfg(not(no_128_bit))] // unused for `no_128_bit`
 fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut usize) {
     let buf_ptr = MaybeUninit::slice_as_mut_ptr(buf);
     let lut_ptr = DEC_DIGITS_LUT.as_ptr();
@@ -566,6 +593,7 @@ fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], cu
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(no_128_bit))]
 impl fmt::Display for u128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_u128(*self, true, f)
@@ -573,6 +601,7 @@ impl fmt::Display for u128 {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(no_128_bit))]
 impl fmt::Display for i128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let is_nonnegative = *self >= 0;
@@ -590,6 +619,7 @@ impl fmt::Display for i128 {
 /// into at most 2 u64s, and then chunks by 10e16, 10e8, 10e4, 10e2, and then 10e1.
 /// It also has to handle 1 last item, as 10^40 > 2^128 > 10^39, whereas
 /// 10^20 > 2^64 > 10^19.
+#[cfg(not(no_128_bit))]
 fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     // 2^128 is about 3*10^38, so 39 gives an extra byte of space
     let mut buf = [MaybeUninit::<u8>::uninit(); 39];
@@ -649,6 +679,7 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
 ///   in Proc. of the SIGPLAN94 Conference on Programming Language Design and
 ///   Implementation, 1994, pp. 61–72
 ///
+#[cfg(not(no_128_bit))]
 fn udiv_1e19(n: u128) -> (u128, u64) {
     const DIV: u64 = 1e19 as u64;
     const FACTOR: u128 = 156927543384667019095894735580191660403;
@@ -665,6 +696,7 @@ fn udiv_1e19(n: u128) -> (u128, u64) {
 
 /// Multiply unsigned 128 bit integers, return upper 128 bits of the result
 #[inline]
+#[cfg(not(no_128_bit))]
 fn u128_mulhi(x: u128, y: u128) -> u128 {
     let x_lo = x as u64;
     let x_hi = (x >> 64) as u64;

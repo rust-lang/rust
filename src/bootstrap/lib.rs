@@ -207,6 +207,7 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (Some(Mode::Codegen), "parallel_compiler", None),
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
+    (Some(Mode::Std), "no_128_bit", None),
     (Some(Mode::Std), "no_global_oom_handling", None),
     (Some(Mode::Std), "no_rc", None),
     (Some(Mode::Std), "no_sync", None),

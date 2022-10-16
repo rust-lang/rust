@@ -7,7 +7,7 @@ description = "The Rust Core Library"
 autotests = false
 autobenches = false
 # If you update this, be sure to update it in a bunch of other places too!
-# As of 2022, it was the ci/pgo.sh script and the core-no-fp-fmt-parse test.
+# As of 2023, it was the ci/pgo.sh script and the core-no-fp-fmt-parse/core-no-128-bit tests.
 edition = "2021"
 
 [lib]
