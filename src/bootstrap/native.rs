@@ -1028,7 +1028,7 @@ impl Step for TestHelpers {
             .out_dir(&dst)
             .target(&target.triple)
             .host(&builder.config.build.triple)
-            .opt_level(0)
+            .opt_level(3)
             .warnings(false)
             .debug(false)
             .file(builder.src.join("src/test/auxiliary/rust_test_helpers.c"))
