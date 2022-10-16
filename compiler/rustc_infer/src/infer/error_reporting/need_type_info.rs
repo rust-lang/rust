@@ -902,11 +902,18 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             // impl is currently the `DefId` of `Output` in the trait definition
             // which makes this somewhat difficult and prevents us from just
             // using `self.path_inferred_subst_iter` here.
-            hir::ExprKind::Struct(&hir::QPath::Resolved(_self_ty, path), _, _) => {
-                if let Some(ty) = self.opt_node_type(expr.hir_id) {
-                    if let ty::Adt(_, substs) = ty.kind() {
-                        return Box::new(self.resolved_path_inferred_subst_iter(path, substs));
-                    }
+            hir::ExprKind::Struct(&hir::QPath::Resolved(_self_ty, path), _, _)
+            // FIXME(TaKO8Ki): Ideally we should support this. For that
+            // we have to map back from the self type to the
+            // type alias though. That's difficult.
+            //
+            // See the `need_type_info/issue-103053.rs` test for
+            // a example.
+            if !matches!(path.res, Res::Def(DefKind::TyAlias, _)) => {
+                if let Some(ty) = self.opt_node_type(expr.hir_id)
+                    && let ty::Adt(_, substs) = ty.kind()
+                {
+                    return Box::new(self.resolved_path_inferred_subst_iter(path, substs));
                 }
             }
             hir::ExprKind::MethodCall(segment, ..) => {
