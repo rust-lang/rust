@@ -154,7 +154,7 @@ attributes #9 = { nounwind }
 ; CHECK-NEXT:   %_unwrap = trunc i64 %"iv'ac.0" to i32
 ; CHECK-NEXT:   %"a13'ipg_unwrap" = getelementptr inbounds double, double* %"out'", i32 %_unwrap
 ; CHECK-NEXT:   %7 = load double, double* %"a13'ipg_unwrap", align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %"a13'ipg_unwrap", align 8, !alias.scope !7, !noalias !10
+; CHECK-NEXT:   store double 0.000000e+00, double* %"a13'ipg_unwrap", align 8, !alias.scope !19, !noalias !22
 ; CHECK-NEXT:   %8 = extractvalue { double**, double* } %tapeArg, 1
 ; CHECK-NEXT:   %9 = getelementptr inbounds double, double* %8, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %10 = load double, double* %9, align 8

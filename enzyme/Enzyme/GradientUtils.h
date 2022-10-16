@@ -899,7 +899,7 @@ public:
                   std::map<AugmentedStruct, int> &returnMapping, bool omp);
 
   ValueMap<const Value *, MDNode *> differentialAliasScopeDomains;
-  DenseMap<ssize_t, MDNode *> differentialAliasScope;
+  ValueMap<const Value *, DenseMap<ssize_t, MDNode *>> differentialAliasScope;
   MDNode *getDerivativeAliasScope(const Value *origptr, ssize_t newptr) {
     auto found = differentialAliasScopeDomains.find(origptr);
     if (found == differentialAliasScopeDomains.end()) {
@@ -912,17 +912,17 @@ public:
           differentialAliasScopeDomains.insert(std::make_pair(origptr, scope))
               .first;
     }
-    auto found2 = differentialAliasScope.find(newptr);
-    if (found2 == differentialAliasScope.end()) {
+    auto &mp = differentialAliasScope[origptr];
+    auto found2 = mp.find(newptr);
+    if (found2 == mp.end()) {
       MDBuilder MDB(oldFunc->getContext());
       std::string name;
       if (newptr == -1)
         name = "primal";
       else
         name = "shadow_" + std::to_string(newptr);
-      found2 = differentialAliasScope
-                   .insert(std::make_pair(newptr, MDB.createAnonymousAliasScope(
-                                                      found->second, name)))
+      found2 = mp.insert(std::make_pair(newptr, MDB.createAnonymousAliasScope(
+                                                    found->second, name)))
                    .first;
     }
     return found2->second;
@@ -932,12 +932,12 @@ public:
   void setPtrDiffe(Instruction *orig, Value *ptr, Value *newval,
                    IRBuilder<> &BuilderM, MaybeAlign align, bool isVolatile,
                    AtomicOrdering ordering, SyncScope::ID syncScope,
-                   Value *mask = nullptr)
+                   Value *mask, ArrayRef<Metadata *> noAlias)
 #else
   void setPtrDiffe(Instruction *orig, Value *ptr, Value *newval,
                    IRBuilder<> &BuilderM, unsigned align, bool isVolatile,
                    AtomicOrdering ordering, SyncScope::ID syncScope,
-                   Value *mask = nullptr)
+                   Value *mask, ArrayRef<Metadata *> noAlias)
 #endif
   {
     if (auto inst = dyn_cast<Instruction>(ptr)) {
@@ -972,7 +972,7 @@ public:
         ts->setVolatile(isVolatile);
         ts->setOrdering(ordering);
         ts->setSyncScopeID(syncScope);
-        auto scopeMD = getDerivativeAliasScope(origptr, idx);
+        Metadata *scopeMD[1] = {getDerivativeAliasScope(origptr, idx)};
         auto scope = MDNode::get(ts->getContext(), scopeMD);
         ts->setMetadata(LLVMContext::MD_alias_scope, scope);
 
@@ -987,13 +987,12 @@ public:
           if (j != (ssize_t)idx)
             MDs.push_back(getDerivativeAliasScope(origptr, j));
         }
-        if (auto MD = orig->getMetadata(LLVMContext::MD_noalias)) {
-          auto MDN = cast<MDNode>(MD);
-          for (auto &o : MDN->operands())
-            MDs.push_back(o);
+        for (auto M : noAlias)
+          MDs.push_back(M);
+        if (MDs.size()) {
+          auto noscope = MDNode::get(ptr->getContext(), MDs);
+          ts->setMetadata(LLVMContext::MD_noalias, noscope);
         }
-        auto noscope = MDNode::get(ptr->getContext(), MDs);
-        ts->setMetadata(LLVMContext::MD_noalias, noscope);
       } else {
         Type *tys[] = {newval->getType(), ptr->getType()};
         auto F = Intrinsic::getDeclaration(oldFunc->getParent(),
@@ -2370,7 +2369,7 @@ public:
         Value *res = BuilderM.CreateFAdd(LI, dif);
         StoreInst *st = BuilderM.CreateStore(res, ptr);
 
-        auto scopeMD = getDerivativeAliasScope(origptr, idx);
+        Metadata *scopeMD[1] = {getDerivativeAliasScope(origptr, idx)};
         auto scope = MDNode::get(LI->getContext(), scopeMD);
         LI->setMetadata(LLVMContext::MD_alias_scope, scope);
         st->setMetadata(LLVMContext::MD_alias_scope, scope);

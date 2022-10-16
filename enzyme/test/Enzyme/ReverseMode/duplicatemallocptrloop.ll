@@ -113,7 +113,7 @@ attributes #9 = { nounwind }
 ; CHECK-NEXT:   %_unwrap = trunc i64 %"iv'ac.0" to i32
 ; CHECK-NEXT:   %"a13'ipg_unwrap" = getelementptr inbounds double, double* %"out'", i32 %_unwrap
 ; CHECK-NEXT:   %[[i5:.+]] = load double, double* %"a13'ipg_unwrap", align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %"a13'ipg_unwrap", align 8, !alias.scope !0, !noalias !3
+; CHECK-NEXT:   store double 0.000000e+00, double* %"a13'ipg_unwrap", align 8, !alias.scope !9, !noalias !6
 ; CHECK-NEXT:   %[[i6:.+]] = getelementptr inbounds double, double* %r_malloccache, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[i7:.+]] = load double, double* %[[i6]], align 8
 ; CHECK-NEXT:   %m0differ = fmul fast double %[[i5]], %[[i7]]

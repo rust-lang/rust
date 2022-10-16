@@ -179,7 +179,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %"lgep'ipg_unwrap" = getelementptr inbounds double, double* %"i4'ipc_unwrap8", i64 999998
 ; LL14-NEXT:   store double %differeturn, double* %"lgep'ipg_unwrap", align 8
 
-; LL15-NEXT:  %[[a13:.+]] = load double, double* %"lgep'ipg_unwrap", align 8, !alias.scope !10, !noalias !7
+; LL15-NEXT:  %[[a13:.+]] = load double, double* %"lgep'ipg_unwrap", align 8
 ; LL15-NEXT:  %[[a14]] = fadd fast double %[[a13]], %differeturn
 ; LL15-NEXT:  store double %[[a14]], double* %"lgep'ipg_unwrap", align 8
 

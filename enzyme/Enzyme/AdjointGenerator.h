@@ -1105,14 +1105,26 @@ public:
       return;
     }
 
-    auto scopeMD = gutils->getDerivativeAliasScope(orig_ptr, -1);
+    SmallVector<Metadata *, 1> scopeMD = {
+        gutils->getDerivativeAliasScope(orig_ptr, -1)};
+    if (auto prev = I.getMetadata(LLVMContext::MD_alias_scope)) {
+      for (auto &M : cast<MDNode>(prev)->operands())
+        scopeMD.push_back(M);
+    }
     auto scope = MDNode::get(I.getContext(), scopeMD);
     auto NewI = gutils->getNewFromOriginal(&I);
     NewI->setMetadata(LLVMContext::MD_alias_scope, scope);
 
     SmallVector<Metadata *, 1> MDs;
+    SmallVector<Metadata *, 1> prevNoAlias;
     for (size_t j = 0; j < gutils->getWidth(); j++) {
       MDs.push_back(gutils->getDerivativeAliasScope(orig_ptr, j));
+    }
+    if (auto prev = I.getMetadata(LLVMContext::MD_noalias)) {
+      for (auto &M : cast<MDNode>(prev)->operands()) {
+        MDs.push_back(M);
+        prevNoAlias.push_back(M);
+      }
     }
     auto noscope = MDNode::get(I.getContext(), MDs);
     NewI->setMetadata(LLVMContext::MD_noalias, noscope);
@@ -1134,7 +1146,7 @@ public:
         diff = gutils->invertPointerM(orig_val, Builder2, /*nullShadow*/ true);
 
       gutils->setPtrDiffe(&I, orig_ptr, diff, Builder2, align, isVolatile,
-                          ordering, syncScope, mask);
+                          ordering, syncScope, mask, prevNoAlias);
       return;
     }
 
@@ -1186,7 +1198,7 @@ public:
           gutils->setPtrDiffe(
               &I, orig_ptr,
               Constant::getNullValue(gutils->getShadowType(valType)), Builder2,
-              align, isVolatile, ordering, syncScope, mask);
+              align, isVolatile, ordering, syncScope, mask, prevNoAlias);
         } else {
           Value *diff;
           if (!mask) {
@@ -1208,6 +1220,13 @@ public:
 #endif
               dif1->setOrdering(ordering);
               dif1->setSyncScopeID(syncScope);
+
+              dif1->setMetadata(LLVMContext::MD_noalias,
+                                MDNode::get(I.getContext(), prevNoAlias));
+              dif1->setMetadata(LLVMContext::MD_tbaa,
+                                I.getMetadata(LLVMContext::MD_tbaa));
+              dif1->setMetadata(LLVMContext::MD_tbaa_struct,
+                                I.getMetadata(LLVMContext::MD_tbaa_struct));
               return dif1;
             };
 
@@ -1241,7 +1260,7 @@ public:
           gutils->setPtrDiffe(
               &I, orig_ptr,
               Constant::getNullValue(gutils->getShadowType(valType)), Builder2,
-              align, isVolatile, ordering, syncScope, mask);
+              align, isVolatile, ordering, syncScope, mask, prevNoAlias);
           addToDiffe(orig_val, diff, Builder2, FT, mask);
         }
         break;
@@ -1256,7 +1275,7 @@ public:
         Value *diff = constantval ? Constant::getNullValue(diffeTy)
                                   : diffe(orig_val, Builder2);
         gutils->setPtrDiffe(&I, orig_ptr, diff, Builder2, align, isVolatile,
-                            ordering, syncScope, mask);
+                            ordering, syncScope, mask, prevNoAlias);
 
         break;
       }
@@ -1316,7 +1335,7 @@ public:
           valueop = gutils->invertPointerM(orig_val, storeBuilder);
         }
         gutils->setPtrDiffe(&I, orig_ptr, valueop, storeBuilder, align,
-                            isVolatile, ordering, syncScope, mask);
+                            isVolatile, ordering, syncScope, mask, prevNoAlias);
       }
     }
   }
@@ -2976,7 +2995,9 @@ public:
             if (op3)
               args.push_back(op3);
             auto cal = BuilderZ.CreateCall(MS.getCalledFunction(), args, Defs);
-            cal->copyMetadata(MS, MD_ToCopy);
+            llvm::SmallVector<unsigned int, 9> ToCopy2(MD_ToCopy);
+            ToCopy2.push_back(LLVMContext::MD_noalias);
+            cal->copyMetadata(MS, ToCopy2);
             cal->setAttributes(MS.getAttributes());
             cal->setCallingConv(MS.getCallingConv());
             cal->setTailCallKind(MS.getTailCallKind());
@@ -3222,7 +3243,9 @@ public:
           if (op3)
             args.push_back(op3);
           auto cal = BuilderZ.CreateCall(MS.getCalledFunction(), args, Defs);
-          cal->copyMetadata(MS, MD_ToCopy);
+          llvm::SmallVector<unsigned int, 9> ToCopy2(MD_ToCopy);
+          ToCopy2.push_back(LLVMContext::MD_noalias);
+          cal->copyMetadata(MS, ToCopy2);
           cal->setAttributes(MS.getAttributes());
           cal->setCallingConv(MS.getCallingConv());
           cal->setTailCallKind(MS.getTailCallKind());
@@ -3259,7 +3282,9 @@ public:
           if (op3l)
             args.push_back(op3l);
           auto cal = Builder2.CreateCall(MS.getCalledFunction(), args, Defs);
-          cal->copyMetadata(MS, MD_ToCopy);
+          llvm::SmallVector<unsigned int, 9> ToCopy2(MD_ToCopy);
+          ToCopy2.push_back(LLVMContext::MD_noalias);
+          cal->copyMetadata(MS, ToCopy2);
           cal->setAttributes(MS.getAttributes());
           cal->setCallingConv(MS.getCallingConv());
           cal->setTailCallKind(MS.getTailCallKind());
