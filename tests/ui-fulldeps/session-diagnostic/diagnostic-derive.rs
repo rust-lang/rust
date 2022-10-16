@@ -799,3 +799,11 @@ struct SuggestionStyleGood {
     #[suggestion(code = "", style = "hidden")]
     sub: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionOnVec {
+    #[suggestion(suggestion, code = "")]
+    //~^ ERROR `#[suggestion(...)]` is not a valid attribute
+    sub: Vec<Span>,
+}
