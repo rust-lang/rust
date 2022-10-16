@@ -8,7 +8,7 @@ use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_metadata::find_native_static_library;
-use rustc_metadata::fs::{emit_metadata, METADATA_FILENAME};
+use rustc_metadata::fs::{emit_wrapper_file, METADATA_FILENAME};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Lto, Strip};
@@ -29,7 +29,7 @@ use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, T
 use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use super::command::Command;
 use super::linker::{self, Linker};
-use super::metadata::{create_rmeta_file, MetadataPosition};
+use super::metadata::{create_wrapper_file, MetadataPosition};
 use super::rpath::{self, RPathConfig};
 use crate::{
     errors, looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
@@ -44,7 +44,7 @@ use std::borrow::Borrow;
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
 use std::ffi::OsString;
-use std::fs::{File, OpenOptions};
+use std::fs::{read, File, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -292,8 +292,8 @@ fn link_rlib<'a>(
     let trailing_metadata = match flavor {
         RlibFlavor::Normal => {
             let (metadata, metadata_position) =
-                create_rmeta_file(sess, codegen_results.metadata.raw_data());
-            let metadata = emit_metadata(sess, &metadata, tmpdir);
+                create_wrapper_file(sess, b".rmeta".to_vec(), codegen_results.metadata.raw_data());
+            let metadata = emit_wrapper_file(sess, &metadata, tmpdir, METADATA_FILENAME);
             match metadata_position {
                 MetadataPosition::First => {
                     // Most of the time metadata in rlib files is wrapped in a "dummy" object
@@ -376,12 +376,18 @@ fn link_rlib<'a>(
             let location =
                 find_native_static_library(name.as_str(), lib.verbatim, &lib_search_paths, sess);
             if sess.opts.unstable_opts.packed_bundled_libs && flavor == RlibFlavor::Normal {
-                packed_bundled_libs.push(find_native_static_library(
-                    lib.filename.unwrap().as_str(),
+                let filename = lib.filename.unwrap();
+                let lib_path = find_native_static_library(
+                    filename.as_str(),
                     Some(true),
                     &lib_search_paths,
                     sess,
-                ));
+                );
+                let src = read(lib_path)
+                    .map_err(|e| sess.emit_fatal(errors::ReadFileError { message: e }))?;
+                let (data, _) = create_wrapper_file(sess, b".bundled_lib".to_vec(), &src);
+                let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
+                packed_bundled_libs.push(wrapper_file);
                 continue;
             }
             ab.add_archive(&location, Box::new(|_| false)).unwrap_or_else(|error| {

@@ -507,6 +507,9 @@ pub enum ExtractBundledLibsError<'a> {
 
     #[diag(codegen_ssa_extract_bundled_libs_write_file)]
     WriteFile { rlib: &'a Path, error: Box<dyn std::error::Error> },
+
+    #[diag(codegen_ssa_extract_bundled_libs_write_file)]
+    ExtractSection { rlib: &'a Path, error: Box<dyn std::error::Error> },
 }
 
 #[derive(Diagnostic)]
@@ -520,4 +523,10 @@ pub struct UnsupportedArch<'a> {
 pub enum AppleSdkRootError<'a> {
     #[diag(codegen_ssa_apple_sdk_error_sdk_path)]
     SdkPath { sdk_name: &'a str, error: Error },
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_read_file)]
+pub struct ReadFileError {
+    pub message: std::io::Error,
 }

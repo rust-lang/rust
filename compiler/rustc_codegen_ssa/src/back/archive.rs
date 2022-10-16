@@ -4,8 +4,11 @@ use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
+use super::metadata::search_for_section;
+
 use object::read::archive::ArchiveFile;
 
+use std::error::Error;
 use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -56,6 +59,9 @@ pub trait ArchiveBuilderBuilder {
             if !bundled_lib_file_names.contains(&Symbol::intern(name)) {
                 continue; // We need to extract only native libraries.
             }
+            let data = search_for_section(rlib, data, ".bundled_lib").map_err(|e| {
+                ExtractBundledLibsError::ExtractSection { rlib, error: Box::<dyn Error>::from(e) }
+            })?;
             std::fs::write(&outdir.join(&name), data)
                 .map_err(|e| ExtractBundledLibsError::WriteFile { rlib, error: Box::new(e) })?;
         }
