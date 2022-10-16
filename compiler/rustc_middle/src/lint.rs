@@ -291,7 +291,7 @@ pub fn explain_lint_level_source(
 ///
 /// There are 2 reasons for this signature.
 ///
-/// First off all, it prevents accidental use of `.emit()` -- it's clear that the
+/// First of all, it prevents accidental use of `.emit()` -- it's clear that the
 /// builder will be later used and shouldn't be emitted right away (this is
 /// especially important because the old API expected you to call `.emit()` in
 /// the closure).
