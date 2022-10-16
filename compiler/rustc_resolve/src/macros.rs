@@ -12,7 +12,7 @@ use rustc_attr::StabilityLevel;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, ResolverExpand};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
@@ -694,7 +694,25 @@ impl<'a> Resolver<'a> {
                     check_consistency(self, &path, path_span, kind, initial_res, res)
                 }
                 path_res @ PathResult::NonModule(..) | path_res @ PathResult::Failed { .. } => {
+                    let mut suggestion = None;
                     let (span, label) = if let PathResult::Failed { span, label, .. } = path_res {
+                        // try to suggest if it's not a macro, maybe a function
+                        if let PathResult::NonModule(partial_res) =  self.resolve_path(
+                            &path,
+                            Some(ValueNS),
+                            &parent_scope,
+                            Some(Finalize::new(ast::CRATE_NODE_ID, path_span)),
+                            None,
+                        ) && partial_res.unresolved_segments() == 0 {
+                            let sm = self.session.source_map();
+                            let span = sm.span_extend_while(span, |c| c == '!').unwrap_or(span);
+                            let code = sm.span_to_snippet(span).unwrap();
+                            suggestion = Some(
+                                    (vec![(span, code.trim_end_matches('!').to_string())],
+                                    format!("{} is not a macro, but a {}, try to remove `!`", Segment::names_to_string(&path), partial_res.base_res().descr()),
+                                    Applicability::MaybeIncorrect)
+                                );
+                        }
                         (span, label)
                     } else {
                         (
@@ -708,7 +726,7 @@ impl<'a> Resolver<'a> {
                     };
                     self.report_error(
                         span,
-                        ResolutionError::FailedToResolve { label, suggestion: None },
+                        ResolutionError::FailedToResolve { label, suggestion },
                     );
                 }
                 PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
