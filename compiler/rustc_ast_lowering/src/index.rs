@@ -70,6 +70,16 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         debug_assert_eq!(self.owner, hir_id.owner);
         debug_assert_ne!(hir_id.local_id.as_u32(), 0);
         debug_assert_ne!(hir_id.local_id, self.parent_node);
+        let debug_log = std::env::var("RUSTC_HIR").is_ok();
+        if debug_log {
+            if hir_id.local_id < self.parent_node {
+                let message = format!(
+                    "HirIdValidator: The parent local_id: {:?} is not smaller than children id: {:?}",
+                    self.parent_node, hir_id.local_id
+                );
+                span_bug!(rustc_span::DUMMY_SP, "error NodeCollector.insert: {}", message);
+            }
+        }
 
         // Make sure that the DepNode of some node coincides with the HirId
         // owner of that node.
@@ -89,7 +99,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             }
         }
 
-        self.nodes.insert(hir_id.local_id, ParentedNode { parent: self.parent_node, node: node });
+        self.nodes.insert(hir_id.local_id, ParentedNode { parent: self.parent_node, node });
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_node_id: HirId, f: F) {

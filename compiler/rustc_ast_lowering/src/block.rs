@@ -91,11 +91,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_local(&mut self, l: &Local) -> &'hir hir::Local<'hir> {
+        let hir_id = self.lower_node_id(l.id);
         let ty = l
             .ty
             .as_ref()
             .map(|t| self.lower_ty(t, &ImplTraitContext::Disallowed(ImplTraitPosition::Variable)));
-        let hir_id = self.lower_node_id(l.id);
         let init = l.kind.init().map(|init| self.lower_expr(init));
         let pat = self.lower_pat(&l.pat);
         let els = if let LocalKind::InitElse(_, els) = &l.kind {

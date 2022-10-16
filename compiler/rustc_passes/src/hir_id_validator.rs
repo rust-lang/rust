@@ -154,8 +154,10 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
                     let message = format!("HirIdValidator: The parent local_id `{}` is not smaller than children id: {:?}",
                                             self.hir_map.node_to_string(owner_hir_id), hir_id.local_id);
                     let child_span = self.hir_map.span(hir_id);
+                    println!("parent_code: {:?}", self.hir_map.node_to_string(owner_hir_id));
+                    println!("child_code: {:?}", self.hir_map.node_to_string(hir_id));
                     span_bug!(self.hir_map.span(owner_hir_id), "{}\nchild_span:{:?}", message, child_span);
-            }
+                }
         }
 
         self.hir_ids_seen.insert(hir_id.local_id);

@@ -549,6 +549,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
+        let hir_id = self.next_id();
         let pat = self.lower_pat(&arm.pat);
         let guard = arm.guard.as_ref().map(|cond| {
             if let ExprKind::Let(ref pat, ref scrutinee, span) = cond.kind {
@@ -563,7 +564,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::Guard::If(self.lower_expr(cond))
             }
         });
-        let hir_id = self.next_id();
+
         self.lower_attrs(hir_id, &arm.attrs);
         hir::Arm {
             hir_id,
@@ -1220,9 +1221,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // Structs.
             ExprKind::Struct(se) => {
                 let field_pats = self.arena.alloc_from_iter(se.fields.iter().map(|f| {
+                    let hir_id = self.next_id();
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
                     hir::PatField {
-                        hir_id: self.next_id(),
+                        hir_id,
                         ident: self.lower_ident(f.ident),
                         pat,
                         is_shorthand: f.is_shorthand,

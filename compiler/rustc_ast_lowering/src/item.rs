@@ -1486,21 +1486,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match kind {
             GenericParamKind::Const { .. } => None,
             GenericParamKind::Type { .. } => {
-                let def_id = self.local_def_id(id).to_def_id();
                 let hir_id = self.next_id();
+                let def_id = self.local_def_id(id).to_def_id();
+                let path_id = self.next_id();
                 let res = Res::Def(DefKind::TyParam, def_id);
                 let ty_path = self.arena.alloc(hir::Path {
                     span: param_span,
                     res,
                     segments: self
                         .arena
-                        .alloc_from_iter([hir::PathSegment::new(ident, hir_id, res)]),
+                        .alloc_from_iter([hir::PathSegment::new(ident, path_id, res)]),
                 });
                 let ty_id = self.next_id();
                 let bounded_ty =
                     self.ty_path(ty_id, param_span, hir::QPath::Resolved(None, ty_path));
                 Some(hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    hir_id: self.next_id(),
+                    hir_id,
                     bounded_ty: self.arena.alloc(bounded_ty),
                     bounds,
                     span,
@@ -1509,10 +1510,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }))
             }
             GenericParamKind::Lifetime => {
-                let ident_span = self.lower_span(ident.span);
-                let ident = self.lower_ident(ident);
                 let lt_id = self.next_node_id();
-                let lifetime = self.new_named_lifetime(id, lt_id, ident_span, ident);
+                let lifetime = self.new_named_lifetime(
+                    id,
+                    lt_id,
+                    self.lower_span(ident.span),
+                    self.lower_ident(ident),
+                );
                 Some(hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                     lifetime,
                     span,

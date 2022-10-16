@@ -309,6 +309,7 @@ impl<'hir> Map<'hir> {
             let hir_id = HirId { owner: id.owner, local_id: node.parent };
             // HIR indexing should have checked that.
             debug_assert_ne!(id.local_id, node.parent);
+            //debug_assert!(node.parent < id.local_id); // parent's LocalItemId should be smaller
             Some(hir_id)
         }
     }

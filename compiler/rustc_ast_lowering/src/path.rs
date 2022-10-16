@@ -34,6 +34,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let path_span_lo = p.span.shrink_to_lo();
         let proj_start = p.segments.len() - unresolved_segments;
+        let mut path_hir = None;
         let path = self.arena.alloc(hir::Path {
             res: self.lower_res(base_res),
             segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
@@ -67,6 +68,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => ParenthesizedGenericArgs::Err,
                     };
 
+                    if path_hir.is_none() && unresolved_segments > 0 {
+                        path_hir = Some(self.next_id());
+                    }
                     self.lower_path_segment(
                         p.span,
                         segment,
@@ -98,8 +102,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // Otherwise, the base path is an implicit `Self` type path,
             // e.g., `Vec` in `Vec::new` or `<I as Iterator>::Item` in
             // `<I as Iterator>::Item::default`.
-            let new_id = self.next_id();
-            self.arena.alloc(self.ty_path(new_id, path.span, hir::QPath::Resolved(qself, path)))
+            self.arena.alloc(self.ty_path(
+                path_hir.unwrap(),
+                path.span,
+                hir::QPath::Resolved(qself, path),
+            ))
         };
 
         // Anything after the base path are associated "extensions",
@@ -112,6 +119,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //   2. `<std::vec::Vec<T>>::IntoIter`
         //   3. `<<std::vec::Vec<T>>::IntoIter>::Item`
         // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
+        let mut ret_hir_id = None;
         for (i, segment) in p.segments.iter().enumerate().skip(proj_start) {
             let hir_segment = self.arena.alloc(self.lower_path_segment(
                 p.span,
@@ -126,9 +134,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             if i == p.segments.len() - 1 {
                 return qpath;
             }
+            if ret_hir_id.is_none() {
+                ret_hir_id = Some(self.next_id());
+            }
 
             // Wrap the associated extension in another type node.
-            let new_id = self.next_id();
+            let new_id =
+                if i == p.segments.len() - 2 { ret_hir_id.unwrap() } else { self.next_id() };
             ty = self.arena.alloc(self.ty_path(new_id, path_span_lo.to(segment.span()), qpath));
         }
 
@@ -393,6 +405,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         ty: &'hir hir::Ty<'hir>,
     ) -> hir::TypeBinding<'hir> {
+        let hir_id = self.next_id();
         let ident = Ident::with_dummy_span(hir::FN_OUTPUT_NAME);
         let kind = hir::TypeBindingKind::Equality { term: ty.into() };
         let args = arena_vec![self;];
@@ -403,12 +416,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             parenthesized: false,
             span_ext: DUMMY_SP,
         });
-        hir::TypeBinding {
-            hir_id: self.next_id(),
-            gen_args,
-            span: self.lower_span(span),
-            ident,
-            kind,
-        }
+        hir::TypeBinding { hir_id, gen_args, span: self.lower_span(span), ident, kind }
     }
 }

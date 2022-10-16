@@ -19,7 +19,6 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/
 //!
 //! # Note
-//!
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
