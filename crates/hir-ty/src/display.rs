@@ -291,7 +291,7 @@ impl HirDisplay for ProjectionTy {
 
         let trait_ = f.db.trait_data(self.trait_(f.db));
         write!(f, "<")?;
-        self.self_type_parameter(Interner).hir_fmt(f)?;
+        self.self_type_parameter(f.db).hir_fmt(f)?;
         write!(f, " as {}", trait_.name)?;
         if self.substitution.len(Interner) > 1 {
             write!(f, "<")?;
@@ -731,7 +731,7 @@ impl HirDisplay for Ty {
                                         WhereClause::AliasEq(AliasEq {
                                             alias: AliasTy::Projection(proj),
                                             ty: _,
-                                        }) => &proj.self_type_parameter(Interner) == self,
+                                        }) => &proj.self_type_parameter(f.db) == self,
                                         _ => false,
                                     })
                                     .collect::<Vec<_>>();
