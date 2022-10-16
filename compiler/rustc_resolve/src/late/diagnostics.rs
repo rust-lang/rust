@@ -131,6 +131,7 @@ pub(super) enum LifetimeElisionCandidate {
 }
 
 /// Only used for diagnostics.
+#[derive(Debug)]
 struct BaseError {
     msg: String,
     fallback_label: String,
@@ -1584,19 +1585,35 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     ) -> Option<TypoSuggestion> {
         let mut names = Vec::new();
         if path.len() == 1 {
+            let mut ctxt = path.last().unwrap().ident.span.ctxt();
+
             // Search in lexical scope.
             // Walk backwards up the ribs in scope and collect candidates.
             for rib in self.ribs[ns].iter().rev() {
+                let rib_ctxt = if rib.kind.contains_params() {
+                    ctxt.normalize_to_macros_2_0()
+                } else {
+                    ctxt.normalize_to_macro_rules()
+                };
+
                 // Locals and type parameters
                 for (ident, &res) in &rib.bindings {
-                    if filter_fn(res) {
+                    if filter_fn(res) && ident.span.ctxt() == rib_ctxt {
                         names.push(TypoSuggestion::typo_from_res(ident.name, res));
                     }
                 }
+
+                if let RibKind::MacroDefinition(def) = rib.kind && def == self.r.macro_def(ctxt) {
+                    // If an invocation of this macro created `ident`, give up on `ident`
+                    // and switch to `ident`'s source from the macro definition.
+                    ctxt.remove_mark();
+                    continue;
+                }
+
                 // Items in scope
                 if let RibKind::ModuleRibKind(module) = rib.kind {
                     // Items from this module
-                    self.r.add_module_candidates(module, &mut names, &filter_fn);
+                    self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
 
                     if let ModuleKind::Block = module.kind {
                         // We can see through blocks
@@ -1622,7 +1639,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             }));
 
                             if let Some(prelude) = self.r.prelude {
-                                self.r.add_module_candidates(prelude, &mut names, &filter_fn);
+                                self.r.add_module_candidates(prelude, &mut names, &filter_fn, None);
                             }
                         }
                         break;
@@ -1641,7 +1658,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(mod_path, Some(TypeNS), None)
             {
-                self.r.add_module_candidates(module, &mut names, &filter_fn);
+                self.r.add_module_candidates(module, &mut names, &filter_fn, None);
             }
         }
 
