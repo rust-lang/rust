@@ -1,154 +1,107 @@
 // This test is to ensure that the anchors (`§`) have the expected color and position.
-goto: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
 
-// This is needed to ensure that the text color is computed.
-show-text: true
+define-function: (
+    "check-colors",
+    (theme, main_color, title_color, fqn_color, fqn_type_color, src_link_color, sidebar_link_color),
+    [
+        ("goto", "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"),
+        // This is needed to ensure that the text color is computed.
+        ("show-text", true),
 
-// Set the theme to light.
-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
-// We reload the page so the local storage settings are being used.
-reload:
+        // Setting the theme.
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        // We reload the page so the local storage settings are being used.
+        ("reload"),
 
-assert-css: ("#toggle-all-docs", {"color": "rgb(0, 0, 0)"})
-assert-css: (".fqn a:nth-of-type(1)", {"color": "rgb(0, 0, 0)"})
-assert-css: (".fqn a:nth-of-type(2)", {"color": "rgb(173, 55, 138)"})
-assert-css: (
-    ".rightside .srclink",
-    {"color": "rgb(56, 115, 173)", "text-decoration": "none solid rgb(56, 115, 173)"},
-    ALL,
-)
-compare-elements-css: (".rightside .srclink", ".rightside.srclink", ["color", "text-decoration"])
-compare-elements-css: (".main-heading .srclink", ".rightside.srclink", ["color", "text-decoration"])
+        ("assert-css", ("#toggle-all-docs", {"color": |main_color|})),
+        ("assert-css", (".fqn a:nth-of-type(1)", {"color": |fqn_color|})),
+        ("assert-css", (".fqn a:nth-of-type(2)", {"color": |fqn_type_color|})),
+        ("assert-css", (
+             ".rightside .srclink",
+             {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
+             ALL,
+        )),
+        (
+            "compare-elements-css",
+            (".rightside .srclink", ".rightside.srclink", ["color", "text-decoration"]),
+        ),
+        (
+            "compare-elements-css",
+            (".main-heading .srclink", ".rightside.srclink", ["color", "text-decoration"]),
+        ),
 
-move-cursor-to: ".main-heading .srclink"
-assert-css: (
-    ".main-heading .srclink",
-    {"color": "rgb(56, 115, 173)", "text-decoration": "underline solid rgb(56, 115, 173)"},
-)
-move-cursor-to: ".impl-items .rightside .srclink"
-assert-css: (
-    ".impl-items .rightside .srclink",
-    {"color": "rgb(56, 115, 173)", "text-decoration": "none solid rgb(56, 115, 173)"},
-)
-move-cursor-to: ".impl-items .rightside.srclink"
-assert-css: (
-    ".impl-items .rightside.srclink",
-    {"color": "rgb(56, 115, 173)", "text-decoration": "none solid rgb(56, 115, 173)"},
-)
+        ("move-cursor-to", ".main-heading .srclink"),
+        ("assert-css", (
+             ".main-heading .srclink",
+             {"color": |src_link_color|, "text-decoration": "underline solid " + |src_link_color|},
+        )),
+        ("move-cursor-to", ".impl-items .rightside .srclink"),
+        ("assert-css", (
+             ".impl-items .rightside .srclink",
+             {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
+        )),
+        ("move-cursor-to", ".impl-items .rightside.srclink"),
+        ("assert-css", (
+             ".impl-items .rightside.srclink",
+             {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
+        )),
 
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
+        ("goto", "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"),
+        // Since we changed page, we need to set the theme again.
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        // We reload the page so the local storage settings are being used.
+        ("reload"),
 
-assert-css: ("#top-doc-prose-title", {"color": "rgb(0, 0, 0)"})
+        ("assert-css", ("#top-doc-prose-title", {"color": |title_color|})),
 
-assert-css: (".sidebar a", {"color": "rgb(53, 109, 164)"})
-assert-css: ("h1.fqn a", {"color": "rgb(0, 0, 0)"})
+        ("assert-css", (".sidebar a", {"color": |sidebar_link_color|})),
+        ("assert-css", ("h1.fqn a", {"color": |title_color|})),
 
-// We move the cursor over the "Implementations" title so the anchor is displayed.
-move-cursor-to: "h2#implementations"
-assert-css: ("h2#implementations a.anchor", {"color": "rgb(0, 0, 0)"})
+        // We move the cursor over the "Implementations" title so the anchor is displayed.
+        ("move-cursor-to", "h2#implementations"),
+        ("assert-css", ("h2#implementations a.anchor", {"color": |main_color|})),
 
-// Same thing with the impl block title.
-move-cursor-to: "#impl-HeavilyDocumentedStruct"
-assert-css: ("#impl-HeavilyDocumentedStruct a.anchor", {"color": "rgb(0, 0, 0)"})
+        // Same thing with the impl block title.
+        ("move-cursor-to", "#impl-HeavilyDocumentedStruct"),
+        ("assert-css", ("#impl-HeavilyDocumentedStruct a.anchor", {"color": |main_color|})),
 
-assert-css: ("#title-for-struct-impl-item-doc", {"margin-left": "0px"})
-
-//
-// We do the same checks with the dark theme now.
-//
-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
-goto: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
-
-assert-css: ("#toggle-all-docs", {"color": "rgb(221, 221, 221)"})
-assert-css: (".fqn a:nth-of-type(1)", {"color": "rgb(221, 221, 221)"})
-assert-css: (".fqn a:nth-of-type(2)", {"color": "rgb(45, 191, 184)"})
-assert-css: (
-    ".rightside .srclink",
-    {"color": "rgb(210, 153, 29)", "text-decoration": "none solid rgb(210, 153, 29)"},
-    ALL,
-)
-compare-elements-css: (".rightside .srclink", ".rightside.srclink", ["color", "text-decoration"])
-compare-elements-css: (".main-heading .srclink", ".rightside.srclink", ["color", "text-decoration"])
-
-move-cursor-to: ".main-heading .srclink"
-assert-css: (
-    ".main-heading .srclink",
-    {"color": "rgb(210, 153, 29)", "text-decoration": "underline solid rgb(210, 153, 29)"},
-)
-move-cursor-to: ".impl-items .rightside .srclink"
-assert-css: (
-    ".impl-items .rightside .srclink",
-    {"color": "rgb(210, 153, 29)", "text-decoration": "none solid rgb(210, 153, 29)"},
-)
-move-cursor-to: ".impl-items .rightside.srclink"
-assert-css: (
-    ".impl-items .rightside.srclink",
-    {"color": "rgb(210, 153, 29)", "text-decoration": "none solid rgb(210, 153, 29)"},
+        ("assert-css", ("#title-for-struct-impl-item-doc", {"margin-left": "0px"})),
+    ],
 )
 
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
-
-assert-css: ("#top-doc-prose-title", {"color": "rgb(221, 221, 221)"})
-
-assert-css: (".sidebar a", {"color": "rgb(253, 191, 53)"})
-assert-css: ("h1.fqn a", {"color": "rgb(221, 221, 221)"})
-
-// We move the cursor over the "Implementations" title so the anchor is displayed.
-move-cursor-to: "h2#implementations"
-assert-css: ("h2#implementations a.anchor", {"color": "rgb(221, 221, 221)"})
-
-// Same thing with the impl block title.
-move-cursor-to: "#impl-HeavilyDocumentedStruct"
-assert-css: ("#impl-HeavilyDocumentedStruct a.anchor", {"color": "rgb(221, 221, 221)"})
-
-assert-css: ("#title-for-struct-impl-item-doc", {"margin-left": "0px"})
-
-//
-// We do the same checks with the ayu theme now.
-//
-local-storage: {"rustdoc-theme": "ayu", "rustdoc-use-system-theme": "false"}
-goto: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
-
-assert-css: ("#toggle-all-docs", {"color": "rgb(197, 197, 197)"})
-assert-css: (".fqn a:nth-of-type(1)", {"color": "rgb(255, 255, 255)"})
-assert-css: (".fqn a:nth-of-type(2)", {"color": "rgb(255, 160, 165)"})
-assert-css: (
-    ".rightside .srclink",
-    {"color": "rgb(57, 175, 215)", "text-decoration": "none solid rgb(57, 175, 215)"},
-    ALL,
+call-function: (
+    "check-colors",
+    (
+        "ayu", // theme
+        "rgb(197, 197, 197)", // main color
+        "rgb(255, 255, 255)", // title color
+        "rgb(255, 255, 255)", // fqn color
+        "rgb(255, 160, 165)", // fqn type color
+        "rgb(57, 175, 215)", // src link
+        "rgb(83, 177, 219)", // sidebar link
+    ),
 )
-compare-elements-css: (".rightside .srclink", ".rightside.srclink", ["color", "text-decoration"])
-compare-elements-css: (".main-heading .srclink", ".rightside.srclink", ["color", "text-decoration"])
-
-move-cursor-to: ".main-heading .srclink"
-assert-css: (
-    ".main-heading .srclink",
-    {"color": "rgb(57, 175, 215)", "text-decoration": "underline solid rgb(57, 175, 215)"},
+call-function: (
+    "check-colors",
+    (
+        "dark", // theme
+        "rgb(221, 221, 221)", // main color
+        "rgb(221, 221, 221)", // title color
+        "rgb(221, 221, 221)", // fqn color
+        "rgb(45, 191, 184)", // fqn type color
+        "rgb(210, 153, 29)", // src link
+        "rgb(253, 191, 53)", // sidebar link
+    ),
 )
-move-cursor-to: ".impl-items .rightside .srclink"
-assert-css: (
-    ".impl-items .rightside .srclink",
-    {"color": "rgb(57, 175, 215)", "text-decoration": "none solid rgb(57, 175, 215)"},
+call-function: (
+    "check-colors",
+    (
+        "light", // theme
+        "rgb(0, 0, 0)", // main color
+        "rgb(0, 0, 0)", // title color
+        "rgb(0, 0, 0)", // fqn color
+        "rgb(173, 55, 138)", // fqn type color
+        "rgb(56, 115, 173)", // src link
+        "rgb(53, 109, 164)", // sidebar link
+    ),
 )
-move-cursor-to: ".impl-items .rightside.srclink"
-assert-css: (
-    ".impl-items .rightside.srclink",
-    {"color": "rgb(57, 175, 215)", "text-decoration": "none solid rgb(57, 175, 215)"},
-)
-
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
-
-assert-css: ("#top-doc-prose-title", {"color": "rgb(255, 255, 255)"})
-
-assert-css: (".sidebar a", {"color": "rgb(83, 177, 219)"})
-assert-css: ("h1.fqn a", {"color": "rgb(255, 255, 255)"})
-
-// We move the cursor over the "Implementations" title so the anchor is displayed.
-move-cursor-to: "h2#implementations"
-assert-css: ("h2#implementations a.anchor", {"color": "rgb(197, 197, 197)"})
-
-// Same thing with the impl block title.
-move-cursor-to: "#impl-HeavilyDocumentedStruct"
-assert-css: ("#impl-HeavilyDocumentedStruct a.anchor", {"color": "rgb(197, 197, 197)"})
-
-assert-css: ("#title-for-struct-impl-item-doc", {"margin-left": "0px"})
