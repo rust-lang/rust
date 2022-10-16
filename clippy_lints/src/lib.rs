@@ -324,6 +324,7 @@ mod option_if_let_else;
 mod overflow_check_conditional;
 mod panic_in_result_fn;
 mod panic_unimplemented;
+mod partial_pub_fields;
 mod partialeq_ne_impl;
 mod partialeq_to_none;
 mod pass_by_ref_or_value;
@@ -914,6 +915,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(bool_to_int_with_if::BoolToIntWithIf));
     store.register_late_pass(|_| Box::new(box_default::BoxDefault));
     store.register_late_pass(|_| Box::new(implicit_saturating_add::ImplicitSaturatingAdd));
+    store.register_early_pass(|| Box::new(partial_pub_fields::PartialPubFields));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

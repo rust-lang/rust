@@ -61,6 +61,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(panic_unimplemented::TODO),
     LintId::of(panic_unimplemented::UNIMPLEMENTED),
     LintId::of(panic_unimplemented::UNREACHABLE),
+    LintId::of(partial_pub_fields::PARTIAL_PUB_FIELDS),
     LintId::of(pattern_type_mismatch::PATTERN_TYPE_MISMATCH),
     LintId::of(pub_use::PUB_USE),
     LintId::of(redundant_slicing::DEREF_BY_SLICING),

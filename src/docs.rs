@@ -395,6 +395,7 @@ docs! {
     "panic",
     "panic_in_result_fn",
     "panicking_unwrap",
+    "partial_pub_fields",
     "partialeq_ne_impl",
     "partialeq_to_none",
     "path_buf_push_overwrite",
