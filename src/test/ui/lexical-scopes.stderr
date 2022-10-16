@@ -1,6 +1,8 @@
 error[E0574]: expected struct, variant or union type, found type parameter `T`
   --> $DIR/lexical-scopes.rs:3:13
    |
+LL | struct T { i: i32 }
+   | ------------------- you might have meant to refer to this struct
 LL | fn f<T>() {
    |      - found this type parameter
 LL |     let t = T { i: 0 };
