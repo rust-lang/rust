@@ -372,15 +372,11 @@ img {
 }
 
 .sub-logo-container {
-	display: none;
+	display: block;
 	margin-right: 20px;
 }
 
-.source .sub-logo-container {
-	display: block;
-}
-
-.source .sub-logo-container > img {
+.sub-logo-container > img {
 	height: 60px;
 	width: 60px;
 	object-fit: contain;
@@ -1716,12 +1712,6 @@ in storage.js plus the media query with (max-width: 700px)
 		margin-top: 16px;
 	}
 
-	/* When we expand the sidebar on the source code page, we hide the logo on the left of the
-	search bar to have more space. */
-	.source-sidebar-expanded .source .sidebar + main .width-limiter .sub-logo-container.rust-logo {
-		display: none;
-	}
-
 	.source-sidebar-expanded .source .sidebar {
 		width: 300px;
 	}
@@ -2025,7 +2015,7 @@ in storage.js plus the media query with (min-width: 701px)
 		align-self: center;
 	}
 
-	.source .sub-logo-container > img {
+	.sub-logo-container > img {
 		height: 35px;
 		width: 35px;
 	}
