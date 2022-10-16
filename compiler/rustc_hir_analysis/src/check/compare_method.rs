@@ -465,30 +465,30 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     let ocx = ObligationCtxt::new(infcx);
 
     let norm_cause = ObligationCause::misc(return_span, impl_m_hir_id);
-    let impl_return_ty = ocx.normalize(
+    let impl_sig = ocx.normalize(
         norm_cause.clone(),
         param_env,
-        infcx
-            .replace_bound_vars_with_fresh_vars(
-                return_span,
-                infer::HigherRankedType,
-                tcx.fn_sig(impl_m.def_id),
-            )
-            .output(),
+        infcx.replace_bound_vars_with_fresh_vars(
+            return_span,
+            infer::HigherRankedType,
+            tcx.fn_sig(impl_m.def_id),
+        ),
     );
+    let impl_return_ty = impl_sig.output();
 
     let mut collector = ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_hir_id);
-    let unnormalized_trait_return_ty = tcx
+    let unnormalized_trait_sig = tcx
         .liberate_late_bound_regions(
             impl_m.def_id,
             tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
         )
-        .output()
         .fold_with(&mut collector);
-    let trait_return_ty =
-        ocx.normalize(norm_cause.clone(), param_env, unnormalized_trait_return_ty);
+    let trait_sig = ocx.normalize(norm_cause.clone(), param_env, unnormalized_trait_sig);
+    let trait_return_ty = trait_sig.output();
 
-    let wf_tys = FxHashSet::from_iter([unnormalized_trait_return_ty, trait_return_ty]);
+    let wf_tys = FxHashSet::from_iter(
+        unnormalized_trait_sig.inputs_and_output.iter().chain(trait_sig.inputs_and_output.iter()),
+    );
 
     match infcx.at(&cause, param_env).eq(trait_return_ty, impl_return_ty) {
         Ok(infer::InferOk { value: (), obligations }) => {
@@ -518,6 +518,26 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                 false,
             );
             return Err(diag.emit());
+        }
+    }
+
+    // Unify the whole function signature. We need to do this to fully infer
+    // the lifetimes of the return type, but do this after unifying just the
+    // return types, since we want to avoid duplicating errors from
+    // `compare_predicate_entailment`.
+    match infcx
+        .at(&cause, param_env)
+        .eq(tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig)), tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig)))
+    {
+        Ok(infer::InferOk { value: (), obligations }) => {
+            ocx.register_obligations(obligations);
+        }
+        Err(terr) => {
+            let guar = tcx.sess.delay_span_bug(
+                return_span,
+                format!("could not unify `{trait_sig}` and `{impl_sig}`: {terr:?}"),
+            );
+            return Err(guar);
         }
     }
 
@@ -551,15 +571,40 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                 let id_substs = InternalSubsts::identity_for_item(tcx, def_id);
                 debug!(?id_substs, ?substs);
                 let map: FxHashMap<ty::GenericArg<'tcx>, ty::GenericArg<'tcx>> =
-                    substs.iter().enumerate().map(|(index, arg)| (arg, id_substs[index])).collect();
+                    std::iter::zip(substs, id_substs).collect();
                 debug!(?map);
 
+                // NOTE(compiler-errors): RPITITs, like all other RPITs, have early-bound
+                // region substs that are synthesized during AST lowering. These are substs
+                // that are appended to the parent substs (trait and trait method). However,
+                // we're trying to infer the unsubstituted type value of the RPITIT inside
+                // the *impl*, so we can later use the impl's method substs to normalize
+                // an RPITIT to a concrete type (`confirm_impl_trait_in_trait_candidate`).
+                //
+                // Due to the design of RPITITs, during AST lowering, we have no idea that
+                // an impl method corresponds to a trait method with RPITITs in it. Therefore,
+                // we don't have a list of early-bound region substs for the RPITIT in the impl.
+                // Since early region parameters are index-based, we can't just rebase these
+                // (trait method) early-bound region substs onto the impl, and there's no
+                // guarantee that the indices from the trait substs and impl substs line up.
+                // So to fix this, we subtract the number of trait substs and add the number of
+                // impl substs to *renumber* these early-bound regions to their corresponding
+                // indices in the impl's substitutions list.
+                //
+                // Also, we only need to account for a difference in trait and impl substs,
+                // since we previously enforce that the trait method and impl method have the
+                // same generics.
+                let num_trait_substs = trait_to_impl_substs.len();
+                let num_impl_substs = tcx.generics_of(impl_m.container_id(tcx)).params.len();
                 let ty = tcx.fold_regions(ty, |region, _| {
-                    if let ty::ReFree(_) = region.kind() {
-                        map[&region.into()].expect_region()
-                    } else {
-                        region
-                    }
+                    let ty::ReFree(_) = region.kind() else { return region; };
+                    let ty::ReEarlyBound(e) = map[&region.into()].expect_region().kind()
+                        else { bug!("expected ReFree to map to ReEarlyBound"); };
+                    tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: e.def_id,
+                        name: e.name,
+                        index: (e.index as usize - num_trait_substs + num_impl_substs) as u32,
+                    }))
                 });
                 debug!(%ty);
                 collected_tys.insert(def_id, ty);

@@ -2254,7 +2254,10 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     }
 
     let impl_fn_def_id = leaf_def.item.def_id;
-    let impl_fn_substs = obligation.predicate.substs.rebase_onto(tcx, trait_fn_def_id, data.substs);
+    // Rebase from {trait}::{fn}::{opaque} to {impl}::{fn}::{opaque},
+    // since `data.substs` are the impl substs.
+    let impl_fn_substs =
+        obligation.predicate.substs.rebase_onto(tcx, tcx.parent(trait_fn_def_id), data.substs);
 
     let cause = ObligationCause::new(
         obligation.cause.span,
