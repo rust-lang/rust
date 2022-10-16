@@ -55,6 +55,7 @@ pub unsafe trait MaskElement: SimdElement + Sealed {}
 macro_rules! impl_element {
     { $ty:ty } => {
         impl Sealed for $ty {
+            #[inline]
             fn valid<const LANES: usize>(value: Simd<Self, LANES>) -> bool
             where
                 LaneCount<LANES>: SupportedLaneCount,
@@ -62,6 +63,7 @@ macro_rules! impl_element {
                 (value.simd_eq(Simd::splat(0 as _)) | value.simd_eq(Simd::splat(-1 as _))).all()
             }
 
+            #[inline]
             fn eq(self, other: Self) -> bool { self == other }
 
             const TRUE: Self = -1;
@@ -104,6 +106,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn clone(&self) -> Self {
         *self
     }
@@ -115,11 +118,13 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     /// Construct a mask by setting all lanes to the given value.
+    #[inline]
     pub fn splat(value: bool) -> Self {
         Self(mask_impl::Mask::splat(value))
     }
 
     /// Converts an array of bools to a SIMD mask.
+    #[inline]
     pub fn from_array(array: [bool; LANES]) -> Self {
         // SAFETY: Rust's bool has a layout of 1 byte (u8) with a value of
         //     true:    0b_0000_0001
@@ -136,6 +141,7 @@ where
     }
 
     /// Converts a SIMD mask to an array of bools.
+    #[inline]
     pub fn to_array(self) -> [bool; LANES] {
         // This follows mostly the same logic as from_array.
         // SAFETY: Rust's bool has a layout of 1 byte (u8) with a value of
@@ -263,6 +269,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn from(array: [bool; LANES]) -> Self {
         Self::from_array(array)
     }
@@ -273,6 +280,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
+    #[inline]
     fn from(vector: Mask<T, LANES>) -> Self {
         vector.to_array()
     }
@@ -655,6 +663,7 @@ macro_rules! impl_from {
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
+            #[inline]
             fn from(value: Mask<$from, LANES>) -> Self {
                 value.cast()
             }
