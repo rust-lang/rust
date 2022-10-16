@@ -60,23 +60,17 @@ pub fn add_placeholder_note(err: &mut Diagnostic) {
     );
 }
 
-/// If there are types that satisfy both impls, invokes `on_overlap`
+/// If there are types that satisfy both impls, returns `Some`
 /// with a suitably-freshened `ImplHeader` with those types
-/// substituted. Otherwise, invokes `no_overlap`.
-#[instrument(skip(tcx, skip_leak_check, on_overlap, no_overlap), level = "debug")]
-pub fn overlapping_impls<F1, F2, R>(
+/// substituted. Otherwise, returns `None`.
+#[instrument(skip(tcx, skip_leak_check), level = "debug")]
+pub fn overlapping_impls(
     tcx: TyCtxt<'_>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     skip_leak_check: SkipLeakCheck,
     overlap_mode: OverlapMode,
-    on_overlap: F1,
-    no_overlap: F2,
-) -> R
-where
-    F1: FnOnce(OverlapResult<'_>) -> R,
-    F2: FnOnce() -> R,
-{
+) -> Option<OverlapResult<'_>> {
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
@@ -97,7 +91,7 @@ where
     if !may_overlap {
         // Some types involved are definitely different, so the impls couldn't possibly overlap.
         debug!("overlapping_impls: fast_reject early-exit");
-        return no_overlap();
+        return None;
     }
 
     let infcx = tcx.infer_ctxt().build();
@@ -105,7 +99,7 @@ where
     let overlaps =
         overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some();
     if !overlaps {
-        return no_overlap();
+        return None;
     }
 
     // In the case where we detect an error, run the check again, but
@@ -114,7 +108,7 @@ where
     let infcx = tcx.infer_ctxt().build();
     let selcx = &mut SelectionContext::intercrate(&infcx);
     selcx.enable_tracking_intercrate_ambiguity_causes();
-    on_overlap(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())
+    Some(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())
 }
 
 fn with_fresh_ty_vars<'cx, 'tcx>(
