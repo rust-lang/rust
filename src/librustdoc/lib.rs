@@ -742,11 +742,18 @@ fn main_args(at_args: &[String]) -> MainResult {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
         (true, false) => return doctest::run(options),
         (false, true) => {
-            // Session globals are required for symbol interning.
+            let input = options.input.clone();
+            let render_options = options.render_options.clone();
+            let edition = options.edition;
+            let config = core::create_config(options);
+
+            // `markdown::render` can invoke `doctest::make_test`, which
+            // requires session globals and a thread pool, so we use
+            // `run_compiler`.
             return wrap_return(
                 &diag,
-                rustc_span::create_session_globals_then(options.edition, || {
-                    markdown::render(&options.input, options.render_options, options.edition)
+                interface::run_compiler(config, |_compiler| {
+                    markdown::render(&input, render_options, edition)
                 }),
             );
         }
