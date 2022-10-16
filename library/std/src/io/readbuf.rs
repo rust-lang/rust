@@ -286,7 +286,7 @@ impl<'a> BorrowedCursor<'a> {
 
         // SAFETY: we do not de-initialize any of the elements of the slice
         unsafe {
-            MaybeUninit::write_slice(&mut self.as_mut()[..buf.len()], buf);
+            self.as_mut()[..buf.len()].write_slice(buf);
         }
 
         // SAFETY: We just added the entire contents of buf to the filled section.

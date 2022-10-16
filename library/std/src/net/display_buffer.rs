@@ -30,7 +30,7 @@ impl<const SIZE: usize> fmt::Write for DisplayBuffer<SIZE> {
         let bytes = s.as_bytes();
 
         if let Some(buf) = self.buf.get_mut(self.len..(self.len + bytes.len())) {
-            MaybeUninit::write_slice(buf, bytes);
+            buf.write_slice(bytes);
             self.len += bytes.len();
             Ok(())
         } else {

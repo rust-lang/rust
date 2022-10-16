@@ -182,7 +182,7 @@ fn uninit_write_slice() {
     let mut dst = [MaybeUninit::new(255); 64];
     let src = [0; 64];
 
-    assert_eq!(MaybeUninit::write_slice(&mut dst, &src), &src);
+    assert_eq!(dst.write_slice(&src), &src);
 }
 
 #[test]
@@ -191,7 +191,7 @@ fn uninit_write_slice_panic_lt() {
     let mut dst = [MaybeUninit::uninit(); 64];
     let src = [0; 32];
 
-    MaybeUninit::write_slice(&mut dst, &src);
+    dst.write_slice(&src);
 }
 
 #[test]
@@ -200,15 +200,15 @@ fn uninit_write_slice_panic_gt() {
     let mut dst = [MaybeUninit::uninit(); 64];
     let src = [0; 128];
 
-    MaybeUninit::write_slice(&mut dst, &src);
+    dst.write_slice(&src);
 }
 
 #[test]
-fn uninit_clone_from_slice() {
+fn uninit_write_slice_cloned() {
     let mut dst = [MaybeUninit::new(255); 64];
     let src = [0; 64];
 
-    assert_eq!(MaybeUninit::write_slice_cloned(&mut dst, &src), &src);
+    assert_eq!(dst.write_slice_cloned(&src), &src);
 }
 
 #[test]
@@ -217,7 +217,7 @@ fn uninit_write_slice_cloned_panic_lt() {
     let mut dst = [MaybeUninit::uninit(); 64];
     let src = [0; 32];
 
-    MaybeUninit::write_slice_cloned(&mut dst, &src);
+    dst.write_slice_cloned(&src);
 }
 
 #[test]
@@ -226,7 +226,7 @@ fn uninit_write_slice_cloned_panic_gt() {
     let mut dst = [MaybeUninit::uninit(); 64];
     let src = [0; 128];
 
-    MaybeUninit::write_slice_cloned(&mut dst, &src);
+    dst.write_slice_cloned(&src);
 }
 
 #[test]
@@ -267,7 +267,7 @@ fn uninit_write_slice_cloned_mid_panic() {
     ];
 
     let err = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        MaybeUninit::write_slice_cloned(&mut dst, &src);
+        dst.write_slice_cloned(&src);
     }));
 
     drop(src);
@@ -299,7 +299,7 @@ fn uninit_write_slice_cloned_no_drop() {
     let mut dst = [MaybeUninit::uninit()];
     let src = [Bomb];
 
-    MaybeUninit::write_slice_cloned(&mut dst, &src);
+    dst.write_slice_cloned(&src);
 
     forget(src);
 }
