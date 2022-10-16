@@ -5,7 +5,7 @@ import * as Is from "vscode-languageclient/lib/common/utils/is";
 import { assert } from "./util";
 import { WorkspaceEdit } from "vscode";
 import { Workspace } from "./ctx";
-import { substituteVariablesInEnv } from "./config";
+import { substituteVariablesInEnv, substituteVSCodeVariables } from "./config";
 import { outputChannel, traceOutputChannel } from "./main";
 import { randomUUID } from "crypto";
 
@@ -83,14 +83,16 @@ export async function createClient(
         debug: run,
     };
 
-    let initializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
+    let rawInitializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
 
     if (workspace.kind === "Detached Files") {
-        initializationOptions = {
+        rawInitializationOptions = {
             detachedFiles: workspace.files.map((file) => file.uri.fsPath),
-            ...initializationOptions,
+            ...rawInitializationOptions,
         };
     }
+
+    const initializationOptions = substituteVSCodeVariables(rawInitializationOptions);
 
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: "file", language: "rust" }],
@@ -99,6 +101,22 @@ export async function createClient(
         traceOutputChannel: traceOutputChannel(),
         outputChannel: outputChannel(),
         middleware: {
+            workspace: {
+                async configuration(
+                    params: lc.ConfigurationParams,
+                    token: vscode.CancellationToken,
+                    next: lc.ConfigurationRequest.HandlerSignature
+                ) {
+                    const resp = await next(params, token);
+                    if (resp && Array.isArray(resp)) {
+                        return resp.map((val) => {
+                            return substituteVSCodeVariables(val);
+                        });
+                    } else {
+                        return resp;
+                    }
+                },
+            },
             async provideHover(
                 document: vscode.TextDocument,
                 position: vscode.Position,

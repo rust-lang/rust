@@ -1,4 +1,5 @@
-import path = require("path");
+import * as path from "path";
+import * as os from "os";
 import * as vscode from "vscode";
 import { Env } from "./client";
 import { log } from "./util";
@@ -187,6 +188,37 @@ export class Config {
     }
 }
 
+const VarRegex = new RegExp(/\$\{(.+?)\}/g);
+
+export function substituteVSCodeVariableInString(val: string): string {
+    return val.replaceAll(VarRegex, (substring: string, varName) => {
+        if (typeof varName === "string") {
+            return computeVscodeVar(varName) || substring;
+        } else {
+            return substring;
+        }
+    });
+}
+
+export function substituteVSCodeVariables(resp: any): any {
+    if (typeof resp === "string") {
+        return substituteVSCodeVariableInString(resp);
+    } else if (resp && Array.isArray(resp)) {
+        return resp.map((val) => {
+            return substituteVSCodeVariables(val);
+        });
+    } else if (resp && typeof resp === "object") {
+        const res: { [key: string]: any } = {};
+        for (const key in resp) {
+            const val = resp[key];
+            res[key] = substituteVSCodeVariables(val);
+        }
+        return res;
+    } else if (typeof resp === "function") {
+        return null;
+    }
+    return resp;
+}
 export function substituteVariablesInEnv(env: Env): Env {
     const missingDeps = new Set<string>();
     // vscode uses `env:ENV_NAME` for env vars resolution, and it's easier
@@ -233,7 +265,7 @@ export function substituteVariablesInEnv(env: Env): Env {
             }
         } else {
             envWithDeps[dep] = {
-                value: computeVscodeVar(dep),
+                value: computeVscodeVar(dep) || "${" + dep + "}",
                 deps: [],
             };
         }
@@ -264,37 +296,34 @@ export function substituteVariablesInEnv(env: Env): Env {
     return resolvedEnv;
 }
 
-function computeVscodeVar(varName: string): string {
+function computeVscodeVar(varName: string): string | null {
+    const workspaceFolder = () => {
+        const folders = vscode.workspace.workspaceFolders ?? [];
+        if (folders.length === 1) {
+            // TODO: support for remote workspaces?
+            return folders[0].uri.fsPath;
+        } else if (folders.length > 1) {
+            // could use currently opened document to detect the correct
+            // workspace. However, that would be determined by the document
+            // user has opened on Editor startup. Could lead to
+            // unpredictable workspace selection in practice.
+            // It's better to pick the first one
+            return folders[0].uri.fsPath;
+        } else {
+            // no workspace opened
+            return "";
+        }
+    };
     // https://code.visualstudio.com/docs/editor/variables-reference
     const supportedVariables: { [k: string]: () => string } = {
-        workspaceFolder: () => {
-            const folders = vscode.workspace.workspaceFolders ?? [];
-            if (folders.length === 1) {
-                // TODO: support for remote workspaces?
-                return folders[0].uri.fsPath;
-            } else if (folders.length > 1) {
-                // could use currently opened document to detect the correct
-                // workspace. However, that would be determined by the document
-                // user has opened on Editor startup. Could lead to
-                // unpredictable workspace selection in practice.
-                // It's better to pick the first one
-                return folders[0].uri.fsPath;
-            } else {
-                // no workspace opened
-                return "";
-            }
-        },
+        workspaceFolder,
 
         workspaceFolderBasename: () => {
-            const workspaceFolder = computeVscodeVar("workspaceFolder");
-            if (workspaceFolder) {
-                return path.basename(workspaceFolder);
-            } else {
-                return "";
-            }
+            return path.basename(workspaceFolder());
         },
 
         cwd: () => process.cwd(),
+        userHome: () => os.homedir(),
 
         // see
         // https://github.com/microsoft/vscode/blob/08ac1bb67ca2459496b272d8f4a908757f24f56f/src/vs/workbench/api/common/extHostVariableResolverService.ts#L81
@@ -308,7 +337,7 @@ function computeVscodeVar(varName: string): string {
     if (varName in supportedVariables) {
         return supportedVariables[varName]();
     } else {
-        // can't resolve, keep the expression as is
-        return "${" + varName + "}";
+        // return "${" + varName + "}";
+        return null;
     }
 }
