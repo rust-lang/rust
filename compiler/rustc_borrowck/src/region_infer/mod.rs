@@ -15,7 +15,7 @@ use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound,
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::mir::{
     Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
-    ConstraintCategory, Local, Location, ReturnConstraint,
+    ConstraintCategory, Local, Location, ReturnConstraint, TerminatorKind,
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::ObligationCauseCode;
@@ -2235,6 +2235,27 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     pub(crate) fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
         self.universe_causes[&universe].clone()
+    }
+
+    /// Tries to find the terminator of the loop in which the region 'r' resides.
+    /// Returns the location of the terminator if found.
+    pub(crate) fn find_loop_terminator_location(
+        &self,
+        r: RegionVid,
+        body: &Body<'_>,
+    ) -> Option<Location> {
+        let scc = self.constraint_sccs.scc(r.to_region_vid());
+        let locations = self.scc_values.locations_outlived_by(scc);
+        for location in locations {
+            let bb = &body[location.block];
+            if let Some(terminator) = &bb.terminator {
+                // terminator of a loop should be TerminatorKind::FalseUnwind
+                if let TerminatorKind::FalseUnwind { .. } = terminator.kind {
+                    return Some(location);
+                }
+            }
+        }
+        None
     }
 }
 
