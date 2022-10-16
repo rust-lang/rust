@@ -216,7 +216,9 @@
         const innerHTML = `<div class="settings">${buildSettingsPageSections(settings)}</div>`;
         const el = document.createElement(elementKind);
         el.id = "settings";
-        el.className = "popover";
+        if (!isSettingsPage) {
+            el.className = "popover";
+        }
         el.innerHTML = innerHTML;
 
         if (isSettingsPage) {
