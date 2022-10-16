@@ -1,0 +1,39 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+int SecLargest(int arr[], int n)
+{
+    int Largest = 0;
+    int result = -1;
+    for (int i = 1; i < n; i++)
+    {
+        if (arr[i] > arr[Largest])
+            Largest = i;
+    }
+
+    for (int i = 0; i < n; i++)
+    {
+        if (arr[i] != arr[Largest])
+        {
+            if (result == -1)
+                result = i;
+
+            else if (arr[i] > arr[result])
+                result = i;
+        }
+    }
+    return result;
+}
+int main()
+{
+    int arr[] = {5, 9, 12, 24, 1, 15};
+    int n = sizeof(arr) / sizeof(arr[0]);
+
+    int second_Largest = SecLargest(arr, n);
+    if (second_Largest == -1)
+        cout << "Second largest didn't exit\n";
+    else
+        cout << "Second largest : " << arr[second_Largest];
+
+    return 0;
+}
