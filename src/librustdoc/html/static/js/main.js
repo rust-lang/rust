@@ -951,8 +951,23 @@ function loadCss(cssFileName) {
 
     if (isHelpPage) {
         showHelp();
+        document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
+            // Already on the help page, make help button a no-op.
+            const target = event.target;
+            if (target.tagName !== "A" ||
+                target.parentElement.id !== HELP_BUTTON_ID ||
+                event.ctrlKey ||
+                event.altKey ||
+                event.metaKey) {
+                return;
+            }
+            event.preventDefault();
+        });
     } else {
         document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
+            // By default, have help button open docs in a popover.
+            // If user clicks with a moderator, though, use default browser behavior,
+            // probably opening in a new window or tab.
             const target = event.target;
             if (target.tagName !== "A" ||
                 target.parentElement.id !== HELP_BUTTON_ID ||
