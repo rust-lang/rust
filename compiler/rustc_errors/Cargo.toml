@@ -18,7 +18,6 @@ rustc_target = { path = "../rustc_target" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 unicode-width = "0.1.4"
-atty = "0.2"
 termcolor = "1.0"
 annotate-snippets = "0.9"
 termize = "0.1.1"

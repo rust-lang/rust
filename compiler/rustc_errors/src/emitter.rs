@@ -28,8 +28,8 @@ use rustc_error_messages::FluentArgs;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
-use std::io;
 use std::io::prelude::*;
+use std::io::{self, IsTerminal};
 use std::iter;
 use std::path::Path;
 use termcolor::{Ansi, BufferWriter, ColorChoice, ColorSpec, StandardStream};
@@ -619,14 +619,14 @@ impl ColorConfig {
     fn to_color_choice(self) -> ColorChoice {
         match self {
             ColorConfig::Always => {
-                if atty::is(atty::Stream::Stderr) {
+                if io::stderr().is_terminal() {
                     ColorChoice::Always
                 } else {
                     ColorChoice::AlwaysAnsi
                 }
             }
             ColorConfig::Never => ColorChoice::Never,
-            ColorConfig::Auto if atty::is(atty::Stream::Stderr) => ColorChoice::Auto,
+            ColorConfig::Auto if io::stderr().is_terminal() => ColorChoice::Auto,
             ColorConfig::Auto => ColorChoice::Never,
         }
     }
