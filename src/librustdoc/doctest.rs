@@ -79,7 +79,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         lint_cap: Some(options.lint_cap.unwrap_or(lint::Forbid)),
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
-        unstable_features: options.render_options.unstable_features,
+        unstable_features: options.unstable_features,
         actually_rustdoc: true,
         edition: options.edition,
         target_triple: options.target.clone(),
