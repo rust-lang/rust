@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{expr_block, snippet};
-use clippy_utils::ty::{implements_trait, match_type, peel_mid_ty_refs};
-use clippy_utils::{
-    is_lint_allowed, is_unit_expr, is_wild, paths, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs,
-};
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, peel_mid_ty_refs};
+use clippy_utils::{is_lint_allowed, is_unit_expr, is_wild, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs};
 use core::cmp::max;
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
+use rustc_span::sym;
 
 use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
 
@@ -156,10 +155,10 @@ fn pat_in_candidate_enum<'a>(cx: &LateContext<'a>, ty: Ty<'a>, pat: &Pat<'_>) ->
 /// Returns `true` if the given type is an enum we know won't be expanded in the future
 fn in_candidate_enum<'a>(cx: &LateContext<'a>, ty: Ty<'_>) -> bool {
     // list of candidate `Enum`s we know will never get any more members
-    let candidates = [&paths::COW, &paths::OPTION, &paths::RESULT];
+    let candidates = [sym::Cow, sym::Option, sym::Result];
 
     for candidate_ty in candidates {
-        if match_type(cx, ty, candidate_ty) {
+        if is_type_diagnostic_item(cx, ty, candidate_ty) {
             return true;
         }
     }

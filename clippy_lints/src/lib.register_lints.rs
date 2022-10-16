@@ -4,37 +4,37 @@
 
 store.register_lints(&[
     #[cfg(feature = "internal")]
-    utils::internal_lints::CLIPPY_LINTS_INTERNAL,
+    utils::internal_lints::clippy_lints_internal::CLIPPY_LINTS_INTERNAL,
     #[cfg(feature = "internal")]
-    utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
+    utils::internal_lints::collapsible_calls::COLLAPSIBLE_SPAN_LINT_CALLS,
     #[cfg(feature = "internal")]
-    utils::internal_lints::COMPILER_LINT_FUNCTIONS,
+    utils::internal_lints::compiler_lint_functions::COMPILER_LINT_FUNCTIONS,
     #[cfg(feature = "internal")]
-    utils::internal_lints::DEFAULT_DEPRECATION_REASON,
+    utils::internal_lints::if_chain_style::IF_CHAIN_STYLE,
     #[cfg(feature = "internal")]
-    utils::internal_lints::DEFAULT_LINT,
+    utils::internal_lints::interning_defined_symbol::INTERNING_DEFINED_SYMBOL,
     #[cfg(feature = "internal")]
-    utils::internal_lints::IF_CHAIN_STYLE,
+    utils::internal_lints::interning_defined_symbol::UNNECESSARY_SYMBOL_STR,
     #[cfg(feature = "internal")]
-    utils::internal_lints::INTERNING_DEFINED_SYMBOL,
+    utils::internal_lints::invalid_paths::INVALID_PATHS,
     #[cfg(feature = "internal")]
-    utils::internal_lints::INVALID_CLIPPY_VERSION_ATTRIBUTE,
+    utils::internal_lints::lint_without_lint_pass::DEFAULT_DEPRECATION_REASON,
     #[cfg(feature = "internal")]
-    utils::internal_lints::INVALID_PATHS,
+    utils::internal_lints::lint_without_lint_pass::DEFAULT_LINT,
     #[cfg(feature = "internal")]
-    utils::internal_lints::LINT_WITHOUT_LINT_PASS,
+    utils::internal_lints::lint_without_lint_pass::INVALID_CLIPPY_VERSION_ATTRIBUTE,
     #[cfg(feature = "internal")]
-    utils::internal_lints::MISSING_CLIPPY_VERSION_ATTRIBUTE,
+    utils::internal_lints::lint_without_lint_pass::LINT_WITHOUT_LINT_PASS,
     #[cfg(feature = "internal")]
-    utils::internal_lints::MISSING_MSRV_ATTR_IMPL,
+    utils::internal_lints::lint_without_lint_pass::MISSING_CLIPPY_VERSION_ATTRIBUTE,
     #[cfg(feature = "internal")]
-    utils::internal_lints::OUTER_EXPN_EXPN_DATA,
+    utils::internal_lints::msrv_attr_impl::MISSING_MSRV_ATTR_IMPL,
     #[cfg(feature = "internal")]
-    utils::internal_lints::PRODUCE_ICE,
+    utils::internal_lints::outer_expn_data_pass::OUTER_EXPN_EXPN_DATA,
     #[cfg(feature = "internal")]
-    utils::internal_lints::UNNECESSARY_DEF_PATH,
+    utils::internal_lints::produce_ice::PRODUCE_ICE,
     #[cfg(feature = "internal")]
-    utils::internal_lints::UNNECESSARY_SYMBOL_STR,
+    utils::internal_lints::unnecessary_def_path::UNNECESSARY_DEF_PATH,
     almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE,
     approx_const::APPROX_CONSTANT,
     as_conversions::AS_CONVERSIONS,
