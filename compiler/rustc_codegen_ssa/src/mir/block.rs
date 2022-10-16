@@ -1,7 +1,7 @@
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Immediate, Pair, Ref};
 use super::place::PlaceRef;
-use super::{FunctionCx, LocalRef};
+use super::{CachedLlbb, FunctionCx, LocalRef};
 
 use crate::base;
 use crate::common::{self, IntPredicate};
@@ -24,6 +24,15 @@ use rustc_symbol_mangling::typeid::typeid_for_fnabi;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
+
+// Indicates if we are in the middle of merging a BB's successor into it. This
+// can happen when BB jumps directly to its successor and the successor has no
+// other predecessors.
+#[derive(Debug, PartialEq)]
+enum MergingSucc {
+    False,
+    True,
+}
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
 /// e.g., creating a basic block, calling a function, etc.
@@ -64,31 +73,6 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
     }
 
-    /// Get a basic block (creating it if necessary), possibly with a landing
-    /// pad next to it.
-    fn llbb_with_landing_pad<Bx: BuilderMethods<'a, 'tcx>>(
-        &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
-        target: mir::BasicBlock,
-    ) -> (Bx::BasicBlock, bool) {
-        let span = self.terminator.source_info.span;
-        let lltarget = fx.llbb(target);
-        let target_funclet = fx.cleanup_kinds[target].funclet_bb(target);
-        match (self.funclet_bb, target_funclet) {
-            (None, None) => (lltarget, false),
-            // jump *into* cleanup - need a landing pad if GNU, cleanup pad if MSVC
-            (None, Some(_)) => (fx.landing_pad_for(target), false),
-            (Some(_), None) => span_bug!(span, "{:?} - jump out of cleanup?", self.terminator),
-            (Some(f), Some(t_f)) => {
-                if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) {
-                    (lltarget, false)
-                } else {
-                    (fx.landing_pad_for(target), true)
-                }
-            }
-        }
-    }
-
     /// Get a basic block (creating it if necessary), possibly with cleanup
     /// stuff in it or next to it.
     fn llbb_with_cleanup<Bx: BuilderMethods<'a, 'tcx>>(
@@ -96,7 +80,11 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> Bx::BasicBlock {
-        let (lltarget, is_cleanupret) = self.llbb_with_landing_pad(fx, target);
+        let (needs_landing_pad, is_cleanupret) = self.llbb_characteristics(fx, target);
+        let mut lltarget = fx.llbb(target);
+        if needs_landing_pad {
+            lltarget = fx.landing_pad_for(target);
+        }
         if is_cleanupret {
             // MSVC cross-funclet jump - need a trampoline
             debug_assert!(base::wants_msvc_seh(fx.cx.tcx().sess));
@@ -111,20 +99,54 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
     }
 
+    fn llbb_characteristics<Bx: BuilderMethods<'a, 'tcx>>(
+        &self,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        target: mir::BasicBlock,
+    ) -> (bool, bool) {
+        let target_funclet = fx.cleanup_kinds[target].funclet_bb(target);
+        let (needs_landing_pad, is_cleanupret) = match (self.funclet_bb, target_funclet) {
+            (None, None) => (false, false),
+            (None, Some(_)) => (true, false),
+            (Some(_), None) => {
+                let span = self.terminator.source_info.span;
+                span_bug!(span, "{:?} - jump out of cleanup?", self.terminator);
+            }
+            (Some(f), Some(t_f)) => {
+                if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) {
+                    (false, false)
+                } else {
+                    (true, true)
+                }
+            }
+        };
+        (needs_landing_pad, is_cleanupret)
+    }
+
     fn funclet_br<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
         target: mir::BasicBlock,
-    ) {
-        let (lltarget, is_cleanupret) = self.llbb_with_landing_pad(fx, target);
-        if is_cleanupret {
-            // MSVC micro-optimization: generate a `ret` rather than a jump
-            // to a trampoline.
-            debug_assert!(base::wants_msvc_seh(fx.cx.tcx().sess));
-            bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
+        mergeable_succ: bool,
+    ) -> MergingSucc {
+        let (needs_landing_pad, is_cleanupret) = self.llbb_characteristics(fx, target);
+        if mergeable_succ && !needs_landing_pad && !is_cleanupret {
+            // We can merge the successor into this bb, so no need for a `br`.
+            MergingSucc::True
         } else {
-            bx.br(lltarget);
+            let mut lltarget = fx.llbb(target);
+            if needs_landing_pad {
+                lltarget = fx.landing_pad_for(target);
+            }
+            if is_cleanupret {
+                // micro-optimization: generate a `ret` rather than a jump
+                // to a trampoline.
+                bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
+            } else {
+                bx.br(lltarget);
+            }
+            MergingSucc::False
         }
     }
 
@@ -140,7 +162,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
         copied_constant_arguments: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
         let fn_ty = bx.fn_decl_backend_type(&fn_abi);
@@ -191,6 +214,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
             }
+            MergingSucc::False
         } else {
             let llret = bx.call(fn_ty, Some(&fn_abi), fn_ptr, &llargs, self.funclet(fx));
             if fx.mir[self.bb].is_cleanup {
@@ -206,9 +230,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                     bx.lifetime_end(tmp.llval, tmp.layout.size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, llret);
-                self.funclet_br(fx, bx, target);
+                self.funclet_br(fx, bx, target, mergeable_succ)
             } else {
                 bx.unreachable();
+                MergingSucc::False
             }
         }
     }
@@ -225,7 +250,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         destination: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
         instance: Instance<'_>,
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         if let Some(cleanup) = cleanup {
             let ret_llbb = if let Some(target) = destination {
                 fx.llbb(target)
@@ -241,13 +267,15 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 instance,
                 Some((ret_llbb, self.llbb_with_cleanup(fx, cleanup), self.funclet(fx))),
             );
+            MergingSucc::False
         } else {
             bx.codegen_inline_asm(template, &operands, options, line_spans, instance, None);
 
             if let Some(target) = destination {
-                self.funclet_br(fx, bx, target);
+                self.funclet_br(fx, bx, target, mergeable_succ)
             } else {
                 bx.unreachable();
+                MergingSucc::False
             }
         }
     }
@@ -413,15 +441,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         location: mir::Place<'tcx>,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
         if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.
-            helper.funclet_br(self, bx, target);
-            return;
+            return helper.funclet_br(self, bx, target, mergeable_succ);
         }
 
         let place = self.codegen_place(bx, location.as_ref());
@@ -522,7 +550,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some((ReturnDest::Nothing, target)),
             unwind,
             &[],
-        );
+            mergeable_succ,
+        )
     }
 
     fn codegen_assert_terminator(
@@ -535,7 +564,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         msg: &mir::AssertMessage<'tcx>,
         target: mir::BasicBlock,
         cleanup: Option<mir::BasicBlock>,
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         let span = terminator.source_info.span;
         let cond = self.codegen_operand(bx, cond).immediate();
         let mut const_cond = bx.const_to_opt_u128(cond, false).map(|c| c == 1);
@@ -555,8 +585,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Don't codegen the panic block if success if known.
         if const_cond == Some(expected) {
-            helper.funclet_br(self, bx, target);
-            return;
+            return helper.funclet_br(self, bx, target, mergeable_succ);
         }
 
         // Pass the condition through llvm.expect for branch hinting.
@@ -598,7 +627,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, llfn) = common::build_langcall(bx, Some(span), lang_item);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, bx, fn_abi, llfn, &args, None, cleanup, &[]);
+        let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &args, None, cleanup, &[], false);
+        assert_eq!(merging_succ, MergingSucc::False);
+        MergingSucc::False
     }
 
     fn codegen_abort_terminator(
@@ -614,10 +645,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, llfn) = common::build_langcall(bx, Some(span), LangItem::PanicNoUnwind);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, bx, fn_abi, llfn, &[], None, None, &[]);
+        let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &[], None, None, &[], false);
+        assert_eq!(merging_succ, MergingSucc::False);
     }
 
-    /// Returns `true` if this is indeed a panic intrinsic and codegen is done.
+    /// Returns `Some` if this is indeed a panic intrinsic and codegen is done.
     fn codegen_panic_intrinsic(
         &mut self,
         helper: &TerminatorCodegenHelper<'tcx>,
@@ -627,7 +659,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         source_info: mir::SourceInfo,
         target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
-    ) -> bool {
+        mergeable_succ: bool,
+    ) -> Option<MergingSucc> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
@@ -653,7 +686,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ZeroValid => !bx.tcx().permits_zero_init(layout),
                 UninitValid => !bx.tcx().permits_uninit_init(layout),
             };
-            if do_panic {
+            Some(if do_panic {
                 let msg_str = with_no_visible_paths!({
                     with_no_trimmed_paths!({
                         if layout.abi.is_uninhabited() {
@@ -686,15 +719,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
                     cleanup,
                     &[],
-                );
+                    mergeable_succ,
+                )
             } else {
                 // a NOP
                 let target = target.unwrap();
-                helper.funclet_br(self, bx, target)
-            }
-            true
+                helper.funclet_br(self, bx, target, mergeable_succ)
+            })
         } else {
-            false
+            None
         }
     }
 
@@ -709,7 +742,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
         fn_span: Span,
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         let source_info = terminator.source_info;
         let span = source_info.span;
 
@@ -734,8 +768,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(ty::InstanceDef::DropGlue(_, None)) = def {
             // Empty drop glue; a no-op.
             let target = target.unwrap();
-            helper.funclet_br(self, bx, target);
-            return;
+            return helper.funclet_br(self, bx, target, mergeable_succ);
         }
 
         // FIXME(eddyb) avoid computing this if possible, when `instance` is
@@ -762,9 +795,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if intrinsic == Some(sym::transmute) {
-            if let Some(target) = target {
+            return if let Some(target) = target {
                 self.codegen_transmute(bx, &args[0], destination);
-                helper.funclet_br(self, bx, target);
+                helper.funclet_br(self, bx, target, mergeable_succ)
             } else {
                 // If we are trying to transmute to an uninhabited type,
                 // it is likely there is no allotted destination. In fact,
@@ -774,11 +807,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // it must be unreachable.
                 assert_eq!(fn_abi.ret.layout.abi, abi::Abi::Uninhabited);
                 bx.unreachable();
-            }
-            return;
+                MergingSucc::False
+            };
         }
 
-        if self.codegen_panic_intrinsic(
+        if let Some(merging_succ) = self.codegen_panic_intrinsic(
             &helper,
             bx,
             intrinsic,
@@ -786,8 +819,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             source_info,
             target,
             cleanup,
+            mergeable_succ,
         ) {
-            return;
+            return merging_succ;
         }
 
         // The arguments we'll be passing. Plus one to account for outptr, if used.
@@ -803,7 +837,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if intrinsic == Some(sym::caller_location) {
-            if let Some(target) = target {
+            return if let Some(target) = target {
                 let location =
                     self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
 
@@ -811,9 +845,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     location.val.store(bx, tmp);
                 }
                 self.store_return(bx, ret_dest, &fn_abi.ret, location.immediate());
-                helper.funclet_br(self, bx, target);
-            }
-            return;
+                helper.funclet_br(self, bx, target, mergeable_succ)
+            } else {
+                MergingSucc::False
+            };
         }
 
         match intrinsic {
@@ -874,13 +909,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.store_return(bx, ret_dest, &fn_abi.ret, dst.llval);
                 }
 
-                if let Some(target) = target {
-                    helper.funclet_br(self, bx, target);
+                return if let Some(target) = target {
+                    helper.funclet_br(self, bx, target, mergeable_succ)
                 } else {
                     bx.unreachable();
-                }
-
-                return;
+                    MergingSucc::False
+                };
             }
         }
 
@@ -1041,7 +1075,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.cond_br(cond, bb_pass, bb_fail);
 
             bx.switch_to_block(bb_pass);
-            helper.do_call(
+            let merging_succ = helper.do_call(
                 self,
                 bx,
                 fn_abi,
@@ -1050,13 +1084,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 target.as_ref().map(|&target| (ret_dest, target)),
                 cleanup,
                 &copied_constant_arguments,
+                false,
             );
+            assert_eq!(merging_succ, MergingSucc::False);
 
             bx.switch_to_block(bb_fail);
             bx.abort();
             bx.unreachable();
 
-            return;
+            return MergingSucc::False;
         }
 
         helper.do_call(
@@ -1068,7 +1104,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             target.as_ref().map(|&target| (ret_dest, target)),
             cleanup,
             &copied_constant_arguments,
-        );
+            mergeable_succ,
+        )
     }
 
     fn codegen_asm_terminator(
@@ -1083,7 +1120,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         destination: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
         instance: Instance<'_>,
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         let span = terminator.source_info.span;
 
         let operands: Vec<_> = operands
@@ -1146,24 +1184,50 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             destination,
             cleanup,
             instance,
-        );
+            mergeable_succ,
+        )
     }
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
-        let llbb = self.llbb(bb);
+    pub fn codegen_block(&mut self, mut bb: mir::BasicBlock) {
+        let llbb = match self.try_llbb(bb) {
+            Some(llbb) => llbb,
+            None => return,
+        };
         let bx = &mut Bx::build(self.cx, llbb);
         let mir = self.mir;
-        let data = &mir[bb];
 
-        debug!("codegen_block({:?}={:?})", bb, data);
+        // MIR basic blocks stop at any function call. This may not be the case
+        // for the backend's basic blocks, in which case we might be able to
+        // combine multiple MIR basic blocks into a single backend basic block.
+        loop {
+            let data = &mir[bb];
 
-        for statement in &data.statements {
-            self.codegen_statement(bx, statement);
+            debug!("codegen_block({:?}={:?})", bb, data);
+
+            for statement in &data.statements {
+                self.codegen_statement(bx, statement);
+            }
+
+            let merging_succ = self.codegen_terminator(bx, bb, data.terminator());
+            if let MergingSucc::False = merging_succ {
+                break;
+            }
+
+            // We are merging the successor into the produced backend basic
+            // block. Record that the successor should be skipped when it is
+            // reached.
+            //
+            // Note: we must not have already generated code for the successor.
+            // This is implicitly ensured by the reverse postorder traversal,
+            // and the assertion explicitly guarantees that.
+            let mut successors = data.terminator().successors();
+            let succ = successors.next().unwrap();
+            assert!(matches!(self.cached_llbbs[succ], CachedLlbb::None));
+            self.cached_llbbs[succ] = CachedLlbb::Skip;
+            bb = succ;
         }
-
-        self.codegen_terminator(bx, bb, data.terminator());
     }
 
     fn codegen_terminator(
@@ -1171,46 +1235,77 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         bb: mir::BasicBlock,
         terminator: &'tcx mir::Terminator<'tcx>,
-    ) {
+    ) -> MergingSucc {
         debug!("codegen_terminator: {:?}", terminator);
 
         // Create the cleanup bundle, if needed.
         let funclet_bb = self.cleanup_kinds[bb].funclet_bb(bb);
         let helper = TerminatorCodegenHelper { bb, terminator, funclet_bb };
 
+        let mergeable_succ = || {
+            // Note: any call to `switch_to_block` will invalidate a `true` value
+            // of `mergeable_succ`.
+            let mut successors = terminator.successors();
+            if let Some(succ) = successors.next()
+                && successors.next().is_none()
+                && let &[succ_pred] = self.mir.basic_blocks.predecessors()[succ].as_slice()
+            {
+                // bb has a single successor, and bb is its only predecessor. This
+                // makes it a candidate for merging.
+                assert_eq!(succ_pred, bb);
+                true
+            } else {
+                false
+            }
+        };
+
         self.set_debug_loc(bx, terminator.source_info);
         match terminator.kind {
-            mir::TerminatorKind::Resume => self.codegen_resume_terminator(helper, bx),
+            mir::TerminatorKind::Resume => {
+                self.codegen_resume_terminator(helper, bx);
+                MergingSucc::False
+            }
 
             mir::TerminatorKind::Abort => {
                 self.codegen_abort_terminator(helper, bx, terminator);
+                MergingSucc::False
             }
 
             mir::TerminatorKind::Goto { target } => {
-                helper.funclet_br(self, bx, target);
+                helper.funclet_br(self, bx, target, mergeable_succ())
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref targets } => {
                 self.codegen_switchint_terminator(helper, bx, discr, switch_ty, targets);
+                MergingSucc::False
             }
 
             mir::TerminatorKind::Return => {
                 self.codegen_return_terminator(bx);
+                MergingSucc::False
             }
 
             mir::TerminatorKind::Unreachable => {
                 bx.unreachable();
+                MergingSucc::False
             }
 
             mir::TerminatorKind::Drop { place, target, unwind } => {
-                self.codegen_drop_terminator(helper, bx, place, target, unwind);
+                self.codegen_drop_terminator(helper, bx, place, target, unwind, mergeable_succ())
             }
 
-            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
-                self.codegen_assert_terminator(
-                    helper, bx, terminator, cond, expected, msg, target, cleanup,
-                );
-            }
+            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => self
+                .codegen_assert_terminator(
+                    helper,
+                    bx,
+                    terminator,
+                    cond,
+                    expected,
+                    msg,
+                    target,
+                    cleanup,
+                    mergeable_succ(),
+                ),
 
             mir::TerminatorKind::DropAndReplace { .. } => {
                 bug!("undesugared DropAndReplace in codegen: {:?}", terminator);
@@ -1224,19 +1319,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cleanup,
                 from_hir_call: _,
                 fn_span,
-            } => {
-                self.codegen_call_terminator(
-                    helper,
-                    bx,
-                    terminator,
-                    func,
-                    args,
-                    destination,
-                    target,
-                    cleanup,
-                    fn_span,
-                );
-            }
+            } => self.codegen_call_terminator(
+                helper,
+                bx,
+                terminator,
+                func,
+                args,
+                destination,
+                target,
+                cleanup,
+                fn_span,
+                mergeable_succ(),
+            ),
             mir::TerminatorKind::GeneratorDrop | mir::TerminatorKind::Yield { .. } => {
                 bug!("generator ops in codegen")
             }
@@ -1251,20 +1345,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 line_spans,
                 destination,
                 cleanup,
-            } => {
-                self.codegen_asm_terminator(
-                    helper,
-                    bx,
-                    terminator,
-                    template,
-                    operands,
-                    options,
-                    line_spans,
-                    destination,
-                    cleanup,
-                    self.instance,
-                );
-            }
+            } => self.codegen_asm_terminator(
+                helper,
+                bx,
+                terminator,
+                template,
+                operands,
+                options,
+                line_spans,
+                destination,
+                cleanup,
+                self.instance,
+                mergeable_succ(),
+            ),
         }
     }
 
@@ -1582,12 +1675,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // FIXME(eddyb) rename `llbb` and other `ll`-prefixed things to use a
     // more backend-agnostic prefix such as `cg` (i.e. this would be `cgbb`).
     pub fn llbb(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
-        self.cached_llbbs[bb].unwrap_or_else(|| {
-            // FIXME(eddyb) only name the block if `fewer_names` is `false`.
-            let llbb = Bx::append_block(self.cx, self.llfn, &format!("{:?}", bb));
-            self.cached_llbbs[bb] = Some(llbb);
-            llbb
-        })
+        self.try_llbb(bb).unwrap()
+    }
+
+    /// Like `llbb`, but may fail if the basic block should be skipped.
+    pub fn try_llbb(&mut self, bb: mir::BasicBlock) -> Option<Bx::BasicBlock> {
+        match self.cached_llbbs[bb] {
+            CachedLlbb::None => {
+                // FIXME(eddyb) only name the block if `fewer_names` is `false`.
+                let llbb = Bx::append_block(self.cx, self.llfn, &format!("{:?}", bb));
+                self.cached_llbbs[bb] = CachedLlbb::Some(llbb);
+                Some(llbb)
+            }
+            CachedLlbb::Some(llbb) => Some(llbb),
+            CachedLlbb::Skip => None,
+        }
     }
 
     fn make_return_dest(

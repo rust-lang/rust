@@ -58,19 +58,19 @@
 
 // cdb-command: g
 // cdb-command: dv
-// cdb-check:[...]y = true
-// cdb-check:[...]b = 0n456
 // cdb-check:[...]a = 0n123
 // cdb-check:[...]x = 0n42
+// cdb-check:[...]b = 0n456
+// cdb-check:[...]y = true
 
 // cdb-command: g
 // cdb-command: dv
 // cdb-check:[...]z = 0n10
 // cdb-check:[...]c = 0n789
-// cdb-check:[...]y = true
-// cdb-check:[...]b = 0n456
 // cdb-check:[...]a = 0n123
 // cdb-check:[...]x = 0n42
+// cdb-check:[...]b = 0n456
+// cdb-check:[...]y = true
 
 fn main() {
     let a = id(123);
