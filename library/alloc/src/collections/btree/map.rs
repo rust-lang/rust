@@ -1093,6 +1093,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
+    /// If a key from `other` is already present in `self`, the respective
+    /// value from `self` will be overwritten with the respective value from `other`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1101,10 +1104,10 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// let mut a = BTreeMap::new();
     /// a.insert(1, "a");
     /// a.insert(2, "b");
-    /// a.insert(3, "c");
+    /// a.insert(3, "c"); // Note: Key (3) also present in b.
     ///
     /// let mut b = BTreeMap::new();
-    /// b.insert(3, "d");
+    /// b.insert(3, "d"); // Note: Key (3) also present in a.
     /// b.insert(4, "e");
     /// b.insert(5, "f");
     ///
@@ -1115,7 +1118,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// assert_eq!(a[&1], "a");
     /// assert_eq!(a[&2], "b");
-    /// assert_eq!(a[&3], "d");
+    /// assert_eq!(a[&3], "d"); // Note: "c" has been overwritten.
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
