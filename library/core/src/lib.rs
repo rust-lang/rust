@@ -119,7 +119,6 @@
 #![feature(const_int_unchecked_arith)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_likely)]
-#![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_nonnull_new)]
@@ -151,7 +150,6 @@
 #![feature(const_waker)]
 #![feature(core_panic)]
 #![feature(duration_consts_float)]
-#![feature(maybe_uninit_uninit_array)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
@@ -217,6 +215,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(asm_const)]
+#![feature(const_transmute_copy)]
 //
 // Target features:
 #![feature(arm_target_feature)]

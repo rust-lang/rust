@@ -312,8 +312,7 @@
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]
-#![feature(maybe_uninit_uninit_array)]
-#![feature(const_maybe_uninit_uninit_array)]
+#![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(const_waker)]
 //
 // Library features (alloc):

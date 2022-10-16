@@ -15,7 +15,7 @@
 #![feature(extend_one)]
 #![feature(hash_raw_entry)]
 #![feature(hasher_prefixfree_extras)]
-#![feature(maybe_uninit_uninit_array)]
+#![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(type_alias_impl_trait)]

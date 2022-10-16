@@ -163,7 +163,7 @@ fn assume_init_good() {
 
 #[test]
 fn uninit_array_assume_init() {
-    let mut array: [MaybeUninit<i16>; 5] = MaybeUninit::uninit_array();
+    let mut array = [MaybeUninit::<i16>::uninit(); 5];
     array[0].write(3);
     array[1].write(1);
     array[2].write(4);

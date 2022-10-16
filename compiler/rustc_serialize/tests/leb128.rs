@@ -1,5 +1,4 @@
-#![feature(maybe_uninit_slice)]
-#![feature(maybe_uninit_uninit_array)]
+#![feature(maybe_uninit_uninit_array_transpose)]
 
 use rustc_serialize::leb128::*;
 use std::mem::MaybeUninit;
@@ -24,7 +23,7 @@ macro_rules! impl_test_unsigned_leb128 {
             let mut stream = Vec::new();
 
             for &x in &values {
-                let mut buf = MaybeUninit::uninit_array();
+                let mut buf = MaybeUninit::uninit().transpose();
                 stream.extend($write_fn_name(&mut buf, x));
             }
 
@@ -70,7 +69,7 @@ macro_rules! impl_test_signed_leb128 {
             let mut stream = Vec::new();
 
             for &x in &values {
-                let mut buf = MaybeUninit::uninit_array();
+                let mut buf = MaybeUninit::uninit().transpose();
                 stream.extend($write_fn_name(&mut buf, x));
             }
 
