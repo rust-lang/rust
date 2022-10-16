@@ -12,16 +12,16 @@ interior invariants and expose intentionally limited API to the outside world.
 ### Example
 ```
 pub struct Color {
-    pub r,
-    pub g,
-    b,
+    pub r: u8,
+    pub g: u8,
+    b: u8,
 }
 ```
 Use instead:
 ```
 pub struct Color {
-    pub r,
-    pub g,
-    pub b,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
 }
 ```

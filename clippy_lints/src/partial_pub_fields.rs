@@ -18,17 +18,17 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// pub struct Color {
-    ///     pub r,
-    ///     pub g,
-    ///     b,
+    ///     pub r: u8,
+    ///     pub g: u8,
+    ///     b: u8,
     /// }
     /// ```
     /// Use instead:
     /// ```rust
     /// pub struct Color {
-    ///     pub r,
-    ///     pub g,
-    ///     pub b,
+    ///     pub r: u8,
+    ///     pub g: u8,
+    ///     pub b: u8,
     /// }
     /// ```
     #[clippy::version = "1.66.0"]
