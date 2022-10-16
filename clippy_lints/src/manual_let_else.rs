@@ -194,8 +194,11 @@ fn expr_diverges(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
                 ControlFlow::Continue(Descend::No)
             },
             ExprKind::Match(match_expr, match_arms, _) => {
-                let diverges =
-                    expr_diverges(cx, match_expr) || match_arms.iter().all(|arm| expr_diverges(cx, arm.body));
+                let diverges = expr_diverges(cx, match_expr)
+                    || match_arms.iter().all(|arm| {
+                        let guard_diverges = arm.guard.as_ref().map_or(false, |g| expr_diverges(cx, g.body()));
+                        guard_diverges || expr_diverges(cx, arm.body)
+                    });
                 if diverges {
                     return ControlFlow::Break(());
                 }

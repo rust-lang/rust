@@ -3,6 +3,7 @@
     clippy::collapsible_else_if,
     clippy::unused_unit,
     clippy::let_unit_value,
+    clippy::match_single_binding,
     clippy::never_loop
 )]
 #![warn(clippy::manual_let_else)]
@@ -53,6 +54,38 @@ fn fire() {
         v_some
     } else {
         if true { return } else { panic!() }
+    };
+
+    // Diverging after an if still makes the block diverge:
+    let v = if let Some(v_some) = g() {
+        v_some
+    } else {
+        if true {}
+        panic!();
+    };
+
+    // A match diverges if all branches diverge:
+    // Note: the corresponding let-else requires a ; at the end of the match
+    // as otherwise the type checker does not turn it into a ! type.
+    let v = if let Some(v_some) = g() {
+        v_some
+    } else {
+        match () {
+            _ if panic!() => {},
+            _ => panic!(),
+        }
+    };
+
+    // An if's expression can cause divergence:
+    let v = if let Some(v_some) = g() { v_some } else { if panic!() {} };
+
+    // An expression of a match can cause divergence:
+    let v = if let Some(v_some) = g() {
+        v_some
+    } else {
+        match panic!() {
+            _ => {},
+        }
     };
 
     // Top level else if
