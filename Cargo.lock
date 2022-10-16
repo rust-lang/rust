@@ -4272,7 +4272,6 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "askama",
- "atty",
  "expect-test",
  "itertools",
  "minifier",
