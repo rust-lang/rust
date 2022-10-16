@@ -444,7 +444,11 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         let old_level = self.get(def_id);
         // Accessibility levels can only grow.
         if level > old_level {
-            self.access_levels.set_access_level(def_id, level.unwrap());
+            self.access_levels.set_access_level(
+                def_id,
+                || ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id)),
+                level.unwrap(),
+            );
             self.changed = true;
             level
         } else {
@@ -932,31 +936,30 @@ pub struct TestReachabilityVisitor<'tcx, 'a> {
 
 impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
     fn access_level_diagnostic(&mut self, def_id: LocalDefId) {
-        let span = self.tcx.def_span(def_id.to_def_id());
         if self.tcx.has_attr(def_id.to_def_id(), sym::rustc_effective_visibility) {
-            let mut error_msg = String::new();
-
-            let effective_vis =
-                self.access_levels.get_effective_vis(def_id).copied().unwrap_or_default();
-            for level in [
-                AccessLevel::Public,
-                AccessLevel::Exported,
-                AccessLevel::Reachable,
-                AccessLevel::ReachableFromImplTrait,
-            ] {
-                let vis_str = match effective_vis.get(level) {
-                    Some(ty::Visibility::Restricted(restricted_id)) => {
-                        format!("pub({})", self.tcx.item_name(restricted_id.to_def_id()))
+            if let Some(effective_vis) = self.access_levels.get_effective_vis(def_id) {
+                let mut error_msg = String::new();
+                let span = self.tcx.def_span(def_id.to_def_id());
+                for level in AccessLevel::all_levels() {
+                    let vis_str = match effective_vis.get(level) {
+                        ty::Visibility::Restricted(restricted_id) => {
+                            if restricted_id.is_top_level_module() {
+                                "pub(crate)".to_string()
+                            } else if *restricted_id == self.tcx.parent_module_from_def_id(def_id) {
+                                "pub(self)".to_string()
+                            } else {
+                                format!("pub({})", self.tcx.item_name(restricted_id.to_def_id()))
+                            }
+                        }
+                        ty::Visibility::Public => "pub".to_string(),
+                    };
+                    if level != AccessLevel::Public {
+                        error_msg.push_str(", ");
                     }
-                    Some(ty::Visibility::Public) => "pub".to_string(),
-                    None => "pub(self)".to_string(),
-                };
-                if level != AccessLevel::Public {
-                    error_msg.push_str(", ");
+                    error_msg.push_str(&format!("{:?}: {}", level, vis_str));
                 }
-                error_msg.push_str(&format!("{:?}: {}", level, vis_str));
+                self.tcx.sess.emit_err(ReportEffectiveVisibility { span, descr: error_msg });
             }
-            self.tcx.sess.emit_err(ReportEffectiveVisibility { span, descr: error_msg });
         }
     }
 }
