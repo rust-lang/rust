@@ -143,7 +143,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         options.enable_per_target_ignores,
     );
     collector.set_position(DUMMY_SP);
-    let codes = ErrorCodes::from(options.render_options.unstable_features.is_nightly_build());
+    let codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
 
     find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
 

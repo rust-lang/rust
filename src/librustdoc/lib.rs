@@ -720,7 +720,7 @@ fn main_args(at_args: &[String]) -> MainResult {
 
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
-    let options = match config::Options::from_matches(&matches, args) {
+    let (options, render_options) = match config::Options::from_matches(&matches, args) {
         Ok(opts) => opts,
         Err(code) => {
             return if code == 0 {
@@ -743,7 +743,6 @@ fn main_args(at_args: &[String]) -> MainResult {
         (true, false) => return doctest::run(options),
         (false, true) => {
             let input = options.input.clone();
-            let render_options = options.render_options.clone();
             let edition = options.edition;
             let config = core::create_config(options);
 
@@ -775,11 +774,8 @@ fn main_args(at_args: &[String]) -> MainResult {
     let crate_version = options.crate_version.clone();
 
     let output_format = options.output_format;
-    // FIXME: fix this clone (especially render_options)
     let externs = options.externs.clone();
-    let render_options = options.render_options.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
-    let document_private = options.render_options.document_private;
 
     let config = core::create_config(options);
 
@@ -815,7 +811,7 @@ fn main_args(at_args: &[String]) -> MainResult {
                         sess,
                         krate,
                         externs,
-                        document_private,
+                        render_options.document_private,
                     )
                 });
                 (resolver.clone(), resolver_caches)
