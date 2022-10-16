@@ -1816,6 +1816,50 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// [`.get_mut()`]: `UnsafeCell::get_mut`
 ///
+/// `UnsafeCell<T>` has the same in-memory representation as its inner type `T`. A consequence
+/// of this guarantee is that it is possible to convert between `T` and `UnsafeCell<T>`.
+/// Special care has to be taken when converting a nested `T` inside of an `Outer<T>` type
+/// to an `Outer<UnsafeCell<T>>` type: this is not sound when the `Outer<T>` type enables [niche]
+/// optimizations. For example, the type `Option<NonNull<u8>>` is typically 8 bytes large on
+/// 64-bit platforms, but the type `Option<UnsafeCell<NonNull<u8>>>` takes up 16 bytes of space.
+/// Therefore this is not a valid conversion, despite `NonNull<u8>` and `UnsafeCell<NonNull<u8>>>`
+/// having the same memory layout. This is because `UnsafeCell` disables niche optimizations in
+/// order to avoid its interior mutability property from spreading from `T` into the `Outer` type,
+/// thus this can cause distortions in the type size in these cases. Furthermore, it is only valid
+/// to obtain a `*mut T` pointer to the contents of a _shared_ `UnsafeCell<T>` through [`.get()`]
+/// or [`.raw_get()`]. A `&mut T` reference can be obtained by either dereferencing this pointer or
+/// by calling [`.get_mut()`] on an _exclusive_ `UnsafeCell<T>`, e.g.:
+///
+/// ```rust
+/// use std::cell::UnsafeCell;
+///
+/// let mut x: UnsafeCell<u32> = UnsafeCell::new(5);
+/// let shared: &UnsafeCell<u32> = &x;
+/// // using `.get()` is okay:
+/// unsafe {
+///     // SAFETY: there exist no other references to the contents of `x`
+///     let exclusive: &mut u32 = &mut *shared.get();
+/// };
+/// // using `.raw_get()` is also okay:
+/// unsafe {
+///     // SAFETY: there exist no other references to the contents of `x` in this scope
+///     let exclusive: &mut u32 = &mut *UnsafeCell::raw_get(shared as *const _);
+/// };
+/// // using `.get_mut()` is always safe:
+/// let exclusive: &mut u32 = x.get_mut();
+///
+/// // when we have exclusive access, we can convert it to a shared `&UnsafeCell`:
+/// unsafe {
+///     // SAFETY: `u32` has no niche, therefore it has the same layout as `UnsafeCell<u32>`
+///     let shared: &UnsafeCell<u32> = &*(exclusive as *mut _ as *const UnsafeCell<u32>);
+///     // SAFETY: there exist no other *active* references to the contents of `x` in this scope
+///     let exclusive: &mut u32 = &mut *shared.get();
+/// }
+/// ```
+///
+/// [niche]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#niche
+/// [`.raw_get()`]: `UnsafeCell::raw_get`
+///
 /// # Examples
 ///
 /// Here is an example showcasing how to soundly mutate the contents of an `UnsafeCell<_>` despite
