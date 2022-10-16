@@ -556,21 +556,36 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
             }
             Rvalue::Cast(kind, operand, target_type) => {
+                let op_ty = operand.ty(self.body, self.tcx);
                 match kind {
                     CastKind::DynStar => {
                         // FIXME(dyn-star): make sure nothing needs to be done here.
                     }
-                    // Nothing to check here
+                    // FIXME: Add Checks for these
                     CastKind::PointerFromExposedAddress
                     | CastKind::PointerExposeAddress
                     | CastKind::Pointer(_) => {}
-                    _ => {
-                        let op_ty = operand.ty(self.body, self.tcx);
-                        if op_ty.is_enum() {
+                    CastKind::IntToInt | CastKind::IntToFloat => {
+                        let input_valid = op_ty.is_integral() || op_ty.is_char() || op_ty.is_bool();
+                        let target_valid = target_type.is_numeric() || target_type.is_char();
+                        if !input_valid || !target_valid {
+                            self.fail(
+                                location,
+                                format!("Wrong cast kind {kind:?} for the type {op_ty}",),
+                            );
+                        }
+                    }
+                    CastKind::FnPtrToPtr | CastKind::PtrToPtr => {
+                        if !(op_ty.is_any_ptr() && target_type.is_unsafe_ptr()) {
+                            self.fail(location, "Can't cast {op_ty} into 'Ptr'");
+                        }
+                    }
+                    CastKind::FloatToFloat | CastKind::FloatToInt => {
+                        if !op_ty.is_floating_point() || !target_type.is_numeric() {
                             self.fail(
                                 location,
                                 format!(
-                                    "enum -> int casts should go through `Rvalue::Discriminant`: {operand:?}:{op_ty} as {target_type}",
+                                    "Trying to cast non 'Float' as {kind:?} into {target_type:?}"
                                 ),
                             );
                         }
