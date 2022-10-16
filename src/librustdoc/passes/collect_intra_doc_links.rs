@@ -80,10 +80,10 @@ impl Res {
         }
     }
 
-    fn def_id(self, tcx: TyCtxt<'_>) -> DefId {
+    fn def_id(self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self {
-            Res::Def(_, id) => id,
-            Res::Primitive(prim) => *PrimitiveType::primitive_locations(tcx).get(&prim).unwrap(),
+            Res::Def(_, id) => Some(id),
+            Res::Primitive(prim) => PrimitiveType::primitive_locations(tcx).get(&prim).copied(),
         }
     }
 
@@ -1127,10 +1127,10 @@ impl LinkCollector<'_, '_> {
                     }
                 }
 
-                Some(ItemLink {
+                res.def_id(self.cx.tcx).map(|page_id| ItemLink {
                     link: ori_link.link.clone(),
                     link_text: link_text.clone(),
-                    page_id: res.def_id(self.cx.tcx),
+                    page_id,
                     fragment,
                 })
             }
