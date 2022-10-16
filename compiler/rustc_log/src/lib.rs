@@ -40,10 +40,11 @@
 
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![feature(is_terminal)]
 
 use std::env::{self, VarError};
 use std::fmt::{self, Display};
-use std::io;
+use std::io::{self, IsTerminal};
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
 use tracing_subscriber::layer::SubscriberExt;
 
@@ -93,11 +94,11 @@ pub fn init_env_logger(env: &str) -> Result<(), Error> {
 }
 
 pub fn stdout_isatty() -> bool {
-    atty::is(atty::Stream::Stdout)
+    io::stdout().is_terminal()
 }
 
 pub fn stderr_isatty() -> bool {
-    atty::is(atty::Stream::Stderr)
+    io::stderr().is_terminal()
 }
 
 #[derive(Debug)]

@@ -3724,7 +3724,6 @@ dependencies = [
 name = "rustc_log"
 version = "0.0.0"
 dependencies = [
- "atty",
  "rustc_span",
  "tracing",
  "tracing-subscriber",
