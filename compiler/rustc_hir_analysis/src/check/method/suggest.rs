@@ -2,6 +2,7 @@
 //! found or is otherwise invalid.
 
 use crate::check::FnCtxt;
+use crate::errors;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
@@ -271,7 +272,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
 
-                if self.suggest_constraining_numerical_ty(
+                if self.suggest_wrapping_range_with_parens(
+                    tcx, actual, source, span, item_name, &ty_str,
+                ) || self.suggest_constraining_numerical_ty(
                     tcx, actual, source, span, item_kind, item_name, &ty_str,
                 ) {
                     return None;
@@ -1202,6 +1205,89 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    /// Suggest possible range with adding parentheses, for example:
+    /// when encountering `0..1.map(|i| i + 1)` suggest `(0..1).map(|i| i + 1)`.
+    fn suggest_wrapping_range_with_parens(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        actual: Ty<'tcx>,
+        source: SelfSource<'tcx>,
+        span: Span,
+        item_name: Ident,
+        ty_str: &str,
+    ) -> bool {
+        if let SelfSource::MethodCall(expr) = source {
+            for (_, parent) in tcx.hir().parent_iter(expr.hir_id).take(5) {
+                if let Node::Expr(parent_expr) = parent {
+                    let lang_item = match parent_expr.kind {
+                        ExprKind::Struct(ref qpath, _, _) => match **qpath {
+                            QPath::LangItem(LangItem::Range, ..) => Some(LangItem::Range),
+                            QPath::LangItem(LangItem::RangeTo, ..) => Some(LangItem::RangeTo),
+                            QPath::LangItem(LangItem::RangeToInclusive, ..) => {
+                                Some(LangItem::RangeToInclusive)
+                            }
+                            _ => None,
+                        },
+                        ExprKind::Call(ref func, _) => match func.kind {
+                            // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
+                            ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)) => {
+                                Some(LangItem::RangeInclusiveStruct)
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+
+                    if lang_item.is_none() {
+                        continue;
+                    }
+
+                    let span_included = match parent_expr.kind {
+                        hir::ExprKind::Struct(_, eps, _) => {
+                            eps.len() > 0 && eps.last().map_or(false, |ep| ep.span.contains(span))
+                        }
+                        // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
+                        hir::ExprKind::Call(ref func, ..) => func.span.contains(span),
+                        _ => false,
+                    };
+
+                    if !span_included {
+                        continue;
+                    }
+
+                    let range_def_id = self.tcx.require_lang_item(lang_item.unwrap(), None);
+                    let range_ty =
+                        self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
+
+                    let pick = self.probe_for_name(
+                        span,
+                        Mode::MethodCall,
+                        item_name,
+                        IsSuggestion(true),
+                        range_ty,
+                        expr.hir_id,
+                        ProbeScope::AllTraits,
+                    );
+                    if pick.is_ok() {
+                        let range_span = parent_expr.span.with_hi(expr.span.hi());
+                        tcx.sess.emit_err(errors::MissingParentheseInRange {
+                            span,
+                            ty_str: ty_str.to_string(),
+                            method_name: item_name.as_str().to_string(),
+                            add_missing_parentheses: Some(errors::AddMissingParenthesesInRange {
+                                func_name: item_name.name.as_str().to_string(),
+                                left: range_span.shrink_to_lo(),
+                                right: range_span.shrink_to_hi(),
+                            }),
+                        });
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
     fn suggest_constraining_numerical_ty(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -1264,7 +1350,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // If this is a floating point literal that ends with '.',
                     // get rid of it to stop this from becoming a member access.
                     let snippet = snippet.strip_suffix('.').unwrap_or(&snippet);
-
                     err.span_suggestion(
                         lit.span,
                         &format!(
