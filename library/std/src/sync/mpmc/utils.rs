@@ -111,7 +111,7 @@ impl Backoff {
     #[inline]
     pub fn spin(&self) {
         let step = self.step.get().min(SPIN_LIMIT);
-        for _ in 0..step.pow(2)  {
+        for _ in 0..step.pow(2) {
             crate::hint::spin_loop();
         }
 

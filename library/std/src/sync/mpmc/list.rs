@@ -350,7 +350,7 @@ impl<T> Channel<T> {
                     token.list.offset = offset;
                     return true;
                 },
-                Err(h) => {
+                Err(_) => {
                     backoff.spin();
                     head = self.head.index.load(Ordering::Acquire);
                     block = self.head.block.load(Ordering::Acquire);

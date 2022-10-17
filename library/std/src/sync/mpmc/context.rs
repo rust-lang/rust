@@ -1,7 +1,6 @@
 //! Thread-local channel context.
 
 use super::select::Selected;
-use super::utils::Backoff;
 
 use crate::cell::Cell;
 use crate::ptr;
