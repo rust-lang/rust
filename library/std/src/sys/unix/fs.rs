@@ -47,8 +47,6 @@ use libc::fstatat64;
 use libc::readdir as readdir64;
 #[cfg(target_os = "linux")]
 use libc::readdir64;
-#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
-use libc::readdir64_r;
 #[cfg(not(any(
     target_os = "android",
     target_os = "linux",
@@ -59,11 +57,13 @@ use libc::readdir64_r;
     target_os = "fuchsia",
     target_os = "redox"
 )))]
-use libc::readdir_r as readdir64_r;
+use libc::{dirent as dirent64, readdir_r as readdir64_r};
+#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
+use libc::{dirent64, readdir64_r};
 #[cfg(target_os = "android")]
 use libc::{
-    dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64,
-    lstat as lstat64, off64_t, open as open64, stat as stat64,
+    fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64, lstat as lstat64, off64_t,
+    open as open64, stat as stat64,
 };
 #[cfg(not(any(
     target_os = "linux",
@@ -72,11 +72,11 @@ use libc::{
     target_os = "android"
 )))]
 use libc::{
-    dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
-    lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
+    fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64, lstat as lstat64,
+    off_t as off64_t, open as open64, stat as stat64,
 };
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "l4re"))]
-use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
+use libc::{fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
 pub use crate::sys_common::fs::try_exists;
 
@@ -584,33 +584,72 @@ impl Iterator for ReadDir {
                     };
                 }
 
-                // Only d_reclen bytes of *entry_ptr are valid, so we can't just copy the
-                // whole thing (#93384).  Instead, copy everything except the name.
-                let mut copy: dirent64 = mem::zeroed();
-                // Can't dereference entry_ptr, so use the local entry to get
-                // offsetof(struct dirent, d_name)
-                let copy_bytes = &mut copy as *mut _ as *mut u8;
-                let copy_name = &mut copy.d_name as *mut _ as *mut u8;
-                let name_offset = copy_name.offset_from(copy_bytes) as usize;
-                let entry_bytes = entry_ptr as *const u8;
-                let entry_name = entry_bytes.add(name_offset);
-                ptr::copy_nonoverlapping(entry_bytes, copy_bytes, name_offset);
+                // Only d_reclen bytes of *entry_ptr are valid, so converting to
+                // a reference `&dirent64` would not be legal. We need to
+                // manipulate it as a raw pointer and access only initialized
+                // data.
+
+                // d_name is guaranteed to be null-terminated.
+                let name = CStr::from_ptr(ptr::addr_of!((*entry_ptr).d_name) as *const c_char);
+                let name_bytes = name.to_bytes();
+                if name_bytes == b"." || name_bytes == b".." {
+                    continue;
+                }
 
                 let entry = dirent64_min {
-                    d_ino: copy.d_ino as u64,
+                    d_ino: *ptr::addr_of!((*entry_ptr).d_ino) as u64,
                     #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
-                    d_type: copy.d_type as u8,
+                    d_type: *ptr::addr_of!((*entry_ptr).d_type) as u8,
                 };
 
-                let ret = DirEntry {
+                return Some(Ok(DirEntry {
                     entry,
-                    // d_name is guaranteed to be null-terminated.
-                    name: CStr::from_ptr(entry_name as *const _).to_owned(),
+                    name: name.to_owned(),
                     dir: Arc::clone(&self.inner),
-                };
-                if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
-                    return Some(Ok(ret));
+                }));
+            }
+        }
+    }
+
+    #[cfg(any(
+        target_os = "android",
+        target_os = "linux",
+        target_os = "solaris",
+        target_os = "fuchsia",
+        target_os = "redox",
+        target_os = "illumos"
+    ))]
+    #[rustc_inherit_overflow_checks]
+    fn count(self) -> usize {
+        let mut count = 0;
+
+        unsafe {
+            loop {
+                super::os::set_errno(0);
+                let entry_ptr = readdir64(self.inner.dirp.0);
+                if entry_ptr.is_null() {
+                    if super::os::errno() == 0 {
+                        return count;
+                    }
+                    // It might keep returning errors in an infinite loop, but
+                    // so would a loop over next(), so we need to match the
+                    // behavior of that.
+                    count += 1;
+                    continue;
                 }
+
+                let name_ptr = ptr::addr_of!((*entry_ptr).d_name) as *const u8;
+                if *name_ptr == b'.' {
+                    let rest = name_ptr.add(1);
+                    if *rest == b'\0' {
+                        continue; // do not count "."
+                    }
+                    if *rest == b'.' && *rest.add(1) == b'\0' {
+                        continue; // do not count ".."
+                    }
+                }
+
+                count += 1;
             }
         }
     }

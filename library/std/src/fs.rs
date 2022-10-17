@@ -1542,6 +1542,10 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         self.0.next().map(|entry| entry.map(DirEntry))
     }
+
+    fn count(self) -> usize {
+        self.0.count()
+    }
 }
 
 impl DirEntry {
