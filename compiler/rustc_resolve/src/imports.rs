@@ -252,7 +252,7 @@ impl<'a> Resolver<'a> {
         self.set_binding_parent_module(binding, module);
         self.update_resolution(module, key, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
-                if res == Res::Err {
+                if res == Res::Err && old_binding.res() != Res::Err {
                     // Do not override real bindings with `Res::Err`s from error recovery.
                     return Ok(());
                 }
