@@ -44,10 +44,7 @@ impl error::Error for SourceError {
 }
 
 fn main() {
-    std::env::set_var("RUST_BACKTRACE", "full");
     let source_error = SourceError {};
     let source = MyErr {super_source: source_error};
-    //FIXME make the function do the Some wrapping for us
-    panic_source(format_args!("here's my panic error message"), Some(&source));
-
+    panic_source(format_args!("here's my panic error message"), &source);
 }

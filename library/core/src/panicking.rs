@@ -51,18 +51,7 @@ const _: () = assert!(cfg!(panic = "abort"), "panic_immediate_abort requires -C 
 #[rustc_do_not_const_check] // hooked by const-eval
 #[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
-    panic_source(fmt, None)
-}
-
-#[cold]
-// If panic_immediate_abort, inline the abort call,
-// otherwise avoid inlining because of it is cold path.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[track_caller]
-#[rustc_do_not_const_check] // hooked by const-eval
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
-pub const fn panic_source(fmt: fmt::Arguments<'_>, source: Option<&(dyn Error + 'static)>) -> ! {
+    //panic_source(fmt, None)
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
@@ -74,7 +63,33 @@ pub const fn panic_source(fmt: fmt::Arguments<'_>, source: Option<&(dyn Error + 
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
 
-    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), source, true);
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), None, true);
+
+    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+    unsafe { panic_impl(&pi) }
+}
+
+#[cold]
+// If panic_immediate_abort, inline the abort call,
+// otherwise avoid inlining because of it is cold path.
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[rustc_do_not_const_check] // hooked by const-eval
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+pub const fn panic_source(fmt: fmt::Arguments<'_>, source: &(dyn Error + 'static)) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+    // that gets resolved to the `#[panic_handler]` function.
+    extern "Rust" {
+        #[lang = "panic_impl"]
+        fn panic_impl(pi: &PanicInfo<'_>) -> !;
+    }
+
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), Some(source), true);
 
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }
