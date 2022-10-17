@@ -62,9 +62,11 @@ export class Ctx {
             this.traceOutputChannel = vscode.window.createOutputChannel(
                 "Rust Analyzer Language Server Trace"
             );
+            this.pushExtCleanup(this.traceOutputChannel);
         }
         if (!this.outputChannel) {
             this.outputChannel = vscode.window.createOutputChannel("Rust Analyzer Language Server");
+            this.pushExtCleanup(this.outputChannel);
         }
 
         if (!this.client) {
@@ -139,23 +141,8 @@ export class Ctx {
         return editor && isRustEditor(editor) ? editor : undefined;
     }
 
-    get visibleRustEditors(): RustEditor[] {
-        return vscode.window.visibleTextEditors.filter(isRustEditor);
-    }
-
-    registerCommand(name: string, factory: (ctx: Ctx) => Cmd) {
-        const fullName = `rust-analyzer.${name}`;
-        const cmd = factory(this);
-        const d = vscode.commands.registerCommand(fullName, cmd);
-        this.pushExtCleanup(d);
-    }
-
     get extensionPath(): string {
         return this.extCtx.extensionPath;
-    }
-
-    get globalState(): vscode.Memento {
-        return this.extCtx.globalState;
     }
 
     get subscriptions(): Disposable[] {
@@ -199,6 +186,13 @@ export class Ctx {
         }
         if (!status.quiescent) icon = "$(sync~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
+    }
+
+    registerCommand(name: string, factory: (ctx: Ctx) => Cmd) {
+        const fullName = `rust-analyzer.${name}`;
+        const cmd = factory(this);
+        const d = vscode.commands.registerCommand(fullName, cmd);
+        this.pushExtCleanup(d);
     }
 
     pushExtCleanup(d: Disposable) {
