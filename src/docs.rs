@@ -317,6 +317,7 @@ docs! {
     "missing_panics_doc",
     "missing_safety_doc",
     "missing_spin_loop",
+    "missing_trait_methods",
     "mistyped_literal_suffixes",
     "mixed_case_hex_literals",
     "mixed_read_write_in_expression",
