@@ -83,7 +83,7 @@ impl Alignment {
         unsafe { mem::transmute::<usize, Alignment>(align) }
     }
 
-    /// Returns the alignment as a [`NonZeroUsize`]
+    /// Returns the alignment as a [`usize`]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
@@ -91,7 +91,7 @@ impl Alignment {
         self.0 as usize
     }
 
-    /// Returns the alignment as a [`usize`]
+    /// Returns the alignment as a [`NonZeroUsize`]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn as_nonzero(self) -> NonZeroUsize {
