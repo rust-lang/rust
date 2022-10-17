@@ -18,6 +18,21 @@ The patches in [this repository](https://github.com/antoyo/libgccjit-patches) ne
 (Those patches should work when applied on master, but in case it doesn't work, they are known to work when applied on 079c23cfe079f203d5df83fea8e92a60c7d7e878.)
 You can also use my [fork of gcc](https://github.com/antoyo/gcc) which already includes these patches.**
 
+To build it (most of these instructions come from [here](https://gcc.gnu.org/onlinedocs/jit/internals/index.html), so don't hesitate to take a look there if you encounter an issue):
+
+```bash
+$ cd gcc
+$ ./contrib/download_prerequisites
+$ sudo apt install flex libmpfr-dev libgmp-dev libmpc3 libmpc-dev
+$ ./configure \
+   --enable-host-shared \
+   --enable-languages=jit \
+   --disable-bootstrap \
+   --enable-checking=release \
+   --prefix=$(pwd)/install \
+   --disable-multilib
+```
+
 **Put the path to your custom build of libgccjit in the file `gcc_path`.**
 
 ```bash
