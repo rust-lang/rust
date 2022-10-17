@@ -272,11 +272,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
 
-                if self.suggest_range_for_iter(tcx, actual, source, span, item_name, &ty_str)
-                    || self.suggest_constraining_numerical_ty(
-                        tcx, actual, source, span, item_kind, item_name, &ty_str,
-                    )
-                {
+                if self.suggest_wrapping_range_with_parens(
+                    tcx, actual, source, span, item_name, &ty_str,
+                ) || self.suggest_constraining_numerical_ty(
+                    tcx, actual, source, span, item_kind, item_name, &ty_str,
+                ) {
                     return None;
                 }
 
@@ -1205,7 +1205,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    fn suggest_range_for_iter(
+    /// Suggest possible range with adding parentheses, for example:
+    /// when encountering `0..1.map(|i| i + 1)` suggest `(0..1).map(|i| i + 1)`.
+    fn suggest_wrapping_range_with_parens(
         &self,
         tcx: TyCtxt<'tcx>,
         actual: Ty<'tcx>,
@@ -1253,13 +1255,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         continue;
                     }
 
-                    debug!("lang_item: {:?}", lang_item);
                     let range_def_id = self.tcx.require_lang_item(lang_item.unwrap(), None);
                     let range_ty =
                         self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
 
-                    let pick =
-                        self.lookup_probe(span, item_name, range_ty, expr, ProbeScope::AllTraits);
+                    let pick = self.probe_for_name(
+                        span,
+                        Mode::MethodCall,
+                        item_name,
+                        IsSuggestion(true),
+                        range_ty,
+                        expr.hir_id,
+                        ProbeScope::AllTraits,
+                    );
                     if pick.is_ok() {
                         let range_span = parent_expr.span.with_hi(expr.span.hi());
                         tcx.sess.emit_err(errors::MissingParentheseInRange {
