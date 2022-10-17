@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when building an abstract representation for test::{constant#0}
+error[E0391]: cycle detected when building an abstract representation for `test::{constant#0}`
   --> $DIR/closures.rs:3:35
    |
 LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
@@ -14,7 +14,7 @@ note: ...which requires type-checking `test::{constant#0}`...
    |
 LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
    |                                   ^^^^^^^^^^^^^
-   = note: ...which again requires building an abstract representation for test::{constant#0}, completing the cycle
+   = note: ...which again requires building an abstract representation for `test::{constant#0}`, completing the cycle
 note: cycle used when checking that `test` is well-formed
   --> $DIR/closures.rs:3:1
    |
