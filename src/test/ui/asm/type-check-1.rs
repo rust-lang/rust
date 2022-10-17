@@ -3,7 +3,7 @@
 // ignore-spirv
 // ignore-wasm32
 
-#![feature(asm_const, asm_sym)]
+#![feature(asm_const)]
 
 use std::arch::{asm, global_asm};
 
