@@ -68,8 +68,6 @@ export class Ctx {
         }
 
         if (!this.client) {
-            log.info("Creating language client");
-
             this._serverPath = await bootstrap(this.extCtx, this.config, this.state).catch(
                 (err) => {
                     let message = "bootstrap error. ";

@@ -126,6 +126,13 @@ async function initCommonContext(ctx: Ctx) {
         await ctx.activate();
     });
 
+    ctx.registerCommand("startServer", (_) => async () => {
+        await ctx.activate();
+    });
+    ctx.registerCommand("stopServer", (_) => async () => {
+        // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
+        await ctx.disposeClient();
+    });
     ctx.registerCommand("analyzerStatus", commands.analyzerStatus);
     ctx.registerCommand("memoryUsage", commands.memoryUsage);
     ctx.registerCommand("shuffleCrateGraph", commands.shuffleCrateGraph);

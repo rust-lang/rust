@@ -76,6 +76,14 @@ export async function createClient(
         outputChannel,
         middleware: {
             workspace: {
+                // HACK: This is a workaround, when the client has been disposed, VSCode
+                // continues to emit events to the client and the default one for this event
+                // attempt to restart the client for no reason
+                async didChangeWatchedFile(event, next) {
+                    if (client.isRunning()) {
+                        await next(event);
+                    }
+                },
                 async configuration(
                     params: lc.ConfigurationParams,
                     token: vscode.CancellationToken,
