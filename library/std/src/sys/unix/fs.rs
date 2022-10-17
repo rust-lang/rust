@@ -4,6 +4,15 @@ use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "solaris",
+    target_os = "fuchsia",
+    target_os = "redox",
+    target_os = "illumos"
+))]
+use crate::mem::MaybeUninit;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
@@ -584,33 +593,69 @@ impl Iterator for ReadDir {
                     };
                 }
 
-                // Only d_reclen bytes of *entry_ptr are valid, so we can't just copy the
-                // whole thing (#93384).  Instead, copy everything except the name.
-                let mut copy: dirent64 = mem::zeroed();
-                // Can't dereference entry_ptr, so use the local entry to get
-                // offsetof(struct dirent, d_name)
-                let copy_bytes = &mut copy as *mut _ as *mut u8;
-                let copy_name = &mut copy.d_name as *mut _ as *mut u8;
-                let name_offset = copy_name.offset_from(copy_bytes) as usize;
-                let entry_bytes = entry_ptr as *const u8;
-                let entry_name = entry_bytes.add(name_offset);
-                ptr::copy_nonoverlapping(entry_bytes, copy_bytes, name_offset);
+                // The dirent64 struct is a weird imaginary thing that isn't ever supposed
+                // to be worked with by value. Its trailing d_name field is declared
+                // variously as [c_char; 256] or [c_char; 1] on different systems but
+                // either way that size is meaningless; only the offset of d_name is
+                // meaningful. The dirent64 pointers that libc returns from readdir64 are
+                // allowed to point to allocations smaller _or_ LARGER than implied by the
+                // definition of the struct.
+                //
+                // As such, we need to be even more careful with dirent64 than if its
+                // contents were "simply" partially initialized data.
+                //
+                // Like for uninitialized contents, converting entry_ptr to `&dirent64`
+                // would not be legal. However, unique to dirent64 is that we don't even
+                // get to use `addr_of!((*entry_ptr).d_name)` because that operation
+                // requires the full extent of *entry_ptr to be in bounds of the same
+                // allocation, which is not necessarily the case here.
+                //
+                // Absent any other way to obtain a pointer to `(*entry_ptr).d_name`
+                // legally in Rust analogously to how it would be done in C, we instead
+                // need to make our own non-libc allocation that conforms to the weird
+                // imaginary definition of dirent64, and use that for a field offset
+                // computation.
+                macro_rules! offset_ptr {
+                    ($entry_ptr:expr, $field:ident) => {{
+                        const OFFSET: isize = {
+                            let delusion = MaybeUninit::<dirent64>::uninit();
+                            let entry_ptr = delusion.as_ptr();
+                            unsafe {
+                                ptr::addr_of!((*entry_ptr).$field)
+                                    .cast::<u8>()
+                                    .offset_from(entry_ptr.cast::<u8>())
+                            }
+                        };
+                        if true {
+                            // Cast to the same type determined by the else branch.
+                            $entry_ptr.byte_offset(OFFSET).cast::<_>()
+                        } else {
+                            #[allow(deref_nullptr)]
+                            {
+                                ptr::addr_of!((*ptr::null::<dirent64>()).$field)
+                            }
+                        }
+                    }};
+                }
+
+                // d_name is guaranteed to be null-terminated.
+                let name = CStr::from_ptr(offset_ptr!(entry_ptr, d_name).cast());
+                let name_bytes = name.to_bytes();
+                if name_bytes == b"." || name_bytes == b".." {
+                    continue;
+                }
 
                 let entry = dirent64_min {
-                    d_ino: copy.d_ino as u64,
+                    d_ino: *offset_ptr!(entry_ptr, d_ino) as u64,
                     #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
-                    d_type: copy.d_type as u8,
+                    d_type: *offset_ptr!(entry_ptr, d_type) as u8,
                 };
 
-                let ret = DirEntry {
+                return Some(Ok(DirEntry {
                     entry,
-                    // d_name is guaranteed to be null-terminated.
-                    name: CStr::from_ptr(entry_name as *const _).to_owned(),
+                    name: name.to_owned(),
                     dir: Arc::clone(&self.inner),
-                };
-                if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
-                    return Some(Ok(ret));
-                }
+                }));
             }
         }
     }
