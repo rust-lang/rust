@@ -168,6 +168,7 @@ impl From<Alignment> for usize {
 }
 
 #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl const cmp::PartialEq for Alignment {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -176,6 +177,7 @@ impl const cmp::PartialEq for Alignment {
 }
 
 #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl const cmp::Ord for Alignment {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
