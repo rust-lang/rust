@@ -108,9 +108,9 @@ pub(crate) fn generate_getter_impl(
                 buf.push('\n');
             }
 
-            let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
+            let vis = strukt.visibility().map_or(String::new(), |v| format!("{v} "));
             let (ty, body) = if mutable {
-                (format!("&mut {}", field_ty), format!("&mut self.{}", field_name))
+                (format!("&mut {field_ty}"), format!("&mut self.{field_name}"))
             } else {
                 (|| {
                     let krate = ctx.sema.scope(field_ty.syntax())?.krate();
@@ -126,19 +126,15 @@ pub(crate) fn generate_getter_impl(
                             )
                         })
                 })()
-                .unwrap_or_else(|| (format!("&{}", field_ty), format!("&self.{}", field_name)))
+                .unwrap_or_else(|| (format!("&{field_ty}"), format!("&self.{field_name}")))
             };
 
+            let mut_ = mutable.then(|| "mut ").unwrap_or_default();
             format_to!(
                 buf,
-                "    {}fn {}(&{}self) -> {} {{
-        {}
-    }}",
-                vis,
-                fn_name,
-                mutable.then(|| "mut ").unwrap_or_default(),
-                ty,
-                body,
+                "    {vis}fn {fn_name}(&{mut_}self) -> {ty} {{
+        {body}
+    }}"
             );
 
             let start_offset = impl_def
