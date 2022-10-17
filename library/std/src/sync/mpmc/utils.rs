@@ -110,7 +110,8 @@ impl Backoff {
     /// progress.
     #[inline]
     pub fn spin(&self) {
-        for _ in 0..1 << self.step.get().min(SPIN_LIMIT) {
+        let step = self.step.get().min(SPIN_LIMIT);
+        for _ in 0..step.pow(2)  {
             crate::hint::spin_loop();
         }
 
@@ -123,7 +124,7 @@ impl Backoff {
     #[inline]
     pub fn snooze(&self) {
         if self.step.get() <= SPIN_LIMIT {
-            for _ in 0..1 << self.step.get() {
+            for _ in 0..self.step.get().pow(2) {
                 crate::hint::spin_loop()
             }
         } else {
