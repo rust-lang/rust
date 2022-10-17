@@ -482,8 +482,8 @@ impl Analysis {
     }
 
     /// Returns crates this file belongs too.
-    pub fn crate_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
-        self.with_db(|db| parent_module::crate_for(db, file_id))
+    pub fn crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
+        self.with_db(|db| parent_module::crates_for(db, file_id))
     }
 
     /// Returns the edition of the given crate.

@@ -8,7 +8,7 @@ use std::{sync::Arc, time::Instant};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
-use ide_db::base_db::{CrateId, FileLoader, SourceDatabase};
+use ide_db::base_db::{FileLoader, SourceDatabase};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use proc_macro_api::ProcMacroServer;
@@ -398,11 +398,10 @@ impl GlobalStateSnapshot {
         url_from_abs_path(path)
     }
 
-    pub(crate) fn cargo_target_for_crate_root(
+    pub(crate) fn cargo_target_for_file_id(
         &self,
-        crate_id: CrateId,
+        file_id: FileId,
     ) -> Option<(&CargoWorkspace, Target)> {
-        let file_id = self.analysis.crate_root(crate_id).ok()?;
         let path = self.vfs.read().0.file_path(file_id);
         let path = path.as_path()?;
         self.workspaces.iter().find_map(|ws| match ws {
