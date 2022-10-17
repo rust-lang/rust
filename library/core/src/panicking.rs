@@ -26,6 +26,7 @@
     issue = "none"
 )]
 
+use crate::error::Error;
 use crate::fmt;
 use crate::panic::{Location, PanicInfo};
 
@@ -50,6 +51,18 @@ const _: () = assert!(cfg!(panic = "abort"), "panic_immediate_abort requires -C 
 #[rustc_do_not_const_check] // hooked by const-eval
 #[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
+    panic_source(fmt, None)
+}
+
+#[cold]
+// If panic_immediate_abort, inline the abort call,
+// otherwise avoid inlining because of it is cold path.
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[rustc_do_not_const_check] // hooked by const-eval
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+pub const fn panic_source(fmt: fmt::Arguments<'_>, source: Option<& (dyn Error + 'static)>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
@@ -61,7 +74,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
 
-    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), true);
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), source, true);
 
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }
@@ -90,7 +103,9 @@ pub fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>) -> ! {
     }
 
     // PanicInfo with the `can_unwind` flag set to false forces an abort.
-    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), false);
+    let pieces = [msg];
+    let fmt = fmt::Arguments::new_v1(&pieces, &[]);
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), None, false);
 
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }

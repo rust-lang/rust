@@ -1,4 +1,5 @@
 use crate::any::Any;
+use crate::error::Error;
 use crate::fmt;
 use crate::panic::Location;
 
@@ -30,6 +31,7 @@ use crate::panic::Location;
 pub struct PanicInfo<'a> {
     payload: &'a (dyn Any + Send),
     message: Option<&'a fmt::Arguments<'a>>,
+    source: Option<&'a (dyn Error + 'static)>,
     location: &'a Location<'a>,
     can_unwind: bool,
 }
@@ -45,10 +47,11 @@ impl<'a> PanicInfo<'a> {
     pub fn internal_constructor(
         message: Option<&'a fmt::Arguments<'a>>,
         location: &'a Location<'a>,
+        source: Option<&'a (dyn Error + 'static)>,
         can_unwind: bool,
     ) -> Self {
         struct NoPayload;
-        PanicInfo { location, message, payload: &NoPayload, can_unwind }
+        PanicInfo { location, message, payload: &NoPayload, source, can_unwind }
     }
 
     #[unstable(
@@ -60,6 +63,12 @@ impl<'a> PanicInfo<'a> {
     #[inline]
     pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
         self.payload = info;
+    }
+
+    #[unstable(feature = "error_in_panic", issue = "none")]
+    /// FIXME
+    pub fn source(&self) -> Option<&(dyn Error + 'static)> {
+        self.source
     }
 
     /// Returns the payload associated with the panic.

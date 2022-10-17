@@ -13,6 +13,7 @@ use crate::panic::BacktraceStyle;
 use core::panic::{BoxMeUp, Location, PanicInfo};
 
 use crate::any::Any;
+use crate::error::Error;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
@@ -258,7 +259,9 @@ fn default_hook(info: &PanicInfo<'_>) {
 
     let write = |err: &mut dyn crate::io::Write| {
         let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
-
+        if info.source().is_some() {
+            writeln!(err, "fun is not allowed");
+        }
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
         match backtrace {
@@ -574,15 +577,17 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     }
 
     let loc = info.location().unwrap(); // The current implementation always returns Some
+    let source = info.source();
     let msg = info.message().unwrap(); // The current implementation always returns Some
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
         if let Some(msg) = msg.as_str() {
-            rust_panic_with_hook(&mut StrPanicPayload(msg), info.message(), loc, info.can_unwind());
+            rust_panic_with_hook(&mut StrPanicPayload(msg), info.message(), loc, source, info.can_unwind());
         } else {
             rust_panic_with_hook(
                 &mut PanicPayload::new(msg),
                 info.message(),
                 loc,
+                source,
                 info.can_unwind(),
             );
         }
@@ -608,7 +613,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
 
     let loc = Location::caller();
     return crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
-        rust_panic_with_hook(&mut PanicPayload::new(msg), None, loc, true)
+        rust_panic_with_hook(&mut PanicPayload::new(msg), None, loc, None, true)
     });
 
     struct PanicPayload<A> {
@@ -653,6 +658,7 @@ fn rust_panic_with_hook(
     payload: &mut dyn BoxMeUp,
     message: Option<&fmt::Arguments<'_>>,
     location: &Location<'_>,
+    source: Option<& (dyn Error + 'static)>,
     can_unwind: bool,
 ) -> ! {
     let (must_abort, panics) = panic_count::increase();
@@ -670,13 +676,13 @@ fn rust_panic_with_hook(
         } else {
             // Unfortunately, this does not print a backtrace, because creating
             // a `Backtrace` will allocate, which we must to avoid here.
-            let panicinfo = PanicInfo::internal_constructor(message, location, can_unwind);
+            let panicinfo = PanicInfo::internal_constructor(message, location, source, can_unwind);
             rtprintpanic!("{panicinfo}\npanicked after panic::always_abort(), aborting.\n");
         }
         crate::sys::abort_internal();
     }
 
-    let mut info = PanicInfo::internal_constructor(message, location, can_unwind);
+    let mut info = PanicInfo::internal_constructor(message, location, source, can_unwind);
     let hook = HOOK.read().unwrap_or_else(PoisonError::into_inner);
     match *hook {
         // Some platforms (like wasm) know that printing to stderr won't ever actually
