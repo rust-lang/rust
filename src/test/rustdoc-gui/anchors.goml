@@ -71,37 +71,37 @@ define-function: (
 
 call-function: (
     "check-colors",
-    (
-        "ayu", // theme
-        "rgb(197, 197, 197)", // main color
-        "rgb(255, 255, 255)", // title color
-        "rgb(255, 255, 255)", // fqn color
-        "rgb(255, 160, 165)", // fqn type color
-        "rgb(57, 175, 215)", // src link
-        "rgb(83, 177, 219)", // sidebar link
-    ),
+    {
+        "theme": "ayu",
+        "main_color": "rgb(197, 197, 197)",
+        "title_color": "rgb(255, 255, 255)",
+        "fqn_color": "rgb(255, 255, 255)",
+        "fqn_type_color": "rgb(255, 160, 165)",
+        "src_link_color": "rgb(57, 175, 215)",
+        "sidebar_link_color": "rgb(83, 177, 219)",
+    },
 )
 call-function: (
     "check-colors",
-    (
-        "dark", // theme
-        "rgb(221, 221, 221)", // main color
-        "rgb(221, 221, 221)", // title color
-        "rgb(221, 221, 221)", // fqn color
-        "rgb(45, 191, 184)", // fqn type color
-        "rgb(210, 153, 29)", // src link
-        "rgb(253, 191, 53)", // sidebar link
-    ),
+    {
+        "theme": "dark",
+        "main_color": "rgb(221, 221, 221)",
+        "title_color": "rgb(221, 221, 221)",
+        "fqn_color": "rgb(221, 221, 221)",
+        "fqn_type_color": "rgb(45, 191, 184)",
+        "src_link_color": "rgb(210, 153, 29)",
+        "sidebar_link_color": "rgb(253, 191, 53)",
+    },
 )
 call-function: (
     "check-colors",
-    (
-        "light", // theme
-        "rgb(0, 0, 0)", // main color
-        "rgb(0, 0, 0)", // title color
-        "rgb(0, 0, 0)", // fqn color
-        "rgb(173, 55, 138)", // fqn type color
-        "rgb(56, 115, 173)", // src link
-        "rgb(53, 109, 164)", // sidebar link
-    ),
+    {
+        "theme": "light",
+        "main_color": "rgb(0, 0, 0)",
+        "title_color": "rgb(0, 0, 0)",
+        "fqn_color": "rgb(0, 0, 0)",
+        "fqn_type_color": "rgb(173, 55, 138)",
+        "src_link_color": "rgb(56, 115, 173)",
+        "sidebar_link_color": "rgb(53, 109, 164)",
+    },
 )
