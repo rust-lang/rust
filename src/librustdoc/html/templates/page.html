@@ -103,6 +103,7 @@
     <main> {#- -#}
         <div class="width-limiter"> {#- -#}
             <div class="sub-container"> {#- -#}
+                {%- if page.css_class == "source" -%}
                 <a class="sub-logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {#- -#}
                     {%- if !layout.logo.is_empty()  %}
                         <img src="{{layout.logo}}" alt="logo"> {#- -#}
@@ -110,6 +111,7 @@
                         <img class="rust-logo" src="{{static_root_path|safe}}rust-logo{{page.resource_suffix}}.svg" alt="logo"> {#- -#}
                     {%- endif -%}
                 </a> {#- -#}
+                {%- endif -%}
                 <nav class="sub"> {#- -#}
                     <form class="search-form"> {#- -#}
                         <div class="search-container"> {#- -#}
