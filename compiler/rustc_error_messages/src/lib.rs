@@ -223,7 +223,7 @@ pub type LazyFallbackBundle = Lrc<Lazy<FluentBundle, impl FnOnce() -> FluentBund
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace")]
 pub fn fallback_fluent_bundle(
-    resources: &'static [&'static str],
+    resources: Vec<&'static str>,
     with_directionality_markers: bool,
 ) -> LazyFallbackBundle {
     Lrc::new(Lazy::new(move || {

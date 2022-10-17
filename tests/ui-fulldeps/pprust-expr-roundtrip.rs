@@ -219,10 +219,8 @@ fn main() {
     rustc_span::create_default_session_globals_then(|| run());
 }
 
-static TEST_LOCALE_RESOURCES: &[&str] = &[rustc_parse::DEFAULT_LOCALE_RESOURCE];
-
 fn run() {
-    let ps = ParseSess::new(TEST_LOCALE_RESOURCES, FilePathMapping::empty());
+    let ps = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE], FilePathMapping::empty());
 
     iter_exprs(2, &mut |mut e| {
         // If the pretty printer is correct, then `parse(print(e))` should be identical to `e`,

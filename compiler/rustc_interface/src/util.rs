@@ -90,6 +90,9 @@ pub fn create_session(
         }
     };
 
+    let mut locale_resources = Vec::from(locale_resources);
+    locale_resources.push(codegen_backend.locale_resource());
+
     let mut sess = session::build_session(
         sopts,
         io,

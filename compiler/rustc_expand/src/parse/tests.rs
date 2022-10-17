@@ -17,11 +17,11 @@ use rustc_span::{BytePos, FileName, Pos, Span};
 
 use std::path::PathBuf;
 
-static TEST_LOCALE_RESOURCES: &[&str] =
-    &[crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE];
-
 fn sess() -> ParseSess {
-    ParseSess::new(TEST_LOCALE_RESOURCES, FilePathMapping::empty())
+    ParseSess::new(
+        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
+        FilePathMapping::empty(),
+    )
 }
 
 /// Parses an item.

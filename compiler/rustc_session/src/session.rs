@@ -1341,7 +1341,7 @@ pub fn build_session(
     io: CompilerIO,
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
-    fluent_resources: &'static [&'static str],
+    fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target_override: Option<Target>,
@@ -1630,13 +1630,11 @@ pub enum IncrCompSession {
     InvalidBecauseOfErrors { session_directory: PathBuf },
 }
 
-// FIXME(#100717): early errors aren't translated at the moment, so this is fine, but it will need
-// to reference every crate that might emit an early error for translation to work.
-static EARLY_ERROR_LOCALE_RESOURCE: &'static [&'static str] =
-    &[rustc_errors::DEFAULT_LOCALE_RESOURCE];
-
 fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler {
-    let fallback_bundle = fallback_fluent_bundle(EARLY_ERROR_LOCALE_RESOURCE, false);
+    // FIXME(#100717): early errors aren't translated at the moment, so this is fine, but it will
+    // need to reference every crate that might emit an early error for translation to work.
+    let fallback_bundle =
+        fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();

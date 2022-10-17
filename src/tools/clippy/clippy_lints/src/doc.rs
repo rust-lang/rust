@@ -704,8 +704,10 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let filename = FileName::anon_source_code(&code);
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-                let fallback_bundle =
-                    rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES, false);
+                let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+                    rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
+                    false
+                );
                 let emitter = EmitterWriter::new(
                     Box::new(io::sink()),
                     None,
