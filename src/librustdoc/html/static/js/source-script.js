@@ -10,7 +10,6 @@
 (function() {
 
 const rootPath = document.getElementById("rustdoc-vars").attributes["data-root-path"].value;
-let oldScrollPosition = null;
 
 const NAME_OFFSET = 0;
 const DIRS_OFFSET = 1;
@@ -70,43 +69,17 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 function toggleSidebar() {
     const child = this.parentNode.children[0];
     if (child.innerText === ">") {
-        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
-            // This is to keep the scroll position on mobile.
-            oldScrollPosition = window.scrollY;
-            document.body.style.position = "fixed";
-            document.body.style.top = `-${oldScrollPosition}px`;
-        } else {
-            oldScrollPosition = null;
-        }
+        window.rustdocMobileScrollLock();
         addClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = "<";
         updateLocalStorage("source-sidebar-show", "true");
     } else {
-        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT && oldScrollPosition !== null) {
-            // This is to keep the scroll position on mobile.
-            document.body.style.position = "";
-            document.body.style.top = "";
-            // The scroll position is lost when resetting the style, hence why we store it in
-            // `oldScrollPosition`.
-            window.scrollTo(0, oldScrollPosition);
-            oldScrollPosition = null;
-        }
+        window.rustdocMobileScrollUnlock();
         removeClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = ">";
         updateLocalStorage("source-sidebar-show", "false");
     }
 }
-
-window.addEventListener("resize", () => {
-    if (window.innerWidth >= window.RUSTDOC_MOBILE_BREAKPOINT && oldScrollPosition !== null) {
-        // If the user opens the sidebar in "mobile" mode, and then grows the browser window,
-        // we need to switch away from mobile mode and make the main content area scrollable.
-        document.body.style.position = "";
-        document.body.style.top = "";
-        window.scrollTo(0, oldScrollPosition);
-        oldScrollPosition = null;
-    }
-});
 
 function createSidebarToggle() {
     const sidebarToggle = document.createElement("div");
@@ -125,7 +98,7 @@ function createSidebarToggle() {
     return sidebarToggle;
 }
 
-// This function is called from "source-files.js", generated in `html/render/mod.rs`.
+// This function is called from "source-files.js", generated in `html/render/write_shared.rs`.
 // eslint-disable-next-line no-unused-vars
 function createSourceSidebar() {
     const container = document.querySelector("nav.sidebar");
