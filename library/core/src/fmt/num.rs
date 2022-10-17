@@ -106,10 +106,7 @@ unsafe trait GenericRadix: Sized {
         // SAFETY: The only chars in `buf` are created by `Self::digit` which are assumed to be
         // valid UTF-8
         let buf = unsafe {
-            str::from_utf8_unchecked(slice::from_raw_parts(
-                MaybeUninit::slice_as_ptr(buf),
-                buf.len(),
-            ))
+            str::from_utf8_unchecked(slice::from_raw_parts(buf.as_ptr().into_inner(), buf.len()))
         };
         f.pad_integral(is_nonnegative, Self::PREFIX, buf)
     }
@@ -216,7 +213,7 @@ macro_rules! impl_Display {
             // 2^128 is about 3*10^38, so 39 gives an extra byte of space
             let mut buf = [MaybeUninit::<u8>::uninit(); 39];
             let mut curr = buf.len();
-            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
+            let buf_ptr = buf.as_mut_ptr().into_inner();
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             // SAFETY: Since `d1` and `d2` are always less than or equal to `198`, we
@@ -344,7 +341,7 @@ macro_rules! impl_Exp {
             // that `curr >= 0`.
             let mut buf = [MaybeUninit::<u8>::uninit(); 40];
             let mut curr = buf.len(); //index for buf
-            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
+            let buf_ptr = buf.as_mut_ptr().into_inner();
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             // decode 2 chars at a time
@@ -392,20 +389,19 @@ macro_rules! impl_Exp {
 
             // stores 'e' (or 'E') and the up to 2-digit exponent
             let mut exp_buf = [MaybeUninit::<u8>::uninit(); 3];
-            let exp_ptr = MaybeUninit::slice_as_mut_ptr(&mut exp_buf);
-            // SAFETY: In either case, `exp_buf` is written within bounds and `exp_ptr[..len]`
-            // is contained within `exp_buf` since `len <= 3`.
-            let exp_slice = unsafe {
-                *exp_ptr.add(0) = if upper { b'E' } else { b'e' };
+            exp_buf[0].write(if upper { b'E' } else { b'e' });
+            let exp_slice = {
                 let len = if exponent < 10 {
-                    *exp_ptr.add(1) = (exponent as u8) + b'0';
+                    exp_buf[1].write((exponent as u8) + b'0');
                     2
                 } else {
                     let off = exponent << 1;
-                    ptr::copy_nonoverlapping(lut_ptr.add(off), exp_ptr.add(1), 2);
+                    // SAFETY: 1 + 2 <= 3
+                    unsafe { ptr::copy_nonoverlapping(lut_ptr.add(off), exp_buf[1].as_mut_ptr(), 2); }
                     3
                 };
-                slice::from_raw_parts(exp_ptr, len)
+                // SAFETY: max(2, 3) <= 3
+                unsafe { slice::from_raw_parts(exp_buf.as_mut_ptr().into_inner(), len) }
             };
 
             let parts = &[
@@ -485,7 +481,7 @@ impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
 /// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
 fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut usize) {
-    let buf_ptr = MaybeUninit::slice_as_mut_ptr(buf);
+    let buf_ptr = buf.as_mut_ptr().into_inner();
     let lut_ptr = DEC_DIGITS_LUT.as_ptr();
     assert!(*curr > 19);
 
@@ -609,11 +605,7 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
         // SAFETY: Guaranteed that we wrote at most 19 bytes, and there must be space
         // remaining since it has length 39
         unsafe {
-            ptr::write_bytes(
-                MaybeUninit::slice_as_mut_ptr(&mut buf).add(target),
-                b'0',
-                curr - target,
-            );
+            ptr::write_bytes(buf[target].as_mut_ptr(), b'0', curr - target);
         }
         curr = target;
 
@@ -622,16 +614,13 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
         // Should this following branch be annotated with unlikely?
         if n != 0 {
             let target = buf.len() - 38;
-            // The raw `buf_ptr` pointer is only valid until `buf` is used the next time,
-            // buf `buf` is not used in this scope so we are good.
-            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
             // SAFETY: At this point we wrote at most 38 bytes, pad up to that point,
             // There can only be at most 1 digit remaining.
             unsafe {
-                ptr::write_bytes(buf_ptr.add(target), b'0', curr - target);
-                curr = target - 1;
-                *buf_ptr.add(curr) = (n as u8) + b'0';
+                ptr::write_bytes(buf[target].as_mut_ptr(), b'0', curr - target);
             }
+            curr = target - 1;
+            buf[curr].write((n as u8) + b'0');
         }
     }
 
@@ -639,7 +628,7 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
     // UTF-8 since `DEC_DIGITS_LUT` is
     let buf_slice = unsafe {
         str::from_utf8_unchecked(slice::from_raw_parts(
-            MaybeUninit::slice_as_mut_ptr(&mut buf).add(curr),
+            buf.get_unchecked_mut(curr).as_mut_ptr(),
             buf.len() - curr,
         ))
     };

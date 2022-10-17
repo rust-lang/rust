@@ -376,7 +376,7 @@ where
 
         if start_l == end_l {
             // Trace `block_l` elements from the left side.
-            start_l = MaybeUninit::slice_as_mut_ptr(&mut offsets_l);
+            start_l = offsets_l.as_mut_ptr().into_inner();
             end_l = start_l;
             let mut elem = l;
 
@@ -402,7 +402,7 @@ where
 
         if start_r == end_r {
             // Trace `block_r` elements from the right side.
-            start_r = MaybeUninit::slice_as_mut_ptr(&mut offsets_r);
+            start_r = offsets_r.as_mut_ptr().into_inner();
             end_r = start_r;
             let mut elem = r;
 

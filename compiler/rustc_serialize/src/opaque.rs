@@ -160,7 +160,7 @@ impl FileEncoder {
         // SAFETY: The above check and `flush` ensures that there is enough
         // room to write the input to the buffer.
         unsafe {
-            *MaybeUninit::slice_as_mut_ptr(&mut self.buf).add(buffered) = value;
+            self.buf.get_unchecked_mut(buffered).write(value);
         }
 
         self.buffered = buffered + 1;
@@ -182,7 +182,7 @@ impl FileEncoder {
             // room to write the input to the buffer.
             unsafe {
                 let src = buf.as_ptr();
-                let dst = MaybeUninit::slice_as_mut_ptr(&mut self.buf).add(buffered);
+                let dst = self.buf.get_unchecked_mut(buffered).as_mut_ptr();
                 ptr::copy_nonoverlapping(src, dst, buf_len);
             }
 

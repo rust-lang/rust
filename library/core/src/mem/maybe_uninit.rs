@@ -993,22 +993,6 @@ impl<T> MaybeUninit<T> {
         unsafe { &mut *(slice as *mut [Self] as *mut [T]) }
     }
 
-    /// Gets a pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const fn slice_as_ptr(this: &[MaybeUninit<T>]) -> *const T {
-        this.as_ptr() as *const T
-    }
-
-    /// Gets a mutable pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
-        this.as_mut_ptr() as *mut T
-    }
-
     /// Copies the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
     ///
     /// If `T` does not implement `Copy`, use [`write_slice_cloned`]
@@ -1308,5 +1292,27 @@ impl<T, const N: usize> [MaybeUninit<T>; N] {
     pub const fn transpose(self) -> MaybeUninit<[T; N]> {
         // SAFETY: T and MaybeUninit<T> have the same layout
         unsafe { intrinsics::transmute_unchecked(self) }
+    }
+}
+
+impl<T> *const MaybeUninit<T> {
+    /// Converts a MaybeUninit pointer to its underlying type.
+    ///
+    /// See [`MaybeUninit::as_ptr`] for caveats.
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    pub const fn into_inner(self) -> *const T {
+        self.cast()
+    }
+}
+
+impl<T> *mut MaybeUninit<T> {
+    /// Converts mutable a MaybeUninit pointer to its underlying type.
+    ///
+    /// See [`MaybeUninit::as_mut_ptr`] for caveats.
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    pub const fn into_inner(self) -> *mut T {
+        self.cast()
     }
 }
