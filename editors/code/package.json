@@ -37,7 +37,7 @@
     "dependencies": {
         "d3": "^7.6.1",
         "d3-graphviz": "^4.1.1",
-        "vscode-languageclient": "^8.0.0-next.14"
+        "vscode-languageclient": "^8.0.2"
     },
     "devDependencies": {
         "@types/node": "~16.11.7",
@@ -60,6 +60,7 @@
         "onCommand:rust-analyzer.analyzerStatus",
         "onCommand:rust-analyzer.memoryUsage",
         "onCommand:rust-analyzer.reloadWorkspace",
+        "onCommand:rust-analyzer.startServer",
         "workspaceContains:*/Cargo.toml",
         "workspaceContains:*/rust-project.json"
     ],
@@ -189,6 +190,16 @@
             {
                 "command": "rust-analyzer.reload",
                 "title": "Restart server",
+                "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.startServer",
+                "title": "Start server",
+                "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.stopServer",
+                "title": "Stop server",
                 "category": "rust-analyzer"
             },
             {

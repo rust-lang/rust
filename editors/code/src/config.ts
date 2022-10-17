@@ -14,8 +14,6 @@ export class Config {
 
     readonly rootSection = "rust-analyzer";
     private readonly requiresWorkspaceReloadOpts = [
-        "serverPath",
-        "server",
         // FIXME: This shouldn't be here, changing this setting should reload
         // `continueCommentsOnNewline` behavior without restart
         "typing",
@@ -23,6 +21,8 @@ export class Config {
     private readonly requiresReloadOpts = [
         "cargo",
         "procMacro",
+        "serverPath",
+        "server",
         "files",
         "lens", // works as lens.*
     ]
