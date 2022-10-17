@@ -682,6 +682,24 @@ impl Diagnostic {
         suggestions: impl Iterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self {
+        self.span_suggestions_with_style(
+            sp,
+            msg,
+            suggestions,
+            applicability,
+            SuggestionStyle::ShowCode,
+        )
+    }
+
+    /// [`Diagnostic::span_suggestions()`] but you can set the [`SuggestionStyle`].
+    pub fn span_suggestions_with_style(
+        &mut self,
+        sp: Span,
+        msg: impl Into<SubdiagnosticMessage>,
+        suggestions: impl Iterator<Item = String>,
+        applicability: Applicability,
+        style: SuggestionStyle,
+    ) -> &mut Self {
         let mut suggestions: Vec<_> = suggestions.collect();
         suggestions.sort();
         let substitutions = suggestions
@@ -691,14 +709,15 @@ impl Diagnostic {
         self.push_suggestion(CodeSuggestion {
             substitutions,
             msg: self.subdiagnostic_message_to_diagnostic_message(msg),
-            style: SuggestionStyle::ShowCode,
+            style,
             applicability,
         });
         self
     }
 
-    /// Prints out a message with multiple suggested edits of the code.
-    /// See also [`Diagnostic::span_suggestion()`].
+    /// Prints out a message with multiple suggested edits of the code, where each edit consists of
+    /// multiple parts.
+    /// See also [`Diagnostic::multipart_suggestion()`].
     pub fn multipart_suggestions(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
@@ -720,6 +739,7 @@ impl Diagnostic {
         });
         self
     }
+
     /// Prints out a message with a suggested edit of the code. If the suggestion is presented
     /// inline, it will only show the message and not the suggestion.
     ///

@@ -749,3 +749,41 @@ struct SubdiagnosticEagerSuggestion {
     #[subdiagnostic(eager)]
     sub: SubdiagnosticWithSuggestion,
 }
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SuggestionsGood {
+    #[suggestion(code("foo", "bar"))]
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SuggestionsSingleItem {
+    #[suggestion(code("foo"))]
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SuggestionsNoItem {
+    #[suggestion(code())]
+    //~^ ERROR expected at least one string literal for `code(...)`
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SuggestionsInvalidItem {
+    #[suggestion(code(foo))]
+    //~^ ERROR `code(...)` must contain only string literals
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest::example)]
+struct SuggestionsInvalidLiteral {
+    #[suggestion(code = 3)]
+    //~^ ERROR `code = "..."`/`code(...)` must contain only string literals
+    sub: Span,
+}
