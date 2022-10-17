@@ -658,7 +658,7 @@ pub(crate) fn handle_parent_module(
 
         // check if invoked at the crate root
         let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-        let crate_id = match snap.analysis.crate_for(file_id)?.first() {
+        let crate_id = match snap.analysis.crates_for(file_id)?.first() {
             Some(&crate_id) => crate_id,
             None => return Ok(None),
         };
@@ -1782,7 +1782,7 @@ fn run_rustfmt(
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
     let file_id = from_proto::file_id(snap, &text_document.uri)?;
     let file = snap.analysis.file_text(file_id)?;
-    let crate_ids = snap.analysis.crate_for(file_id)?;
+    let crate_ids = snap.analysis.crates_for(file_id)?;
 
     let line_index = snap.file_line_index(file_id)?;
 

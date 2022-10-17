@@ -767,7 +767,7 @@ impl GlobalState {
                         let analysis = this.analysis_host.analysis();
                         // Crates containing or depending on the saved file
                         let crate_ids: Vec<_> = analysis
-                            .crate_for(file_id)?
+                            .crates_for(file_id)?
                             .into_iter()
                             .flat_map(|id| {
                                 this.analysis_host
