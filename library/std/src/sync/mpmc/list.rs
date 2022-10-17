@@ -246,10 +246,10 @@ impl<T> Channel<T> {
                     token.list.offset = offset;
                     return true;
                 },
-                Err(t) => {
-                    tail = t;
-                    block = self.tail.block.load(Ordering::Acquire);
+                Err(_) => {
                     backoff.spin();
+                    tail = self.tail.index.load(Ordering::Acquire);
+                    block = self.tail.block.load(Ordering::Acquire);
                 }
             }
         }
@@ -351,9 +351,9 @@ impl<T> Channel<T> {
                     return true;
                 },
                 Err(h) => {
-                    head = h;
-                    block = self.head.block.load(Ordering::Acquire);
                     backoff.spin();
+                    head = self.head.index.load(Ordering::Acquire);
+                    block = self.head.block.load(Ordering::Acquire);
                 }
             }
         }

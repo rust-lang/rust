@@ -167,9 +167,9 @@ impl<T> Channel<T> {
                         token.array.stamp = tail + 1;
                         return true;
                     }
-                    Err(t) => {
-                        tail = t;
+                    Err(_) => {
                         backoff.spin();
+                        tail = self.load(Ordering::Relaxed);
                     }
                 }
             } else if stamp.wrapping_add(self.one_lap) == tail + 1 {
@@ -251,8 +251,8 @@ impl<T> Channel<T> {
                         return true;
                     }
                     Err(h) => {
-                        head = h;
                         backoff.spin();
+                        head = self.head.load(Ordering::Relaxed);
                     }
                 }
             } else if stamp == head {
