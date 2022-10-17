@@ -37,11 +37,11 @@
     "dependencies": {
         "d3": "^7.6.1",
         "d3-graphviz": "^4.1.1",
-        "vscode-languageclient": "^8.0.0-next.14"
+        "vscode-languageclient": "^8.0.2"
     },
     "devDependencies": {
         "@types/node": "~16.11.7",
-        "@types/vscode": "~1.66.0",
+        "@types/vscode": "~1.72.0",
         "@typescript-eslint/eslint-plugin": "^5.30.5",
         "@typescript-eslint/parser": "^5.30.5",
         "@vscode/test-electron": "^2.1.5",

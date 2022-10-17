@@ -2,9 +2,9 @@ import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 
-import { Config } from "./config";
+import { Config, substituteVariablesInEnv, substituteVSCodeVariables } from "./config";
 import { createClient } from "./client";
-import { isRustEditor, RustEditor } from "./util";
+import { isRustEditor, log, RustEditor } from "./util";
 import { ServerStatusParams } from "./lsp_ext";
 
 export type Workspace =
@@ -17,35 +17,118 @@ export type Workspace =
       };
 
 export class Ctx {
-    private constructor(
-        readonly config: Config,
-        private readonly extCtx: vscode.ExtensionContext,
-        readonly client: lc.LanguageClient,
-        readonly serverPath: string,
-        readonly statusBar: vscode.StatusBarItem
-    ) {}
+    private client: lc.LanguageClient | undefined;
+    readonly config: Config;
+    serverPath: string;
+    readonly statusBar: vscode.StatusBarItem;
 
-    static async create(
+    traceOutputChannel: vscode.OutputChannel | undefined;
+    outputChannel: vscode.OutputChannel | undefined;
+
+    serverOptions:
+        | {
+              run: lc.Executable;
+              debug: lc.Executable;
+          }
+        | undefined;
+    workspace: Workspace;
+
+    constructor(
+        readonly extCtx: vscode.ExtensionContext,
         config: Config,
-        extCtx: vscode.ExtensionContext,
         serverPath: string,
         workspace: Workspace
-    ): Promise<Ctx> {
-        const client = await createClient(serverPath, workspace, config.serverExtraEnv);
+    ) {
+        this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        extCtx.subscriptions.push(this.statusBar);
+        extCtx.subscriptions.push({
+            dispose() {
+                this.dispose();
+            },
+        });
+        this.statusBar.text = "rust-analyzer";
+        this.statusBar.tooltip = "ready";
+        this.statusBar.command = "rust-analyzer.analyzerStatus";
+        this.statusBar.show();
+        this.serverPath = serverPath;
+        this.config = config;
+        this.workspace = workspace;
+    }
 
-        const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-        extCtx.subscriptions.push(statusBar);
-        statusBar.text = "rust-analyzer";
-        statusBar.tooltip = "ready";
-        statusBar.command = "rust-analyzer.analyzerStatus";
-        statusBar.show();
+    clientFetcher() {
+        return {
+            get client(): lc.LanguageClient | undefined {
+                return this.client;
+            },
+        };
+    }
 
-        const res = new Ctx(config, extCtx, client, serverPath, statusBar);
+    async getClient() {
+        if (!this.traceOutputChannel) {
+            this.traceOutputChannel = vscode.window.createOutputChannel(
+                "Rust Analyzer Language Server Trace"
+            );
+        }
+        if (!this.outputChannel) {
+            this.outputChannel = vscode.window.createOutputChannel("Rust Analyzer Language Server");
+        }
+        if (!this.serverOptions) {
+            log.info("Creating server options client");
+            const newEnv = substituteVariablesInEnv(
+                Object.assign({}, process.env, this.config.serverExtraEnv)
+            );
+            const run: lc.Executable = {
+                command: this.serverPath,
+                options: { env: newEnv },
+            };
+            this.serverOptions = {
+                run,
+                debug: run,
+            };
+        } else {
+            this.serverOptions.run.command = this.serverPath;
+            this.serverOptions.debug.command = this.serverPath;
+        }
+        if (!this.client) {
+            log.info("Creating language client");
+            let rawInitializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
 
-        res.pushCleanup(client.start());
-        await client.onReady();
-        client.onNotification(ra.serverStatus, (params) => res.setServerStatus(params));
-        return res;
+            if (this.workspace.kind === "Detached Files") {
+                rawInitializationOptions = {
+                    detachedFiles: this.workspace.files.map((file) => file.uri.fsPath),
+                    ...rawInitializationOptions,
+                };
+            }
+
+            const initializationOptions = substituteVSCodeVariables(rawInitializationOptions);
+
+            this.client = await createClient(
+                this.traceOutputChannel,
+                this.outputChannel,
+                initializationOptions,
+                this.serverOptions
+            );
+            this.client.onNotification(ra.serverStatus, (params) => this.setServerStatus(params));
+        }
+        return this.client;
+    }
+
+    async activate() {
+        log.info("Activating language client");
+        const client = await this.getClient();
+        await client.start();
+        return client;
+    }
+
+    async deactivate() {
+        log.info("Deactivating language client");
+        await this.client?.stop();
+    }
+
+    async disposeClient() {
+        log.info("Deactivating language client");
+        await this.client?.dispose();
+        this.client = undefined;
     }
 
     get activeRustEditor(): RustEditor | undefined {
@@ -61,7 +144,7 @@ export class Ctx {
         const fullName = `rust-analyzer.${name}`;
         const cmd = factory(this);
         const d = vscode.commands.registerCommand(fullName, cmd);
-        this.pushCleanup(d);
+        this.pushExtCleanup(d);
     }
 
     get extensionPath(): string {
@@ -111,7 +194,7 @@ export class Ctx {
         statusBar.text = `${icon}rust-analyzer`;
     }
 
-    pushCleanup(d: Disposable) {
+    pushExtCleanup(d: Disposable) {
         this.extCtx.subscriptions.push(d);
     }
 }

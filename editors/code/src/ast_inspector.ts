@@ -35,8 +35,10 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
     });
 
     constructor(ctx: Ctx) {
-        ctx.pushCleanup(vscode.languages.registerHoverProvider({ scheme: "rust-analyzer" }, this));
-        ctx.pushCleanup(vscode.languages.registerDefinitionProvider({ language: "rust" }, this));
+        ctx.pushExtCleanup(
+            vscode.languages.registerHoverProvider({ scheme: "rust-analyzer" }, this)
+        );
+        ctx.pushExtCleanup(vscode.languages.registerDefinitionProvider({ language: "rust" }, this));
         vscode.workspace.onDidCloseTextDocument(
             this.onDidCloseTextDocument,
             this,
@@ -53,7 +55,7 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
             ctx.subscriptions
         );
 
-        ctx.pushCleanup(this);
+        ctx.pushExtCleanup(this);
     }
     dispose() {
         this.setRustEditor(undefined);
