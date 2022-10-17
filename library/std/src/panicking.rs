@@ -13,7 +13,7 @@ use crate::panic::BacktraceStyle;
 use core::panic::{BoxMeUp, Location, PanicInfo};
 
 use crate::any::Any;
-use crate::error::Error;
+use crate::error::{Error, Report};
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem::{self, ManuallyDrop};
@@ -259,8 +259,9 @@ fn default_hook(info: &PanicInfo<'_>) {
 
     let write = |err: &mut dyn crate::io::Write| {
         let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
-        if info.source().is_some() {
-            writeln!(err, "fun is not allowed");
+        if let Some(source) = info.source() {
+            let report = Report::new(source).pretty(true);
+            let _ = writeln!(err, "Source: {report}");
         }
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
@@ -581,7 +582,13 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     let msg = info.message().unwrap(); // The current implementation always returns Some
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
         if let Some(msg) = msg.as_str() {
-            rust_panic_with_hook(&mut StrPanicPayload(msg), info.message(), loc, source, info.can_unwind());
+            rust_panic_with_hook(
+                &mut StrPanicPayload(msg),
+                info.message(),
+                loc,
+                source,
+                info.can_unwind(),
+            );
         } else {
             rust_panic_with_hook(
                 &mut PanicPayload::new(msg),
@@ -658,7 +665,7 @@ fn rust_panic_with_hook(
     payload: &mut dyn BoxMeUp,
     message: Option<&fmt::Arguments<'_>>,
     location: &Location<'_>,
-    source: Option<& (dyn Error + 'static)>,
+    source: Option<&(dyn Error + 'static)>,
     can_unwind: bool,
 ) -> ! {
     let (must_abort, panics) = panic_count::increase();

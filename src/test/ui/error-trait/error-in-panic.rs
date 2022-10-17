@@ -10,8 +10,15 @@ extern crate core;
 use core::panicking::panic_source;
 use core::error;
 
+use std::error::Error;
+
 #[derive (Debug)]
-struct MyErr;
+struct MyErr {
+    super_source: SourceError,
+}
+
+#[derive (Debug)]
+struct SourceError {}
 
 use std::fmt;
 impl fmt::Display for MyErr {
@@ -21,12 +28,25 @@ impl fmt::Display for MyErr {
 }
 
 impl error::Error for MyErr {
+    fn source(&self) -> Option<& (dyn Error + 'static)> {
+        Some(&self.super_source)
+    }
+}
+
+impl fmt::Display for SourceError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f, "my source's source error message")
+    }
+}
+
+impl error::Error for SourceError {
 
 }
 
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "full");
-    let source = MyErr;
+    let source_error = SourceError {};
+    let source = MyErr {super_source: source_error};
     //FIXME make the function do the Some wrapping for us
     panic_source(format_args!("here's my panic error message"), Some(&source));
 

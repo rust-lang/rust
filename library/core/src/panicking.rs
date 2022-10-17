@@ -62,7 +62,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 #[track_caller]
 #[rustc_do_not_const_check] // hooked by const-eval
 #[rustc_const_unstable(feature = "core_panic", issue = "none")]
-pub const fn panic_source(fmt: fmt::Arguments<'_>, source: Option<& (dyn Error + 'static)>) -> ! {
+pub const fn panic_source(fmt: fmt::Arguments<'_>, source: Option<&(dyn Error + 'static)>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
