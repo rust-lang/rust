@@ -4,7 +4,7 @@ error[E0689]: can't call method `rev` on type `usize`
 LL |     for _i in 0..arr.len().rev() {
    |                            ^^^ can't call method `rev` on type `usize`
    |
-help: you must surround the range in parentheses to call the `rev` function
+help: you must surround the range in parentheses to call its `rev` function
    |
 LL |     for _i in (0..arr.len()).rev() {
    |               +            +
@@ -15,7 +15,7 @@ error[E0689]: can't call method `rev` on type `{integer}`
 LL |     for i in 1..11.rev() {
    |                    ^^^ can't call method `rev` on type `{integer}`
    |
-help: you must surround the range in parentheses to call the `rev` function
+help: you must surround the range in parentheses to call its `rev` function
    |
 LL |     for i in (1..11).rev() {
    |              +     +
@@ -26,7 +26,7 @@ error[E0689]: can't call method `rev` on type `usize`
 LL |     for i in 1..end.rev() {
    |                     ^^^ can't call method `rev` on type `usize`
    |
-help: you must surround the range in parentheses to call the `rev` function
+help: you must surround the range in parentheses to call its `rev` function
    |
 LL |     for i in (1..end).rev() {
    |              +      +
@@ -37,7 +37,7 @@ error[E0689]: can't call method `rev` on type `usize`
 LL |     for i in 1..(end + 1).rev() {
    |                           ^^^ can't call method `rev` on type `usize`
    |
-help: you must surround the range in parentheses to call the `rev` function
+help: you must surround the range in parentheses to call its `rev` function
    |
 LL |     for i in (1..(end + 1)).rev() {
    |              +            +
@@ -48,7 +48,7 @@ error[E0689]: can't call method `is_empty` on type `usize`
 LL |     if 1..(end + 1).is_empty() {
    |                     ^^^^^^^^ can't call method `is_empty` on type `usize`
    |
-help: you must surround the range in parentheses to call the `is_empty` function
+help: you must surround the range in parentheses to call its `is_empty` function
    |
 LL |     if (1..(end + 1)).is_empty() {
    |        +            +
@@ -68,7 +68,7 @@ error[E0689]: can't call method `is_sorted` on type `usize`
 LL |     if 1..(end + 1).is_sorted() {
    |                     ^^^^^^^^^ can't call method `is_sorted` on type `usize`
    |
-help: you must surround the range in parentheses to call the `is_sorted` function
+help: you must surround the range in parentheses to call its `is_sorted` function
    |
 LL |     if (1..(end + 1)).is_sorted() {
    |        +            +
@@ -88,7 +88,7 @@ error[E0689]: can't call method `take` on type `{integer}`
 LL |     let _res: i32 = 3..6.take(2).sum();
    |                          ^^^^ can't call method `take` on type `{integer}`
    |
-help: you must surround the range in parentheses to call the `take` function
+help: you must surround the range in parentheses to call its `take` function
    |
 LL |     let _res: i32 = (3..6).take(2).sum();
    |                     +    +
@@ -110,7 +110,7 @@ error[E0689]: can't call method `sum` on type `{integer}`
 LL |     let _sum: i32 = 3..6.sum();
    |                          ^^^ can't call method `sum` on type `{integer}`
    |
-help: you must surround the range in parentheses to call the `sum` function
+help: you must surround the range in parentheses to call its `sum` function
    |
 LL |     let _sum: i32 = (3..6).sum();
    |                     +    +
@@ -132,7 +132,7 @@ error[E0689]: can't call method `rev` on type `usize`
 LL |     for _a in a..=b.rev() {
    |                     ^^^ can't call method `rev` on type `usize`
    |
-help: you must surround the range in parentheses to call the `rev` function
+help: you must surround the range in parentheses to call its `rev` function
    |
 LL |     for _a in (a..=b).rev() {
    |               +     +
@@ -143,7 +143,7 @@ error[E0689]: can't call method `contains` on type `{integer}`
 LL |     let _res = ..10.contains(3);
    |                     ^^^^^^^^ can't call method `contains` on type `{integer}`
    |
-help: you must surround the range in parentheses to call the `contains` function
+help: you must surround the range in parentheses to call its `contains` function
    |
 LL |     let _res = (..10).contains(3);
    |                +    +
