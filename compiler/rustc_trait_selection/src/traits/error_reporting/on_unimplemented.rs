@@ -164,6 +164,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             flags.push((sym::from_desugaring, Some(format!("{:?}", k))));
         }
 
+        if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
+            flags.push((sym::cause, Some("MainFunctionType".to_string())));
+        }
+
         // Add all types without trimmed paths.
         ty::print::with_no_trimmed_paths!({
             let generics = self.tcx.generics_of(def_id);

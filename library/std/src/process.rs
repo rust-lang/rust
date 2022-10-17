@@ -2154,8 +2154,16 @@ pub fn id() -> u32 {
 #[cfg_attr(not(test), lang = "termination")]
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
 #[rustc_on_unimplemented(
-    message = "`main` has invalid return type `{Self}`",
-    label = "`main` can only return types that implement `{Termination}`"
+    on(
+        all(not(bootstrap), cause = "MainFunctionType"),
+        message = "`main` has invalid return type `{Self}`",
+        label = "`main` can only return types that implement `{Termination}`"
+    ),
+    on(
+        bootstrap,
+        message = "`main` has invalid return type `{Self}`",
+        label = "`main` can only return types that implement `{Termination}`"
+    )
 )]
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
