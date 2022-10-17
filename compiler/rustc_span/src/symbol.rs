@@ -451,6 +451,7 @@ symbols! {
         call_once,
         caller_location,
         capture_disjoint_fields,
+        cause,
         cdylib,
         ceilf32,
         ceilf64,
