@@ -1,8 +1,8 @@
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
+use rustc_middle::mir::Constant;
 use rustc_middle::mir::{Body, Location, Promoted};
-use rustc_middle::mir::{Constant, ConstantKind};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
@@ -38,21 +38,6 @@ where
     })
 }
 
-// FIXME(valtrees): This function is necessary because `fold_regions`
-// panics for mir constants in the visitor.
-//
-// Once `visit_mir_constant` is removed we can also remove this function
-// and just use `renumber_regions`.
-fn renumber_regions_in_mir_constant<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    value: ConstantKind<'tcx>,
-) -> ConstantKind<'tcx> {
-    infcx.tcx.super_fold_regions(value, |_region, _depth| {
-        let origin = NllRegionVariableOrigin::Existential { from_forall: false };
-        infcx.next_nll_region_var(origin)
-    })
-}
-
 struct NllVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
 }
@@ -63,13 +48,6 @@ impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         renumber_regions(self.infcx, value)
-    }
-
-    fn renumber_regions_in_mir_constant(
-        &mut self,
-        value: ConstantKind<'tcx>,
-    ) -> ConstantKind<'tcx> {
-        renumber_regions_in_mir_constant(self.infcx, value)
     }
 }
 
@@ -103,7 +81,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, _location: Location) {
         let literal = constant.literal;
-        constant.literal = self.renumber_regions_in_mir_constant(literal);
+        constant.literal = self.renumber_regions(literal);
         debug!("constant: {:#?}", constant);
     }
 }

@@ -1871,14 +1871,6 @@ rustc_queries! {
         remap_env_constness
     }
 
-    /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
-    query try_normalize_mir_const_after_erasing_regions(
-        goal: ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
-    ) -> Result<mir::ConstantKind<'tcx>, NoSolution> {
-        desc { "normalizing `{}`", goal.value }
-        remap_env_constness
-    }
-
     query implied_outlives_bounds(
         goal: CanonicalTyGoal<'tcx>
     ) -> Result<

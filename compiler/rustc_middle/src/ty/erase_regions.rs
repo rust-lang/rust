@@ -1,4 +1,3 @@
-use crate::mir;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::visit::TypeVisitable;
 use crate::ty::{self, Ty, TyCtxt, TypeFlags};
@@ -66,9 +65,5 @@ impl<'tcx> TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
             ty::ReLateBound(..) => r,
             _ => self.tcx.lifetimes.re_erased,
         }
-    }
-
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
-        c.super_fold_with(self)
     }
 }
