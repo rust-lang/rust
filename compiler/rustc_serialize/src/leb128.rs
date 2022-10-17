@@ -39,7 +39,7 @@ macro_rules! impl_write_unsigned_leb128 {
                 }
             }
 
-            unsafe { ::std::mem::MaybeUninit::slice_assume_init_ref(&out.get_unchecked(..i)) }
+            unsafe { out.get_unchecked(..i).assume_init_ref() }
         }
     };
 }
@@ -116,7 +116,7 @@ macro_rules! impl_write_signed_leb128 {
                 }
             }
 
-            unsafe { ::std::mem::MaybeUninit::slice_assume_init_ref(&out.get_unchecked(..i)) }
+            unsafe { out.get_unchecked(..i).assume_init_ref() }
         }
     };
 }

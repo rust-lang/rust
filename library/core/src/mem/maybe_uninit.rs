@@ -337,7 +337,7 @@ impl<T> MaybeUninit<T> {
     /// fn read(buf: &mut [MaybeUninit<u8>]) -> &[u8] {
     ///     unsafe {
     ///         let len = read_into_buffer(buf.as_mut_ptr() as *mut u8, buf.len());
-    ///         MaybeUninit::slice_assume_init_ref(&buf[..len])
+    ///         buf[..len].assume_init_ref()
     ///     }
     /// }
     ///
@@ -956,48 +956,6 @@ impl<T> MaybeUninit<T> {
         ret
     }
 
-    /// Assuming all the elements are initialized, get a slice to them.
-    ///
-    /// # Safety
-    ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
-    /// really are in an initialized state.
-    /// Calling this when the content is not yet fully initialized causes undefined behavior.
-    ///
-    /// See [`assume_init_ref`] for more details and examples.
-    ///
-    /// [`assume_init_ref`]: MaybeUninit::assume_init_ref
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const unsafe fn slice_assume_init_ref(slice: &[Self]) -> &[T] {
-        // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
-        // `slice` is initialized, and `MaybeUninit` is guaranteed to have the same layout as `T`.
-        // The pointer obtained is valid since it refers to memory owned by `slice` which is a
-        // reference and thus guaranteed to be valid for reads.
-        unsafe { &*(slice as *const [Self] as *const [T]) }
-    }
-
-    /// Assuming all the elements are initialized, get a mutable slice to them.
-    ///
-    /// # Safety
-    ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
-    /// really are in an initialized state.
-    /// Calling this when the content is not yet fully initialized causes undefined behavior.
-    ///
-    /// See [`assume_init_mut`] for more details and examples.
-    ///
-    /// [`assume_init_mut`]: MaybeUninit::assume_init_mut
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init", issue = "none")]
-    #[inline(always)]
-    pub const unsafe fn slice_assume_init_mut(slice: &mut [Self]) -> &mut [T] {
-        // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
-        // mutable reference which is also guaranteed to be valid for writes.
-        unsafe { &mut *(slice as *mut [Self] as *mut [T]) }
-    }
-
     /// Gets a pointer to the first element of the array.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
@@ -1068,7 +1026,7 @@ impl<T> MaybeUninit<T> {
         this.copy_from_slice(uninit_src);
 
         // SAFETY: Valid elements have just been copied into `this` so it is initialized
-        unsafe { MaybeUninit::slice_assume_init_mut(this) }
+        unsafe { this.assume_init_mut() }
     }
 
     /// Clones the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
@@ -1136,7 +1094,7 @@ impl<T> MaybeUninit<T> {
                 // SAFETY: this raw slice will contain only initialized objects
                 // that's why, it is allowed to drop it.
                 unsafe {
-                    crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(initialized_part));
+                    crate::ptr::drop_in_place(initialized_part.assume_init_mut());
                 }
             }
         }
@@ -1159,7 +1117,7 @@ impl<T> MaybeUninit<T> {
         super::forget(guard);
 
         // SAFETY: Valid elements have just been written into `this` so it is initialized
-        unsafe { MaybeUninit::slice_assume_init_mut(this) }
+        unsafe { this.assume_init_mut() }
     }
 
     /// Returns the contents of this `MaybeUninit` as a slice of potentially uninitialized bytes.
@@ -1176,7 +1134,7 @@ impl<T> MaybeUninit<T> {
     /// let val = 0x12345678i32;
     /// let uninit = MaybeUninit::new(val);
     /// let uninit_bytes = uninit.as_bytes();
-    /// let bytes = unsafe { MaybeUninit::slice_assume_init_ref(uninit_bytes) };
+    /// let bytes = unsafe { uninit_bytes.assume_init_ref() };
     /// assert_eq!(bytes, val.to_ne_bytes());
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
@@ -1235,7 +1193,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// let uninit = [MaybeUninit::new(0x1234u16), MaybeUninit::new(0x5678u16)];
     /// let uninit_bytes = MaybeUninit::slice_as_bytes(&uninit);
-    /// let bytes = unsafe { MaybeUninit::slice_assume_init_ref(&uninit_bytes) };
+    /// let bytes = unsafe { uninit_bytes.assume_init_ref() };
     /// let val1 = u16::from_ne_bytes(bytes[0..2].try_into().unwrap());
     /// let val2 = u16::from_ne_bytes(bytes[2..4].try_into().unwrap());
     /// assert_eq!(&[val1, val2], &[0x1234u16, 0x5678u16]);
@@ -1266,7 +1224,7 @@ impl<T> MaybeUninit<T> {
     /// let mut uninit = [MaybeUninit::<u16>::uninit(), MaybeUninit::<u16>::uninit()];
     /// let uninit_bytes = MaybeUninit::slice_as_bytes_mut(&mut uninit);
     /// MaybeUninit::write_slice(uninit_bytes, &[0x12, 0x34, 0x56, 0x78]);
-    /// let vals = unsafe { MaybeUninit::slice_assume_init_ref(&uninit) };
+    /// let vals = unsafe { uninit.assume_init_ref() };
     /// if cfg!(target_endian = "little") {
     ///     assert_eq!(vals, &[0x3412u16, 0x7856u16]);
     /// } else {
@@ -1319,5 +1277,49 @@ impl<T, const N: usize> [MaybeUninit<T>; N] {
     pub fn transpose(self) -> MaybeUninit<[T; N]> {
         // SAFETY: T and MaybeUninit<T> have the same layout
         unsafe { super::transmute_copy(&ManuallyDrop::new(self)) }
+    }
+}
+
+impl<T> [MaybeUninit<T>] {
+    /// Assuming all the elements are initialized, get a slice to them.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
+    /// really are in an initialized state.
+    /// Calling this when the content is not yet fully initialized causes undefined behavior.
+    ///
+    /// See [`assume_init_ref`] for more details and examples.
+    ///
+    /// [`assume_init_ref`]: MaybeUninit::assume_init_ref
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[inline(always)]
+    pub const unsafe fn assume_init_ref(&self) -> &[T] {
+        // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
+        // `slice` is initialized, and `MaybeUninit` is guaranteed to have the same layout as `T`.
+        // The pointer obtained is valid since it refers to memory owned by `slice` which is a
+        // reference and thus guaranteed to be valid for reads.
+        unsafe { &*(self as *const [MaybeUninit<T>] as *const [T]) }
+    }
+
+    /// Assuming all the elements are initialized, get a mutable slice to them.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
+    /// really are in an initialized state.
+    /// Calling this when the content is not yet fully initialized causes undefined behavior.
+    ///
+    /// See [`assume_init_mut`] for more details and examples.
+    ///
+    /// [`assume_init_mut`]: MaybeUninit::assume_init_mut
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init", issue = "none")]
+    #[inline(always)]
+    pub const unsafe fn assume_init_mut(&mut self) -> &mut [T] {
+        // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
+        // mutable reference which is also guaranteed to be valid for writes.
+        unsafe { &mut *(self as *mut [MaybeUninit<T>] as *mut [T]) }
     }
 }

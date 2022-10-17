@@ -275,7 +275,7 @@ impl FileEncoder {
         }
 
         let mut guard = BufGuard::new(
-            unsafe { MaybeUninit::slice_assume_init_mut(&mut self.buf[..self.buffered]) },
+            unsafe { self.buf[..self.buffered].assume_init_mut() },
             &mut self.buffered,
             &mut self.flushed,
         );

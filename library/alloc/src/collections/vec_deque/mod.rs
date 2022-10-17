@@ -1103,7 +1103,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         unsafe {
             let buf = self.buffer_as_slice();
             let (front, back) = RingSlices::ring_slices(buf, self.head, self.tail);
-            (MaybeUninit::slice_assume_init_ref(front), MaybeUninit::slice_assume_init_ref(back))
+            (front.assume_init_ref(), back.assume_init_ref())
         }
     }
 
@@ -1143,7 +1143,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             let tail = self.tail;
             let buf = self.buffer_as_mut_slice();
             let (front, back) = RingSlices::ring_slices(buf, head, tail);
-            (MaybeUninit::slice_assume_init_mut(front), MaybeUninit::slice_assume_init_mut(back))
+            (front.assume_init_mut(), back.assume_init_mut())
         }
     }
 
@@ -2379,9 +2379,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             // - `self.head` and `self.tail` in a ring buffer are always valid indices.
             // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
             return unsafe {
-                MaybeUninit::slice_assume_init_mut(
-                    RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0,
-                )
+                RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0.assume_init_mut()
             };
         }
 
@@ -2472,9 +2470,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // - `self.head` and `self.tail` in a ring buffer are always valid indices.
         // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
         unsafe {
-            MaybeUninit::slice_assume_init_mut(
-                RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0,
-            )
+            RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0.assume_init_mut()
         }
     }
 

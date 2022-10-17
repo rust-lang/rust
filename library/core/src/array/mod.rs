@@ -872,9 +872,9 @@ where
 
             // SAFETY: this slice will contain only initialized objects.
             unsafe {
-                crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
-                    &mut self.array_mut.get_unchecked_mut(..self.initialized),
-                ));
+                crate::ptr::drop_in_place(
+                    self.array_mut.get_unchecked_mut(..self.initialized).assume_init_mut(),
+                );
             }
         }
     }
