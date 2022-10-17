@@ -296,8 +296,6 @@ function test_rustc() {
     git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(')
     export RUSTFLAGS=
 
-    git apply ../rustc_patches/compile_test.patch || true
-
     rm config.toml || true
 
     cat > config.toml <<EOF
