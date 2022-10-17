@@ -257,7 +257,7 @@ impl GlobalState {
                         }
                     };
 
-                    self.report_progress("Indexing", state, message, Some(fraction));
+                    self.report_progress("Indexing", state, message, Some(fraction), None);
                 }
             }
             Event::Vfs(message) => {
@@ -465,7 +465,7 @@ impl GlobalState {
                     }
                 };
 
-                self.report_progress("Fetching", state, msg, None);
+                self.report_progress("Fetching", state, msg, None, None);
             }
             Task::FetchBuildData(progress) => {
                 let (state, msg) = match progress {
@@ -481,7 +481,7 @@ impl GlobalState {
                 };
 
                 if let Some(state) = state {
-                    self.report_progress("Loading", state, msg, None);
+                    self.report_progress("Loading", state, msg, None, None);
                 }
             }
         }
@@ -518,6 +518,7 @@ impl GlobalState {
                     state,
                     Some(format!("{}/{}", n_done, n_total)),
                     Some(Progress::fraction(n_done, n_total)),
+                    None,
                 )
             }
         }
@@ -584,7 +585,13 @@ impl GlobalState {
                 } else {
                     format!("cargo check (#{})", id + 1)
                 };
-                self.report_progress(&title, state, message, None);
+                self.report_progress(
+                    &title,
+                    state,
+                    message,
+                    None,
+                    Some(format!("rust-analyzer/checkOnSave/{}", id)),
+                );
             }
         }
     }
@@ -698,7 +705,16 @@ impl GlobalState {
                 this.cancel(id);
                 Ok(())
             })?
-            .on::<lsp_types::notification::WorkDoneProgressCancel>(|_this, _params| {
+            .on::<lsp_types::notification::WorkDoneProgressCancel>(|this, params| {
+                if let lsp_types::NumberOrString::String(s) = &params.token {
+                    if let Some(id) = s.strip_prefix("rust-analyzer/checkOnSave/") {
+                        if let Ok(id) = u32::from_str_radix(id, 10) {
+                            if let Some(flycheck) = this.flycheck.get(id as usize) {
+                                flycheck.cancel();
+                            }
+                        }
+                    }
+                }
                 // Just ignore this. It is OK to continue sending progress
                 // notifications for this token, as the client can't know when
                 // we accepted notification.
