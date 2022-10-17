@@ -300,8 +300,6 @@ declare_features! (
     (active, asm_const, "1.58.0", Some(93332), None),
     /// Enables experimental inline assembly support for additional architectures.
     (active, asm_experimental_arch, "1.58.0", Some(93335), None),
-    /// Allows using `sym` operands in inline assembly.
-    (active, asm_sym, "1.58.0", Some(93333), None),
     /// Allows the `may_unwind` option in inline assembly.
     (active, asm_unwind, "1.58.0", Some(93334), None),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
