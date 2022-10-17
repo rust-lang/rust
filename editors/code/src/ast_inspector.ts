@@ -54,8 +54,6 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
             this,
             ctx.subscriptions
         );
-
-        ctx.pushExtCleanup(this);
     }
     dispose() {
         this.setRustEditor(undefined);

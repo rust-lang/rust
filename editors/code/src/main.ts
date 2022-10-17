@@ -14,6 +14,10 @@ export interface RustAnalyzerExtensionApi {
     readonly client?: lc.LanguageClient;
 }
 
+export async function deactivate() {
+    await setContextValue(RUST_PROJECT_CONTEXT_NAME, undefined);
+}
+
 export async function activate(
     context: vscode.ExtensionContext
 ): Promise<RustAnalyzerExtensionApi> {
@@ -56,12 +60,14 @@ export async function activate(
     const ctx = new Ctx(context, workspace);
     // VS Code doesn't show a notification when an extension fails to activate
     // so we do it ourselves.
-    return await activateServer(ctx).catch((err) => {
+    const api = await activateServer(ctx).catch((err) => {
         void vscode.window.showErrorMessage(
             `Cannot activate rust-analyzer extension: ${err.message}`
         );
         throw err;
     });
+    await setContextValue(RUST_PROJECT_CONTEXT_NAME, true);
+    return api;
 }
 
 async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
@@ -111,8 +117,6 @@ async function initCommonContext(ctx: Ctx) {
         vscode.commands.executeCommand("default:type", { text: "\n" })
     );
     ctx.pushExtCleanup(defaultOnEnter);
-
-    await setContextValue(RUST_PROJECT_CONTEXT_NAME, true);
 
     // Commands which invokes manually via command palette, shortcut, etc.
     ctx.registerCommand("reload", (_) => async () => {

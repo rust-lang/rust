@@ -23,12 +23,12 @@ export class Ctx {
     readonly config: Config;
 
     private client: lc.LanguageClient | undefined;
+    private _serverPath: string | undefined;
+    private traceOutputChannel: vscode.OutputChannel | undefined;
+    private outputChannel: vscode.OutputChannel | undefined;
+    private state: PersistentState;
 
-    traceOutputChannel: vscode.OutputChannel | undefined;
-    outputChannel: vscode.OutputChannel | undefined;
     workspace: Workspace;
-    state: PersistentState;
-    serverPath: string | undefined;
 
     constructor(readonly extCtx: vscode.ExtensionContext, workspace: Workspace) {
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -70,21 +70,24 @@ export class Ctx {
         if (!this.client) {
             log.info("Creating language client");
 
-            this.serverPath = await bootstrap(this.extCtx, this.config, this.state).catch((err) => {
-                let message = "bootstrap error. ";
+            this._serverPath = await bootstrap(this.extCtx, this.config, this.state).catch(
+                (err) => {
+                    let message = "bootstrap error. ";
 
-                message +=
-                    'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
-                message += 'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
+                    message +=
+                        'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
+                    message +=
+                        'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
 
-                log.error("Bootstrap error", err);
-                throw new Error(message);
-            });
+                    log.error("Bootstrap error", err);
+                    throw new Error(message);
+                }
+            );
             const newEnv = substituteVariablesInEnv(
                 Object.assign({}, process.env, this.config.serverExtraEnv)
             );
             const run: lc.Executable = {
-                command: this.serverPath,
+                command: this._serverPath,
                 options: { env: newEnv },
             };
             const serverOptions = {
@@ -129,7 +132,7 @@ export class Ctx {
     async disposeClient() {
         log.info("Deactivating language client");
         await this.client?.dispose();
-        this.serverPath = undefined;
+        this._serverPath = undefined;
         this.client = undefined;
     }
 
@@ -159,6 +162,10 @@ export class Ctx {
 
     get subscriptions(): Disposable[] {
         return this.extCtx.subscriptions;
+    }
+
+    get serverPath(): string | undefined {
+        return this._serverPath;
     }
 
     setServerStatus(status: ServerStatusParams) {

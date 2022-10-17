@@ -377,8 +377,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
         }
     })();
 
-    void new AstInspector(ctx);
-
+    ctx.pushExtCleanup(new AstInspector(ctx));
     ctx.pushExtCleanup(
         vscode.workspace.registerTextDocumentContentProvider("rust-analyzer-syntax-tree", tdcp)
     );
