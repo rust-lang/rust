@@ -558,6 +558,7 @@ docs! {
     "unseparated_literal_suffix",
     "unsound_collection_transmute",
     "unused_async",
+    "unused_format_specs",
     "unused_io_amount",
     "unused_peekable",
     "unused_rounding",

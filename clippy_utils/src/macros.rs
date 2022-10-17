@@ -627,7 +627,7 @@ pub enum Count<'tcx> {
     /// `FormatParamKind::Numbered`.
     Param(FormatParam<'tcx>),
     /// Not specified.
-    Implied,
+    Implied(Option<Span>),
 }
 
 impl<'tcx> Count<'tcx> {
@@ -638,8 +638,10 @@ impl<'tcx> Count<'tcx> {
         inner: Option<rpf::InnerSpan>,
         values: &FormatArgsValues<'tcx>,
     ) -> Option<Self> {
+        let span = inner.map(|inner| span_from_inner(values.format_string_span, inner));
+
         Some(match count {
-            rpf::Count::CountIs(val) => Self::Is(val, span_from_inner(values.format_string_span, inner?)),
+            rpf::Count::CountIs(val) => Self::Is(val, span?),
             rpf::Count::CountIsName(name, _) => Self::Param(FormatParam::new(
                 FormatParamKind::Named(Symbol::intern(name)),
                 usage,
@@ -661,18 +663,26 @@ impl<'tcx> Count<'tcx> {
                 inner?,
                 values,
             )?),
-            rpf::Count::CountImplied => Self::Implied,
+            rpf::Count::CountImplied => Self::Implied(span),
         })
     }
 
     pub fn is_implied(self) -> bool {
-        matches!(self, Count::Implied)
+        matches!(self, Count::Implied(_))
     }
 
     pub fn param(self) -> Option<FormatParam<'tcx>> {
         match self {
             Count::Param(param) => Some(param),
             _ => None,
+        }
+    }
+
+    pub fn span(self) -> Option<Span> {
+        match self {
+            Count::Is(_, span) => Some(span),
+            Count::Param(param) => Some(param.span),
+            Count::Implied(span) => span,
         }
     }
 }
@@ -738,8 +748,13 @@ impl<'tcx> FormatSpec<'tcx> {
     /// Returns true if this format spec is unchanged from the default. e.g. returns true for `{}`,
     /// `{foo}` and `{2}`, but false for `{:?}`, `{foo:5}` and `{3:.5}`
     pub fn is_default(&self) -> bool {
-        self.r#trait == sym::Display
-            && self.width.is_implied()
+        self.r#trait == sym::Display && self.is_default_for_trait()
+    }
+
+    /// Has no other formatting specifiers than setting the format trait. returns true for `{}`,
+    /// `{foo}`, `{:?}`, but false for `{foo:5}`, `{3:.5?}`
+    pub fn is_default_for_trait(&self) -> bool {
+        self.width.is_implied()
             && self.precision.is_implied()
             && self.align == Alignment::AlignUnknown
             && self.flags == 0
@@ -755,6 +770,22 @@ pub struct FormatArg<'tcx> {
     pub format: FormatSpec<'tcx>,
     /// span of the whole argument, `{..}`.
     pub span: Span,
+}
+
+impl<'tcx> FormatArg<'tcx> {
+    /// Span of the `:` and format specifiers
+    ///
+    /// ```ignore
+    /// format!("{:.}"), format!("{foo:.}")
+    ///           ^^                  ^^
+    /// ```
+    pub fn format_span(&self) -> Span {
+        let base = self.span.data();
+
+        // `base.hi` is `{...}|`, subtract 1 byte (the length of '}') so that it points before the closing
+        // brace `{...|}`
+        Span::new(self.param.span.hi(), base.hi - BytePos(1), base.ctxt, base.parent)
+    }
 }
 
 /// A parsed `format_args!` expansion.
