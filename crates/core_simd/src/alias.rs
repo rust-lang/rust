@@ -14,16 +14,16 @@ macro_rules! plural {
 macro_rules! alias {
     {
         $(
-            $element:ty = {
-                $($alias:ident $elements:tt)*
+            $element_ty:ty = {
+                $($alias:ident $num_elements:tt)*
             }
         )*
     } => {
         $(
             $(
-            #[doc = concat!("A SIMD vector with ", number!($elements), " element", plural!($elements), " of type [`", stringify!($element), "`].")]
+            #[doc = concat!("A SIMD vector with ", number!($num_elements), " element", plural!($num_elements), " of type [`", stringify!($element_ty), "`].")]
             #[allow(non_camel_case_types)]
-            pub type $alias = $crate::simd::Simd<$element, $elements>;
+            pub type $alias = $crate::simd::Simd<$element_ty, $num_elements>;
             )*
         )*
     }
@@ -32,21 +32,21 @@ macro_rules! alias {
 macro_rules! mask_alias {
     {
         $(
-            $element:ty : $size:literal = {
-                $($alias:ident $elements:tt)*
+            $element_ty:ty : $size:literal = {
+                $($alias:ident $num_elements:tt)*
             }
         )*
     } => {
         $(
             $(
-            #[doc = concat!("A SIMD mask with ", number!($elements), " element", plural!($elements), " for vectors with ", $size, " element types.")]
+            #[doc = concat!("A SIMD mask with ", number!($num_elements), " element", plural!($num_elements), " for vectors with ", $size, " element types.")]
             ///
             #[doc = concat!(
                 "The layout of this type is unspecified, and may change between platforms and/or Rust versions, and code should not assume that it is equivalent to `[",
-                stringify!($element), "; ", $elements, "]`."
+                stringify!($element_ty), "; ", $num_elements, "]`."
             )]
             #[allow(non_camel_case_types)]
-            pub type $alias = $crate::simd::Mask<$element, $elements>;
+            pub type $alias = $crate::simd::Mask<$element_ty, $num_elements>;
             )*
         )*
     }
