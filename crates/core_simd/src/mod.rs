@@ -6,6 +6,7 @@ pub(crate) mod intrinsics;
 #[cfg(feature = "generic_const_exprs")]
 mod to_bytes;
 
+mod alias;
 mod elements;
 mod eq;
 mod fmt;
@@ -22,6 +23,7 @@ mod vendor;
 pub mod simd {
     pub(crate) use crate::core_simd::intrinsics;
 
+    pub use crate::core_simd::alias::*;
     pub use crate::core_simd::elements::*;
     pub use crate::core_simd::eq::*;
     pub use crate::core_simd::lane_count::{LaneCount, SupportedLaneCount};
