@@ -6,8 +6,9 @@ LL |     std::process::abort!();
    |
 help: std::process::abort is not a macro, but a function, try to remove `!`
    |
-LL |     std::process::abort();
-   |                   ~~~~~
+LL -     std::process::abort!();
+LL +     std::process::abort();
+   |
 
 error: aborting due to previous error
 
