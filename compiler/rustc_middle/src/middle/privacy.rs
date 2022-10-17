@@ -69,21 +69,7 @@ impl EffectiveVisibility {
         self.get(tag).is_public()
     }
 
-    fn update(&mut self, vis: Visibility, tag: AccessLevel, tree: impl DefIdTree) -> bool {
-        let mut changed = false;
-        for level in AccessLevel::all_levels() {
-            if level <= tag {
-                let current_effective_vis = self.get_mut(level);
-                if *current_effective_vis != vis && vis.is_at_least(*current_effective_vis, tree) {
-                    changed = true;
-                    *current_effective_vis = vis;
-                }
-            }
-        }
-        changed
-    }
-
-    fn from_vis(vis: Visibility) -> EffectiveVisibility {
+    pub fn from_vis(vis: Visibility) -> EffectiveVisibility {
         EffectiveVisibility {
             public: vis,
             exported: vis,
@@ -173,33 +159,49 @@ impl<Id: Hash + Eq + Copy + Into<DefId>> AccessLevels<Id> {
         parent_id: Id,
         tag: AccessLevel,
         tree: impl DefIdTree,
-    ) -> Result<bool, ()> {
+    ) -> bool {
         let mut changed = false;
-        let mut current_effective_vis = self
-            .get_effective_vis(id)
-            .copied()
-            .unwrap_or_else(|| EffectiveVisibility::from_vis(default_vis()));
+        let mut current_effective_vis = self.get_effective_vis(id).copied().unwrap_or_else(|| {
+            if id.into().is_crate_root() {
+                EffectiveVisibility::from_vis(Visibility::Public)
+            } else {
+                EffectiveVisibility::from_vis(default_vis())
+            }
+        });
         if let Some(inherited_effective_vis) = self.get_effective_vis(parent_id) {
+            let mut inherited_effective_vis_at_prev_level = *inherited_effective_vis.get(tag);
+            let mut calculated_effective_vis = inherited_effective_vis_at_prev_level;
             for level in AccessLevel::all_levels() {
                 if tag >= level {
                     let inherited_effective_vis_at_level = *inherited_effective_vis.get(level);
-                    let calculated_effective_vis =
-                        if nominal_vis.is_at_least(inherited_effective_vis_at_level, tree) {
-                            inherited_effective_vis_at_level
-                        } else {
-                            nominal_vis
-                        };
-                    changed |= current_effective_vis.update(calculated_effective_vis, level, tree);
+                    let current_effective_vis_at_level = current_effective_vis.get_mut(level);
+                    // effective visibility for id shouldn't be recalculated if
+                    // inherited from parent_id effective visibility isn't changed at next level
+                    if !(inherited_effective_vis_at_prev_level == inherited_effective_vis_at_level
+                        && tag != level)
+                    {
+                        calculated_effective_vis =
+                            if nominal_vis.is_at_least(inherited_effective_vis_at_level, tree) {
+                                inherited_effective_vis_at_level
+                            } else {
+                                nominal_vis
+                            };
+                    }
+                    // effective visibility can't be decreased at next update call for the
+                    // same id
+                    if *current_effective_vis_at_level != calculated_effective_vis
+                        && calculated_effective_vis
+                            .is_at_least(*current_effective_vis_at_level, tree)
+                    {
+                        changed = true;
+                        *current_effective_vis_at_level = calculated_effective_vis;
+                    }
+                    inherited_effective_vis_at_prev_level = inherited_effective_vis_at_level;
                 }
             }
-        } else {
-            if !id.into().is_crate_root() {
-                return Err(());
-            }
-            changed |= current_effective_vis.update(Visibility::Public, AccessLevel::Public, tree);
         }
         self.map.insert(id, current_effective_vis);
-        Ok(changed)
+        changed
     }
 }
 

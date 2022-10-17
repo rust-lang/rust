@@ -96,10 +96,18 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
         parent_id: LocalDefId,
         tag: AccessLevel,
     ) {
+        let module_id = self
+            .r
+            .get_nearest_non_block_module(def_id.to_def_id())
+            .nearest_parent_mod()
+            .expect_local();
+        if nominal_vis == Visibility::Restricted(module_id)
+            || self.r.visibilities[&parent_id] == Visibility::Restricted(module_id)
+        {
+            return;
+        }
         let mut access_levels = std::mem::take(&mut self.r.access_levels);
-        let module_id =
-            self.r.get_nearest_non_block_module(def_id.to_def_id()).def_id().expect_local();
-        let res = access_levels.update(
+        self.changed |= access_levels.update(
             def_id,
             nominal_vis,
             || Visibility::Restricted(module_id),
@@ -107,14 +115,6 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
             tag,
             &*self.r,
         );
-        if let Ok(changed) = res {
-            self.changed |= changed;
-        } else {
-            self.r.session.delay_span_bug(
-                self.r.opt_span(def_id.to_def_id()).unwrap(),
-                "Can't update effective visibility",
-            );
-        }
         self.r.access_levels = access_levels;
     }
 }
