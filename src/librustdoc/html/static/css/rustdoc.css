@@ -1431,10 +1431,7 @@ h3.variant {
 }
 
 #settings-menu > a, #help-button > a, #copy-path {
-	padding: 5px;
 	width: 33px;
-	border: 1px solid var(--border-color);
-	border-radius: 2px;
 	cursor: pointer;
 	line-height: 1.5;
 }
@@ -1444,10 +1441,18 @@ h3.variant {
 	height: 100%;
 	display: block;
 	background-color: var(--button-background-color);
+	border: 1px solid var(--border-color);
+	border-radius: 2px;
 }
 
 #copy-path {
 	color: var(--copy-path-button-color);
+	background: var(--main-background-color);
+	height: 34px;
+	margin-left: 10px;
+	padding: 0;
+	padding-left: 2px;
+	border: 0;
 }
 #copy-path > img {
 	filter: var(--copy-path-img-filter);
@@ -1493,15 +1498,6 @@ input:checked + .slider {
 	   as an icon, it's okay to specify their sizes in pixels. */
 	font-size: 20px;
 	padding-top: 2px;
-}
-
-#copy-path {
-	height: 34px;
-	background-color: var(--main-background-color);
-	margin-left: 10px;
-	padding: 0;
-	padding-left: 2px;
-	border: 0;
 }
 
 kbd {
@@ -1994,10 +1990,6 @@ in storage.js plus the media query with (min-width: 701px)
 }
 
 @media (max-width: 464px) {
-	#crate-search {
-		border-radius: 4px;
-	}
-
 	.docblock {
 		margin-left: 12px;
 	}

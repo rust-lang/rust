@@ -733,37 +733,51 @@ function loadCss(cssFileName) {
 
     let oldSidebarScrollPosition = null;
 
-    function showSidebar() {
+    // Scroll locking used both here and in source-script.js
+
+    window.rustdocMobileScrollLock = function() {
         const mobile_topbar = document.querySelector(".mobile-topbar");
-        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT && mobile_topbar) {
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
             // This is to keep the scroll position on mobile.
             oldSidebarScrollPosition = window.scrollY;
             document.body.style.width = `${document.body.offsetWidth}px`;
             document.body.style.position = "fixed";
             document.body.style.top = `-${oldSidebarScrollPosition}px`;
-            mobile_topbar.style.top = `${oldSidebarScrollPosition}px`;
-            mobile_topbar.style.position = "relative";
+            if (mobile_topbar) {
+                mobile_topbar.style.top = `${oldSidebarScrollPosition}px`;
+                mobile_topbar.style.position = "relative";
+            }
         } else {
             oldSidebarScrollPosition = null;
         }
-        const sidebar = document.getElementsByClassName("sidebar")[0];
-        addClass(sidebar, "shown");
-    }
+    };
 
-    function hideSidebar() {
+    window.rustdocMobileScrollUnlock = function() {
         const mobile_topbar = document.querySelector(".mobile-topbar");
-        if (oldSidebarScrollPosition !== null && mobile_topbar) {
+        if (oldSidebarScrollPosition !== null) {
             // This is to keep the scroll position on mobile.
             document.body.style.width = "";
             document.body.style.position = "";
             document.body.style.top = "";
-            mobile_topbar.style.top = "";
-            mobile_topbar.style.position = "";
+            if (mobile_topbar) {
+                mobile_topbar.style.top = "";
+                mobile_topbar.style.position = "";
+            }
             // The scroll position is lost when resetting the style, hence why we store it in
             // `oldSidebarScrollPosition`.
             window.scrollTo(0, oldSidebarScrollPosition);
             oldSidebarScrollPosition = null;
         }
+    };
+
+    function showSidebar() {
+        window.rustdocMobileScrollLock();
+        const sidebar = document.getElementsByClassName("sidebar")[0];
+        addClass(sidebar, "shown");
+    }
+
+    function hideSidebar() {
+        window.rustdocMobileScrollUnlock();
         const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
     }
