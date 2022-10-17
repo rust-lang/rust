@@ -6,6 +6,8 @@ import { Config, substituteVariablesInEnv, substituteVSCodeVariables } from "./c
 import { createClient } from "./client";
 import { isRustEditor, log, RustEditor } from "./util";
 import { ServerStatusParams } from "./lsp_ext";
+import { PersistentState } from "./persistent_state";
+import { bootstrap } from "./bootstrap";
 
 export type Workspace =
     | {
@@ -17,28 +19,18 @@ export type Workspace =
       };
 
 export class Ctx {
-    private client: lc.LanguageClient | undefined;
-    readonly config: Config;
-    serverPath: string;
     readonly statusBar: vscode.StatusBarItem;
+    readonly config: Config;
+
+    private client: lc.LanguageClient | undefined;
 
     traceOutputChannel: vscode.OutputChannel | undefined;
     outputChannel: vscode.OutputChannel | undefined;
-
-    serverOptions:
-        | {
-              run: lc.Executable;
-              debug: lc.Executable;
-          }
-        | undefined;
     workspace: Workspace;
+    state: PersistentState;
+    serverPath: string | undefined;
 
-    constructor(
-        readonly extCtx: vscode.ExtensionContext,
-        config: Config,
-        serverPath: string,
-        workspace: Workspace
-    ) {
+    constructor(readonly extCtx: vscode.ExtensionContext, workspace: Workspace) {
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         extCtx.subscriptions.push(this.statusBar);
         extCtx.subscriptions.push({
@@ -50,9 +42,10 @@ export class Ctx {
         this.statusBar.tooltip = "ready";
         this.statusBar.command = "rust-analyzer.analyzerStatus";
         this.statusBar.show();
-        this.serverPath = serverPath;
-        this.config = config;
         this.workspace = workspace;
+
+        this.state = new PersistentState(extCtx.globalState);
+        this.config = new Config(extCtx);
     }
 
     clientFetcher() {
@@ -64,6 +57,7 @@ export class Ctx {
     }
 
     async getClient() {
+        // if server path changes -> dispose
         if (!this.traceOutputChannel) {
             this.traceOutputChannel = vscode.window.createOutputChannel(
                 "Rust Analyzer Language Server Trace"
@@ -72,8 +66,20 @@ export class Ctx {
         if (!this.outputChannel) {
             this.outputChannel = vscode.window.createOutputChannel("Rust Analyzer Language Server");
         }
-        if (!this.serverOptions) {
-            log.info("Creating server options client");
+
+        if (!this.client) {
+            log.info("Creating language client");
+
+            this.serverPath = await bootstrap(this.extCtx, this.config, this.state).catch((err) => {
+                let message = "bootstrap error. ";
+
+                message +=
+                    'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
+                message += 'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
+
+                log.error("Bootstrap error", err);
+                throw new Error(message);
+            });
             const newEnv = substituteVariablesInEnv(
                 Object.assign({}, process.env, this.config.serverExtraEnv)
             );
@@ -81,16 +87,11 @@ export class Ctx {
                 command: this.serverPath,
                 options: { env: newEnv },
             };
-            this.serverOptions = {
+            const serverOptions = {
                 run,
                 debug: run,
             };
-        } else {
-            this.serverOptions.run.command = this.serverPath;
-            this.serverOptions.debug.command = this.serverPath;
-        }
-        if (!this.client) {
-            log.info("Creating language client");
+
             let rawInitializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
 
             if (this.workspace.kind === "Detached Files") {
@@ -106,7 +107,7 @@ export class Ctx {
                 this.traceOutputChannel,
                 this.outputChannel,
                 initializationOptions,
-                this.serverOptions
+                serverOptions
             );
             this.client.onNotification(ra.serverStatus, (params) => this.setServerStatus(params));
         }
@@ -128,6 +129,7 @@ export class Ctx {
     async disposeClient() {
         log.info("Deactivating language client");
         await this.client?.dispose();
+        this.serverPath = undefined;
         this.client = undefined;
     }
 

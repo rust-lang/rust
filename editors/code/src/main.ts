@@ -3,12 +3,9 @@ import * as lc from "vscode-languageclient/node";
 
 import * as commands from "./commands";
 import { Ctx, Workspace } from "./ctx";
-import { log, isRustDocument } from "./util";
-import { PersistentState } from "./persistent_state";
+import { isRustDocument } from "./util";
 import { activateTaskProvider } from "./tasks";
 import { setContextValue } from "./util";
-import { bootstrap } from "./bootstrap";
-import { Config } from "./config";
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
@@ -56,24 +53,13 @@ export async function activate(
               }
             : { kind: "Workspace Folder" };
 
-    const state = new PersistentState(context.globalState);
-    const config = new Config(context);
-
-    const serverPath = await bootstrap(context, config, state).catch((err) => {
-        let message = "bootstrap error. ";
-
-        message += 'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
-        message += 'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
-
-        log.error("Bootstrap error", err);
-        throw new Error(message);
-    });
-
-    const ctx = new Ctx(context, config, serverPath, workspace);
+    const ctx = new Ctx(context, workspace);
     // VS Code doesn't show a notification when an extension fails to activate
     // so we do it ourselves.
     return await activateServer(ctx).catch((err) => {
-        void vscode.window.showErrorMessage(`Cannot activate rust-analyzer: ${err.message}`);
+        void vscode.window.showErrorMessage(
+            `Cannot activate rust-analyzer extension: ${err.message}`
+        );
         throw err;
     });
 }
@@ -83,7 +69,6 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
         ctx.pushExtCleanup(activateTaskProvider(ctx.config));
     }
 
-    await ctx.activate();
     await initCommonContext(ctx);
 
     if (ctx.config.typingContinueCommentsOnNewline) {
@@ -91,16 +76,18 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
     }
 
     vscode.workspace.onDidChangeConfiguration(
-        (_) =>
-            ctx
-                .getClient()
-                .then((it) =>
-                    it.sendNotification("workspace/didChangeConfiguration", { settings: "" })
-                )
-                .catch(log.error),
+        async (_) => {
+            await ctx
+                .clientFetcher()
+                .client?.sendNotification("workspace/didChangeConfiguration", { settings: "" });
+        },
         null,
         ctx.subscriptions
     );
+
+    await ctx.activate().catch((err) => {
+        void vscode.window.showErrorMessage(`Cannot activate rust-analyzer server: ${err.message}`);
+    });
 
     return ctx.clientFetcher();
 }
@@ -130,6 +117,7 @@ async function initCommonContext(ctx: Ctx) {
     // Commands which invokes manually via command palette, shortcut, etc.
     ctx.registerCommand("reload", (_) => async () => {
         void vscode.window.showInformationMessage("Reloading rust-analyzer...");
+        // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
         await ctx.disposeClient();
         await ctx.activate();
     });
