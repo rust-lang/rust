@@ -676,19 +676,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::ConstEquate(c1, c2) => {
+                    assert!(
+                        self.tcx().features().generic_const_exprs,
+                        "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
+                    );
                     debug!(?c1, ?c2, "evaluate_predicate_recursively: equating consts");
 
-                    if self.tcx().features().generic_const_exprs {
-                        // FIXME: we probably should only try to unify abstract constants
-                        // if the constants depend on generic parameters.
-                        //
-                        // Let's just see where this breaks :shrug:
-                        if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
-                            (c1.kind(), c2.kind())
-                        {
-                            if self.infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
-                                return Ok(EvaluatedToOk);
-                            }
+                    // FIXME: we probably should only try to unify abstract constants
+                    // if the constants depend on generic parameters.
+                    //
+                    // Let's just see where this breaks :shrug:
+                    if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
+                        (c1.kind(), c2.kind())
+                    {
+                        if self.infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
+                            return Ok(EvaluatedToOk);
                         }
                     }
 
