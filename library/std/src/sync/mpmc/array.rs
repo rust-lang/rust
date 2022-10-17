@@ -379,19 +379,9 @@ impl<T> Channel<T> {
     pub(crate) fn recv(&self, deadline: Option<Instant>) -> Result<T, RecvTimeoutError> {
         let token = &mut Token::default();
         loop {
-            // Try receiving a message several times.
-            let backoff = Backoff::new();
-            loop {
-                if self.start_recv(token) {
-                    let res = unsafe { self.read(token) };
-                    return res.map_err(|_| RecvTimeoutError::Disconnected);
-                }
-
-                if backoff.is_completed() {
-                    break;
-                } else {
-                    backoff.snooze();
-                }
+            if self.start_recv(token) {
+                let res = unsafe { self.read(token) };
+                return res.map_err(|_| RecvTimeoutError::Disconnected);
             }
 
             if let Some(d) = deadline {
