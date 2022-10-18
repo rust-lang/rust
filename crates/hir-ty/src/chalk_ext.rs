@@ -262,7 +262,7 @@ impl TyExt for Ty {
                                     WhereClause::AliasEq(AliasEq {
                                         alias: AliasTy::Projection(proj),
                                         ty: _,
-                                    }) => &proj.self_type_parameter(Interner) == self,
+                                    }) => &proj.self_type_parameter(db) == self,
                                     _ => false,
                                 })
                                 .collect::<Vec<_>>();
@@ -333,6 +333,7 @@ impl TyExt for Ty {
 pub trait ProjectionTyExt {
     fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef;
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId;
+    fn self_type_parameter(&self, db: &dyn HirDatabase) -> Ty;
 }
 
 impl ProjectionTyExt for ProjectionTy {
@@ -348,6 +349,10 @@ impl ProjectionTyExt for ProjectionTy {
             ItemContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }
+    }
+
+    fn self_type_parameter(&self, db: &dyn HirDatabase) -> Ty {
+        self.trait_ref(db).self_type_parameter(Interner)
     }
 }
 

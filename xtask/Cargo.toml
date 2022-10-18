@@ -7,7 +7,7 @@ edition = "2021"
 rust-version = "1.57"
 
 [dependencies]
-anyhow = "1.0.57"
+anyhow = "1.0.62"
 flate2 = "1.0.24"
 write-json = "0.1.2"
 xshell = "0.2.2"

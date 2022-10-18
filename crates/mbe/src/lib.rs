@@ -21,7 +21,7 @@ mod token_map;
 use std::fmt;
 
 use crate::{
-    parser::{MetaTemplate, Op},
+    parser::{MetaTemplate, MetaVarKind, Op},
     tt_iter::TtIter,
 };
 
@@ -291,9 +291,9 @@ fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
                 // Checks that no repetition which could match an empty token
                 // https://github.com/rust-lang/rust/blob/a58b1ed44f5e06976de2bdc4d7dc81c36a96934f/src/librustc_expand/mbe/macro_rules.rs#L558
                 let lsh_is_empty_seq = separator.is_none() && subtree.iter().all(|child_op| {
-                    match child_op {
+                    match *child_op {
                         // vis is optional
-                        Op::Var { kind: Some(kind), .. } => kind == "vis",
+                        Op::Var { kind: Some(kind), .. } => kind == MetaVarKind::Vis,
                         Op::Repeat {
                             kind: parser::RepeatKind::ZeroOrMore | parser::RepeatKind::ZeroOrOne,
                             ..
