@@ -95,10 +95,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
             debug!("llblock: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
-            let trampoline = Bx::append_block(fx.cx, fx.llfn, name);
-            let mut trampoline_bx = Bx::build(fx.cx, trampoline);
+            let trampoline_llbb = Bx::append_block(fx.cx, fx.llfn, name);
+            let mut trampoline_bx = Bx::build(fx.cx, trampoline_llbb);
             trampoline_bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
-            trampoline
+            trampoline_llbb
         } else {
             lltarget
         }
@@ -1459,20 +1459,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //          bar();
                 //      }
                 Some(&mir::TerminatorKind::Abort) => {
-                    let cs_bb =
+                    let cs_llbb =
                         Bx::append_block(self.cx, self.llfn, &format!("cs_funclet{:?}", bb));
-                    let cp_bb =
+                    let cp_llbb =
                         Bx::append_block(self.cx, self.llfn, &format!("cp_funclet{:?}", bb));
-                    ret_llbb = cs_bb;
+                    ret_llbb = cs_llbb;
 
-                    let mut cs_bx = Bx::build(self.cx, cs_bb);
-                    let cs = cs_bx.catch_switch(None, None, &[cp_bb]);
+                    let mut cs_bx = Bx::build(self.cx, cs_llbb);
+                    let cs = cs_bx.catch_switch(None, None, &[cp_llbb]);
 
                     // The "null" here is actually a RTTI type descriptor for the
                     // C++ personality function, but `catch (...)` has no type so
                     // it's null. The 64 here is actually a bitfield which
                     // represents that this is a catch-all block.
-                    let mut cp_bx = Bx::build(self.cx, cp_bb);
+                    let mut cp_bx = Bx::build(self.cx, cp_llbb);
                     let null = cp_bx.const_null(
                         cp_bx.type_i8p_ext(cp_bx.cx().data_layout().instruction_address_space),
                     );
@@ -1481,10 +1481,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     cp_bx.br(llbb);
                 }
                 _ => {
-                    let cleanup_bb =
+                    let cleanup_llbb =
                         Bx::append_block(self.cx, self.llfn, &format!("funclet_{:?}", bb));
-                    ret_llbb = cleanup_bb;
-                    let mut cleanup_bx = Bx::build(self.cx, cleanup_bb);
+                    ret_llbb = cleanup_llbb;
+                    let mut cleanup_bx = Bx::build(self.cx, cleanup_llbb);
                     funclet = cleanup_bx.cleanup_pad(None, &[]);
                     cleanup_bx.br(llbb);
                 }
@@ -1492,19 +1492,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.funclets[bb] = Some(funclet);
             ret_llbb
         } else {
-            let bb = Bx::append_block(self.cx, self.llfn, "cleanup");
-            let mut bx = Bx::build(self.cx, bb);
+            let cleanup_llbb = Bx::append_block(self.cx, self.llfn, "cleanup");
+            let mut cleanup_bx = Bx::build(self.cx, cleanup_llbb);
 
             let llpersonality = self.cx.eh_personality();
             let llretty = self.landing_pad_type();
-            let lp = bx.cleanup_landing_pad(llretty, llpersonality);
+            let lp = cleanup_bx.cleanup_landing_pad(llretty, llpersonality);
 
-            let slot = self.get_personality_slot(&mut bx);
-            slot.storage_live(&mut bx);
-            Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
+            let slot = self.get_personality_slot(&mut cleanup_bx);
+            slot.storage_live(&mut cleanup_bx);
+            Pair(cleanup_bx.extract_value(lp, 0), cleanup_bx.extract_value(lp, 1))
+                .store(&mut cleanup_bx, slot);
 
-            bx.br(llbb);
-            bx.llbb()
+            cleanup_bx.br(llbb);
+            cleanup_llbb
         }
     }
 
