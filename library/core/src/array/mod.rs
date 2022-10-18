@@ -879,7 +879,7 @@ where
         }
     }
 
-    let mut array = MaybeUninit::uninit_array::<N>();
+    let mut array = MaybeUninit::uninit().transpose();
     let mut guard = Guard { array_mut: &mut array, initialized: 0 };
 
     for _ in 0..N {
