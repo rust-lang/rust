@@ -76,7 +76,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
             // let it through if it's included statically.
             match tcx.hir().get_by_def_id(def_id) {
                 Node::ForeignItem(..) => {
-                    tcx.is_statically_included_foreign_item(def_id).then_some(def_id)
+                    tcx.native_library(def_id).map_or(false, |library| library.kind.is_statically_included()).then_some(def_id)
                 }
 
                 // Only consider nodes that actually have exported symbols.
