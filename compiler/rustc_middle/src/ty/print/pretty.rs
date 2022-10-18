@@ -2115,7 +2115,7 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
                 // If this is an anonymous placeholder, don't rename. Otherwise, in some
                 // async fns, we get a `for<'r> Send` bound
                 match kind {
-                    ty::BrAnon(_) | ty::BrEnv => r,
+                    ty::BrAnon(..) | ty::BrEnv => r,
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
                         let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind };
@@ -2226,10 +2226,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     let ty::BoundVariableKind::Region(var) = var else {
                     // This doesn't really matter because it doesn't get used,
                     // it's just an empty value
-                    return ty::BrAnon(0);
+                    return ty::BrAnon(0, None);
                 };
                     match var {
-                        ty::BrAnon(_) | ty::BrEnv => {
+                        ty::BrAnon(..) | ty::BrEnv => {
                             start_or_continue(&mut self, "for<", ", ");
                             let name = next_name(&self);
                             debug!(?name);
@@ -2271,7 +2271,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                             binder_level_idx: ty::DebruijnIndex,
                             br: ty::BoundRegion| {
                 let (name, kind) = match br.kind {
-                    ty::BrAnon(_) | ty::BrEnv => {
+                    ty::BrAnon(..) | ty::BrEnv => {
                         let name = next_name(&self);
 
                         if let Some(lt_idx) = lifetime_idx {
