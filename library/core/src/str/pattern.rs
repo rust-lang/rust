@@ -267,7 +267,7 @@ pub unsafe trait Searcher<'a> {
 /// The index ranges returned by this trait are not required
 /// to exactly match those of the forward search in reverse.
 ///
-/// For the reason why this trait is marked unsafe, see them
+/// For the reason why this trait is marked unsafe, see the
 /// parent trait [`Searcher`].
 pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
     /// Performs the next search step starting from the back.
