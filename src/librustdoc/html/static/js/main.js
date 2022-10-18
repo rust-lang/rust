@@ -55,7 +55,7 @@ function blurHandler(event, parentElem, hideCallback) {
 function setMobileTopbar() {
     // FIXME: It would be nicer to generate this text content directly in HTML,
     // but with the current code it's hard to get the right information in the right place.
-    const mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
+    const mobileLocationTitle = document.querySelector(".mobile-topbar h2");
     const locationTitle = document.querySelector(".sidebar h2.location");
     if (mobileLocationTitle && locationTitle) {
         mobileLocationTitle.innerHTML = locationTitle.innerHTML;
