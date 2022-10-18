@@ -75,13 +75,16 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         let target_funclet = fx.cleanup_kinds[target].funclet_bb(target);
         match (self.funclet_bb, target_funclet) {
             (None, None) => (lltarget, false),
-            (Some(f), Some(t_f)) if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) => {
-                (lltarget, false)
-            }
             // jump *into* cleanup - need a landing pad if GNU, cleanup pad if MSVC
             (None, Some(_)) => (fx.landing_pad_for(target), false),
             (Some(_), None) => span_bug!(span, "{:?} - jump out of cleanup?", self.terminator),
-            (Some(_), Some(_)) => (fx.landing_pad_for(target), true),
+            (Some(f), Some(t_f)) => {
+                if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) {
+                    (lltarget, false)
+                } else {
+                    (fx.landing_pad_for(target), true)
+                }
+            }
         }
     }
 
@@ -95,7 +98,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         let (lltarget, is_cleanupret) = self.llbb_with_landing_pad(fx, target);
         if is_cleanupret {
             // MSVC cross-funclet jump - need a trampoline
-
+            debug_assert!(base::wants_msvc_seh(fx.cx.tcx().sess));
             debug!("llbb_with_cleanup: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
             let trampoline_llbb = Bx::append_block(fx.cx, fx.llfn, name);
@@ -115,8 +118,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     ) {
         let (lltarget, is_cleanupret) = self.llbb_with_landing_pad(fx, target);
         if is_cleanupret {
-            // micro-optimization: generate a `ret` rather than a jump
+            // MSVC micro-optimization: generate a `ret` rather than a jump
             // to a trampoline.
+            debug_assert!(base::wants_msvc_seh(fx.cx.tcx().sess));
             bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
         } else {
             bx.br(lltarget);
