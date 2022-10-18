@@ -87,8 +87,6 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         // Instantiate monomorphizations without filling out definitions yet...
         //let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
         let context = Context::default();
-        // TODO(antoyo): only set on x86 platforms.
-        context.add_command_line_option("-masm=intel");
         // TODO(antoyo): only add the following cli argument if the feature is supported.
         context.add_command_line_option("-msse2");
         context.add_command_line_option("-mavx2");
@@ -111,14 +109,20 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         context.add_command_line_option("-mvpclmulqdq");
         context.add_command_line_option("-mavx");
 
+        let mut has_set_asm_syntax = false;
         for arg in &tcx.sess.opts.cg.llvm_args {
             if arg.starts_with("--x86-asm-syntax=") {
                 // LLVM uses the two same arguments as GCC: `att` and `intel`.
                 let syntax = arg.splitn(2, '=').skip(1).next().expect("missing argument");
                 context.add_command_line_option(&format!("-masm={}", syntax));
+                has_set_asm_syntax = true;
             } else {
                 context.add_command_line_option(arg);
             }
+        }
+        if !has_set_asm_syntax {
+            // TODO(antoyo): only set on x86 platforms.
+            context.add_command_line_option("-masm=intel");
         }
         // NOTE: This is needed to compile the file src/intrinsic/archs.rs during a bootstrap of rustc.
         context.add_command_line_option("-fno-var-tracking-assignments");
