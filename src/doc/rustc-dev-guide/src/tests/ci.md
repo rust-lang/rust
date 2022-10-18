@@ -2,9 +2,10 @@
 
 ## Testing infrastructure
 
+<!-- date-check: oct 2022 -->
 When a Pull Request is opened on GitHub, [GitHub Actions] will automatically
 launch a build that will run all tests on some configurations
-(x86_64-gnu-llvm-12 linux. x86_64-gnu-tools linux, mingw-check linux).
+(x86_64-gnu-llvm-13 linux, x86_64-gnu-tools linux, and mingw-check linux).
 In essence, each runs `./x.py test` with various different options.
 
 The integration bot [bors] is used for coordinating merges to the master branch.
