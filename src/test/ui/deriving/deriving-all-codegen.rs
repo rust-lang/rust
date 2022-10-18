@@ -85,7 +85,7 @@ enum Mixed {
     P,
     Q,
     R(u32),
-    S { d1: u32, d2: u32 },
+    S { d1: Option<u32>, d2: Option<i32> },
 }
 
 // An enum with no fieldless variants. Note that `Default` cannot be derived
