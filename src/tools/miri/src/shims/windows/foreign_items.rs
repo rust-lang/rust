@@ -261,6 +261,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let ret = this.TryAcquireSRWLockShared(ptr)?;
                 this.write_scalar(ret, dest)?;
             }
+            "InitOnceBeginInitialize" => {
+                let [ptr, flags, pending, context] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let result = this.InitOnceBeginInitialize(ptr, flags, pending, context)?;
+                this.write_scalar(result, dest)?;
+            }
+            "InitOnceComplete" => {
+                let [ptr, flags, context] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let result = this.InitOnceComplete(ptr, flags, context)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // Dynamic symbol loading
             "GetProcAddress" => {

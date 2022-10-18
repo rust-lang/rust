@@ -87,7 +87,7 @@ pub use crate::concurrency::{
         AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd,
         EvalContextExt as DataRaceEvalContextExt,
     },
-    sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId},
+    sync::{CondvarId, EvalContextExt as SyncEvalContextExt, InitOnceId, MutexId, RwLockId},
     thread::{
         EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager,
         ThreadState, Time,
