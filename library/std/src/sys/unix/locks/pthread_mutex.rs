@@ -64,7 +64,7 @@ impl LazyInit for AllocatedMutex {
         // We're not allowed to pthread_mutex_destroy a locked mutex,
         // so check first if it's unlocked.
         if unsafe { libc::pthread_mutex_trylock(mutex.0.get()) == 0 } {
-            unsafe { libc::pthread_mutex_destroy(mutex.0.get()) };
+            unsafe { libc::pthread_mutex_unlock(mutex.0.get()) };
             drop(mutex);
         } else {
             // The mutex is locked. This happens if a MutexGuard is leaked.
