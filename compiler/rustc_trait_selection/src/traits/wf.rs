@@ -148,13 +148,8 @@ pub fn predicate_obligations<'tcx>(
             wf.compute(a.into());
             wf.compute(b.into());
         }
-        ty::PredicateKind::ConstEvaluatable(uv) => {
-            let obligations = wf.nominal_obligations(uv.def.did, uv.substs);
-            wf.out.extend(obligations);
-
-            for arg in uv.substs.iter() {
-                wf.compute(arg);
-            }
+        ty::PredicateKind::ConstEvaluatable(ct) => {
+            wf.compute(ct.into());
         }
         ty::PredicateKind::ConstEquate(c1, c2) => {
             wf.compute(c1.into());
@@ -476,14 +471,14 @@ impl<'tcx> WfPredicates<'tcx> {
                 // obligations are handled by the parent (e.g. `ty::Ref`).
                 GenericArgKind::Lifetime(_) => continue,
 
-                GenericArgKind::Const(constant) => {
-                    match constant.kind() {
+                GenericArgKind::Const(ct) => {
+                    match ct.kind() {
                         ty::ConstKind::Unevaluated(uv) => {
                             let obligations = self.nominal_obligations(uv.def.did, uv.substs);
                             self.out.extend(obligations);
 
                             let predicate =
-                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv))
+                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct))
                                     .to_predicate(self.tcx());
                             let cause = self.cause(traits::WellFormed(None));
                             self.out.push(traits::Obligation::with_depth(
@@ -500,7 +495,7 @@ impl<'tcx> WfPredicates<'tcx> {
                                 cause,
                                 self.recursion_depth,
                                 self.param_env,
-                                ty::Binder::dummy(ty::PredicateKind::WellFormed(constant.into()))
+                                ty::Binder::dummy(ty::PredicateKind::WellFormed(ct.into()))
                                     .to_predicate(self.tcx()),
                             ));
                         }

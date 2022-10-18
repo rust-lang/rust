@@ -161,11 +161,20 @@ pub fn try_unify_abstract_consts<'tcx>(
 #[instrument(skip(infcx), level = "debug")]
 pub fn is_const_evaluatable<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    uv: ty::UnevaluatedConst<'tcx>,
+    ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
     let tcx = infcx.tcx;
+    let uv = match ct.kind() {
+        ty::ConstKind::Unevaluated(uv) => uv,
+        ty::ConstKind::Param(_)
+        | ty::ConstKind::Bound(_, _)
+        | ty::ConstKind::Placeholder(_)
+        | ty::ConstKind::Value(_)
+        | ty::ConstKind::Error(_) => return Ok(()),
+        ty::ConstKind::Infer(_) => return Err(NotConstEvaluatable::MentionsInfer),
+    };
 
     if tcx.features().generic_const_exprs {
         if let Some(ct) = AbstractConst::new(tcx, uv)? {
@@ -285,7 +294,7 @@ fn satisfied_from_param_env<'tcx>(
     for pred in param_env.caller_bounds() {
         match pred.kind().skip_binder() {
             ty::PredicateKind::ConstEvaluatable(uv) => {
-                if let Some(b_ct) = AbstractConst::new(tcx, uv)? {
+                if let Some(b_ct) = AbstractConst::from_const(tcx, uv)? {
                     let const_unify_ctxt = ConstUnifyCtxt { tcx, param_env };
 
                     // Try to unify with each subtree in the AbstractConst to allow for

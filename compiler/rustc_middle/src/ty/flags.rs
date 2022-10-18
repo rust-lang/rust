@@ -256,7 +256,7 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
             ty::PredicateKind::ConstEvaluatable(uv) => {
-                self.add_unevaluated_const(uv);
+                self.add_const(uv);
             }
             ty::PredicateKind::ConstEquate(expected, found) => {
                 self.add_const(expected);

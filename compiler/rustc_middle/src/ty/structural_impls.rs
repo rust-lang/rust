@@ -166,8 +166,8 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
                 write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_substs, kind)
             }
-            ty::PredicateKind::ConstEvaluatable(uv) => {
-                write!(f, "ConstEvaluatable({:?}, {:?})", uv.def, uv.substs)
+            ty::PredicateKind::ConstEvaluatable(ct) => {
+                write!(f, "ConstEvaluatable({ct:?})")
             }
             ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
