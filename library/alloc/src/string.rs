@@ -1853,9 +1853,13 @@ impl String {
     /// Consumes and leaks the `String`, returning a mutable reference to the contents,
     /// `&'a mut str`.
     ///
-    /// This function is mainly useful for data that lives for the remainder of
+    /// This is mainly useful for data that lives for the remainder of
     /// the program's life. Dropping the returned reference will cause a memory
     /// leak.
+    ///
+    /// It does not reallocate or shrink the `String`,
+    /// so the leaked allocation may include unused capacity that is not part
+    /// of the returned slice.
     ///
     /// # Examples
     ///
@@ -1864,17 +1868,15 @@ impl String {
     /// ```
     /// #![feature(string_leak)]
     ///
-    /// pub fn main() {
-    ///     let x = String::from("bucket");
-    ///     let static_ref: &'static mut str = x.leak();
-    ///     assert_eq!(static_ref, "bucket");
-    /// }
+    /// let x = String::from("bucket");
+    /// let static_ref: &'static mut str = x.leak();
+    /// assert_eq!(static_ref, "bucket");
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_leak", issue = "102929")]
     #[inline]
-    pub fn leak<'a>(self) -> &'a mut str {
-        let slice = self.into_bytes().leak();
+    pub fn leak(self) -> &'static mut str {
+        let slice = self.vec.leak();
         unsafe { from_utf8_unchecked_mut(slice) }
     }
 }
