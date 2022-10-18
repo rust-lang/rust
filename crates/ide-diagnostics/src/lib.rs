@@ -29,7 +29,6 @@ mod handlers {
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod inactive_code;
     pub(crate) mod incorrect_case;
-    pub(crate) mod incorrect_try_expr;
     pub(crate) mod invalid_derive_target;
     pub(crate) mod macro_error;
     pub(crate) mod malformed_derive;
@@ -37,7 +36,6 @@ mod handlers {
     pub(crate) mod missing_fields;
     pub(crate) mod missing_match_arms;
     pub(crate) mod missing_unsafe;
-    pub(crate) mod not_implemented;
     pub(crate) mod no_such_field;
     pub(crate) mod replace_filter_map_next_with_find_map;
     pub(crate) mod type_mismatch;
@@ -227,14 +225,12 @@ pub fn diagnostics(
         let d = match diag {
             AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
             AnyDiagnostic::IncorrectCase(d) => handlers::incorrect_case::incorrect_case(&ctx, &d),
-            AnyDiagnostic::IncorrectTryExpr(d) => handlers::incorrect_try_expr::incorrect_try_expr(&ctx, &d),
             AnyDiagnostic::MacroError(d) => handlers::macro_error::macro_error(&ctx, &d),
             AnyDiagnostic::MalformedDerive(d) => handlers::malformed_derive::malformed_derive(&ctx, &d),
             AnyDiagnostic::MismatchedArgCount(d) => handlers::mismatched_arg_count::mismatched_arg_count(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => handlers::missing_fields::missing_fields(&ctx, &d),
             AnyDiagnostic::MissingMatchArms(d) => handlers::missing_match_arms::missing_match_arms(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => handlers::missing_unsafe::missing_unsafe(&ctx, &d),
-            AnyDiagnostic::NotImplemented(d) => handlers::not_implemented::not_implemented(&ctx, &d),
             AnyDiagnostic::NoSuchField(d) => handlers::no_such_field::no_such_field(&ctx, &d),
             AnyDiagnostic::ReplaceFilterMapNextWithFindMap(d) => handlers::replace_filter_map_next_with_find_map::replace_filter_map_next_with_find_map(&ctx, &d),
             AnyDiagnostic::TypeMismatch(d) => handlers::type_mismatch::type_mismatch(&ctx, &d),
