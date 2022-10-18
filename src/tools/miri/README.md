@@ -531,6 +531,17 @@ extern "Rust" {
     /// This is internal and unstable and should not be used; we give it here
     /// just to be complete.
     fn miri_start_panic(payload: *mut u8) -> !;
+
+    /// Miri-provided extern function to get the internal unique identifier for the allocation that a pointer
+    /// points to. This is only useful as an input to `miri_print_stacks`, and it is a separate call because
+    /// getting a pointer to an allocation at runtime can change the borrow stacks in the allocation.
+    fn miri_get_alloc_id(ptr: *const ()) -> u64;
+
+    /// Miri-provided extern function to print (from the interpreter, not the program) the contents of all
+    /// borrow stacks in an allocation. The format of what this emits is unstable and may change at any time.
+    /// In particular, users should be aware that Miri will periodically attempt to garbage collect the
+    /// contents of all stacks. Callers of this function may wish to pass `-Zmiri-tag-gc=0` to disable the GC.
+    fn miri_print_stacks(alloc_id: u64);
 }
 ```
 
