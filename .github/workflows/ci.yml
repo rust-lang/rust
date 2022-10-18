@@ -24,7 +24,8 @@ jobs:
           - { gcc: "libgccjit12.so", extra: "--no-default-features", artifacts_branch: "gcc12" }
         commands: [
           "--mini-tests",
-          "--std-tests --asm-tests",
+          "--std-tests",
+          "--asm-tests",
           "--test-libcore",
           "--extended-rand-tests",
           "--extended-regex-example-tests",
