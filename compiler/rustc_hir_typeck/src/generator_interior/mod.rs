@@ -13,8 +13,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
+use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
-use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, BoundVariableKind, RvalueScopes, Ty, TyCtxt, TypeVisitable};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -211,31 +212,52 @@ pub fn resolve_interior<'a, 'tcx>(
 
     debug!("types in generator {:?}, span = {:?}", types, body.value.span);
 
-    let mut counter = 0;
+    // We want to deduplicate if the lifetimes are the same modulo some non-informative counter.
+    // So, we need to actually do two passes: first by type to anonymize (preserving information
+    // required for diagnostics), then a second pass over all captured types to reassign disjoint
+    // region indices.
     let mut captured_tys = FxHashSet::default();
     let type_causes: Vec<_> = types
         .into_iter()
         .filter_map(|mut cause| {
-            // Erase regions and canonicalize late-bound regions to deduplicate as many types as we
-            // can.
-            let ty = fcx.normalize_associated_types_in(cause.span, cause.ty);
-            let erased = fcx.tcx.erase_regions(ty);
-            if captured_tys.insert(erased) {
-                // Replace all regions inside the generator interior with late bound regions.
-                // Note that each region slot in the types gets a new fresh late bound region,
-                // which means that none of the regions inside relate to any other, even if
-                // typeck had previously found constraints that would cause them to be related.
-                let folded = fcx.tcx.fold_regions(erased, |_, current_depth| {
-                    let br = ty::BoundRegion {
-                        var: ty::BoundVar::from_u32(counter),
-                        kind: ty::BrAnon(counter),
-                    };
-                    let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, br));
-                    counter += 1;
-                    r
-                });
+            // Replace all regions inside the generator interior with late bound regions.
+            // Note that each region slot in the types gets a new fresh late bound region,
+            // which means that none of the regions inside relate to any other, even if
+            // typeck had previously found constraints that would cause them to be related.
 
-                cause.ty = folded;
+            let mut counter = 0;
+            let ty = fcx.normalize_associated_types_in(cause.span, cause.ty);
+            let ty = fcx.tcx.fold_regions(ty, |region, current_depth| {
+                let br = match region.kind() {
+                    ty::ReVar(vid) => {
+                        let origin = fcx.region_var_origin(vid);
+                        match origin {
+                            RegionVariableOrigin::EarlyBoundRegion(span, _) => {
+                                let kind = ty::BrAnon(counter, Some(span));
+                                let var = ty::BoundVar::from_u32(counter);
+                                counter += 1;
+                                ty::BoundRegion { var, kind }
+                            }
+                            _ => {
+                                let kind = ty::BrAnon(counter, None);
+                                let var = ty::BoundVar::from_u32(counter);
+                                counter += 1;
+                                ty::BoundRegion { var, kind }
+                            }
+                        }
+                    }
+                    _ => {
+                        let kind = ty::BrAnon(counter, None);
+                        let var = ty::BoundVar::from_u32(counter);
+                        counter += 1;
+                        ty::BoundRegion { var, kind }
+                    }
+                };
+                let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, br));
+                r
+            });
+            if captured_tys.insert(ty) {
+                cause.ty = ty;
                 Some(cause)
             } else {
                 None
@@ -243,11 +265,29 @@ pub fn resolve_interior<'a, 'tcx>(
         })
         .collect();
 
+    let mut bound_vars: Vec<BoundVariableKind> = vec![];
+    let mut counter = 0;
+    let type_causes = fcx.tcx.fold_regions(type_causes, |region, current_depth| {
+        let br = match region.kind() {
+            ty::ReLateBound(_, br) => {
+                let kind = match br.kind {
+                    ty::BrAnon(_, span) => ty::BrAnon(counter, span),
+                    _ => br.kind,
+                };
+                let var = ty::BoundVar::from_usize(bound_vars.len());
+                bound_vars.push(ty::BoundVariableKind::Region(kind));
+                counter += 1;
+                ty::BoundRegion { var, kind }
+            }
+            _ => bug!("All regions should have been replaced by ReLateBound"),
+        };
+        let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, br));
+        r
+    });
+
     // Extract type components to build the witness type.
     let type_list = fcx.tcx.mk_type_list(type_causes.iter().map(|cause| cause.ty));
-    let bound_vars = fcx.tcx.mk_bound_variable_kinds(
-        (0..counter).map(|i| ty::BoundVariableKind::Region(ty::BrAnon(i))),
-    );
+    let bound_vars = fcx.tcx.mk_bound_variable_kinds(bound_vars.iter());
     let witness =
         fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars.clone()));
 
