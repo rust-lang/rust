@@ -63,7 +63,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
     }
 
-    fn lltarget<Bx: BuilderMethods<'a, 'tcx>>(
+    /// Get a basic block (creating it if necessary), possibly with a landing
+    /// pad next to it.
+    fn llbb_with_landing_pad<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
@@ -83,17 +85,18 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
     }
 
-    /// Create a basic block.
-    fn llblock<Bx: BuilderMethods<'a, 'tcx>>(
+    /// Get a basic block (creating it if necessary), possibly with cleanup
+    /// stuff in it or next to it.
+    fn llbb_with_cleanup<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> Bx::BasicBlock {
-        let (lltarget, is_cleanupret) = self.lltarget(fx, target);
+        let (lltarget, is_cleanupret) = self.llbb_with_landing_pad(fx, target);
         if is_cleanupret {
             // MSVC cross-funclet jump - need a trampoline
 
-            debug!("llblock: creating cleanup trampoline for {:?}", target);
+            debug!("llbb_with_cleanup: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
             let trampoline_llbb = Bx::append_block(fx.cx, fx.llfn, name);
             let mut trampoline_bx = Bx::build(fx.cx, trampoline_llbb);
@@ -110,7 +113,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         bx: &mut Bx,
         target: mir::BasicBlock,
     ) {
-        let (lltarget, is_cleanupret) = self.lltarget(fx, target);
+        let (lltarget, is_cleanupret) = self.llbb_with_landing_pad(fx, target);
         if is_cleanupret {
             // micro-optimization: generate a `ret` rather than a jump
             // to a trampoline.
@@ -138,7 +141,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
         let unwind_block = if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
-            Some(self.llblock(fx, cleanup))
+            Some(self.llbb_with_cleanup(fx, cleanup))
         } else if fx.mir[self.bb].is_cleanup
             && fn_abi.can_unwind
             && !base::wants_msvc_seh(fx.cx.tcx().sess)
@@ -231,7 +234,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 options,
                 line_spans,
                 instance,
-                Some((ret_llbb, self.llblock(fx, cleanup), self.funclet(fx))),
+                Some((ret_llbb, self.llbb_with_cleanup(fx, cleanup), self.funclet(fx))),
             );
         } else {
             bx.codegen_inline_asm(template, &operands, options, line_spans, instance, None);
@@ -281,8 +284,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if target_iter.len() == 1 {
             // If there are two targets (one conditional, one fallback), emit br instead of switch
             let (test_value, target) = target_iter.next().unwrap();
-            let lltrue = helper.llblock(self, target);
-            let llfalse = helper.llblock(self, targets.otherwise());
+            let lltrue = helper.llbb_with_cleanup(self, target);
+            let llfalse = helper.llbb_with_cleanup(self, targets.otherwise());
             if switch_ty == bx.tcx().types.bool {
                 // Don't generate trivial icmps when switching on bool
                 match test_value {
@@ -299,8 +302,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             bx.switch(
                 discr.immediate(),
-                helper.llblock(self, targets.otherwise()),
-                target_iter.map(|(value, target)| (value, helper.llblock(self, target))),
+                helper.llbb_with_cleanup(self, targets.otherwise()),
+                target_iter.map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
             );
         }
     }
@@ -530,7 +533,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cond = bx.expect(cond, expected);
 
         // Create the failure block and the conditional branch to it.
-        let lltarget = helper.llblock(self, target);
+        let lltarget = helper.llbb_with_cleanup(self, target);
         let panic_block = bx.append_sibling_block("panic");
         if expected {
             bx.cond_br(cond, lltarget, panic_block);
