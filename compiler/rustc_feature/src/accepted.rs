@@ -53,6 +53,8 @@ declare_features! (
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),
     /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, adx_target_feature, "1.61.0", Some(44839), None),
+    /// Allows using `sym` operands in inline assembly.
+    (accepted, asm_sym, "CURRENT_RUSTC_VERSION", Some(93333), None),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
     (accepted, associated_consts, "1.20.0", Some(29646), None),
     /// Allows using associated `type`s in `trait`s.

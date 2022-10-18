@@ -7,8 +7,6 @@
 
 // regression test for #96797
 
-#![feature(asm_sym)]
-
 use std::arch::global_asm;
 
 #[no_mangle]

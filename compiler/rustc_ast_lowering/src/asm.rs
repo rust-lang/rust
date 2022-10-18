@@ -192,16 +192,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                     InlineAsmOperand::Sym { ref sym } => {
-                        if !self.tcx.features().asm_sym {
-                            feature_err(
-                                &sess.parse_sess,
-                                sym::asm_sym,
-                                *op_sp,
-                                "sym operands for inline assembly are unstable",
-                            )
-                            .emit();
-                        }
-
                         let static_def_id = self
                             .resolver
                             .get_partial_res(sym.id)

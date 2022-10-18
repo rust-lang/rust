@@ -4,7 +4,7 @@
 // ignore-wasm32
 
 #![feature(naked_functions)]
-#![feature(asm_const, asm_sym, asm_unwind)]
+#![feature(asm_const, asm_unwind)]
 #![crate_type = "lib"]
 
 use std::arch::asm;
