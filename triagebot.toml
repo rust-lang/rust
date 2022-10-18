@@ -183,6 +183,11 @@ trigger_files = [
     "x.ps1",
     "src/bootstrap",
     "src/tools/rust-installer",
+    "configure",
+    "Cargo.toml",
+    "Cargo.lock",
+    "config.toml.example",
+    "src/stage0.json"
 ]
 
 [autolabel."T-infra"]
@@ -208,6 +213,38 @@ trigger_files = [
     "compiler/rustc_query_system",
     "compiler/rustc_query_impl",
     "compiler/rustc_macros/src/query.rs"
+]
+
+[autolabel."A-testsuite"]
+trigger_files = [
+    "src/test",
+    "src/ci",
+    "src/tools/compiletest",
+    "src/tools/cargotest",
+    "src/tools/tidy",
+    "src/tools/remote-test-server",
+    "src/tools/remote-test-client",
+    "src/tools/tier-check"
+]
+
+[autolabel."A-meta"]
+trigger_files = [
+    "triagebot.toml",
+    "rustfmt.toml",
+    "LICENSES",
+    "README.md",
+    "CONTRIBUTING.md",
+    ".reuse",
+    ".mailmap",
+    ".git-blame-ignore-revs",
+    ".editorconfig"
+]
+
+[autolabel."T-release"]
+trigger_files = [
+    "RELEASES.md",
+    "src/stage0.json",
+    "src/version"
 ]
 
 [notify-zulip."I-prioritize"]
