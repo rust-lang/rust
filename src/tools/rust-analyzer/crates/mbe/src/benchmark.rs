@@ -8,7 +8,7 @@ use syntax::{
 use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{
-    parser::{Op, RepeatKind, Separator},
+    parser::{MetaVarKind, Op, RepeatKind, Separator},
     syntax_node_to_token_tree, DeclarativeMacro,
 };
 
@@ -111,35 +111,35 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
 
     fn collect_from_op(op: &Op, parent: &mut tt::Subtree, seed: &mut usize) {
         return match op {
-            Op::Var { kind, .. } => match kind.as_ref().map(|it| it.as_str()) {
-                Some("ident") => parent.token_trees.push(make_ident("foo")),
-                Some("ty") => parent.token_trees.push(make_ident("Foo")),
-                Some("tt") => parent.token_trees.push(make_ident("foo")),
-                Some("vis") => parent.token_trees.push(make_ident("pub")),
-                Some("pat") => parent.token_trees.push(make_ident("foo")),
-                Some("path") => parent.token_trees.push(make_ident("foo")),
-                Some("literal") => parent.token_trees.push(make_literal("1")),
-                Some("expr") => parent.token_trees.push(make_ident("foo")),
-                Some("lifetime") => {
+            Op::Var { kind, .. } => match kind.as_ref() {
+                Some(MetaVarKind::Ident) => parent.token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Ty) => parent.token_trees.push(make_ident("Foo")),
+                Some(MetaVarKind::Tt) => parent.token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Vis) => parent.token_trees.push(make_ident("pub")),
+                Some(MetaVarKind::Pat) => parent.token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Path) => parent.token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Literal) => parent.token_trees.push(make_literal("1")),
+                Some(MetaVarKind::Expr) => parent.token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Lifetime) => {
                     parent.token_trees.push(make_punct('\''));
                     parent.token_trees.push(make_ident("a"));
                 }
-                Some("block") => {
+                Some(MetaVarKind::Block) => {
                     parent.token_trees.push(make_subtree(tt::DelimiterKind::Brace, None))
                 }
-                Some("item") => {
+                Some(MetaVarKind::Item) => {
                     parent.token_trees.push(make_ident("fn"));
                     parent.token_trees.push(make_ident("foo"));
                     parent.token_trees.push(make_subtree(tt::DelimiterKind::Parenthesis, None));
                     parent.token_trees.push(make_subtree(tt::DelimiterKind::Brace, None));
                 }
-                Some("meta") => {
+                Some(MetaVarKind::Meta) => {
                     parent.token_trees.push(make_ident("foo"));
                     parent.token_trees.push(make_subtree(tt::DelimiterKind::Parenthesis, None));
                 }
 
                 None => (),
-                Some(kind) => panic!("Unhandled kind {}", kind),
+                Some(kind) => panic!("Unhandled kind {:?}", kind),
             },
             Op::Leaf(leaf) => parent.token_trees.push(leaf.clone().into()),
             Op::Repeat { tokens, kind, separator } => {
