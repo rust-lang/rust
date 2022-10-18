@@ -737,7 +737,7 @@ function loadCss(cssFileName) {
 
     window.rustdocMobileScrollLock = function() {
         const mobile_topbar = document.querySelector(".mobile-topbar");
-        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+        if (window.innerWidth <= window.RUSTDOC_MOBILE_BREAKPOINT) {
             // This is to keep the scroll position on mobile.
             oldSidebarScrollPosition = window.scrollY;
             document.body.style.width = `${document.body.offsetWidth}px`;
@@ -783,7 +783,7 @@ function loadCss(cssFileName) {
     }
 
     window.addEventListener("resize", () => {
-        if (window.innerWidth >= window.RUSTDOC_MOBILE_BREAKPOINT &&
+        if (window.innerWidth > window.RUSTDOC_MOBILE_BREAKPOINT &&
             oldSidebarScrollPosition !== null) {
             // If the user opens the sidebar in "mobile" mode, and then grows the browser window,
             // we need to switch away from mobile mode and make the main content area scrollable.
