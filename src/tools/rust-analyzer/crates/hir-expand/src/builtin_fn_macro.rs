@@ -238,9 +238,9 @@ fn format_args_expand(
 ) -> ExpandResult<tt::Subtree> {
     // We expand `format_args!("", a1, a2)` to
     // ```
-    // std::fmt::Arguments::new_v1(&[], &[
-    //   std::fmt::ArgumentV1::new(&arg1,std::fmt::Display::fmt),
-    //   std::fmt::ArgumentV1::new(&arg2,std::fmt::Display::fmt),
+    // $crate::fmt::Arguments::new_v1(&[], &[
+    //   $crate::fmt::ArgumentV1::new(&arg1,$crate::fmt::Display::fmt),
+    //   $crate::fmt::ArgumentV1::new(&arg2,$crate::fmt::Display::fmt),
     // ])
     // ```,
     // which is still not really correct, but close enough for now
@@ -262,10 +262,10 @@ fn format_args_expand(
     }
     let _format_string = args.remove(0);
     let arg_tts = args.into_iter().flat_map(|arg| {
-        quote! { std::fmt::ArgumentV1::new(&(#arg), std::fmt::Display::fmt), }
+        quote! { #DOLLAR_CRATE::fmt::ArgumentV1::new(&(#arg), #DOLLAR_CRATE::fmt::Display::fmt), }
     }.token_trees);
     let expanded = quote! {
-        std::fmt::Arguments::new_v1(&[], &[##arg_tts])
+        #DOLLAR_CRATE::fmt::Arguments::new_v1(&[], &[##arg_tts])
     };
     ExpandResult::ok(expanded)
 }
@@ -675,8 +675,8 @@ fn option_env_expand(
     };
 
     let expanded = match get_env_inner(db, arg_id, &key) {
-        None => quote! { std::option::Option::None::<&str> },
-        Some(s) => quote! { std::option::Some(#s) },
+        None => quote! { #DOLLAR_CRATE::option::Option::None::<&str> },
+        Some(s) => quote! { #DOLLAR_CRATE::option::Some(#s) },
     };
 
     ExpandResult::ok(ExpandedEager::new(expanded))
