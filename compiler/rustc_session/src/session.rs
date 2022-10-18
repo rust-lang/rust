@@ -287,6 +287,7 @@ impl Session {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_warn<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -295,6 +296,7 @@ impl Session {
         self.diagnostic().struct_span_warn(sp, msg)
     }
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_warn_with_expectation<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -304,6 +306,7 @@ impl Session {
         self.diagnostic().struct_span_warn_with_expectation(sp, msg, id)
     }
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -313,10 +316,12 @@ impl Session {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_warn(msg)
     }
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_warn_with_expectation(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -345,6 +350,7 @@ impl Session {
         self.diagnostic().struct_expect(msg, id)
     }
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -353,6 +359,7 @@ impl Session {
         self.diagnostic().struct_span_err(sp, msg)
     }
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -363,12 +370,14 @@ impl Session {
     }
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         self.parse_sess.struct_err(msg)
     }
+    #[track_caller]
     #[rustc_lint_diagnostics]
     pub fn struct_err_with_code(
         &self,
@@ -378,6 +387,7 @@ impl Session {
         self.diagnostic().struct_err_with_code(msg, code)
     }
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_warn_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -425,6 +435,7 @@ impl Session {
         self.diagnostic().fatal(msg).raise()
     }
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_err_or_warn<S: Into<MultiSpan>>(
         &self,
         is_warning: bool,
@@ -438,6 +449,7 @@ impl Session {
         }
     }
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -458,12 +470,14 @@ impl Session {
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         self.diagnostic().err(msg)
     }
+    #[track_caller]
     pub fn create_err<'a>(
         &'a self,
         err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.parse_sess.create_err(err)
     }
+    #[track_caller]
     pub fn create_feature_err<'a>(
         &'a self,
         err: impl IntoDiagnostic<'a>,
@@ -1214,6 +1228,7 @@ fn default_emitter(
     fallback_bundle: LazyFallbackBundle,
 ) -> Box<dyn Emitter + sync::Send> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
+    let track_diagnostics = sopts.unstable_opts.track_diagnostics;
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -1237,6 +1252,7 @@ fn default_emitter(
                     sopts.unstable_opts.teach,
                     sopts.diagnostic_width,
                     macro_backtrace,
+                    track_diagnostics,
                 );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
@@ -1251,6 +1267,7 @@ fn default_emitter(
                 json_rendered,
                 sopts.diagnostic_width,
                 macro_backtrace,
+                track_diagnostics,
             )
             .ui_testing(sopts.unstable_opts.ui_testing),
         ),
@@ -1553,11 +1570,18 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
                 false,
                 None,
                 false,
+                false,
             ))
         }
-        config::ErrorOutputType::Json { pretty, json_rendered } => {
-            Box::new(JsonEmitter::basic(pretty, json_rendered, None, fallback_bundle, None, false))
-        }
+        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::basic(
+            pretty,
+            json_rendered,
+            None,
+            fallback_bundle,
+            None,
+            false,
+            false,
+        )),
     };
     rustc_errors::Handler::with_emitter(true, None, emitter)
 }

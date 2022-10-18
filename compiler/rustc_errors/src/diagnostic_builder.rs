@@ -133,6 +133,7 @@ mod sealed_level_is_error {
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
+    #[track_caller]
     pub(crate) fn new_guaranteeing_error<M: Into<DiagnosticMessage>, const L: Level>(
         handler: &'a Handler,
         message: M,
@@ -196,6 +197,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
         }
     }
 
+    #[track_caller]
     fn make_diagnostic_builder(
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
@@ -209,6 +211,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
 impl<'a> DiagnosticBuilder<'a, ()> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
+    #[track_caller]
     pub(crate) fn new<M: Into<DiagnosticMessage>>(
         handler: &'a Handler,
         level: Level,
@@ -220,6 +223,7 @@ impl<'a> DiagnosticBuilder<'a, ()> {
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
+    #[track_caller]
     pub(crate) fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
         debug!("Created new diagnostic");
         Self {
@@ -308,6 +312,7 @@ impl EmissionGuarantee for Noted {
 impl<'a> DiagnosticBuilder<'a, !> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
+    #[track_caller]
     pub(crate) fn new_fatal(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
         let diagnostic = Diagnostic::new_with_code(Level::Fatal, None, message);
         Self::new_diagnostic_fatal(handler, diagnostic)
