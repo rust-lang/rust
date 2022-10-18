@@ -2954,6 +2954,21 @@ impl<'tcx> TyCtxtAt<'tcx> {
     }
 }
 
+/// Parameter attributes that can only be determined by examining the body of a function instead
+/// of just its signature.
+///
+/// These can be useful for optimization purposes when a function is directly called. We compute
+/// them and store them into the crate metadata so that downstream crates can make use of them.
+///
+/// Right now, we only have `read_only`, but `no_capture` and `no_alias` might be useful in the
+/// future.
+#[derive(Clone, Copy, PartialEq, Debug, Default, TyDecodable, TyEncodable, HashStable)]
+pub struct DeducedParamAttrs {
+    /// The parameter is marked immutable in the function and contains no `UnsafeCell` (i.e. its
+    /// type is freeze).
+    pub read_only: bool,
+}
+
 // We are comparing types with different invariant lifetimes, so `ptr::eq`
 // won't work for us.
 fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {

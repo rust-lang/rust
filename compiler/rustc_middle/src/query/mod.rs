@@ -2127,4 +2127,9 @@ rustc_queries! {
     ) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking assoc const `{}` has the same type as trait item", tcx.def_path_str(key.0.to_def_id()) }
     }
+
+    query deduced_param_attrs(def_id: DefId) -> &'tcx [ty::DeducedParamAttrs] {
+        desc { |tcx| "deducing parameter attributes for {}", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
 }

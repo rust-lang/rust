@@ -224,6 +224,7 @@ provide! { tcx, def_id, other, cdata,
     fn_arg_names => { table }
     generator_kind => { table }
     trait_def => { table }
+    deduced_param_attrs => { table }
     collect_trait_impl_trait_tys => {
         Ok(cdata
             .root
