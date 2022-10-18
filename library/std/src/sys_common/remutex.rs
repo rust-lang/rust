@@ -1,11 +1,11 @@
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
-use super::mutex as sys;
 use crate::cell::UnsafeCell;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use crate::sys::locks as sys;
 
 /// A re-entrant mutual exclusion
 ///
@@ -39,7 +39,7 @@ use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 /// synchronization is left to the mutex, making relaxed memory ordering for
 /// the `owner` field fine in all cases.
 pub struct ReentrantMutex<T> {
-    mutex: sys::MovableMutex,
+    mutex: sys::Mutex,
     owner: AtomicUsize,
     lock_count: UnsafeCell<u32>,
     data: T,
@@ -74,7 +74,7 @@ impl<T> ReentrantMutex<T> {
     /// Creates a new reentrant mutex in an unlocked state.
     pub const fn new(t: T) -> ReentrantMutex<T> {
         ReentrantMutex {
-            mutex: sys::MovableMutex::new(),
+            mutex: sys::Mutex::new(),
             owner: AtomicUsize::new(0),
             lock_count: UnsafeCell::new(0),
             data: t,
@@ -100,7 +100,7 @@ impl<T> ReentrantMutex<T> {
             if self.owner.load(Relaxed) == this_thread {
                 self.increment_lock_count();
             } else {
-                self.mutex.raw_lock();
+                self.mutex.lock();
                 self.owner.store(this_thread, Relaxed);
                 debug_assert_eq!(*self.lock_count.get(), 0);
                 *self.lock_count.get() = 1;
@@ -162,7 +162,7 @@ impl<T> Drop for ReentrantMutexGuard<'_, T> {
             *self.lock.lock_count.get() -= 1;
             if *self.lock.lock_count.get() == 0 {
                 self.lock.owner.store(0, Relaxed);
-                self.lock.mutex.raw_unlock();
+                self.lock.mutex.unlock();
             }
         }
     }
