@@ -1,6 +1,12 @@
 use super::{Parser, PathStyle, TokenType};
 
-use crate::errors::{ExpectedFnPathFoundFnKeyword, FnPtrWithGenerics, FnPtrWithGenericsSugg};
+use crate::errors::{
+    DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
+    FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPtrWithGenerics, FnPtrWithGenericsSugg,
+    InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
+    NegativeBoundsNotSupported, NegativeBoundsNotSupportedSugg, NestedCVariadicType,
+    ReturnTypesUseThinArrow,
+};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 use ast::DUMMY_NODE_ID;
@@ -12,7 +18,7 @@ use rustc_ast::{
     MacCall, MutTy, Mutability, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{pluralize, struct_span_err, Applicability, PResult};
+use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
@@ -233,14 +239,7 @@ impl<'a> Parser<'a> {
             // Don't `eat` to prevent `=>` from being added as an expected token which isn't
             // actually expected and could only confuse users
             self.bump();
-            self.struct_span_err(self.prev_token.span, "return types are denoted using `->`")
-                .span_suggestion_short(
-                    self.prev_token.span,
-                    "use `->` instead",
-                    "->",
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+            self.sess.emit_err(ReturnTypesUseThinArrow { span: self.prev_token.span });
             let ty = self.parse_ty_common(
                 allow_plus,
                 AllowCVariadic::No,
@@ -328,7 +327,7 @@ impl<'a> Parser<'a> {
                 AllowCVariadic::No => {
                     // FIXME(Centril): Should we just allow `...` syntactically
                     // anywhere in a type and use semantic restrictions instead?
-                    self.error_illegal_c_varadic_ty(lo);
+                    self.sess.emit_err(NestedCVariadicType { span: lo.to(self.prev_token.span) });
                     TyKind::Err
                 }
             }
@@ -431,8 +430,7 @@ impl<'a> Parser<'a> {
         let lt_no_plus = self.check_lifetime() && !self.look_ahead(1, |t| t.is_like_plus());
         let bounds = self.parse_generic_bounds_common(allow_plus, None)?;
         if lt_no_plus {
-            self.struct_span_err(lo, "lifetime in trait object type must be followed by `+`")
-                .emit();
+            self.sess.emit_err(NeedPlusAfterTraitObjectLifetime { span: lo });
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
@@ -466,14 +464,10 @@ impl<'a> Parser<'a> {
     fn parse_ty_ptr(&mut self) -> PResult<'a, TyKind> {
         let mutbl = self.parse_const_or_mut().unwrap_or_else(|| {
             let span = self.prev_token.span;
-            self.struct_span_err(span, "expected `mut` or `const` keyword in raw pointer type")
-                .span_suggestions(
-                    span.shrink_to_hi(),
-                    "add `mut` or `const` here",
-                    ["mut ".to_string(), "const ".to_string()],
-                    Applicability::HasPlaceholders,
-                )
-                .emit();
+            self.sess.emit_err(ExpectedMutOrConstInRawPointerType {
+                span,
+                after_asterisk: span.shrink_to_hi(),
+            });
             Mutability::Not
         });
         let ty = self.parse_ty_no_plus()?;
@@ -528,16 +522,13 @@ impl<'a> Parser<'a> {
                 let lifetime_span = self.token.span;
                 let span = and_span.to(lifetime_span);
 
-                let mut err = self.struct_span_err(span, "lifetime must precede `mut`");
-                if let Ok(lifetime_src) = self.span_to_snippet(lifetime_span) {
-                    err.span_suggestion(
-                        span,
-                        "place the lifetime before `mut`",
-                        format!("&{} mut", lifetime_src),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                err.emit();
+                let (suggest_lifetime, snippet) =
+                    if let Ok(lifetime_src) = self.span_to_snippet(lifetime_span) {
+                        (Some(span), lifetime_src)
+                    } else {
+                        (None, String::new())
+                    };
+                self.sess.emit_err(LifetimeAfterMut { span, suggest_lifetime, snippet });
 
                 opt_lifetime = Some(self.expect_lifetime());
             }
@@ -547,14 +538,7 @@ impl<'a> Parser<'a> {
         {
             // We have `&dyn mut ...`, which is invalid and should be `&mut dyn ...`.
             let span = and_span.to(self.look_ahead(1, |t| t.span));
-            let mut err = self.struct_span_err(span, "`mut` must precede `dyn`");
-            err.span_suggestion(
-                span,
-                "place `mut` before `dyn`",
-                "&mut dyn",
-                Applicability::MachineApplicable,
-            );
-            err.emit();
+            self.sess.emit_err(DynAfterMut { span });
 
             // Recovery
             mutbl = Mutability::Mut;
@@ -608,10 +592,10 @@ impl<'a> Parser<'a> {
             // If we ever start to allow `const fn()`, then update
             // feature gating for `#![feature(const_extern_fn)]` to
             // cover it.
-            self.error_fn_ptr_bad_qualifier(whole_span, span, "const");
+            self.sess.emit_err(FnPointerCannotBeConst { span: whole_span, qualifier: span });
         }
         if let ast::Async::Yes { span, .. } = asyncness {
-            self.error_fn_ptr_bad_qualifier(whole_span, span, "async");
+            self.sess.emit_err(FnPointerCannotBeAsync { span: whole_span, qualifier: span });
         }
         let decl_span = span_start.to(self.token.span);
         Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl, decl_span })))
@@ -657,19 +641,6 @@ impl<'a> Parser<'a> {
         self.sess.emit_err(FnPtrWithGenerics { span: generics.span, sugg });
         params.append(&mut lifetimes);
         Ok(())
-    }
-
-    /// Emit an error for the given bad function pointer qualifier.
-    fn error_fn_ptr_bad_qualifier(&self, span: Span, qual_span: Span, qual: &str) {
-        self.struct_span_err(span, &format!("an `fn` pointer type cannot be `{}`", qual))
-            .span_label(qual_span, format!("`{}` because of this", qual))
-            .span_suggestion_short(
-                qual_span,
-                &format!("remove the `{}` qualifier", qual),
-                "",
-                Applicability::MaybeIncorrect,
-            )
-            .emit();
     }
 
     /// Parses an `impl B0 + ... + Bn` type.
@@ -758,16 +729,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error_illegal_c_varadic_ty(&self, lo: Span) {
-        struct_span_err!(
-            self.sess.span_diagnostic,
-            lo.to(self.prev_token.span),
-            E0743,
-            "C-variadic type `...` may not be nested inside another type",
-        )
-        .emit();
-    }
-
     pub(super) fn parse_generic_bounds(
         &mut self,
         colon_span: Option<Span>,
@@ -797,15 +758,7 @@ impl<'a> Parser<'a> {
         {
             if self.token.is_keyword(kw::Dyn) {
                 // Account for `&dyn Trait + dyn Other`.
-                self.struct_span_err(self.token.span, "invalid `dyn` keyword")
-                    .help("`dyn` is only needed at the start of a trait `+`-separated list")
-                    .span_suggestion(
-                        self.token.span,
-                        "remove this keyword",
-                        "",
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.sess.emit_err(InvalidDynKeyword { span: self.token.span });
                 self.bump();
             }
             match self.parse_generic_bound()? {
@@ -842,11 +795,7 @@ impl<'a> Parser<'a> {
         bounds: &[GenericBound],
         negative_bounds: Vec<Span>,
     ) {
-        let negative_bounds_len = negative_bounds.len();
-        let last_span = *negative_bounds.last().expect("no negative bounds, but still error?");
-        let mut err = self.struct_span_err(negative_bounds, "negative bounds are not supported");
-        err.span_label(last_span, "negative bounds are not supported");
-        if let Some(bound_list) = colon_span {
+        let sub = if let Some(bound_list) = colon_span {
             let bound_list = bound_list.to(self.prev_token.span);
             let mut new_bound_list = String::new();
             if !bounds.is_empty() {
@@ -857,14 +806,18 @@ impl<'a> Parser<'a> {
                 }
                 new_bound_list = new_bound_list.replacen(" +", ":", 1);
             }
-            err.tool_only_span_suggestion(
+
+            Some(NegativeBoundsNotSupportedSugg {
                 bound_list,
-                &format!("remove the bound{}", pluralize!(negative_bounds_len)),
-                new_bound_list,
-                Applicability::MachineApplicable,
-            );
-        }
-        err.emit();
+                num_bounds: negative_bounds.len(),
+                fixed: new_bound_list,
+            })
+        } else {
+            None
+        };
+
+        let last_span = *negative_bounds.last().expect("no negative bounds, but still error?");
+        self.sess.emit_err(NegativeBoundsNotSupported { negative_bounds, last_span, sub });
     }
 
     /// Parses a bound according to the grammar:

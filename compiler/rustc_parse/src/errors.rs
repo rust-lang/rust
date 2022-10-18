@@ -1845,3 +1845,106 @@ pub(crate) struct ExpectedCommaAfterPatternField {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_return_types_use_thin_arrow)]
+pub(crate) struct ReturnTypesUseThinArrow {
+    #[primary_span]
+    #[suggestion(style = "short", code = "->", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_need_plus_after_trait_object_lifetime)]
+pub(crate) struct NeedPlusAfterTraitObjectLifetime {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_expected_mut_or_const_in_raw_pointer_type)]
+pub(crate) struct ExpectedMutOrConstInRawPointerType {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code("mut ", "const "), applicability = "has-placeholders")]
+    pub after_asterisk: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_lifetime_after_mut)]
+pub(crate) struct LifetimeAfterMut {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "&{snippet} mut", applicability = "maybe-incorrect")]
+    pub suggest_lifetime: Option<Span>,
+    pub snippet: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_dyn_after_mut)]
+pub(crate) struct DynAfterMut {
+    #[primary_span]
+    #[suggestion(code = "&mut dyn", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_fn_pointer_cannot_be_const)]
+pub(crate) struct FnPointerCannotBeConst {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[label]
+    pub qualifier: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_fn_pointer_cannot_be_async)]
+pub(crate) struct FnPointerCannotBeAsync {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[label]
+    pub qualifier: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_nested_c_variadic_type, code = "E0743")]
+pub(crate) struct NestedCVariadicType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_dyn_keyword)]
+#[help]
+pub(crate) struct InvalidDynKeyword {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_negative_bounds_not_supported)]
+pub(crate) struct NegativeBoundsNotSupported {
+    #[primary_span]
+    pub negative_bounds: Vec<Span>,
+    #[label]
+    pub last_span: Span,
+    #[subdiagnostic]
+    pub sub: Option<NegativeBoundsNotSupportedSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    suggestion,
+    style = "tool-only",
+    code = "{fixed}",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct NegativeBoundsNotSupportedSugg {
+    #[primary_span]
+    pub bound_list: Span,
+    pub num_bounds: usize,
+    pub fixed: String,
+}

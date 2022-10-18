@@ -539,3 +539,38 @@ parse_dot_dot_dot_for_remaining_fields = expected field pattern, found `...`
     .suggestion = to omit remaining fields, use one fewer `.`
 
 parse_expected_comma_after_pattern_field = expected `,`
+
+parse_return_types_use_thin_arrow = return types are denoted using `->`
+    .suggestion = use `->` instead
+
+parse_need_plus_after_trait_object_lifetime = lifetime in trait object type must be followed by `+`
+
+parse_expected_mut_or_const_in_raw_pointer_type = expected `mut` or `const` keyword in raw pointer type
+    .suggestion = add `mut` or `const` here
+
+parse_lifetime_after_mut = lifetime must precede `mut`
+    .suggestion = place the lifetime before `mut`
+
+parse_dyn_after_mut = `mut` must precede `dyn`
+    .suggestion = place `mut` before `dyn`
+
+parse_fn_pointer_cannot_be_const = an `fn` pointer type cannot be `const`
+    .label = `const` because of this
+    .suggestion = remove the `const` qualifier
+
+parse_fn_pointer_cannot_be_async = an `fn` pointer type cannot be `async`
+    .label = `async` because of this
+    .suggestion = remove the `async` qualifier
+
+parse_nested_c_variadic_type = C-variadic type `...` may not be nested inside another type
+
+parse_invalid_dyn_keyword = invalid `dyn` keyword
+    .help = `dyn` is only needed at the start of a trait `+`-separated list
+    .suggestion = remove this keyword
+
+parse_negative_bounds_not_supported = negative bounds are not supported
+    .label = negative bounds are not supported
+    .suggestion = {$num_bounds ->
+            [one] remove the bound
+           *[other] remove the bounds
+        }
