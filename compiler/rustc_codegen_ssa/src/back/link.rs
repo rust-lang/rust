@@ -1011,13 +1011,33 @@ fn link_natively<'a>(
 
     if sess.target.is_like_osx {
         match (strip, crate_type) {
-            (Strip::Debuginfo, _) => strip_symbols_in_osx(sess, &out_filename, Some("-S")),
+            (Strip::Debuginfo, _) => {
+                strip_symbols_with_external_utility(sess, "strip", &out_filename, Some("-S"))
+            }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
             (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
-                strip_symbols_in_osx(sess, &out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, "strip", &out_filename, Some("-x"))
             }
-            (Strip::Symbols, _) => strip_symbols_in_osx(sess, &out_filename, None),
+            (Strip::Symbols, _) => {
+                strip_symbols_with_external_utility(sess, "strip", &out_filename, None)
+            }
             (Strip::None, _) => {}
+        }
+    }
+
+    if sess.target.os == "illumos" {
+        // Many illumos systems will have both the native 'strip' utility and
+        // the GNU one. Use the native version explicitly and do not rely on
+        // what's in the path.
+        let stripcmd = "/usr/bin/strip";
+        match strip {
+            // Always preserve the symbol table (-x).
+            Strip::Debuginfo => {
+                strip_symbols_with_external_utility(sess, stripcmd, &out_filename, Some("-x"))
+            }
+            // Strip::Symbols is handled via the --strip-all linker option.
+            Strip::Symbols => {}
+            Strip::None => {}
         }
     }
 
@@ -1032,8 +1052,13 @@ fn strip_value(sess: &Session) -> Strip {
     }
 }
 
-fn strip_symbols_in_osx<'a>(sess: &'a Session, out_filename: &Path, option: Option<&str>) {
-    let mut cmd = Command::new("strip");
+fn strip_symbols_with_external_utility<'a>(
+    sess: &'a Session,
+    util: &str,
+    out_filename: &Path,
+    option: Option<&str>,
+) {
+    let mut cmd = Command::new(util);
     if let Some(option) = option {
         cmd.arg(option);
     }
@@ -1044,14 +1069,14 @@ fn strip_symbols_in_osx<'a>(sess: &'a Session, out_filename: &Path, option: Opti
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 sess.struct_warn(&format!(
-                    "stripping debug info with `strip` failed: {}",
-                    prog.status
+                    "stripping debug info with `{}` failed: {}",
+                    util, prog.status
                 ))
                 .note(&escape_string(&output))
                 .emit();
             }
         }
-        Err(e) => sess.fatal(&format!("unable to run `strip`: {}", e)),
+        Err(e) => sess.fatal(&format!("unable to run `{}`: {}", util, e)),
     }
 }
 
