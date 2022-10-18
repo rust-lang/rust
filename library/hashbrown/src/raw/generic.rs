@@ -13,7 +13,7 @@ use core::{mem, ptr};
 ))]
 type GroupWord = u64;
 #[cfg(all(
-    target_pointer_width = "32",
+    any(target_pointer_width = "32", target_pointer_width = "16"),
     not(target_arch = "aarch64"),
     not(target_arch = "x86_64"),
     not(target_arch = "wasm32"),
