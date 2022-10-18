@@ -492,6 +492,8 @@ pub struct HandlerFlags {
     pub macro_backtrace: bool,
     /// If true, identical diagnostics are reported only once.
     pub deduplicate_diagnostics: bool,
+    /// Track where errors are created. Enabled with `-Ztrack-diagnostics`.
+    pub track_diagnostics: bool,
 }
 
 impl Drop for HandlerInner {
@@ -559,6 +561,7 @@ impl Handler {
             false,
             None,
             flags.macro_backtrace,
+            flags.track_diagnostics,
         ));
         Self::with_emitter_and_flags(emitter, flags)
     }
@@ -664,6 +667,7 @@ impl Handler {
 
     /// Construct a builder with the `msg` at the level appropriate for the specific `EmissionGuarantee`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_diagnostic<G: EmissionGuarantee>(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -677,6 +681,7 @@ impl Handler {
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_warn(
         &self,
         span: impl Into<MultiSpan>,
@@ -693,6 +698,7 @@ impl Handler {
     /// Attempting to `.emit()` the builder will only emit if either:
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
+    #[track_caller]
     pub fn struct_span_warn_with_expectation(
         &self,
         span: impl Into<MultiSpan>,
@@ -706,6 +712,7 @@ impl Handler {
 
     /// Construct a builder at the `Allow` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_allow(
         &self,
         span: impl Into<MultiSpan>,
@@ -719,6 +726,7 @@ impl Handler {
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     /// Also include a code.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_warn_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -736,6 +744,7 @@ impl Handler {
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Warning(None), msg)
     }
@@ -746,6 +755,7 @@ impl Handler {
     /// Attempting to `.emit()` the builder will only emit if either:
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
+    #[track_caller]
     pub fn struct_warn_with_expectation(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -762,6 +772,7 @@ impl Handler {
 
     /// Construct a builder at the `Expect` level with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_expect(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -772,6 +783,7 @@ impl Handler {
 
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_err(
         &self,
         span: impl Into<MultiSpan>,
@@ -784,6 +796,7 @@ impl Handler {
 
     /// Construct a builder at the `Error` level at the given `span`, with the `msg`, and `code`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_err_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -798,6 +811,7 @@ impl Handler {
     /// Construct a builder at the `Error` level with the `msg`.
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -807,12 +821,14 @@ impl Handler {
 
     /// This should only be used by `rustc_middle::lint::struct_lint_level`. Do not use it for hard errors.
     #[doc(hidden)]
+    #[track_caller]
     pub fn struct_err_lint(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Error { lint: true }, msg)
     }
 
     /// Construct a builder at the `Error` level with the `msg` and the `code`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_err_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -825,6 +841,7 @@ impl Handler {
 
     /// Construct a builder at the `Warn` level with the `msg` and the `code`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_warn_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -837,6 +854,7 @@ impl Handler {
 
     /// Construct a builder at the `Fatal` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_fatal(
         &self,
         span: impl Into<MultiSpan>,
@@ -874,6 +892,7 @@ impl Handler {
 
     /// Construct a builder at the `Note` level with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_note_without_error(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -888,6 +907,7 @@ impl Handler {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_fatal_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -899,6 +919,7 @@ impl Handler {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_err(
         &self,
         span: impl Into<MultiSpan>,
@@ -908,6 +929,7 @@ impl Handler {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_err_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -921,11 +943,13 @@ impl Handler {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.emit_diag_at_span(Diagnostic::new(Warning(None), msg), span);
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_warn_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -935,6 +959,7 @@ impl Handler {
         self.emit_diag_at_span(Diagnostic::new_with_code(Warning(None), Some(code), msg), span);
     }
 
+    #[track_caller]
     pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.inner.borrow_mut().span_bug(span, msg)
     }
@@ -950,14 +975,17 @@ impl Handler {
 
     // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
     // where the explanation of what "good path" is (also, it should be renamed).
+    #[track_caller]
     pub fn delay_good_path_bug(&self, msg: impl Into<DiagnosticMessage>) {
         self.inner.borrow_mut().delay_good_path_bug(msg)
     }
 
+    #[track_caller]
     pub fn span_bug_no_panic(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.emit_diag_at_span(Diagnostic::new(Bug, msg), span);
     }
 
+    #[track_caller]
     pub fn span_note_without_error(
         &self,
         span: impl Into<MultiSpan>,
@@ -966,6 +994,7 @@ impl Handler {
         self.emit_diag_at_span(Diagnostic::new(Note, msg), span);
     }
 
+    #[track_caller]
     pub fn span_note_diag(
         &self,
         span: Span,
@@ -1452,6 +1481,7 @@ impl HandlerInner {
         }
     }
 
+    #[track_caller]
     fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.emit_diag_at_span(Diagnostic::new(Bug, msg), sp);
         panic::panic_any(ExplicitBug);
