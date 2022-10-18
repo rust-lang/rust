@@ -799,6 +799,7 @@ impl ::core::clone::Clone for Mixed {
     fn clone(&self) -> Mixed {
         let _: ::core::clone::AssertParamIsClone<u32>;
         let _: ::core::clone::AssertParamIsClone<Option<u32>>;
+        let _: ::core::clone::AssertParamIsClone<Option<i32>>;
         *self
     }
 }
@@ -866,6 +867,7 @@ impl ::core::cmp::Eq for Mixed {
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<Option<u32>>;
+        let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
     }
 }
 #[automatically_derived]

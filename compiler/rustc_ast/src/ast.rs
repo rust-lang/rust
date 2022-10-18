@@ -2060,8 +2060,11 @@ impl TyKind {
     }
 
     pub fn is_simple_path(&self) -> Option<Symbol> {
-        if let TyKind::Path(None, Path { segments, .. }) = &self && segments.len() == 1 {
-            Some(segments[0].ident.name)
+        if let TyKind::Path(None, Path { segments, .. }) = &self
+            && let [segment] = &segments[..]
+            && segment.args.is_none()
+        {
+            Some(segment.ident.name)
         } else {
             None
         }
