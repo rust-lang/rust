@@ -706,7 +706,10 @@ impl<'gcc, 'tcx> AsmMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             && options.contains(InlineAsmOptions::ATT_SYNTAX);
 
         // Build the template string
-        let mut template_str = String::new();
+        let mut template_str = ".pushsection .text\n".to_owned();
+        if att_dialect {
+            template_str.push_str(".att_syntax\n");
+        }
         for piece in template {
             match *piece {
                 InlineAsmTemplatePiece::String(ref string) => {
@@ -754,15 +757,11 @@ impl<'gcc, 'tcx> AsmMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             }
         }
 
-        let template_str =
-            if att_dialect {
-                format!(".att_syntax\n\t{}\n\t.intel_syntax noprefix", template_str)
-            }
-            else {
-                template_str
-            };
+        if att_dialect {
+            template_str.push_str("\n\t.intel_syntax noprefix");
+        }
         // NOTE: seems like gcc will put the asm in the wrong section, so set it to .text manually.
-        let template_str = format!(".pushsection .text\n{}\n.popsection", template_str);
+        template_str.push_str("\n.popsection");
         self.context.add_top_level_asm(None, &template_str);
     }
 }
