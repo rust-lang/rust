@@ -912,7 +912,7 @@ where
 
     mem::forget(guard);
     // SAFETY: All elements of the array were populated in the loop above.
-    let output = unsafe { MaybeUninit::array_assume_init(array) };
+    let output = unsafe { array.transpose().assume_init() };
     Ok(Try::from_output(output))
 }
 

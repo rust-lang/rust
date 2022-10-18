@@ -1,4 +1,5 @@
 // run-pass
+// ignore-fuchsia Test must be run out-of-process
 
 #![feature(test)]
 
