@@ -56,10 +56,10 @@ exit:
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %cmp = icmp eq i64 %iv.next, 10
 ; CHECK-NEXT:   %out = load double*, double** %outp, align 8, !alias.scope ![[scope0:[0-9]+]], !noalias ![[scope3:[0-9]+]]
-; CHECK-NEXT:   %in = load double*, double** %inp, align 8, !alias.scope ![[scope7:[0-9]+]], !noalias ![[scope8:[0-9]+]], !invariant.group ![[scope13:[0-9]+]]
-; CHECK-NEXT:   %v = load double, double* %in, align 8, !alias.scope ![[scope9:[0-9]+]], !noalias ![[scope10:[0-9]+]], !invariant.group ![[scope14:[0-9]+]]
+; CHECK-NEXT:   %in = load double*, double** %inp, align 8, !alias.scope ![[scope7:[0-9]+]], !noalias ![[scope8:[0-9]+]]
+; CHECK-NEXT:   %v = load double, double* %in, align 8, !alias.scope ![[scope9:[0-9]+]], !noalias ![[scope10:[0-9]+]]
 ; CHECK-NEXT:   %v2 = fmul double %v, %v
-; CHECK-NEXT:   store double %v2, double* %out, align 8, !alias.scope !15, !noalias !18
+; CHECK-NEXT:   store double %v2, double* %out, align 8, !alias.scope !13, !noalias !16
 ; CHECK-NEXT:   br i1 %cmp, label %invertloop, label %loop
 
 ; CHECK: invertentry:                                      ; preds = %invertloop
@@ -69,16 +69,16 @@ exit:
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %5, %incinvertloop ], [ 9, %loop ]
 ; CHECK-NEXT:   %"out'il_phi_unwrap" = load double*, double** %"outp'", align 8, !noalias !3
 ; CHECK-NEXT:   %0 = load double, double* %"out'il_phi_unwrap", align 8, !noalias !12
-; CHECK-NEXT:   store double 0.000000e+00, double* %"out'il_phi_unwrap", align 8, !alias.scope !20, !noalias !21
-; CHECK-NEXT:   %in_unwrap = load double*, double** %inp, align 8, !alias.scope ![[scope7]], !noalias ![[scope8]], !invariant.group ![[scope13]]
-; CHECK-NEXT:   %v_unwrap = load double, double* %in_unwrap, align 8, !alias.scope ![[scope9]], !noalias ![[scope10]], !invariant.group ![[scope14]]
+; CHECK-NEXT:   store double 0.000000e+00, double* %"out'il_phi_unwrap", align 8, !alias.scope !18, !noalias !19
+; CHECK-NEXT:   %in_unwrap = load double*, double** %inp, align 8, !alias.scope ![[scope7]], !noalias ![[scope8]]
+; CHECK-NEXT:   %v_unwrap = load double, double* %in_unwrap, align 8, !alias.scope ![[scope9]], !noalias ![[scope10]]
 ; CHECK-NEXT:   %m0diffev = fmul fast double %0, %v_unwrap
 ; CHECK-NEXT:   %m1diffev = fmul fast double %0, %v_unwrap
 ; CHECK-NEXT:   %1 = fadd fast double %m0diffev, %m1diffev
 ; CHECK-NEXT:   %"in'il_phi_unwrap" = load double*, double** %"inp'", align 8, !noalias ![[scope8]]
-; CHECK-NEXT:   %2 = load double, double* %"in'il_phi_unwrap", align 8, !alias.scope !22, !noalias !25
+; CHECK-NEXT:   %2 = load double, double* %"in'il_phi_unwrap", align 8, !alias.scope !20, !noalias !23
 ; CHECK-NEXT:   %3 = fadd fast double %2, %1
-; CHECK-NEXT:   store double %3, double* %"in'il_phi_unwrap", align 8, !alias.scope !22, !noalias !25
+; CHECK-NEXT:   store double %3, double* %"in'il_phi_unwrap", align 8, !alias.scope !20, !noalias !23
 ; CHECK-NEXT:   %4 = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   br i1 %4, label %invertentry, label %incinvertloop
 

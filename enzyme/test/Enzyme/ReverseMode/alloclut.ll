@@ -97,7 +97,7 @@ declare double @__enzyme_autodiff(double (double, i32*)*, ...)
 ; CHECK-NEXT:   %9 = getelementptr inbounds [2 x double], [2 x double]* %val_malloccache, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %idx_unwrap = add i64 %"iv'ac.0", %"iv1'ac.0"
 ; CHECK-NEXT:   %zgep_unwrap = getelementptr inbounds i32, i32* %z, i64 %idx_unwrap
-; CHECK-NEXT:   %lu_unwrap = load i32, i32* %zgep_unwrap, align 4, !invariant.group !
+; CHECK-NEXT:   %lu_unwrap = load i32, i32* %zgep_unwrap, align 4
 ; CHECK-NEXT:   %10 = getelementptr inbounds [2 x double], [2 x double]* %9, i64 0, i32 %lu_unwrap
 ; CHECK-NEXT:   %11 = load double, double* %10, align 8, !invariant.group !
 ; CHECK-NEXT:   %m0diffeval = fmul fast double %"add'de.1", %11

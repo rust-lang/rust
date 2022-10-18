@@ -97,9 +97,9 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %add = add i64 %iv1, %mul
 ; CHECK-NEXT:   %arrayidx10 = getelementptr inbounds double, double* %L, i64 %add
-; CHECK-NEXT:   %3 = load double, double* %arrayidx10, align 8, !tbaa !2, !invariant.group !6
+; CHECK-NEXT:   %3 = load double, double* %arrayidx10, align 8, !tbaa !2
 ; CHECK-NEXT:   %arrayidx11 = getelementptr inbounds double, double* %out, i64 %iv1
-; CHECK-NEXT:   %4 = load double, double* %arrayidx11, align 8, !tbaa !2, !invariant.group !7
+; CHECK-NEXT:   %4 = load double, double* %arrayidx11, align 8, !tbaa !2
 ; CHECK-NEXT:   %mul12 = fmul double %3, %4
 ; CHECK-NEXT:   %sub13 = fsub double %tmp.034, %mul12
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv.next2, %[[i1]]
@@ -145,12 +145,12 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %[[i11:.+]] = {{(fadd|fsub)}} fast double %"mul12'de.1"
 ; , %[[i9]]
 ; CHECK-NEXT:   %arrayidx11_unwrap = getelementptr inbounds double, double* %out, i64 %"iv1'ac.0"
-; CHECK-NEXT:   %_unwrap = load double, double* %arrayidx11_unwrap, align 8, !tbaa !2, !invariant.group !7
+; CHECK-NEXT:   %_unwrap = load double, double* %arrayidx11_unwrap, align 8, !tbaa !2
 ; CHECK-NEXT:   %m0diffe = fmul fast double %[[i11]], %_unwrap
 ; CHECK-NEXT:   %mul_unwrap = mul i64 %"iv'ac.0", %N
 ; CHECK-NEXT:   %add_unwrap = add i64 %"iv1'ac.0", %mul_unwrap
 ; CHECK-NEXT:   %arrayidx10_unwrap = getelementptr inbounds double, double* %L, i64 %add_unwrap
-; CHECK-NEXT:   %[[_unwrap3:.+]] = load double, double* %arrayidx10_unwrap, align 8, !tbaa !2, !invariant.group !6
+; CHECK-NEXT:   %[[_unwrap3:.+]] = load double, double* %arrayidx10_unwrap, align 8, !tbaa !2
 ; CHECK-NEXT:   %m1diffe = fmul fast double %[[i11]], %[[_unwrap3]]
 ; CHECK-NEXT:   %[[i12:.+]] = fadd fast double %"'de2.1", %m0diffe
 ; CHECK-NEXT:   %[[i13:.+]] = fadd fast double %"'de3.1", %m1diffe

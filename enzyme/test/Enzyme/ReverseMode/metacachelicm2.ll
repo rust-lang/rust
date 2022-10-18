@@ -77,7 +77,7 @@ attributes #2 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.cond.cleanup4 ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds i64, i64* %array, i64 %iv
-; CHECK-NEXT:   %len = load i64, i64* %arrayidx, align 8, !tbaa !6, !invariant.group ![[g8:[0-9]+]]
+; CHECK-NEXT:   %len = load i64, i64* %arrayidx, align 8, !tbaa !6
 ; CHECK-NEXT:   %0 = getelementptr inbounds double*, double** %ld_malloccache, i64 %iv
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %len, 8
 ; CHECK-NEXT:   %[[malloccall3:.+]] = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
@@ -132,7 +132,7 @@ attributes #2 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx9'ipg_unwrap", align 8
 ; CHECK-NEXT:   %10 = fadd fast double %"add'de.0", %9
 ; CHECK-NEXT:   %arrayidx_unwrap = getelementptr inbounds i64, i64* %array, i64 %"iv'ac.0"
-; CHECK-NEXT:   %len_unwrap = load i64, i64* %arrayidx_unwrap, align 8, !tbaa !6, !invariant.group ![[g8]]
+; CHECK-NEXT:   %len_unwrap = load i64, i64* %arrayidx_unwrap, align 8, !tbaa !6
 ; CHECK-NEXT:   %_unwrap = add i64 %len_unwrap, -1
 ; CHECK-NEXT:   br label %invertfor.body5
 

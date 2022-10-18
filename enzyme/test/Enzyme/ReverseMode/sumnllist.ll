@@ -170,7 +170,7 @@ attributes #4 = { nounwind }
 ; SHARED-NEXT:   %[[lstructiv:.+]] = load %struct.n*, %struct.n** %[[toload]], align 8, !invariant.group
 ; //NOTE this should be LICM'd outside this loop (but LICM doesn't handle invariant group at the momeny :'( )
 ; SHARED-NEXT:   %"values'ipg_unwrap" = getelementptr inbounds %struct.n, %struct.n* %[[lstructiv]], i64 0, i32 0
-; SHARED-NEXT:   %[[loadediv:.+]] = load double*, double** %"values'ipg_unwrap", align 8, !tbaa !2, !invariant.group
+; SHARED-NEXT:   %[[loadediv:.+]] = load double*, double** %"values'ipg_unwrap", align 8, !tbaa !2
 ; SHARED-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %[[loadediv]], i64 %[[mantivar]]
 ; SHARED-NEXT:   %[[arrayload:.+]] = load double, double* %[[arrayidxipg]]
 ; LLVM13-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %differeturn

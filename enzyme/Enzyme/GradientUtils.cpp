@@ -5241,17 +5241,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
       if (op) {
         assert(op);
         assert(op->getType());
-        if (auto load_op = dyn_cast<LoadInst>(prelcssaInst)) {
-          if (auto new_op = dyn_cast<LoadInst>(op)) {
-            MDNode *invgroup =
-                load_op->getMetadata(LLVMContext::MD_invariant_group);
-            if (invgroup == nullptr) {
-              invgroup = MDNode::getDistinct(load_op->getContext(), {});
-              load_op->setMetadata(LLVMContext::MD_invariant_group, invgroup);
-            }
-            new_op->setMetadata(LLVMContext::MD_invariant_group, invgroup);
-          }
-        }
         if (op->getType() != inst->getType()) {
           llvm::errs() << " op: " << *op << " inst: " << *inst << "\n";
         }

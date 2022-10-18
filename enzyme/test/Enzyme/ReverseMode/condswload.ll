@@ -79,17 +79,17 @@ entry:
 
 ; CHECK: invertend_phirc:                                  ; preds = %invertend
 ; CHECK-NEXT:   %g3_unwrap = getelementptr inbounds double, double* %a, i32 128
-; CHECK-NEXT:   %l3_unwrap = load double, double* %g3_unwrap, align 8, !invariant.group !
+; CHECK-NEXT:   %l3_unwrap = load double, double* %g3_unwrap, align 8
 ; CHECK-NEXT:   br label %invertend_phimerge
 
 ; CHECK: invertend_phirc1:                                 ; preds = %invertend
 ; CHECK-NEXT:   %g1_unwrap = getelementptr inbounds double, double* %a, i32 32
-; CHECK-NEXT:   %l1_unwrap = load double, double* %g1_unwrap, align 8, !invariant.group !
+; CHECK-NEXT:   %l1_unwrap = load double, double* %g1_unwrap, align 8
 ; CHECK-NEXT:   br label %invertend_phimerge
 
 ; CHECK: invertend_phirc2:                                 ; preds = %invertend
 ; CHECK-NEXT:   %g2_unwrap = getelementptr inbounds double, double* %a, i32 64
-; CHECK-NEXT:   %l2_unwrap = load double, double* %g2_unwrap, align 8, !invariant.group !
+; CHECK-NEXT:   %l2_unwrap = load double, double* %g2_unwrap, align 8
 ; CHECK-NEXT:   br label %invertend_phimerge
 
 ; CHECK: invertend_phimerge: 
