@@ -37,4 +37,7 @@ impl StableTrait for StableType {}
 //~^ ERROR an `#[unstable]` annotation here has no effect [ineffective_unstable_trait_impl]
 impl StableTrait for fn() -> ! {}
 
+#[unstable(feature = "l", issue = "none")]
+impl StableTrait for fn() -> UnstableType {}
+
 fn main() {}
