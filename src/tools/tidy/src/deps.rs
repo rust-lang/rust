@@ -110,6 +110,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "datafrog",
     "difference",
     "digest",
+    "displaydoc",
     "dlmalloc",
     "either",
     "ena",
