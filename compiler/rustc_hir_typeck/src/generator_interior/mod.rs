@@ -382,6 +382,10 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             let ty = self.fcx.resolve_vars_if_possible(ty);
             let ty = self.fcx.tcx.erase_regions(ty);
             if ty.needs_infer() {
+                self.fcx
+                    .tcx
+                    .sess
+                    .delay_span_bug(expr.span, &format!("inference variables in {ty}"));
                 return true;
             }
             ty.needs_drop(self.fcx.tcx, self.fcx.param_env)
