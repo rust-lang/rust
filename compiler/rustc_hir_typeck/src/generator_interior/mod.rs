@@ -15,9 +15,11 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
+use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::{self, BoundVariableKind, RvalueScopes, Ty, TyCtxt, TypeVisitable};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use smallvec::{smallvec, SmallVec};
 
 mod drop_ranges;
 
@@ -226,6 +228,12 @@ pub fn resolve_interior<'a, 'tcx>(
             // typeck had previously found constraints that would cause them to be related.
 
             let mut counter = 0;
+            let mut mk_bound_region = |span| {
+                let kind = ty::BrAnon(counter, span);
+                let var = ty::BoundVar::from_u32(counter);
+                counter += 1;
+                ty::BoundRegion { var, kind }
+            };
             let ty = fcx.normalize_associated_types_in(cause.span, cause.ty);
             let ty = fcx.tcx.fold_regions(ty, |region, current_depth| {
                 let br = match region.kind() {
@@ -233,25 +241,24 @@ pub fn resolve_interior<'a, 'tcx>(
                         let origin = fcx.region_var_origin(vid);
                         match origin {
                             RegionVariableOrigin::EarlyBoundRegion(span, _) => {
-                                let kind = ty::BrAnon(counter, Some(span));
-                                let var = ty::BoundVar::from_u32(counter);
-                                counter += 1;
-                                ty::BoundRegion { var, kind }
+                                mk_bound_region(Some(span))
                             }
-                            _ => {
-                                let kind = ty::BrAnon(counter, None);
-                                let var = ty::BoundVar::from_u32(counter);
-                                counter += 1;
-                                ty::BoundRegion { var, kind }
-                            }
+                            _ => mk_bound_region(None),
                         }
                     }
-                    _ => {
-                        let kind = ty::BrAnon(counter, None);
-                        let var = ty::BoundVar::from_u32(counter);
-                        counter += 1;
-                        ty::BoundRegion { var, kind }
+                    // FIXME: these should use `BrNamed`
+                    ty::ReEarlyBound(region) => {
+                        mk_bound_region(Some(fcx.tcx.def_span(region.def_id)))
                     }
+                    ty::ReLateBound(_, ty::BoundRegion { kind, .. })
+                    | ty::ReFree(ty::FreeRegion { bound_region: kind, .. }) => match kind {
+                        ty::BoundRegionKind::BrAnon(_, span) => mk_bound_region(span),
+                        ty::BoundRegionKind::BrNamed(def_id, _) => {
+                            mk_bound_region(Some(fcx.tcx.def_span(def_id)))
+                        }
+                        ty::BoundRegionKind::BrEnv => mk_bound_region(None),
+                    },
+                    _ => mk_bound_region(None),
                 };
                 let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, br));
                 r
@@ -265,25 +272,34 @@ pub fn resolve_interior<'a, 'tcx>(
         })
         .collect();
 
-    let mut bound_vars: Vec<BoundVariableKind> = vec![];
+    let mut bound_vars: SmallVec<[BoundVariableKind; 4]> = smallvec![];
     let mut counter = 0;
-    let type_causes = fcx.tcx.fold_regions(type_causes, |region, current_depth| {
-        let br = match region.kind() {
-            ty::ReLateBound(_, br) => {
-                let kind = match br.kind {
-                    ty::BrAnon(_, span) => ty::BrAnon(counter, span),
-                    _ => br.kind,
-                };
-                let var = ty::BoundVar::from_usize(bound_vars.len());
-                bound_vars.push(ty::BoundVariableKind::Region(kind));
-                counter += 1;
-                ty::BoundRegion { var, kind }
-            }
-            _ => bug!("All regions should have been replaced by ReLateBound"),
-        };
-        let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, br));
-        r
-    });
+    // Optimization: If there is only one captured type, then we don't actually
+    // need to fold and reindex (since the first type doesn't change).
+    let type_causes = if captured_tys.len() > 0 {
+        // Optimization: Use `replace_escaping_bound_vars_uncached` instead of
+        // `fold_regions`, since we only have late bound regions, and it skips
+        // types without bound regions.
+        fcx.tcx.replace_escaping_bound_vars_uncached(
+            type_causes,
+            FnMutDelegate {
+                regions: &mut |br| {
+                    let kind = match br.kind {
+                        ty::BrAnon(_, span) => ty::BrAnon(counter, span),
+                        _ => br.kind,
+                    };
+                    let var = ty::BoundVar::from_usize(bound_vars.len());
+                    bound_vars.push(ty::BoundVariableKind::Region(kind));
+                    counter += 1;
+                    fcx.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var, kind }))
+                },
+                types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
+                consts: &mut |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),
+            },
+        )
+    } else {
+        type_causes
+    };
 
     // Extract type components to build the witness type.
     let type_list = fcx.tcx.mk_type_list(type_causes.iter().map(|cause| cause.ty));

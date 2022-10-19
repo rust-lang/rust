@@ -61,7 +61,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                         );
                     }
                     (Some(sub_span), Some(sup_span), _, _) => {
-                        err.span_note(sub_span, format!("the lifetime defined here, ..."));
+                        err.span_note(sub_span, format!("the lifetime defined here..."));
                         err.span_note(
                             sup_span,
                             format!("...must outlive the lifetime defined here"),
