@@ -1,9 +1,10 @@
 use std::cell::{Cell, RefCell};
 
-use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, RValue, Type};
+use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, RValue, Type, FnAttribute};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::{
     BackendTypes,
+    BaseTypeMethods,
     MiscMethods,
 };
 use rustc_data_structures::base_n;
@@ -11,7 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::span_bug;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
-use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, TyAndLayout, LayoutOfHelpers};
+use rustc_middle::ty::layout::{FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, TyAndLayout, LayoutOfHelpers};
 use rustc_session::Session;
 use rustc_span::Span;
 use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
@@ -82,7 +83,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, LValue<'gcc>>>,
     /// Cache function instances of monomorphic and polymorphic items
-    pub function_instances: RefCell<FxHashMap<Instance<'tcx>, RValue<'gcc>>>,
+    pub function_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
     /// Cache generated vtables
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
@@ -109,6 +110,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     local_gen_sym_counter: Cell<usize>,
 
     eh_personality: Cell<Option<RValue<'gcc>>>,
+    pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
 
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
 
@@ -245,6 +247,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             struct_types: Default::default(),
             local_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
+            rust_try_fn: Cell::new(None),
             pointee_infos: Default::default(),
             structs_as_pointer: Default::default(),
         }
@@ -252,8 +255,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn rvalue_as_function(&self, value: RValue<'gcc>) -> Function<'gcc> {
         let function: Function<'gcc> = unsafe { std::mem::transmute(value) };
-        debug_assert!(self.functions.borrow().values().find(|value| **value == function).is_some(),
-            "{:?} ({:?}) is not a function", value, value.get_type());
+        // FIXME: seems like self.functions get overwritten for rust_eh_personality.
+        /*debug_assert!(self.functions.borrow().values().find(|value| **value == function).is_some(),
+            "{:?} is not a function", function);*/
         function
     }
 
@@ -325,9 +329,9 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
-        let func = get_fn(self, instance);
-        *self.current_func.borrow_mut() = Some(self.rvalue_as_function(func));
-        func
+        let func = get_fn(self, instance, false);
+        *self.current_func.borrow_mut() = Some(func);
+        unsafe { std::mem::transmute(func) }
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
@@ -338,8 +342,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 self.intrinsics.borrow()[func_name].clone()
             }
             else {
-                let func = get_fn(self, instance);
-                self.rvalue_as_function(func)
+                get_fn(self, instance, false)
             };
         let ptr = func.get_address(None);
 
@@ -377,31 +380,68 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             return llpersonality;
         }
         let tcx = self.tcx;
-        let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if !wants_msvc_seh(self.sess()) => self.get_fn_addr(
-                ty::Instance::resolve(
-                    tcx,
-                    ty::ParamEnv::reveal_all(),
-                    def_id,
-                    tcx.intern_substs(&[]),
-                )
-                .unwrap().unwrap(),
-            ),
-            _ => {
-                let _name = if wants_msvc_seh(self.sess()) {
-                    "__CxxFrameHandler3"
-                } else {
-                    "rust_eh_personality"
-                };
-                //let func = self.declare_func(name, self.type_i32(), &[], true);
-                // FIXME(antoyo): this hack should not be needed. That will probably be removed when
-                // unwinding support is added.
-                self.context.new_rvalue_from_int(self.int_type, 0)
-            }
-        };
+        let func =
+            match tcx.lang_items().eh_personality() {
+                Some(def_id) if !wants_msvc_seh(self.sess()) => {
+                    // FIXME: this create an instance into self.functions and prevent the creating
+                    // of the function defined in std.
+                    let instance =
+                        ty::Instance::resolve(
+                            tcx,
+                            ty::ParamEnv::reveal_all(),
+                            def_id,
+                            tcx.intern_substs(&[]),
+                        )
+                        .unwrap().unwrap();
+
+                    let symbol_name = tcx.symbol_name(instance).name;
+                    let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
+                    self.linkage.set(FunctionType::Extern);
+                    let func = self.declare_fn(symbol_name, &fn_abi, false);
+                    //func.add_attribute(FnAttribute::Weak);
+
+                    /*let block = func.new_block("eh_personality_block");
+                    // NOTE: it seems this function is overwritten by the standard library, so just
+                    // return a dummy value in this version.
+                    let zero = self.context.new_rvalue_zero(self.type_u32());
+                    block.end_with_return(None, zero);*/
+
+                    //*self.current_func.borrow_mut() = Some(func);
+                    let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
+                    func
+                    /*self.get_fn(
+                        ty::Instance::resolve(
+                            tcx,
+                            ty::ParamEnv::reveal_all(),
+                            def_id,
+                            tcx.intern_substs(&[]),
+                        )
+                        .unwrap().unwrap(),
+                    )*/
+                },
+                _ => {
+                    let name = if wants_msvc_seh(self.sess()) {
+                        "__CxxFrameHandler3"
+                    } else {
+                        "rust_eh_personality"
+                    };
+                    let func = self.declare_func(name, self.type_i32(), &[], true);
+                    //*self.current_func.borrow_mut() = Some(func);
+                    // NOTE: this function is created multiple times and is overwritten by the
+                    // standard library, so mark it as weak.
+                    //func.add_attribute(FnAttribute::Weak);
+                    //self.functions.borrow_mut().insert(name.to_string(), func);
+                    /*let block = func.new_block("eh_personality_block");
+                    // NOTE: it seems this function is overwritten by the standard library, so just
+                    // return a dummy value in this version.
+                    let zero = self.context.new_rvalue_zero(self.type_i32());
+                    block.end_with_return(None, zero);*/
+                    unsafe { std::mem::transmute(func) }
+                }
+            };
         // TODO(antoyo): apply target cpu attributes.
-        self.eh_personality.set(Some(llfn));
-        llfn
+        self.eh_personality.set(Some(func));
+        func
     }
 
     fn sess(&self) -> &Session {

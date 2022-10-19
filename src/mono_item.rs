@@ -35,7 +35,10 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         self.linkage.set(base::linkage_to_gcc(linkage));
-        let decl = self.declare_fn(symbol_name, &fn_abi);
+        if symbol_name == "rust_eh_personality" {
+            println!("********************* Generating real rust_eh_personality: {:?}", base::linkage_to_gcc(linkage));
+        }
+        let decl = self.declare_fn(symbol_name, &fn_abi, false);
         //let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
 
         attributes::from_fn_attrs(self, decl, instance);
@@ -59,5 +62,11 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // TODO(antoyo): call set_link_section() to allow initializing argc/argv.
         // TODO(antoyo): set unique comdat.
         // TODO(antoyo): use inline attribute from there in linkage.set() above.
+
+        self.functions.borrow_mut().insert(symbol_name.to_string(), decl);
+        if symbol_name == "rust_eh_personality" {
+            println!("Caching here 2");
+        }
+        self.function_instances.borrow_mut().insert(instance, unsafe { std::mem::transmute(decl) });
     }
 }

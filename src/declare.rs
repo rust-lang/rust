@@ -38,12 +38,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         global
     }
 
-    /*pub fn declare_func(&self, name: &str, return_type: Type<'gcc>, params: &[Type<'gcc>], variadic: bool) -> RValue<'gcc> {
-        self.linkage.set(FunctionType::Exported);
-        let func = declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, params, variadic);
-        // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
-        unsafe { std::mem::transmute(func) }
-    }*/
+    pub fn declare_func(&self, name: &str, return_type: Type<'gcc>, params: &[Type<'gcc>], variadic: bool) -> Function<'gcc> {
+        self.linkage.set(FunctionType::Extern);
+        declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, params, variadic, true)
+    }
 
     pub fn declare_global(&self, name: &str, ty: Type<'gcc>, global_kind: GlobalKind, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
         let global = self.context.new_global(None, global_kind, ty, name);
@@ -71,7 +69,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let return_type = self.type_i32();
         let variadic = false;
         self.linkage.set(FunctionType::Exported);
-        let func = declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, &[self.type_i32(), const_string], variadic);
+        let func = declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, &[self.type_i32(), const_string], variadic, false);
         // NOTE: it is needed to set the current_func here as well, because get_fn() is not called
         // for the main function.
         *self.current_func.borrow_mut() = Some(func);
@@ -79,9 +77,19 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         unsafe { std::mem::transmute(func) }
     }
 
-    pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Function<'gcc> {
+    pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, dont_cache: bool) -> Function<'gcc> {
         let (return_type, params, variadic, on_stack_param_indices) = fn_abi.gcc_type(self);
-        let func = declare_raw_fn(self, name, () /*fn_abi.llvm_cconv()*/, return_type, &params, variadic);
+        /*static mut COUNTER: i32 = 0;
+        if name.contains("personality") {
+            println!("{}: {}", name, skip_cache);
+            unsafe {
+                COUNTER += 1;
+                if COUNTER == 6 {
+                    panic!("{}", name);
+                }
+            }
+        }*/
+        let func = declare_raw_fn(self, name, () /*fn_abi.llvm_cconv()*/, return_type, &params, variadic, dont_cache);
         self.on_stack_function_params.borrow_mut().insert(func, on_stack_param_indices);
         func
     }
@@ -100,7 +108,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*llvm::CallConv*/, return_type: Type<'gcc>, param_types: &[Type<'gcc>], variadic: bool) -> Function<'gcc> {
+fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*llvm::CallConv*/, return_type: Type<'gcc>, param_types: &[Type<'gcc>], variadic: bool, dont_cache: bool) -> Function<'gcc> {
     if name.starts_with("llvm.") {
         let intrinsic = llvm::intrinsic(name, cx);
         cx.intrinsics.borrow_mut().insert(name.to_string(), intrinsic);
@@ -115,7 +123,9 @@ fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*ll
                 .map(|(index, param)| cx.context.new_parameter(None, *param, &format!("param{}", index))) // TODO(antoyo): set name.
                 .collect();
             let func = cx.context.new_function(None, cx.linkage.get(), return_type, &params, mangle_name(name), variadic);
-            cx.functions.borrow_mut().insert(name.to_string(), func);
+            //if !dont_cache {
+                cx.functions.borrow_mut().insert(name.to_string(), func);
+            //}
             func
         };
 

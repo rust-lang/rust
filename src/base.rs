@@ -87,6 +87,16 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         // Instantiate monomorphizations without filling out definitions yet...
         //let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
         let context = Context::default();
+
+        context.add_command_line_option("-fexceptions");
+        context.add_driver_option("-fexceptions");
+
+        /*context.add_command_line_option("-fasynchronous-unwind-tables");
+        context.add_driver_option("-fasynchronous-unwind-tables");
+
+        context.add_command_line_option("-funwind-tables");
+        context.add_driver_option("-funwind-tables");*/
+
         // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
         // TODO(antoyo): only add the following cli argument if the feature is supported.
@@ -147,6 +157,7 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         }
 
         // TODO(bjorn3): Remove once unwinding is properly implemented
+        // TODO: remove.
         context.set_allow_unreachable_blocks(true);
 
         {

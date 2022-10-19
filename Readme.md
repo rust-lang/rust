@@ -162,6 +162,14 @@ To print a debug representation of a tree:
 debug_tree(expr);
 ```
 
+(defined in print-tree.h)
+
+To print a debug reprensentation of a gimple struct:
+
+```c
+debug_gimple_stmt(gimple_struct)
+```
+
 To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo build`.
 
 ### How to use a custom-build rustc
