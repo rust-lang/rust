@@ -5,7 +5,10 @@ use crate::path::{Path, PathBuf, Prefix};
 use crate::sys::common::small_c_string::run_path_with_cstr;
 
 pub type NativePath = CStr;
-pub fn with_native_path<T, F: FnOnce(&NativePath) -> io::Result<T>>(path: &Path, f: F) -> io::Result<T> {
+pub fn with_native_path<T, F: FnOnce(&NativePath) -> io::Result<T>>(
+    path: &Path,
+    f: F,
+) -> io::Result<T> {
     run_path_with_cstr(path, f)
 }
 

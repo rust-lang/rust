@@ -1126,14 +1126,20 @@ pub trait PathLike {
     /// Convert to a `Path` reference.
     fn with_path<T, F: FnOnce(&Path) -> T>(&self, f: F) -> T;
     /// Convert to the native platform representation of a path.
-    fn with_native_path<T, F: FnOnce(&crate::sys::path::NativePath) -> io::Result<T>>(&self, f: F) -> io::Result<T>;
+    fn with_native_path<T, F: FnOnce(&crate::sys::path::NativePath) -> io::Result<T>>(
+        &self,
+        f: F,
+    ) -> io::Result<T>;
 }
 #[unstable(feature = "path_like", issue = "none")]
 impl<P: AsRef<Path>> PathLike for P {
     fn with_path<T, F: FnOnce(&Path) -> T>(&self, f: F) -> T {
         f(self.as_ref())
     }
-    fn with_native_path<T, F: FnOnce(&crate::sys::path::NativePath) -> io::Result<T>>(&self, f: F) -> io::Result<T> {
+    fn with_native_path<T, F: FnOnce(&crate::sys::path::NativePath) -> io::Result<T>>(
+        &self,
+        f: F,
+    ) -> io::Result<T> {
         crate::sys::path::with_native_path(self.as_ref(), f)
     }
 }
