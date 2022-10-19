@@ -421,6 +421,36 @@ error: `#[applicability]` has no effect if all `#[suggestion]`/`#[multipart_sugg
 LL |     #[applicability]
    |     ^^^^^^^^^^^^^^^^
 
+error: expected exactly one string literal for `code = ...`
+  --> $DIR/subdiagnostic-derive.rs:648:23
+   |
+LL |     #[suggestion_part(code("foo"))]
+   |                       ^^^^^^^^^^^
+
+error: expected exactly one string literal for `code = ...`
+  --> $DIR/subdiagnostic-derive.rs:657:23
+   |
+LL |     #[suggestion_part(code("foo", "bar"))]
+   |                       ^^^^^^^^^^^^^^^^^^
+
+error: expected exactly one string literal for `code = ...`
+  --> $DIR/subdiagnostic-derive.rs:666:23
+   |
+LL |     #[suggestion_part(code(3))]
+   |                       ^^^^^^^
+
+error: expected exactly one string literal for `code = ...`
+  --> $DIR/subdiagnostic-derive.rs:675:23
+   |
+LL |     #[suggestion_part(code())]
+   |                       ^^^^^^
+
+error: `code = "..."`/`code(...)` must contain only string literals
+  --> $DIR/subdiagnostic-derive.rs:684:23
+   |
+LL |     #[suggestion_part(code = 3)]
+   |                       ^^^^^^^^
+
 error: cannot find attribute `foo` in this scope
   --> $DIR/subdiagnostic-derive.rs:63:3
    |
@@ -481,6 +511,6 @@ error[E0425]: cannot find value `slug` in module `rustc_errors::fluent`
 LL | #[label(slug)]
    |         ^^^^ not found in `rustc_errors::fluent`
 
-error: aborting due to 68 previous errors
+error: aborting due to 73 previous errors
 
 For more information about this error, try `rustc --explain E0425`.
