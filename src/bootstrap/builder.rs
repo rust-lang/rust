@@ -437,12 +437,11 @@ impl<'a> ShouldRun<'a> {
 
     // single alias, which does not correspond to any on-disk path
     pub fn alias(mut self, alias: &str) -> Self {
-        // exceptional case for `Kind::Setup` because its `library` 
+        // exceptional case for `Kind::Setup` because its `library`
         // and `compiler` options would otherwise naively match with
         // `compiler` and `library` folders respectively.
         assert!(
-            self.kind == Kind::Setup 
-            || !self.builder.src.join(alias).exists(),
+            self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
             "use `builder.path()` for real paths: {}",
             alias
         );
