@@ -1884,7 +1884,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     if !it.is_mod() {
         let path: String = cx.current.iter().map(|s| s.as_str()).intersperse("::").collect();
 
-        write!(buffer, "<h2 class=\"location\"><a href=\"index.html\">In {}</a></h2>", path);
+        write!(buffer, "<h2><a href=\"index.html\">In {}</a></h2>", path);
     }
 
     // Closes sidebar-elems div.

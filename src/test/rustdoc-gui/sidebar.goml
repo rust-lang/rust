@@ -9,6 +9,7 @@ reload:
 assert-text: (".sidebar > .location", "Crate test_docs")
 // In modules, we only have one "location" element.
 assert-count: (".sidebar .location", 1)
+assert-count: (".sidebar h2", 1)
 assert-text: ("#all-types", "All Items")
 assert-css: ("#all-types", {"color": "rgb(53, 109, 164)"})
 // We check that we have the crates list and that the "current" on is "test_docs".
@@ -28,7 +29,8 @@ assert-text: ("#structs + .item-table .item-left > a", "Foo")
 click: "#structs + .item-table .item-left > a"
 
 // PAGE: struct.Foo.html
-assert-count: (".sidebar .location", 2)
+assert-count: (".sidebar .location", 1)
+assert-count: (".sidebar h2", 2)
 // We check that there is no crate listed outside of the top level.
 assert-false: ".sidebar-elems > .crate"
 
@@ -60,10 +62,11 @@ assert-text: ("#functions + .item-table .item-left > a", "foobar")
 click: "#functions + .item-table .item-left > a"
 
 // PAGE: fn.foobar.html
-// In items containing no items (like functions or constants) and in modules, we have one
-// "location" elements.
-assert-count: (".sidebar .location", 1)
-assert-text: (".sidebar .sidebar-elems .location", "In lib2")
+// In items containing no items (like functions or constants) and in modules, we have no
+// "location" elements. Only the parent module h2.
+assert-count: (".sidebar .location", 0)
+assert-count: (".sidebar h2", 1)
+assert-text: (".sidebar .sidebar-elems h2", "In lib2")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems > .crate"
 
