@@ -542,6 +542,16 @@ extern "Rust" {
     /// In particular, users should be aware that Miri will periodically attempt to garbage collect the
     /// contents of all stacks. Callers of this function may wish to pass `-Zmiri-tag-gc=0` to disable the GC.
     fn miri_print_stacks(alloc_id: u64);
+
+    /// Miri-provided extern function to print (from the interpreter, not the
+    /// program) the contents of a section of program memory, as bytes. Bytes
+    /// written using this function will emerge from the interpreter's stdout.
+    fn miri_write_to_stdout(bytes: &[u8]);
+
+    /// Miri-provided extern function to print (from the interpreter, not the
+    /// program) the contents of a section of program memory, as bytes. Bytes
+    /// written using this function will emerge from the interpreter's stderr.
+    fn miri_write_to_stderr(bytes: &[u8]);
 }
 ```
 
