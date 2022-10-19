@@ -1,4 +1,4 @@
-#![feature(staged_api)]
+#![feature(staged_api, never_type, c_unwind)]
 //~^ ERROR module has missing stability attribute
 
 #[stable(feature = "a", since = "1")]
@@ -23,7 +23,21 @@ impl StableTrait for UnstableType {}
 impl UnstableTrait for StableType {}
 
 #[unstable(feature = "h", issue = "none")]
+impl StableTrait for ! {}
+
+// Note: If C-unwind is stabilized, switch this to another (unstable) ABI.
+#[unstable(feature = "i", issue = "none")]
+impl StableTrait for extern "C-unwind" fn() {}
+
+#[unstable(feature = "j", issue = "none")]
 //~^ ERROR an `#[unstable]` annotation here has no effect [ineffective_unstable_trait_impl]
 impl StableTrait for StableType {}
+
+#[unstable(feature = "k", issue = "none")]
+//~^ ERROR an `#[unstable]` annotation here has no effect [ineffective_unstable_trait_impl]
+impl StableTrait for fn() -> ! {}
+
+#[unstable(feature = "l", issue = "none")]
+impl StableTrait for fn() -> UnstableType {}
 
 fn main() {}
