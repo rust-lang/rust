@@ -1061,25 +1061,14 @@ fn should_encode_const(def_kind: DefKind) -> bool {
 
 fn should_encode_constness(def_kind: DefKind) -> bool {
     match def_kind {
-        DefKind::Struct
-        | DefKind::Union
-        | DefKind::Enum
-        | DefKind::Trait
-        | DefKind::AssocTy
-        | DefKind::Fn
-        | DefKind::Const
-        | DefKind::Static(..)
-        | DefKind::Ctor(..)
+        DefKind::Fn
         | DefKind::AssocFn
-        | DefKind::AssocConst
-        | DefKind::AnonConst
-        | DefKind::InlineConst
-        | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
+        | DefKind::AssocTy
+        | DefKind::Trait
         | DefKind::Impl
         | DefKind::Closure
-        | DefKind::Generator
-        | DefKind::TyAlias => true,
+        | DefKind::Generator => true,
+        // It doesn't make sense to compute constness on these DefKinds
         DefKind::Variant
         | DefKind::TraitAlias
         | DefKind::ForeignTy
@@ -1092,7 +1081,21 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::ExternCrate => false,
+        | DefKind::ExternCrate
+        // These items are not conditionally const,
+        // and therefore don't need their constness stored.
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::TyAlias
+        | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
+        | DefKind::Const
+        | DefKind::Static(_)
+        | DefKind::Ctor(_, _)
+        | DefKind::AssocConst
+        | DefKind::AnonConst
+        | DefKind::InlineConst => false,
     }
 }
 
