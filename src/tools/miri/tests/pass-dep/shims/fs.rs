@@ -4,7 +4,8 @@
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 
-use std::ffi::CString;
+use std::collections::HashMap;
+use std::ffi::{CString, OsString};
 use std::fs::{
     create_dir, read_dir, read_link, remove_dir, remove_dir_all, remove_file, rename, File,
     OpenOptions,
@@ -394,29 +395,34 @@ fn test_directory() {
     // Creating a directory when it already exists should fail.
     assert_eq!(ErrorKind::AlreadyExists, create_dir(&dir_path).unwrap_err().kind());
 
-    // Create some files inside the directory
+    // Create some files and dirs inside the directory
     let path_1 = dir_path.join("test_file_1");
     drop(File::create(&path_1).unwrap());
     let path_2 = dir_path.join("test_file_2");
     drop(File::create(&path_2).unwrap());
-    // Test that the files are present inside the directory
-    let dir_iter = read_dir(&dir_path).unwrap();
-    let mut file_names = dir_iter.map(|e| e.unwrap().file_name()).collect::<Vec<_>>();
-    file_names.sort_unstable();
-    assert_eq!(file_names, vec!["test_file_1", "test_file_2"]);
+    let dir_1 = dir_path.join("test_dir_1");
+    create_dir(&dir_1).unwrap();
     // Test that read_dir metadata calls succeed
     assert_eq!(
-        &[true, true],
-        &*read_dir(&dir_path)
+        HashMap::from([
+            (OsString::from("test_file_1"), true),
+            (OsString::from("test_file_2"), true),
+            (OsString::from("test_dir_1"), false)
+        ]),
+        read_dir(&dir_path)
             .unwrap()
-            .map(|e| e.unwrap().metadata().unwrap().is_file())
-            .collect::<Vec<_>>()
+            .map(|e| {
+                let e = e.unwrap();
+                (e.file_name(), e.metadata().unwrap().is_file())
+            })
+            .collect::<HashMap<_, _>>()
     );
     // Deleting the directory should fail, since it is not empty.
     assert_eq!(ErrorKind::DirectoryNotEmpty, remove_dir(&dir_path).unwrap_err().kind());
     // Clean up the files in the directory
     remove_file(&path_1).unwrap();
     remove_file(&path_2).unwrap();
+    remove_dir(&dir_1).unwrap();
     // Now there should be nothing left in the directory.
     let dir_iter = read_dir(&dir_path).unwrap();
     let file_names = dir_iter.map(|e| e.unwrap().file_name()).collect::<Vec<_>>();
