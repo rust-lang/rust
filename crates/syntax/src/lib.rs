@@ -92,7 +92,7 @@ impl<T> Parse<T> {
         SyntaxNode::new_root(self.green.clone())
     }
     pub fn errors(&self) -> &[SyntaxError] {
-        &*self.errors
+        &self.errors
     }
 }
 

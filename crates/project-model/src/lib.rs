@@ -67,7 +67,7 @@ impl ProjectManifest {
         if path.file_name().unwrap_or_default() == "Cargo.toml" {
             return Ok(ProjectManifest::CargoToml(path));
         }
-        bail!("project root must point to Cargo.toml or rust-project.json: {}", path.display())
+        bail!("project root must point to Cargo.toml or rust-project.json: {}", path.display());
     }
 
     pub fn discover_single(path: &AbsPath) -> Result<ProjectManifest> {
@@ -78,7 +78,7 @@ impl ProjectManifest {
         };
 
         if !candidates.is_empty() {
-            bail!("more than one project")
+            bail!("more than one project");
         }
         Ok(res)
     }

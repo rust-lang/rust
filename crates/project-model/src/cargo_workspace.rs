@@ -283,8 +283,6 @@ impl CargoWorkspace {
             }
             CargoFeatures::Selected { features, no_default_features } => {
                 if *no_default_features {
-                    // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
-                    // https://github.com/oli-obk/cargo_metadata/issues/79
                     meta.features(CargoOpt::NoDefaultFeatures);
                 }
                 if !features.is_empty() {
@@ -329,18 +327,21 @@ impl CargoWorkspace {
         let ws_members = &meta.workspace_members;
 
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
-        for meta_pkg in &meta.packages {
+        for meta_pkg in meta.packages {
             let cargo_metadata::Package {
-                id,
-                edition,
                 name,
-                manifest_path,
                 version,
-                metadata,
+                id,
+                source,
+                targets: meta_targets,
+                features,
+                manifest_path,
                 repository,
+                edition,
+                metadata,
                 ..
             } = meta_pkg;
-            let meta = from_value::<PackageMetadata>(metadata.clone()).unwrap_or_default();
+            let meta = from_value::<PackageMetadata>(metadata).unwrap_or_default();
             let edition = match edition {
                 cargo_metadata::Edition::E2015 => Edition::Edition2015,
                 cargo_metadata::Edition::E2018 => Edition::Edition2018,
@@ -352,35 +353,36 @@ impl CargoWorkspace {
             };
             // We treat packages without source as "local" packages. That includes all members of
             // the current workspace, as well as any path dependency outside the workspace.
-            let is_local = meta_pkg.source.is_none();
-            let is_member = ws_members.contains(id);
+            let is_local = source.is_none();
+            let is_member = ws_members.contains(&id);
 
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
-                name: name.clone(),
-                version: version.clone(),
-                manifest: AbsPathBuf::assert(PathBuf::from(&manifest_path)).try_into().unwrap(),
+                name,
+                version,
+                manifest: AbsPathBuf::assert(manifest_path.into()).try_into().unwrap(),
                 targets: Vec::new(),
                 is_local,
                 is_member,
                 edition,
-                repository: repository.clone(),
+                repository,
                 dependencies: Vec::new(),
-                features: meta_pkg.features.clone().into_iter().collect(),
+                features: features.into_iter().collect(),
                 active_features: Vec::new(),
                 metadata: meta.rust_analyzer.unwrap_or_default(),
             });
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(id, pkg);
-            for meta_tgt in &meta_pkg.targets {
-                let is_proc_macro = meta_tgt.kind.as_slice() == ["proc-macro"];
+            for meta_tgt in meta_targets {
+                let cargo_metadata::Target { name, kind, required_features, src_path, .. } =
+                    meta_tgt;
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
-                    name: meta_tgt.name.clone(),
-                    root: AbsPathBuf::assert(PathBuf::from(&meta_tgt.src_path)),
-                    kind: TargetKind::new(meta_tgt.kind.as_slice()),
-                    is_proc_macro,
-                    required_features: meta_tgt.required_features.clone(),
+                    name,
+                    root: AbsPathBuf::assert(src_path.into()),
+                    kind: TargetKind::new(&kind),
+                    is_proc_macro: &*kind == ["proc-macro"],
+                    required_features,
                 });
                 pkg_data.targets.push(tgt);
             }
