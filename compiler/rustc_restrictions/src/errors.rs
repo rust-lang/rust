@@ -8,6 +8,7 @@ pub struct ImplOfRestrictedTrait {
     pub impl_span: Span,
     #[label]
     pub restriction_span: Span,
+    pub restriction_path: String,
 }
 
 #[derive(Diagnostic)]
@@ -17,6 +18,7 @@ pub struct MutOfRestrictedField {
     pub mut_span: Span,
     #[label]
     pub restriction_span: Span,
+    pub restriction_path: String,
 }
 
 #[derive(Diagnostic)]
@@ -26,7 +28,10 @@ pub struct ConstructionOfTyWithMutRestrictedField {
     pub construction_span: Span,
     #[label]
     pub restriction_span: Span,
+    pub restriction_path: String,
     #[note]
     pub note: (),
-    pub ty: &'static str,
+    pub article: &'static str,
+    pub description: &'static str,
+    pub name: String,
 }

@@ -11,6 +11,6 @@ pub mod foo {
 }
 
 fn main() {
-    let foo = foo::Foo { alpha: 0 }; //~ ERROR
-    let bar = foo::Bar::Beta(0); //~ ERROR
+    let foo = foo::Foo { alpha: 0 }; //~ ERROR cannot be constructed
+    let bar = foo::Bar::Beta(0); //~ ERROR cannot be constructed
 }

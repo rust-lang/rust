@@ -300,7 +300,7 @@ pub enum Restriction<Id = DefId> {
     Restricted(Id, Span),
 }
 
-impl<Id: Into<DefId>> Restriction<Id> {
+impl<Id: Into<DefId> + Copy> Restriction<Id> {
     /// Returns `true` if this restriction applies in the given module. This
     /// means the behavior is _not_ allowed.
     pub fn is_restricted_in(self, module: DefId, tcx: TyCtxt<'_>) -> bool {
@@ -319,12 +319,28 @@ impl<Id: Into<DefId>> Restriction<Id> {
             Restriction::Restricted(_, span) => *span,
         }
     }
+
+    pub fn expect_restriction_path(
+        &self,
+        tcx: TyCtxt<'_>,
+        krate: rustc_span::def_id::CrateNum,
+    ) -> String {
+        let Restriction::Restricted(def_id, _) = self else {
+            bug!("called `expect_restricted_path` on an unrestricted item")
+        };
+
+        let def_id: DefId = (*def_id).into();
+
+        if krate == def_id.krate {
+            tcx.def_path_str(def_id)
+        } else {
+            tcx.crate_name(krate).to_ident_string()
+        }
+    }
+
     /// Obtain the stricter of the two restrictions. If the two restrictions are the same, returns
     /// `left`. Panics if the restrictions do not reference the same crate.
-    pub fn stricter_of(left: Self, right: Self, tcx: TyCtxt<'_>) -> Self
-    where
-        Id: Copy,
-    {
+    pub fn stricter_of(left: Self, right: Self, tcx: TyCtxt<'_>) -> Self {
         match (left, right) {
             (Restriction::Unrestricted, Restriction::Unrestricted) => Restriction::Unrestricted,
             (Restriction::Unrestricted, Restriction::Restricted(..)) => right,
@@ -344,10 +360,7 @@ impl<Id: Into<DefId>> Restriction<Id> {
 
     /// Obtain the strictest of the provided restrictions. If multiple restrictions are the same,
     /// the first is returned. Panics if all restrictions do not reference the same crate.
-    pub fn strictest_of(iter: impl Iterator<Item = Self>, tcx: TyCtxt<'_>) -> Self
-    where
-        Id: Copy,
-    {
+    pub fn strictest_of(iter: impl Iterator<Item = Self>, tcx: TyCtxt<'_>) -> Self {
         iter.fold(Restriction::Unrestricted, |left, right| Self::stricter_of(left, right, tcx))
     }
 

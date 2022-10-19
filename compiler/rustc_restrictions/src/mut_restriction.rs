@@ -106,6 +106,9 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
                         self.tcx.sess.emit_err(errors::MutOfRestrictedField {
                             mut_span: self.span,
                             restriction_span: field_def.mut_restriction.expect_span(),
+                            restriction_path: field_def
+                                .mut_restriction
+                                .expect_restriction_path(self.tcx, body_did.krate),
                         });
                     }
                 }
@@ -126,8 +129,12 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
                 self.tcx.sess.emit_err(errors::ConstructionOfTyWithMutRestrictedField {
                     construction_span: self.span,
                     restriction_span: construction_restriction.expect_span(),
+                    restriction_path: construction_restriction
+                        .expect_restriction_path(self.tcx, body_did.krate),
                     note: (),
-                    ty: adt_def.variant_descr(),
+                    article: "a",
+                    description: adt_def.variant_descr(),
+                    name: variant.name.to_ident_string(),
                 });
             }
         }

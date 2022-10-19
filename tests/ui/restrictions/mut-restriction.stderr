@@ -1,5 +1,5 @@
-error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:21:5
+error: field cannot be mutated outside `foo`
+  --> $DIR/mut-restriction.rs:25:5
    |
 LL |         pub mut(self) alpha: u8,
    |             --------- mutability restricted here
@@ -7,8 +7,8 @@ LL |         pub mut(self) alpha: u8,
 LL |     foo.alpha = 1;
    |     ^^^^^^^^^^^^^
 
-error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:23:24
+error: field cannot be mutated outside `foo`
+  --> $DIR/mut-restriction.rs:27:24
    |
 LL |         Beta(mut(self) u8),
    |              --------- mutability restricted here
@@ -16,8 +16,8 @@ LL |         Beta(mut(self) u8),
 LL |         foo::Bar::Beta(ref mut beta) => {}
    |                        ^^^^^^^^^^^^
 
-error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:30:9
+error: field cannot be mutated outside `foo`
+  --> $DIR/mut-restriction.rs:34:9
    |
 LL |         pub mut(self) alpha: u8,
    |             --------- mutability restricted here
@@ -25,8 +25,8 @@ LL |         pub mut(self) alpha: u8,
 LL |         (*foo).alpha = 1;
    |         ^^^^^^^^^^^^^^^^
 
-error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:38:5
+error: field cannot be mutated outside `foo`
+  --> $DIR/mut-restriction.rs:42:5
    |
 LL |         pub mut(self) alpha: u8,
    |             --------- mutability restricted here
@@ -34,8 +34,8 @@ LL |         pub mut(self) alpha: u8,
 LL |     foo.alpha = 1;
    |     ^^^^^^^^^^^^^
 
-error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:40:24
+error: field cannot be mutated outside `foo`
+  --> $DIR/mut-restriction.rs:44:24
    |
 LL |         Beta(mut(self) u8),
    |              --------- mutability restricted here
@@ -43,8 +43,8 @@ LL |         Beta(mut(self) u8),
 LL |         foo::Bar::Beta(ref mut beta) => {}
    |                        ^^^^^^^^^^^^
 
-error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:42:5
+error: field cannot be mutated outside `foo`
+  --> $DIR/mut-restriction.rs:46:5
    |
 LL |         pub mut(self) alpha: u8,
    |             --------- mutability restricted here
@@ -54,8 +54,8 @@ LL |     std::ptr::addr_of_mut!(foo.alpha);
    |
    = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:44:18
+error: field cannot be mutated outside `foo`
+  --> $DIR/mut-restriction.rs:48:18
    |
 LL |         pub mut(self) alpha: u8,
    |             --------- mutability restricted here
@@ -63,8 +63,30 @@ LL |         pub mut(self) alpha: u8,
 LL |     let _alpha = &mut foo.alpha;
    |                  ^^^^^^^^^^^^^^
 
-error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:47:9
+error: field cannot be mutated outside `mut_restriction`
+  --> $DIR/mut-restriction.rs:63:5
+   |
+LL |     external_top_level.alpha = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:4:9
+   |
+LL |     pub mut(self) alpha: u8,
+   |         --------- mutability restricted here
+
+error: field cannot be mutated outside `mut_restriction`
+  --> $DIR/mut-restriction.rs:67:5
+   |
+LL |     external_inner.beta = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:15:13
+   |
+LL |         pub mut(self) beta: u8,
+   |             --------- mutability restricted here
+
+error: field cannot be mutated outside `foo`
+  --> $DIR/mut-restriction.rs:51:9
    |
 LL |         pub mut(self) alpha: u8,
    |             --------- mutability restricted here
@@ -72,5 +94,5 @@ LL |         pub mut(self) alpha: u8,
 LL |         foo.alpha = 1;
    |         ^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 10 previous errors
 

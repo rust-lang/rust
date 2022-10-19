@@ -1,6 +1,14 @@
 // compile-flags: --crate-type=lib
+// aux-build: external-impl-restriction.rs
 
 #![feature(impl_restriction)]
+
+extern crate external_impl_restriction;
+
+struct LocalType; // needed to avoid orphan rule errors
+
+impl external_impl_restriction::TopLevel for LocalType {} //FIXME~ ERROR trait cannot be implemented outside `external_impl_restriction`
+impl external_impl_restriction::inner::Inner for LocalType {} //FIXME~ ERROR trait cannot be implemented outside `external_impl_restriction`
 
 pub mod foo {
     pub mod bar {
@@ -10,4 +18,4 @@ pub mod foo {
     impl bar::Foo for i8 {}
 }
 
-impl foo::bar::Foo for u8 {} //~ ERROR implementation of restricted trait
+impl foo::bar::Foo for u8 {} //~ ERROR trait cannot be implemented outside `foo`

@@ -1,5 +1,5 @@
-error: implementation of restricted trait
-  --> $DIR/impl-restriction.rs:13:1
+error: trait cannot be implemented outside `foo`
+  --> $DIR/impl-restriction.rs:21:1
    |
 LL |         pub(crate) impl(super) trait Foo {}
    |                    ----------- trait restricted here

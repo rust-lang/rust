@@ -1,4 +1,4 @@
-error: construction of struct with mut restricted field
+error: `Foo` cannot be constructed using a struct expression outside `foo`
   --> $DIR/mut-restriction-construction.rs:14:15
    |
 LL |         pub mut(self) alpha: u8,
@@ -7,9 +7,9 @@ LL |         pub mut(self) alpha: u8,
 LL |     let foo = foo::Foo { alpha: 0 };
    |               ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: struct expressions cannot be used when the struct has a field with a mutability restriction
+   = note: a struct containing fields with a mutability restriction cannot be constructed using a struct expression
 
-error: construction of variant with mut restricted field
+error: `Beta` cannot be constructed using a variant expression outside `foo`
   --> $DIR/mut-restriction-construction.rs:15:15
    |
 LL |         Beta(mut(self) u8),
@@ -18,7 +18,7 @@ LL |         Beta(mut(self) u8),
 LL |     let bar = foo::Bar::Beta(0);
    |               ^^^^^^^^^^^^^^^^^
    |
-   = note: variant expressions cannot be used when the variant has a field with a mutability restriction
+   = note: a variant containing fields with a mutability restriction cannot be constructed using a variant expression
 
 error: aborting due to 2 previous errors
 
