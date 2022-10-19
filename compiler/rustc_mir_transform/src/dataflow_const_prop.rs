@@ -474,7 +474,7 @@ impl<'mir, 'tcx> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachi
         _left: &rustc_const_eval::interpret::ImmTy<'tcx, Self::Provenance>,
         _right: &rustc_const_eval::interpret::ImmTy<'tcx, Self::Provenance>,
     ) -> interpret::InterpResult<'tcx, (interpret::Scalar<Self::Provenance>, bool, Ty<'tcx>)> {
-        unimplemented!()
+        throw_unsup!(Unsupported("".into()))
     }
 
     fn expose_ptr(
