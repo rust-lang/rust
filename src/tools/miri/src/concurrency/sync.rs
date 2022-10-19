@@ -166,18 +166,13 @@ impl<'mir, 'tcx> std::fmt::Debug for InitOnceWaiter<'mir, 'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq,)]
 /// The current status of a one time initialization.
 pub enum InitOnceStatus {
+    #[default]
     Uninitialized,
     Begun,
     Complete,
-}
-
-impl Default for InitOnceStatus {
-    fn default() -> Self {
-        Self::Uninitialized
-    }
 }
 
 /// The one time initialization state.
