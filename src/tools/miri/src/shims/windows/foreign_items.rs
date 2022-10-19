@@ -37,13 +37,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [name, buf, size] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.GetEnvironmentVariableW(name, buf, size)?;
-                this.write_scalar(Scalar::from_u32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "SetEnvironmentVariableW" => {
                 let [name, value] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.SetEnvironmentVariableW(name, value)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "GetEnvironmentStringsW" => {
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
@@ -54,19 +54,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [env_block] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.FreeEnvironmentStringsW(env_block)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "GetCurrentDirectoryW" => {
                 let [size, buf] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.GetCurrentDirectoryW(size, buf)?;
-                this.write_scalar(Scalar::from_u32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "SetCurrentDirectoryW" => {
                 let [path] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.SetCurrentDirectoryW(path)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
 
             // Allocation
@@ -218,14 +218,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [lpPerformanceCount] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.QueryPerformanceCounter(lpPerformanceCount)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "QueryPerformanceFrequency" => {
                 #[allow(non_snake_case)]
                 let [lpFrequency] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.QueryPerformanceFrequency(lpFrequency)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "Sleep" => {
                 let [timeout] =
@@ -246,7 +246,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "TryAcquireSRWLockExclusive" => {
                 let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let ret = this.TryAcquireSRWLockExclusive(ptr)?;
-                this.write_scalar(Scalar::from_u8(ret), dest)?;
+                this.write_scalar(ret, dest)?;
             }
             "AcquireSRWLockShared" => {
                 let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
@@ -259,7 +259,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "TryAcquireSRWLockShared" => {
                 let [ptr] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let ret = this.TryAcquireSRWLockShared(ptr)?;
-                this.write_scalar(Scalar::from_u8(ret), dest)?;
+                this.write_scalar(ret, dest)?;
             }
 
             // Dynamic symbol loading

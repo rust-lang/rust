@@ -119,7 +119,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn QueryPerformanceCounter(
         &mut self,
         lpPerformanceCount_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceCounter");
@@ -134,14 +134,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             Scalar::from_i64(qpc),
             &this.deref_operand(lpPerformanceCount_op)?.into(),
         )?;
-        Ok(-1) // return non-zero on success
+        Ok(Scalar::from_i32(-1)) // return non-zero on success
     }
 
     #[allow(non_snake_case)]
     fn QueryPerformanceFrequency(
         &mut self,
         lpFrequency_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceFrequency");
@@ -155,7 +155,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             Scalar::from_i64(1_000_000_000),
             &this.deref_operand(lpFrequency_op)?.into(),
         )?;
-        Ok(-1) // Return non-zero on success
+        Ok(Scalar::from_i32(-1)) // Return non-zero on success
     }
 
     fn mach_absolute_time(&self) -> InterpResult<'tcx, Scalar<Provenance>> {

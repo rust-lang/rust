@@ -58,17 +58,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn TryAcquireSRWLockExclusive(
         &mut self,
         lock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, u8> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_locked(id) {
             // Lock is already held.
-            Ok(0)
+            Ok(Scalar::from_u8(0))
         } else {
             this.rwlock_writer_lock(id, active_thread);
-            Ok(1)
+            Ok(Scalar::from_u8(1))
         }
     }
 
@@ -107,16 +107,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn TryAcquireSRWLockShared(
         &mut self,
         lock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, u8> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_write_locked(id) {
-            Ok(0)
+            Ok(Scalar::from_u8(0))
         } else {
             this.rwlock_reader_lock(id, active_thread);
-            Ok(1)
+            Ok(Scalar::from_u8(1))
         }
     }
 
