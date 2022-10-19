@@ -315,9 +315,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         offset: u64,
     ) -> InterpResult<'tcx, RwLockId> {
         let this = self.eval_context_mut();
-        this.rwlock_get_or_create(
-            |ecx, next_id| Ok(ecx.get_or_create_id(next_id, lock_op, offset)?),
-        )
+        this.rwlock_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
     }
 
     fn condvar_get_or_create_id(
@@ -326,9 +324,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         offset: u64,
     ) -> InterpResult<'tcx, CondvarId> {
         let this = self.eval_context_mut();
-        this.condvar_get_or_create(|ecx, next_id| {
-            Ok(ecx.get_or_create_id(next_id, lock_op, offset)?)
-        })
+        this.condvar_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
     }
 
     fn init_once_get_or_create_id(
@@ -337,9 +333,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         offset: u64,
     ) -> InterpResult<'tcx, InitOnceId> {
         let this = self.eval_context_mut();
-        this.init_once_get_or_create(|ecx, next_id| {
-            Ok(ecx.get_or_create_id(next_id, lock_op, offset)?)
-        })
+        this.init_once_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
     }
 
     #[inline]
