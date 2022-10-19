@@ -17,6 +17,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
     pub(crate) fn explicit_predicates_of(
         &mut self,
         tcx: TyCtxt<'tcx>,
+        self_did: DefId,
         def_id: DefId,
     ) -> &ty::EarlyBinder<RequiredPredicates<'tcx>> {
         self.map.entry(def_id).or_insert_with(|| {
@@ -35,8 +36,10 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                             tcx,
                             ty.into(),
                             reg,
+                            self_did,
                             span,
                             &mut required_predicates,
+                            None,
                         )
                     }
 
@@ -45,8 +48,10 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                             tcx,
                             reg1.into(),
                             reg2,
+                            self_did,
                             span,
                             &mut required_predicates,
+                            None,
                         )
                     }
 

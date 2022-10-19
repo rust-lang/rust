@@ -98,21 +98,22 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
         .iter()
         .map(|(&def_id, set)| {
             let predicates = &*tcx.arena.alloc_from_iter(set.0.iter().filter_map(
-                |(ty::OutlivesPredicate(kind1, region2), &span)| {
+                |(ty::OutlivesPredicate(kind1, region2), stack)| {
+                    let &(_, last_span) = stack.last().unwrap();
                     match kind1.unpack() {
                         GenericArgKind::Type(ty1) => Some((
                             ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
                                 ty::OutlivesPredicate(ty1, *region2),
                             ))
                             .to_predicate(tcx),
-                            span,
+                            last_span,
                         )),
                         GenericArgKind::Lifetime(region1) => Some((
                             ty::Binder::dummy(ty::PredicateKind::RegionOutlives(
                                 ty::OutlivesPredicate(region1, *region2),
                             ))
                             .to_predicate(tcx),
-                            span,
+                            last_span,
                         )),
                         GenericArgKind::Const(_) => {
                             // Generic consts don't impose any constraints.

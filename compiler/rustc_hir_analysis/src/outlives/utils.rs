@@ -1,14 +1,17 @@
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, Region, Ty, TyCtxt};
 use rustc_span::Span;
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeMap;
+
+pub(crate) type DefStack = SmallVec<[(DefId, Span); 3]>;
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.
 pub(crate) type RequiredPredicates<'tcx> =
-    BTreeMap<ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>, Span>;
+    BTreeMap<ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>, DefStack>;
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_predicates`
@@ -16,14 +19,27 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: GenericArg<'tcx>,
     outlived_region: Region<'tcx>,
+    self_did: DefId,
     span: Span,
     required_predicates: &mut RequiredPredicates<'tcx>,
+    stack: Option<&DefStack>,
 ) {
     // If the `'a` region is bound within the field type itself, we
     // don't want to propagate this constraint to the header.
     if !is_free_region(outlived_region) {
         return;
     }
+
+    let insert_and_stack_push = |rpred: &mut RequiredPredicates<'tcx>, arg: GenericArg<'tcx>| {
+        rpred
+            .entry(ty::OutlivesPredicate(arg, outlived_region))
+            .and_modify(|did_stack| did_stack.push((self_did, span)))
+            .or_insert_with(move || {
+                let mut stack = stack.cloned().unwrap_or_else(|| smallvec![]);
+                stack.push((self_did, span));
+                stack
+            });
+    };
 
     match kind.unpack() {
         GenericArgKind::Type(ty) => {
@@ -55,8 +71,10 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                             tcx,
                             r.into(),
                             outlived_region,
+                            self_did,
                             span,
                             required_predicates,
+                            stack,
                         );
                     }
 
@@ -75,9 +93,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // components would yield `U`, and we add the
                         // where clause that `U: 'a`.
                         let ty: Ty<'tcx> = param_ty.to_ty(tcx);
-                        required_predicates
-                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
-                            .or_insert(span);
+                        insert_and_stack_push(required_predicates, ty.into());
                     }
 
                     Component::Projection(proj_ty) => {
@@ -91,9 +107,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         //
                         // Here we want to add an explicit `where <T as Iterator>::Item: 'a`.
                         let ty: Ty<'tcx> = tcx.mk_projection(proj_ty.item_def_id, proj_ty.substs);
-                        required_predicates
-                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
-                            .or_insert(span);
+                        insert_and_stack_push(required_predicates, ty.into());
                     }
 
                     Component::Opaque(def_id, substs) => {
@@ -108,9 +122,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // Here we want to have an implied bound `Opaque<T>: 'a`
 
                         let ty = tcx.mk_opaque(def_id, substs);
-                        required_predicates
-                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
-                            .or_insert(span);
+                        insert_and_stack_push(required_predicates, ty.into());
                     }
 
                     Component::EscapingProjection(_) => {
@@ -139,7 +151,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
             if !is_free_region(r) {
                 return;
             }
-            required_predicates.entry(ty::OutlivesPredicate(kind, outlived_region)).or_insert(span);
+            insert_and_stack_push(required_predicates, kind);
         }
 
         GenericArgKind::Const(_) => {
