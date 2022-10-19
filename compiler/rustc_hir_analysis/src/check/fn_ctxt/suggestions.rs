@@ -102,10 +102,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let msg = match def_id_or_name {
                 DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
-                    DefKind::Ctor(CtorOf::Struct, _) => "instantiate this tuple struct".to_string(),
-                    DefKind::Ctor(CtorOf::Variant, _) => {
-                        "instantiate this tuple variant".to_string()
-                    }
+                    DefKind::Ctor(CtorOf::Struct, _) => "construct this tuple struct".to_string(),
+                    DefKind::Ctor(CtorOf::Variant, _) => "construct this tuple variant".to_string(),
                     kind => format!("call this {}", kind.descr(def_id)),
                 },
                 DefIdOrName::Name(name) => format!("call this {name}"),

@@ -11,7 +11,7 @@ note: required by a bound in `insert_resource`
    |
 LL | fn insert_resource<R: Resource>(resource: R) {}
    |                       ^^^^^^^^ required by this bound in `insert_resource`
-help: use parentheses to instantiate this tuple struct
+help: use parentheses to construct this tuple struct
    |
 LL |     insert_resource(Time(/* u32 */));
    |                         +++++++++++
