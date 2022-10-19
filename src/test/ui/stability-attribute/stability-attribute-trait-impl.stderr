@@ -1,7 +1,7 @@
 error: an `#[unstable]` annotation here has no effect
-  --> $DIR/stability-attribute-trait-impl.rs:25:1
+  --> $DIR/stability-attribute-trait-impl.rs:32:1
    |
-LL | #[unstable(feature = "h", issue = "none")]
+LL | #[unstable(feature = "j", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
@@ -10,7 +10,7 @@ LL | #[unstable(feature = "h", issue = "none")]
 error: module has missing stability attribute
   --> $DIR/stability-attribute-trait-impl.rs:1:1
    |
-LL | / #![feature(staged_api)]
+LL | / #![feature(staged_api, never_type, c_unwind)]
 LL | |
 LL | |
 LL | | #[stable(feature = "a", since = "1")]
