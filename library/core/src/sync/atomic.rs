@@ -294,7 +294,7 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomic::AtomicBool;
     ///
-    /// let atomic_true  = AtomicBool::new(true);
+    /// let atomic_true = AtomicBool::new(true);
     /// let atomic_false = AtomicBool::new(false);
     /// ```
     #[inline]
@@ -1179,7 +1179,7 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
     /// let value = some_ptr.load(Ordering::Relaxed);
     /// ```
@@ -1206,7 +1206,7 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
     /// let other_ptr = &mut 10;
     ///
@@ -1238,7 +1238,7 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
     /// let other_ptr = &mut 10;
     ///
@@ -1290,9 +1290,9 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
-    /// let other_ptr   = &mut 10;
+    /// let other_ptr = &mut 10;
     ///
     /// let value = some_ptr.compare_and_swap(ptr, other_ptr, Ordering::Relaxed);
     /// ```
@@ -1333,9 +1333,9 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr = &mut 5;
-    /// let some_ptr  = AtomicPtr::new(ptr);
+    /// let some_ptr = AtomicPtr::new(ptr);
     ///
-    /// let other_ptr   = &mut 10;
+    /// let other_ptr = &mut 10;
     ///
     /// let value = some_ptr.compare_exchange(ptr, other_ptr,
     ///                                       Ordering::SeqCst, Ordering::Relaxed);
