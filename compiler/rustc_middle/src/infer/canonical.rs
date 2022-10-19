@@ -302,10 +302,8 @@ impl<'tcx, V> Canonical<'tcx, V> {
     }
 }
 
-pub type QueryOutlivesConstraint<'tcx> = (
-    ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>,
-    ConstraintCategory<'tcx>,
-);
+pub type QueryOutlivesConstraint<'tcx> =
+    (ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>, ConstraintCategory);
 
 TrivialTypeTraversalAndLiftImpls! {
     for <'tcx> {
