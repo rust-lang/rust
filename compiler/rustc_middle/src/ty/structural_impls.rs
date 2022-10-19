@@ -832,27 +832,6 @@ impl<'tcx> TypeVisitable<'tcx> for InferConst<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::UnevaluatedConst<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        folder.try_fold_ty_unevaluated(self)
-    }
-}
-
-impl<'tcx> TypeVisitable<'tcx> for ty::UnevaluatedConst<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        visitor.visit_ty_unevaluated(*self)
-    }
-}
-
-impl<'tcx> TypeSuperFoldable<'tcx> for ty::UnevaluatedConst<'tcx> {
-    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(ty::UnevaluatedConst { def: self.def, substs: self.substs.try_fold_with(folder)? })
-    }
-}
-
 impl<'tcx> TypeSuperVisitable<'tcx> for ty::UnevaluatedConst<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.substs.visit_with(visitor)
