@@ -209,6 +209,9 @@ impl ProjectWorkspace {
                     ),
                     None => None,
                 };
+                if let Some(sysroot) = &sysroot {
+                    tracing::info!(src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
+                }
 
                 let rustc_dir = match &config.rustc_source {
                     Some(RustcSource::Path(path)) => ManifestPath::try_from(path.clone()).ok(),
@@ -217,6 +220,9 @@ impl ProjectWorkspace {
                     }
                     None => None,
                 };
+                if let Some(rustc_dir) = &rustc_dir {
+                    tracing::info!(rustc_dir = %rustc_dir.display(), "Using rustc source");
+                }
 
                 let rustc = match rustc_dir {
                     Some(rustc_dir) => Some({
@@ -277,6 +283,9 @@ impl ProjectWorkspace {
             }
             (None, None) => None,
         };
+        if let Some(sysroot) = &sysroot {
+            tracing::info!(src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
+        }
 
         let rustc_cfg = rustc_cfg::get(None, target, extra_env);
         Ok(ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg })
