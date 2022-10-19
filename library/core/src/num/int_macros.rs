@@ -1506,37 +1506,50 @@ macro_rules! int_impl {
             (a as Self, b)
         }
 
-        /// Calculates `self + rhs + carry` without the ability to overflow.
+        /// Calculates `self` + `rhs` + `carry` and checks for overflow.
         ///
-        /// Performs "signed ternary addition" which takes in an extra bit to add, and may return an
-        /// additional bit of overflow. This signed function is used only on the highest-ordered data,
-        /// for which the signed overflow result indicates whether the big integer overflowed or not.
+        /// Performs "ternary addition" of two integer operands and a carry-in
+        /// bit, and returns a tuple of the sum along with a boolean indicating
+        /// whether an arithmetic overflow would occur. On overflow, the wrapped
+        /// value is returned.
+        ///
+        /// This allows chaining together multiple additions to create a wider
+        /// addition, and can be useful for bignum addition. This method should
+        /// only be used for the most significant word; for the less significant
+        /// words the unsigned method
+        #[doc = concat!("[`", stringify!($UnsignedT), "::carrying_add`]")]
+        /// should be used.
+        ///
+        /// The output boolean returned by this method is *not* a carry flag,
+        /// and should *not* be added to a more significant word.
+        ///
+        /// If the input carry is false, this method is equivalent to
+        /// [`overflowing_add`](Self::overflowing_add).
         ///
         /// # Examples
         ///
-        /// Basic usage:
-        ///
         /// ```
         /// #![feature(bigint_helper_methods)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".carrying_add(2, false), (7, false));")]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".carrying_add(2, true), (8, false));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, false), (", stringify!($SelfT), "::MIN, true));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(0, true), (", stringify!($SelfT), "::MIN, true));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, true), (", stringify!($SelfT), "::MIN + 1, true));")]
-        #[doc = concat!("assert_eq!(",
-            stringify!($SelfT), "::MAX.carrying_add(", stringify!($SelfT), "::MAX, true), ",
-            "(-1, true));"
-        )]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.carrying_add(-1, true), (", stringify!($SelfT), "::MIN, false));")]
-        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".carrying_add(", stringify!($SelfT), "::MAX, true), (", stringify!($SelfT), "::MIN, true));")]
-        /// ```
+        /// // Only the  most significant word is signed.
+        /// //
+        #[doc = concat!("//   10  MAX    (a = 10 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
+        #[doc = concat!("// + -5    9    (b = -5 × 2^", stringify!($BITS), " + 9)")]
+        /// // ---------
+        #[doc = concat!("//    6    8    (sum = 6 × 2^", stringify!($BITS), " + 8)")]
         ///
-        /// If `carry` is false, this method is equivalent to [`overflowing_add`](Self::overflowing_add):
+        #[doc = concat!("let (a1, a0): (", stringify!($SelfT), ", ", stringify!($UnsignedT), ") = (10, ", stringify!($UnsignedT), "::MAX);")]
+        #[doc = concat!("let (b1, b0): (", stringify!($SelfT), ", ", stringify!($UnsignedT), ") = (-5, 9);")]
+        /// let carry0 = false;
         ///
-        /// ```
-        /// #![feature(bigint_helper_methods)]
-        #[doc = concat!("assert_eq!(5_", stringify!($SelfT), ".carrying_add(2, false), 5_", stringify!($SelfT), ".overflowing_add(2));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.carrying_add(1, false), ", stringify!($SelfT), "::MAX.overflowing_add(1));")]
+        #[doc = concat!("// ", stringify!($UnsignedT), "::carrying_add for the less significant words")]
+        /// let (sum0, carry1) = a0.carrying_add(b0, carry0);
+        /// assert_eq!(carry1, true);
+        ///
+        #[doc = concat!("// ", stringify!($SelfT), "::carrying_add for the most significant word")]
+        /// let (sum1, overflow) = a1.carrying_add(b1, carry1);
+        /// assert_eq!(overflow, false);
+        ///
+        /// assert_eq!((sum1, sum0), (6, 8));
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
@@ -1600,25 +1613,51 @@ macro_rules! int_impl {
             (a as Self, b)
         }
 
-        /// Calculates `self - rhs - borrow` without the ability to overflow.
+        /// Calculates `self` &minus; `rhs` &minus; `borrow` and checks for
+        /// overflow.
         ///
-        /// Performs "signed ternary subtraction" which takes in an extra bit to subtract, and may return an
-        /// additional bit of overflow. This signed function is used only on the highest-ordered data,
-        /// for which the signed overflow result indicates whether the big integer overflowed or not.
+        /// Performs "ternary subtraction" by subtracting both an integer
+        /// operandand a borrow-in bit from `self`, and returns a tuple of the
+        /// difference along with a boolean indicating whether an arithmetic
+        /// overflow would occur. On overflow, the wrapped value is returned.
+        ///
+        /// This allows chaining together multiple subtractions to create a
+        /// wider subtraction, and can be useful for bignum subtraction. This
+        /// method should only be used for the most significant word; for the
+        /// less significant words the unsigned method
+        #[doc = concat!("[`", stringify!($UnsignedT), "::borrowing_sub`]")]
+        /// should be used.
+        ///
+        /// The output boolean returned by this method is *not* a borrow flag,
+        /// and should *not* be subtracted from a more significant word.
+        ///
+        /// If the input borrow is false, this method is equivalent to
+        /// [`overflowing_sub`](Self::overflowing_sub).
         ///
         /// # Examples
         ///
-        /// Basic usage:
-        ///
         /// ```
         /// #![feature(bigint_helper_methods)]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".borrowing_sub(2, false), (3, false));")]
-        #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".borrowing_sub(2, true), (2, false));")]
-        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".borrowing_sub(1, false), (-1, false));")]
-        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".borrowing_sub(1, true), (-2, false));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.borrowing_sub(1, true), (", stringify!($SelfT), "::MAX - 1, true));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.borrowing_sub(-1, false), (", stringify!($SelfT), "::MIN, true));")]
-        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.borrowing_sub(-1, true), (", stringify!($SelfT), "::MAX, false));")]
+        /// // Only the  most significant word is signed.
+        /// //
+        #[doc = concat!("//    6    8    (a = 6 × 2^", stringify!($BITS), " + 8)")]
+        #[doc = concat!("// - -5    9    (b = -5 × 2^", stringify!($BITS), " + 9)")]
+        /// // ---------
+        #[doc = concat!("//   10  MAX    (diff = 10 × 2^", stringify!($BITS), " + 2^", stringify!($BITS), " - 1)")]
+        ///
+        #[doc = concat!("let (a1, a0): (", stringify!($SelfT), ", ", stringify!($UnsignedT), ") = (6, 8);")]
+        #[doc = concat!("let (b1, b0): (", stringify!($SelfT), ", ", stringify!($UnsignedT), ") = (-5, 9);")]
+        /// let borrow0 = false;
+        ///
+        #[doc = concat!("// ", stringify!($UnsignedT), "::borrowing_sub for the less significant words")]
+        /// let (diff0, borrow1) = a0.borrowing_sub(b0, borrow0);
+        /// assert_eq!(borrow1, true);
+        ///
+        #[doc = concat!("// ", stringify!($SelfT), "::borrowing_sub for the most significant word")]
+        /// let (diff1, overflow) = a1.borrowing_sub(b1, borrow1);
+        /// assert_eq!(overflow, false);
+        ///
+        #[doc = concat!("assert_eq!((diff1, diff0), (10, ", stringify!($UnsignedT), "::MAX));")]
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[rustc_const_unstable(feature = "const_bigint_helper_methods", issue = "85532")]
