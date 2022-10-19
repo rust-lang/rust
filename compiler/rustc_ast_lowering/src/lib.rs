@@ -500,6 +500,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
+    /// resolver (if any).
+    fn orig_opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
+        self.resolver.node_id_to_def_id.get(&node).map(|local_def_id| *local_def_id)
+    }
+
+    fn orig_local_def_id(&self, node: NodeId) -> LocalDefId {
+        self.orig_opt_local_def_id(node)
+            .unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+    }
+
+    /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any), after applying any remapping from `get_remapped_def_id`.
     ///
     /// For example, in a function like `fn foo<'a>(x: &'a u32)`,
@@ -513,10 +524,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// we would create an opaque type `type FooReturn<'a1> = impl Debug + 'a1`.
     /// When lowering the `Debug + 'a` bounds, we add a remapping to map `'a` to `'a1`.
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.resolver
-            .node_id_to_def_id
-            .get(&node)
-            .map(|local_def_id| self.get_remapped_def_id(*local_def_id))
+        self.orig_opt_local_def_id(node).map(|local_def_id| self.get_remapped_def_id(local_def_id))
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
