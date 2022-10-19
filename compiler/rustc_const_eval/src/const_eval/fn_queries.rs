@@ -25,10 +25,12 @@ pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// report whether said intrinsic has a `rustc_const_{un,}stable` attribute. Otherwise, return
 /// `Constness::NotConst`.
 fn constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
+    if let Some(value) = tcx.opt_default_constness(def_id) {
+        return value;
+    }
+
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     match tcx.hir().get(hir_id) {
-        hir::Node::Ctor(_) => hir::Constness::Const,
-
         hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) => {
             // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
             // foreign items cannot be evaluated at compile-time.
@@ -46,12 +48,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
             hir::Constness::Const
         }
 
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(..), .. })
-        | hir::Node::Item(hir::Item { kind: hir::ItemKind::Static(..), .. })
-        | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Const(..), .. })
-        | hir::Node::AnonConst(_)
-        | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
-        | hir::Node::ImplItem(hir::ImplItem {
+        hir::Node::ImplItem(hir::ImplItem {
             kind:
                 hir::ImplItemKind::Fn(
                     hir::FnSig {

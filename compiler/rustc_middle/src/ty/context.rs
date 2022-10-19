@@ -1724,6 +1724,29 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn local_visibility(self, def_id: LocalDefId) -> Visibility {
         self.visibility(def_id).expect_local()
     }
+
+    /// The constness of an item that is independent of its signature.
+    ///
+    /// Only some items have a "default constness", such as `struct`s
+    /// which make no sense being constant, and `const`s which are always
+    /// constant.
+    pub fn opt_default_constness(self, def_id: DefId) -> Option<hir::Constness> {
+        match self.def_kind(def_id) {
+            DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::TyAlias
+            | DefKind::OpaqueTy
+            | DefKind::ImplTraitPlaceholder => Some(hir::Constness::NotConst),
+            DefKind::Const
+            | DefKind::Static(_)
+            | DefKind::Ctor(_, _)
+            | DefKind::AssocConst
+            | DefKind::AnonConst
+            | DefKind::InlineConst => Some(hir::Constness::Const),
+            _ => None,
+        }
+    }
 }
 
 /// A trait implemented for all `X<'a>` types that can be safely and

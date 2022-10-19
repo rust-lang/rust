@@ -1332,6 +1332,21 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx.arena.alloc_from_iter(self.root.lang_items_missing.decode(self))
     }
 
+    fn get_constness(self, tcx: TyCtxt<'tcx>, id: DefIndex) -> hir::Constness {
+        let def_id = self.local_def_id(id);
+
+        if let Some(constness) = tcx.opt_default_constness(def_id) {
+            constness
+        } else {
+            self.cdata
+                .root
+                .tables
+                .constness
+                .get(self, id)
+                .unwrap_or_else(|| panic!("{:?} does not have constness", def_id))
+        }
+    }
+
     fn exported_symbols(
         self,
         tcx: TyCtxt<'tcx>,
