@@ -888,10 +888,15 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
     }
 
     fn visit_ty(&mut self, t: &'tcx Ty<'tcx>) {
-        if let TyKind::Never = t.kind {
-            self.fully_stable = false;
+        match t.kind {
+            TyKind::Never => self.fully_stable = false,
+            TyKind::BareFn(f) => {
+                if rustc_target::spec::abi::is_stable(f.abi.name()).is_err() {
+                    self.fully_stable = false;
+                }
+            }
+            _ => intravisit::walk_ty(self, t),
         }
-        intravisit::walk_ty(self, t)
     }
 }
 
