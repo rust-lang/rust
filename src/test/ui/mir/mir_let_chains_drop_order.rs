@@ -12,7 +12,7 @@ use std::panic;
 pub struct DropLogger<'a, T> {
     extra: T,
     id: usize,
-    log: &'a panic::AssertUnwindSafe<RefCell<Vec<usize>>>
+    log: &'a panic::AssertUnwindSafe<RefCell<Vec<usize>>>,
 }
 
 impl<'a, T> Drop for DropLogger<'a, T> {
@@ -55,9 +55,9 @@ fn main() {
             else {
                 // 10 is not constructed
                 d(10, None)
-            }
+            },
         );
-        assert_eq!(get(), vec![3, 8, 7, 1, 2]);
+        assert_eq!(get(), vec![8, 7, 1, 3, 2]);
     }
     assert_eq!(get(), vec![0, 4, 6, 9, 5]);
 
@@ -89,5 +89,5 @@ fn main() {
             panic::panic_any(InjectedFailure)
         );
     });
-    assert_eq!(get(), vec![14, 19, 20, 17, 15, 11, 18, 16, 12, 13]);
+    assert_eq!(get(), vec![20, 17, 15, 11, 19, 18, 16, 12, 14, 13]);
 }
