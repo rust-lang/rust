@@ -33,4 +33,8 @@ impl StableTrait for extern "C-unwind" fn() {}
 //~^ ERROR an `#[unstable]` annotation here has no effect [ineffective_unstable_trait_impl]
 impl StableTrait for StableType {}
 
+#[unstable(feature = "k", issue = "none")]
+//~^ ERROR an `#[unstable]` annotation here has no effect [ineffective_unstable_trait_impl]
+impl StableTrait for fn() -> ! {}
+
 fn main() {}
