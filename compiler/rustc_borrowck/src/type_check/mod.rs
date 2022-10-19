@@ -942,7 +942,7 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     pub(crate) member_constraints: MemberConstraintSet<'tcx, RegionVid>,
 
     pub(crate) closure_bounds_mapping:
-        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory<'tcx>, Span)>>,
+        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
 
     pub(crate) universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
@@ -1133,7 +1133,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn push_region_constraints(
         &mut self,
         locations: Locations,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
         data: &QueryRegionConstraints<'tcx>,
     ) {
         debug!("constraints generated: {:#?}", data);
@@ -1158,7 +1158,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         sub: Ty<'tcx>,
         sup: Ty<'tcx>,
         locations: Locations,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
     ) -> Fallible<()> {
         // Use this order of parameters because the sup type is usually the
         // "expected" type in diagnostics.
@@ -1171,7 +1171,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         locations: Locations,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
     ) -> Fallible<()> {
         self.relate_types(expected, ty::Variance::Invariant, found, locations, category)
     }
@@ -1183,7 +1183,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         v: ty::Variance,
         user_ty: &UserTypeProjection,
         locations: Locations,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
     ) -> Fallible<()> {
         let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
@@ -1618,19 +1618,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
 
-        let func_ty = if let TerminatorKind::Call { func, .. } = &term.kind {
-            Some(func.ty(body, self.infcx.tcx))
-        } else {
-            None
-        };
-        debug!(?func_ty);
-
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
             let op_arg_ty = op_arg.ty(body, self.tcx());
 
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if from_hir_call {
-                ConstraintCategory::CallArgument(func_ty)
+                ConstraintCategory::CallArgument(term_location)
             } else {
                 ConstraintCategory::Boring
             };
