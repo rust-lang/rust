@@ -165,20 +165,6 @@ where
         }
     }
 
-    fn visit_abstract_const_expr(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        ct: AbstractConst<'tcx>,
-    ) -> ControlFlow<V::BreakTy> {
-        walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
-            ACNode::Leaf(leaf) => self.visit_const(leaf),
-            ACNode::Cast(_, _, ty) => self.visit_ty(ty),
-            ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
-                ControlFlow::CONTINUE
-            }
-        })
-    }
-
     fn visit_predicates(
         &mut self,
         predicates: ty::GenericPredicates<'tcx>,
@@ -301,9 +287,16 @@ where
         self.visit_ty(c.ty())?;
         let tcx = self.def_id_visitor.tcx();
         if let Ok(Some(ct)) = AbstractConst::from_const(tcx, c) {
-            self.visit_abstract_const_expr(tcx, ct)?;
+            walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
+                ACNode::Leaf(leaf) => self.visit_const(leaf),
+                ACNode::Cast(_, _, ty) => self.visit_ty(ty),
+                ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
+                    ControlFlow::CONTINUE
+                }
+            })
+        } else {
+            ControlFlow::CONTINUE
         }
-        ControlFlow::CONTINUE
     }
 }
 
