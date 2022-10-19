@@ -774,31 +774,36 @@ fn clean_ty_generics<'tcx>(
     let mut where_predicates =
         where_predicates.into_iter().flat_map(|p| clean_predicate(*p, cx)).collect::<Vec<_>>();
 
-    // Type parameters have a Sized bound by default unless removed with
-    // ?Sized. Scan through the predicates and mark any type parameter with
-    // a Sized bound, removing the bounds as we find them.
+    // In the surface language, all type parameters except `Self` have an
+    // implicit `Sized` bound unless removed with `?Sized`.
+    // However, in the list of where-predicates below, `Sized` appears like a
+    // normal bound: It's either present (the type is sized) or
+    // absent (the type is unsized) but never *maybe* (i.e. `?Sized`).
     //
-    // Note that associated types also have a sized bound by default, but we
+    // This is unsuitable for rendering.
+    // Thus, as a first step remove all `Sized` bounds that should be implicit.
+    //
+    // Note that associated types also have an implicit `Sized` bound but we
     // don't actually know the set of associated types right here so that's
-    // handled in cleaning associated types
+    // handled when cleaning associated types.
     let mut sized_params = FxHashSet::default();
-    where_predicates.retain(|pred| match *pred {
-        WherePredicate::BoundPredicate { ty: Generic(ref g), ref bounds, .. } => {
-            if bounds.iter().any(|b| b.is_sized_bound(cx)) {
-                sized_params.insert(*g);
-                false
-            } else {
-                true
-            }
+    where_predicates.retain(|pred| {
+        if let WherePredicate::BoundPredicate { ty: Generic(g), bounds, .. } = pred
+        && *g != kw::SelfUpper
+        && bounds.iter().any(|b| b.is_sized_bound(cx))
+        {
+            sized_params.insert(*g);
+            false
+        } else {
+            true
         }
-        _ => true,
     });
 
-    // Run through the type parameters again and insert a ?Sized
-    // unbound for any we didn't find to be Sized.
+    // As a final step, go through the type parameters again and insert a
+    // `?Sized` bound for each one we didn't find to be `Sized`.
     for tp in &stripped_params {
-        if matches!(tp.kind, types::GenericParamDefKind::Type { .. })
-            && !sized_params.contains(&tp.name)
+        if let types::GenericParamDefKind::Type { .. } = tp.kind
+        && !sized_params.contains(&tp.name)
         {
             where_predicates.push(WherePredicate::BoundPredicate {
                 ty: Type::Generic(tp.name),
