@@ -676,7 +676,7 @@ impl<CTX> HashStable<CTX> for InferTy {
         discriminant(self).hash_stable(ctx, hasher);
         match self {
             TyVar(_) | IntVar(_) | FloatVar(_) => {
-                panic!("inference variables should not be hashed: {self:?}")
+                panic!("type variables should not be hashed: {self:?}")
             }
             FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
         }
