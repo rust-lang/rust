@@ -5,7 +5,6 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::jobserver;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 #[cfg(parallel_compiler)]
 use rustc_middle::ty::tls;
@@ -72,7 +71,7 @@ pub fn create_session(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
     descriptions: Registry,
-) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>) {
+) -> (Session, Box<dyn CodegenBackend>) {
     let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
         make_codegen_backend(&sopts)
     } else {
@@ -119,7 +118,7 @@ pub fn create_session(
     sess.parse_sess.config = cfg;
     sess.parse_sess.check_config = check_cfg;
 
-    (Lrc::new(sess), Lrc::new(codegen_backend))
+    (sess, codegen_backend)
 }
 
 const STACK_SIZE: usize = 8 * 1024 * 1024;
@@ -130,33 +129,31 @@ fn get_stack_size() -> Option<usize> {
     env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
 }
 
-/// Like a `thread::Builder::spawn` followed by a `join()`, but avoids the need
-/// for `'static` bounds.
 #[cfg(not(parallel_compiler))]
-fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: F) -> R {
-    // SAFETY: join() is called immediately, so any closure captures are still
-    // alive.
-    match unsafe { cfg.spawn_unchecked(f) }.unwrap().join() {
-        Ok(v) => v,
-        Err(e) => panic::resume_unwind(e),
-    }
-}
-
-#[cfg(not(parallel_compiler))]
-pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
     f: F,
 ) -> R {
-    let mut cfg = thread::Builder::new().name("rustc".to_string());
+    // The thread pool is a single thread in the non-parallel compiler.
+    thread::scope(|s| {
+        let mut builder = thread::Builder::new().name("rustc".to_string());
+        if let Some(size) = get_stack_size() {
+            builder = builder.stack_size(size);
+        }
 
-    if let Some(size) = get_stack_size() {
-        cfg = cfg.stack_size(size);
-    }
+        // `unwrap` is ok here because `spawn_scoped` only panics if the thread
+        // name contains null bytes.
+        let r = builder
+            .spawn_scoped(s, move || rustc_span::create_session_globals_then(edition, f))
+            .unwrap()
+            .join();
 
-    let main_handler = move || rustc_span::create_session_globals_then(edition, f);
-
-    scoped_thread(cfg, main_handler)
+        match r {
+            Ok(v) => v,
+            Err(e) => panic::resume_unwind(e),
+        }
+    })
 }
 
 /// Creates a new thread and forwards information in thread locals to it.
@@ -175,7 +172,7 @@ unsafe fn handle_deadlock() {
 }
 
 #[cfg(parallel_compiler)]
-pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
     f: F,
