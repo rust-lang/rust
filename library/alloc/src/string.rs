@@ -1872,7 +1872,6 @@ impl String {
     /// let static_ref: &'static mut str = x.leak();
     /// assert_eq!(static_ref, "bucket");
     /// ```
-    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_leak", issue = "102929")]
     #[inline]
     pub fn leak(self) -> &'static mut str {
