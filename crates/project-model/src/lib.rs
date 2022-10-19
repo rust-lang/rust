@@ -157,3 +157,10 @@ fn utf8_stdout(mut cmd: Command) -> Result<String> {
     let stdout = String::from_utf8(output.stdout)?;
     Ok(stdout.trim().to_string())
 }
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum InvocationStrategy {
+    Once,
+    #[default]
+    PerWorkspace,
+}

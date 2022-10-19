@@ -69,6 +69,13 @@ config_data! {
         cargo_autoreload: bool           = "true",
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = "true",
+        /// Specifies the invocation strategy to use when running the build scripts command.
+        /// If `per_workspace` is set, the command will be executed for each workspace from the
+        /// corresponding workspace root.
+        /// If `once` is set, the command will be executed once in the project root.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        cargo_buildScripts_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Override the command rust-analyzer uses to run build scripts and
         /// build procedural macros. The command is required to output json
         /// and should therefore include `--message-format=json` or a similar
@@ -122,6 +129,13 @@ config_data! {
         ///
         /// Set to `"all"` to pass `--all-features` to Cargo.
         checkOnSave_features: Option<CargoFeaturesDef>      = "null",
+        /// Specifies the invocation strategy to use when running the checkOnSave command.
+        /// If `per_workspace` is set, the command will be executed for each workspace from the
+        /// corresponding workspace root.
+        /// If `once` is set, the command will be executed once in the project root.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        checkOnSave_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Whether to pass `--no-default-features` to Cargo. Defaults to
         /// `#rust-analyzer.cargo.noDefaultFeatures#`.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
@@ -1056,6 +1070,10 @@ impl Config {
             rustc_source,
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
+            invocation_strategy: match self.data.cargo_buildScripts_invocationStrategy {
+                InvocationStrategy::Once => project_model::InvocationStrategy::Once,
+                InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
+            },
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
             extra_env: self.data.cargo_extraEnv.clone(),
         }
@@ -1079,6 +1097,10 @@ impl Config {
         if !self.data.checkOnSave_enable {
             return None;
         }
+        let invocation_strategy = match self.data.checkOnSave_invocationStrategy {
+            InvocationStrategy::Once => flycheck::InvocationStrategy::Once,
+            InvocationStrategy::PerWorkspace => flycheck::InvocationStrategy::PerWorkspace,
+        };
         let flycheck_config = match &self.data.checkOnSave_overrideCommand {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
@@ -1087,6 +1109,7 @@ impl Config {
                     command,
                     args,
                     extra_env: self.check_on_save_extra_env(),
+                    invocation_strategy,
                 }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
@@ -1116,6 +1139,7 @@ impl Config {
                 },
                 extra_args: self.data.checkOnSave_extraArgs.clone(),
                 extra_env: self.check_on_save_extra_env(),
+                invocation_strategy,
             },
         };
         Some(flycheck_config)
@@ -1588,6 +1612,13 @@ enum CargoFeaturesDef {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum InvocationStrategy {
+    Once,
+    PerWorkspace,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 enum LifetimeElisionDef {
     #[serde(deserialize_with = "true_or_always")]
@@ -1999,6 +2030,14 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "Render annotations above the name of the item.",
                 "Render annotations above the whole item, including documentation comments and attributes."
+            ],
+        },
+        "InvocationStrategy" => set! {
+            "type": "string",
+            "enum": ["per_workspace", "once"],
+            "enumDescriptions": [
+                "The command will be executed for each workspace from the corresponding workspace root.",
+                "The command will be executed once in the project root."
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),

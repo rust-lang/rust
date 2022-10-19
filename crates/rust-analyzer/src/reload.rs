@@ -175,10 +175,8 @@ impl GlobalState {
                     sender.send(Task::FetchBuildData(BuildDataProgress::Report(msg))).unwrap()
                 }
             };
-            let mut res = Vec::new();
-            for ws in workspaces.iter() {
-                res.push(ws.run_build_scripts(&config, &progress));
-            }
+            let res = ProjectWorkspace::run_all_build_scripts(&workspaces, &config, &progress);
+
             sender.send(Task::FetchBuildData(BuildDataProgress::End((workspaces, res)))).unwrap();
         });
     }
@@ -475,32 +473,44 @@ impl GlobalState {
         };
 
         let sender = self.flycheck_sender.clone();
-        self.flycheck = self
-            .workspaces
-            .iter()
-            .enumerate()
-            .filter_map(|(id, w)| match w {
-                ProjectWorkspace::Cargo { cargo, .. } => Some((id, cargo.workspace_root())),
-                ProjectWorkspace::Json { project, .. } => {
-                    // Enable flychecks for json projects if a custom flycheck command was supplied
-                    // in the workspace configuration.
-                    match config {
-                        FlycheckConfig::CustomCommand { .. } => Some((id, project.path())),
-                        _ => None,
-                    }
-                }
-                ProjectWorkspace::DetachedFiles { .. } => None,
-            })
-            .map(|(id, root)| {
-                let sender = sender.clone();
-                FlycheckHandle::spawn(
-                    id,
-                    Box::new(move |msg| sender.send(msg).unwrap()),
-                    config.clone(),
-                    root.to_path_buf(),
-                )
-            })
-            .collect();
+        let (FlycheckConfig::CargoCommand { invocation_strategy, .. }
+        | FlycheckConfig::CustomCommand { invocation_strategy, .. }) = config;
+
+        self.flycheck = match invocation_strategy {
+            flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
+                0,
+                Box::new(move |msg| sender.send(msg).unwrap()),
+                config.clone(),
+                self.config.root_path().clone(),
+            )],
+            flycheck::InvocationStrategy::PerWorkspace => {
+                self.workspaces
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(id, w)| match w {
+                        ProjectWorkspace::Cargo { cargo, .. } => Some((id, cargo.workspace_root())),
+                        ProjectWorkspace::Json { project, .. } => {
+                            // Enable flychecks for json projects if a custom flycheck command was supplied
+                            // in the workspace configuration.
+                            match config {
+                                FlycheckConfig::CustomCommand { .. } => Some((id, project.path())),
+                                _ => None,
+                            }
+                        }
+                        ProjectWorkspace::DetachedFiles { .. } => None,
+                    })
+                    .map(|(id, root)| {
+                        let sender = sender.clone();
+                        FlycheckHandle::spawn(
+                            id,
+                            Box::new(move |msg| sender.send(msg).unwrap()),
+                            config.clone(),
+                            root.to_path_buf(),
+                        )
+                    })
+                    .collect()
+            }
+        };
     }
 }
 
