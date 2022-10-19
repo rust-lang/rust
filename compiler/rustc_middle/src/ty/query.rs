@@ -215,6 +215,19 @@ macro_rules! define_callbacks {
             $($(#[$attr])* pub $name: query_storage::$name<'tcx>,)*
         }
 
+        extern "Rust" {
+            $(
+                #[link_name = concat!("rustc_query_impl_", stringify!($name))]
+                fn $name<'tcx>(
+                    queries: *const (),
+                    tcx: TyCtxt<'tcx>,
+                    span: Span,
+                    key: query_keys::$name<'tcx>,
+                    mode: QueryMode,
+                ) -> Option<query_stored::$name<'tcx>>;
+            )*
+        }
+
         impl<'tcx> TyCtxtEnsure<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
@@ -229,7 +242,10 @@ macro_rules! define_callbacks {
                     Err(()) => (),
                 }
 
-                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
+                let queries = self.tcx.queries as *const dyn QueryEngine<'tcx> as *const ();
+                unsafe { $name(queries, self.tcx, DUMMY_SP, key, QueryMode::Ensure) };
+
+                // self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
             })*
         }
 
@@ -258,7 +274,9 @@ macro_rules! define_callbacks {
                     Err(()) => (),
                 }
 
-                self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap()
+                let queries = self.tcx.queries as *const dyn QueryEngine<'tcx> as *const ();
+
+                unsafe { $name(queries, self.tcx, self.span, key, QueryMode::Get).unwrap() }
             })*
         }
 
@@ -310,15 +328,6 @@ macro_rules! define_callbacks {
             fn as_any(&'tcx self) -> &'tcx dyn std::any::Any;
 
             fn try_mark_green(&'tcx self, tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool;
-
-            $($(#[$attr])*
-            fn $name(
-                &'tcx self,
-                tcx: TyCtxt<'tcx>,
-                span: Span,
-                key: query_keys::$name<'tcx>,
-                mode: QueryMode,
-            ) -> Option<query_stored::$name<'tcx>>;)*
         }
     };
 }

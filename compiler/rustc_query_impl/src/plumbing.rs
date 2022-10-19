@@ -686,6 +686,23 @@ macro_rules! define_queries_struct {
             }
         }
 
+        $(
+            #[export_name = concat!("rustc_query_impl_", stringify!($name))]
+            #[tracing::instrument(level = "trace", skip(queries, tcx), ret)]
+            unsafe extern "Rust" fn $name<'tcx>(
+                queries: *const (),
+                tcx: TyCtxt<'tcx>,
+                span: Span,
+                key: query_keys::$name<'tcx>,
+                mode: QueryMode,
+            ) -> Option<query_stored::$name<'tcx>> {
+                let queries = &*(queries as *const Queries<'tcx>);
+                let qcx = QueryCtxt { tcx, queries };
+                get_query::<queries::$name<'tcx>, _>(qcx, span, key, mode)
+            }
+
+        )*
+
         impl<'tcx> QueryEngine<'tcx> for Queries<'tcx> {
             fn as_any(&'tcx self) -> &'tcx dyn std::any::Any {
                 let this = unsafe { std::mem::transmute::<&Queries<'_>, &Queries<'_>>(self) };
@@ -696,20 +713,6 @@ macro_rules! define_queries_struct {
                 let qcx = QueryCtxt { tcx, queries: self };
                 tcx.dep_graph.try_mark_green(qcx, dep_node).is_some()
             }
-
-            $($(#[$attr])*
-            #[inline(always)]
-            #[tracing::instrument(level = "trace", skip(self, tcx), ret)]
-            fn $name(
-                &'tcx self,
-                tcx: TyCtxt<'tcx>,
-                span: Span,
-                key: <queries::$name<'tcx> as QueryConfig>::Key,
-                mode: QueryMode,
-            ) -> Option<query_stored::$name<'tcx>> {
-                let qcx = QueryCtxt { tcx, queries: self };
-                get_query::<queries::$name<'tcx>, _>(qcx, span, key, mode)
-            })*
         }
     };
 }
