@@ -23,6 +23,7 @@ const LICENSES: &[&str] = &[
     "MIT OR Apache-2.0 OR Zlib",                // tinyvec_macros
     "MIT OR Zlib OR Apache-2.0",                // miniz_oxide
     "(MIT OR Apache-2.0) AND Unicode-DFS-2016", // unicode_ident
+    "Unicode-DFS-2016",                         // tinystr and icu4x
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
