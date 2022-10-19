@@ -217,6 +217,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(asm_const)]
+#![feature(const_transmute_copy)]
 //
 // Target features:
 #![feature(arm_target_feature)]

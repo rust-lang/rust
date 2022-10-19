@@ -1,6 +1,6 @@
 use super::method::probe::{IsSuggestion, Mode, ProbeScope};
 use super::method::MethodCallee;
-use super::{DefIdOrName, Expectation, FnCtxt, TupleArgumentsFlag};
+use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::type_error_struct;
 
 use rustc_ast::util::parser::PREC_POSTFIX;
@@ -27,6 +27,7 @@ use rustc_span::Span;
 use rustc_target::spec::abi;
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 use std::iter;

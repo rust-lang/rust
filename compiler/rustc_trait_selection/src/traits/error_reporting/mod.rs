@@ -2,10 +2,10 @@ pub mod on_unimplemented;
 pub mod suggestions;
 
 use super::{
-    EvaluationResult, FulfillmentContext, FulfillmentError, FulfillmentErrorCode,
-    MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
-    OnUnimplementedDirective, OnUnimplementedNote, OutputTypeParameterMismatch, Overflow,
-    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
+    FulfillmentContext, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
+    Obligation, ObligationCause, ObligationCauseCode, OnUnimplementedDirective,
+    OnUnimplementedNote, OutputTypeParameterMismatch, Overflow, PredicateObligation,
+    SelectionContext, SelectionError, TraitNotObjectSafe,
 };
 
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
@@ -2795,4 +2795,9 @@ impl<'tcx> ty::TypeVisitor<'tcx> for HasNumericInferVisitor {
             ControlFlow::CONTINUE
         }
     }
+}
+
+pub enum DefIdOrName {
+    DefId(DefId),
+    Name(&'static str),
 }

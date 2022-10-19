@@ -11,7 +11,7 @@ LL | fn test() -> Foo { Foo }
    |
    = note: expected struct `Foo`
              found fn item `fn(u32) -> Foo {Foo}`
-help: use parentheses to instantiate this tuple struct
+help: use parentheses to construct this tuple struct
    |
 LL | fn test() -> Foo { Foo(/* u32 */) }
    |                       +++++++++++
