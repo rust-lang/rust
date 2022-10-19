@@ -23,7 +23,7 @@ pub use cargo_metadata::diagnostic::{
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum InvocationStrategy {
-    OnceInRoot,
+    Once,
     #[default]
     PerWorkspace,
 }
@@ -317,26 +317,10 @@ impl FlycheckActor {
                 (cmd, args, invocation_strategy)
             }
         };
-        if let InvocationStrategy::PerWorkspace = invocation_strategy {
-            let mut with_manifest_path = false;
-            for arg in args {
-                if let Some(_) = arg.find("$manifest_path") {
-                    with_manifest_path = true;
-                    cmd.arg(arg.replace(
-                        "$manifest_path",
-                        &self.root.join("Cargo.toml").display().to_string(),
-                    ));
-                } else {
-                    cmd.arg(arg);
-                }
-            }
-
-            if !with_manifest_path {
-                cmd.current_dir(&self.root);
-            }
-        } else {
-            cmd.args(args);
-        }
+        match invocation_strategy {
+            InvocationStrategy::PerWorkspace => cmd.current_dir(&self.root),
+            InvocationStrategy::Once => cmd.args(args),
+        };
         cmd
     }
 

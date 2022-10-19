@@ -477,7 +477,7 @@ impl GlobalState {
         | FlycheckConfig::CustomCommand { invocation_strategy, .. }) = config;
 
         self.flycheck = match invocation_strategy {
-            flycheck::InvocationStrategy::OnceInRoot => vec![FlycheckHandle::spawn(
+            flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
                 0,
                 Box::new(move |msg| sender.send(msg).unwrap()),
                 config.clone(),

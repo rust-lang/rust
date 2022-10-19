@@ -422,15 +422,15 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.cargo.buildScripts.invocationStrategy": {
-                    "markdownDescription": "Specifies the invocation strategy to use when running the build scripts command.\nIf `per_workspace` is set, the command will be executed for each workspace and all\noccurrences of `$manifest_path` in the command will be replaced by the corresponding\nmanifest path of the workspace that the command is being invoked for. If interpolation\nfor the manifest path happens at least once, the commands will be executed from the\nproject root, otherwise the commands will be executed from the corresponding workspace\nroot.\nIf `once_in_root` is set, the command will be executed once in the project root.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "markdownDescription": "Specifies the invocation strategy to use when running the build scripts command.\nIf `per_workspace` is set, the command will be executed for each workspace from the\ncorresponding workspace root.\nIf `once` is set, the command will be executed once in the project root.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
                     "default": "per_workspace",
                     "type": "string",
                     "enum": [
                         "per_workspace",
-                        "once_in_root"
+                        "once"
                     ],
                     "enumDescriptions": [
-                        "The command will be executed for each workspace and `{manifest-path}` usages will be interpolated with the corresponding workspace manifests. If `{manifest-path}` is used, the commands will be executed in the project root, otherwise in the corresponding workspace roots.",
+                        "The command will be executed for each workspace from the corresponding workspace root.",
                         "The command will be executed once in the project root."
                     ]
                 },
@@ -560,15 +560,15 @@
                     ]
                 },
                 "rust-analyzer.checkOnSave.invocationStrategy": {
-                    "markdownDescription": "Specifies the invocation strategy to use when running the checkOnSave command.\nIf `per_workspace` is set, the command will be executed for each workspace and all\noccurrences of `$manifest_path` in the command will be replaced by the corresponding\nmanifest path of the workspace that the command is being invoked for. If interpolation\nfor the manifest path happens at least once, the commands will be executed from the\nproject root, otherwise the commands will be executed from the corresponding workspace\nroot.\nIf `once_in_root` is set, the command will be executed once in the project root.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "markdownDescription": "Specifies the invocation strategy to use when running the checkOnSave command.\nIf `per_workspace` is set, the command will be executed for each workspace from the\ncorresponding workspace root.\nIf `once` is set, the command will be executed once in the project root.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
                     "default": "per_workspace",
                     "type": "string",
                     "enum": [
                         "per_workspace",
-                        "once_in_root"
+                        "once"
                     ],
                     "enumDescriptions": [
-                        "The command will be executed for each workspace and `{manifest-path}` usages will be interpolated with the corresponding workspace manifests. If `{manifest-path}` is used, the commands will be executed in the project root, otherwise in the corresponding workspace roots.",
+                        "The command will be executed for each workspace from the corresponding workspace root.",
                         "The command will be executed once in the project root."
                     ]
                 },

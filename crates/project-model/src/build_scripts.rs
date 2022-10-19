@@ -62,30 +62,7 @@ impl WorkspaceBuildScripts {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
                 let mut cmd = Command::new(program);
-
-                // FIXME: strategy and workspace root are coupled, express that in code
-                if let (InvocationStrategy::PerWorkspace, Some(workspace_root)) =
-                    (config.invocation_strategy, workspace_root)
-                {
-                    let mut with_manifest_path = false;
-                    for arg in args {
-                        if let Some(_) = arg.find("$manifest_path") {
-                            with_manifest_path = true;
-                            cmd.arg(arg.replace(
-                                "$manifest_path",
-                                &workspace_root.join("Cargo.toml").display().to_string(),
-                            ));
-                        } else {
-                            cmd.arg(arg);
-                        }
-                    }
-
-                    if !with_manifest_path {
-                        cmd.current_dir(workspace_root);
-                    }
-                } else {
-                    cmd.args(args);
-                }
+                cmd.args(args);
                 cmd
             }
             _ => {
@@ -176,7 +153,7 @@ impl WorkspaceBuildScripts {
         workspaces: &[&CargoWorkspace],
         progress: &dyn Fn(String),
     ) -> io::Result<Vec<WorkspaceBuildScripts>> {
-        assert_eq!(config.invocation_strategy, InvocationStrategy::OnceInRoot);
+        assert_eq!(config.invocation_strategy, InvocationStrategy::Once);
         let cmd = Self::build_command(config, None)?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are

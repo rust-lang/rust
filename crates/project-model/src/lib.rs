@@ -160,7 +160,7 @@ fn utf8_stdout(mut cmd: Command) -> Result<String> {
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum InvocationStrategy {
-    OnceInRoot,
+    Once,
     #[default]
     PerWorkspace,
 }
