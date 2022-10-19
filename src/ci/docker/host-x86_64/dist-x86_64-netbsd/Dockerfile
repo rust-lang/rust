@@ -1,16 +1,14 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y zlib1g-dev
 
 COPY host-x86_64/dist-x86_64-netbsd/build-netbsd-toolchain.sh /tmp/
 RUN /tmp/build-netbsd-toolchain.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 ENV PATH=$PATH:/x-tools/x86_64-unknown-netbsd/bin
 
@@ -21,6 +19,5 @@ ENV \
 
 ENV HOSTS=x86_64-unknown-netbsd
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs \
-    --set llvm.allow-old-toolchain
+ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
 ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
