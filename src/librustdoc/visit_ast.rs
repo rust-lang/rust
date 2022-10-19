@@ -229,7 +229,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None => return false,
         };
 
-        let is_private = !self.cx.cache.effective_visibilities.is_directly_public(res_did);
+        let is_private =
+            !self.cx.cache.effective_visibilities.is_directly_public(self.cx.tcx, res_did);
         let is_hidden = inherits_doc_hidden(self.cx.tcx, res_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.

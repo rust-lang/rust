@@ -2,7 +2,6 @@ use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 
@@ -15,6 +14,7 @@ use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::search_index::get_function_type_for_search;
 use crate::html::render::IndexItem;
+use crate::visit_lib::RustdocEffectiveVisibilities;
 
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
@@ -78,7 +78,7 @@ pub(crate) struct Cache {
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
     // the effective visibilities from the privacy check pass.
-    pub(crate) effective_visibilities: EffectiveVisibilities<DefId>,
+    pub(crate) effective_visibilities: RustdocEffectiveVisibilities,
 
     /// The version of the crate being documented, if given from the `--crate-version` flag.
     pub(crate) crate_version: Option<String>,
@@ -132,11 +132,8 @@ struct CacheBuilder<'a, 'tcx> {
 }
 
 impl Cache {
-    pub(crate) fn new(
-        effective_visibilities: EffectiveVisibilities<DefId>,
-        document_private: bool,
-    ) -> Self {
-        Cache { effective_visibilities, document_private, ..Cache::default() }
+    pub(crate) fn new(document_private: bool) -> Self {
+        Cache { document_private, ..Cache::default() }
     }
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
@@ -387,7 +384,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         || self
                             .cache
                             .effective_visibilities
-                            .is_directly_public(item.item_id.expect_def_id())
+                            .is_directly_public(self.tcx, item.item_id.expect_def_id())
                     {
                         self.cache.paths.insert(
                             item.item_id.expect_def_id(),

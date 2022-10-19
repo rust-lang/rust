@@ -27,6 +27,7 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
 
     // strip all impls referencing stripped items
     let mut stripper = ImplStripper {
+        tcx: cx.tcx,
         retained: &retained,
         cache: &cx.cache,
         is_json_output,
