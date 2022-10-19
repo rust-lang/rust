@@ -1123,4 +1123,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         Ok(())
     }
+
+    fn print_stacks(&mut self, alloc_id: AllocId) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let alloc_extra = this.get_alloc_extra(alloc_id)?;
+        let stacks = alloc_extra.stacked_borrows.as_ref().unwrap().borrow();
+        for (range, stack) in stacks.stacks.iter_all() {
+            print!("{:?}: [", range);
+            for i in 0..stack.len() {
+                let item = stack.get(i).unwrap();
+                print!(" {:?}{:?}", item.perm(), item.tag());
+            }
+            println!(" ]");
+        }
+        Ok(())
+    }
 }

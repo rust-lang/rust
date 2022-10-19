@@ -417,6 +417,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // shim, add it to the corresponding submodule.
         match link_name.as_str() {
             // Miri-specific extern functions
+            "miri_get_alloc_id" => {
+                let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr)?;
+                this.write_scalar(Scalar::from_u64(alloc_id.0.get()), dest)?;
+            }
+            "miri_print_stacks" => {
+                let [id] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let id = this.read_scalar(id)?.to_u64()?;
+                if let Some(id) = std::num::NonZeroU64::new(id) {
+                    this.print_stacks(AllocId(id))?;
+                }
+            }
             "miri_static_root" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
