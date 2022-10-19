@@ -41,7 +41,7 @@ $ cd ..
 $ dirname $(readlink -f `find . -name libgccjit.so`) > gcc_path
 ```
 
-You can set also set RUST_COMPILER_RT_ROOT:
+You also need to set RUST_COMPILER_RT_ROOT:
 
 ```bash
 $ git clone https://github.com/llvm/llvm-project llvm --depth 1 --single-branch
