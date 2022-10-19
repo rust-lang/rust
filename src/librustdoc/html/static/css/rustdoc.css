@@ -703,7 +703,6 @@ pre, .rustdoc.source .example-wrap {
 
 nav.sub {
 	position: relative;
-	font-size: 1rem;
 	flex-grow: 1;
 	margin-bottom: 25px;
 }
