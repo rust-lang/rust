@@ -294,9 +294,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 assert!(self.query_mode == TraitQueryMode::Canonical);
                 return Err(SelectionError::Overflow(OverflowError::Canonical));
             }
-            Err(SelectionError::Ambiguous(_)) => {
-                return Ok(None);
-            }
             Err(e) => {
                 return Err(e);
             }
@@ -931,7 +928,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
-            Err(SelectionError::Ambiguous(_)) => Ok(EvaluatedToAmbig),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
             Err(ErrorReporting) => Err(OverflowError::ErrorReporting),

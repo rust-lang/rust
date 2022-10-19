@@ -38,7 +38,7 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
 
     fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self> {
         if tcx.sess.opts.unstable_opts.chalk {
-            Box::new(ChalkFulfillmentContext::new())
+            Box::new(ChalkFulfillmentContext::new_in_snapshot())
         } else {
             Box::new(FulfillmentContext::new_in_snapshot())
         }
@@ -119,13 +119,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         expected: T,
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
-        match self.infcx.at(cause, param_env).eq(expected, actual) {
-            Ok(InferOk { obligations, value: () }) => {
-                self.register_obligations(obligations);
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+        self.infcx
+            .at(cause, param_env)
+            .eq(expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
     pub fn sup<T: ToTrace<'tcx>>(
@@ -142,6 +139,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             }
             Err(e) => Err(e),
         }
+    }
+
+    pub fn select_where_possible(&self) -> Vec<FulfillmentError<'tcx>> {
+        self.engine.borrow_mut().select_where_possible(self.infcx)
     }
 
     pub fn select_all_or_error(&self) -> Vec<FulfillmentError<'tcx>> {

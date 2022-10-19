@@ -30,16 +30,19 @@ fn baa(b: bool) -> impl std::fmt::Debug {
 
 fn muh() -> Result<(), impl std::fmt::Debug> {
     Err("whoops")?;
-    Ok(()) //~ ERROR type annotations needed
+    Ok(())
+    //~^ ERROR type annotations needed
 }
 
 fn muh2() -> Result<(), impl std::fmt::Debug> {
-    return Err(From::from("foo")); //~ ERROR type annotations needed
+    return Err(From::from("foo"));
+    //~^ ERROR type annotations needed
     Ok(())
 }
 
 fn muh3() -> Result<(), impl std::fmt::Debug> {
-    Err(From::from("foo")) //~ ERROR type annotations needed
+    Err(From::from("foo"))
+    //~^ ERROR type annotations needed
 }
 
 fn main() {}
