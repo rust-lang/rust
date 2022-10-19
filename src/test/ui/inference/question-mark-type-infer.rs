@@ -7,7 +7,8 @@ fn f(x: &i32) -> Result<i32, ()> {
 
 fn g() -> Result<Vec<i32>, ()> {
     let l = [1, 2, 3, 4];
-    l.iter().map(f).collect()? //~ ERROR type annotations needed
+    l.iter().map(f).collect()?
+    //~^ ERROR type annotations needed
 }
 
 fn main() {
