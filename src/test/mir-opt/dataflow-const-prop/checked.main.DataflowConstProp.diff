@@ -53,8 +53,7 @@
           StorageDead(_5);                 // scope 2 at $DIR/checked.rs:+3:17: +3:18
           StorageDead(_4);                 // scope 2 at $DIR/checked.rs:+3:17: +3:18
           StorageLive(_7);                 // scope 3 at $DIR/checked.rs:+5:9: +5:10
--         _7 = const _;                    // scope 3 at $DIR/checked.rs:+5:13: +5:21
-+         _7 = const i32::MAX;             // scope 3 at $DIR/checked.rs:+5:13: +5:21
+          _7 = const _;                    // scope 3 at $DIR/checked.rs:+5:13: +5:21
           StorageLive(_8);                 // scope 4 at $DIR/checked.rs:+6:9: +6:10
           StorageLive(_9);                 // scope 4 at $DIR/checked.rs:+6:13: +6:14
 -         _9 = _7;                         // scope 4 at $DIR/checked.rs:+6:13: +6:14

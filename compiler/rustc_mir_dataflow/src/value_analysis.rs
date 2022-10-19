@@ -192,13 +192,27 @@ pub trait ValueAnalysis<'tcx> {
                 .map(ValueOrPlaceOrRef::Ref)
                 .unwrap_or(ValueOrPlaceOrRef::top()),
             Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+                // This is not a `&x` reference and could be used for modification.
                 state.flood(place.as_ref(), self.map());
                 ValueOrPlaceOrRef::top()
             }
             Rvalue::CopyForDeref(place) => {
                 self.handle_operand(&Operand::Copy(*place), state).into()
             }
-            _ => ValueOrPlaceOrRef::top(),
+            Rvalue::Repeat(..)
+            | Rvalue::ThreadLocalRef(..)
+            | Rvalue::Len(..)
+            | Rvalue::Cast(..)
+            | Rvalue::BinaryOp(..)
+            | Rvalue::CheckedBinaryOp(..)
+            | Rvalue::NullaryOp(..)
+            | Rvalue::UnaryOp(..)
+            | Rvalue::Discriminant(..)
+            | Rvalue::Aggregate(..)
+            | Rvalue::ShallowInitBox(..) => {
+                // No modification is possible through these r-values.
+                ValueOrPlaceOrRef::top()
+            }
         }
     }
 
@@ -419,7 +433,7 @@ enum StateData<V> {
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct State<V>(StateData<V>);
 
-impl<V: Clone + HasTop> State<V> {
+impl<V: Clone + HasTop + HasBottom> State<V> {
     pub fn is_reachable(&self) -> bool {
         matches!(&self.0, StateData::Reachable(_))
     }
@@ -460,6 +474,10 @@ impl<V: Clone + HasTop> State<V> {
         self.flood_idx_with(place, map, V::top())
     }
 
+    /// Copies `source` to `target`, including all tracked places beneath.
+    ///
+    /// If `target` contains a place that is not contained in `source`, it will be overwritten with
+    /// Top. Also, because this will copy all entries one after another, it may only be
     pub fn assign_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
         // We use (A3) and copy all entries one after another.
         let StateData::Reachable(values) = &mut self.0 else { return };
@@ -514,7 +532,7 @@ impl<V: Clone + HasTop> State<V> {
                 // track *what* it points to (as in, what do we know about the target). For an
                 // assignment `x = &y`, we thus copy the info we have for `y` to `*x`. This is
                 // sound because we only track places that are `Freeze`, and (A4).
-                if let Some(target_deref) = map.apply_elem(target, ProjElem::Deref) {
+                if let Some(target_deref) = map.apply(target, TrackElem::Deref) {
                     self.assign_place_idx(target_deref, source, map);
                 }
             }
@@ -530,7 +548,10 @@ impl<V: Clone + HasTop> State<V> {
             StateData::Reachable(values) => {
                 map.places[place].value_index.map(|v| values[v].clone()).unwrap_or(V::top())
             }
-            StateData::Unreachable => V::top(),
+            StateData::Unreachable => {
+                // Because this is unreachable, we can return any value we want.
+                V::bottom()
+            }
         }
     }
 }
@@ -548,10 +569,15 @@ impl<V: JoinSemiLattice + Clone> JoinSemiLattice for State<V> {
     }
 }
 
+/// A partial mapping from `Place` to `PlaceIndex`.
+///
+/// Some additioanl bookkeeping is done to speed up traversal:
+/// - For iteration, every [`PlaceInfo`] contains an intrusive linked list of its children.
+/// - To directly get the child for a specific projection, there is `projections` map.
 #[derive(Debug)]
 pub struct Map {
     locals: IndexVec<Local, Option<PlaceIndex>>,
-    projections: FxHashMap<(PlaceIndex, ProjElem), PlaceIndex>,
+    projections: FxHashMap<(PlaceIndex, TrackElem), PlaceIndex>,
     places: IndexVec<PlaceIndex, PlaceInfo>,
     value_count: usize,
 }
@@ -566,7 +592,10 @@ impl Map {
         }
     }
 
-    /// Register all suitable places with matching types (up to a certain depth).
+    /// Returns a map that only tracks places whose type passes the filter.
+    ///
+    /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
+    /// chosen is an implementation detail an may not be relied upon.
     pub fn from_filter<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
@@ -579,7 +608,9 @@ impl Map {
         // the correctness relies on an aliasing model similar to Stacked Borrows (which is
         // not yet guaranteed).
         if tcx.sess.opts.unstable_opts.unsound_mir_opts {
-            map.register_with_filter(tcx, body, 3, filter, &[]);
+            // We might want to add additional limitations. If a struct has 10 boxed fields of
+            // itself, will currently be `10.pow(max_derefs)` tracked places.
+            map.register_with_filter(tcx, body, 2, filter, &[]);
         } else {
             map.register_with_filter(tcx, body, 0, filter, &escaped_places(body));
         }
@@ -587,6 +618,7 @@ impl Map {
         map
     }
 
+    /// Register all non-excluded places that pass the filter, up to a certain dereference depth.
     fn register_with_filter<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -595,7 +627,9 @@ impl Map {
         mut filter: impl FnMut(Ty<'tcx>) -> bool,
         exclude: &[Place<'tcx>],
     ) {
+        // This is used to tell whether a type is `!Freeze`.
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+
         let mut projection = Vec::new();
         for (local, decl) in body.local_decls.iter_enumerated() {
             self.register_with_filter_rec(
@@ -622,7 +656,7 @@ impl Map {
         param_env: ty::ParamEnv<'tcx>,
         exclude: &[Place<'tcx>],
     ) {
-        // This check could be improved.
+        // This currently does a linear scan, could be improved.
         if exclude.contains(&Place { local, projection: tcx.intern_place_elems(projection) }) {
             return;
         }
@@ -664,6 +698,9 @@ impl Map {
         });
     }
 
+    /// Tries to add the place to the map, without allocating a value slot.
+    ///
+    /// Can fail if the projection contains non-trackable elements.
     fn make_place<'tcx>(
         &mut self,
         local: Local,
@@ -675,10 +712,6 @@ impl Map {
 
         // Apply the projection.
         for &elem in projection {
-            match elem {
-                PlaceElem::Downcast(..) => return Err(()),
-                _ => (),
-            }
             let elem = elem.try_into()?;
             index = *self.projections.entry((index, elem)).or_insert_with(|| {
                 // Prepend new child to the linked list.
@@ -713,6 +746,7 @@ impl Map {
         self.register_with_ty(local, projection, place_ty.ty)
     }
 
+    /// Tries to track the given place. Fails if type is non-scalar or projection is not trackable.
     fn register_with_ty<'tcx>(
         &mut self,
         local: Local,
@@ -736,7 +770,7 @@ impl Map {
         Ok(())
     }
 
-    pub fn apply_elem(&self, place: PlaceIndex, elem: ProjElem) -> Option<PlaceIndex> {
+    pub fn apply(&self, place: PlaceIndex, elem: TrackElem) -> Option<PlaceIndex> {
         self.projections.get(&(place, elem)).copied()
     }
 
@@ -744,12 +778,13 @@ impl Map {
         let mut index = *self.locals.get(place.local)?.as_ref()?;
 
         for &elem in place.projection {
-            index = self.apply_elem(index, elem.try_into().ok()?)?;
+            index = self.apply(index, elem.try_into().ok()?)?;
         }
 
         Some(index)
     }
 
+    /// Iterate over all direct children.
     pub fn children(&self, parent: PlaceIndex) -> impl Iterator<Item = PlaceIndex> + '_ {
         Children::new(self, parent)
     }
@@ -762,38 +797,29 @@ impl Map {
     }
 }
 
+/// This is the information tracked for every [`PlaceIndex`] and is stored by [`Map`].
+///
+/// Together, `first_child` and `next_sibling` form an intrusive linked list, which is used to
+/// model a tree structure (a replacement for a member like `children: Vec<PlaceIndex>`).
 #[derive(Debug)]
 struct PlaceInfo {
-    next_sibling: Option<PlaceIndex>,
-    first_child: Option<PlaceIndex>,
-    /// The projection used to go from parent to this node (only None for root).
-    proj_elem: Option<ProjElem>,
+    /// We store a [`ValueIndex`] if and only if the placed is tracked by the analysis.
     value_index: Option<ValueIndex>,
+
+    /// The projection used to go from parent to this node (only None for root).
+    proj_elem: Option<TrackElem>,
+
+    /// The left-most child.
+    first_child: Option<PlaceIndex>,
+
+    /// Index of the sibling to the right of this node.
+    next_sibling: Option<PlaceIndex>,
 }
 
 impl PlaceInfo {
-    fn new(proj_elem: Option<ProjElem>) -> Self {
+    fn new(proj_elem: Option<TrackElem>) -> Self {
         Self { next_sibling: None, first_child: None, proj_elem, value_index: None }
     }
-}
-
-/// Returns all places, that have their reference or address taken.
-fn escaped_places<'tcx>(body: &Body<'tcx>) -> Vec<Place<'tcx>> {
-    struct Collector<'tcx> {
-        result: Vec<Place<'tcx>>,
-    }
-
-    impl<'tcx> Visitor<'tcx> for Collector<'tcx> {
-        fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-            if context.is_borrow() || context.is_address_of() {
-                self.result.push(*place);
-            }
-        }
-    }
-
-    let mut collector = Collector { result: Vec::new() };
-    collector.visit_body(body);
-    collector.result
 }
 
 struct Children<'a> {
@@ -820,25 +846,28 @@ impl<'a> Iterator for Children<'a> {
         }
     }
 }
+
+/// Used as the result of an operand.
 pub enum ValueOrPlace<V> {
     Value(V),
     Place(PlaceIndex),
 }
 
-impl<V: HasTop> ValueOrPlace<V> {
-    pub fn top() -> Self {
+impl<V: HasTop> HasTop for ValueOrPlace<V> {
+    fn top() -> Self {
         ValueOrPlace::Value(V::top())
     }
 }
 
+/// Used as the result of an r-value.
 pub enum ValueOrPlaceOrRef<V> {
     Value(V),
     Place(PlaceIndex),
     Ref(PlaceIndex),
 }
 
-impl<V: HasTop> ValueOrPlaceOrRef<V> {
-    pub fn top() -> Self {
+impl<V: HasTop> HasTop for ValueOrPlaceOrRef<V> {
+    fn top() -> Self {
         ValueOrPlaceOrRef::Value(V::top())
     }
 }
@@ -872,27 +901,28 @@ impl<V> HasTop for FlatSet<V> {
     }
 }
 
-/// Currently, we only track places through deref and field projections.
+/// The set of projection elements that can be used by a tracked place.
 ///
 /// For now, downcast is not allowed due to aliasing between variants (see #101168).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ProjElem {
+pub enum TrackElem {
     Deref,
     Field(Field),
 }
 
-impl<V, T> TryFrom<ProjectionElem<V, T>> for ProjElem {
+impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
     type Error = ();
 
     fn try_from(value: ProjectionElem<V, T>) -> Result<Self, Self::Error> {
         match value {
-            ProjectionElem::Deref => Ok(ProjElem::Deref),
-            ProjectionElem::Field(field, _) => Ok(ProjElem::Field(field)),
+            ProjectionElem::Deref => Ok(TrackElem::Deref),
+            ProjectionElem::Field(field, _) => Ok(TrackElem::Field(field)),
             _ => Err(()),
         }
     }
 }
 
+/// Invokes `f` on all direct fields of `ty`.
 fn iter_fields<'tcx>(
     ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -922,58 +952,26 @@ fn iter_fields<'tcx>(
     }
 }
 
-fn debug_with_context_rec<V: Debug + Eq>(
-    place: PlaceIndex,
-    place_str: &str,
-    new: &IndexVec<ValueIndex, V>,
-    old: Option<&IndexVec<ValueIndex, V>>,
-    map: &Map,
-    f: &mut Formatter<'_>,
-) -> std::fmt::Result {
-    if let Some(value) = map.places[place].value_index {
-        match old {
-            None => writeln!(f, "{}: {:?}", place_str, new[value])?,
-            Some(old) => {
-                if new[value] != old[value] {
-                    writeln!(f, "\u{001f}-{}: {:?}", place_str, old[value])?;
-                    writeln!(f, "\u{001f}+{}: {:?}", place_str, new[value])?;
-                }
+/// Returns all places, that have their reference or address taken.
+fn escaped_places<'tcx>(body: &Body<'tcx>) -> Vec<Place<'tcx>> {
+    struct Collector<'tcx> {
+        result: Vec<Place<'tcx>>,
+    }
+
+    impl<'tcx> Visitor<'tcx> for Collector<'tcx> {
+        fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
+            if context.is_borrow() || context.is_address_of() {
+                self.result.push(*place);
             }
         }
     }
 
-    for child in map.children(place) {
-        let info_elem = map.places[child].proj_elem.unwrap();
-        let child_place_str = match info_elem {
-            ProjElem::Deref => format!("*{}", place_str),
-            ProjElem::Field(field) => {
-                if place_str.starts_with("*") {
-                    format!("({}).{}", place_str, field.index())
-                } else {
-                    format!("{}.{}", place_str, field.index())
-                }
-            }
-        };
-        debug_with_context_rec(child, &child_place_str, new, old, map, f)?;
-    }
-
-    Ok(())
+    let mut collector = Collector { result: Vec::new() };
+    collector.visit_body(body);
+    collector.result
 }
 
-fn debug_with_context<V: Debug + Eq>(
-    new: &IndexVec<ValueIndex, V>,
-    old: Option<&IndexVec<ValueIndex, V>>,
-    map: &Map,
-    f: &mut Formatter<'_>,
-) -> std::fmt::Result {
-    for (local, place) in map.locals.iter_enumerated() {
-        if let Some(place) = place {
-            debug_with_context_rec(*place, &format!("{:?}", local), new, old, map, f)?;
-        }
-    }
-    Ok(())
-}
-
+/// This is used to visualize the dataflow analysis.
 impl<'tcx, T> DebugWithContext<ValueAnalysisWrapper<T>> for State<T::Value>
 where
     T: ValueAnalysis<'tcx>,
@@ -999,4 +997,56 @@ where
             _ => Ok(()), // Consider printing something here.
         }
     }
+}
+
+fn debug_with_context_rec<V: Debug + Eq>(
+    place: PlaceIndex,
+    place_str: &str,
+    new: &IndexVec<ValueIndex, V>,
+    old: Option<&IndexVec<ValueIndex, V>>,
+    map: &Map,
+    f: &mut Formatter<'_>,
+) -> std::fmt::Result {
+    if let Some(value) = map.places[place].value_index {
+        match old {
+            None => writeln!(f, "{}: {:?}", place_str, new[value])?,
+            Some(old) => {
+                if new[value] != old[value] {
+                    writeln!(f, "\u{001f}-{}: {:?}", place_str, old[value])?;
+                    writeln!(f, "\u{001f}+{}: {:?}", place_str, new[value])?;
+                }
+            }
+        }
+    }
+
+    for child in map.children(place) {
+        let info_elem = map.places[child].proj_elem.unwrap();
+        let child_place_str = match info_elem {
+            TrackElem::Deref => format!("*{}", place_str),
+            TrackElem::Field(field) => {
+                if place_str.starts_with("*") {
+                    format!("({}).{}", place_str, field.index())
+                } else {
+                    format!("{}.{}", place_str, field.index())
+                }
+            }
+        };
+        debug_with_context_rec(child, &child_place_str, new, old, map, f)?;
+    }
+
+    Ok(())
+}
+
+fn debug_with_context<V: Debug + Eq>(
+    new: &IndexVec<ValueIndex, V>,
+    old: Option<&IndexVec<ValueIndex, V>>,
+    map: &Map,
+    f: &mut Formatter<'_>,
+) -> std::fmt::Result {
+    for (local, place) in map.locals.iter_enumerated() {
+        if let Some(place) = place {
+            debug_with_context_rec(*place, &format!("{:?}", local), new, old, map, f)?;
+        }
+    }
+    Ok(())
 }

@@ -1,10 +1,14 @@
+//! A constant propagation optimization pass based on dataflow analysis.
+//!
+//! Tracks places that have a scalar type.
+
 use rustc_const_eval::interpret::{ConstValue, ImmTy, Immediate, InterpCx, Scalar};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
-    Map, ProjElem, State, ValueAnalysis, ValueOrPlace, ValueOrPlaceOrRef,
+    HasTop, Map, State, TrackElem, ValueAnalysis, ValueOrPlace, ValueOrPlaceOrRef,
 };
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, ResultsVisitor, SwitchIntEdgeEffects};
 use rustc_span::{sym, DUMMY_SP};
@@ -20,7 +24,7 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Decide which places to track during the analysis.
-        let map = Map::from_filter(tcx, body, |ty| ty.is_scalar() && !ty.is_unsafe_ptr());
+        let map = Map::from_filter(tcx, body, Ty::is_scalar);
 
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);
@@ -65,12 +69,10 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                     state.flood_idx(target, self.map());
                 }
 
-                let value_target = target.and_then(|target| {
-                    self.map().apply_elem(target, ProjElem::Field(0_u32.into()))
-                });
-                let overflow_target = target.and_then(|target| {
-                    self.map().apply_elem(target, ProjElem::Field(1_u32.into()))
-                });
+                let value_target = target
+                    .and_then(|target| self.map().apply(target, TrackElem::Field(0_u32.into())));
+                let overflow_target = target
+                    .and_then(|target| self.map().apply(target, TrackElem::Field(1_u32.into())));
 
                 if value_target.is_some() || overflow_target.is_some() {
                     let (val, overflow) = self.binary_op(state, *op, left, right);
@@ -211,6 +213,7 @@ struct ScalarTy<'tcx>(Scalar, Ty<'tcx>);
 
 impl<'tcx> std::fmt::Debug for ScalarTy<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // This is used for dataflow visualization, so we return something more concise.
         std::fmt::Display::fmt(&ConstantKind::Val(ConstValue::Scalar(self.0), self.1), f)
     }
 }
@@ -341,13 +344,16 @@ impl<'mir, 'tcx, 'map> ResultsVisitor<'mir, 'tcx> for CollectAndPatch<'tcx, 'map
         location: Location,
     ) {
         match statement.kind {
+            StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(_)))) => {
+                // Don't overwrite the assignment if it already uses a constant (to keep the span).
+            }
             StatementKind::Assign(box (place, _)) => match state.get(place.as_ref(), self.map) {
                 FlatSet::Top => (),
                 FlatSet::Elem(value) => {
                     self.assignments.insert(location, value);
                 }
                 FlatSet::Bottom => {
-                    // This statement is not reachable. Do nothing, it will (hopefully) be removed.
+                    // This assignment is either unreachable, or an uninitialized value is assigned.
                 }
             },
             _ => (),
