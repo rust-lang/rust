@@ -18,21 +18,46 @@ The patches in [this repository](https://github.com/antoyo/libgccjit-patches) ne
 (Those patches should work when applied on master, but in case it doesn't work, they are known to work when applied on 079c23cfe079f203d5df83fea8e92a60c7d7e878.)
 You can also use my [fork of gcc](https://github.com/antoyo/gcc) which already includes these patches.**
 
+To build it (most of these instructions come from [here](https://gcc.gnu.org/onlinedocs/jit/internals/index.html), so don't hesitate to take a look there if you encounter an issue):
+
+```bash
+$ git clone https://github.com/antoyo/gcc
+$ cd gcc
+$ sudo apt install flex libmpfr-dev libgmp-dev libmpc3 libmpc-dev
+$ ./configure \
+   --enable-host-shared \
+   --enable-languages=jit \
+   --disable-bootstrap \
+   --enable-checking=release \
+   --prefix=$(pwd)/install \
+   --disable-multilib
+$ make -j4 # You can replace `4` with another number depending on how many cores you have.
+$ cd ..
+```
+
 **Put the path to your custom build of libgccjit in the file `gcc_path`.**
 
 ```bash
-$ git clone https://github.com/rust-lang/rustc_codegen_gcc.git
-$ cd rustc_codegen_gcc
+$ dirname $(readlink -f `find . -name libgccjit.so`) > gcc_path
+```
+
+You also need to set RUST_COMPILER_RT_ROOT:
+
+```bash
 $ git clone https://github.com/llvm/llvm-project llvm --depth 1 --single-branch
 $ export RUST_COMPILER_RT_ROOT="$PWD/llvm/compiler-rt"
-$ ./prepare_build.sh # download and patch sysroot src
-$ ./build.sh --release
+```
+
+Then you can run commands like this:
+
+```bash
+$ ./prepare.sh # download and patch sysroot src and install hyperfine for benchmarking
+$ LIBRARY_PATH=$(cat gcc_path) LD_LIBRARY_PATH=$(cat gcc_path) ./build.sh --release
 ```
 
 To run the tests:
 
 ```bash
-$ ./prepare.sh # download and patch sysroot src and install hyperfine for benchmarking
 $ ./test.sh --release
 ```
 
