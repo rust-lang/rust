@@ -11,6 +11,11 @@ use super::thread::MachineCallback;
 use super::vector_clock::VClock;
 use crate::*;
 
+pub trait SyncId {
+    fn from_u32(id: u32) -> Self;
+    fn to_u32_scalar(&self) -> Scalar<Provenance>;
+}
+
 /// We cannot use the `newtype_index!` macro because we have to use 0 as a
 /// sentinel value meaning that the identifier is not assigned. This is because
 /// the pthreads static initializers initialize memory with zeros (see the
@@ -22,10 +27,13 @@ macro_rules! declare_id {
         #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
         pub struct $name(NonZeroU32);
 
-        impl $name {
+        impl SyncId for $name {
             // Panics if `id == 0`.
-            pub fn from_u32(id: u32) -> Self {
+            fn from_u32(id: u32) -> Self {
                 Self(NonZeroU32::new(id).unwrap())
+            }
+            fn to_u32_scalar(&self) -> Scalar<Provenance> {
+                Scalar::from_u32(self.0.get())
             }
         }
 
@@ -166,7 +174,7 @@ impl<'mir, 'tcx> std::fmt::Debug for InitOnceWaiter<'mir, 'tcx> {
     }
 }
 
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq,)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
 /// The current status of a one time initialization.
 pub enum InitOnceStatus {
     #[default]
@@ -212,6 +220,37 @@ impl<'mir, 'tcx> VisitTags for SynchronizationState<'mir, 'tcx> {
 // Private extension trait for local helper methods
 impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+    #[inline]
+    // Miri sync structures contain zero-initialized ids stored at some offset behind a pointer
+    fn get_or_create_id<Id: SyncId>(
+        &mut self,
+        next_id: Id,
+        lock_op: &OpTy<'tcx, Provenance>,
+        offset: u64,
+    ) -> InterpResult<'tcx, Option<Id>> {
+        let this = self.eval_context_mut();
+        let value_place =
+            this.deref_operand_and_offset(lock_op, offset, this.machine.layouts.u32)?;
+
+        let (old, success) = this
+            .atomic_compare_exchange_scalar(
+                &value_place,
+                &ImmTy::from_uint(0u32, this.machine.layouts.u32),
+                next_id.to_u32_scalar(),
+                AtomicRwOrd::Relaxed,
+                AtomicReadOrd::Relaxed,
+                false,
+            )?
+            .to_scalar_pair();
+
+        Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
+            // Caller of the closure needs to allocate next_id
+            None
+        } else {
+            Some(Id::from_u32(old.to_u32().expect("layout is u32")))
+        })
+    }
+
     /// Take a reader out of the queue waiting for the lock.
     /// Returns `true` if some thread got the rwlock.
     #[inline]
@@ -261,6 +300,48 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 // situations.
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+    fn mutex_get_or_create_id(
+        &mut self,
+        lock_op: &OpTy<'tcx, Provenance>,
+        offset: u64,
+    ) -> InterpResult<'tcx, MutexId> {
+        let this = self.eval_context_mut();
+        this.mutex_get_or_create(|ecx, next_id| Ok(ecx.get_or_create_id(next_id, lock_op, offset)?))
+    }
+
+    fn rwlock_get_or_create_id(
+        &mut self,
+        lock_op: &OpTy<'tcx, Provenance>,
+        offset: u64,
+    ) -> InterpResult<'tcx, RwLockId> {
+        let this = self.eval_context_mut();
+        this.rwlock_get_or_create(
+            |ecx, next_id| Ok(ecx.get_or_create_id(next_id, lock_op, offset)?),
+        )
+    }
+
+    fn condvar_get_or_create_id(
+        &mut self,
+        lock_op: &OpTy<'tcx, Provenance>,
+        offset: u64,
+    ) -> InterpResult<'tcx, CondvarId> {
+        let this = self.eval_context_mut();
+        this.condvar_get_or_create(|ecx, next_id| {
+            Ok(ecx.get_or_create_id(next_id, lock_op, offset)?)
+        })
+    }
+
+    fn init_once_get_or_create_id(
+        &mut self,
+        lock_op: &OpTy<'tcx, Provenance>,
+        offset: u64,
+    ) -> InterpResult<'tcx, InitOnceId> {
+        let this = self.eval_context_mut();
+        this.init_once_get_or_create(|ecx, next_id| {
+            Ok(ecx.get_or_create_id(next_id, lock_op, offset)?)
+        })
+    }
+
     #[inline]
     /// Create state for a new mutex.
     fn mutex_create(&mut self) -> MutexId {

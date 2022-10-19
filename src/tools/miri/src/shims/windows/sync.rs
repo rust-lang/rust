@@ -2,65 +2,13 @@ use crate::concurrency::sync::InitOnceStatus;
 use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
-impl<'mir, 'tcx> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    // These synchronization structures are pointer-sized pieces of data, initialized to 0.
-    // We use the first 4 bytes to store the id.
-    fn get_or_create_id(
-        &mut self,
-        next_id: Scalar<Provenance>,
-        lock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Option<u32>> {
-        let this = self.eval_context_mut();
-        let value_place = this.deref_operand_and_offset(lock_op, 0, this.machine.layouts.u32)?;
-
-        let (old, success) = this
-            .atomic_compare_exchange_scalar(
-                &value_place,
-                &ImmTy::from_uint(0u32, this.machine.layouts.u32),
-                next_id,
-                AtomicRwOrd::Relaxed,
-                AtomicReadOrd::Relaxed,
-                false,
-            )?
-            .to_scalar_pair();
-
-        Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
-            // Caller of the closure needs to allocate next_id
-            None
-        } else {
-            Some(old.to_u32().expect("layout is u32"))
-        })
-    }
-
-    fn srwlock_get_or_create_id(
-        &mut self,
-        lock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, RwLockId> {
-        let this = self.eval_context_mut();
-        this.rwlock_get_or_create(|ecx, next_id| {
-            Ok(ecx.get_or_create_id(next_id.to_u32_scalar(), lock_op)?.map(RwLockId::from_u32))
-        })
-    }
-
-    fn init_once_get_or_create_id(
-        &mut self,
-        lock_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, InitOnceId> {
-        let this = self.eval_context_mut();
-        this.init_once_get_or_create(|ecx, next_id| {
-            Ok(ecx.get_or_create_id(next_id.to_u32_scalar(), lock_op)?.map(InitOnceId::from_u32))
-        })
-    }
-}
-
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 
 #[allow(non_snake_case)]
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn AcquireSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let id = this.srwlock_get_or_create_id(lock_op)?;
+        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_locked(id) {
@@ -84,7 +32,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         lock_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
-        let id = this.srwlock_get_or_create_id(lock_op)?;
+        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_locked(id) {
@@ -98,7 +46,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn ReleaseSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let id = this.srwlock_get_or_create_id(lock_op)?;
+        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
         let active_thread = this.get_active_thread();
 
         if !this.rwlock_writer_unlock(id, active_thread) {
@@ -113,7 +61,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn AcquireSRWLockShared(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let id = this.srwlock_get_or_create_id(lock_op)?;
+        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_write_locked(id) {
@@ -130,7 +78,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         lock_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
-        let id = this.srwlock_get_or_create_id(lock_op)?;
+        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_write_locked(id) {
@@ -143,7 +91,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn ReleaseSRWLockShared(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let id = this.srwlock_get_or_create_id(lock_op)?;
+        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
         let active_thread = this.get_active_thread();
 
         if !this.rwlock_reader_unlock(id, active_thread) {
@@ -166,7 +114,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread();
 
-        let id = this.init_once_get_or_create_id(init_once_op)?;
+        let id = this.init_once_get_or_create_id(init_once_op, 0)?;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
         let pending_place = this.deref_operand(pending_op)?.into();
         let context = this.read_pointer(context_op)?;
@@ -232,7 +180,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let id = this.init_once_get_or_create_id(init_once_op)?;
+        let id = this.init_once_get_or_create_id(init_once_op, 0)?;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
         let context = this.read_pointer(context_op)?;
 
