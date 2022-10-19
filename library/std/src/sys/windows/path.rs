@@ -11,6 +11,12 @@ mod tests;
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
 
+// Currently a no-op. Should convert to a wide string.
+pub type NativePath = Path;
+pub fn with_native_path<T, F: FnOnce(&NativePath) -> T>(path: &Path, f: F) -> T {
+    f(path)
+}
+
 /// # Safety
 ///
 /// `bytes` must be a valid wtf8 encoded slice
