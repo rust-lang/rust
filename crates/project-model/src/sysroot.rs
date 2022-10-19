@@ -189,6 +189,7 @@ fn discover_sysroot_src_dir(sysroot_path: &AbsPathBuf) -> Option<AbsPathBuf> {
 
     get_rust_src(sysroot_path)
 }
+
 fn discover_sysroot_src_dir_or_add_component(
     sysroot_path: &AbsPathBuf,
     current_dir: &AbsPath,
