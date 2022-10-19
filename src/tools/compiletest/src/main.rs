@@ -200,7 +200,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
+        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version).or_else(
+            || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
+        );
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");

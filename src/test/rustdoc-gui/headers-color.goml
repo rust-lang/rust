@@ -1,117 +1,70 @@
 // This test check for headers text and background colors for the different themes.
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 
-// This is needed so that the text color is computed.
-show-text: true
-
-// Ayu theme
-local-storage: {
-    "rustdoc-theme": "ayu",
-    "rustdoc-preferred-dark-theme": "ayu",
-    "rustdoc-use-system-theme": "false",
-}
-reload:
-
-assert-css: (
-    ".impl",
-    {"color": "rgb(197, 197, 197)", "background-color": "rgba(0, 0, 0, 0)"},
-    ALL,
-)
-assert-css: (
-    ".impl .code-header",
-    {"color": "rgb(230, 225, 207)", "background-color": "rgba(0, 0, 0, 0)"},
-    ALL,
-)
-
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#impl-Foo"
-assert-css: (
-    "#impl-Foo",
-    {"color": "rgb(197, 197, 197)", "background-color": "rgba(255, 236, 164, 0.06)"},
-)
-
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.must_use"
-assert-css: (
-    "#method\.must_use",
-    {"color": "rgb(197, 197, 197)", "background-color": "rgba(255, 236, 164, 0.06)"},
-    ALL,
-)
-
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
-assert-css: (".small-section-header a", {"color": "rgb(197, 197, 197)"}, ALL)
-
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
-// We select headings (h2, h3, h...).
-assert-css: (".docblock > :not(p) > a", {"color": "rgb(57, 175, 215)"}, ALL)
-
-// Dark theme
-local-storage: {
-    "rustdoc-theme": "dark",
-    "rustdoc-preferred-dark-theme": "dark",
-    "rustdoc-use-system-theme": "false",
-}
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
-
-assert-css: (
-    ".impl",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-    ALL,
-)
-assert-css: (
-    ".impl .code-header",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-    ALL,
+define-function: (
+    "check-colors",
+    (theme, color, code_header_color, focus_background_color, headings_color),
+    [
+        ("goto", "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"),
+        // This is needed so that the text color is computed.
+        ("show-text", true),
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        ("reload"),
+        ("assert-css", (
+            ".impl",
+            {"color": |color|, "background-color": "rgba(0, 0, 0, 0)"},
+            ALL,
+        )),
+        ("assert-css", (
+            ".impl .code-header",
+            {"color": |code_header_color|, "background-color": "rgba(0, 0, 0, 0)"},
+            ALL,
+        )),
+        ("goto", "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#impl-Foo"),
+        ("assert-css", (
+            "#impl-Foo",
+            {"color": |color|, "background-color": |focus_background_color|},
+        )),
+        ("goto", "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.must_use"),
+        ("assert-css", (
+            "#method\.must_use",
+            {"color": |color|, "background-color": |focus_background_color|},
+            ALL,
+        )),
+        ("goto", "file://" + |DOC_PATH| + "/test_docs/index.html"),
+        ("assert-css", (".small-section-header a", {"color": |color|}, ALL)),
+        ("goto", "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"),
+        // We select headings (h2, h3, h...).
+        ("assert-css", (".docblock > :not(p) > a", {"color": |headings_color|}, ALL)),
+    ],
 )
 
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#impl-Foo"
-assert-css: (
-    "#impl-Foo",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(73, 74, 61)"},
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "color": "rgb(197, 197, 197)",
+        "code_header_color": "rgb(230, 225, 207)",
+        "focus_background_color": "rgba(255, 236, 164, 0.06)",
+        "headings_color": "rgb(57, 175, 215)",
+    },
 )
-
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.must_use"
-assert-css: (
-    "#method\.must_use",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(73, 74, 61)"},
-    ALL,
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "color": "rgb(221, 221, 221)",
+        "code_header_color": "rgb(221, 221, 221)",
+        "focus_background_color": "rgb(73, 74, 61)",
+        "headings_color": "rgb(210, 153, 29)",
+    },
 )
-
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
-assert-css: (".small-section-header a", {"color": "rgb(221, 221, 221)"}, ALL)
-
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
-// We select headings (h2, h3, h...).
-assert-css: (".docblock > :not(p) > a", {"color": "rgb(210, 153, 29)"}, ALL)
-
-// Light theme
-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
-reload:
-
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
-
-assert-css: (
-    ".impl",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-    ALL,
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "color": "rgb(0, 0, 0)",
+        "code_header_color": "rgb(0, 0, 0)",
+        "focus_background_color": "rgb(253, 255, 211)",
+        "headings_color": "rgb(56, 115, 173)",
+    },
 )
-assert-css: (
-    ".impl .code-header",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-    ALL,
-)
-
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#impl-Foo"
-assert-css: ("#impl-Foo", {"color": "rgb(0, 0, 0)", "background-color": "rgb(253, 255, 211)"})
-
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html#method.must_use"
-assert-css: (
-    "#method\.must_use",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(253, 255, 211)"},
-    ALL,
-)
-
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
-assert-css: (".small-section-header a", {"color": "rgb(0, 0, 0)"}, ALL)
-
-goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
-// We select headings (h2, h3, h...).
-assert-css: (".docblock > :not(p) > a", {"color": "rgb(56, 115, 173)"}, ALL)

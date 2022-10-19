@@ -437,6 +437,7 @@ img {
 
 .source-sidebar-expanded .source .sidebar {
 	overflow-y: auto;
+	width: 300px;
 }
 
 .source-sidebar-expanded .source .sidebar > *:not(#sidebar-toggle) {
@@ -1692,31 +1693,20 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	display: inline-block;
 }
 
-/* Media Queries */
-
-/*
-WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY;
-If you update this line, then you also need to update the line with the same warning
-in storage.js plus the media query with (max-width: 700px)
-*/
-@media (min-width: 701px) {
-	/* In case there is no documentation before a code block, we need to add some margin at the top
-	to prevent an overlay between the "collapse toggle" and the information tooltip.
-	However, it's not needed with smaller screen width because the doc/code block is always put
-	"one line" below. */
-	.docblock > .example-wrap:first-child .tooltip {
-		margin-top: 16px;
-	}
-
-	.source-sidebar-expanded .source .sidebar {
-		width: 300px;
-	}
+/* In case there is no documentation before a code block, we need to add some margin at the top
+to prevent an overlay between the "collapse toggle" and the information tooltip.
+However, it's not needed with smaller screen width because the doc/code block is always put
+"one line" below. */
+.docblock > .example-wrap:first-child .tooltip {
+	margin-top: 16px;
 }
+
+/* Media Queries */
 
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
-in storage.js plus the media query with (min-width: 701px)
+in storage.js
 */
 @media (max-width: 700px) {
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
