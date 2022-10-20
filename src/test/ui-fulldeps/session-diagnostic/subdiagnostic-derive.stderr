@@ -320,7 +320,7 @@ error: `#[multipart_suggestion(code = ...)]` is not a valid attribute
 LL | #[multipart_suggestion(parser_add_paren, code = "...", applicability = "machine-applicable")]
    |                                          ^^^^^^^^^^^^
    |
-   = help: only `applicability` is a valid nested attributes
+   = help: only `style` and `applicability` are valid nested attributes
 
 error: multipart suggestion without any `#[suggestion_part(...)]` fields
   --> $DIR/subdiagnostic-derive.rs:536:1
@@ -445,6 +445,58 @@ error: `code = "..."`/`code(...)` must contain only string literals
 LL |     #[suggestion_part(code = 3)]
    |                       ^^^^^^^^
 
+error: specified multiple times
+  --> $DIR/subdiagnostic-derive.rs:739:61
+   |
+LL | #[suggestion(parser_add_paren, code = "", style = "hidden", style = "normal")]
+   |                                                             ^^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/subdiagnostic-derive.rs:739:43
+   |
+LL | #[suggestion(parser_add_paren, code = "", style = "hidden", style = "normal")]
+   |                                           ^^^^^^^^^^^^^^^^
+
+error: specified multiple times
+  --> $DIR/subdiagnostic-derive.rs:748:50
+   |
+LL | #[suggestion_hidden(parser_add_paren, code = "", style = "normal")]
+   |                                                  ^^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/subdiagnostic-derive.rs:748:3
+   |
+LL | #[suggestion_hidden(parser_add_paren, code = "", style = "normal")]
+   |   ^^^^^^^^^^^^^^^^^
+
+error: invalid suggestion style
+  --> $DIR/subdiagnostic-derive.rs:757:51
+   |
+LL | #[suggestion(parser_add_paren, code = "", style = "foo")]
+   |                                                   ^^^^^
+   |
+   = help: valid styles are `normal`, `short`, `hidden` and `verbose`
+
+error: `#[suggestion(style = ...)]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:765:43
+   |
+LL | #[suggestion(parser_add_paren, code = "", style = 42)]
+   |                                           ^^^^^^^^^^
+
+error: `#[suggestion(style)]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:773:43
+   |
+LL | #[suggestion(parser_add_paren, code = "", style)]
+   |                                           ^^^^^
+   |
+   = help: a diagnostic slug must be the first argument to the attribute
+
+error: `#[suggestion(style(...))]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:781:43
+   |
+LL | #[suggestion(parser_add_paren, code = "", style("foo"))]
+   |                                           ^^^^^^^^^^^^
+
 error: cannot find attribute `foo` in this scope
   --> $DIR/subdiagnostic-derive.rs:63:3
    |
@@ -505,6 +557,6 @@ error[E0425]: cannot find value `slug` in module `rustc_errors::fluent`
 LL | #[label(slug)]
    |         ^^^^ not found in `rustc_errors::fluent`
 
-error: aborting due to 72 previous errors
+error: aborting due to 78 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

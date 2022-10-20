@@ -272,7 +272,7 @@ error: `#[suggestion(nonsense = ...)]` is not a valid attribute
 LL |     #[suggestion(nonsense = "bar")]
    |                  ^^^^^^^^^^^^^^^^
    |
-   = help: only `code` and `applicability` are valid nested attributes
+   = help: only `style`, `code` and `applicability` are valid nested attributes
 
 error: suggestion without `code = "..."`
   --> $DIR/diagnostic-derive.rs:231:5
@@ -286,7 +286,7 @@ error: `#[suggestion(msg = ...)]` is not a valid attribute
 LL |     #[suggestion(msg = "bar")]
    |                  ^^^^^^^^^^^
    |
-   = help: only `code` and `applicability` are valid nested attributes
+   = help: only `style`, `code` and `applicability` are valid nested attributes
 
 error: suggestion without `code = "..."`
   --> $DIR/diagnostic-derive.rs:240:5
