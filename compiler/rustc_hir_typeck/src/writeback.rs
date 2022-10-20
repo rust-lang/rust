@@ -2,7 +2,7 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-use crate::check::FnCtxt;
+use crate::FnCtxt;
 use hir::def_id::LocalDefId;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;

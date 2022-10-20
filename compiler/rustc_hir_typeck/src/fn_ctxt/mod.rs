@@ -6,12 +6,11 @@ mod suggestions;
 pub use _impl::*;
 pub use suggestions::*;
 
-use crate::astconv::AstConv;
-use crate::check::coercion::DynamicCoerceMany;
-use crate::check::{Diverges, EnclosingBreakables, Inherited, UnsafetyState};
-
+use crate::coercion::DynamicCoerceMany;
+use crate::{Diverges, EnclosingBreakables, Inherited, UnsafetyState};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};

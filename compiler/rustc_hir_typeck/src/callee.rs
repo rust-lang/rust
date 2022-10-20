@@ -1,8 +1,8 @@
 use super::method::probe::{IsSuggestion, Mode, ProbeScope};
 use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
-use crate::type_error_struct;
 
+use crate::type_error_struct;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, StashKey};
 use rustc_hir as hir;

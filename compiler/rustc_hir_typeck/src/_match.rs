@@ -1,5 +1,5 @@
-use crate::check::coercion::{AsCoercionSite, CoerceMany};
-use crate::check::{Diverges, Expectation, FnCtxt, Needs};
+use crate::coercion::{AsCoercionSite, CoerceMany};
+use crate::{Diverges, Expectation, FnCtxt, Needs};
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};

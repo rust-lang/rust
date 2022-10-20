@@ -2,23 +2,22 @@
 //!
 //! See `mod.rs` for more context on type checking in general.
 
-use crate::astconv::AstConv as _;
-use crate::check::cast;
-use crate::check::coercion::CoerceMany;
-use crate::check::fatally_break_rust;
-use crate::check::method::SelfSource;
-use crate::check::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
-use crate::check::{
-    report_unexpected_variant_res, BreakableCtxt, Diverges, DynamicCoerceMany, FnCtxt, Needs,
-    TupleArgumentsFlag::DontTupleArguments,
-};
+use crate::cast;
+use crate::coercion::CoerceMany;
+use crate::coercion::DynamicCoerceMany;
+use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use crate::errors::{
     FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
     YieldExprOutsideOfGenerator,
 };
+use crate::fatally_break_rust;
+use crate::method::SelfSource;
 use crate::type_error_struct;
-
-use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
+use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
+use crate::{
+    report_unexpected_variant_res, BreakableCtxt, Diverges, FnCtxt, Needs,
+    TupleArgumentsFlag::DontTupleArguments,
+};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -32,6 +31,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Closure, ExprKind, HirId, QPath};
+use rustc_hir_analysis::astconv::AstConv as _;
+use rustc_hir_analysis::check::ty_kind_suggestion;
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
@@ -1362,7 +1363,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Create a new function context.
         let fcx = FnCtxt::new(self, self.param_env.with_const(), body.value.hir_id);
-        crate::check::GatherLocalsVisitor::new(&fcx).visit_body(body);
+        crate::GatherLocalsVisitor::new(&fcx).visit_body(body);
 
         let ty = fcx.check_expr_with_expectation(&body.value, expected);
         fcx.require_type_is_sized(ty, body.value.span, traits::ConstSized);
@@ -2884,15 +2885,4 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.mk_unit()
         }
     }
-}
-
-pub(super) fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
-    Some(match ty.kind() {
-        ty::Bool => "true",
-        ty::Char => "'a'",
-        ty::Int(_) | ty::Uint(_) => "42",
-        ty::Float(_) => "3.14159",
-        ty::Error(_) | ty::Never => return None,
-        _ => "value",
-    })
 }

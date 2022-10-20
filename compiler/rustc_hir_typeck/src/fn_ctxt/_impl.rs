@@ -1,12 +1,7 @@
-use crate::astconv::{
-    AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
-    GenericArgCountResult, IsMethodCall, PathSeg,
-};
-use crate::check::callee::{self, DeferredCallResolution};
-use crate::check::method::{self, MethodCallee, SelfSource};
-use crate::check::rvalue_scopes;
-use crate::check::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
-
+use crate::callee::{self, DeferredCallResolution};
+use crate::method::{self, MethodCallee, SelfSource};
+use crate::rvalue_scopes;
+use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
@@ -15,6 +10,10 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, GenericArg, Node, QPath};
+use rustc_hir_analysis::astconv::{
+    AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
+    GenericArgCountResult, IsMethodCall, PathSeg,
+};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::{InferOk, InferResult};
@@ -603,9 +602,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
         for (body_id, interior, kind) in generators.drain(..) {
             self.select_obligations_where_possible(false, |_| {});
-            crate::check::generator_interior::resolve_interior(
-                self, def_id, body_id, interior, kind,
-            );
+            crate::generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
         }
     }
 

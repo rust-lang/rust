@@ -1,4 +1,4 @@
-use crate::check::FnCtxt;
+use crate::FnCtxt;
 use rustc_data_structures::{
     fx::{FxHashMap, FxHashSet},
     graph::WithSuccessors,

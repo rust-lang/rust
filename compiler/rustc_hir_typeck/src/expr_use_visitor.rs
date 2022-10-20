@@ -89,15 +89,6 @@ enum ConsumeMode {
     Move,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum MutateMode {
-    Init,
-    /// Example: `x = y`
-    JustWrite,
-    /// Example: `x += y`
-    WriteAndRead,
-}
-
 /// The ExprUseVisitor type
 ///
 /// This is the code that actually walks the tree.

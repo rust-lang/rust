@@ -14,7 +14,7 @@
 
 use self::cfg_build::build_control_flow_graph;
 use self::record_consumed_borrow::find_consumed_and_borrowed;
-use crate::check::FnCtxt;
+use crate::FnCtxt;
 use hir::def_id::DefId;
 use hir::{Body, HirId, HirIdMap, Node};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

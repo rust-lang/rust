@@ -3,14 +3,12 @@ use super::CandidateSource;
 use super::MethodError;
 use super::NoMatchData;
 
-use crate::check::FnCtxt;
 use crate::errors::MethodCallOnUnknownType;
-use crate::hir::def::DefKind;
-use crate::hir::def_id::DefId;
-
+use crate::FnCtxt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def::Namespace;
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
@@ -23,6 +21,7 @@ use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::lint;
+use rustc_span::def_id::DefId;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::lev_distance::{
     find_best_match_for_name_with_substrings, lev_distance_with_substrings,

@@ -30,9 +30,7 @@
 
 use super::FnCtxt;
 
-use crate::hir::def_id::DefId;
 use crate::type_error_struct;
-use hir::def_id::LOCAL_CRATE;
 use rustc_errors::{struct_span_err, Applicability, DelayDm, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_middle::mir::Mutability;
@@ -43,6 +41,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitable, VariantDef};
 use rustc_session::lint;
 use rustc_session::Session;
+use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -527,7 +526,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
-                use crate::structured_errors::{SizedUnsizedCast, StructuredDiagnostic};
+                use rustc_hir_analysis::structured_errors::{
+                    SizedUnsizedCast, StructuredDiagnostic,
+                };
 
                 SizedUnsizedCast {
                     sess: &fcx.tcx.sess,
