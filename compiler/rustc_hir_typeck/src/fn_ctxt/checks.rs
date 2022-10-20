@@ -1,19 +1,13 @@
-use crate::astconv::AstConv;
-use crate::check::coercion::CoerceMany;
-use crate::check::fn_ctxt::arg_matrix::{
-    ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx,
+use crate::coercion::CoerceMany;
+use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
+use crate::gather_locals::Declaration;
+use crate::method::MethodCallee;
+use crate::Expectation::*;
+use crate::TupleArgumentsFlag::*;
+use crate::{
+    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, Needs,
+    TupleArgumentsFlag,
 };
-use crate::check::gather_locals::Declaration;
-use crate::check::intrinsicck::InlineAsmCtxt;
-use crate::check::method::MethodCallee;
-use crate::check::Expectation::*;
-use crate::check::TupleArgumentsFlag::*;
-use crate::check::{
-    potentially_plural_count, struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt,
-    LocalTy, Needs, TupleArgumentsFlag,
-};
-use crate::structured_errors::StructuredDiagnostic;
-
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, Applicability, Diagnostic, DiagnosticId, MultiSpan};
@@ -21,6 +15,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, Node, QPath};
+use rustc_hir_analysis::astconv::AstConv;
+use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
+use rustc_hir_analysis::check::potentially_plural_count;
+use rustc_hir_analysis::structured_errors::StructuredDiagnostic;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -391,7 +389,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty: Ty<'tcx>,
                     cast_ty: &str,
                 ) {
-                    use crate::structured_errors::MissingCastForVariadicArg;
+                    use rustc_hir_analysis::structured_errors::MissingCastForVariadicArg;
 
                     MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit();
                 }

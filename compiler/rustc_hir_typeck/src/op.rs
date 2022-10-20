@@ -2,7 +2,7 @@
 
 use super::method::MethodCallee;
 use super::{has_expected_num_generic_args, FnCtxt};
-use crate::check::Expectation;
+use crate::Expectation;
 use rustc_ast as ast;
 use rustc_errors::{self, struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;

@@ -35,8 +35,7 @@
 //! // and are then unable to coerce `&7i32` to `&mut i32`.
 //! ```
 
-use crate::astconv::AstConv;
-use crate::check::FnCtxt;
+use crate::FnCtxt;
 use rustc_errors::{
     struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
@@ -44,6 +43,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Expr;
+use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
 use rustc_infer::traits::{Obligation, TraitEngine, TraitEngineExt};

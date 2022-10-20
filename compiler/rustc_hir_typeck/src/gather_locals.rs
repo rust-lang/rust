@@ -1,9 +1,10 @@
-use crate::check::{FnCtxt, LocalTy, UserType};
+use crate::{FnCtxt, LocalTy};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::PatKind;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::UserType;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 

@@ -1,7 +1,7 @@
 use super::TrackedValue;
 use crate::{
-    check::FnCtxt,
     expr_use_visitor::{self, ExprUseVisitor},
+    FnCtxt,
 };
 use hir::{def_id::DefId, Body, HirId, HirIdMap};
 use rustc_data_structures::fx::FxHashSet;

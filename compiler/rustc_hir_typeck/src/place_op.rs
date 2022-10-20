@@ -1,5 +1,5 @@
-use crate::check::method::MethodCallee;
-use crate::check::{has_expected_num_generic_args, FnCtxt, PlaceOp};
+use crate::method::MethodCallee;
+use crate::{has_expected_num_generic_args, FnCtxt, PlaceOp};
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

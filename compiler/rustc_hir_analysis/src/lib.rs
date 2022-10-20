@@ -82,20 +82,19 @@ extern crate rustc_middle;
 
 // These are used by Clippy.
 pub mod check;
-pub mod expr_use_visitor;
 
-mod astconv;
+pub mod astconv;
 mod bounds;
 mod check_unused;
 mod coherence;
-mod collect;
+// FIXME: This module shouldn't be public.
+pub mod collect;
 mod constrained_generic_params;
 mod errors;
 pub mod hir_wf_check;
 mod impl_wf_check;
-mod mem_categorization;
 mod outlives;
-mod structured_errors;
+pub mod structured_errors;
 mod variance;
 
 use rustc_errors::{struct_span_err, ErrorGuaranteed};

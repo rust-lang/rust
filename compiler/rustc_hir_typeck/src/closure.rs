@@ -2,11 +2,11 @@
 
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
-use crate::astconv::AstConv;
 use hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};

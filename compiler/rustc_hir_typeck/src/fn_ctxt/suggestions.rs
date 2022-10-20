@@ -1,7 +1,6 @@
 use super::FnCtxt;
-use crate::astconv::AstConv;
-use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 
+use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
@@ -10,6 +9,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Expr, ExprKind, GenericBound, Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
+use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;

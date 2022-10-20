@@ -582,7 +582,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         assoc_bindings
     }
 
-    pub(crate) fn create_substs_for_associated_item(
+    pub fn create_substs_for_associated_item(
         &self,
         span: Span,
         item_def_id: DefId,

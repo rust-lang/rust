@@ -1,21 +1,20 @@
-use crate::check::FnCtxt;
-use rustc_infer::infer::InferOk;
-use rustc_middle::middle::stability::EvalResult;
-use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::ObligationCause;
-
+use crate::FnCtxt;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
+use rustc_infer::infer::InferOk;
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Span};
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::ObligationCause;
 
 use super::method::probe;
 

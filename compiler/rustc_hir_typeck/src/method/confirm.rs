@@ -1,10 +1,10 @@
 use super::{probe, MethodCallee};
 
-use crate::astconv::{AstConv, CreateSubstsForGenericArgsCtxt, IsMethodCall};
-use crate::check::{callee, FnCtxt};
+use crate::{callee, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
+use rustc_hir_analysis::astconv::{AstConv, CreateSubstsForGenericArgsCtxt, IsMethodCall};
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};

@@ -62,191 +62,45 @@ a type parameter).
 
 */
 
-pub mod _match;
-mod autoderef;
-mod callee;
-pub mod cast;
 mod check;
-mod closure;
-pub mod coercion;
 mod compare_method;
-pub mod demand;
-mod diverges;
 pub mod dropck;
-mod expectation;
-mod expr;
-mod fallback;
-mod fn_ctxt;
-mod gather_locals;
-mod generator_interior;
-mod inherited;
 pub mod intrinsic;
-mod intrinsicck;
-pub mod method;
-mod op;
-mod pat;
-mod place_op;
+pub mod intrinsicck;
 mod region;
-pub mod rvalue_scopes;
-mod upvar;
 pub mod wfcheck;
-pub mod writeback;
 
-use check::{check_abi, check_fn, check_mod_item_types};
-pub use diverges::Diverges;
-pub use expectation::Expectation;
-pub use fn_ctxt::*;
-pub use inherited::{Inherited, InheritedBuilder};
+pub use check::check_abi;
 
-use crate::astconv::AstConv;
-use crate::check::gather_locals::GatherLocalsVisitor;
+use check::check_mod_item_types;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{
-    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan,
-};
+use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{HirIdMap, ImplicitSelfKind, Node};
 use rustc_index::bit_set::BitSet;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt, UserType};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
-use rustc_session::config;
 use rustc_session::parse::feature_err;
-use rustc_session::Session;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, BytePos, Span, Symbol};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
-use std::cell::RefCell;
 use std::num::NonZeroU32;
 
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
 
-use self::coercion::DynamicCoerceMany;
 use self::compare_method::collect_trait_impl_trait_tys;
 use self::region::region_scope_tree;
-pub use self::Expectation::*;
-
-#[macro_export]
-macro_rules! type_error_struct {
-    ($session:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
-        let mut err = rustc_errors::struct_span_err!($session, $span, $code, $($message)*);
-
-        if $typ.references_error() {
-            err.downgrade_to_delayed_bug();
-        }
-
-        err
-    })
-}
-
-/// The type of a local binding, including the revealed type for anon types.
-#[derive(Copy, Clone, Debug)]
-pub struct LocalTy<'tcx> {
-    decl_ty: Ty<'tcx>,
-    revealed_ty: Ty<'tcx>,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Needs {
-    MutPlace,
-    None,
-}
-
-impl Needs {
-    fn maybe_mut_place(m: hir::Mutability) -> Self {
-        match m {
-            hir::Mutability::Mut => Needs::MutPlace,
-            hir::Mutability::Not => Needs::None,
-        }
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct UnsafetyState {
-    pub def: hir::HirId,
-    pub unsafety: hir::Unsafety,
-    from_fn: bool,
-}
-
-impl UnsafetyState {
-    pub fn function(unsafety: hir::Unsafety, def: hir::HirId) -> UnsafetyState {
-        UnsafetyState { def, unsafety, from_fn: true }
-    }
-
-    pub fn recurse(self, blk: &hir::Block<'_>) -> UnsafetyState {
-        use hir::BlockCheckMode;
-        match self.unsafety {
-            // If this unsafe, then if the outer function was already marked as
-            // unsafe we shouldn't attribute the unsafe'ness to the block. This
-            // way the block can be warned about instead of ignoring this
-            // extraneous block (functions are never warned about).
-            hir::Unsafety::Unsafe if self.from_fn => self,
-
-            unsafety => {
-                let (unsafety, def) = match blk.rules {
-                    BlockCheckMode::UnsafeBlock(..) => (hir::Unsafety::Unsafe, blk.hir_id),
-                    BlockCheckMode::DefaultBlock => (unsafety, self.def),
-                };
-                UnsafetyState { def, unsafety, from_fn: false }
-            }
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum PlaceOp {
-    Deref,
-    Index,
-}
-
-pub struct BreakableCtxt<'tcx> {
-    may_break: bool,
-
-    // this is `null` for loops where break with a value is illegal,
-    // such as `while`, `for`, and `while let`
-    coerce: Option<DynamicCoerceMany<'tcx>>,
-}
-
-pub struct EnclosingBreakables<'tcx> {
-    stack: Vec<BreakableCtxt<'tcx>>,
-    by_id: HirIdMap<usize>,
-}
-
-impl<'tcx> EnclosingBreakables<'tcx> {
-    fn find_breakable(&mut self, target_id: hir::HirId) -> &mut BreakableCtxt<'tcx> {
-        self.opt_find_breakable(target_id).unwrap_or_else(|| {
-            bug!("could not find enclosing breakable with id {}", target_id);
-        })
-    }
-
-    fn opt_find_breakable(&mut self, target_id: hir::HirId) -> Option<&mut BreakableCtxt<'tcx>> {
-        match self.by_id.get(&target_id) {
-            Some(ix) => Some(&mut self.stack[*ix]),
-            None => None,
-        }
-    }
-}
 
 pub fn provide(providers: &mut Providers) {
-    method::provide(providers);
     wfcheck::provide(providers);
     *providers = Providers {
-        typeck_item_bodies,
-        typeck_const_arg,
-        typeck,
-        diagnostic_only_typeck,
-        has_typeck_results,
         adt_destructor,
-        used_trait_imports,
         check_mod_item_types,
         region_scope_tree,
         collect_trait_impl_trait_tys,
@@ -257,259 +111,6 @@ pub fn provide(providers: &mut Providers) {
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
     tcx.calculate_dtor(def_id, dropck::check_drop_impl)
-}
-
-/// If this `DefId` is a "primary tables entry", returns
-/// `Some((body_id, body_ty, fn_sig))`. Otherwise, returns `None`.
-///
-/// If this function returns `Some`, then `typeck_results(def_id)` will
-/// succeed; if it returns `None`, then `typeck_results(def_id)` may or
-/// may not succeed. In some cases where this function returns `None`
-/// (notably closures), `typeck_results(def_id)` would wind up
-/// redirecting to the owning function.
-fn primary_body_of(
-    tcx: TyCtxt<'_>,
-    id: hir::HirId,
-) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnSig<'_>>)> {
-    match tcx.hir().get(id) {
-        Node::Item(item) => match item.kind {
-            hir::ItemKind::Const(ty, body) | hir::ItemKind::Static(ty, _, body) => {
-                Some((body, Some(ty), None))
-            }
-            hir::ItemKind::Fn(ref sig, .., body) => Some((body, None, Some(sig))),
-            _ => None,
-        },
-        Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Const(ty, Some(body)) => Some((body, Some(ty), None)),
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                Some((body, None, Some(sig)))
-            }
-            _ => None,
-        },
-        Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Const(ty, body) => Some((body, Some(ty), None)),
-            hir::ImplItemKind::Fn(ref sig, body) => Some((body, None, Some(sig))),
-            _ => None,
-        },
-        Node::AnonConst(constant) => Some((constant.body, None, None)),
-        _ => None,
-    }
-}
-
-fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    // Closures' typeck results come from their outermost function,
-    // as they are part of the same "inference environment".
-    let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
-    if typeck_root_def_id != def_id {
-        return tcx.has_typeck_results(typeck_root_def_id);
-    }
-
-    if let Some(def_id) = def_id.as_local() {
-        let id = tcx.hir().local_def_id_to_hir_id(def_id);
-        primary_body_of(tcx, id).is_some()
-    } else {
-        false
-    }
-}
-
-fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &FxHashSet<LocalDefId> {
-    &*tcx.typeck(def_id).used_trait_imports
-}
-
-fn typeck_const_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    (did, param_did): (LocalDefId, DefId),
-) -> &ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(param_did);
-    typeck_with_fallback(tcx, did, fallback)
-}
-
-fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
-    if let Some(param_did) = tcx.opt_const_param_of(def_id) {
-        tcx.typeck_const_arg((def_id, param_did))
-    } else {
-        let fallback = move || tcx.type_of(def_id.to_def_id());
-        typeck_with_fallback(tcx, def_id, fallback)
-    }
-}
-
-/// Used only to get `TypeckResults` for type inference during error recovery.
-/// Currently only used for type inference of `static`s and `const`s to avoid type cycle errors.
-fn diagnostic_only_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tcx> {
-    let fallback = move || {
-        let span = tcx.hir().span(tcx.hir().local_def_id_to_hir_id(def_id));
-        tcx.ty_error_with_message(span, "diagnostic only typeck table used")
-    };
-    typeck_with_fallback(tcx, def_id, fallback)
-}
-
-fn typeck_with_fallback<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-    fallback: impl Fn() -> Ty<'tcx> + 'tcx,
-) -> &'tcx ty::TypeckResults<'tcx> {
-    // Closures' typeck results come from their outermost function,
-    // as they are part of the same "inference environment".
-    let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
-    if typeck_root_def_id != def_id {
-        return tcx.typeck(typeck_root_def_id);
-    }
-
-    let id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let span = tcx.hir().span(id);
-
-    // Figure out what primary body this item has.
-    let (body_id, body_ty, fn_sig) = primary_body_of(tcx, id).unwrap_or_else(|| {
-        span_bug!(span, "can't type-check body of {:?}", def_id);
-    });
-    let body = tcx.hir().body(body_id);
-
-    let typeck_results = Inherited::build(tcx, def_id).enter(|inh| {
-        let param_env = tcx.param_env(def_id);
-        let mut fcx = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
-            let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
-                let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-                <dyn AstConv<'_>>::ty_of_fn(&fcx, id, header.unsafety, header.abi, decl, None, None)
-            } else {
-                tcx.fn_sig(def_id)
-            };
-
-            check_abi(tcx, id, span, fn_sig.abi());
-
-            // Compute the function signature from point of view of inside the fn.
-            let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
-            let fn_sig = inh.normalize_associated_types_in(
-                body.value.span,
-                body_id.hir_id,
-                param_env,
-                fn_sig,
-            );
-            check_fn(&inh, param_env, fn_sig, decl, id, body, None, true).0
-        } else {
-            let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-            let expected_type = body_ty
-                .and_then(|ty| match ty.kind {
-                    hir::TyKind::Infer => Some(<dyn AstConv<'_>>::ast_ty_to_ty(&fcx, ty)),
-                    _ => None,
-                })
-                .unwrap_or_else(|| match tcx.hir().get(id) {
-                    Node::AnonConst(_) => match tcx.hir().get(tcx.hir().get_parent_node(id)) {
-                        Node::Expr(&hir::Expr {
-                            kind: hir::ExprKind::ConstBlock(ref anon_const),
-                            ..
-                        }) if anon_const.hir_id == id => fcx.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
-                            span,
-                        }),
-                        Node::Ty(&hir::Ty {
-                            kind: hir::TyKind::Typeof(ref anon_const), ..
-                        }) if anon_const.hir_id == id => fcx.next_ty_var(TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
-                            span,
-                        }),
-                        Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), .. })
-                        | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. }) => {
-                            let operand_ty = asm
-                                .operands
-                                .iter()
-                                .filter_map(|(op, _op_sp)| match op {
-                                    hir::InlineAsmOperand::Const { anon_const }
-                                        if anon_const.hir_id == id =>
-                                    {
-                                        // Inline assembly constants must be integers.
-                                        Some(fcx.next_int_var())
-                                    }
-                                    hir::InlineAsmOperand::SymFn { anon_const }
-                                        if anon_const.hir_id == id =>
-                                    {
-                                        Some(fcx.next_ty_var(TypeVariableOrigin {
-                                            kind: TypeVariableOriginKind::MiscVariable,
-                                            span,
-                                        }))
-                                    }
-                                    _ => None,
-                                })
-                                .next();
-                            operand_ty.unwrap_or_else(fallback)
-                        }
-                        _ => fallback(),
-                    },
-                    _ => fallback(),
-                });
-
-            let expected_type = fcx.normalize_associated_types_in(body.value.span, expected_type);
-            fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
-
-            // Gather locals in statics (because of block expressions).
-            GatherLocalsVisitor::new(&fcx).visit_body(body);
-
-            fcx.check_expr_coercable_to_type(&body.value, expected_type, None);
-
-            fcx.write_ty(id, expected_type);
-
-            fcx
-        };
-
-        let fallback_has_occurred = fcx.type_inference_fallback();
-
-        // Even though coercion casts provide type hints, we check casts after fallback for
-        // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
-        fcx.check_casts();
-        fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
-
-        // Closure and generator analysis may run after fallback
-        // because they don't constrain other type variables.
-        // Closure analysis only runs on closures. Therefore they only need to fulfill non-const predicates (as of now)
-        let prev_constness = fcx.param_env.constness();
-        fcx.param_env = fcx.param_env.without_const();
-        fcx.closure_analyze(body);
-        fcx.param_env = fcx.param_env.with_constness(prev_constness);
-        assert!(fcx.deferred_call_resolutions.borrow().is_empty());
-        // Before the generator analysis, temporary scopes shall be marked to provide more
-        // precise information on types to be captured.
-        fcx.resolve_rvalue_scopes(def_id.to_def_id());
-        fcx.resolve_generator_interiors(def_id.to_def_id());
-
-        for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
-            let ty = fcx.normalize_ty(span, ty);
-            fcx.require_type_is_sized(ty, span, code);
-        }
-
-        fcx.select_all_obligations_or_error();
-
-        if !fcx.infcx.is_tainted_by_errors() {
-            fcx.check_transmutes();
-        }
-
-        fcx.check_asms();
-
-        fcx.infcx.skip_region_resolution();
-
-        fcx.resolve_type_vars_in_body(body)
-    });
-
-    // Consistency check our TypeckResults instance can hold all ItemLocalIds
-    // it will need to hold.
-    assert_eq!(typeck_results.hir_owner, id.owner);
-
-    typeck_results
-}
-
-/// When `check_fn` is invoked on a generator (i.e., a body that
-/// includes yield), it returns back some information about the yield
-/// points.
-struct GeneratorTypes<'tcx> {
-    /// Type of generator argument / values returned by `yield`.
-    resume_ty: Ty<'tcx>,
-
-    /// Type of value that is yielded.
-    yield_ty: Ty<'tcx>,
-
-    /// Types that are captured (see `GeneratorInterior` for more).
-    interior: Ty<'tcx>,
-
-    /// Indicates if the generator is movable or static (immovable).
-    movability: hir::Movability,
 }
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
@@ -528,9 +129,10 @@ fn get_owner_return_paths<'tcx>(
     })
 }
 
-// Forbid defining intrinsics in Rust code,
-// as they must always be defined by the compiler.
-fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
+/// Forbid defining intrinsics in Rust code,
+/// as they must always be defined by the compiler.
+// FIXME: Move this to a more appropriate place.
+pub fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
     if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
         tcx.sess.span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
     }
@@ -824,6 +426,17 @@ fn fn_sig_suggestion<'tcx>(
     format!("{unsafety}fn {ident}{generics}({args}){output}{where_clauses} {{ todo!() }}")
 }
 
+pub fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
+    Some(match ty.kind() {
+        ty::Bool => "true",
+        ty::Char => "'a'",
+        ty::Int(_) | ty::Uint(_) => "42",
+        ty::Float(_) => "3.14159",
+        ty::Error(_) | ty::Never => return None,
+        _ => "value",
+    })
+}
+
 /// Return placeholder code for the given associated item.
 /// Similar to `ty::AssocItem::suggestion`, but appropriate for use as the code snippet of a
 /// structured suggestion.
@@ -845,7 +458,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
         ty::AssocKind::Type => format!("type {} = Type;", assoc.name),
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id);
-            let val = expr::ty_kind_suggestion(ty).unwrap_or("value");
+            let val = ty_kind_suggestion(ty).unwrap_or("value");
             format!("const {}: {} = {};", assoc.name, ty, val)
         }
     }
@@ -896,76 +509,7 @@ fn bad_non_zero_sized_fields<'tcx>(
     err.emit();
 }
 
-fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, qpath: &hir::QPath<'_>, span: Span) {
-    struct_span_err!(
-        tcx.sess,
-        span,
-        E0533,
-        "expected unit struct, unit variant or constant, found {} `{}`",
-        res.descr(),
-        rustc_hir_pretty::qpath_to_string(qpath),
-    )
-    .emit();
-}
-
-/// Controls whether the arguments are tupled. This is used for the call
-/// operator.
-///
-/// Tupling means that all call-side arguments are packed into a tuple and
-/// passed as a single parameter. For example, if tupling is enabled, this
-/// function:
-/// ```
-/// fn f(x: (isize, isize)) {}
-/// ```
-/// Can be called as:
-/// ```ignore UNSOLVED (can this be done in user code?)
-/// # fn f(x: (isize, isize)) {}
-/// f(1, 2);
-/// ```
-/// Instead of:
-/// ```
-/// # fn f(x: (isize, isize)) {}
-/// f((1, 2));
-/// ```
-#[derive(Clone, Eq, PartialEq)]
-enum TupleArgumentsFlag {
-    DontTupleArguments,
-    TupleArguments,
-}
-
-fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {
-    tcx.hir().par_body_owners(|body_owner_def_id| tcx.ensure().typeck(body_owner_def_id));
-}
-
-fn fatally_break_rust(sess: &Session) {
-    let handler = sess.diagnostic();
-    handler.span_bug_no_panic(
-        MultiSpan::new(),
-        "It looks like you're trying to break rust; would you like some ICE?",
-    );
-    handler.note_without_error("the compiler expectedly panicked. this is a feature.");
-    handler.note_without_error(
-        "we would appreciate a joke overview: \
-         https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
-    );
-    handler.note_without_error(&format!(
-        "rustc {} running on {}",
-        option_env!("CFG_VERSION").unwrap_or("unknown_version"),
-        config::host_triple(),
-    ));
-}
-
-fn potentially_plural_count(count: usize, word: &str) -> String {
+// FIXME: Consider moving this method to a more fitting place.
+pub fn potentially_plural_count(count: usize, word: &str) -> String {
     format!("{} {}{}", count, word, pluralize!(count))
-}
-
-fn has_expected_num_generic_args<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_did: Option<DefId>,
-    expected: usize,
-) -> bool {
-    trait_did.map_or(true, |trait_did| {
-        let generics = tcx.generics_of(trait_did);
-        generics.count() == expected + if generics.has_self { 1 } else { 0 }
-    })
 }

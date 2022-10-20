@@ -10,14 +10,14 @@ mod suggest;
 pub use self::suggest::SelfSource;
 pub use self::MethodError::*;
 
-use crate::check::{Expectation, FnCtxt};
-use crate::ObligationCause;
+use crate::{Expectation, FnCtxt};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, ToPredicate, Ty, TypeVisitable};
 use rustc_span::symbol::Ident;

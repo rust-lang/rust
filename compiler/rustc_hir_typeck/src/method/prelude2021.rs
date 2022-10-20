@@ -1,3 +1,7 @@
+use crate::{
+    method::probe::{self, Pick},
+    FnCtxt,
+};
 use hir::def_id::DefId;
 use hir::HirId;
 use hir::ItemKind;
@@ -11,11 +15,6 @@ use rustc_span::symbol::kw::{Empty, Underscore};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
-
-use crate::check::{
-    method::probe::{self, Pick},
-    FnCtxt,
-};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(super) fn lint_dot_call_from_2018(
