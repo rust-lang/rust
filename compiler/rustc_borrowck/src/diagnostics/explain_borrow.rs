@@ -21,7 +21,7 @@ use crate::{
 use super::{find_use, RegionName, UseSpans};
 
 #[derive(Debug)]
-pub(crate) enum BorrowExplanation<'tcx> {
+pub(crate) enum BorrowExplanation {
     UsedLater(LaterUseKind, Span, Option<Span>),
     UsedLaterInLoop(LaterUseKind, Span, Option<Span>),
     UsedLaterWhenDropped {
@@ -30,7 +30,7 @@ pub(crate) enum BorrowExplanation<'tcx> {
         should_note_order: bool,
     },
     MustBeValidFor {
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
         from_closure: bool,
         span: Span,
         region_name: RegionName,
@@ -49,7 +49,7 @@ pub(crate) enum LaterUseKind {
     Other,
 }
 
-impl<'tcx> BorrowExplanation<'tcx> {
+impl<'tcx> BorrowExplanation {
     pub(crate) fn is_explained(&self) -> bool {
         !matches!(self, BorrowExplanation::Unexplained)
     }
@@ -284,7 +284,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
     fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
         err: &mut Diagnostic,
-        category: &ConstraintCategory<'tcx>,
+        category: &ConstraintCategory,
         span: Span,
         region_name: &RegionName,
     ) {
@@ -316,7 +316,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
-    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>, Vec<ExtraConstraintInfo>) {
+    ) -> (ConstraintCategory, bool, Span, Option<RegionName>, Vec<ExtraConstraintInfo>) {
         let (blame_constraint, extra_info) = self.regioncx.best_blame_constraint(
             borrow_region,
             NllRegionVariableOrigin::FreeRegion,
@@ -348,7 +348,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         borrow: &BorrowData<'tcx>,
         kind_place: Option<(WriteKind, Place<'tcx>)>,
-    ) -> BorrowExplanation<'tcx> {
+    ) -> BorrowExplanation {
         let regioncx = &self.regioncx;
         let body: &Body<'_> = &self.body;
         let tcx = self.infcx.tcx;

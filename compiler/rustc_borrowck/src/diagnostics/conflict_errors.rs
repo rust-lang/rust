@@ -976,7 +976,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err: &mut Diagnostic,
         location: Location,
         issued_borrow: &BorrowData<'tcx>,
-        explanation: BorrowExplanation<'tcx>,
+        explanation: BorrowExplanation,
     ) {
         let used_in_call = matches!(
             explanation,
@@ -1326,7 +1326,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
-        explanation: BorrowExplanation<'tcx>,
+        explanation: BorrowExplanation,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
@@ -1532,7 +1532,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
         proper_span: Span,
-        explanation: BorrowExplanation<'tcx>,
+        explanation: BorrowExplanation,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
             explanation
@@ -1646,7 +1646,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         borrow_span: Span,
         return_span: Span,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
         opt_place_desc: Option<&String>,
     ) -> Option<DiagnosticBuilder<'cx, ErrorGuaranteed>> {
         let return_kind = match category {
@@ -1741,7 +1741,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         use_span: UseSpans<'tcx>,
         var_span: Span,
         fr_name: &RegionName,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
         constraint_span: Span,
         captured_var: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
