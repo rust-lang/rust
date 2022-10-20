@@ -7,6 +7,7 @@ use rustc_errors::{fluent, pluralize, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_infer::traits::util::elaborate_predicates_with_span;
 use rustc_middle::ty::adjustment;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::Symbol;
@@ -204,10 +205,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 ty::Adt(def, _) => check_must_use_def(cx, def.did(), span, descr_pre, descr_post),
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
-                    for &(predicate, _) in cx.tcx.explicit_item_bounds(def) {
+                    for obligation in elaborate_predicates_with_span(
+                        cx.tcx,
+                        cx.tcx.explicit_item_bounds(def).iter().cloned(),
+                    ) {
                         // We only look at the `DefId`, so it is safe to skip the binder here.
                         if let ty::PredicateKind::Trait(ref poly_trait_predicate) =
-                            predicate.kind().skip_binder()
+                            obligation.predicate.kind().skip_binder()
                         {
                             let def_id = poly_trait_predicate.trait_ref.def_id;
                             let descr_pre =
