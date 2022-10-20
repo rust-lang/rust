@@ -1106,7 +1106,7 @@ impl Step for Sysroot {
         let compiler = self.compiler;
         let host_dir = builder.out.join(&compiler.host.triple);
         let sysroot = if compiler.stage == 0 {
-            host_dir.join("stage0-sysroot")
+            host_dir.join("bootstrap-sysroot")
         } else {
             host_dir.join(format!("stage{}", compiler.stage))
         };

@@ -597,7 +597,7 @@ class RustBuild(object):
         >>> rb.bin_root() == os.path.join("build", "devel", "stage0")
         True
         """
-        subdir = "stage0"
+        subdir = "bootstrap-sysroot"
         return os.path.join(self.build_dir, self.build, subdir)
 
     def get_toml(self, key, section=None):
