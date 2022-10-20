@@ -1108,7 +1108,7 @@ impl Step for Sysroot {
         let sysroot = if builder.download_rustc() {
             host_dir.join("ci-rustc-sysroot")
         } else {
-            host_dir.join(format!("stage{}", compiler.stage))
+            host_dir.join(format!("stage{}-sysroot", compiler.stage))
         };
 
         let _ = fs::remove_dir_all(&sysroot);
