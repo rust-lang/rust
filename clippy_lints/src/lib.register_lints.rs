@@ -407,6 +407,7 @@ store.register_lints(&[
     missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
     missing_enforced_import_rename::MISSING_ENFORCED_IMPORT_RENAMES,
     missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
+    missing_trait_methods::MISSING_TRAIT_METHODS,
     mixed_read_write_in_expression::DIVERGING_SUB_EXPRESSION,
     mixed_read_write_in_expression::MIXED_READ_WRITE_IN_EXPRESSION,
     module_style::MOD_MODULE_FILES,
