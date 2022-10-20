@@ -1865,6 +1865,7 @@ macro_rules! fnptr_impls_safety_abi {
         fnptr_impls_safety_abi! { #[stable(feature = "fnptr_impls", since = "1.4.0")] $FnTy, $($Arg),* }
     };
     (@c_unwind $FnTy: ty, $($Arg: ident),*) => {
+        #[cfg(not(bootstrap))]
         fnptr_impls_safety_abi! { #[unstable(feature = "c_unwind", issue = "74990")] $FnTy, $($Arg),* }
     };
     (#[$meta:meta] $FnTy: ty, $($Arg: ident),*) => {
