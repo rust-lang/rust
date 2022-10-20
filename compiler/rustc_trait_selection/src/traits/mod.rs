@@ -117,14 +117,12 @@ pub enum TraitQueryMode {
 }
 
 /// Creates predicate obligations from the generic bounds.
+#[instrument(level = "debug", skip(cause, param_env))]
 pub fn predicates_for_generics<'tcx>(
     cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    let generic_bounds = generic_bounds;
-    debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
-
     std::iter::zip(generic_bounds.predicates, generic_bounds.spans).enumerate().map(
         move |(idx, (predicate, span))| Obligation {
             cause: cause(idx, span),
@@ -140,6 +138,7 @@ pub fn predicates_for_generics<'tcx>(
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
+#[instrument(level = "debug", skip(infcx, param_env, span), ret)]
 pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -147,12 +146,6 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     def_id: DefId,
     span: Span,
 ) -> bool {
-    debug!(
-        "type_known_to_meet_bound_modulo_regions(ty={:?}, bound={:?})",
-        ty,
-        infcx.tcx.def_path_str(def_id)
-    );
-
     let trait_ref =
         ty::Binder::dummy(ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) });
     let obligation = Obligation {
@@ -163,12 +156,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     };
 
     let result = infcx.predicate_must_hold_modulo_regions(&obligation);
-    debug!(
-        "type_known_to_meet_ty={:?} bound={} => {:?}",
-        ty,
-        infcx.tcx.def_path_str(def_id),
-        result
-    );
+    debug!(?result);
 
     if result && ty.has_non_region_infer() {
         // Because of inference "guessing", selection can sometimes claim
@@ -190,21 +178,9 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
         // *definitively* show that it implements `Copy`. Otherwise,
         // assume it is move; linear is always ok.
         match &errors[..] {
-            [] => {
-                debug!(
-                    "type_known_to_meet_bound_modulo_regions: ty={:?} bound={} success",
-                    ty,
-                    infcx.tcx.def_path_str(def_id)
-                );
-                true
-            }
+            [] => true,
             errors => {
-                debug!(
-                    ?ty,
-                    bound = %infcx.tcx.def_path_str(def_id),
-                    ?errors,
-                    "type_known_to_meet_bound_modulo_regions"
-                );
+                debug!(?errors);
                 false
             }
         }

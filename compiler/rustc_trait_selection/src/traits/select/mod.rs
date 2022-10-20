@@ -1132,12 +1132,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// filter_impls filters constant trait obligations and candidates that have a positive impl
     /// for a negative goal and a negative impl for a positive goal
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self, candidates))]
     fn filter_impls(
         &mut self,
         candidates: Vec<SelectionCandidate<'tcx>>,
         obligation: &TraitObligation<'tcx>,
     ) -> Vec<SelectionCandidate<'tcx>> {
+        trace!("{candidates:#?}");
         let tcx = self.tcx();
         let mut result = Vec::with_capacity(candidates.len());
 
@@ -1177,6 +1178,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
+        trace!("{result:#?}");
         result
     }
 

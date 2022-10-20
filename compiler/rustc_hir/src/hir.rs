@@ -388,6 +388,8 @@ impl<'hir> GenericArgs<'hir> {
     }
 
     #[inline]
+    /// This function returns the number of type and const generic params.
+    /// It should only be used for diagnostics.
     pub fn num_generic_params(&self) -> usize {
         self.args.iter().filter(|arg| !matches!(arg, GenericArg::Lifetime(_))).count()
     }
