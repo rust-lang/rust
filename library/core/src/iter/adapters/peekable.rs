@@ -22,6 +22,18 @@ impl<I: Iterator> Peekable<I> {
     pub(in crate::iter) fn new(iter: I) -> Peekable<I> {
         Peekable { iter, peeked: None }
     }
+
+    /// Returns a reference to the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "none", reason = "wip")]
+    pub fn inner(&self) -> &I {
+        &self.iter
+    }
+
+    /// Consumes the peekable and returns the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "none", reason = "wip")]
+    pub fn into_inner(self) -> I {
+        self.iter
+    }
 }
 
 // Peekable must remember if a None has been seen in the `.peek()` method.
