@@ -363,7 +363,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                 && let output_ty = return_ty(cx, item.hir_id())
                 && let local_def_id = cx.tcx.hir().local_def_id(item.hir_id())
                 && Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
-                    let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, item.hir_id());
+                    let fn_ctxt = FnCtxt::new(inherited, cx.param_env, item.hir_id());
                     fn_ctxt.can_coerce(ty, output_ty)
                 }) {
                     if has_lifetime(output_ty) && has_lifetime(ty) {
@@ -420,9 +420,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                         if trait_predicates.any(|predicate| {
                             let predicate = EarlyBinder(predicate).subst(cx.tcx, new_subst);
                             let obligation = Obligation::new(ObligationCause::dummy(), cx.param_env, predicate);
-                            !cx.tcx
-                                .infer_ctxt()
-                                .enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
+                            !cx.tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
                         }) {
                             return false;
                         }

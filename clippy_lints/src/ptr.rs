@@ -689,23 +689,22 @@ fn matches_preds<'tcx>(
     ty: Ty<'tcx>,
     preds: &'tcx [Binder<'tcx, ExistentialPredicate<'tcx>>],
 ) -> bool {
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        preds.iter().all(|&p| match cx.tcx.erase_late_bound_regions(p) {
-            ExistentialPredicate::Trait(p) => infcx
-                .type_implements_trait(p.def_id, ty, p.substs, cx.param_env)
-                .must_apply_modulo_regions(),
-            ExistentialPredicate::Projection(p) => infcx.predicate_must_hold_modulo_regions(&Obligation::new(
-                ObligationCause::dummy(),
-                cx.param_env,
-                cx.tcx.mk_predicate(Binder::bind_with_vars(
-                    PredicateKind::Projection(p.with_self_ty(cx.tcx, ty)),
-                    List::empty(),
-                )),
+    let infcx = cx.tcx.infer_ctxt().build();
+    preds.iter().all(|&p| match cx.tcx.erase_late_bound_regions(p) {
+        ExistentialPredicate::Trait(p) => infcx
+            .type_implements_trait(p.def_id, ty, p.substs, cx.param_env)
+            .must_apply_modulo_regions(),
+        ExistentialPredicate::Projection(p) => infcx.predicate_must_hold_modulo_regions(&Obligation::new(
+            ObligationCause::dummy(),
+            cx.param_env,
+            cx.tcx.mk_predicate(Binder::bind_with_vars(
+                PredicateKind::Projection(p.with_self_ty(cx.tcx, ty)),
+                List::empty(),
             )),
-            ExistentialPredicate::AutoTrait(p) => infcx
-                .type_implements_trait(p, ty, List::empty(), cx.param_env)
-                .must_apply_modulo_regions(),
-        })
+        )),
+        ExistentialPredicate::AutoTrait(p) => infcx
+            .type_implements_trait(p, ty, List::empty(), cx.param_env)
+            .must_apply_modulo_regions(),
     })
 }
 

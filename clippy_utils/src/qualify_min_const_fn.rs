@@ -129,7 +129,12 @@ fn check_rvalue<'tcx>(
         | Rvalue::Use(operand)
         | Rvalue::Cast(
             CastKind::PointerFromExposedAddress
-            | CastKind::Misc
+            | CastKind::IntToInt
+            | CastKind::FloatToInt
+            | CastKind::IntToFloat
+            | CastKind::FloatToFloat
+            | CastKind::FnPtrToPtr
+            | CastKind::PtrToPtr
             | CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
             operand,
             _,

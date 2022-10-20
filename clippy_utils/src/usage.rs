@@ -18,16 +18,15 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
         used_mutably: HirIdSet::default(),
         skip: false,
     };
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        ExprUseVisitor::new(
-            &mut delegate,
-            &infcx,
-            expr.hir_id.owner.def_id,
-            cx.param_env,
-            cx.typeck_results(),
-        )
-        .walk_expr(expr);
-    });
+    let infcx = cx.tcx.infer_ctxt().build();
+    ExprUseVisitor::new(
+        &mut delegate,
+        &infcx,
+        expr.hir_id.owner.def_id,
+        cx.param_env,
+        cx.typeck_results(),
+    )
+    .walk_expr(expr);
 
     if delegate.skip {
         return None;

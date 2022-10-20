@@ -1,8 +1,5 @@
 use rustc_hir::Expr;
-use rustc_hir_analysis::check::{
-    cast::{self, CastCheckResult},
-    FnCtxt, Inherited,
-};
+use rustc_hir_analysis::check::{cast, FnCtxt, Inherited};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{cast::CastKind, Ty};
 use rustc_span::DUMMY_SP;
@@ -48,7 +45,7 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
     let local_def_id = hir_id.owner.def_id;
 
     Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
-        let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, hir_id);
+        let fn_ctxt = FnCtxt::new(inherited, cx.param_env, hir_id);
 
         // If we already have errors, we can't be sure we can pointer cast.
         assert!(
@@ -56,7 +53,7 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
             "Newly created FnCtxt contained errors"
         );
 
-        if let CastCheckResult::Deferred(check) = cast::check_cast(
+        if let Ok(check) = cast::CastCheck::new(
             &fn_ctxt, e, from_ty, to_ty,
             // We won't show any error to the user, so we don't care what the span is here.
             DUMMY_SP, DUMMY_SP,

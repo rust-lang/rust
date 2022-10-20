@@ -123,16 +123,15 @@ fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> hir::HirIdSet
     }
 
     let mut s = S(hir::HirIdSet::default());
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        let mut v = ExprUseVisitor::new(
-            &mut s,
-            &infcx,
-            cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
-            cx.param_env,
-            cx.typeck_results(),
-        );
-        v.consume_expr(e);
-    });
+    let infcx = cx.tcx.infer_ctxt().build();
+    let mut v = ExprUseVisitor::new(
+        &mut s,
+        &infcx,
+        cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
+        cx.param_env,
+        cx.typeck_results(),
+    );
+    v.consume_expr(e);
     s.0
 }
 
@@ -156,15 +155,14 @@ fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> hir::HirIdSet
     }
 
     let mut s = S(hir::HirIdSet::default());
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        let mut v = ExprUseVisitor::new(
-            &mut s,
-            &infcx,
-            cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
-            cx.param_env,
-            cx.typeck_results(),
-        );
-        v.consume_expr(e);
-    });
+    let infcx = cx.tcx.infer_ctxt().build();
+    let mut v = ExprUseVisitor::new(
+        &mut s,
+        &infcx,
+        cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
+        cx.param_env,
+        cx.typeck_results(),
+    );
+    v.consume_expr(e);
     s.0
 }

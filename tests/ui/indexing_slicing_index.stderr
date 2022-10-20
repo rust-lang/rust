@@ -59,6 +59,12 @@ LL |     v[M];
    |
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
-error: aborting due to 8 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $DIR/indexing_slicing_index.rs:10:24
+   |
+LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
+   |                        ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

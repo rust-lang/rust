@@ -65,16 +65,15 @@ fn check_for_mutation<'tcx>(
         span_low: None,
         span_high: None,
     };
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        ExprUseVisitor::new(
-            &mut delegate,
-            &infcx,
-            body.hir_id.owner.def_id,
-            cx.param_env,
-            cx.typeck_results(),
-        )
-        .walk_expr(body);
-    });
+    let infcx = cx.tcx.infer_ctxt().build();
+    ExprUseVisitor::new(
+        &mut delegate,
+        &infcx,
+        body.hir_id.owner.def_id,
+        cx.param_env,
+        cx.typeck_results(),
+    )
+    .walk_expr(body);
 
     delegate.mutation_span()
 }

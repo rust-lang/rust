@@ -482,7 +482,7 @@ pub fn read_conf(sess: &Session) -> Conf {
     }
 
     for warning in warnings {
-        sess.struct_warn(&format!(
+        sess.struct_warn(format!(
             "error reading Clippy's configuration file `{}`: {}",
             file_name.display(),
             format_error(warning)
