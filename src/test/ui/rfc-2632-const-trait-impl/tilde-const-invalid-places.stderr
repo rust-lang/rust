@@ -4,7 +4,7 @@ error: `~const` is not allowed here
 LL | fn rpit() -> impl ~const T { S }
    |                   ^^^^^^^^
    |
-   = note: only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions
+   = note: `impl Trait`s cannot have `~const` trait bounds
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:12:17
@@ -12,7 +12,7 @@ error: `~const` is not allowed here
 LL | fn apit(_: impl ~const T) {}
    |                 ^^^^^^^^
    |
-   = note: only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions
+   = note: `impl Trait`s cannot have `~const` trait bounds
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:15:50
@@ -20,7 +20,7 @@ error: `~const` is not allowed here
 LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
    |                                                  ^^^^^^^^
    |
-   = note: only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions
+   = note: `impl Trait`s cannot have `~const` trait bounds
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:18:48
@@ -28,7 +28,7 @@ error: `~const` is not allowed here
 LL | fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T>) {}
    |                                                ^^^^^^^^
    |
-   = note: only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions
+   = note: `impl Trait`s cannot have `~const` trait bounds
 
 error: `~const` and `?` are mutually exclusive
   --> $DIR/tilde-const-invalid-places.rs:21:25
