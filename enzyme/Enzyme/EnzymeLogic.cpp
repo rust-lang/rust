@@ -2513,9 +2513,6 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   IRBuilder<> ib(NewF->getEntryBlock().getFirstNonPHI());
 
   AllocaInst *ret = noReturn ? nullptr : ib.CreateAlloca(RetType);
-  if (!noReturn && EnzymeZeroCache) {
-    ib.CreateStore(Constant::getNullValue(RetType), ret);
-  }
 
   if (!noTape) {
     Value *tapeMemory;
@@ -2572,6 +2569,10 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
         tapeMemory = ib.CreateGEP(ret, Idxs, "");
 #endif
         cast<GetElementPtrInst>(tapeMemory)->setIsInBounds(true);
+      }
+      if (EnzymeZeroCache) {
+        ZeroMemory(ib, tapeType, tapeMemory,
+                   /*isTape*/ true);
       }
     }
 

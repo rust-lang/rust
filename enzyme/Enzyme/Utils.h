@@ -92,6 +92,8 @@ llvm::Value *CreateAllocation(llvm::IRBuilder<> &B, llvm::Type *T,
                               llvm::Instruction **ZeroMem = nullptr,
                               bool isDefault = false);
 llvm::CallInst *CreateDealloc(llvm::IRBuilder<> &B, llvm::Value *ToFree);
+void ZeroMemory(llvm::IRBuilder<> &Builder, llvm::Type *T, llvm::Value *obj,
+                bool isTape);
 
 llvm::Value *CreateReAllocation(llvm::IRBuilder<> &B, llvm::Value *prev,
                                 llvm::Type *T, llvm::Value *OuterCount,

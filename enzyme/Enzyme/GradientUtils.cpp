@@ -2218,9 +2218,8 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
     toadd = scopeAllocs[found2->second.first][0];
     for (auto u : toadd->users()) {
       if (auto ci = dyn_cast<CastInst>(u)) {
-        if (hasMetadata(ci, "enzyme_formemset"))
-          continue;
         toadd = ci;
+        break;
       }
     }
 

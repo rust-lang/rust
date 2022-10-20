@@ -1650,8 +1650,8 @@ public:
 #else
       differentials[val]->setAlignment(Alignment);
 #endif
-      entryBuilder.CreateStore(Constant::getNullValue(type),
-                               differentials[val]);
+      ZeroMemory(entryBuilder, type, differentials[val],
+                 /*isTape*/ false);
     }
 #if LLVM_VERSION_MAJOR >= 15
     if (val->getContext().supportsTypedPointers()) {

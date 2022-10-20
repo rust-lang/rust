@@ -50,12 +50,23 @@ LLVMValueRef (*CustomAllocator)(LLVMBuilderRef, LLVMTypeRef,
                                 /*Count*/ LLVMValueRef,
                                 /*Align*/ LLVMValueRef, uint8_t,
                                 LLVMValueRef *) = nullptr;
+LLVMValueRef (*CustomZero)(LLVMBuilderRef, LLVMTypeRef,
+                           /*Ptr*/ LLVMValueRef, uint8_t) = nullptr;
 LLVMValueRef (*CustomDeallocator)(LLVMBuilderRef, LLVMValueRef) = nullptr;
 void (*CustomRuntimeInactiveError)(LLVMBuilderRef, LLVMValueRef,
                                    LLVMValueRef) = nullptr;
 LLVMValueRef *(*EnzymePostCacheStore)(LLVMValueRef, LLVMBuilderRef,
                                       uint64_t *size) = nullptr;
 LLVMTypeRef (*EnzymeDefaultTapeType)(LLVMContextRef) = nullptr;
+}
+
+void ZeroMemory(llvm::IRBuilder<> &Builder, llvm::Type *T, llvm::Value *obj,
+                bool isTape) {
+  if (CustomZero) {
+    CustomZero(wrap(&Builder), wrap(T), wrap(obj), isTape);
+  } else {
+    Builder.CreateStore(Constant::getNullValue(T), obj);
+  }
 }
 
 llvm::SmallVector<llvm::Instruction *, 2> PostCacheStore(llvm::StoreInst *SI,
