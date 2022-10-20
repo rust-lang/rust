@@ -459,47 +459,34 @@ impl AddToDiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
     }
 }
 
-pub struct ImplNote {
-    pub impl_span: Option<Span>,
+// FIXME(#100717): replace with a `Option<Span>` when subdiagnostic supports that
+#[derive(Subdiagnostic)]
+pub enum DoesNotOutliveStaticFromImpl {
+    #[note(infer::does_not_outlive_static_from_impl)]
+    Spanned {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(infer::does_not_outlive_static_from_impl)]
+    Unspanned,
 }
 
-impl AddToDiagnostic for ImplNote {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        match self.impl_span {
-            Some(span) => diag.span_note(span, fluent::infer::msl_impl_note),
-            None => diag.note(fluent::infer::msl_impl_note),
-        };
-    }
-}
-
-pub enum TraitSubdiag {
-    Note { span: Span },
-    Sugg { span: Span },
-}
-
-// FIXME(#100717) used in `Vec<TraitSubdiag>` so requires eager translation/list support
-impl AddToDiagnostic for TraitSubdiag {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        match self {
-            TraitSubdiag::Note { span } => {
-                diag.span_note(span, "this has an implicit `'static` lifetime requirement");
-            }
-            TraitSubdiag::Sugg { span } => {
-                diag.span_suggestion_verbose(
-                    span,
-                    "consider relaxing the implicit `'static` requirement",
-                    " + '_".to_owned(),
-                    rustc_errors::Applicability::MaybeIncorrect,
-                );
-            }
-        }
-    }
+#[derive(Subdiagnostic)]
+pub enum ImplicitStaticLifetimeSubdiag {
+    #[note(infer::implicit_static_lifetime_note)]
+    Note {
+        #[primary_span]
+        span: Span,
+    },
+    #[suggestion_verbose(
+        infer::implicit_static_lifetime_suggestion,
+        code = " + '_",
+        applicability = "maybe-incorrect"
+    )]
+    Sugg {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -512,7 +499,7 @@ pub struct MismatchedStaticLifetime<'a> {
     #[subdiagnostic]
     pub expl: Option<note_and_explain::RegionExplanation<'a>>,
     #[subdiagnostic]
-    pub impl_note: ImplNote,
-    #[subdiagnostic]
-    pub trait_subdiags: Vec<TraitSubdiag>,
+    pub does_not_outlive_static_from_impl: DoesNotOutliveStaticFromImpl,
+    #[subdiagnostic(eager)]
+    pub implicit_static_lifetimes: Vec<ImplicitStaticLifetimeSubdiag>,
 }
