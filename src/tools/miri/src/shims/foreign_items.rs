@@ -1,4 +1,4 @@
-use std::{collections::hash_map::Entry, iter};
+use std::{collections::hash_map::Entry, io::Write, iter};
 
 use log::trace;
 
@@ -460,6 +460,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Writes the function and file names of a Miri backtrace frame into a user provided buffer. See the README for details.
             "miri_resolve_frame_names" => {
                 this.handle_miri_resolve_frame_names(abi, link_name, args)?;
+            }
+
+            // Writes some bytes to the interpreter's stdout/stderr. See the
+            // README for details.
+            "miri_write_to_stdout" | "miri_write_to_stderr" => {
+                let [bytes] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let (ptr, len) = this.read_immediate(bytes)?.to_scalar_pair();
+                let ptr = ptr.to_pointer(this)?;
+                let len = len.to_machine_usize(this)?;
+                let msg = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+
+                // Note: we're ignoring errors writing to host stdout/stderr.
+                let _ignore = match link_name.as_str() {
+                    "miri_write_to_stdout" => std::io::stdout().write_all(msg),
+                    "miri_write_to_stderr" => std::io::stderr().write_all(msg),
+                    _ => unreachable!(),
+                };
             }
 
             // Standard C allocation
