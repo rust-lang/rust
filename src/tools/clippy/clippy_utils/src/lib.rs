@@ -24,7 +24,7 @@ extern crate rustc_attr;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
-extern crate rustc_hir_analysis;
+extern crate rustc_hir_typeck;
 extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
