@@ -35,7 +35,7 @@ use std::ops::Deref;
 ///
 /// See [`ItemCtxt`]'s docs for more.
 ///
-/// [`ItemCtxt`]: crate::collect::ItemCtxt
+/// [`ItemCtxt`]: rustc_hir_analysis::collect::ItemCtxt
 /// [`InferCtxt`]: infer::InferCtxt
 pub struct FnCtxt<'a, 'tcx> {
     pub(super) body_id: hir::HirId,
