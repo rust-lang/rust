@@ -241,17 +241,34 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             // scopes, meaning that temporaries cannot outlive them.
             // This ensures fixed size stacks.
             hir::ExprKind::Binary(
-                source_map::Spanned { node: hir::BinOpKind::And, .. },
-                _,
+                source_map::Spanned { node: outer @ hir::BinOpKind::And, .. },
+                ref l,
                 ref r,
             )
             | hir::ExprKind::Binary(
-                source_map::Spanned { node: hir::BinOpKind::Or, .. },
-                _,
+                source_map::Spanned { node: outer @ hir::BinOpKind::Or, .. },
+                ref l,
                 ref r,
             ) => {
                 // For shortcircuiting operators, mark the RHS as a terminating
                 // scope since it only executes conditionally.
+
+                // If the LHS is not another binop itself of the same kind as ours,
+                // we also mark it as terminating, so that in && or || chains,
+                // the temporaries are dropped in order instead of the very first
+                // being dropped last. For the Let exception, see below.
+                let terminate_lhs = match l.kind {
+                    hir::ExprKind::Let(_) => false,
+                    hir::ExprKind::Binary(source_map::Spanned { node, .. }, ..)
+                        if node == outer =>
+                    {
+                        false
+                    }
+                    _ => true,
+                };
+                if terminate_lhs {
+                    terminating(l.hir_id.local_id);
+                }
 
                 // `Let` expressions (in a let-chain) shouldn't be terminating, as their temporaries
                 // should live beyond the immediate expression
