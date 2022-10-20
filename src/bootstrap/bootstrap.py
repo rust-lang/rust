@@ -571,7 +571,7 @@ class RustBuild(object):
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
-        >>> rb.rustc_stamp() == os.path.join("build", "stage0", ".rustc-stamp")
+        >>> rb.rustc_stamp() == os.path.join("build", "bootstrap-sysroot", ".rustc-stamp")
         True
         """
         return os.path.join(self.bin_root(), '.rustc-stamp')
