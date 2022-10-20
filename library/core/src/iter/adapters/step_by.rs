@@ -21,6 +21,18 @@ impl<I> StepBy<I> {
         assert!(step != 0);
         StepBy { iter, step: step - 1, first_take: true }
     }
+
+    /// Returns a reference to the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn inner(&self) -> &I {
+        &self.iter
+    }
+
+    /// Consumes the adaptor struct and returns the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn into_inner(self) -> I {
+        self.iter
+    }
 }
 
 #[stable(feature = "iterator_step_by", since = "1.28.0")]

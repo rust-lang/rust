@@ -68,6 +68,18 @@ impl<I, F> Map<I, F> {
     pub(in crate::iter) fn new(iter: I, f: F) -> Map<I, F> {
         Map { iter, f }
     }
+
+    /// Returns a reference to the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn inner(&self) -> &I {
+        &self.iter
+    }
+
+    /// Consumes the adaptor struct and returns the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn into_inner(self) -> I {
+        self.iter
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]

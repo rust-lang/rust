@@ -19,6 +19,18 @@ impl<T> Rev<T> {
     pub(in crate::iter) fn new(iter: T) -> Rev<T> {
         Rev { iter }
     }
+
+    /// Returns a reference to the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn inner(&self) -> &T {
+        &self.iter
+    }
+
+    /// Consumes the adaptor struct and returns the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn into_inner(self) -> T {
+        self.iter
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -21,6 +21,18 @@ impl<I> Skip<I> {
     pub(in crate::iter) fn new(iter: I, n: usize) -> Skip<I> {
         Skip { iter, n }
     }
+
+    /// Returns a reference to the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn inner(&self) -> &I {
+        &self.iter
+    }
+
+    /// Consumes the adaptor struct and returns the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn into_inner(self) -> I {
+        self.iter
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -22,6 +22,18 @@ where
     pub(in crate::iter) fn new(iter: I, separator: I::Item) -> Self {
         Self { iter: iter.peekable(), separator, needs_sep: false }
     }
+
+    /// Returns a reference to the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn inner(&self) -> &I {
+        &self.iter.inner()
+    }
+
+    /// Consumes the adaptor struct and returns the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn into_inner(self) -> I {
+        self.iter.into_inner()
+    }
 }
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]

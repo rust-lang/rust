@@ -21,6 +21,18 @@ impl<I, P> Filter<I, P> {
     pub(in crate::iter) fn new(iter: I, predicate: P) -> Filter<I, P> {
         Filter { iter, predicate }
     }
+
+    /// Returns a reference to the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn inner(&self) -> &I {
+        &self.iter
+    }
+
+    /// Consumes the adaptor struct and returns the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn into_inner(self) -> I {
+        self.iter
+    }
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]

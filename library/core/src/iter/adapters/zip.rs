@@ -31,6 +31,24 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
         }
         None
     }
+
+    /// Returns a reference to the left inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn left_inner(&self) -> &A {
+        &self.a
+    }
+
+    /// Returns a reference to the right inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn right_inner(&self) -> &B {
+        &self.b
+    }
+
+    /// Consumes the adaptor struct and returns the inner iterator.
+    #[unstable(feature = "inner_adaptor", issue = "103302", reason = "recently added")]
+    pub fn into_inner(self) -> (A, B) {
+        (self.a, self.b)
+    }
 }
 
 /// Converts the arguments to iterators and zips them.
