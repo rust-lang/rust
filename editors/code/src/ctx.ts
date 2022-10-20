@@ -38,6 +38,7 @@ export class Ctx {
                 this.dispose();
             },
         });
+        extCtx.subscriptions.push(this);
         this.statusBar.text = "rust-analyzer";
         this.statusBar.tooltip = "ready";
         this.statusBar.command = "rust-analyzer.analyzerStatus";
@@ -48,10 +49,15 @@ export class Ctx {
         this.config = new Config(extCtx);
     }
 
+    dispose() {
+        this.config.dispose();
+    }
+
     clientFetcher() {
+        const self = this;
         return {
             get client(): lc.LanguageClient | undefined {
-                return this.client;
+                return self.client;
             },
         };
     }
