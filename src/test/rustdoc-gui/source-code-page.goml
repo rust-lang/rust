@@ -23,7 +23,7 @@ assert-css: (".src-line-numbers", {"text-align": "right"})
 show-text: true
 goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // We use this assert-position to know where we will click.
-assert-position: ("//*[@id='1']", {"x": 104, "y": 103})
+assert-position: ("//*[@id='1']", {"x": 104, "y": 112})
 // We click on the left of the "1" span but still in the "src-line-number" `<pre>`.
 click: (103, 103)
 assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
@@ -47,3 +47,25 @@ assert-property: ("#source-sidebar details:first-of-type", {"open": "false"})
 
 // Check the spacing.
 assert-css: ("#source-sidebar > details.dir-entry", {"padding-left": "4px"})
+
+// Check the search form
+assert-css: ("nav.sub", {"flex-direction": "row"})
+// The goal of this test is to ensure the search input is perfectly centered
+// between the top of the page and the top of the gray code block.
+// To check this, we maintain the invariant:
+//
+// offsetTop[nav.sub form] = offsetTop[#main-content] - offsetHeight[nav.sub form] - offsetTop[nav.sub form]
+assert-property: ("nav.sub form", {"offsetTop": 28, "offsetHeight": 34})
+assert-property: ("#main-content", {"offsetTop": 90})
+// 28 = 90 - 34 - 28
+
+// Now do the same check on moderately-sized mobile.
+size: (700, 700)
+assert-css: ("nav.sub", {"flex-direction": "row"})
+assert-property: ("nav.sub form", {"offsetTop": 21, "offsetHeight": 34})
+assert-property: ("#main-content", {"offsetTop": 76})
+// 21 = 76 - 34 - 21
+
+// Tiny mobile gets a different display where the logo is stacked on top.
+size: (450, 700)
+assert-css: ("nav.sub", {"flex-direction": "column"})
