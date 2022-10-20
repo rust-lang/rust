@@ -191,7 +191,7 @@ const LLVM_TOOLS: &[&str] = &[
 /// LLD file names for all flavors.
 const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 
-pub const VERSION: usize = 2;
+pub const VERSION: usize = 3;
 
 /// Extra --check-cfg to add when building
 /// (Mode restriction, config name, config values (if any))
