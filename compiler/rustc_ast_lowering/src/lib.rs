@@ -507,6 +507,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
+    /// resolver (if any).
+    fn orig_opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
+        self.resolver.node_id_to_def_id.get(&node).map(|local_def_id| *local_def_id)
+    }
+
+    fn orig_local_def_id(&self, node: NodeId) -> LocalDefId {
+        self.orig_opt_local_def_id(node)
+            .unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+    }
+
+    /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any), after applying any remapping from `get_remapped_def_id`.
     ///
     /// For example, in a function like `fn foo<'a>(x: &'a u32)`,
@@ -520,10 +531,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// we would create an opaque type `type FooReturn<'a1> = impl Debug + 'a1`.
     /// When lowering the `Debug + 'a` bounds, we add a remapping to map `'a` to `'a1`.
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.resolver
-            .node_id_to_def_id
-            .get(&node)
-            .map(|local_def_id| self.get_remapped_def_id(*local_def_id))
+        self.orig_opt_local_def_id(node).map(|local_def_id| self.get_remapped_def_id(local_def_id))
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
@@ -532,9 +540,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Get the previously recorded `to` local def id given the `from` local def id, obtained using
     /// `generics_def_id_map` field.
-    fn get_remapped_def_id(&self, mut local_def_id: LocalDefId) -> LocalDefId {
+    fn get_remapped_def_id(&self, local_def_id: LocalDefId) -> LocalDefId {
         // `generics_def_id_map` is a stack of mappings. As we go deeper in impl traits nesting we
-        // push new mappings so we need to try first the latest mappings, hence `iter().rev()`.
+        // push new mappings, so we first need to get the latest (innermost) mappings, hence `iter().rev()`.
         //
         // Consider:
         //
@@ -544,18 +552,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //
         // `[[fn#'b -> impl_trait#'b], [fn#'b -> impl_sized#'b]]`
         //
-        // for the opaque type generated on `impl Sized + 'b`, We want the result to be:
-        // impl_sized#'b, so iterating forward is the wrong thing to do.
-        for map in self.generics_def_id_map.iter().rev() {
-            if let Some(r) = map.get(&local_def_id) {
-                debug!("def_id_remapper: remapping from `{local_def_id:?}` to `{r:?}`");
-                local_def_id = *r;
-            } else {
-                debug!("def_id_remapper: no remapping for `{local_def_id:?}` found in map");
-            }
-        }
-
-        local_def_id
+        // for the opaque type generated on `impl Sized + 'b`, we want the result to be: impl_sized#'b.
+        // So, if we were trying to find first from the start (outermost) would give the wrong result, impl_trait#'b.
+        self.generics_def_id_map
+            .iter()
+            .rev()
+            .find_map(|map| map.get(&local_def_id).map(|local_def_id| *local_def_id))
+            .unwrap_or(local_def_id)
     }
 
     /// Freshen the `LoweringContext` and ready it to lower a nested item.
@@ -1633,7 +1636,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 LifetimeRes::Fresh { param, binder: _ } => {
                     debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
-                    if let Some(old_def_id) = self.opt_local_def_id(param) && remapping.get(&old_def_id).is_none() {
+                    if let Some(old_def_id) = self.orig_opt_local_def_id(param) && remapping.get(&old_def_id).is_none() {
                         let node_id = self.next_node_id();
 
                         let new_def_id = self.create_def(
@@ -1878,7 +1881,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let extra_lifetime_params = self.resolver.take_extra_lifetime_params(opaque_ty_node_id);
         debug!(?extra_lifetime_params);
         for (ident, outer_node_id, outer_res) in extra_lifetime_params {
-            let outer_def_id = self.local_def_id(outer_node_id);
+            let outer_def_id = self.orig_local_def_id(outer_node_id);
             let inner_node_id = self.next_node_id();
 
             // Add a definition for the in scope lifetime def.

@@ -1,5 +1,5 @@
 // run-pass
-// ignore-fuchsia Test must be run out-of-process
+// needs-unwind (#73509)
 
 #![feature(test)]
 

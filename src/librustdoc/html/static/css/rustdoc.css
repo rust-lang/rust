@@ -229,44 +229,44 @@ h1 a,
 	color: var(--main-color);
 }
 
-span.enum, a.enum,
-span.struct, a.struct,
-span.union, a.union,
-span.primitive, a.primitive,
-span.type, a.type,
-span.foreigntype, a.foreigntype {
+.content span.enum, .content a.enum,
+.content span.struct, .content a.struct,
+.content span.union, .content a.union,
+.content span.primitive, .content a.primitive,
+.content span.type, .content a.type,
+.content span.foreigntype, .content a.foreigntype {
 	color: var(--type-link-color);
 }
 
-span.trait, a.trait,
-span.traitalias, a.traitalias {
+.content span.trait, .content a.trait,
+.content span.traitalias, .content a.traitalias {
 	color: var(--trait-link-color);
 }
 
-span.associatedtype, a.associatedtype,
-span.constant, a.constant,
-span.static, a.static {
+.content span.associatedtype, .content a.associatedtype,
+.content span.constant, .content a.constant,
+.content span.static, .content a.static {
 	color: var(--assoc-item-link-color);
 }
 
-span.fn, a.fn,
-.fnname,
-span.method, a.method,
-span.tymethod, a.tymethod {
+.content span.fn, .content a.fn,
+.content .fnname,
+.content span.method, .content a.method,
+.content span.tymethod, .content a.tymethod {
 	color: var(--function-link-color);
 }
 
-span.attr, a.attr,
-span.derive, a.derive,
-span.macro, a.macro {
+.content span.attr, .content a.attr,
+.content span.derive, .content a.derive,
+.content span.macro, .content a.macro {
 	color: var(--macro-link-color);
 }
 
-span.mod, a.mod {
+.content span.mod, .content a.mod {
 	color: var(--mod-link-color);
 }
 
-span.keyword, a.keyword {
+.content span.keyword, .content a.keyword {
 	color: var(--keyword-link-color);
 }
 
@@ -697,7 +697,6 @@ pre, .rustdoc.source .example-wrap {
 
 nav.sub {
 	position: relative;
-	font-size: 1rem;
 	flex-grow: 1;
 	margin-bottom: 25px;
 }

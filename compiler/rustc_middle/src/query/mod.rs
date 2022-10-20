@@ -1207,9 +1207,9 @@ rustc_queries! {
     }
 
     query own_existential_vtable_entries(
-        key: ty::PolyExistentialTraitRef<'tcx>
+        key: DefId
     ) -> &'tcx [DefId] {
-        desc { |tcx| "finding all existential vtable entries for trait `{}`", tcx.def_path_str(key.def_id()) }
+        desc { |tcx| "finding all existential vtable entries for trait `{}`", tcx.def_path_str(key) }
     }
 
     query vtable_entries(key: ty::PolyTraitRef<'tcx>)

@@ -853,20 +853,27 @@ impl SourceMap {
     }
 
     /// Returns a new span representing the next character after the end-point of this span.
+    /// Special cases:
+    /// - if span is a dummy one, returns the same span
+    /// - if next_point reached the end of source, return span with lo = hi
+    /// - respect multi-byte characters
     pub fn next_point(&self, sp: Span) -> Span {
         if sp.is_dummy() {
             return sp;
         }
         let start_of_next_point = sp.hi().0;
 
-        let width = self.find_width_of_character_at_span(sp.shrink_to_hi(), true);
-        // If the width is 1, then the next span should point to the same `lo` and `hi`. However,
-        // in the case of a multibyte character, where the width != 1, the next span should
+        let width = self.find_width_of_character_at_span(sp, true);
+        if width == 0 {
+            return Span::new(sp.hi(), sp.hi(), sp.ctxt(), None);
+        }
+        // If the width is 1, then the next span should only contain the next char besides current ending.
+        // However, in the case of a multibyte character, where the width != 1, the next span should
         // span multiple bytes to include the whole character.
         let end_of_next_point =
-            start_of_next_point.checked_add(width - 1).unwrap_or(start_of_next_point);
+            start_of_next_point.checked_add(width).unwrap_or(start_of_next_point);
 
-        let end_of_next_point = BytePos(cmp::max(sp.lo().0 + 1, end_of_next_point));
+        let end_of_next_point = BytePos(cmp::max(start_of_next_point + 1, end_of_next_point));
         Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt(), None)
     }
 
@@ -874,7 +881,8 @@ impl SourceMap {
     /// depending on the `forwards` parameter.
     fn find_width_of_character_at_span(&self, sp: Span, forwards: bool) -> u32 {
         let sp = sp.data();
-        if sp.lo == sp.hi {
+
+        if sp.lo == sp.hi && !forwards {
             debug!("find_width_of_character_at_span: early return empty span");
             return 1;
         }
@@ -908,9 +916,9 @@ impl SourceMap {
         let source_len = (local_begin.sf.end_pos - local_begin.sf.start_pos).to_usize();
         debug!("find_width_of_character_at_span: source_len=`{:?}`", source_len);
         // Ensure indexes are also not malformed.
-        if start_index > end_index || end_index > source_len {
+        if start_index > end_index || end_index > source_len - 1 {
             debug!("find_width_of_character_at_span: source indexes are malformed");
-            return 1;
+            return 0;
         }
 
         let src = local_begin.sf.external_src.borrow();

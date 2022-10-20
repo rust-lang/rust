@@ -198,9 +198,9 @@ impl<'tcx> CtxtInterners<'tcx> {
                 .intern(kind, |kind| {
                     let flags = super::flags::FlagComputation::for_kind(&kind);
 
-                    // It's impossible to hash inference regions (and will ICE), so we don't need to try to cache them.
+                    // It's impossible to hash inference variables (and will ICE), so we don't need to try to cache them.
                     // Without incremental, we rarely stable-hash types, so let's not do it proactively.
-                    let stable_hash = if flags.flags.intersects(TypeFlags::HAS_RE_INFER)
+                    let stable_hash = if flags.flags.intersects(TypeFlags::NEEDS_INFER)
                         || sess.opts.incremental.is_none()
                     {
                         Fingerprint::ZERO
