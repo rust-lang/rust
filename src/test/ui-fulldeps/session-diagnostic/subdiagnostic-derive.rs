@@ -736,6 +736,13 @@ struct SuggestionStyleVerbose {
 }
 
 #[derive(Subdiagnostic)]
+#[suggestion(parser_add_paren, code = "", style = "tool-only")]
+struct SuggestionStyleToolOnly {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
 #[suggestion(parser_add_paren, code = "", style = "hidden", style = "normal")]
 //~^ ERROR specified multiple times
 //~| NOTE previously specified here

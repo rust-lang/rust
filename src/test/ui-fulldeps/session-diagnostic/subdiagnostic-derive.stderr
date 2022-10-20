@@ -446,45 +446,45 @@ LL |     #[suggestion_part(code = 3)]
    |                       ^^^^^^^^
 
 error: specified multiple times
-  --> $DIR/subdiagnostic-derive.rs:739:61
+  --> $DIR/subdiagnostic-derive.rs:746:61
    |
 LL | #[suggestion(parser_add_paren, code = "", style = "hidden", style = "normal")]
    |                                                             ^^^^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/subdiagnostic-derive.rs:739:43
+  --> $DIR/subdiagnostic-derive.rs:746:43
    |
 LL | #[suggestion(parser_add_paren, code = "", style = "hidden", style = "normal")]
    |                                           ^^^^^^^^^^^^^^^^
 
 error: specified multiple times
-  --> $DIR/subdiagnostic-derive.rs:748:50
+  --> $DIR/subdiagnostic-derive.rs:755:50
    |
 LL | #[suggestion_hidden(parser_add_paren, code = "", style = "normal")]
    |                                                  ^^^^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/subdiagnostic-derive.rs:748:3
+  --> $DIR/subdiagnostic-derive.rs:755:3
    |
 LL | #[suggestion_hidden(parser_add_paren, code = "", style = "normal")]
    |   ^^^^^^^^^^^^^^^^^
 
 error: invalid suggestion style
-  --> $DIR/subdiagnostic-derive.rs:757:51
+  --> $DIR/subdiagnostic-derive.rs:764:51
    |
 LL | #[suggestion(parser_add_paren, code = "", style = "foo")]
    |                                                   ^^^^^
    |
-   = help: valid styles are `normal`, `short`, `hidden` and `verbose`
+   = help: valid styles are `normal`, `short`, `hidden`, `verbose` and `tool-only`
 
 error: `#[suggestion(style = ...)]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:765:43
+  --> $DIR/subdiagnostic-derive.rs:772:43
    |
 LL | #[suggestion(parser_add_paren, code = "", style = 42)]
    |                                           ^^^^^^^^^^
 
 error: `#[suggestion(style)]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:773:43
+  --> $DIR/subdiagnostic-derive.rs:780:43
    |
 LL | #[suggestion(parser_add_paren, code = "", style)]
    |                                           ^^^^^
@@ -492,7 +492,7 @@ LL | #[suggestion(parser_add_paren, code = "", style)]
    = help: a diagnostic slug must be the first argument to the attribute
 
 error: `#[suggestion(style(...))]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:781:43
+  --> $DIR/subdiagnostic-derive.rs:788:43
    |
 LL | #[suggestion(parser_add_paren, code = "", style("foo"))]
    |                                           ^^^^^^^^^^^^
