@@ -1143,7 +1143,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         }
 
         ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. }) => {
-            // Do not try to inference the return type for a impl method coming from a trait
+            // Do not try to infer the return type for a impl method coming from a trait
             if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) =
                 tcx.hir().get(tcx.hir().get_parent_node(hir_id))
                 && i.of_trait.is_some()
@@ -1286,10 +1286,37 @@ fn infer_return_ty_for_fn_sig<'tcx>(
 
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     let icx = ItemCtxt::new(tcx, def_id);
-    match tcx.hir().expect_item(def_id.expect_local()).kind {
+    let item = tcx.hir().expect_item(def_id.expect_local());
+    match item.kind {
         hir::ItemKind::Impl(ref impl_) => impl_.of_trait.as_ref().map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id);
-            <dyn AstConv<'_>>::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
+            <dyn AstConv<'_>>::instantiate_mono_trait_ref(
+                &icx,
+                ast_trait_ref,
+                selfty,
+                match impl_.constness {
+                    hir::Constness::Const => {
+                        if let Some(trait_def_id) = ast_trait_ref.trait_def_id() && !tcx.has_attr(trait_def_id, sym::const_trait) {
+                            let trait_name = tcx.item_name(trait_def_id);
+                            let mut err = tcx.sess.struct_span_err(
+                                ast_trait_ref.path.span,
+                                &format!("const `impl` for trait `{trait_name}` which is not marked with `#[const_trait]`"),
+                            );
+                            if trait_def_id.is_local() {
+                                let sp = tcx.def_span(trait_def_id).shrink_to_lo();
+                                err.span_suggestion(sp, &format!("mark `{trait_name}` as const"), "#[const_trait]", rustc_errors::Applicability::MachineApplicable);
+                            }
+                            err.note("marking a trait with `#[const_trait]` ensures all default method bodies are `const`");
+                            err.note("adding a non-const method body in the future would be a breaking change");
+                            err.emit();
+                            ty::BoundConstness::NotConst
+                        } else {
+                            ty::BoundConstness::ConstIfConst
+                        }
+                    },
+                    hir::Constness::NotConst => ty::BoundConstness::NotConst,
+                },
+            )
         }),
         _ => bug!(),
     }

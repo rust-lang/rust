@@ -303,32 +303,6 @@ impl<'tcx> WfPredicates<'tcx> {
         let obligations = if trait_pred.constness == ty::BoundConstness::NotConst {
             self.nominal_obligations_without_const(trait_ref.def_id, trait_ref.substs)
         } else {
-            if !tcx.has_attr(trait_ref.def_id, rustc_span::sym::const_trait) {
-                if let Some(item) = self.item &&
-                   let hir::ItemKind::Impl(impl_) = item.kind &&
-                   let Some(trait_) = &impl_.of_trait &&
-                   let Some(def_id) = trait_.trait_def_id() &&
-                   def_id == trait_ref.def_id
-                {
-                    let trait_name = tcx.item_name(def_id);
-                    let mut err = tcx.sess.struct_span_err(
-                        self.span,
-                        &format!("const `impl` for trait `{trait_name}` which is not marked with `#[const_trait]`"),
-                    );
-                    if def_id.is_local() {
-                        let sp = tcx.def_span(def_id).shrink_to_lo();
-                        err.span_suggestion(sp, &format!("mark `{trait_name}` as const"), "#[const_trait]", rustc_errors::Applicability::MachineApplicable);
-                    }
-                    err.note("marking a trait with `#[const_trait]` ensures all default method bodies are `const`");
-                    err.note("adding a non-const method body in the future would be a breaking change");
-                    err.emit();
-                } else {
-                    tcx.sess.span_err(
-                        self.span,
-                        "~const can only be applied to `#[const_trait]` traits",
-                    );
-                }
-            }
             self.nominal_obligations(trait_ref.def_id, trait_ref.substs)
         };
 
