@@ -77,10 +77,6 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
 
     await initCommonContext(ctx);
 
-    if (ctx.config.typingContinueCommentsOnNewline) {
-        ctx.pushExtCleanup(configureLanguage());
-    }
-
     vscode.workspace.onDidChangeConfiguration(
         async (_) => {
             await ctx
@@ -129,6 +125,11 @@ async function initCommonContext(ctx: Ctx) {
     ctx.registerCommand("stopServer", (_) => async () => {
         // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
         await ctx.disposeClient();
+        ctx.setServerStatus({
+            health: "ok",
+            quiescent: true,
+            message: "server is not running",
+        });
     });
     ctx.registerCommand("analyzerStatus", commands.analyzerStatus);
     ctx.registerCommand("memoryUsage", commands.memoryUsage);
@@ -171,55 +172,4 @@ async function initCommonContext(ctx: Ctx) {
 
     defaultOnEnter.dispose();
     ctx.registerCommand("onEnter", commands.onEnter);
-}
-
-/**
- * Sets up additional language configuration that's impossible to do via a
- * separate language-configuration.json file. See [1] for more information.
- *
- * [1]: https://github.com/Microsoft/vscode/issues/11514#issuecomment-244707076
- */
-function configureLanguage(): vscode.Disposable {
-    const indentAction = vscode.IndentAction.None;
-    return vscode.languages.setLanguageConfiguration("rust", {
-        onEnterRules: [
-            {
-                // Doc single-line comment
-                // e.g. ///|
-                beforeText: /^\s*\/{3}.*$/,
-                action: { indentAction, appendText: "/// " },
-            },
-            {
-                // Parent doc single-line comment
-                // e.g. //!|
-                beforeText: /^\s*\/{2}\!.*$/,
-                action: { indentAction, appendText: "//! " },
-            },
-            {
-                // Begins an auto-closed multi-line comment (standard or parent doc)
-                // e.g. /** | */ or /*! | */
-                beforeText: /^\s*\/\*(\*|\!)(?!\/)([^\*]|\*(?!\/))*$/,
-                afterText: /^\s*\*\/$/,
-                action: { indentAction: vscode.IndentAction.IndentOutdent, appendText: " * " },
-            },
-            {
-                // Begins a multi-line comment (standard or parent doc)
-                // e.g. /** ...| or /*! ...|
-                beforeText: /^\s*\/\*(\*|\!)(?!\/)([^\*]|\*(?!\/))*$/,
-                action: { indentAction, appendText: " * " },
-            },
-            {
-                // Continues a multi-line comment
-                // e.g.  * ...|
-                beforeText: /^(\ \ )*\ \*(\ ([^\*]|\*(?!\/))*)?$/,
-                action: { indentAction, appendText: "* " },
-            },
-            {
-                // Dedents after closing a multi-line comment
-                // e.g.  */|
-                beforeText: /^(\ \ )*\ \*\/\s*$/,
-                action: { indentAction, removeText: 1 },
-            },
-        ],
-    });
 }
