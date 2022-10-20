@@ -1557,7 +1557,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         let mut err = self.temporary_value_borrowed_for_too_long(proper_span);
-        err.span_label(proper_span, "creates a temporary which is freed while still in use");
+        err.span_label(proper_span, "creates a temporary value which is freed while still in use");
         err.span_label(drop_span, "temporary value is freed at the end of this statement");
 
         match explanation {
