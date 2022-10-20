@@ -51,14 +51,14 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
         Some(field) => {
             let field_name = field.name()?;
             let field_ty = field.ty()?;
-            (format!("{field_name}"), field_ty, field.syntax().text_range())
+            (field_name.to_string(), field_ty, field.syntax().text_range())
         }
         None => {
             let field = ctx.find_node_at_offset::<ast::TupleField>()?;
             let field_list = ctx.find_node_at_offset::<ast::TupleFieldList>()?;
             let field_list_index = field_list.fields().position(|it| it == field)?;
             let field_ty = field.ty()?;
-            (format!("{field_list_index}"), field_ty, field.syntax().text_range())
+            (field_list_index.to_string(), field_ty, field.syntax().text_range())
         }
     };
 
@@ -77,13 +77,11 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
     for method in methods {
         let adt = ast::Adt::Struct(strukt.clone());
         let name = method.name(ctx.db()).to_string();
-        let impl_def = find_struct_impl(ctx, &adt, &name).flatten();
-        let method_name = method.name(ctx.db());
-
+        let impl_def = find_struct_impl(ctx, &adt, &[name]).flatten();
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),
-            format!("Generate delegate for `{field_name}.{method_name}()`"),
+            format!("Generate delegate for `{}.{}()`", field_name, method.name(ctx.db())),
             target,
             |builder| {
                 // Create the function
@@ -158,7 +156,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                             }
                             None => {
                                 let offset = strukt.syntax().text_range().end();
-                                let snippet = format!("\n\n{impl_def}");
+                                let snippet = format!("\n\n{}", impl_def.syntax());
                                 builder.insert(offset, snippet);
                             }
                         }
