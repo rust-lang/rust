@@ -8,7 +8,7 @@
 extern crate static_dllimport_aux;
 
 // CHECK-LABEL: @{{.+}}CROSS_CRATE_STATIC_ITEM{{.+}} =
-// CHECK-SAME: external dllimport local_unnamed_addr global %"{{.+}}::AtomicPtr
+// CHECK-SAME: external local_unnamed_addr global %"{{.+}}AtomicPtr
 
 pub fn main() {
     static_dllimport_aux::memrchr();
