@@ -1,0 +1,74 @@
+// This test ensures that the color of the items in the type decl are working as expected.
+define-function: (
+    "check-colors",
+    (
+        theme,
+        attr_color,
+        trait_color,
+        struct_color,
+        enum_color,
+        primitive_color,
+        constant_color,
+        fn_color,
+        assoc_type_color,
+    ),
+    [
+        ("goto", "file://" + |DOC_PATH| + "/test_docs/struct.WithGenerics.html"),
+        ("show-text", true),
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        ("reload"),
+        ("assert-css", (".item-decl .code-attribute", {"color": |attr_color|}, ALL)),
+        ("assert-css", (".item-decl .trait", {"color": |trait_color|}, ALL)),
+        // We need to add `code` here because otherwise it would select the parent too.
+        ("assert-css", (".item-decl code .struct", {"color": |struct_color|}, ALL)),
+        ("assert-css", (".item-decl .enum", {"color": |enum_color|}, ALL)),
+        ("assert-css", (".item-decl .primitive", {"color": |primitive_color|}, ALL)),
+        ("goto", "file://" + |DOC_PATH| + "/test_docs/trait.TraitWithoutGenerics.html"),
+        ("assert-css", (".item-decl .constant", {"color": |constant_color|}, ALL)),
+        ("assert-css", (".item-decl .fnname", {"color": |fn_color|}, ALL)),
+        ("assert-css", (".item-decl .associatedtype", {"color": |assoc_type_color|}, ALL)),
+    ],
+)
+
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "attr_color": "rgb(153, 153, 153)",
+        "trait_color": "rgb(57, 175, 215)",
+        "struct_color": "rgb(255, 160, 165)",
+        "enum_color": "rgb(255, 160, 165)",
+        "primitive_color": "rgb(255, 160, 165)",
+        "constant_color": "rgb(57, 175, 215)",
+        "fn_color": "rgb(253, 214, 135)",
+        "assoc_type_color": "rgb(57, 175, 215)",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "attr_color": "rgb(153, 153, 153)",
+        "trait_color": "rgb(183, 140, 242)",
+        "struct_color": "rgb(45, 191, 184)",
+        "enum_color": "rgb(45, 191, 184)",
+        "primitive_color": "rgb(45, 191, 184)",
+        "constant_color": "rgb(210, 153, 29)",
+        "fn_color": "rgb(43, 171, 99)",
+        "assoc_type_color": "rgb(210, 153, 29)",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "attr_color": "rgb(153, 153, 153)",
+        "trait_color": "rgb(110, 79, 201)",
+        "struct_color": "rgb(173, 55, 138)",
+        "enum_color": "rgb(173, 55, 138)",
+        "primitive_color": "rgb(173, 55, 138)",
+        "constant_color": "rgb(56, 115, 173)",
+        "fn_color": "rgb(173, 124, 55)",
+        "assoc_type_color": "rgb(56, 115, 173)",
+    },
+)
