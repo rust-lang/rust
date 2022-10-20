@@ -35,7 +35,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert_eq!(discr.layout.ty, switch_ty);
 
                 // Branch to the `otherwise` case by default, if no match is found.
-                assert!(!targets.iter().is_empty());
                 let mut target_block = targets.otherwise();
 
                 for (const_int, target) in targets.iter() {
