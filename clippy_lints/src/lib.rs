@@ -735,7 +735,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let max_trait_bounds = conf.max_trait_bounds;
     store.register_late_pass(move |_| Box::new(trait_bounds::TraitBounds::new(max_trait_bounds)));
     store.register_late_pass(|_| Box::new(comparison_chain::ComparisonChain));
-    store.register_late_pass(|_| Box::new(mut_key::MutableKeyType));
+    let ignore_interior_mutability = conf.ignore_interior_mutability.clone();
+    store.register_late_pass(move |_| Box::new(mut_key::MutableKeyType::new(ignore_interior_mutability.clone())));
     store.register_early_pass(|| Box::new(reference::DerefAddrOf));
     store.register_early_pass(|| Box::new(double_parens::DoubleParens));
     store.register_late_pass(|_| Box::new(format_impl::FormatImpl::new()));
