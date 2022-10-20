@@ -1943,7 +1943,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         if let Some(Res::SelfTyParam { .. } | Res::SelfTyAlias { .. }) = path_res {
                             return true;
                         }
-                        path_res == self.impl_self
+                        self.impl_self.is_some() && path_res == self.impl_self
                     }
                     _ => false,
                 }
