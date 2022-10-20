@@ -1,7 +1,7 @@
 # armeb-unknown-linux-gnueabi
 **Tier: 3**
 
-Target for cross-compiling Linux user-mode applications targetting the ARM BE8 architecture.
+Target for cross-compiling Linux user-mode applications targeting the ARM BE8 architecture.
 
 ## Overview
 BE8 architecture retains the same little-endian ordered code-stream used by conventional little endian ARM systems, however the data accesses are in big-endian. BE8 is used primarily in high-performance networking applications where the ability to read packets in their native "Network Byte Order" is important (many network protocols transmit data in big-endian byte order for their wire formats).
