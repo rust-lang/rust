@@ -38,6 +38,13 @@ enum SelfSemantic {
     No,
 }
 
+/// What is the context that prevents using `~const`?
+enum DisallowTildeConstContext<'a> {
+    TraitObject,
+    ImplTrait,
+    Fn(FnKind<'a>),
+}
+
 struct AstValidator<'a> {
     session: &'a Session,
 
@@ -56,7 +63,7 @@ struct AstValidator<'a> {
     /// e.g., `impl Iterator<Item = impl Debug>`.
     outer_impl_trait: Option<Span>,
 
-    is_tilde_const_allowed: bool,
+    disallow_tilde_const: Option<DisallowTildeConstContext<'a>>,
 
     /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
     /// or `Foo::Bar<impl Trait>`
@@ -93,18 +100,26 @@ impl<'a> AstValidator<'a> {
         self.is_impl_trait_banned = old;
     }
 
-    fn with_tilde_const(&mut self, allowed: bool, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.is_tilde_const_allowed, allowed);
+    fn with_tilde_const(
+        &mut self,
+        disallowed: Option<DisallowTildeConstContext<'a>>,
+        f: impl FnOnce(&mut Self),
+    ) {
+        let old = mem::replace(&mut self.disallow_tilde_const, disallowed);
         f(self);
-        self.is_tilde_const_allowed = old;
+        self.disallow_tilde_const = old;
     }
 
     fn with_tilde_const_allowed(&mut self, f: impl FnOnce(&mut Self)) {
-        self.with_tilde_const(true, f)
+        self.with_tilde_const(None, f)
     }
 
-    fn with_banned_tilde_const(&mut self, f: impl FnOnce(&mut Self)) {
-        self.with_tilde_const(false, f)
+    fn with_banned_tilde_const(
+        &mut self,
+        ctx: DisallowTildeConstContext<'a>,
+        f: impl FnOnce(&mut Self),
+    ) {
+        self.with_tilde_const(Some(ctx), f)
     }
 
     fn with_let_management(
@@ -172,7 +187,7 @@ impl<'a> AstValidator<'a> {
     fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(&mut self.outer_impl_trait, outer);
         if outer.is_some() {
-            self.with_banned_tilde_const(f);
+            self.with_banned_tilde_const(DisallowTildeConstContext::ImplTrait, f);
         } else {
             f(self);
         }
@@ -197,7 +212,10 @@ impl<'a> AstValidator<'a> {
             TyKind::ImplTrait(..) => {
                 self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t))
             }
-            TyKind::TraitObject(..) => self.with_banned_tilde_const(|this| visit::walk_ty(this, t)),
+            TyKind::TraitObject(..) => self
+                .with_banned_tilde_const(DisallowTildeConstContext::TraitObject, |this| {
+                    visit::walk_ty(this, t)
+                }),
             TyKind::Path(ref qself, ref path) => {
                 // We allow these:
                 //  - `Option<impl Trait>`
@@ -1411,13 +1429,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     );
                     err.emit();
                 }
-                (_, TraitBoundModifier::MaybeConst) => {
-                    if !self.is_tilde_const_allowed {
-                        self.err_handler()
-                            .struct_span_err(bound.span(), "`~const` is not allowed here")
-                            .note("only allowed on bounds on functions, traits' associated types and functions, const impls and its associated functions")
-                            .emit();
-                    }
+                (_, TraitBoundModifier::MaybeConst) if let Some(reason) = &self.disallow_tilde_const => {
+                    let mut err = self.err_handler().struct_span_err(bound.span(), "`~const` is not allowed here");
+                    match reason {
+                        DisallowTildeConstContext::TraitObject => err.note("trait objects cannot have `~const` trait bounds"),
+                        DisallowTildeConstContext::ImplTrait => err.note("`impl Trait`s cannot have `~const` trait bounds"),
+                        DisallowTildeConstContext::Fn(FnKind::Closure(..)) => err.note("closures cannot have `~const` trait bounds"),
+                        DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => err.span_note(ident.span, "this function is not `const`, so it cannot have `~const` trait bounds"),
+                    };
+                    err.emit();
                 }
                 (_, TraitBoundModifier::MaybeConstMaybe) => {
                     self.err_handler()
@@ -1523,10 +1543,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             });
         }
 
-        let tilde_const_allowed = matches!(fk.header(), Some(FnHeader { .. }))
-            || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
+        let tilde_const_allowed =
+            matches!(fk.header(), Some(FnHeader { constness: ast::Const::Yes(_), .. }))
+                || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
 
-        self.with_tilde_const(tilde_const_allowed, |this| visit::walk_fn(this, fk));
+        let disallowed = (!tilde_const_allowed).then(|| DisallowTildeConstContext::Fn(fk));
+
+        self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
@@ -1770,7 +1793,7 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> 
         in_const_trait_impl: false,
         has_proc_macro_decls: false,
         outer_impl_trait: None,
-        is_tilde_const_allowed: false,
+        disallow_tilde_const: None,
         is_impl_trait_banned: false,
         is_assoc_ty_bound_banned: false,
         forbidden_let_reason: Some(ForbiddenLetReason::GenericForbidden),

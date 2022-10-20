@@ -217,7 +217,6 @@ trigger_files = [
 
 [autolabel."A-testsuite"]
 trigger_files = [
-    "src/test",
     "src/ci",
     "src/tools/compiletest",
     "src/tools/cargotest",

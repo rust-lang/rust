@@ -2,12 +2,12 @@ error[E0282]: type annotations needed
   --> $DIR/issue-6458-3.rs:4:5
    |
 LL |     mem::transmute(0);
-   |     ^^^^^^^^^^^^^^ cannot infer type of the type parameter `U` declared on the function `transmute`
+   |     ^^^^^^^^^^^^^^ cannot infer type of the type parameter `Dst` declared on the function `transmute`
    |
 help: consider specifying the generic arguments
    |
-LL |     mem::transmute::<i32, U>(0);
-   |                   ++++++++++
+LL |     mem::transmute::<i32, Dst>(0);
+   |                   ++++++++++++
 
 error: aborting due to previous error
 
