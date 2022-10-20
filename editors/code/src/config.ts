@@ -191,7 +191,7 @@ export class Config {
 const VarRegex = new RegExp(/\$\{(.+?)\}/g);
 
 export function substituteVSCodeVariableInString(val: string): string {
-    return val.replaceAll(VarRegex, (substring: string, varName) => {
+    return val.replace(VarRegex, (substring: string, varName) => {
         if (typeof varName === "string") {
             return computeVscodeVar(varName) || substring;
         } else {
