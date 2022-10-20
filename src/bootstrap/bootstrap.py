@@ -588,13 +588,13 @@ class RustBuild(object):
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
-        >>> rb.bin_root() == os.path.join("build", "stage0")
+        >>> rb.bin_root() == os.path.join("build", "bootstrap-sysroot")
         True
 
         When the 'build' property is given should be a nested directory:
 
         >>> rb.build = "devel"
-        >>> rb.bin_root() == os.path.join("build", "devel", "stage0")
+        >>> rb.bin_root() == os.path.join("build", "devel", "bootstrap-sysroot")
         True
         """
         subdir = "bootstrap-sysroot"
