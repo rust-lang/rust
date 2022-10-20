@@ -226,7 +226,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         }
 
         let definition_ty = instantiated_ty
-            .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
+            .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false, origin)
             .ty;
 
         if !check_opaque_type_parameter_valid(
