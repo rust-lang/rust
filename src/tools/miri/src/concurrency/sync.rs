@@ -7,13 +7,13 @@ use log::trace;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
 
-use super::thread::MachineCallback;
+use super::init_once::InitOnce;
 use super::vector_clock::VClock;
 use crate::*;
 
 pub trait SyncId {
     fn from_u32(id: u32) -> Self;
-    fn to_u32_scalar(&self) -> Scalar<Provenance>;
+    fn to_u32(&self) -> u32;
 }
 
 /// We cannot use the `newtype_index!` macro because we have to use 0 as a
@@ -32,8 +32,8 @@ macro_rules! declare_id {
             fn from_u32(id: u32) -> Self {
                 Self(NonZeroU32::new(id).unwrap())
             }
-            fn to_u32_scalar(&self) -> Scalar<Provenance> {
-                Scalar::from_u32(self.0.get())
+            fn to_u32(&self) -> u32 {
+                self.0.get()
             }
         }
 
@@ -158,47 +158,6 @@ struct FutexWaiter {
     bitset: u32,
 }
 
-declare_id!(InitOnceId);
-
-struct InitOnceWaiter<'mir, 'tcx> {
-    thread: ThreadId,
-    callback: Box<dyn MachineCallback<'mir, 'tcx> + 'tcx>,
-}
-
-impl<'mir, 'tcx> std::fmt::Debug for InitOnceWaiter<'mir, 'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("InitOnce")
-            .field("thread", &self.thread)
-            .field("callback", &"dyn MachineCallback")
-            .finish()
-    }
-}
-
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq)]
-/// The current status of a one time initialization.
-pub enum InitOnceStatus {
-    #[default]
-    Uninitialized,
-    Begun,
-    Complete,
-}
-
-/// The one time initialization state.
-#[derive(Default, Debug)]
-struct InitOnce<'mir, 'tcx> {
-    status: InitOnceStatus,
-    waiters: VecDeque<InitOnceWaiter<'mir, 'tcx>>,
-    data_race: VClock,
-}
-
-impl<'mir, 'tcx> VisitTags for InitOnce<'mir, 'tcx> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
-        for waiter in self.waiters.iter() {
-            waiter.callback.visit_tags(visit);
-        }
-    }
-}
-
 /// The state of all synchronization variables.
 #[derive(Default, Debug)]
 pub(crate) struct SynchronizationState<'mir, 'tcx> {
@@ -206,7 +165,7 @@ pub(crate) struct SynchronizationState<'mir, 'tcx> {
     rwlocks: IndexVec<RwLockId, RwLock>,
     condvars: IndexVec<CondvarId, Condvar>,
     futexes: FxHashMap<u64, Futex>,
-    init_onces: IndexVec<InitOnceId, InitOnce<'mir, 'tcx>>,
+    pub(super) init_onces: IndexVec<InitOnceId, InitOnce<'mir, 'tcx>>,
 }
 
 impl<'mir, 'tcx> VisitTags for SynchronizationState<'mir, 'tcx> {
@@ -219,7 +178,9 @@ impl<'mir, 'tcx> VisitTags for SynchronizationState<'mir, 'tcx> {
 
 // Private extension trait for local helper methods
 impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
+    crate::MiriInterpCxExt<'mir, 'tcx>
+{
     #[inline]
     // Miri sync structures contain zero-initialized ids stored at some offset behind a pointer
     fn get_or_create_id<Id: SyncId>(
@@ -236,8 +197,8 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             .atomic_compare_exchange_scalar(
                 &value_place,
                 &ImmTy::from_uint(0u32, this.machine.layouts.u32),
-                next_id.to_u32_scalar(),
-                AtomicRwOrd::Relaxed,
+                Scalar::from_u32(next_id.to_u32()),
+                AtomicRwOrd::Relaxed, // deliberately *no* synchronization
                 AtomicReadOrd::Relaxed,
                 false,
             )?
@@ -306,7 +267,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         offset: u64,
     ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
-        this.mutex_get_or_create(|ecx, next_id| Ok(ecx.get_or_create_id(next_id, lock_op, offset)?))
+        this.mutex_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
     }
 
     fn rwlock_get_or_create_id(
@@ -325,22 +286,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, CondvarId> {
         let this = self.eval_context_mut();
         this.condvar_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
-    }
-
-    fn init_once_get_or_create_id(
-        &mut self,
-        lock_op: &OpTy<'tcx, Provenance>,
-        offset: u64,
-    ) -> InterpResult<'tcx, InitOnceId> {
-        let this = self.eval_context_mut();
-        this.init_once_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
-    }
-
-    #[inline]
-    /// Create state for a new mutex.
-    fn mutex_create(&mut self) -> MutexId {
-        let this = self.eval_context_mut();
-        this.machine.threads.sync.mutexes.push(Default::default())
     }
 
     #[inline]
@@ -427,8 +372,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    #[inline]
     /// Put the thread into the queue waiting for the mutex.
+    #[inline]
     fn mutex_enqueue_and_block(&mut self, id: MutexId, thread: ThreadId) {
         let this = self.eval_context_mut();
         assert!(this.mutex_is_locked(id), "queing on unlocked mutex");
@@ -436,16 +381,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.block_thread(thread);
     }
 
-    #[inline]
-    /// Create state for a new read write lock.
-    fn rwlock_create(&mut self) -> RwLockId {
-        let this = self.eval_context_mut();
-        this.machine.threads.sync.rwlocks.push(Default::default())
-    }
-
-    #[inline]
     /// Provides the closure with the next RwLockId. Creates that RwLock if the closure returns None,
     /// otherwise returns the value from the closure
+    #[inline]
     fn rwlock_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, RwLockId>
     where
         F: FnOnce(&mut MiriInterpCx<'mir, 'tcx>, RwLockId) -> InterpResult<'tcx, Option<RwLockId>>,
@@ -475,8 +413,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         rwlock.writer.is_some() || rwlock.readers.is_empty().not()
     }
 
-    #[inline]
     /// Check if write locked.
+    #[inline]
     fn rwlock_is_write_locked(&self, id: RwLockId) -> bool {
         let this = self.eval_context_ref();
         let rwlock = &this.machine.threads.sync.rwlocks[id];
@@ -533,8 +471,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         true
     }
 
-    #[inline]
     /// Put the reader in the queue waiting for the lock and block it.
+    #[inline]
     fn rwlock_enqueue_and_block_reader(&mut self, id: RwLockId, reader: ThreadId) {
         let this = self.eval_context_mut();
         assert!(this.rwlock_is_write_locked(id), "read-queueing on not write locked rwlock");
@@ -542,8 +480,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.block_thread(reader);
     }
 
-    #[inline]
     /// Lock by setting the writer that owns the lock.
+    #[inline]
     fn rwlock_writer_lock(&mut self, id: RwLockId, writer: ThreadId) {
         let this = self.eval_context_mut();
         assert!(!this.rwlock_is_locked(id), "the rwlock is already locked");
@@ -555,8 +493,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    #[inline]
     /// Try to unlock by removing the writer.
+    #[inline]
     fn rwlock_writer_unlock(&mut self, id: RwLockId, expected_writer: ThreadId) -> bool {
         let this = self.eval_context_mut();
         let rwlock = &mut this.machine.threads.sync.rwlocks[id];
@@ -593,8 +531,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    #[inline]
     /// Put the writer in the queue waiting for the lock.
+    #[inline]
     fn rwlock_enqueue_and_block_writer(&mut self, id: RwLockId, writer: ThreadId) {
         let this = self.eval_context_mut();
         assert!(this.rwlock_is_locked(id), "write-queueing on unlocked rwlock");
@@ -602,16 +540,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.block_thread(writer);
     }
 
-    #[inline]
-    /// Create state for a new conditional variable.
-    fn condvar_create(&mut self) -> CondvarId {
-        let this = self.eval_context_mut();
-        this.machine.threads.sync.condvars.push(Default::default())
-    }
-
-    #[inline]
     /// Provides the closure with the next CondvarId. Creates that Condvar if the closure returns None,
     /// otherwise returns the value from the closure
+    #[inline]
     fn condvar_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, CondvarId>
     where
         F: FnOnce(
@@ -630,8 +561,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    #[inline]
     /// Is the conditional variable awaited?
+    #[inline]
     fn condvar_is_awaited(&mut self, id: CondvarId) -> bool {
         let this = self.eval_context_mut();
         !this.machine.threads.sync.condvars[id].waiters.is_empty()
@@ -706,145 +637,5 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if let Some(futex) = this.machine.threads.sync.futexes.get_mut(&addr) {
             futex.waiters.retain(|waiter| waiter.thread != thread);
         }
-    }
-
-    #[inline]
-    /// Create state for a new one time initialization.
-    fn init_once_create(&mut self) -> InitOnceId {
-        let this = self.eval_context_mut();
-        this.machine.threads.sync.init_onces.push(Default::default())
-    }
-
-    #[inline]
-    /// Provides the closure with the next InitOnceId. Creates that InitOnce if the closure returns None,
-    /// otherwise returns the value from the closure
-    fn init_once_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, InitOnceId>
-    where
-        F: FnOnce(
-            &mut MiriInterpCx<'mir, 'tcx>,
-            InitOnceId,
-        ) -> InterpResult<'tcx, Option<InitOnceId>>,
-    {
-        let this = self.eval_context_mut();
-        let next_index = this.machine.threads.sync.init_onces.next_index();
-        if let Some(old) = existing(this, next_index)? {
-            Ok(old)
-        } else {
-            let new_index = this.machine.threads.sync.init_onces.push(Default::default());
-            assert_eq!(next_index, new_index);
-            Ok(new_index)
-        }
-    }
-
-    #[inline]
-    fn init_once_status(&mut self, id: InitOnceId) -> InitOnceStatus {
-        let this = self.eval_context_ref();
-        this.machine.threads.sync.init_onces[id].status
-    }
-
-    #[inline]
-    /// Put the thread into the queue waiting for the initialization.
-    fn init_once_enqueue_and_block(
-        &mut self,
-        id: InitOnceId,
-        thread: ThreadId,
-        callback: Box<dyn MachineCallback<'mir, 'tcx> + 'tcx>,
-    ) {
-        let this = self.eval_context_mut();
-        let init_once = &mut this.machine.threads.sync.init_onces[id];
-        assert_ne!(init_once.status, InitOnceStatus::Complete, "queueing on complete init once");
-        init_once.waiters.push_back(InitOnceWaiter { thread, callback });
-        this.block_thread(thread);
-    }
-
-    #[inline]
-    fn init_once_begin(&mut self, id: InitOnceId) {
-        let this = self.eval_context_mut();
-        let init_once = &mut this.machine.threads.sync.init_onces[id];
-        assert_eq!(
-            init_once.status,
-            InitOnceStatus::Uninitialized,
-            "begining already begun or complete init once"
-        );
-        init_once.status = InitOnceStatus::Begun;
-    }
-
-    #[inline]
-    fn init_once_complete(&mut self, id: InitOnceId) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let current_thread = this.get_active_thread();
-        let init_once = &mut this.machine.threads.sync.init_onces[id];
-
-        assert_eq!(
-            init_once.status,
-            InitOnceStatus::Begun,
-            "completing already complete or uninit init once"
-        );
-
-        init_once.status = InitOnceStatus::Complete;
-
-        // Each complete happens-before the end of the wait
-        if let Some(data_race) = &this.machine.data_race {
-            data_race.validate_lock_release(&mut init_once.data_race, current_thread);
-        }
-
-        // need to take the queue to avoid having `this` be borrowed multiple times
-        for waiter in std::mem::take(&mut init_once.waiters) {
-            this.unblock_thread(waiter.thread);
-
-            this.set_active_thread(waiter.thread);
-            waiter.callback.call(this)?;
-            this.set_active_thread(current_thread);
-
-            if let Some(data_race) = &this.machine.data_race {
-                data_race.validate_lock_acquire(
-                    &this.machine.threads.sync.init_onces[id].data_race,
-                    waiter.thread,
-                );
-            }
-        }
-
-        Ok(())
-    }
-
-    #[inline]
-    fn init_once_fail(&mut self, id: InitOnceId) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let current_thread = this.get_active_thread();
-        let init_once = &mut this.machine.threads.sync.init_onces[id];
-        assert_eq!(
-            init_once.status,
-            InitOnceStatus::Begun,
-            "failing already completed or uninit init once"
-        );
-
-        // Each complete happens-before the end of the wait
-        if let Some(data_race) = &this.machine.data_race {
-            data_race.validate_lock_release(&mut init_once.data_race, current_thread);
-        }
-
-        // the behavior of failing the initialization is left vague by the docs
-        // it had to be determined experimentally
-        if let Some(waiter) = init_once.waiters.pop_front() {
-            // try initializing again on a different thread
-            init_once.status = InitOnceStatus::Begun;
-
-            this.unblock_thread(waiter.thread);
-
-            this.set_active_thread(waiter.thread);
-            waiter.callback.call(this)?;
-            this.set_active_thread(current_thread);
-
-            if let Some(data_race) = &this.machine.data_race {
-                data_race.validate_lock_acquire(
-                    &this.machine.threads.sync.init_onces[id].data_race,
-                    waiter.thread,
-                );
-            }
-        } else {
-            init_once.status = InitOnceStatus::Uninitialized;
-        }
-
-        Ok(())
     }
 }

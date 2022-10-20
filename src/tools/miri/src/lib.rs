@@ -83,34 +83,28 @@ pub use crate::shims::EvalContextExt as _;
 
 pub use crate::clock::{Clock, Instant};
 pub use crate::concurrency::{
-    data_race::{
-        AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd,
-        EvalContextExt as DataRaceEvalContextExt,
-    },
-    sync::{CondvarId, EvalContextExt as SyncEvalContextExt, InitOnceId, MutexId, RwLockId, SyncId},
-    thread::{
-        EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager,
-        ThreadState, Time,
-    },
+    data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
+    init_once::{EvalContextExt as _, InitOnceId},
+    sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SyncId},
+    thread::{EvalContextExt as _, SchedulingAction, ThreadId, ThreadManager, ThreadState, Time},
 };
 pub use crate::diagnostics::{
-    report_error, EvalContextExt as DiagnosticsEvalContextExt, NonHaltingDiagnostic,
-    TerminationInfo,
+    report_error, EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo,
 };
 pub use crate::eval::{
     create_ecx, eval_entry, AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith,
 };
-pub use crate::helpers::{CurrentSpan, EvalContextExt as HelpersEvalContextExt};
+pub use crate::helpers::{CurrentSpan, EvalContextExt as _};
 pub use crate::intptrcast::ProvenanceMode;
 pub use crate::machine::{
     AllocExtra, FrameData, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind, Provenance,
     ProvenanceExtra, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;
-pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
+pub use crate::operator::EvalContextExt as _;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, SbTag, Stack, Stacks,
+    CallId, EvalContextExt as _, Item, Permission, SbTag, Stack, Stacks,
 };
 pub use crate::tag_gc::{EvalContextExt as _, VisitTags};
 

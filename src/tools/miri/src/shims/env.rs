@@ -274,7 +274,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
                 this.update_environ()?;
             }
-            Ok(Scalar::from_i32(1)) // return non-zero on success
+            Ok(this.eval_windows("c", "TRUE")?)
         } else {
             let value = this.read_os_str_from_wide_str(value_ptr)?;
             let var_ptr = alloc_env_var_as_wide_str(&name, &value, this)?;
@@ -282,7 +282,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
             }
             this.update_environ()?;
-            Ok(Scalar::from_i32(1)) // return non-zero on success
+            Ok(this.eval_windows("c", "TRUE")?)
         }
     }
 
@@ -411,14 +411,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             this.reject_in_isolation("`SetCurrentDirectoryW`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
 
-            return Ok(Scalar::from_i32(0));
+            return this.eval_windows("c", "FALSE");
         }
 
         match env::set_current_dir(path) {
-            Ok(()) => Ok(Scalar::from_i32(1)),
+            Ok(()) => this.eval_windows("c", "TRUE"),
             Err(e) => {
                 this.set_last_error_from_io_error(e.kind())?;
-                Ok(Scalar::from_i32(0))
+                this.eval_windows("c", "FALSE")
             }
         }
     }

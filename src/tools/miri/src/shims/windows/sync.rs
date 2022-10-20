@@ -1,6 +1,9 @@
-use crate::concurrency::sync::InitOnceStatus;
+use crate::concurrency::init_once::InitOnceStatus;
 use crate::concurrency::thread::MachineCallback;
 use crate::*;
+
+const SRWLOCK_ID_OFFSET: u64 = 0;
+const INIT_ONCE_ID_OFFSET: u64 = 0;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 
@@ -8,7 +11,7 @@ impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn AcquireSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
+        let id = this.rwlock_get_or_create_id(lock_op, SRWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_locked(id) {
@@ -32,7 +35,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         lock_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
-        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
+        let id = this.rwlock_get_or_create_id(lock_op, SRWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_locked(id) {
@@ -46,7 +49,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn ReleaseSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
+        let id = this.rwlock_get_or_create_id(lock_op, SRWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if !this.rwlock_writer_unlock(id, active_thread) {
@@ -61,7 +64,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn AcquireSRWLockShared(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
+        let id = this.rwlock_get_or_create_id(lock_op, SRWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_write_locked(id) {
@@ -78,7 +81,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         lock_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
-        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
+        let id = this.rwlock_get_or_create_id(lock_op, SRWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_write_locked(id) {
@@ -91,7 +94,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn ReleaseSRWLockShared(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let id = this.rwlock_get_or_create_id(lock_op, 0)?;
+        let id = this.rwlock_get_or_create_id(lock_op, SRWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if !this.rwlock_reader_unlock(id, active_thread) {
@@ -114,7 +117,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread();
 
-        let id = this.init_once_get_or_create_id(init_once_op, 0)?;
+        let id = this.init_once_get_or_create_id(init_once_op, INIT_ONCE_ID_OFFSET)?;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
         let pending_place = this.deref_operand(pending_op)?.into();
         let context = this.read_pointer(context_op)?;
@@ -127,49 +130,56 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("non-null `lpContext` in `InitOnceBeginInitialize`");
         }
 
-        struct Callback<'tcx> {
-            init_once_id: InitOnceId,
-            pending_place: PlaceTy<'tcx, Provenance>,
-        }
-
-        impl<'tcx> VisitTags for Callback<'tcx> {
-            fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
-                let Callback { init_once_id: _, pending_place } = self;
-                pending_place.visit_tags(visit);
-            }
-        }
-
-        impl<'mir, 'tcx> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
-            fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-                let pending = match this.init_once_status(self.init_once_id) {
-                    InitOnceStatus::Uninitialized =>
-                        unreachable!("status should have either been set to begun or complete"),
-                    InitOnceStatus::Begun => this.eval_windows("c", "TRUE")?,
-                    InitOnceStatus::Complete => this.eval_windows("c", "FALSE")?,
-                };
-
-                this.write_scalar(pending, &self.pending_place)?;
-
-                Ok(())
-            }
-        }
-
         match this.init_once_status(id) {
             InitOnceStatus::Uninitialized => {
                 this.init_once_begin(id);
                 this.write_scalar(this.eval_windows("c", "TRUE")?, &pending_place)?;
             }
-            InitOnceStatus::Begun =>
+            InitOnceStatus::Begun => {
+                // Someone else is already on it.
+                // Block this thread until they are done.
+                // When we are woken up, set the `pending` flag accordingly.
+                struct Callback<'tcx> {
+                    init_once_id: InitOnceId,
+                    pending_place: PlaceTy<'tcx, Provenance>,
+                }
+
+                impl<'tcx> VisitTags for Callback<'tcx> {
+                    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+                        let Callback { init_once_id: _, pending_place } = self;
+                        pending_place.visit_tags(visit);
+                    }
+                }
+
+                impl<'mir, 'tcx> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
+                    fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+                        let pending = match this.init_once_status(self.init_once_id) {
+                            InitOnceStatus::Uninitialized =>
+                                unreachable!(
+                                    "status should have either been set to begun or complete"
+                                ),
+                            InitOnceStatus::Begun => this.eval_windows("c", "TRUE")?,
+                            InitOnceStatus::Complete => this.eval_windows("c", "FALSE")?,
+                        };
+
+                        this.write_scalar(pending, &self.pending_place)?;
+
+                        Ok(())
+                    }
+                }
+
                 this.init_once_enqueue_and_block(
                     id,
                     active_thread,
                     Box::new(Callback { init_once_id: id, pending_place }),
-                ),
+                )
+            }
             InitOnceStatus::Complete =>
                 this.write_scalar(this.eval_windows("c", "FALSE")?, &pending_place)?,
         }
 
-        Ok(Scalar::from_i32(1))
+        // This always succeeds (even if the thread is blocked, we will succeed if we ever unblock).
+        this.eval_windows("c", "TRUE")
     }
 
     fn InitOnceComplete(
@@ -180,7 +190,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let id = this.init_once_get_or_create_id(init_once_op, 0)?;
+        let id = this.init_once_get_or_create_id(init_once_op, INIT_ONCE_ID_OFFSET)?;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
         let context = this.read_pointer(context_op)?;
 
@@ -209,6 +219,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             this.init_once_fail(id)?;
         }
 
-        Ok(Scalar::from_i32(1))
+        this.eval_windows("c", "TRUE")
     }
 }

@@ -19,6 +19,10 @@ use crate::*;
 /// in `pthread_mutexattr_settype` function.
 const PTHREAD_MUTEX_NORMAL_FLAG: i32 = 0x8000000;
 
+const MUTEX_ID_OFFSET: u64 = 4;
+const RWLOCK_ID_OFFSET: u64 = 4;
+const CONDVAR_ID_OFFSET: u64 = 4;
+
 fn is_mutex_kind_default<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     kind: Scalar<Provenance>,
@@ -354,7 +358,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let kind = mutex_get_kind(this, mutex_op)?;
-        let id = this.mutex_get_or_create_id(mutex_op, 4)?;
+        let id = this.mutex_get_or_create_id(mutex_op, MUTEX_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if this.mutex_is_locked(id) {
@@ -394,7 +398,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let kind = mutex_get_kind(this, mutex_op)?;
-        let id = this.mutex_get_or_create_id(mutex_op, 4)?;
+        let id = this.mutex_get_or_create_id(mutex_op, MUTEX_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if this.mutex_is_locked(id) {
@@ -430,7 +434,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let kind = mutex_get_kind(this, mutex_op)?;
-        let id = this.mutex_get_or_create_id(mutex_op, 4)?;
+        let id = this.mutex_get_or_create_id(mutex_op, MUTEX_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if let Some(_old_locked_count) = this.mutex_unlock(id, active_thread) {
@@ -464,7 +468,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let id = this.mutex_get_or_create_id(mutex_op, 4)?;
+        let id = this.mutex_get_or_create_id(mutex_op, MUTEX_ID_OFFSET)?;
 
         if this.mutex_is_locked(id) {
             throw_ub_format!("destroyed a locked mutex");
@@ -487,7 +491,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let id = this.rwlock_get_or_create_id(rwlock_op, 4)?;
+        let id = this.rwlock_get_or_create_id(rwlock_op, RWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_write_locked(id) {
@@ -505,7 +509,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let id = this.rwlock_get_or_create_id(rwlock_op, 4)?;
+        let id = this.rwlock_get_or_create_id(rwlock_op, RWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_write_locked(id) {
@@ -522,7 +526,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let id = this.rwlock_get_or_create_id(rwlock_op, 4)?;
+        let id = this.rwlock_get_or_create_id(rwlock_op, RWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_locked(id) {
@@ -552,7 +556,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let id = this.rwlock_get_or_create_id(rwlock_op, 4)?;
+        let id = this.rwlock_get_or_create_id(rwlock_op, RWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_locked(id) {
@@ -569,7 +573,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let id = this.rwlock_get_or_create_id(rwlock_op, 4)?;
+        let id = this.rwlock_get_or_create_id(rwlock_op, RWLOCK_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         #[allow(clippy::if_same_then_else)]
@@ -588,7 +592,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let id = this.rwlock_get_or_create_id(rwlock_op, 4)?;
+        let id = this.rwlock_get_or_create_id(rwlock_op, RWLOCK_ID_OFFSET)?;
 
         if this.rwlock_is_locked(id) {
             throw_ub_format!("destroyed a locked rwlock");
@@ -691,7 +695,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn pthread_cond_signal(&mut self, cond_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-        let id = this.condvar_get_or_create_id(cond_op, 4)?;
+        let id = this.condvar_get_or_create_id(cond_op, CONDVAR_ID_OFFSET)?;
         if let Some((thread, mutex)) = this.condvar_signal(id) {
             post_cond_signal(this, thread, mutex)?;
         }
@@ -704,7 +708,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         cond_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
-        let id = this.condvar_get_or_create_id(cond_op, 4)?;
+        let id = this.condvar_get_or_create_id(cond_op, CONDVAR_ID_OFFSET)?;
 
         while let Some((thread, mutex)) = this.condvar_signal(id) {
             post_cond_signal(this, thread, mutex)?;
@@ -720,8 +724,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let id = this.condvar_get_or_create_id(cond_op, 4)?;
-        let mutex_id = this.mutex_get_or_create_id(mutex_op, 4)?;
+        let id = this.condvar_get_or_create_id(cond_op, CONDVAR_ID_OFFSET)?;
+        let mutex_id = this.mutex_get_or_create_id(mutex_op, MUTEX_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         release_cond_mutex_and_block(this, active_thread, mutex_id)?;
@@ -741,8 +745,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         this.check_no_isolation("`pthread_cond_timedwait`")?;
 
-        let id = this.condvar_get_or_create_id(cond_op, 4)?;
-        let mutex_id = this.mutex_get_or_create_id(mutex_op, 4)?;
+        let id = this.condvar_get_or_create_id(cond_op, CONDVAR_ID_OFFSET)?;
+        let mutex_id = this.mutex_get_or_create_id(mutex_op, MUTEX_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
 
         // Extract the timeout.
@@ -818,7 +822,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let id = this.condvar_get_or_create_id(cond_op, 4)?;
+        let id = this.condvar_get_or_create_id(cond_op, CONDVAR_ID_OFFSET)?;
         if this.condvar_is_awaited(id) {
             throw_ub_format!("destroying an awaited conditional variable");
         }
