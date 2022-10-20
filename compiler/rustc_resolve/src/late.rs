@@ -1939,11 +1939,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 match ty.kind {
                     TyKind::ImplicitSelf => true,
                     TyKind::Path(None, _) => {
-                        let path_res = self.r.partial_res_map[&ty.id].expect_full_res();
-                        if let Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } = path_res {
+                        let path_res = self.r.partial_res_map[&ty.id].full_res();
+                        if let Some(Res::SelfTyParam { .. } | Res::SelfTyAlias { .. }) = path_res {
                             return true;
                         }
-                        Some(path_res) == self.impl_self
+                        self.impl_self.is_some() && path_res == self.impl_self
                     }
                     _ => false,
                 }
