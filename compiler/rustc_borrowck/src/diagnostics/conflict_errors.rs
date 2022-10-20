@@ -492,10 +492,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
                 return false;
             };
+            // Regions are already solved, so we must use a fresh InferCtxt,
+            // but the type has region variables, so erase those.
             tcx.infer_ctxt()
                 .build()
-                .type_implements_trait(default_trait, ty, ty::List::empty(), param_env)
-                .may_apply()
+                .type_implements_trait(
+                    default_trait,
+                    tcx.erase_regions(ty),
+                    ty::List::empty(),
+                    param_env,
+                )
+                .must_apply_modulo_regions()
         };
 
         let assign_value = match ty.kind() {
