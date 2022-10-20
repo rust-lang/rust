@@ -6,7 +6,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
-use rustc_hir::def_id::CrateNum;
+use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::find_native_static_library;
 use rustc_metadata::fs::{emit_metadata, METADATA_FILENAME};
 use rustc_middle::middle::dependency_format::Linkage;
@@ -2007,15 +2007,9 @@ fn linker_with_args<'a>(
     cmd.add_as_needed();
 
     // Local native libraries of all kinds.
-    //
-    // If `-Zlink-native-libraries=false` is set, then the assumption is that an
-    // external build system already has the native dependencies defined, and it
-    // will provide them to the linker itself.
-    if sess.opts.unstable_opts.link_native_libraries {
-        add_local_native_libraries(cmd, sess, codegen_results);
-    }
+    add_local_native_libraries(cmd, sess, archive_builder_builder, codegen_results, tmpdir);
 
-    // Upstream rust libraries and their (possibly bundled) static native libraries.
+    // Upstream rust crates and their non-dynamic native libraries.
     add_upstream_rust_crates(
         cmd,
         sess,
@@ -2026,13 +2020,7 @@ fn linker_with_args<'a>(
     );
 
     // Dynamic native libraries from upstream crates.
-    //
-    // FIXME: Merge this to `add_upstream_rust_crates` so that all native libraries are linked
-    // together with their respective upstream crates, and in their originally specified order.
-    // This may be slightly breaking due to our use of `--as-needed` and needs a crater run.
-    if sess.opts.unstable_opts.link_native_libraries {
-        add_upstream_native_libraries(cmd, sess, codegen_results);
-    }
+    add_upstream_native_libraries(cmd, sess, archive_builder_builder, codegen_results, tmpdir);
 
     // Link with the import library generated for any raw-dylib functions.
     for (raw_dylib_name, raw_dylib_imports) in
@@ -2276,42 +2264,46 @@ fn collect_natvis_visualizers(
     visualizer_paths
 }
 
-/// # Native library linking
-///
-/// User-supplied library search paths (-L on the command line). These are the same paths used to
-/// find Rust crates, so some of them may have been added already by the previous crate linking
-/// code. This only allows them to be found at compile time so it is still entirely up to outside
-/// forces to make sure that library can be found at runtime.
-///
-/// Also note that the native libraries linked here are only the ones located in the current crate.
-/// Upstream crates with native library dependencies may have their native library pulled in above.
-fn add_local_native_libraries(
+fn add_native_libs_from_crate(
     cmd: &mut dyn Linker,
     sess: &Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
+    tmpdir: &Path,
+    search_paths: &OnceCell<Vec<PathBuf>>,
+    bundled_libs: &FxHashSet<Symbol>,
+    cnum: CrateNum,
+    link_static: bool,
+    link_dynamic: bool,
 ) {
-    let filesearch = sess.target_filesearch(PathKind::All);
-    for search_path in filesearch.search_paths() {
-        match search_path.kind {
-            PathKind::Framework => {
-                cmd.framework_path(&search_path.dir);
-            }
-            _ => {
-                cmd.include_path(&fix_windows_verbatim_for_gcc(&search_path.dir));
-            }
-        }
+    if !sess.opts.unstable_opts.link_native_libraries {
+        // If `-Zlink-native-libraries=false` is set, then the assumption is that an
+        // external build system already has the native dependencies defined, and it
+        // will provide them to the linker itself.
+        return;
     }
 
-    let relevant_libs =
-        codegen_results.crate_info.used_libraries.iter().filter(|l| relevant_lib(sess, l));
+    if sess.opts.unstable_opts.packed_bundled_libs && link_static && cnum != LOCAL_CRATE {
+        // If rlib contains native libs as archives, unpack them to tmpdir.
+        let rlib = &codegen_results.crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap().0;
+        archive_builder_builder
+            .extract_bundled_libs(rlib, tmpdir, &bundled_libs)
+            .unwrap_or_else(|e| sess.emit_fatal(e));
+    }
 
-    let search_path = OnceCell::new();
+    let native_libs = match cnum {
+        LOCAL_CRATE => &codegen_results.crate_info.used_libraries,
+        _ => &codegen_results.crate_info.native_libraries[&cnum],
+    };
+
     let mut last = (None, NativeLibKind::Unspecified, None);
-    for lib in relevant_libs {
+    for lib in native_libs {
         let Some(name) = lib.name else {
             continue;
         };
-        let name = name.as_str();
+        if !relevant_lib(sess, lib) {
+            continue;
+        }
 
         // Skip if this library is the same as the last.
         last = if (lib.name, lib.kind, lib.verbatim) == last {
@@ -2320,40 +2312,117 @@ fn add_local_native_libraries(
             (lib.name, lib.kind, lib.verbatim)
         };
 
+        let name = name.as_str();
         let verbatim = lib.verbatim.unwrap_or(false);
         match lib.kind {
+            NativeLibKind::Static { bundle, whole_archive } => {
+                if link_static {
+                    let bundle = bundle.unwrap_or(true);
+                    let whole_archive = whole_archive == Some(true)
+                        // Backward compatibility case: this can be a rlib (so `+whole-archive`
+                        // cannot be added explicitly if necessary, see the error in `fn link_rlib`)
+                        // compiled as an executable due to `--test`. Use whole-archive implicitly,
+                        // like before the introduction of native lib modifiers.
+                        || (whole_archive == None
+                            && bundle
+                            && cnum == LOCAL_CRATE
+                            && sess.opts.test);
+
+                    if bundle && cnum != LOCAL_CRATE {
+                        if sess.opts.unstable_opts.packed_bundled_libs {
+                            // If rlib contains native libs as archives, they are unpacked to tmpdir.
+                            let path = tmpdir.join(lib.filename.unwrap().as_str());
+                            if whole_archive {
+                                cmd.link_whole_rlib(&path);
+                            } else {
+                                cmd.link_rlib(&path);
+                            }
+                        }
+                    } else {
+                        if whole_archive {
+                            cmd.link_whole_staticlib(
+                                name,
+                                verbatim,
+                                &search_paths.get_or_init(|| archive_search_paths(sess)),
+                            );
+                        } else {
+                            // HACK/FIXME: Fixup a circular dependency between libgcc and libc
+                            // with glibc. This logic should be moved to the libc crate.
+                            if cnum != LOCAL_CRATE
+                                && sess.target.os == "linux"
+                                && sess.target.env == "gnu"
+                                && name == "c"
+                            {
+                                cmd.link_staticlib("gcc", false);
+                            }
+                            cmd.link_staticlib(name, verbatim)
+                        }
+                    }
+                }
+            }
             NativeLibKind::Dylib { as_needed } => {
-                cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
+                if link_dynamic {
+                    cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
+                }
             }
-            NativeLibKind::Unspecified => cmd.link_dylib(name, verbatim, true),
+            NativeLibKind::Unspecified => {
+                if link_dynamic {
+                    cmd.link_dylib(name, verbatim, true);
+                }
+            }
             NativeLibKind::Framework { as_needed } => {
-                cmd.link_framework(name, as_needed.unwrap_or(true))
-            }
-            NativeLibKind::Static { whole_archive, bundle, .. } => {
-                if whole_archive == Some(true)
-                    // Backward compatibility case: this can be a rlib (so `+whole-archive` cannot
-                    // be added explicitly if necessary, see the error in `fn link_rlib`) compiled
-                    // as an executable due to `--test`. Use whole-archive implicitly, like before
-                    // the introduction of native lib modifiers.
-                    || (whole_archive == None && bundle != Some(false) && sess.opts.test)
-                {
-                    cmd.link_whole_staticlib(
-                        name,
-                        verbatim,
-                        &search_path.get_or_init(|| archive_search_paths(sess)),
-                    );
-                } else {
-                    cmd.link_staticlib(name, verbatim)
+                if link_dynamic {
+                    cmd.link_framework(name, as_needed.unwrap_or(true))
                 }
             }
             NativeLibKind::RawDylib => {
-                // Ignore RawDylib here, they are handled separately in linker_with_args().
+                // Handled separately in `linker_with_args`.
             }
             NativeLibKind::LinkArg => {
-                cmd.arg(name);
+                if link_static {
+                    cmd.arg(name);
+                }
             }
         }
     }
+}
+
+fn add_local_native_libraries(
+    cmd: &mut dyn Linker,
+    sess: &Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    codegen_results: &CodegenResults,
+    tmpdir: &Path,
+) {
+    if sess.opts.unstable_opts.link_native_libraries {
+        // User-supplied library search paths (-L on the command line). These are the same paths
+        // used to find Rust crates, so some of them may have been added already by the previous
+        // crate linking code. This only allows them to be found at compile time so it is still
+        // entirely up to outside forces to make sure that library can be found at runtime.
+        for search_path in sess.target_filesearch(PathKind::All).search_paths() {
+            match search_path.kind {
+                PathKind::Framework => cmd.framework_path(&search_path.dir),
+                _ => cmd.include_path(&fix_windows_verbatim_for_gcc(&search_path.dir)),
+            }
+        }
+    }
+
+    let search_paths = OnceCell::new();
+    // All static and dynamic native library dependencies are linked to the local crate.
+    let link_static = true;
+    let link_dynamic = true;
+    add_native_libs_from_crate(
+        cmd,
+        sess,
+        archive_builder_builder,
+        codegen_results,
+        tmpdir,
+        &search_paths,
+        &Default::default(),
+        LOCAL_CRATE,
+        link_static,
+        link_dynamic,
+    );
 }
 
 /// # Linking Rust crates and their non-bundled static libraries
@@ -2388,14 +2457,23 @@ fn add_upstream_rust_crates<'a>(
     let deps = &codegen_results.crate_info.used_crates;
 
     let mut compiler_builtins = None;
-    let search_path = OnceCell::new();
+    let search_paths = OnceCell::new();
 
     for &cnum in deps.iter() {
         // We may not pass all crates through to the linker. Some crates may
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
-        let src = &codegen_results.crate_info.used_crate_source[&cnum];
-        match data[cnum.as_usize() - 1] {
+        let linkage = data[cnum.as_usize() - 1];
+        let bundled_libs =
+            if sess.opts.unstable_opts.packed_bundled_libs && linkage == Linkage::Static {
+                codegen_results.crate_info.native_libraries[&cnum]
+                    .iter()
+                    .filter_map(|lib| lib.filename)
+                    .collect::<FxHashSet<_>>()
+            } else {
+                Default::default()
+            };
+        match linkage {
             _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
                 add_static_crate(
                     cmd,
@@ -2414,108 +2492,43 @@ fn add_upstream_rust_crates<'a>(
                 compiler_builtins = Some(cnum);
             }
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
-            Linkage::Static => {
-                let bundled_libs = if sess.opts.unstable_opts.packed_bundled_libs {
-                    codegen_results.crate_info.native_libraries[&cnum]
-                        .iter()
-                        .filter_map(|lib| lib.filename)
-                        .collect::<FxHashSet<_>>()
-                } else {
-                    Default::default()
-                };
-                add_static_crate(
-                    cmd,
-                    sess,
-                    archive_builder_builder,
-                    codegen_results,
-                    tmpdir,
-                    cnum,
-                    &bundled_libs,
-                );
-
-                // Link static native libs with "-bundle" modifier only if the crate they originate from
-                // is being linked statically to the current crate.  If it's linked dynamically
-                // or is an rlib already included via some other dylib crate, the symbols from
-                // native libs will have already been included in that dylib.
-                //
-                // If `-Zlink-native-libraries=false` is set, then the assumption is that an
-                // external build system already has the native dependencies defined, and it
-                // will provide them to the linker itself.
-                if sess.opts.unstable_opts.link_native_libraries {
-                    if sess.opts.unstable_opts.packed_bundled_libs {
-                        // If rlib contains native libs as archives, unpack them to tmpdir.
-                        let rlib = &src.rlib.as_ref().unwrap().0;
-                        archive_builder_builder
-                            .extract_bundled_libs(rlib, tmpdir, &bundled_libs)
-                            .unwrap_or_else(|e| sess.emit_fatal(e));
-                    }
-
-                    let mut last = (None, NativeLibKind::Unspecified, None);
-                    for lib in &codegen_results.crate_info.native_libraries[&cnum] {
-                        let Some(name) = lib.name else {
-                            continue;
-                        };
-                        let name = name.as_str();
-                        if !relevant_lib(sess, lib) {
-                            continue;
-                        }
-
-                        // Skip if this library is the same as the last.
-                        last = if (lib.name, lib.kind, lib.verbatim) == last {
-                            continue;
-                        } else {
-                            (lib.name, lib.kind, lib.verbatim)
-                        };
-
-                        match lib.kind {
-                            NativeLibKind::Static {
-                                bundle: Some(false),
-                                whole_archive: Some(true),
-                            } => {
-                                cmd.link_whole_staticlib(
-                                    name,
-                                    lib.verbatim.unwrap_or(false),
-                                    search_path.get_or_init(|| archive_search_paths(sess)),
-                                );
-                            }
-                            NativeLibKind::Static {
-                                bundle: Some(false),
-                                whole_archive: Some(false) | None,
-                            } => {
-                                // HACK/FIXME: Fixup a circular dependency between libgcc and libc
-                                // with glibc. This logic should be moved to the libc crate.
-                                if sess.target.os == "linux"
-                                    && sess.target.env == "gnu"
-                                    && name == "c"
-                                {
-                                    cmd.link_staticlib("gcc", false);
-                                }
-                                cmd.link_staticlib(name, lib.verbatim.unwrap_or(false));
-                            }
-                            NativeLibKind::LinkArg => {
-                                cmd.arg(name);
-                            }
-                            NativeLibKind::Dylib { .. }
-                            | NativeLibKind::Framework { .. }
-                            | NativeLibKind::Unspecified
-                            | NativeLibKind::RawDylib => {}
-                            NativeLibKind::Static { bundle: Some(true) | None, whole_archive } => {
-                                if sess.opts.unstable_opts.packed_bundled_libs {
-                                    // If rlib contains native libs as archives, they are unpacked to tmpdir.
-                                    let path = tmpdir.join(lib.filename.unwrap().as_str());
-                                    if whole_archive == Some(true) {
-                                        cmd.link_whole_rlib(&path);
-                                    } else {
-                                        cmd.link_rlib(&path);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            Linkage::Static => add_static_crate(
+                cmd,
+                sess,
+                archive_builder_builder,
+                codegen_results,
+                tmpdir,
+                cnum,
+                &bundled_libs,
+            ),
+            Linkage::Dynamic => {
+                let src = &codegen_results.crate_info.used_crate_source[&cnum];
+                add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0);
             }
-            Linkage::Dynamic => add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0),
         }
+
+        // Static libraries are linked for a subset of linked upstream crates.
+        // 1. If the upstream crate is a directly linked rlib then we must link the native library
+        // because the rlib is just an archive.
+        // 2. If the upstream crate is a dylib or a rlib linked through dylib, then we do not link
+        // the native library because it is already linked into the dylib, and even if
+        // inline/const/generic functions from the dylib can refer to symbols from the native
+        // library, those symbols should be exported and available from the dylib anyway.
+        let link_static = linkage == Linkage::Static;
+        // Dynamic libraries are not linked here, see the FIXME in `add_upstream_native_libraries`.
+        let link_dynamic = false;
+        add_native_libs_from_crate(
+            cmd,
+            sess,
+            archive_builder_builder,
+            codegen_results,
+            tmpdir,
+            &search_paths,
+            &bundled_libs,
+            cnum,
+            link_static,
+            link_dynamic,
+        );
     }
 
     // compiler-builtins are always placed last to ensure that they're
@@ -2668,60 +2681,41 @@ fn add_upstream_rust_crates<'a>(
     }
 }
 
-/// Link in all of our upstream crates' native dependencies. Remember that all of these upstream
-/// native dependencies are all non-static dependencies. We've got two cases then:
-///
-/// 1. The upstream crate is an rlib. In this case we *must* link in the native dependency because
-/// the rlib is just an archive.
-///
-/// 2. The upstream crate is a dylib. In order to use the dylib, we have to have the dependency
-/// present on the system somewhere. Thus, we don't gain a whole lot from not linking in the
-/// dynamic dependency to this crate as well.
-///
-/// The use case for this is a little subtle. In theory the native dependencies of a crate are
-/// purely an implementation detail of the crate itself, but the problem arises with generic and
-/// inlined functions. If a generic function calls a native function, then the generic function
-/// must be instantiated in the target crate, meaning that the native symbol must also be resolved
-/// in the target crate.
 fn add_upstream_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
+    tmpdir: &Path,
 ) {
-    let mut last = (None, NativeLibKind::Unspecified, None);
+    let search_path = OnceCell::new();
     for &cnum in &codegen_results.crate_info.used_crates {
-        for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
-            let Some(name) = lib.name else {
-                continue;
-            };
-            let name = name.as_str();
-            if !relevant_lib(sess, &lib) {
-                continue;
-            }
-
-            // Skip if this library is the same as the last.
-            last = if (lib.name, lib.kind, lib.verbatim) == last {
-                continue;
-            } else {
-                (lib.name, lib.kind, lib.verbatim)
-            };
-
-            let verbatim = lib.verbatim.unwrap_or(false);
-            match lib.kind {
-                NativeLibKind::Dylib { as_needed } => {
-                    cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
-                }
-                NativeLibKind::Unspecified => cmd.link_dylib(name, verbatim, true),
-                NativeLibKind::Framework { as_needed } => {
-                    cmd.link_framework(name, as_needed.unwrap_or(true))
-                }
-                // ignore static native libraries here as we've
-                // already included them in add_local_native_libraries and
-                // add_upstream_rust_crates
-                NativeLibKind::Static { .. } => {}
-                NativeLibKind::RawDylib | NativeLibKind::LinkArg => {}
-            }
-        }
+        // Static libraries are not linked here, they are linked in `add_upstream_rust_crates`.
+        // FIXME: Merge this function to `add_upstream_rust_crates` so that all native libraries
+        // are linked together with their respective upstream crates, and in their originally
+        // specified order. This is slightly breaking due to our use of `--as-needed` (see crater
+        // results in https://github.com/rust-lang/rust/pull/102832#issuecomment-1279772306).
+        let link_static = false;
+        // Dynamic libraries are linked for all linked upstream crates.
+        // 1. If the upstream crate is a directly linked rlib then we must link the native library
+        // because the rlib is just an archive.
+        // 2. If the upstream crate is a dylib or a rlib linked through dylib, then we have to link
+        // the native library too because inline/const/generic functions from the dylib can refer
+        // to symbols from the native library, so the native library providing those symbols should
+        // be available when linking our final binary.
+        let link_dynamic = true;
+        add_native_libs_from_crate(
+            cmd,
+            sess,
+            archive_builder_builder,
+            codegen_results,
+            tmpdir,
+            &search_path,
+            &Default::default(),
+            cnum,
+            link_static,
+            link_dynamic,
+        );
     }
 }
 
