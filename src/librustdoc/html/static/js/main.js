@@ -409,9 +409,12 @@ function loadCss(cssFileName) {
                 break;
 
             case "+":
+                ev.preventDefault();
+                expandAllDocs();
+                break;
             case "-":
                 ev.preventDefault();
-                toggleAllDocs();
+                collapseAllDocs();
                 break;
 
             case "?":
@@ -614,15 +617,31 @@ function loadCss(cssFileName) {
         sidebarElems.appendChild(ul);
     }
 
+    function expandAllDocs() {
+        const innerToggle = document.getElementById(toggleAllDocsId);
+        removeClass(innerToggle, "will-expand");
+        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
+            if (!hasClass(e, "type-contents-toggle")) {
+                e.open = true;
+            }
+        });
+        innerToggle.title = "collapse all docs";
+        innerToggle.children[0].innerText = "\u2212"; // "\u2212" is "−" minus sign
+    }
 
-    function labelForToggleButton(sectionIsCollapsed) {
-        if (sectionIsCollapsed) {
-            // button will expand the section
-            return "+";
-        }
-        // button will collapse the section
-        // note that this text is also set in the HTML template in ../render/mod.rs
-        return "\u2212"; // "\u2212" is "−" minus sign
+    function collapseAllDocs() {
+        const innerToggle = document.getElementById(toggleAllDocsId);
+        addClass(innerToggle, "will-expand");
+        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
+            if (e.parentNode.id !== "implementations-list" ||
+                (!hasClass(e, "implementors-toggle") &&
+                 !hasClass(e, "type-contents-toggle"))
+            ) {
+                e.open = false;
+            }
+        });
+        innerToggle.title = "expand all docs";
+        innerToggle.children[0].innerText = "+";
     }
 
     function toggleAllDocs() {
@@ -630,29 +649,11 @@ function loadCss(cssFileName) {
         if (!innerToggle) {
             return;
         }
-        let sectionIsCollapsed = false;
         if (hasClass(innerToggle, "will-expand")) {
-            removeClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
-                if (!hasClass(e, "type-contents-toggle")) {
-                    e.open = true;
-                }
-            });
-            innerToggle.title = "collapse all docs";
+            expandAllDocs();
         } else {
-            addClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
-                if (e.parentNode.id !== "implementations-list" ||
-                    (!hasClass(e, "implementors-toggle") &&
-                     !hasClass(e, "type-contents-toggle"))
-                ) {
-                    e.open = false;
-                }
-            });
-            sectionIsCollapsed = true;
-            innerToggle.title = "expand all docs";
+            collapseAllDocs();
         }
-        innerToggle.children[0].innerText = labelForToggleButton(sectionIsCollapsed);
     }
 
     (function() {
