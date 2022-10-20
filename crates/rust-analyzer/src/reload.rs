@@ -466,7 +466,7 @@ impl GlobalState {
         let config = match self.config.flycheck() {
             Some(it) => it,
             None => {
-                self.flycheck = Vec::new();
+                self.flycheck = Arc::new([]);
                 self.diagnostics.clear_check_all();
                 return;
             }
@@ -510,7 +510,8 @@ impl GlobalState {
                     })
                     .collect()
             }
-        };
+        }
+        .into();
     }
 }
 

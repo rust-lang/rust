@@ -118,7 +118,11 @@ impl CargoTargetSpec {
         global_state_snapshot: &GlobalStateSnapshot,
         file_id: FileId,
     ) -> Result<Option<CargoTargetSpec>> {
-        let (cargo_ws, target) = match global_state_snapshot.cargo_target_for_file_id(file_id) {
+        let crate_id = match &*global_state_snapshot.analysis.crates_for(file_id)? {
+            &[crate_id, ..] => crate_id,
+            _ => return Ok(None),
+        };
+        let (cargo_ws, target) = match global_state_snapshot.cargo_target_for_crate_root(crate_id) {
             Some(it) => it,
             None => return Ok(None),
         };
