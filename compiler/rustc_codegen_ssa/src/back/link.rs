@@ -2425,10 +2425,6 @@ fn add_local_native_libraries(
     );
 }
 
-/// # Linking Rust crates and their non-bundled static libraries
-///
-/// Rust crates are not considered at all when creating an rlib output. All dependencies will be
-/// linked when producing the final output (instead of the intermediate rlib version).
 fn add_upstream_rust_crates<'a>(
     cmd: &mut dyn Linker,
     sess: &'a Session,
@@ -2444,7 +2440,6 @@ fn add_upstream_rust_crates<'a>(
     // Linking to a rlib involves just passing it to the linker (the linker
     // will slurp up the object files inside), and linking to a dynamic library
     // involves just passing the right -l flag.
-
     let (_, data) = codegen_results
         .crate_info
         .dependency_formats
@@ -2452,59 +2447,45 @@ fn add_upstream_rust_crates<'a>(
         .find(|(ty, _)| *ty == crate_type)
         .expect("failed to find crate type in dependency format list");
 
-    // Invoke get_used_crates to ensure that we get a topological sorting of
-    // crates.
-    let deps = &codegen_results.crate_info.used_crates;
-
-    let mut compiler_builtins = None;
     let search_paths = OnceCell::new();
-
-    for &cnum in deps.iter() {
-        // We may not pass all crates through to the linker. Some crates may
-        // appear statically in an existing dylib, meaning we'll pick up all the
-        // symbols from the dylib.
+    for &cnum in &codegen_results.crate_info.used_crates {
+        // We may not pass all crates through to the linker. Some crates may appear statically in
+        // an existing dylib, meaning we'll pick up all the symbols from the dylib.
+        // We must always link crates `compiler_builtins` and `profiler_builtins` statically.
+        // Even if they were already included into a dylib
+        // (e.g. `libstd` when `-C prefer-dynamic` is used).
         let linkage = data[cnum.as_usize() - 1];
-        let bundled_libs =
-            if sess.opts.unstable_opts.packed_bundled_libs && linkage == Linkage::Static {
-                codegen_results.crate_info.native_libraries[&cnum]
-                    .iter()
-                    .filter_map(|lib| lib.filename)
-                    .collect::<FxHashSet<_>>()
-            } else {
-                Default::default()
-            };
+        let link_static_crate = linkage == Linkage::Static
+            || linkage == Linkage::IncludedFromDylib
+                && (codegen_results.crate_info.compiler_builtins == Some(cnum)
+                    || codegen_results.crate_info.profiler_runtime == Some(cnum));
+
+        let mut bundled_libs = Default::default();
         match linkage {
-            _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
-                add_static_crate(
-                    cmd,
-                    sess,
-                    archive_builder_builder,
-                    codegen_results,
-                    tmpdir,
-                    cnum,
-                    &Default::default(),
-                );
+            Linkage::Static | Linkage::IncludedFromDylib => {
+                if link_static_crate {
+                    if sess.opts.unstable_opts.packed_bundled_libs {
+                        bundled_libs = codegen_results.crate_info.native_libraries[&cnum]
+                            .iter()
+                            .filter_map(|lib| lib.filename)
+                            .collect();
+                    }
+                    add_static_crate(
+                        cmd,
+                        sess,
+                        archive_builder_builder,
+                        codegen_results,
+                        tmpdir,
+                        cnum,
+                        &bundled_libs,
+                    );
+                }
             }
-            // compiler-builtins are always placed last to ensure that they're
-            // linked correctly.
-            _ if codegen_results.crate_info.compiler_builtins == Some(cnum) => {
-                assert!(compiler_builtins.is_none());
-                compiler_builtins = Some(cnum);
-            }
-            Linkage::NotLinked | Linkage::IncludedFromDylib => {}
-            Linkage::Static => add_static_crate(
-                cmd,
-                sess,
-                archive_builder_builder,
-                codegen_results,
-                tmpdir,
-                cnum,
-                &bundled_libs,
-            ),
             Linkage::Dynamic => {
                 let src = &codegen_results.crate_info.used_crate_source[&cnum];
                 add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0);
             }
+            Linkage::NotLinked => {}
         }
 
         // Static libraries are linked for a subset of linked upstream crates.
@@ -2514,7 +2495,8 @@ fn add_upstream_rust_crates<'a>(
         // the native library because it is already linked into the dylib, and even if
         // inline/const/generic functions from the dylib can refer to symbols from the native
         // library, those symbols should be exported and available from the dylib anyway.
-        let link_static = linkage == Linkage::Static;
+        // 3. Libraries bundled into `(compiler,profiler)_builtins` are special, see above.
+        let link_static = link_static_crate;
         // Dynamic libraries are not linked here, see the FIXME in `add_upstream_native_libraries`.
         let link_dynamic = false;
         add_native_libs_from_crate(
@@ -2528,23 +2510,6 @@ fn add_upstream_rust_crates<'a>(
             cnum,
             link_static,
             link_dynamic,
-        );
-    }
-
-    // compiler-builtins are always placed last to ensure that they're
-    // linked correctly.
-    // We must always link the `compiler_builtins` crate statically. Even if it
-    // was already "included" in a dylib (e.g., `libstd` when `-C prefer-dynamic`
-    // is used)
-    if let Some(cnum) = compiler_builtins {
-        add_static_crate(
-            cmd,
-            sess,
-            archive_builder_builder,
-            codegen_results,
-            tmpdir,
-            cnum,
-            &Default::default(),
         );
     }
 
