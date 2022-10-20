@@ -130,7 +130,11 @@ fn test_transmute_copy_grow_panics() {
             payload
                 .downcast::<&'static str>()
                 .and_then(|s| {
-                    if *s == "cannot transmute_copy if U is larger than T" { Ok(s) } else { Err(s) }
+                    if *s == "cannot transmute_copy if Dst is larger than Src" {
+                        Ok(s)
+                    } else {
+                        Err(s)
+                    }
                 })
                 .unwrap_or_else(|p| panic::resume_unwind(p));
         }
