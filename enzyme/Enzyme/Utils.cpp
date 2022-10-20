@@ -50,8 +50,8 @@ LLVMValueRef (*CustomAllocator)(LLVMBuilderRef, LLVMTypeRef,
                                 /*Count*/ LLVMValueRef,
                                 /*Align*/ LLVMValueRef, uint8_t,
                                 LLVMValueRef *) = nullptr;
-LLVMValueRef (*CustomZero)(LLVMBuilderRef, LLVMTypeRef,
-                           /*Ptr*/ LLVMValueRef, uint8_t) = nullptr;
+void (*CustomZero)(LLVMBuilderRef, LLVMTypeRef,
+                   /*Ptr*/ LLVMValueRef, uint8_t) = nullptr;
 LLVMValueRef (*CustomDeallocator)(LLVMBuilderRef, LLVMValueRef) = nullptr;
 void (*CustomRuntimeInactiveError)(LLVMBuilderRef, LLVMValueRef,
                                    LLVMValueRef) = nullptr;
@@ -183,10 +183,10 @@ Function *getOrInsertExponentialAllocator(Module &M, Function *newFunc,
     Instruction *SubZero = nullptr;
     gVal = CreateAllocation(B, RT, elSize, "", nullptr, &SubZero);
 
-    gVal = B.CreatePointerCast(
-        gVal, PointerType::get(
-                  Type::getInt8Ty(gVal->getContext()),
-                  cast<PointerType>(gVal->getType())->getAddressSpace()));
+    Type *bTy =
+        PointerType::get(Type::getInt8Ty(gVal->getContext()),
+                         cast<PointerType>(gVal->getType())->getAddressSpace());
+    gVal = B.CreatePointerCast(gVal, bTy);
     auto pVal = B.CreatePointerCast(ptr, gVal->getType());
 
     Value *margs[] = {gVal, pVal, prevSize,
@@ -200,6 +200,8 @@ Function *getOrInsertExponentialAllocator(Module &M, Function *newFunc,
       IRBuilder<> BB(SubZero);
       Value *zeroSize = BB.CreateSub(next, prevSize);
       Value *tmp = SubZero->getOperand(0);
+      Type *tmpT = tmp->getType();
+      tmp = BB.CreatePointerCast(tmp, bTy);
 
 #if LLVM_VERSION_MAJOR > 7
       tmp = BB.CreateInBoundsGEP(tmp->getType()->getPointerElementType(), tmp,
@@ -207,6 +209,7 @@ Function *getOrInsertExponentialAllocator(Module &M, Function *newFunc,
 #else
       tmp = BB.CreateInBoundsGEP(tmp, prevSize);
 #endif
+      tmp = BB.CreatePointerCast(tmp, tmpT);
       SubZero->setOperand(0, tmp);
       SubZero->setOperand(2, zeroSize);
     }
