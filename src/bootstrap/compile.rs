@@ -1111,9 +1111,6 @@ impl Step for Sysroot {
             host_dir.join(format!("stage{}", compiler.stage))
         };
 
-        //else {
-        //    host_dir.join(format!("stage{}", compiler.stage))
-        //};
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
