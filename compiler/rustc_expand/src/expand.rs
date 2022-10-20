@@ -937,13 +937,12 @@ pub fn ensure_complete_parse<'a>(
             kind_name,
         );
         err.note(&msg);
-        let semi_span = this.sess.source_map().next_point(span);
 
-        let semi_full_span = semi_span.to(this.sess.source_map().next_point(semi_span));
-        match this.sess.source_map().span_to_snippet(semi_full_span) {
+        let semi_span = this.sess.source_map().next_point(span);
+        match this.sess.source_map().span_to_snippet(semi_span) {
             Ok(ref snippet) if &snippet[..] != ";" && kind_name == "expression" => {
                 err.span_suggestion(
-                    semi_span,
+                    span.shrink_to_hi(),
                     "you might be missing a semicolon here",
                     ";",
                     Applicability::MaybeIncorrect,

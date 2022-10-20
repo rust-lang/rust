@@ -479,3 +479,48 @@ fn path_prefix_remapping_expand_to_absolute() {
         RealFileName::Remapped { local_path: None, virtual_name: path("XYZ/src/main.rs") }
     );
 }
+
+#[test]
+fn test_next_point() {
+    let sm = SourceMap::new(FilePathMapping::empty());
+    sm.new_source_file(PathBuf::from("example.rs").into(), "a…b".to_string());
+
+    // Dummy spans don't advance.
+    let span = DUMMY_SP;
+    let span = sm.next_point(span);
+    assert_eq!(span.lo().0, 0);
+    assert_eq!(span.hi().0, 0);
+
+    // Span advance respect multi-byte character
+    let span = Span::with_root_ctxt(BytePos(0), BytePos(1));
+    assert_eq!(sm.span_to_snippet(span), Ok("a".to_string()));
+    let span = sm.next_point(span);
+    assert_eq!(sm.span_to_snippet(span), Ok("…".to_string()));
+    assert_eq!(span.lo().0, 1);
+    assert_eq!(span.hi().0, 4);
+
+    // An empty span pointing just before a multi-byte character should
+    // advance to contain the multi-byte character.
+    let span = Span::with_root_ctxt(BytePos(1), BytePos(1));
+    let span = sm.next_point(span);
+    assert_eq!(span.lo().0, 1);
+    assert_eq!(span.hi().0, 4);
+
+    let span = Span::with_root_ctxt(BytePos(1), BytePos(4));
+    let span = sm.next_point(span);
+    assert_eq!(span.lo().0, 4);
+    assert_eq!(span.hi().0, 5);
+
+    // A non-empty span at the last byte should advance to create an empty
+    // span pointing at the end of the file.
+    let span = Span::with_root_ctxt(BytePos(4), BytePos(5));
+    let span = sm.next_point(span);
+    assert_eq!(span.lo().0, 5);
+    assert_eq!(span.hi().0, 5);
+
+    // Empty span pointing just past the last byte.
+    let span = Span::with_root_ctxt(BytePos(5), BytePos(5));
+    let span = sm.next_point(span);
+    assert_eq!(span.lo().0, 5);
+    assert_eq!(span.hi().0, 5);
+}
