@@ -828,11 +828,13 @@ impl Config {
         // We still support running outside the repository if we find we aren't in a git directory.
         cmd.arg("rev-parse").arg("--show-toplevel");
         // Discard stderr because we expect this to fail when building from a tarball.
-        let output = cmd
-            .stderr(std::process::Stdio::null())
-            .output()
-            .ok()
-            .and_then(|output| if output.status.success() { Some(output) } else { None });
+        let output = cmd.stderr(std::process::Stdio::null()).output().ok().and_then(|output| {
+            if output.status.success() {
+                Some(output)
+            } else {
+                None
+            }
+        });
         if let Some(output) = output {
             let git_root = String::from_utf8(output.stdout).unwrap();
             // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes.
@@ -933,14 +935,12 @@ impl Config {
             config.out = crate::util::absolute(&config.out);
         }
 
-        config.initial_rustc = build
-            .rustc
-            .map(PathBuf::from)
-            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/rustc"));
-        config.initial_cargo = build
-            .cargo
-            .map(PathBuf::from)
-            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/cargo"));
+        config.initial_rustc = build.rustc.map(PathBuf::from).unwrap_or_else(|| {
+            config.out.join(config.build.triple).join("bootstrap-sysroot/bin/rustc")
+        });
+        config.initial_cargo = build.cargo.map(PathBuf::from).unwrap_or_else(|| {
+            config.out.join(config.build.triple).join("bootstrap-sysroot/bin/cargo")
+        });
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
         if config.dry_run {
