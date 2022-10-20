@@ -994,14 +994,14 @@ extern "rust-intrinsic" {
     /// `transmute` is semantically equivalent to a bitwise move of one type
     /// into another. It copies the bits from the source value into the
     /// destination value, then forgets the original. Note that source and destination
-    /// are passed by-value, which means if `T` or `U` contain padding, that padding
+    /// are passed by-value, which means if `Src` or `Dst` contain padding, that padding
     /// is *not* guaranteed to be preserved by `transmute`.
     ///
     /// Both the argument and the result must be [valid](../../nomicon/what-unsafe-does.html) at
     /// their given type. Violating this condition leads to [undefined behavior][ub]. The compiler
     /// will generate code *assuming that you, the programmer, ensure that there will never be
     /// undefined behavior*. It is therefore your responsibility to guarantee that every value
-    /// passed to `transmute` is valid at both types `T` and `U`. Failing to uphold this condition
+    /// passed to `transmute` is valid at both types `Src` and `Dst`. Failing to uphold this condition
     /// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
     /// unsafe**. `transmute` should be the absolute last resort.
     ///
@@ -1012,7 +1012,7 @@ extern "rust-intrinsic" {
     ///
     /// Because `transmute` is a by-value operation, alignment of the *transmuted values
     /// themselves* is not a concern. As with any other function, the compiler already ensures
-    /// both `T` and `U` are properly aligned. However, when transmuting values that *point
+    /// both `Src` and `Dst` are properly aligned. However, when transmuting values that *point
     /// elsewhere* (such as pointers, references, boxes…), the caller has to ensure proper
     /// alignment of the pointed-to values.
     ///
@@ -1248,7 +1248,7 @@ extern "rust-intrinsic" {
     #[rustc_allowed_through_unstable_modules]
     #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
     #[rustc_diagnostic_item = "transmute"]
-    pub fn transmute<T, U>(e: T) -> U;
+    pub fn transmute<Src, Dst>(src: Src) -> Dst;
 
     /// Returns `true` if the actual type given as `T` requires drop
     /// glue; returns `false` if the actual type provided for `T`
