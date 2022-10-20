@@ -1105,13 +1105,15 @@ impl Step for Sysroot {
     fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
         let compiler = self.compiler;
         let host_dir = builder.out.join(&compiler.host.triple);
-        let sysroot = if compiler.stage == 0 {
-            host_dir.join("bootstrap-sysroot")
-        } else if builder.download_rustc() {
+        let sysroot = if builder.download_rustc() {
             host_dir.join("ci-rustc-sysroot")
         } else {
             host_dir.join(format!("stage{}", compiler.stage))
         };
+
+        //else {
+        //    host_dir.join(format!("stage{}", compiler.stage))
+        //};
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
