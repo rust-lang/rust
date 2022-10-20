@@ -6,6 +6,7 @@
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![allow(rustc::potential_query_instability)]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate tracing;
