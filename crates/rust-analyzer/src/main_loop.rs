@@ -10,7 +10,7 @@ use std::{
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
 use flycheck::FlycheckHandle;
-use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
+use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use itertools::Itertools;
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
@@ -191,7 +191,7 @@ impl GlobalState {
         // NOTE: don't count blocking select! call as a loop-turn time
         let _p = profile::span("GlobalState::handle_event");
 
-        tracing::debug!("handle_event({:?})", event);
+        tracing::debug!("{:?} handle_event({:?})", loop_start, event);
         let task_queue_len = self.task_pool.handle.len();
         if task_queue_len > 0 {
             tracing::info!("task queue len: {}", task_queue_len);
@@ -727,7 +727,7 @@ impl GlobalState {
                         .insert(path.clone(), DocumentData::new(params.text_document.version))
                         .is_err();
                     if already_exists {
-                        tracing::error!("duplicate DidOpenTextDocument: {}", path)
+                        tracing::error!("duplicate DidOpenTextDocument: {}", path);
                     }
                     this.vfs
                         .write()
@@ -774,69 +774,7 @@ impl GlobalState {
                 Ok(())
             })?
             .on::<lsp_types::notification::DidSaveTextDocument>(|this, params| {
-                let mut updated = false;
                 if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
-                    let (vfs, _) = &*this.vfs.read();
-
-                    // Trigger flychecks for all workspaces that depend on the saved file
-                    if let Some(file_id) = vfs.file_id(&vfs_path) {
-                        let analysis = this.analysis_host.analysis();
-                        // Crates containing or depending on the saved file
-                        let crate_ids: Vec<_> = analysis
-                            .crates_for(file_id)?
-                            .into_iter()
-                            .flat_map(|id| {
-                                this.analysis_host
-                                    .raw_database()
-                                    .crate_graph()
-                                    .transitive_rev_deps(id)
-                            })
-                            .sorted()
-                            .unique()
-                            .collect();
-
-                        let crate_root_paths: Vec<_> = crate_ids
-                            .iter()
-                            .filter_map(|&crate_id| {
-                                analysis
-                                    .crate_root(crate_id)
-                                    .map(|file_id| {
-                                        vfs.file_path(file_id).as_path().map(ToOwned::to_owned)
-                                    })
-                                    .transpose()
-                            })
-                            .collect::<ide::Cancellable<_>>()?;
-                        let crate_root_paths: Vec<_> =
-                            crate_root_paths.iter().map(Deref::deref).collect();
-
-                        // Find all workspaces that have at least one target containing the saved file
-                        let workspace_ids =
-                            this.workspaces.iter().enumerate().filter(|(_, ws)| match ws {
-                                project_model::ProjectWorkspace::Cargo { cargo, .. } => {
-                                    cargo.packages().any(|pkg| {
-                                        cargo[pkg].targets.iter().any(|&it| {
-                                            crate_root_paths.contains(&cargo[it].root.as_path())
-                                        })
-                                    })
-                                }
-                                project_model::ProjectWorkspace::Json { project, .. } => project
-                                    .crates()
-                                    .any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c)),
-                                project_model::ProjectWorkspace::DetachedFiles { .. } => false,
-                            });
-
-                        // Find and trigger corresponding flychecks
-                        for flycheck in &this.flycheck {
-                            for (id, _) in workspace_ids.clone() {
-                                if id == flycheck.id() {
-                                    updated = true;
-                                    flycheck.restart();
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-
                     // Re-fetch workspaces if a workspace related file has changed
                     if let Some(abs_path) = vfs_path.as_path() {
                         if reload::should_refresh_for_change(&abs_path, ChangeKind::Modify) {
@@ -844,13 +782,90 @@ impl GlobalState {
                                 .request_op(format!("DidSaveTextDocument {}", abs_path.display()));
                         }
                     }
+
+                    let file_id = this.vfs.read().0.file_id(&vfs_path);
+                    if let Some(file_id) = file_id {
+                        let world = this.snapshot();
+                        let mut updated = false;
+                        let task = move || -> std::result::Result<(), ide::Cancelled> {
+                            // Trigger flychecks for all workspaces that depend on the saved file
+                            // Crates containing or depending on the saved file
+                            let crate_ids: Vec<_> = world
+                                .analysis
+                                .crates_for(file_id)?
+                                .into_iter()
+                                .flat_map(|id| world.analysis.transitive_rev_deps(id))
+                                .flatten()
+                                .sorted()
+                                .unique()
+                                .collect();
+
+                            let crate_root_paths: Vec<_> = crate_ids
+                                .iter()
+                                .filter_map(|&crate_id| {
+                                    world
+                                        .analysis
+                                        .crate_root(crate_id)
+                                        .map(|file_id| {
+                                            world
+                                                .file_id_to_file_path(file_id)
+                                                .as_path()
+                                                .map(ToOwned::to_owned)
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<ide::Cancellable<_>>()?;
+                            let crate_root_paths: Vec<_> =
+                                crate_root_paths.iter().map(Deref::deref).collect();
+
+                            // Find all workspaces that have at least one target containing the saved file
+                            let workspace_ids =
+                                world.workspaces.iter().enumerate().filter(|(_, ws)| match ws {
+                                    project_model::ProjectWorkspace::Cargo { cargo, .. } => {
+                                        cargo.packages().any(|pkg| {
+                                            cargo[pkg].targets.iter().any(|&it| {
+                                                crate_root_paths.contains(&cargo[it].root.as_path())
+                                            })
+                                        })
+                                    }
+                                    project_model::ProjectWorkspace::Json { project, .. } => {
+                                        project.crates().any(|(c, _)| {
+                                            crate_ids.iter().any(|&crate_id| crate_id == c)
+                                        })
+                                    }
+                                    project_model::ProjectWorkspace::DetachedFiles { .. } => false,
+                                });
+
+                            // Find and trigger corresponding flychecks
+                            for flycheck in world.flycheck.iter() {
+                                for (id, _) in workspace_ids.clone() {
+                                    if id == flycheck.id() {
+                                        updated = true;
+                                        flycheck.restart();
+                                        continue;
+                                    }
+                                }
+                            }
+                            // No specific flycheck was triggered, so let's trigger all of them.
+                            if !updated {
+                                for flycheck in world.flycheck.iter() {
+                                    flycheck.restart();
+                                }
+                            }
+                            Ok(())
+                        };
+                        this.task_pool.handle.spawn_with_sender(move |_| {
+                            if let Err(e) = std::panic::catch_unwind(task) {
+                                tracing::error!("DidSaveTextDocument flycheck task panicked: {e:?}")
+                            }
+                        });
+                        return Ok(());
+                    }
                 }
 
                 // No specific flycheck was triggered, so let's trigger all of them.
-                if !updated {
-                    for flycheck in &this.flycheck {
-                        flycheck.restart();
-                    }
+                for flycheck in this.flycheck.iter() {
+                    flycheck.restart();
                 }
                 Ok(())
             })?
