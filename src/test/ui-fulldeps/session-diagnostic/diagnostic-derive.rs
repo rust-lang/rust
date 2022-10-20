@@ -40,9 +40,9 @@ struct HelloWarn {}
 //~^ ERROR unsupported type attribute for diagnostic derive enum
 enum DiagnosticOnEnum {
     Foo,
-//~^ ERROR diagnostic slug not specified
+    //~^ ERROR diagnostic slug not specified
     Bar,
-//~^ ERROR diagnostic slug not specified
+    //~^ ERROR diagnostic slug not specified
 }
 
 #[derive(Diagnostic)]
@@ -536,8 +536,7 @@ struct LabelWithTrailingList {
 
 #[derive(LintDiagnostic)]
 #[diag(compiletest_example)]
-struct LintsGood {
-}
+struct LintsGood {}
 
 #[derive(LintDiagnostic)]
 #[diag(compiletest_example)]
@@ -683,7 +682,7 @@ struct RawIdentDiagnosticArg {
 #[diag(compiletest_example)]
 struct SubdiagnosticBad {
     #[subdiagnostic(bad)]
-//~^ ERROR `#[subdiagnostic(bad)]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic(bad)]` is not a valid attribute
     note: Note,
 }
 
@@ -691,7 +690,7 @@ struct SubdiagnosticBad {
 #[diag(compiletest_example)]
 struct SubdiagnosticBadStr {
     #[subdiagnostic = "bad"]
-//~^ ERROR `#[subdiagnostic = ...]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic = ...]` is not a valid attribute
     note: Note,
 }
 
@@ -699,7 +698,7 @@ struct SubdiagnosticBadStr {
 #[diag(compiletest_example)]
 struct SubdiagnosticBadTwice {
     #[subdiagnostic(bad, bad)]
-//~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -707,7 +706,7 @@ struct SubdiagnosticBadTwice {
 #[diag(compiletest_example)]
 struct SubdiagnosticBadLitStr {
     #[subdiagnostic("bad")]
-//~^ ERROR `#[subdiagnostic("...")]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic("...")]` is not a valid attribute
     note: Note,
 }
 
@@ -715,7 +714,7 @@ struct SubdiagnosticBadLitStr {
 #[diag(compiletest_example)]
 struct SubdiagnosticEagerLint {
     #[subdiagnostic(eager)]
-//~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -731,11 +730,7 @@ struct SubdiagnosticEagerCorrect {
 // after the `span_suggestion` call - which breaks eager translation.
 
 #[derive(Subdiagnostic)]
-#[suggestion_short(
-    use_instead,
-    applicability = "machine-applicable",
-    code = "{correct}"
-)]
+#[suggestion_short(use_instead, applicability = "machine-applicable", code = "{correct}")]
 pub(crate) struct SubdiagnosticWithSuggestion {
     #[primary_span]
     span: Span,

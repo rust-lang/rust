@@ -186,7 +186,7 @@ error: unexpected unsupported untagged union
 LL | / union AC {
 LL | |
 LL | |     span: u32,
-LL | |     b: u64
+LL | |     b: u64,
 LL | | }
    | |_^
 
@@ -253,10 +253,10 @@ LL | #[suggestion(parser_add_paren)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: invalid applicability
-  --> $DIR/subdiagnostic-derive.rs:430:45
+  --> $DIR/subdiagnostic-derive.rs:430:46
    |
-LL | #[suggestion(parser_add_paren, code ="...", applicability = "foo")]
-   |                                             ^^^^^^^^^^^^^^^^^^^^^
+LL | #[suggestion(parser_add_paren, code = "...", applicability = "foo")]
+   |                                              ^^^^^^^^^^^^^^^^^^^^^
 
 error: suggestion without `#[primary_span]` field
   --> $DIR/subdiagnostic-derive.rs:448:1
@@ -275,16 +275,16 @@ LL | #[label]
    | ^^^^^^^^
 
 error: `var` doesn't refer to a field on this type
-  --> $DIR/subdiagnostic-derive.rs:482:38
+  --> $DIR/subdiagnostic-derive.rs:482:39
    |
-LL | #[suggestion(parser_add_paren, code ="{var}", applicability = "machine-applicable")]
-   |                                      ^^^^^^^
+LL | #[suggestion(parser_add_paren, code = "{var}", applicability = "machine-applicable")]
+   |                                       ^^^^^^^
 
 error: `var` doesn't refer to a field on this type
-  --> $DIR/subdiagnostic-derive.rs:501:42
+  --> $DIR/subdiagnostic-derive.rs:501:43
    |
-LL |     #[suggestion(parser_add_paren, code ="{var}", applicability = "machine-applicable")]
-   |                                          ^^^^^^^
+LL |     #[suggestion(parser_add_paren, code = "{var}", applicability = "machine-applicable")]
+   |                                           ^^^^^^^
 
 error: `#[suggestion_part]` is not a valid attribute
   --> $DIR/subdiagnostic-derive.rs:524:5
