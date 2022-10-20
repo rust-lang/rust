@@ -4,6 +4,7 @@
 
 store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
     LintId::of(attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
+    LintId::of(casts::AS_PTR_CAST_MUT),
     LintId::of(cognitive_complexity::COGNITIVE_COMPLEXITY),
     LintId::of(copies::BRANCHES_SHARING_CODE),
     LintId::of(derive::DERIVE_PARTIAL_EQ_WITHOUT_EQ),
@@ -31,6 +32,8 @@ store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
     LintId::of(strings::STRING_LIT_AS_BYTES),
     LintId::of(suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS),
     LintId::of(trailing_empty_array::TRAILING_EMPTY_ARRAY),
+    LintId::of(trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
+    LintId::of(trait_bounds::TYPE_REPETITION_IN_BOUNDS),
     LintId::of(transmute::TRANSMUTE_UNDEFINED_REPR),
     LintId::of(unused_peekable::UNUSED_PEEKABLE),
     LintId::of(unused_rounding::UNUSED_ROUNDING),

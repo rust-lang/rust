@@ -1,8 +1,10 @@
+mod as_ptr_cast_mut;
 mod as_underscore;
 mod borrow_as_ptr;
 mod cast_abs_to_unsigned;
 mod cast_enum_constructor;
 mod cast_lossless;
+mod cast_nan_to_int;
 mod cast_possible_truncation;
 mod cast_possible_wrap;
 mod cast_precision_loss;
@@ -569,6 +571,7 @@ declare_clippy_lint! {
     pedantic,
     "borrowing just to cast to a raw pointer"
 }
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for a raw slice being cast to a slice pointer
@@ -594,6 +597,54 @@ declare_clippy_lint! {
     pub CAST_SLICE_FROM_RAW_PARTS,
     suspicious,
     "casting a slice created from a pointer and length to a slice pointer"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the result of a `&self`-taking `as_ptr` being cast to a mutable pointer
+    ///
+    /// ### Why is this bad?
+    /// Since `as_ptr` takes a `&self`, the pointer won't have write permissions unless interior
+    /// mutability is used, making it unlikely that having it as a mutable pointer is correct.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let string = String::with_capacity(1);
+    /// let ptr = string.as_ptr() as *mut u8;
+    /// unsafe { ptr.write(4) }; // UNDEFINED BEHAVIOUR
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let mut string = String::with_capacity(1);
+    /// let ptr = string.as_mut_ptr();
+    /// unsafe { ptr.write(4) };
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub AS_PTR_CAST_MUT,
+    nursery,
+    "casting the result of the `&self`-taking `as_ptr` to a mutabe pointer"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for a known NaN float being cast to an integer
+    ///
+    /// ### Why is this bad?
+    /// NaNs are cast into zero, so one could simply use this and make the
+    /// code more readable. The lint could also hint at a programmer error.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// let _: (0.0_f32 / 0.0) as u64;
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// let _: = 0_u64;
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub CAST_NAN_TO_INT,
+    suspicious,
+    "casting a known floating-point NaN into an integer"
 }
 
 pub struct Casts {
@@ -627,7 +678,9 @@ impl_lint_pass!(Casts => [
     CAST_ABS_TO_UNSIGNED,
     AS_UNDERSCORE,
     BORROW_AS_PTR,
-    CAST_SLICE_FROM_RAW_PARTS
+    CAST_SLICE_FROM_RAW_PARTS,
+    AS_PTR_CAST_MUT,
+    CAST_NAN_TO_INT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -653,6 +706,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 return;
             }
             cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, self.msrv);
+            as_ptr_cast_mut::check(cx, expr, cast_expr, cast_to);
             fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
@@ -664,6 +718,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     cast_precision_loss::check(cx, expr, cast_from, cast_to);
                     cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
                     cast_abs_to_unsigned::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
+                    cast_nan_to_int::check(cx, expr, cast_expr, cast_from, cast_to);
                 }
                 cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
                 cast_enum_constructor::check(cx, expr, cast_expr, cast_from);

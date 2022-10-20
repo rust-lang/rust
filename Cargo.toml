@@ -42,6 +42,7 @@ filetime = "0.2"
 rustc-workspace-hack = "1.0"
 
 # UI test dependencies
+clap = { version = "3.1", features = ["derive"] }
 clippy_utils = { path = "clippy_utils" }
 derive-new = "0.5"
 if_chain = "1.0"

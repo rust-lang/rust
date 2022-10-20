@@ -1,4 +1,7 @@
+// run-rustfix
+
 #![warn(clippy::from_over_into)]
+#![allow(unused)]
 
 // this should throw an error
 struct StringWrapper(String);
@@ -6,6 +9,44 @@ struct StringWrapper(String);
 impl Into<StringWrapper> for String {
     fn into(self) -> StringWrapper {
         StringWrapper(self)
+    }
+}
+
+struct SelfType(String);
+
+impl Into<SelfType> for String {
+    fn into(self) -> SelfType {
+        SelfType(Self::new())
+    }
+}
+
+#[derive(Default)]
+struct X;
+
+impl X {
+    const FOO: &'static str = "a";
+}
+
+struct SelfKeywords;
+
+impl Into<SelfKeywords> for X {
+    fn into(self) -> SelfKeywords {
+        let _ = Self::default();
+        let _ = Self::FOO;
+        let _: Self = self;
+
+        SelfKeywords
+    }
+}
+
+struct ExplicitPaths(bool);
+
+impl core::convert::Into<bool> for crate::ExplicitPaths {
+    fn into(mut self) -> bool {
+        let in_closure = || self.0;
+
+        self.0 = false;
+        self.0
     }
 }
 
