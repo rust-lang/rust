@@ -796,3 +796,10 @@ struct SuggestionsInvalidLiteral {
     //~^ ERROR `code = "..."`/`code(...)` must contain only string literals
     sub: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionStyleGood {
+    #[suggestion(code = "", style = "hidden")]
+    sub: Span,
+}

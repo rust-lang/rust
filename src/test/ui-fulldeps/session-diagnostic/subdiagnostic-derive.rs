@@ -706,3 +706,81 @@ struct BQ {
     span: Span,
     r#type: String,
 }
+
+#[derive(Subdiagnostic)]
+#[suggestion(parser_add_paren, code = "")]
+struct SuggestionStyleDefault {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(parser_add_paren, code = "", style = "short")]
+struct SuggestionStyleShort {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(parser_add_paren, code = "", style = "hidden")]
+struct SuggestionStyleHidden {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(parser_add_paren, code = "", style = "verbose")]
+struct SuggestionStyleVerbose {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(parser_add_paren, code = "", style = "hidden", style = "normal")]
+//~^ ERROR specified multiple times
+//~| NOTE previously specified here
+struct SuggestionStyleTwice {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion_hidden(parser_add_paren, code = "", style = "normal")]
+//~^ ERROR specified multiple times
+//~| NOTE previously specified here
+struct SuggestionStyleTwiceExplicit {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(parser_add_paren, code = "", style = "foo")]
+//~^ ERROR invalid suggestion style
+struct SuggestionStyleInvalid1 {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(parser_add_paren, code = "", style = 42)]
+//~^ ERROR `#[suggestion(style = ...)]` is not a valid attribute
+struct SuggestionStyleInvalid2 {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(parser_add_paren, code = "", style)]
+//~^ ERROR `#[suggestion(style)]` is not a valid attribute
+struct SuggestionStyleInvalid3 {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(parser_add_paren, code = "", style("foo"))]
+//~^ ERROR `#[suggestion(style(...))]` is not a valid attribute
+struct SuggestionStyleInvalid4 {
+    #[primary_span]
+    sub: Span,
+}
