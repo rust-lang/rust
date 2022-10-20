@@ -474,14 +474,11 @@ pub(super) fn build_suggestion_code(
 /// Possible styles for suggestion subdiagnostics.
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum SuggestionKind {
-    /// `#[suggestion]`
     Normal,
-    /// `#[suggestion_short]`
     Short,
-    /// `#[suggestion_hidden]`
     Hidden,
-    /// `#[suggestion_verbose]`
     Verbose,
+    ToolOnly,
 }
 
 impl FromStr for SuggestionKind {
@@ -493,6 +490,7 @@ impl FromStr for SuggestionKind {
             "short" => Ok(SuggestionKind::Short),
             "hidden" => Ok(SuggestionKind::Hidden),
             "verbose" => Ok(SuggestionKind::Verbose),
+            "tool-only" => Ok(SuggestionKind::ToolOnly),
             _ => Err(()),
         }
     }
@@ -512,6 +510,9 @@ impl SuggestionKind {
             }
             SuggestionKind::Verbose => {
                 quote! { rustc_errors::SuggestionStyle::ShowAlways }
+            }
+            SuggestionKind::ToolOnly => {
+                quote! { rustc_errors::SuggestionStyle::CompletelyHidden }
             }
         }
     }
@@ -583,6 +584,8 @@ impl SubdiagnosticKind {
             "help" => SubdiagnosticKind::Help,
             "warning" => SubdiagnosticKind::Warn,
             _ => {
+                // FIXME(#100717): remove #[suggestion_{short,verbose,hidden}] attributes, use
+                // #[suggestion(style = "...")] instead
                 if let Some(suggestion_kind) =
                     name.strip_prefix("suggestion").and_then(SuggestionKind::from_suffix)
                 {
@@ -719,7 +722,7 @@ impl SubdiagnosticKind {
 
                     let value = value.value().parse().unwrap_or_else(|()| {
                         span_err(value.span().unwrap(), "invalid suggestion style")
-                            .help("valid styles are `normal`, `short`, `hidden` and `verbose`")
+                            .help("valid styles are `normal`, `short`, `hidden`, `verbose` and `tool-only`")
                             .emit();
                         SuggestionKind::Normal
                     });
