@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Changes since the last major version]
 
+- These are effectively user facing because they're used for `rustup link`. So far this has worked reasonably well, but after #101691 stage0-sysroot will become user facing as well, at which point it will become extremely confusing that there's both that and stage0. [#103286](https://github.com/rust-lang/rust/pull/103286)
 - Vendoring is no longer done automatically when building from git sources. To use vendoring, run `cargo vendor` manually, or use the pre-vendored `rustc-src` tarball.
 - `llvm-libunwind` now accepts `in-tree` (formerly true), `system` or `no` (formerly false) [#77703](https://github.com/rust-lang/rust/pull/77703)
 - The options `infodir`, `localstatedir`, and `gpg-password-file` are no longer allowed in config.toml. Previously, they were ignored without warning. Note that `infodir` and `localstatedir` are still accepted by `./configure`, with a warning. [#82451](https://github.com/rust-lang/rust/pull/82451)

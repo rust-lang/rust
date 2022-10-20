@@ -1248,7 +1248,7 @@ impl Config {
             // If using a system toolchain for bootstrapping, see if that has rustfmt available.
             let host = config.build;
             let rustfmt_path = config.initial_rustc.with_file_name(exe("rustfmt", host));
-            let bin_root = config.out.join(host.triple).join("stage0");
+            let bin_root = config.out.join(host.triple).join("bootstrap-sysroot");
             if !rustfmt_path.starts_with(&bin_root) {
                 // Using a system-provided toolchain; we shouldn't download rustfmt.
                 *config.initial_rustfmt.borrow_mut() = RustfmtState::SystemToolchain(rustfmt_path);
@@ -1593,14 +1593,21 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
 
     let host = builder.config.build;
     let rustfmt_path = builder.config.initial_rustc.with_file_name(exe("rustfmt", host));
-    let bin_root = builder.config.out.join(host.triple).join("stage0");
+    let bin_root = builder.config.out.join(host.triple).join("bootstrap-sysroot");
     let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
     if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
         return Some(rustfmt_path);
     }
 
     let filename = format!("rustfmt-{version}-{build}.tar.xz", build = host.triple);
-    download_component(builder, DownloadSource::Dist, filename, "rustfmt-preview", &date, "stage0");
+    download_component(
+        builder,
+        DownloadSource::Dist,
+        filename,
+        "rustfmt-preview",
+        &date,
+        "bootstrap-sysroot",
+    );
 
     builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
     builder.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
