@@ -23,52 +23,6 @@ use crate::interpret::{
 
 use super::error::*;
 
-impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
-    /// "Intercept" a function call to a panic-related function
-    /// because we have something special to do for it.
-    /// If this returns successfully (`Ok`), the function should just be evaluated normally.
-    fn hook_special_const_fn(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
-        // All `#[rustc_do_not_const_check]` functions should be hooked here.
-        let def_id = instance.def_id();
-
-        if Some(def_id) == self.tcx.lang_items().panic_display()
-            || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
-        {
-            // &str or &&str
-            assert!(args.len() == 1);
-
-            let mut msg_place = self.deref_operand(&args[0])?;
-            while msg_place.layout.ty.is_ref() {
-                msg_place = self.deref_operand(&msg_place.into())?;
-            }
-
-            let msg = Symbol::intern(self.read_str(&msg_place)?);
-            let span = self.find_closest_untracked_caller_location();
-            let (file, line, col) = self.location_triple_for_span(span);
-            return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
-        } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
-            // For panic_fmt, call const_panic_fmt instead.
-            if let Some(const_panic_fmt) = self.tcx.lang_items().const_panic_fmt() {
-                return Ok(Some(
-                    ty::Instance::resolve(
-                        *self.tcx,
-                        ty::ParamEnv::reveal_all(),
-                        const_panic_fmt,
-                        self.tcx.intern_substs(&[]),
-                    )
-                    .unwrap()
-                    .unwrap(),
-                ));
-            }
-        }
-        Ok(None)
-    }
-}
-
 /// Extra machine state for CTFE, and the Machine instance
 pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// For now, the number of terminators that can be evaluated before we throw a resource
@@ -191,6 +145,50 @@ impl interpret::MayLeak for ! {
 }
 
 impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
+    /// "Intercept" a function call to a panic-related function
+    /// because we have something special to do for it.
+    /// If this returns successfully (`Ok`), the function should just be evaluated normally.
+    fn hook_special_const_fn(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
+        // All `#[rustc_do_not_const_check]` functions should be hooked here.
+        let def_id = instance.def_id();
+
+        if Some(def_id) == self.tcx.lang_items().panic_display()
+            || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
+        {
+            // &str or &&str
+            assert!(args.len() == 1);
+
+            let mut msg_place = self.deref_operand(&args[0])?;
+            while msg_place.layout.ty.is_ref() {
+                msg_place = self.deref_operand(&msg_place.into())?;
+            }
+
+            let msg = Symbol::intern(self.read_str(&msg_place)?);
+            let span = self.find_closest_untracked_caller_location();
+            let (file, line, col) = self.location_triple_for_span(span);
+            return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
+        } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
+            // For panic_fmt, call const_panic_fmt instead.
+            if let Some(const_panic_fmt) = self.tcx.lang_items().const_panic_fmt() {
+                return Ok(Some(
+                    ty::Instance::resolve(
+                        *self.tcx,
+                        ty::ParamEnv::reveal_all(),
+                        const_panic_fmt,
+                        self.tcx.intern_substs(&[]),
+                    )
+                    .unwrap()
+                    .unwrap(),
+                ));
+            }
+        }
+        Ok(None)
+    }
+
     /// See documentation on the `ptr_guaranteed_cmp` intrinsic.
     fn guaranteed_cmp(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
         Ok(match (a, b) {
