@@ -91,10 +91,7 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
         ctx.subscriptions
     );
 
-    await ctx.activate().catch((err) => {
-        void vscode.window.showErrorMessage(`Cannot activate rust-analyzer server: ${err.message}`);
-    });
-
+    await ctx.activate();
     return ctx.clientFetcher();
 }
 
