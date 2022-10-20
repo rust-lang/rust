@@ -17,6 +17,7 @@ use rustc_middle::mir::{self, AssertKind, SwitchTargets};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitable};
+use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_symbol_mangling::typeid::typeid_for_fnabi;
@@ -286,12 +287,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         assert_eq!(discr.layout.ty, switch_ty);
         let mut target_iter = targets.iter();
         if target_iter.len() == 1 {
-            // If there are two targets (one conditional, one fallback), emit br instead of switch
+            // If there are two targets (one conditional, one fallback), emit `br` instead of
+            // `switch`.
             let (test_value, target) = target_iter.next().unwrap();
             let lltrue = helper.llbb_with_cleanup(self, target);
             let llfalse = helper.llbb_with_cleanup(self, targets.otherwise());
             if switch_ty == bx.tcx().types.bool {
-                // Don't generate trivial icmps when switching on bool
+                // Don't generate trivial icmps when switching on bool.
                 match test_value {
                     0 => bx.cond_br(discr.immediate(), llfalse, lltrue),
                     1 => bx.cond_br(discr.immediate(), lltrue, llfalse),
@@ -303,6 +305,30 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
                 bx.cond_br(cmp, lltrue, llfalse);
             }
+        } else if self.cx.sess().opts.optimize == OptLevel::No
+            && target_iter.len() == 2
+            && self.mir[targets.otherwise()].is_empty_unreachable()
+        {
+            // In unoptimized builds, if there are two normal targets and the `otherwise` target is
+            // an unreachable BB, emit `br` instead of `switch`. This leaves behind the unreachable
+            // BB, which will usually (but not always) be dead code.
+            //
+            // Why only in unoptimized builds?
+            // - In unoptimized builds LLVM uses FastISel which does not support switches, so it
+            //   must fall back to the to the slower SelectionDAG isel. Therefore, using `br` gives
+            //   significant compile time speedups for unoptimized builds.
+            // - In optimized builds the above doesn't hold, and using `br` sometimes results in
+            //   worse generated code because LLVM can no longer tell that the value being switched
+            //   on can only have two values, e.g. 0 and 1.
+            //
+            let (test_value1, target1) = target_iter.next().unwrap();
+            let (_test_value2, target2) = target_iter.next().unwrap();
+            let ll1 = helper.llbb_with_cleanup(self, target1);
+            let ll2 = helper.llbb_with_cleanup(self, target2);
+            let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
+            let llval = bx.const_uint_big(switch_llty, test_value1);
+            let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
+            bx.cond_br(cmp, ll1, ll2);
         } else {
             bx.switch(
                 discr.immediate(),
