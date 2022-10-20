@@ -1272,6 +1272,7 @@ impl HandlerInner {
     }
 
     // FIXME(eddyb) this should ideally take `diagnostic` by value.
+    #[track_caller]
     fn emit_diagnostic(&mut self, diagnostic: &mut Diagnostic) -> Option<ErrorGuaranteed> {
         // The `LintExpectationId` can be stable or unstable depending on when it was created.
         // Diagnostics created before the definition of `HirId`s are unstable and can not yet
@@ -1540,6 +1541,7 @@ impl HandlerInner {
         panic::panic_any(ExplicitBug);
     }
 
+    #[track_caller]
     fn emit_diag_at_span(&mut self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
         self.emit_diagnostic(diag.set_span(sp));
     }
@@ -1653,6 +1655,7 @@ impl HandlerInner {
         self.warn_count += 1;
     }
 
+    #[track_caller]
     fn panic_if_treat_err_as_bug(&self) {
         if self.treat_err_as_bug() {
             match (

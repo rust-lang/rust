@@ -1,5 +1,5 @@
 error: expected identifier, found `~`
-  --> $DIR/tilde-twice.rs:5:20
+  --> $DIR/tilde-twice.rs:6:20
    |
 LL | struct S<T: ~const ~const Tr>;
    |                    ^ expected identifier

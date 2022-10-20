@@ -20,7 +20,7 @@ use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    type_known_to_meet_bound_modulo_regions, Obligation, ObligationCause,
+    pred_known_to_hold_modulo_regions, Obligation, ObligationCause,
 };
 
 use super::borrow_set::BorrowData;
@@ -1075,12 +1075,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
                             Some(def_id) => {
                                 let infcx = self.infcx.tcx.infer_ctxt().build();
-                                type_known_to_meet_bound_modulo_regions(
+                                pred_known_to_hold_modulo_regions(
                                     &infcx,
                                     self.param_env,
-                                    tcx.mk_imm_ref(tcx.lifetimes.re_erased, tcx.erase_regions(ty)),
-                                    def_id,
-                                    DUMMY_SP,
+                                    ty::Binder::dummy(
+                                        tcx.mk_trait_ref(
+                                            def_id,
+                                            [tcx.mk_imm_ref(
+                                                tcx.lifetimes.re_erased,
+                                                tcx.erase_regions(ty),
+                                            )
+                                            .into()]
+                                            .into_iter()
+                                            .chain(tcx.host_effect()),
+                                        ),
+                                    )
+                                    .without_const(),
+                                    span,
                                 )
                             }
                             _ => false,

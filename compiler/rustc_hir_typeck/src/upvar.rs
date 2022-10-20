@@ -929,13 +929,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         var_hir_id: hir::HirId,
         closure_clause: hir::CaptureBy,
     ) -> Option<FxHashMap<UpvarMigrationInfo, FxHashSet<&'static str>>> {
-        let auto_traits_def_id = vec![
-            self.tcx.lang_items().clone_trait(),
-            self.tcx.lang_items().sync_trait(),
-            self.tcx.get_diagnostic_item(sym::Send),
-            self.tcx.lang_items().unpin_trait(),
-            self.tcx.get_diagnostic_item(sym::unwind_safe_trait),
-            self.tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),
+        let auto_traits_def_id: Vec<_> = vec![
+            (self.tcx.lang_items().clone_trait(), self.tcx.host_effect()),
+            (self.tcx.lang_items().sync_trait(), None),
+            (self.tcx.get_diagnostic_item(sym::Send), None),
+            (self.tcx.lang_items().unpin_trait(), None),
+            (self.tcx.get_diagnostic_item(sym::unwind_safe_trait), None),
+            (self.tcx.get_diagnostic_item(sym::ref_unwind_safe_trait), None),
         ];
         const AUTO_TRAITS: [&str; 6] =
             ["`Clone`", "`Sync`", "`Send`", "`Unpin`", "`UnwindSafe`", "`RefUnwindSafe`"];
@@ -965,12 +965,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut obligations_should_hold = Vec::new();
         // Checks if a root variable implements any of the auto traits
-        for check_trait in auto_traits_def_id.iter() {
+        for (check_trait, rest) in auto_traits_def_id.iter().copied() {
             obligations_should_hold.push(
                 check_trait
                     .map(|check_trait| {
                         self.infcx
-                            .type_implements_trait(check_trait, [ty], self.param_env)
+                            .type_implements_trait(
+                                check_trait,
+                                [ty.into()].into_iter().chain(rest),
+                                self.param_env,
+                            )
                             .must_apply_modulo_regions()
                     })
                     .unwrap_or(false),
@@ -989,12 +993,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Checks if a capture implements any of the auto traits
             let mut obligations_holds_for_capture = Vec::new();
-            for check_trait in auto_traits_def_id.iter() {
+            for (check_trait, rest) in auto_traits_def_id.iter().copied() {
                 obligations_holds_for_capture.push(
                     check_trait
                         .map(|check_trait| {
                             self.infcx
-                                .type_implements_trait(check_trait, [ty], self.param_env)
+                                .type_implements_trait(
+                                    check_trait,
+                                    [ty.into()].into_iter().chain(rest),
+                                    self.param_env,
+                                )
                                 .must_apply_modulo_regions()
                         })
                         .unwrap_or(false),

@@ -1,3 +1,5 @@
+#![feature(effects)]
+
 const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } }
 //~^ dereferencing raw mutable pointers in constant functions
 

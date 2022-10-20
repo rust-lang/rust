@@ -157,8 +157,16 @@ impl Qualif for NeedsNonConstDrop {
             cx.tcx,
             ObligationCause::dummy_with_span(cx.body.span),
             cx.param_env,
-            ty::Binder::dummy(cx.tcx.at(cx.body.span).mk_trait_ref(LangItem::Destruct, [ty]))
-                .with_constness(ty::BoundConstness::ConstIfConst),
+            ty::Binder::dummy(cx.tcx.at(cx.body.span).mk_trait_ref_with_effect(
+                LangItem::Destruct,
+                [ty],
+                cx.def_id().to_def_id(),
+            ))
+            .with_constness(if cx.tcx.effects() {
+                ty::BoundConstness::NotConst
+            } else {
+                ty::BoundConstness::ConstIfConst
+            }),
         );
 
         let infcx = cx.tcx.infer_ctxt().build();

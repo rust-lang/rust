@@ -264,6 +264,43 @@ impl DefKind {
             | DefKind::ExternCrate => false,
         }
     }
+
+    pub fn require_const(self) -> bool {
+        match self {
+            DefKind::Const
+            | DefKind::Static(_)
+            | DefKind::AssocConst
+            | DefKind::AnonConst
+            | DefKind::InlineConst => true,
+            DefKind::Fn
+            | DefKind::AssocFn
+            | DefKind::Ctor(..)
+            | DefKind::Closure
+            | DefKind::Generator
+            | DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::Macro(..)
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::OpaqueTy
+            | DefKind::ImplTraitPlaceholder
+            | DefKind::Impl
+            | DefKind::Field
+            | DefKind::TyParam
+            | DefKind::ConstParam
+            | DefKind::LifetimeParam
+            | DefKind::GlobalAsm
+            | DefKind::ExternCrate => false,
+        }
+    }
 }
 
 /// The resolution of a path or export.

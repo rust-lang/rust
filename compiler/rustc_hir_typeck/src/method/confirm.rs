@@ -132,12 +132,19 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             );
         }
 
+        self.enforce_context_effects(
+            self.call_expr.hir_id,
+            self.span,
+            self.tcx.mk_fn_def(pick.item.def_id, all_substs),
+        );
+
         // Create the final `MethodCallee`.
         let callee = MethodCallee {
             def_id: pick.item.def_id,
             substs: all_substs,
             sig: method_sig.skip_binder(),
         };
+
         ConfirmResult { callee, illegal_sized_bound }
     }
 
@@ -154,7 +161,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let mut autoderef = self.autoderef(self.call_expr.span, unadjusted_self_ty);
         let Some((ty, n)) = autoderef.nth(pick.autoderefs) else {
             return self.tcx.ty_error_with_message(
-                rustc_span::DUMMY_SP,
+                self.span,
                 &format!("failed autoderef {}", pick.autoderefs),
             );
         };

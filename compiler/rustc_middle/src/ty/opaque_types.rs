@@ -224,16 +224,15 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 match self.map.get(&e.into()).map(|k| k.unpack()) {
                     // Found it in the substitution list, replace with the parameter from the
                     // opaque type.
-                    Some(GenericArgKind::Effect(e)) => e,
-                    Some(u) => panic!("effect mapped to unexpected kind: {:?}", u),
-                    None => {
-                        self.tcx.sess.emit_err(ParamNotUsedTraitAlias {
-                            param: e.to_string(),
-                            span: self.span,
-                        });
-
-                        self.tcx().effect_error(e.kind)
+                    Some(GenericArgKind::Effect(e)) => {
+                        self.tcx.sess.delay_span_bug(
+                            self.span,
+                            &format!("this can only happen when we allow `impl const Trait` opaque types: {e:?}"),
+                        );
+                        self.tcx.mk_effect(ty::EffectValue::Rigid { on: true }, e.kind)
                     }
+                    Some(u) => panic!("effect mapped to unexpected kind: {:?}", u),
+                    None => self.tcx.mk_effect(ty::EffectValue::Rigid { on: true }, e.kind),
                 }
             }
 

@@ -1,4 +1,4 @@
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 // revisions: yy yn ny nn
 
@@ -13,7 +13,7 @@ trait Bar: ~const Foo {}
 
 const fn foo<T: Bar>(x: &T) {
     x.a();
-    //[yn,yy]~^ ERROR the trait bound
+    //[yn,yy]~^ ERROR cannot call
 }
 
 fn main() {}

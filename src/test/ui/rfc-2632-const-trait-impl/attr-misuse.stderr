@@ -1,11 +1,11 @@
 error: attribute should be applied to a trait
-  --> $DIR/attr-misuse.rs:9:1
+  --> $DIR/attr-misuse.rs:10:1
    |
 LL | #[const_trait]
    | ^^^^^^^^^^^^^^
 
 error: attribute should be applied to a trait
-  --> $DIR/attr-misuse.rs:5:5
+  --> $DIR/attr-misuse.rs:6:5
    |
 LL |     #[const_trait]
    |     ^^^^^^^^^^^^^^

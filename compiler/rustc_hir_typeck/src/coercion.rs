@@ -1042,7 +1042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.infcx
                 .type_implements_trait(
                     self.tcx.lang_items().deref_mut_trait()?,
-                    [expr_ty],
+                    [expr_ty.into()].into_iter().chain(self.tcx.host_effect()),
                     self.param_env,
                 )
                 .may_apply()

@@ -362,7 +362,8 @@ where
 pub trait Residual<O> {
     /// The "return" type of this meta-function.
     #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-    type TryType: ~const Try<Output = O, Residual = Self>;
+    // const-hack: only ~const Try should be required
+    type TryType: ~const Try<Output = O, Residual = Self> + Try<Output = O, Residual = Self>;
 }
 
 #[unstable(feature = "pub_crate_should_not_need_unstable_attr", issue = "none")]

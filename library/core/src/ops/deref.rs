@@ -171,7 +171,7 @@ impl<T: ?Sized> const Deref for &mut T {
 #[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[const_trait]
-pub trait DerefMut: Deref {
+pub trait DerefMut: ~const Deref {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn deref_mut(&mut self) -> &mut Self::Target;

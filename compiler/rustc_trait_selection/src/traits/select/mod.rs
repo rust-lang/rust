@@ -1354,11 +1354,71 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Vec<SelectionCandidate<'tcx>> {
         trace!("{candidates:#?}");
         let tcx = self.tcx();
-        let mut result = Vec::with_capacity(candidates.len());
+        let mut result: Vec<SelectionCandidate<'tcx>> = Vec::with_capacity(candidates.len());
 
-        for candidate in candidates {
+        'candidate: for candidate in candidates {
+            trace!("{result:#?}");
             // Respect const trait obligations
-            if obligation.is_const() {
+            if self.tcx().effects() {
+                match candidate {
+                    // Skip `T: Trait` if we also have `T: ~const Trait`
+                    ParamCandidate(candidate) => {
+                        'res: for (i, res) in result.iter().enumerate() {
+                            if let ParamCandidate(res) = res {
+                                if res.def_id() == candidate.def_id() {
+                                    enum SkipOrRemove {
+                                        Skip,
+                                        Remove,
+                                    }
+                                    let mut sor = None;
+                                    for (res, candidate) in std::iter::zip(
+                                        res.skip_binder().trait_ref.substs,
+                                        candidate.skip_binder().trait_ref.substs,
+                                    ) {
+                                        match (res.unpack(), candidate.unpack()) {
+                                            (
+                                                ty::GenericArgKind::Effect(res),
+                                                ty::GenericArgKind::Effect(candidate),
+                                            ) => match (res.val, candidate.val) {
+                                                (
+                                                    ty::EffectValue::Param { .. },
+                                                    ty::EffectValue::Rigid { on: true },
+                                                ) => sor = sor.or(Some(SkipOrRemove::Skip)),
+                                                (
+                                                    ty::EffectValue::Rigid { on: true },
+                                                    ty::EffectValue::Param { .. },
+                                                ) => sor = sor.or(Some(SkipOrRemove::Remove)),
+                                                _ => {
+                                                    if res != candidate {
+                                                        continue 'res;
+                                                    }
+                                                }
+                                            },
+                                            _ => {
+                                                if res != candidate {
+                                                    continue 'res;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    match sor {
+                                        Some(SkipOrRemove::Skip) => continue 'candidate,
+                                        Some(SkipOrRemove::Remove) => {
+                                            result.remove(i);
+                                            break 'res;
+                                        }
+                                        // Duplicate candidates, skip this one, as exactly the same candidate
+                                        // already exists.
+                                        None => continue 'candidate,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // FIXME(effects): add test for ProjectionCandiate and implement it
+                    _ => {}
+                }
+            } else if obligation.is_const() {
                 match candidate {
                     // const impl
                     ImplCandidate(def_id) if tcx.constness(def_id) == hir::Constness::Const => {}
@@ -1382,7 +1442,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             continue
                         }
                     }
-                    ConstDestructCandidate(_) => {}
+                    ConstDestructCandidate(..) => {}
                     _ => {
                         // reject all other types of candidates
                         continue;
@@ -1806,8 +1866,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => false,
 
             // (*)
-            (BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_), _) => true,
-            (_, BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_)) => false,
+            (BuiltinCandidate { has_nested: false } | ConstDestructCandidate(..), _) => true,
+            (_, BuiltinCandidate { has_nested: false } | ConstDestructCandidate(..)) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 let same_except_bound_vars = other.skip_binder().trait_ref
@@ -2270,6 +2330,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         recursion_depth: usize,
         trait_def_id: DefId,
         types: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
+        params: &[ty::GenericArg<'tcx>],
     ) -> Vec<PredicateObligation<'tcx>> {
         // Because the types were potentially derived from
         // higher-ranked obligations they may reference late-bound
@@ -2309,7 +2370,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     cause.clone(),
                     trait_def_id,
                     recursion_depth,
-                    [normalized_ty],
+                    [normalized_ty.into()].into_iter().chain(params.iter().copied()),
                 );
                 obligations.push(placeholder_obligation);
                 obligations
@@ -2507,16 +2568,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // NOTE: The self-type is an unboxed closure type and hence is
         // in fact unparameterized (or at least does not reference any
         // regions bound in the obligation).
-        let self_ty = obligation
-            .predicate
-            .self_ty()
-            .no_bound_vars()
-            .expect("unboxed closure type should not capture bound vars from the predicate");
+        let (self_ty, effects) = self
+            .infcx
+            .shallow_resolve(
+                obligation
+                    .predicate
+                    .map_bound(|pred| (pred.self_ty(), pred.trait_ref.substs[2..].to_vec()))
+                    .no_bound_vars(),
+            )
+            .expect("unboxed closure type should not capture bound vars from predicate");
 
         closure_trait_ref_and_return_type(
             self.tcx(),
             obligation.predicate.def_id(),
             self_ty,
+            effects,
             closure_sig,
             util::TupleArgumentsFlag::No,
         )

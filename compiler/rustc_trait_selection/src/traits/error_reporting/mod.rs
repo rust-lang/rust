@@ -31,6 +31,7 @@ use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
+use rustc_middle::infer::unify_key::EffectVariableOriginKind;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -351,7 +352,19 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 });
-                let trait_ref = self.tcx.mk_trait_ref(trait_def_id, [ty.skip_binder(), var]);
+                let trait_ref = if self.tcx.effects() {
+                    let e_var = self.next_effect_var(
+                        DUMMY_SP,
+                        EffectVariableOriginKind::MiscVariable,
+                        ty::EffectKind::Host,
+                    );
+                    self.tcx.mk_trait_ref(
+                        trait_def_id,
+                        [ty::GenericArg::from(ty.skip_binder()), var.into(), e_var.into()],
+                    )
+                } else {
+                    self.tcx.mk_trait_ref(trait_def_id, [ty.skip_binder(), var])
+                };
                 let obligation = Obligation::new(
                     self.tcx,
                     ObligationCause::dummy(),

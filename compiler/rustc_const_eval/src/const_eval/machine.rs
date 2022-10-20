@@ -3,7 +3,7 @@ use rustc_hir::{LangItem, CRATE_HIR_ID};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty::layout::FnAbiOf;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::lint::builtin::INVALID_ALIGNMENT;
 use std::borrow::Borrow;
 use std::hash::Hash;
@@ -202,14 +202,16 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
         } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
             // For panic_fmt, call const_panic_fmt instead.
             let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
-            let new_instance = ty::Instance::resolve(
-                *self.tcx,
-                ty::ParamEnv::reveal_all(),
-                const_def_id,
-                instance.substs,
-            )
-            .unwrap()
-            .unwrap();
+            let substs = if self.tcx.effects() {
+                self.tcx
+                    .mk_substs(instance.substs.iter().chain([self.tcx.effects.always_const.into()]))
+            } else {
+                instance.substs
+            };
+            let new_instance =
+                ty::Instance::resolve(*self.tcx, ty::ParamEnv::reveal_all(), const_def_id, substs)
+                    .unwrap()
+                    .unwrap();
 
             return Ok(Some(new_instance));
         } else if Some(def_id) == self.tcx.lang_items().align_offset_fn() {
@@ -425,8 +427,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
             if new_instance != instance {
                 // We call another const fn instead.
-                // However, we return the *original* instance to make backtraces work out
-                // (and we hope this does not confuse the FnAbi checks too much).
                 return Ok(Self::find_mir_or_eval_fn(
                     ecx,
                     new_instance,
@@ -436,7 +436,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     ret,
                     _unwind,
                 )?
-                .map(|(body, _instance)| (body, instance)));
+                .map(|(body, new_instance)| {
+                    // However, we return the *original* instance to make backtraces work out
+                    // (and we hope this does not confuse the FnAbi checks too much).
+                    (body, Instance::new(instance.def_id(), new_instance.substs))
+                }));
             }
         }
 

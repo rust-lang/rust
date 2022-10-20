@@ -3,6 +3,7 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
 use crate::type_error_struct;
+use hir::def::DefKind;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
@@ -19,8 +20,9 @@ use rustc_infer::{
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::SubstsRef;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -366,6 +368,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
+        self.enforce_context_effects(call_expr.hir_id, call_expr.span, callee_ty);
+
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, subst) => {
                 let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, subst);
@@ -715,6 +719,157 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         err.emit()
+    }
+
+    /// Enforces that functions being called actually have the effects that the current context
+    /// requires for them being callable.
+    #[instrument(skip(self))]
+    pub(super) fn enforce_context_effects(&self, hir_id: hir::HirId, span: Span, value: Ty<'tcx>) {
+        if !self.tcx.effects() || self.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
+            return;
+        }
+        if value.references_error() {
+            return;
+        }
+
+        // Compute the constness required by the context.
+        let context = self.tcx.hir().enclosing_body_owner(hir_id);
+        if self.tcx.has_attr(context.to_def_id(), sym::rustc_do_not_const_check) {
+            trace!("do not const check this context");
+            return;
+        }
+        let kind = self.tcx.def_kind(context.to_def_id());
+        let require_const = kind.require_const();
+        debug_assert_ne!(kind, DefKind::ConstParam);
+
+        let ty::FnDef(did, substs) = *value.kind() else {
+            if require_const {
+                let context = kind.descr(context.to_def_id());
+                self.tcx.sess.span_err(span, &format!("cannot call non-const fn `{value}` in {context}s"));
+            }
+            trace!("not a function item");
+            return;
+        };
+        trace!(?substs);
+
+        // Tuple struct/variant constructors are not really function calls, they are always fine.
+        if let DefKind::Ctor(_, def::CtorKind::Fn) = self.tcx.def_kind(did) {
+            trace!("variant constructors are fine");
+            return;
+        }
+        // FIXME: should const intrinsics also have a constness effect?
+        if self.tcx.is_intrinsic(did) {
+            trace!("skip const intrinsic");
+            if self.tcx.is_const_fn(did) {
+                return;
+            }
+        }
+
+        // These special functions do not have effects but are `const fn` because the const evaluator
+        // has logic to just not call them and run special logic instead.
+        if self.tcx.has_attr(did, sym::rustc_do_not_const_check) {
+            trace!("skip call to rustc_do_not_const_check function");
+            return;
+        }
+
+        // Walk all the effects in the type, error on mismatches and bind inferred effects.
+        struct EffectVisitor<'a, 'tcx> {
+            span: Span,
+            ctx: &'a FnCtxt<'a, 'tcx>,
+            found_constness: bool,
+            context_effect: ty::Effect<'tcx>,
+            context: LocalDefId,
+            def_id: DefId,
+            substs: SubstsRef<'tcx>,
+        }
+
+        impl<'a, 'tcx> TypeVisitor<'tcx> for EffectVisitor<'a, 'tcx> {
+            type BreakTy = ();
+            fn visit_effect(
+                &mut self,
+                e: ty::Effect<'tcx>,
+            ) -> std::ops::ControlFlow<Self::BreakTy> {
+                let cause = ObligationCause::dummy_with_span(self.span);
+
+                match self.ctx.at(&cause, self.ctx.param_env).eq(self.context_effect, e) {
+                    Ok(ok) => {
+                        self.ctx.register_infer_ok_obligations(ok);
+                        match e.kind {
+                            ty::EffectKind::Host => self.found_constness = true,
+                        }
+                        std::ops::ControlFlow::CONTINUE
+                    }
+                    Err(err) => {
+                        let TypeError::EffectMismatch(ExpectedFound { expected, found }) = err else {
+                            span_bug!(self.span, "enforce_context_effects can only cause effect mismatches")
+                        };
+                        let kind = expected.kind;
+                        debug_assert_eq!(kind, found.kind);
+                        match (expected.val, found.val) {
+                            (
+                                ty::EffectValue::Rigid { on: false }
+                                | ty::EffectValue::Param { .. },
+                                ty::EffectValue::Rigid { on: true },
+                            ) => {
+                                let def_path =
+                                    self.ctx.tcx.def_path_str_with_substs(self.def_id, self.substs);
+                                let reason = match kind {
+                                    ty::EffectKind::Host => "it is not `const`",
+                                };
+                                self.ctx
+                                    .tcx
+                                    .sess
+                                    .struct_span_err(
+                                        self.span,
+                                        &format!("cannot call `{def_path}` because {reason}"),
+                                    )
+                                    .span_label(
+                                        self.ctx
+                                            .tcx
+                                            .def_ident_span(self.context)
+                                            .unwrap_or_else(|| self.ctx.tcx.def_span(self.context)),
+                                        "required because of this",
+                                    )
+                                    .emit();
+                            }
+                            _ => bug!("everything else does not cause errors"),
+                        }
+
+                        match e.kind {
+                            ty::EffectKind::Host => std::ops::ControlFlow::Break(()),
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut visitor = EffectVisitor {
+            span,
+            ctx: self,
+            found_constness: false,
+            context_effect: self.tcx.effect_from_context(
+                context.to_def_id(),
+                ty::EffectKind::Host,
+                || ty::EffectValue::Rigid { on: !require_const },
+            ),
+            def_id: did,
+            context,
+            substs,
+        };
+
+        if let std::ops::ControlFlow::Continue(()) = value.visit_with(&mut visitor) {
+            if !matches!(visitor.context_effect.val, ty::EffectValue::Rigid { on: true })
+                && !visitor.found_constness
+            {
+                let def_path = self.tcx.def_path_str_with_substs(did, substs);
+                let context = kind.descr(context.to_def_id());
+                self.tcx.sess.span_err(
+                    span,
+                    &format!("cannot call non-const fn `{def_path}` in {context}s"),
+                );
+            }
+            // FIXME: add stability checks
+        }
     }
 
     fn confirm_deferred_closure_call(

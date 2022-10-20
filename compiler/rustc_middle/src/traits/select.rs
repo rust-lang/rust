@@ -164,7 +164,7 @@ pub enum SelectionCandidate<'tcx> {
     BuiltinUnsizeCandidate,
 
     /// Implementation of `const Destruct`, optionally from a custom `impl const Drop`.
-    ConstDestructCandidate(Option<DefId>),
+    ConstDestructCandidate(Option<DefId>, ty::Effect<'tcx>),
 }
 
 /// The result of trait evaluation. The order is important

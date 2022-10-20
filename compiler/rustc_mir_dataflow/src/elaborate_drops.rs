@@ -614,6 +614,11 @@ where
         let drop_trait = tcx.require_lang_item(LangItem::Drop, None);
         let drop_fn = tcx.associated_item_def_ids(drop_trait)[0];
         let ty = self.place_ty(self.place);
+        let substs = tcx.mk_substs_trait_with_effect(
+            drop_trait,
+            [ty],
+            self.elaborator.body().source.def_id(),
+        );
 
         let ref_ty =
             tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut });
@@ -631,12 +636,7 @@ where
             )],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
-                    func: Operand::function_handle(
-                        tcx,
-                        drop_fn,
-                        [ty.into()],
-                        self.source_info.span,
-                    ),
+                    func: Operand::function_handle(tcx, drop_fn, substs, self.source_info.span),
                     args: vec![Operand::Move(Place::from(ref_place))],
                     destination: unit_temp,
                     target: Some(succ),

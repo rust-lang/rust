@@ -722,7 +722,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Like [TyCtxt::ty_error] but for effects.
+    /// Like [TyCtxt::ty_error_with_message] but for effects.
     #[track_caller]
     pub fn effect_error_with_message(
         self,
@@ -783,6 +783,17 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn features(self) -> &'tcx rustc_feature::Features {
         self.features_query(())
+    }
+
+    #[inline(always)]
+    pub fn effects(self) -> bool {
+        self.features().effects
+            || (cfg!(debug_assertions) && std::env::var_os("RUSTC_ENABLE_EFFECTS").is_some())
+    }
+
+    /// A helper while effects are not enabled unconditionally.
+    pub fn host_effect(self) -> Option<ty::GenericArg<'tcx>> {
+        self.effects().then_some(self.effects.host.into())
     }
 
     pub fn def_key(self, id: DefId) -> rustc_hir::definitions::DefKey {
@@ -2264,6 +2275,7 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_place_elems(xs))
     }
 
+    /// Create the substitutions for a trait and its generic params.
     pub fn mk_substs_trait(
         self,
         self_ty: Ty<'tcx>,
@@ -2272,6 +2284,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest))
     }
 
+    #[track_caller]
     pub fn mk_trait_ref(
         self,
         trait_def_id: DefId,
@@ -2288,6 +2301,48 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> ty::AliasTy<'tcx> {
         let substs = self.check_substs(def_id, substs);
         ty::AliasTy { def_id, substs, _use_mk_alias_ty_instead: () }
+    }
+
+    pub fn mk_trait_ref_with_effect(
+        self,
+        trait_def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+        context: DefId,
+    ) -> ty::TraitRef<'tcx> {
+        let substs = self.mk_substs_trait_with_effect(trait_def_id, substs, context);
+        self.mk_trait_ref(trait_def_id, substs)
+    }
+
+    /// Create the substitutions for a trait and its generic params and fill in the effects from context
+    #[instrument(level = "trace", skip(self, substs), ret)]
+    #[track_caller]
+    pub fn mk_substs_trait_with_effect(
+        self,
+        trait_def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+        context: DefId,
+    ) -> SubstsRef<'tcx> {
+        debug_assert!(self.is_trait(trait_def_id));
+        let effects =
+            self.generics_of(trait_def_id).params.iter().filter_map(|param| match param.kind {
+                ty::GenericParamDefKind::Effect { kind } => Some(
+                    self.effect_from_context(context, kind, || ty::EffectValue::Rigid {
+                        on: match kind {
+                            ty::EffectKind::Host => !self.def_kind(context).require_const(),
+                        },
+                    })
+                    .into(),
+                ),
+                _ => None,
+            });
+        let substs = self.mk_substs(substs.into_iter().map(Into::into).chain(effects));
+        let n = self.generics_of(trait_def_id).count();
+        debug_assert_eq!(
+            n,
+            substs.len(),
+            "expected {n} generic parameters for {trait_def_id:?}, but got {substs:?}",
+        );
+        substs
     }
 
     pub fn mk_bound_variable_kinds<
@@ -2394,6 +2449,26 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    pub fn effect_from_context(
+        self,
+        def_id: DefId,
+        kind: ty::EffectKind,
+        missing: impl FnOnce() -> ty::EffectValue<'tcx>,
+    ) -> ty::Effect<'tcx> {
+        if self.is_closure(def_id) {
+            let on = match kind {
+                // Closures cannot be const callable yet.
+                ty::EffectKind::Host => true,
+            };
+            return self.mk_effect(ty::EffectValue::Rigid { on }, kind);
+        }
+        let val = match self.generics_of(def_id).effect_param(kind, self) {
+            Some(param) => ty::EffectValue::Param { index: param.index },
+            None => missing(),
+        };
+        self.mk_effect(val, kind)
+    }
+
     /// Whether the `def_id` counts as const fn in the current crate, considering all active
     /// feature gates
     pub fn is_const_fn(self, def_id: DefId) -> bool {
@@ -2454,6 +2529,16 @@ impl<'tcx> TyCtxtAt<'tcx> {
     ) -> ty::TraitRef<'tcx> {
         let trait_def_id = self.require_lang_item(trait_lang_item, Some(self.span));
         self.tcx.mk_trait_ref(trait_def_id, substs)
+    }
+
+    pub fn mk_trait_ref_with_effect(
+        self,
+        trait_lang_item: LangItem,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+        context: DefId,
+    ) -> ty::TraitRef<'tcx> {
+        let trait_def_id = self.require_lang_item(trait_lang_item, Some(self.span));
+        self.tcx.mk_trait_ref_with_effect(trait_def_id, substs, context)
     }
 }
 

@@ -1060,11 +1060,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut suggest_copied_or_cloned = || {
             let expr_inner_ty = substs.type_at(0);
             let expected_inner_ty = expected_substs.type_at(0);
-            if let ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
-                && self.can_eq(self.param_env, *ty, expected_inner_ty).is_ok()
+            if let ty::Ref(_, ty, hir::Mutability::Not) = *expr_inner_ty.kind()
+                && self.can_eq(self.param_env, ty, expected_inner_ty).is_ok()
             {
                 let def_path = self.tcx.def_path_str(adt_def.did());
-                if self.type_is_copy_modulo_regions(self.param_env, *ty, expr.span) {
+                if self.type_is_copy_modulo_regions(self.param_env, ty, expr.span) {
                     diag.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
                         format!(
@@ -1075,12 +1075,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     return true;
                 } else if let Some(clone_did) = self.tcx.lang_items().clone_trait()
-                    && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
+                    && rustc_trait_selection::traits::pred_known_to_hold_modulo_regions(
                         self,
                         self.param_env,
-                        *ty,
-                        clone_did,
-                        expr.span
+                        ty::Binder::dummy(self.tcx.mk_trait_ref(clone_did, [ty.into()].into_iter().chain(self.tcx.host_effect()))).without_const(),
+                        expr.span,
                     )
                 {
                     diag.span_suggestion_verbose(
@@ -1142,9 +1141,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 self.misc(expr.span),
                 self.param_env,
-                ty::Binder::dummy(self.tcx.mk_trait_ref(
+                ty::Binder::dummy(self.tcx.mk_trait_ref_with_effect(
                     into_def_id,
-                    [expr_ty, expected_ty]
+                    [expr_ty, expected_ty],
+                    self.body_id.owner.to_def_id()
                 )),
             ))
         {

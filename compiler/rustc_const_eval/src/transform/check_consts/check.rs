@@ -808,7 +808,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 return;
                             }
                         }
-                        _ if !tcx.is_const_fn_raw(callee) => {
+                        _ if !self.tcx.effects() && !tcx.is_const_fn_raw(callee) => {
                             // At this point, it is only legal when the caller is in a trait
                             // marked with #[const_trait], and the callee is in the same trait.
                             let mut nonconst_call_permission = false;

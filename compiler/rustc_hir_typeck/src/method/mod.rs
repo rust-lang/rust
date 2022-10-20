@@ -274,21 +274,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         opt_input_types: Option<&[Ty<'tcx>]>,
-        _hir_id: HirId,
+        hir_id: HirId,
     ) -> (traits::Obligation<'tcx, ty::Predicate<'tcx>>, &'tcx ty::List<ty::subst::GenericArg<'tcx>>)
     {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime
-                | GenericParamDefKind::Const { .. }
-                | GenericParamDefKind::Effect { .. } => {}
+                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => {}
                 GenericParamDefKind::Type { .. } => {
                     if param.index == 0 {
                         return self_ty.into();
                     } else if let Some(input_types) = opt_input_types {
                         return input_types[param.index as usize - 1].into();
                     }
+                }
+                GenericParamDefKind::Effect { kind } => {
+                    let context = self.tcx.hir().enclosing_body_owner(hir_id);
+                    return self
+                        .tcx
+                        .effect_from_context(context.to_def_id(), kind, || ty::EffectValue::Rigid {
+                            on: true,
+                        })
+                        .into();
                 }
             }
             self.var_for_def(cause.span, param)

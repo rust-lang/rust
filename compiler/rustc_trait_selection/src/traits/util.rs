@@ -286,27 +286,42 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
+    // Make this an array once the effect feature is always active
+    effects: Vec<ty::GenericArg<'tcx>>,
     sig: ty::PolyFnSig<'tcx>,
     tuple_arguments: TupleArgumentsFlag,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
     assert!(!self_ty.has_escaping_bound_vars());
-    let arguments_tuple = match tuple_arguments {
-        TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
-        TupleArgumentsFlag::Yes => tcx.intern_tup(sig.skip_binder().inputs()),
-    };
-    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty, arguments_tuple]);
-    sig.map_bound(|sig| (trait_ref, sig.output()))
+    sig.map_bound(|sig| {
+        let arguments_tuple = match tuple_arguments {
+            TupleArgumentsFlag::No => sig.inputs()[0],
+            TupleArgumentsFlag::Yes => tcx.intern_tup(sig.inputs()),
+        };
+        let trait_ref = tcx.mk_trait_ref(
+            fn_trait_def_id,
+            // FIXME: have the caller pass the effects here and use them.
+            [self_ty.into(), arguments_tuple.into()].into_iter().chain(effects),
+        );
+        (trait_ref, sig.output())
+    })
 }
 
 pub fn generator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
+    // Make this an array once the effect feature is always active
+    effects: Vec<ty::GenericArg<'tcx>>,
     sig: ty::PolyGenSig<'tcx>,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
     assert!(!self_ty.has_escaping_bound_vars());
-    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty, sig.skip_binder().resume_ty]);
-    sig.map_bound(|sig| (trait_ref, sig.yield_ty, sig.return_ty))
+    sig.map_bound(|sig| {
+        let trait_ref = tcx.mk_trait_ref(
+            fn_trait_def_id,
+            [self_ty.into(), sig.resume_ty.into()].into_iter().chain(effects),
+        );
+        (trait_ref, sig.yield_ty, sig.return_ty)
+    })
 }
 
 pub fn future_trait_ref_and_outputs<'tcx>(

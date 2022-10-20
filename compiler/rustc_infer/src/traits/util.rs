@@ -3,7 +3,7 @@ use smallvec::smallvec;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_middle::ty::{self, ToPredicate, TyCtxt};
+use rustc_middle::ty::{self, ToPredicate, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -142,6 +142,20 @@ impl<'tcx> Elaborator<'tcx> {
         let bound_predicate = obligation.predicate.kind();
         match bound_predicate.skip_binder() {
             ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+                // `T: ~const Trait` implies `T: Trait`
+                if obligation.predicate.has_type_flags(ty::TypeFlags::HAS_EFFECT_PARAM) {
+                    let no_effect = obligation.clone().fold_with(&mut ty::fold::BottomUpFolder {
+                        tcx,
+                        ty_op: |t| t,
+                        lt_op: |l| l,
+                        ct_op: |c| c,
+                        e_op: |e| tcx.mk_effect(ty::EffectValue::Rigid { on: true }, e.kind),
+                    });
+                    if self.visited.insert(no_effect.predicate) {
+                        self.stack.push(no_effect)
+                    }
+                }
+
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
@@ -185,7 +199,19 @@ impl<'tcx> Elaborator<'tcx> {
                 // though conceivably we might.
             }
             ty::PredicateKind::Clause(ty::Clause::Projection(..)) => {
-                // Nothing to elaborate in a projection predicate.
+                // `<T as ~const Trait>::TYPE` implies `<T as Trait>::TYPE`
+                if obligation.predicate.has_type_flags(ty::TypeFlags::HAS_EFFECT_PARAM) {
+                    let no_effect = obligation.clone().fold_with(&mut ty::fold::BottomUpFolder {
+                        tcx,
+                        ty_op: |t| t,
+                        lt_op: |l| l,
+                        ct_op: |c| c,
+                        e_op: |e| tcx.mk_effect(ty::EffectValue::Rigid { on: true }, e.kind),
+                    });
+                    if self.visited.insert(no_effect.predicate) {
+                        self.stack.push(no_effect)
+                    }
+                }
             }
             ty::PredicateKind::ClosureKind(..) => {
                 // Nothing to elaborate when waiting for a closure's kind to be inferred.

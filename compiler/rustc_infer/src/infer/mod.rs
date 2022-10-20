@@ -41,6 +41,7 @@ use rustc_span::Span;
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
+use std::marker::PhantomData;
 
 use self::combine::CombineFields;
 use self::error_reporting::TypeErrCtxt;
@@ -741,6 +742,29 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Like `freshener`, but does not replace `'static` regions.
     pub fn freshener_keep_static<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
         freshen::TypeFreshener::new(self, true)
+    }
+
+    /// Effect fallback is infallible. We always figure out a concrete value for the effect
+    /// from the environment. If we can't figure out something we fall back to the effect
+    /// not applying, which is always a safe choice.
+    pub fn effects_inference_fallback(&self) {
+        let mut inner = self.inner.borrow_mut();
+        let mut table = inner.effect_unification_table();
+        let n = table.len();
+
+        for i in 0..n {
+            let index = i as u32;
+            let vid = ty::EffectVid { index, phantom: PhantomData };
+            let EffectVarValue { val, origin } = table.probe_value(vid);
+            match val {
+                EffectVariableValue::Unknown { .. } => {}
+                EffectVariableValue::Known { .. } => continue,
+            }
+            let value = self.tcx.mk_effect(ty::EffectValue::Rigid { on: true }, origin.effect_kind);
+            let val = EffectVariableValue::Known { value };
+            let value = EffectVarValue { val, origin };
+            table.union_value(vid, value);
+        }
     }
 
     pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
@@ -2077,6 +2101,18 @@ impl<'tcx> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
             values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
+    }
+
+    pub fn effects(
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: ty::Effect<'tcx>,
+        b: ty::Effect<'tcx>,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: Effects(ExpectedFound::new(a_is_expected, a.into(), b.into())),
         }
     }
 }

@@ -860,6 +860,29 @@ impl<'tcx> PolyTraitRef<'tcx> {
     pub fn def_id(&self) -> DefId {
         self.skip_binder().def_id
     }
+
+    /// Fall back to `!const` if the `other` is `~const`
+    pub fn pick_concrete_effect(self, other: Self, constness: ty::BoundConstness) -> Option<Self> {
+        if self.def_id() != other.def_id() {
+            return None;
+        }
+        if self.self_ty() != other.self_ty() {
+            return None;
+        }
+        // FIXME(effects): somewhat fishy, should we do a step by step walk of the
+        // two substs and compare at each site?
+        match (self.has_effect_param(), other.has_effect_param(), constness) {
+            (false, false, _) | (true, true, _) => None,
+            (true, false, ty::BoundConstness::ConstIfConst) => Some(self),
+            (true, false, ty::BoundConstness::NotConst) => Some(other),
+            (false, true, ty::BoundConstness::ConstIfConst) => Some(other),
+            (false, true, ty::BoundConstness::NotConst) => Some(self),
+        }
+    }
+
+    fn has_effect_param(&self) -> bool {
+        self.skip_binder().substs.has_type_flags(ty::TypeFlags::HAS_EFFECT_PARAM)
+    }
 }
 
 impl rustc_errors::IntoDiagnosticArg for PolyTraitRef<'_> {

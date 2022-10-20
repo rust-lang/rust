@@ -2,6 +2,7 @@
 // check-pass
 
 #![feature(const_trait_impl)]
+#![feature(effects)]
 
 struct S<
     T: ~const ?for<'a> Tr<'a> + 'static + ~const std::ops::Add,

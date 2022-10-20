@@ -42,7 +42,7 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
         // an obligation and instead be skipped. Otherwise we'd use
         // `tcx.def_span(def_id);`
 
-        let constness = if tcx.has_attr(def_id, sym::const_trait) {
+        let constness = if !tcx.effects() && tcx.has_attr(def_id, sym::const_trait) {
             ty::BoundConstness::ConstIfConst
         } else {
             ty::BoundConstness::NotConst

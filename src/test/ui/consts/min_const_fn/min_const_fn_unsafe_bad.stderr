@@ -1,5 +1,5 @@
 error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
-  --> $DIR/min_const_fn_unsafe_bad.rs:1:77
+  --> $DIR/min_const_fn_unsafe_bad.rs:3:77
    |
 LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } }
    |                                                                             ^^^
@@ -8,7 +8,7 @@ LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe {
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
-  --> $DIR/min_const_fn_unsafe_bad.rs:4:70
+  --> $DIR/min_const_fn_unsafe_bad.rs:6:70
    |
 LL | const unsafe fn bad_const_unsafe_deref_raw(x: *mut usize) -> usize { *x }
    |                                                                      ^^
@@ -17,7 +17,7 @@ LL | const unsafe fn bad_const_unsafe_deref_raw(x: *mut usize) -> usize { *x }
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
-  --> $DIR/min_const_fn_unsafe_bad.rs:7:83
+  --> $DIR/min_const_fn_unsafe_bad.rs:9:83
    |
 LL | const unsafe fn bad_const_unsafe_deref_raw_ref(x: *mut usize) -> &'static usize { &*x }
    |                                                                                   ^^^

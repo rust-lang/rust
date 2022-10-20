@@ -1583,7 +1583,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         (false, Mismatch::Fixed("trait"))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
-                    ValuePairs::Effects(_) => (false, Mismatch::Fixed("effect")),
+                    ValuePairs::Effects(_) => (true, Mismatch::Fixed("effect")),
                 };
                 let Some(vals) = self.values_str(values) else {
                     // Derived error. Cancel the emitter.
@@ -2724,6 +2724,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
                 TypeError::IntrinsicCast => {
                     Error0308("cannot coerce intrinsics to function pointers")
                 }
+                TypeError::EffectMismatch(_) => Error0308("mismatched effects"),
                 _ => Error0308("mismatched types"),
             },
         }

@@ -9,6 +9,7 @@ use hir::LangItem;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
+use rustc_middle::infer::unify_key::EffectVariableOriginKind;
 use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_target::spec::abi::Abi;
 
@@ -523,8 +524,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return None;
         }
 
+        let effect = self.infcx.tcx.effects().then(|| {
+            ty::GenericArg::from(self.infcx.next_effect_var(
+                cause.span,
+                EffectVariableOriginKind::EffectInference,
+                ty::EffectKind::Host,
+            ))
+        });
+
         // <ty as Deref>
-        let trait_ref = tcx.mk_trait_ref(tcx.lang_items().deref_trait()?, [ty]);
+        let trait_ref = tcx
+            .mk_trait_ref(tcx.lang_items().deref_trait()?, [ty.into()].into_iter().chain(effect));
 
         let obligation =
             traits::Obligation::new(tcx, cause.clone(), param_env, ty::Binder::dummy(trait_ref));
@@ -725,10 +735,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
+        let constness = obligation
+            .predicate
+            .map_bound_ref(|pred| {
+                // This is super hacky, but it's effectively asking whether the
+                // `Destruct` trait is defined in a crate with the effects
+                // feature on. Remove this check once the feature is removed.
+                if pred.trait_ref.substs.len() > 1 {
+                    pred.trait_ref.substs.effect_at(1)
+                } else {
+                    self.tcx().effects.host
+                }
+            })
+            .no_bound_vars()
+            .expect("obligations should not be bound over effects");
+
         // If the predicate is `~const Destruct` in a non-const environment, we don't actually need
         // to check anything. We'll short-circuit checking any obligations in confirmation, too.
-        if !obligation.is_const() {
-            candidates.vec.push(ConstDestructCandidate(None));
+        if self.tcx().effects() {
+            match constness.val {
+                ty::EffectValue::Rigid { on: true } => {
+                    candidates.vec.push(ConstDestructCandidate(None, constness));
+                    return;
+                }
+                ty::EffectValue::Infer(_) => candidates.ambiguous = true,
+                _ => (),
+            }
+        } else if !obligation.is_const() {
+            candidates.vec.push(ConstDestructCandidate(None, constness));
             return;
         }
 
@@ -765,7 +799,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Tuple(_)
             | ty::GeneratorWitness(_) => {
                 // These are built-in, and cannot have a custom `impl const Destruct`.
-                candidates.vec.push(ConstDestructCandidate(None));
+                candidates.vec.push(ConstDestructCandidate(None, constness));
             }
 
             ty::Adt(..) => {
@@ -779,11 +813,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if let Some(impl_def_id) = relevant_impl {
                     // Check that `impl Drop` is actually const, if there is a custom impl
                     if self.tcx().constness(impl_def_id) == hir::Constness::Const {
-                        candidates.vec.push(ConstDestructCandidate(Some(impl_def_id)));
+                        candidates.vec.push(ConstDestructCandidate(Some(impl_def_id), constness));
                     }
                 } else {
                     // Otherwise check the ADT like a built-in type (structurally)
-                    candidates.vec.push(ConstDestructCandidate(None));
+                    candidates.vec.push(ConstDestructCandidate(None, constness));
                 }
             }
 

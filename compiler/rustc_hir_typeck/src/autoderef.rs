@@ -44,7 +44,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         |InferOk { value: method, obligations: o }| {
                             obligations.extend(o);
                             if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
-                                Some(OverloadedDeref { region, mutbl, span: autoderef.span() })
+                                Some(OverloadedDeref {
+                                    region,
+                                    mutbl,
+                                    span: autoderef.span(),
+                                    context: self.body_id.owner.to_def_id(),
+                                })
                             } else {
                                 None
                             }

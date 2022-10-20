@@ -248,7 +248,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let ref_str_ty = tcx.mk_imm_ref(re_erased, tcx.types.str_);
                     let ref_str = self.temp(ref_str_ty, test.span);
                     let deref = tcx.require_lang_item(LangItem::Deref, None);
-                    let method = trait_method(tcx, deref, sym::deref, [ty]);
+                    let method = trait_method(tcx, deref, sym::deref, [ty], self.def_id);
                     let eq_block = self.cfg.start_new_block();
                     self.cfg.push_assign(block, source_info, ref_string, Rvalue::Ref(re_erased, BorrowKind::Shared, place));
                     self.cfg.terminate(
@@ -443,7 +443,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, [deref_ty, deref_ty]);
+        let method = trait_method(self.tcx, eq_def_id, sym::eq, [deref_ty, deref_ty], self.def_id);
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
@@ -836,7 +836,10 @@ fn trait_method<'tcx>(
     trait_def_id: DefId,
     method_name: Symbol,
     substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    context: DefId,
 ) -> ConstantKind<'tcx> {
+    let substs = tcx.mk_substs_trait_with_effect(trait_def_id, substs, context);
+
     // The unhygienic comparison here is acceptable because this is only
     // used on known traits.
     let item = tcx

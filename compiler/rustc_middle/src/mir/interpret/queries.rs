@@ -8,6 +8,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_type_ir::TypeFlags;
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
@@ -93,7 +94,13 @@ impl<'tcx> TyCtxt<'tcx> {
                     // @lcnr believes that successfully evaluating even though there are
                     // used generic parameters is a bug of evaluation, so checking for it
                     // here does feel somewhat sensible.
-                    if !self.features().generic_const_exprs && ct.substs.has_non_region_param() {
+                    if !self.features().generic_const_exprs
+                        && ct.substs.has_type_flags(
+                            TypeFlags::NEEDS_SUBST
+                                - TypeFlags::HAS_RE_PARAM
+                                - TypeFlags::HAS_EFFECT_PARAM,
+                        )
+                    {
                         assert!(matches!(self.def_kind(ct.def.did), DefKind::AnonConst));
                         let mir_body = self.mir_for_ctfe_opt_const_arg(ct.def);
                         if mir_body.is_polymorphic {

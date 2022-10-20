@@ -545,7 +545,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             }
             ty::EffectValue::Bound(debruijn, _) => {
                 if debruijn >= self.binder_index {
-                    bug!("escaping bound type during canonicalization")
+                    bug!("escaping bound effect during canonicalization")
                 } else {
                     return e;
                 }

@@ -280,7 +280,8 @@ pub macro PartialEq($item:item) {
 #[doc(alias = "!=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Eq"]
-pub trait Eq: PartialEq<Self> {
+#[const_trait]
+pub trait Eq: ~const PartialEq<Self> {
     // this method is used solely by #[deriving] to assert
     // that every component of a type implements #[deriving]
     // itself, the current deriving infrastructure means doing this
@@ -601,8 +602,7 @@ impl Ordering {
 pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
 
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-impl<T: ~const PartialOrd> const PartialOrd for Reverse<T> {
+impl<T: PartialOrd> PartialOrd for Reverse<T> {
     #[inline]
     fn partial_cmp(&self, other: &Reverse<T>) -> Option<Ordering> {
         other.0.partial_cmp(&self.0)
@@ -761,7 +761,7 @@ impl<T: Clone> Clone for Reverse<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Ord"]
 #[const_trait]
-pub trait Ord: Eq + PartialOrd<Self> {
+pub trait Ord: Eq + ~const PartialOrd<Self> {
     /// This method returns an [`Ordering`] between `self` and `other`.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching the expression
@@ -1051,7 +1051,7 @@ pub macro Ord($item:item) {
 )]
 #[const_trait]
 #[rustc_diagnostic_item = "PartialOrd"]
-pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
+pub trait PartialOrd<Rhs: ?Sized = Self>: ~const PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values if one exists.
     ///
     /// # Examples

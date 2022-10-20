@@ -663,7 +663,11 @@ impl<P: Deref> Pin<P> {
     /// ruled out by the contract of `Pin::new_unchecked`.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn as_ref(&self) -> Pin<&P::Target> {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    pub const fn as_ref(&self) -> Pin<&P::Target>
+    where
+        P: ~const Deref,
+    {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&*self.pointer) }
     }
@@ -720,7 +724,11 @@ impl<P: DerefMut> Pin<P> {
     /// ```
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn as_mut(&mut self) -> Pin<&mut P::Target> {
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    pub const fn as_mut(&mut self) -> Pin<&mut P::Target>
+    where
+        P: ~const DerefMut,
+    {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&mut *self.pointer) }
     }
@@ -955,7 +963,8 @@ impl<T: ?Sized> Pin<&'static mut T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P: Deref> Deref for Pin<P> {
+#[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+impl<P: ~const Deref> const Deref for Pin<P> {
     type Target = P::Target;
     fn deref(&self) -> &P::Target {
         Pin::get_ref(Pin::as_ref(self))
@@ -963,7 +972,8 @@ impl<P: Deref> Deref for Pin<P> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P: DerefMut<Target: Unpin>> DerefMut for Pin<P> {
+#[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+impl<P: ~const DerefMut<Target: Unpin>> const DerefMut for Pin<P> {
     fn deref_mut(&mut self) -> &mut P::Target {
         Pin::get_mut(Pin::as_mut(self))
     }

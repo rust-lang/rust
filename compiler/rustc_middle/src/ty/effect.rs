@@ -19,7 +19,7 @@ impl<'tcx> std::ops::Deref for Effect<'tcx> {
 
 impl<'tcx> fmt::Debug for Effect<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.0.fmt(f)
+        fmt::Display::fmt(self, f)
     }
 }
 

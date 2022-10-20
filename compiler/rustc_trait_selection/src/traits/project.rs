@@ -1907,6 +1907,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         tcx,
         gen_def_id,
         obligation.predicate.self_ty(),
+        obligation.predicate.substs[2..].to_vec(),
         gen_sig,
     )
     .map_bound(|(trait_ref, yield_ty, return_ty)| {
@@ -2078,6 +2079,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         tcx,
         fn_once_def_id,
         obligation.predicate.self_ty(),
+        obligation.predicate.substs[2..].to_owned(),
         fn_sig,
         flag,
     )
@@ -2242,6 +2244,8 @@ fn check_substs_compatible<'tcx>(
                 (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
                 | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
                 | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}
+                (ty::GenericParamDefKind::Effect { kind, .. }, ty::GenericArgKind::Effect(e))
+                    if e.kind == *kind => {}
                 _ => return false,
             }
         }

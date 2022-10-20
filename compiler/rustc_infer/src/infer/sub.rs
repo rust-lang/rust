@@ -215,8 +215,8 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         b: ty::Effect<'tcx>,
     ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
         match (a.val, b.val) {
-            // Any effect matches the rigid "off" effect. For example: `T: ~const Trait` implies `T: Trait`
-            (ty::EffectValue::Rigid { on: false }, _) => Ok(a),
+            // Any effect matches the rigid "on" effect. For example: `T: ~const Trait` (off) implies `T: Trait` (on)
+            (ty::EffectValue::Rigid { on: true }, _) => Ok(a),
             _ => self.fields.infcx.super_combine_effect(self, a, b),
         }
     }

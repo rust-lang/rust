@@ -1,4 +1,4 @@
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 trait Tr {}
@@ -10,7 +10,7 @@ const fn foo<T>() where T: ~const Tr {}
 pub trait Foo {
     fn foo() {
         foo::<()>();
-        //~^ ERROR the trait bound `(): ~const Tr` is not satisfied
+        //~^ ERROR cannot call
     }
 }
 

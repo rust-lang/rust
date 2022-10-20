@@ -1,5 +1,5 @@
 error: inherent impls cannot be `const`
-  --> $DIR/inherent-impl.rs:7:12
+  --> $DIR/inherent-impl.rs:8:12
    |
 LL | impl const S {}
    |      ----- ^ inherent impl for this type
@@ -9,7 +9,7 @@ LL | impl const S {}
    = note: only trait implementations may be annotated with `const`
 
 error: inherent impls cannot be `const`
-  --> $DIR/inherent-impl.rs:10:12
+  --> $DIR/inherent-impl.rs:12:12
    |
 LL | impl const T {}
    |      ----- ^ inherent impl for this type
@@ -18,5 +18,18 @@ LL | impl const T {}
    |
    = note: only trait implementations may be annotated with `const`
 
-error: aborting due to 2 previous errors
+error[E0207]: the effect parameter `host` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/inherent-impl.rs:8:1
+   |
+LL | impl const S {}
+   | ^^^^^^^^^^^^ unconstrained effect parameter
 
+error[E0207]: the effect parameter `host` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/inherent-impl.rs:12:1
+   |
+LL | impl const T {}
+   | ^^^^^^^^^^^^ unconstrained effect parameter
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0207`.

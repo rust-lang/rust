@@ -1,3 +1,5 @@
+#![feature(effects)]
+
 struct S {
     state: u32,
 }

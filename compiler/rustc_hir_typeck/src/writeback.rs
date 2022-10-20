@@ -801,12 +801,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
     fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
         match self.infcx.fully_resolve(e) {
             Ok(e) => e,
-            Err(_) => {
-                debug!("Resolver::fold_effect: input effect `{e:?}` not fully resolvable");
-                let err = self.report_error(e);
-                self.replaced_with_error = Some(err);
-                self.tcx().effect_error(e.kind)
-            }
+            Err(_) => bug!("Resolver::fold_effect: input effect `{e:?}` not fully resolvable"),
         }
     }
 }

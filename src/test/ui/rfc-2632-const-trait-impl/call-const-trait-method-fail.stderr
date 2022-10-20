@@ -1,14 +1,10 @@
-error[E0277]: the trait bound `u32: ~const Plus` is not satisfied
-  --> $DIR/call-const-trait-method-fail.rs:25:7
+error[E0277]: the trait bound `u32: Plus` is not satisfied
+  --> $DIR/call-const-trait-method-fail.rs:26:7
    |
 LL |     a.plus(b)
-   |       ^^^^ the trait `~const Plus` is not implemented for `u32`
+   |       ^^^^ the trait `Plus` is not implemented for `u32`
    |
-note: the trait `Plus` is implemented for `u32`, but that implementation is not `const`
-  --> $DIR/call-const-trait-method-fail.rs:25:7
-   |
-LL |     a.plus(b)
-   |       ^^^^
+   = help: the trait `Plus` is implemented for `u32`
 
 error: aborting due to previous error
 

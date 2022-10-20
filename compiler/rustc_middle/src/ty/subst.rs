@@ -431,6 +431,16 @@ impl<'tcx> InternalSubsts<'tcx> {
 
     #[inline]
     #[track_caller]
+    pub fn effect_at(&self, i: usize) -> ty::Effect<'tcx> {
+        if let GenericArgKind::Effect(e) = self[i].unpack() {
+            e
+        } else {
+            bug!("expected effect for param #{} in {:?}", i, self);
+        }
+    }
+
+    #[inline]
+    #[track_caller]
     pub fn type_at(&self, i: usize) -> Ty<'tcx> {
         if let GenericArgKind::Type(ty) = self[i].unpack() {
             ty

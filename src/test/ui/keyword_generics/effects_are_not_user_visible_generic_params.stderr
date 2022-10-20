@@ -1,0 +1,17 @@
+error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/effects_are_not_user_visible_generic_params.rs:10:11
+   |
+LL | fn foo<T: Foo<()>>() {}
+   |           ^^^---- help: remove these generics
+   |           |
+   |           expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/effects_are_not_user_visible_generic_params.rs:6:7
+   |
+LL | trait Foo {
+   |       ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

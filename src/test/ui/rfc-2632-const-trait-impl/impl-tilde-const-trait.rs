@@ -1,4 +1,5 @@
 #![feature(const_trait_impl)]
+#![feature(effects)]
 
 struct S;
 trait T {}

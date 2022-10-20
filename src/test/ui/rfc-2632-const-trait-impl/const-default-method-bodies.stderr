@@ -1,14 +1,10 @@
-error[E0277]: the trait bound `NonConstImpl: ~const ConstDefaultFn` is not satisfied
-  --> $DIR/const-default-method-bodies.rs:24:18
+error[E0277]: the trait bound `NonConstImpl: ConstDefaultFn` is not satisfied
+  --> $DIR/const-default-method-bodies.rs:25:18
    |
 LL |     NonConstImpl.a();
-   |                  ^ the trait `~const ConstDefaultFn` is not implemented for `NonConstImpl`
+   |                  ^ the trait `ConstDefaultFn` is not implemented for `NonConstImpl`
    |
-note: the trait `ConstDefaultFn` is implemented for `NonConstImpl`, but that implementation is not `const`
-  --> $DIR/const-default-method-bodies.rs:24:5
-   |
-LL |     NonConstImpl.a();
-   |     ^^^^^^^^^^^^
+   = help: the trait `ConstDefaultFn` is implemented for `NonConstImpl`
 
 error: aborting due to previous error
 

@@ -1,4 +1,5 @@
 #![feature(const_trait_impl, min_specialization, rustc_attrs)]
+#![feature(effects)]
 
 #[rustc_specialization_trait]
 #[const_trait]
@@ -17,7 +18,7 @@ impl<T: Default> A for T {
     }
 }
 
-impl<T: Default + ~const Sup> const A for T {
+impl<T: Default + ~const Sup> const A for T { //~ ERROR: conflicting impl
     fn a() -> u32 {
         3
     }
@@ -25,7 +26,6 @@ impl<T: Default + ~const Sup> const A for T {
 
 const fn generic<T: Default>() {
     <T as A>::a();
-    //~^ ERROR: the trait bound `T: ~const Sup` is not satisfied
 }
 
 fn main() {}

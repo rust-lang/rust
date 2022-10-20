@@ -32,7 +32,8 @@ use crate::traits::{Obligation, PredicateObligations};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::infer::unify_key::{
-    ConstVarValue, ConstVariableValue, EffectVarValue, EffectVariableValue,
+    ConstVarValue, ConstVariableValue, EffectVarValue, EffectVariableOrigin,
+    EffectVariableOriginKind, EffectVariableValue,
 };
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::ObligationCause;
@@ -202,13 +203,15 @@ impl<'tcx> InferCtxt<'tcx> {
         let a = self.shallow_resolve(a);
         let b = self.shallow_resolve(b);
 
+        let a_is_expected = relation.a_is_expected();
+
         match (a.val, b.val) {
             (
                 ty::EffectValue::Infer(InferEffect::Var(a_vid)),
                 ty::EffectValue::Infer(InferEffect::Var(b_vid)),
             ) => {
                 self.inner.borrow_mut().effect_unification_table().union(a_vid, b_vid);
-                return Ok(a);
+                Ok(a)
             }
 
             // All other cases of inference with other variables are errors.
@@ -216,10 +219,15 @@ impl<'tcx> InferCtxt<'tcx> {
             | (ty::EffectValue::Infer(_), ty::EffectValue::Infer(InferEffect::Var(_))) => {
                 bug!("tried to combine Effect::Infer/Effect::Infer(InferEffect::Var)")
             }
-            _ => {}
-        }
 
-        ty::relate::super_relate_effect(relation, a, b)
+            (ty::EffectValue::Infer(InferEffect::Var(vid)), _) => {
+                self.unify_effect_variable(relation.param_env(), vid, b, a_is_expected)
+            }
+            (_, ty::EffectValue::Infer(InferEffect::Var(vid))) => {
+                self.unify_effect_variable(relation.param_env(), vid, a, !a_is_expected)
+            }
+            _ => ty::relate::super_relate_effect(relation, a, b),
+        }
     }
 
     /// Unifies the const variable `target_vid` with the given constant.
@@ -286,6 +294,28 @@ impl<'tcx> InferCtxt<'tcx> {
                     span: DUMMY_SP,
                 },
                 val: ConstVariableValue::Known { value },
+            },
+        );
+        Ok(value)
+    }
+
+    pub(crate) fn unify_effect_variable(
+        &self,
+        _param_env: ty::ParamEnv<'tcx>,
+        target_vid: ty::EffectVid<'tcx>,
+        value: ty::Effect<'tcx>,
+        _vid_is_expected: bool,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        self.inner.borrow_mut().effect_unification_table().union_value(
+            target_vid,
+            EffectVarValue {
+                origin: EffectVariableOrigin {
+                    kind: EffectVariableOriginKind::EffectInference,
+                    // FIXME: pick something better from the type relation
+                    span: DUMMY_SP,
+                    effect_kind: value.kind,
+                },
+                val: EffectVariableValue::Known { value },
             },
         );
         Ok(value)

@@ -3,7 +3,9 @@ use super::{FixupError, FixupResult, InferCtxt, Span};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
-use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{
+    self, Const, InferConst, InferEffect, Ty, TyCtxt, TypeFoldable, TypeVisitable,
+};
 
 use std::ops::ControlFlow;
 
@@ -275,5 +277,19 @@ impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
             }
             c.try_super_fold_with(self)
         }
+    }
+
+    fn try_fold_effect(&mut self, e: ty::Effect<'tcx>) -> Result<ty::Effect<'tcx>, Self::Error> {
+        let e = self.infcx.shallow_resolve(e);
+        match e.val {
+            ty::EffectValue::Infer(InferEffect::Var(vid)) => {
+                bug!("unresolved inference effect: {vid:?}");
+            }
+            ty::EffectValue::Infer(InferEffect::Fresh(_)) => {
+                bug!("Unexpected const in full const resolver: {:?}", e);
+            }
+            _ => {}
+        }
+        e.try_super_fold_with(self)
     }
 }

@@ -3,8 +3,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, EarlyBinder, GeneratorSubsts, Ty, TyCtxt};
+use rustc_middle::ty::{DefIdTree, InternalSubsts};
 use rustc_target::abi::VariantIdx;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -363,7 +363,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         // we must subst the self_ty because it's
         // otherwise going to be TySelf and we can't index
         // or access fields of a Place of type TySelf.
-        let sig = tcx.bound_fn_sig(def_id).subst(tcx, &[self_ty.into()]);
+        let substs = tcx.mk_substs([self_ty.into()].into_iter().chain(tcx.host_effect()));
+        let sig = tcx.bound_fn_sig(def_id).subst(tcx, substs);
         let sig = tcx.erase_late_bound_regions(sig);
         let span = tcx.def_span(def_id);
 
@@ -444,7 +445,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         // `func == Clone::clone(&ty) -> ty`
-        let func_ty = tcx.mk_fn_def(self.def_id, [ty]);
+        let func_ty = tcx.mk_fn_def(self.def_id, [ty.into()].into_iter().chain(tcx.host_effect()));
         let func = Operand::Constant(Box::new(Constant {
             span: self.span,
             user_ty: None,
@@ -589,6 +590,8 @@ fn build_call_shim<'tcx>(
     rcvr_adjustment: Option<Adjustment>,
     call_kind: CallKind<'tcx>,
 ) -> Body<'tcx> {
+    let def_id = instance.def_id();
+
     // `FnPtrShim` contains the fn pointer type that a call shim is being built for - this is used
     // to substitute into the signature of the shim. It is not necessary for users of this
     // MIR body to perform further substitutions (see `InstanceDef::has_polymorphic_mir_body`).
@@ -599,13 +602,13 @@ fn build_call_shim<'tcx>(
 
         // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
         let arg_tup = tcx.mk_tup(untuple_args.iter());
+        let sig_substs = tcx.mk_substs_trait_with_effect(tcx.parent(def_id), [ty, arg_tup], def_id);
 
-        (Some([ty.into(), arg_tup.into()]), Some(untuple_args))
+        (Some(sig_substs), Some(untuple_args))
     } else {
         (None, None)
     };
 
-    let def_id = instance.def_id();
     let sig = tcx.bound_fn_sig(def_id);
     let sig = sig.map_bound(|sig| tcx.erase_late_bound_regions(sig));
 

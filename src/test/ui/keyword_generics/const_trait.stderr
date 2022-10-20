@@ -1,0 +1,120 @@
+error: cannot call `<A as Foo>::bar` because it is not `const`
+  --> $DIR/const_trait.rs:29:5
+   |
+LL | const FOO: () = {
+   |       --- required because of this
+LL |     A::bar();
+   |     ^^^^^^^^
+
+error: cannot call `boo::<A>` because it is not `const`
+  --> $DIR/const_trait.rs:34:5
+   |
+LL | const FOO: () = {
+   |       --- required because of this
+...
+LL |     boo::<A>();
+   |     ^^^^^^^^^^
+
+error: cannot call `<A as Foo>::bar` because it is not `const`
+  --> $DIR/const_trait.rs:39:5
+   |
+LL | static BAR: () = {
+   |        --- required because of this
+LL |     A::bar();
+   |     ^^^^^^^^
+
+error: cannot call `boo::<A>` because it is not `const`
+  --> $DIR/const_trait.rs:44:5
+   |
+LL | static BAR: () = {
+   |        --- required because of this
+...
+LL |     boo::<A>();
+   |     ^^^^^^^^^^
+
+error: cannot call `<A as Foo>::bar` because it is not `const`
+  --> $DIR/const_trait.rs:49:5
+   |
+LL | const fn foo() {
+   |          --- required because of this
+LL |     A::bar();
+   |     ^^^^^^^^
+
+error: cannot call `boo::<A>` because it is not `const`
+  --> $DIR/const_trait.rs:53:5
+   |
+LL | const fn foo() {
+   |          --- required because of this
+...
+LL |     boo::<A>();
+   |     ^^^^^^^^^^
+
+error: cannot call `<T as Foo>::bar` because it is not `const`
+  --> $DIR/const_trait.rs:58:5
+   |
+LL | const fn moo<T: Foo>() {
+   |          --- required because of this
+LL |     T::bar();
+   |     ^^^^^^^^
+
+error: cannot call `<A as Foo>::bar` because it is not `const`
+  --> $DIR/const_trait.rs:75:9
+   |
+LL |       const {
+   |  ___________-
+LL | |         A::bar();
+   | |         ^^^^^^^^
+LL | |         B::bar();
+LL | |         foo();
+...  |
+LL | |         boo::<B>();
+LL | |     };
+   | |_____- required because of this
+
+error: cannot call `boo::<A>` because it is not `const`
+  --> $DIR/const_trait.rs:80:9
+   |
+LL |       const {
+   |  ___________-
+LL | |         A::bar();
+LL | |         B::bar();
+LL | |         foo();
+...  |
+LL | |         boo::<A>();
+   | |         ^^^^^^^^^^
+LL | |         boo::<B>();
+LL | |     };
+   | |_____- required because of this
+
+error: cannot call `<A as Foo>::bar` because it is not `const`
+  --> $DIR/const_trait.rs:85:9
+   |
+LL |       [(); {
+   |  __________-
+LL | |         A::bar();
+   | |         ^^^^^^^^
+LL | |         B::bar();
+LL | |         foo();
+...  |
+LL | |         0
+LL | |     }];
+   | |_____- required because of this
+
+error: cannot call `boo::<A>` because it is not `const`
+  --> $DIR/const_trait.rs:90:9
+   |
+LL |       [(); {
+   |  __________-
+LL | |         A::bar();
+LL | |         B::bar();
+LL | |         foo();
+...  |
+LL | |         boo::<A>();
+   | |         ^^^^^^^^^^
+LL | |         boo::<B>();
+LL | |         0
+LL | |     }];
+   | |_____- required because of this
+
+error: aborting due to 11 previous errors
+

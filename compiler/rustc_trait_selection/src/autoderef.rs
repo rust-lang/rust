@@ -2,6 +2,7 @@ use crate::errors::AutoDerefReachedRecursionLimit;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::NormalizeExt;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
+use hir::CRATE_HIR_ID;
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::TypeVisitable;
@@ -122,8 +123,25 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
+        let deref_trait = tcx.lang_items().deref_trait()?;
+        let ty = ty::GenericArg::from(ty);
+
         // <ty as Deref>
-        let trait_ref = tcx.mk_trait_ref(tcx.lang_items().deref_trait()?, [ty]);
+        let trait_ref = if self.body_id == CRATE_HIR_ID {
+            // The `method_autoderef_steps` doesn't care about details like effects and will just
+            // find all derefs. The steps will be checked again outside the query.
+            tcx.mk_trait_ref(
+                deref_trait,
+                [ty.into()]
+                    .into_iter()
+                    // HACK: allow using deref non-generically in tests with effects on, even
+                    // if libcore doesn't have the effects feature yet.
+                    .chain(tcx.host_effect().filter(|_| tcx.generics_of(deref_trait).count() == 2)),
+            )
+        } else {
+            let context = self.body_id.owner.to_def_id();
+            tcx.mk_trait_ref_with_effect(deref_trait, [ty], context)
+        };
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
 

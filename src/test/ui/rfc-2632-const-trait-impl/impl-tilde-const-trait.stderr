@@ -1,5 +1,5 @@
 error: expected a trait, found type
-  --> $DIR/impl-tilde-const-trait.rs:6:6
+  --> $DIR/impl-tilde-const-trait.rs:7:6
    |
 LL | impl ~const T for S {}
    |      ^^^^^^^^

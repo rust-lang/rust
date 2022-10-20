@@ -383,6 +383,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             span: Span,
             inferred_params: Vec<Span>,
             infer_args: bool,
+            constness: ty::BoundConstness,
         }
 
         impl<'a, 'tcx> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for SubstsForAstPathCtxt<'a, 'tcx> {
@@ -530,12 +531,28 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if infer_args {
                             self.astconv.effect_infer(kind, Some(param), self.span).into()
                         } else {
-                            // We've already errored above about the mismatch.
-                            tcx.effect_error_with_message(
-                                self.span,
-                                "non-inference missing effect args",
-                                kind,
-                            )
+                            // ```rust
+                            // impl Trait for Foo
+                            // ```
+                            // does not introduce any effects, even if the trait is `#[const_trait]`.
+                            // We should pick `Rigid { on: false }` for this case, to help inference
+                            // and trait resolution.
+                            //
+                            // On the other hand
+                            // ```rust
+                            // impl const Trait for Foo
+                            // ```
+                            // introduces an effect, but the caller may choose whether it should be on
+                            // or off.
+                            match (kind, self.constness) {
+                                (ty::EffectKind::Host, ty::BoundConstness::ConstIfConst) => tcx
+                                    .effect_from_context(self.astconv.item_def_id(), kind, || {
+                                        ty::EffectValue::Rigid { on: true }
+                                    }),
+                                (ty::EffectKind::Host, ty::BoundConstness::NotConst) => {
+                                    tcx.mk_effect(ty::EffectValue::Rigid { on: true }, kind)
+                                }
+                            }
                             .into()
                         }
                     }
@@ -550,6 +567,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             generic_args,
             inferred_params: vec![],
             infer_args,
+            constness,
         };
         let substs = Self::create_substs_for_generic_args(
             tcx,
@@ -561,10 +579,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             &mut substs_ctx,
         );
 
-        if let ty::BoundConstness::ConstIfConst = constness
-            && generics.has_self && !tcx.has_attr(def_id, sym::const_trait)
-        {
-            tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span } );
+        if let ty::BoundConstness::ConstIfConst = constness {
+            if tcx.effects() {
+                // Only check the trait itself for constness, not its parent
+                if !generics.params.iter().rev().any(|arg| match arg.kind {
+                    ty::GenericParamDefKind::Effect { kind } => kind == ty::EffectKind::Host,
+                    _ => false,
+                }) {
+                    tcx.sess
+                        .span_err(span, "~const can only be applied to `#[const_trait]` traits");
+                }
+            } else if generics.has_self && !tcx.has_attr(def_id, sym::const_trait) {
+                tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span });
+            }
         }
 
         (substs, arg_count)
@@ -1109,6 +1136,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         ConvertedBindingKind::Equality(ty) => Some(ty.to_string()),
                         _ => None,
                     },
+                    constness,
                 )?
             };
 
@@ -1727,6 +1755,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             assoc_name,
             span,
             || None,
+            ty::BoundConstness::ConstIfConst,
         )
     }
 
@@ -1740,6 +1769,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         assoc_name: Ident,
         span: Span,
         is_equality: impl Fn() -> Option<String>,
+        constness: ty::BoundConstness,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -1750,7 +1780,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .filter(|r| self.trait_defines_associated_const_named(r.def_id(), assoc_name));
 
         let (bound, next_cand) = match (matching_candidates.next(), const_candidates.next()) {
-            (Some(bound), _) => (bound, matching_candidates.next()),
+            (Some(bound), _) => {
+                let next = matching_candidates.next();
+                // Automatically prefer `T: Trait` over `T: ~const Trait` for back compat
+                if let Some(bound) =
+                    next.and_then(|bound2| bound.pick_concrete_effect(bound2, constness))
+                {
+                    (bound, matching_candidates.next())
+                } else {
+                    (bound, next)
+                }
+            }
             (None, Some(bound)) => (bound, const_candidates.next()),
             (None, None) => {
                 let reported = self.complain_about_assoc_type_not_found(
@@ -2013,6 +2053,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     assoc_ident,
                     span,
                     || None,
+                    ty::BoundConstness::ConstIfConst,
                 )?
             }
             (

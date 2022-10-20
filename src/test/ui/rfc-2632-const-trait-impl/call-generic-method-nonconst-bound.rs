@@ -1,5 +1,7 @@
 // check-pass
 
+#![feature(effects)]
+
 struct S;
 
 impl PartialEq for S {

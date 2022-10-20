@@ -1,6 +1,7 @@
 // run-pass
 
 #![feature(const_trait_impl)]
+#![feature(effects)]
 
 #[const_trait]
 trait Bar {

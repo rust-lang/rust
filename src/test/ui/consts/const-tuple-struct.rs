@@ -1,5 +1,7 @@
 // run-pass
 
+#![feature(effects)]
+
 struct Bar(isize, isize);
 
 static X: Bar = Bar(1, 2);

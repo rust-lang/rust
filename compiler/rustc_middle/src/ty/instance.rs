@@ -338,8 +338,13 @@ impl<'tcx> Instance<'tcx> {
             ty::GenericParamDefKind::Const { .. } => {
                 bug!("Instance::mono: {:?} has const parameters", def_id)
             }
-            ty::GenericParamDefKind::Effect { .. } => {
-                bug!("Instance::mono: {:?} has effect parameters", def_id)
+            ty::GenericParamDefKind::Effect { kind } => {
+                // FIXME: this is necessary for `panic` and friends in the monomorphization collector.
+                // Should we take the constness effect from the context or just ignore this because it's only
+                // happening for the panic items anyway, and CTFE handles it properly.
+                match kind {
+                    ty::EffectKind::Host => tcx.effects.host.into(),
+                }
             }
         });
 
@@ -569,7 +574,8 @@ impl<'tcx> Instance<'tcx> {
         let sig =
             tcx.try_normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig).ok()?;
         assert_eq!(sig.inputs().len(), 1);
-        let substs = tcx.mk_substs_trait(self_ty, [sig.inputs()[0].into()]);
+        let substs =
+            tcx.mk_substs_trait_with_effect(fn_once, [self_ty, sig.inputs()[0]], closure_did);
 
         debug!(?self_ty, ?sig);
         Some(Instance { def, substs })

@@ -277,6 +277,7 @@ fn typeck_with_fallback<'tcx>(
         };
 
         fcx.type_inference_fallback();
+        fcx.effects_inference_fallback();
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
@@ -301,6 +302,8 @@ fn typeck_with_fallback<'tcx>(
             fcx.require_type_is_sized(ty, span, code);
         }
 
+        // Run effect fallback again as new effect variables may have been introduced
+        fcx.effects_inference_fallback();
         fcx.select_all_obligations_or_error();
 
         if let None = fcx.infcx.tainted_by_errors() {

@@ -1,4 +1,5 @@
 use crate::ty::{self, Ty, TyCtxt};
+use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::HashStable;
@@ -116,6 +117,8 @@ pub struct OverloadedDeref<'tcx> {
     /// The `Span` associated with the field access or method call
     /// that triggered this overloaded deref.
     pub span: Span,
+    /// The body that decides what effects are inferred.
+    pub context: DefId,
 }
 
 impl<'tcx> OverloadedDeref<'tcx> {
@@ -131,7 +134,10 @@ impl<'tcx> OverloadedDeref<'tcx> {
             .find(|m| m.kind == ty::AssocKind::Fn)
             .unwrap()
             .def_id;
-        tcx.mk_fn_def(method_def_id, [source])
+        tcx.mk_fn_def(
+            method_def_id,
+            tcx.mk_substs_trait_with_effect(trait_def_id, [source], self.context),
+        )
     }
 }
 

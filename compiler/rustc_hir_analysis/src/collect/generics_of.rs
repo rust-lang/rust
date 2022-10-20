@@ -7,8 +7,11 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
-use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+use rustc_span::{
+    sym,
+    symbol::{kw, Symbol},
+};
 
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     use rustc_hir::*;
@@ -164,9 +167,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
 
     let no_generics = hir::Generics::empty();
     let ast_generics = node.generics().unwrap_or(&no_generics);
+    let mut has_constness_effect = false;
     let (opt_self, allow_defaults) = match node {
         Node::Item(item) => {
-            match item.kind {
+            match &item.kind {
                 ItemKind::Trait(..) | ItemKind::TraitAlias(..) => {
                     // Add in the self type parameter.
                     //
@@ -183,6 +187,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         },
                     });
 
+                    has_constness_effect = tcx.has_attr(def_id, rustc_span::sym::const_trait);
+
                     (opt_self, Defaults::Allowed)
                 }
                 ItemKind::TyAlias(..)
@@ -190,6 +196,14 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 | ItemKind::Struct(..)
                 | ItemKind::OpaqueTy(..)
                 | ItemKind::Union(..) => (None, Defaults::Allowed),
+
+                ItemKind::Impl(Impl { constness, .. })
+                | ItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, _, _) => {
+                    if !tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
+                        has_constness_effect = matches!(constness, Constness::Const);
+                    }
+                    (None, Defaults::FutureCompatDisallowed)
+                }
                 _ => (None, Defaults::FutureCompatDisallowed),
             }
         }
@@ -202,8 +216,19 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             (None, Defaults::Deny)
         }
 
+        Node::ImplItem(item) => {
+            match item.kind {
+                ImplItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..) => {
+                    has_constness_effect = matches!(constness, Constness::Const);
+                }
+                _ => {}
+            }
+            (None, Defaults::FutureCompatDisallowed)
+        }
+
         _ => (None, Defaults::FutureCompatDisallowed),
     };
+    let has_constness_effect = has_constness_effect && tcx.effects();
 
     let has_self = opt_self.is_some();
     let mut parent_has_self = false;
@@ -216,7 +241,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         generics.parent_count + generics.params.len()
     });
 
-    let mut params: Vec<_> = Vec::with_capacity(ast_generics.params.len() + has_self as usize);
+    let mut params: Vec<_> = Vec::with_capacity(
+        ast_generics.params.len() + has_self as usize + has_constness_effect as usize,
+    );
 
     if let Some(opt_self) = opt_self {
         params.push(opt_self);
@@ -330,6 +357,16 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
             });
         }
+    }
+
+    if has_constness_effect {
+        params.push(ty::GenericParamDef {
+            index: next_index(),
+            name: Symbol::intern("host"),
+            def_id,
+            pure_wrt_drop: false,
+            kind: ty::GenericParamDefKind::Effect { kind: ty::EffectKind::Host },
+        })
     }
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();

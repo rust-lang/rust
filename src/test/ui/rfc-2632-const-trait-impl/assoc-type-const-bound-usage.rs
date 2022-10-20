@@ -1,5 +1,6 @@
+#![feature(const_trait_impl, effects)]
+
 // check-pass
-#![feature(const_trait_impl)]
 
 #[const_trait]
 trait Foo {

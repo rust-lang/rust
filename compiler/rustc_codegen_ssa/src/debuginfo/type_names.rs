@@ -623,6 +623,9 @@ fn push_generic_params_internal<'tcx>(
             GenericArgKind::Const(ct) => {
                 push_const_param(tcx, ct, output);
             }
+            GenericArgKind::Effect(e) => {
+                push_effect_param(tcx, e, output);
+            }
             other => bug!("Unexpected non-erasable generic: {:?}", other),
         }
 
@@ -632,6 +635,21 @@ fn push_generic_params_internal<'tcx>(
     push_close_angle_bracket(cpp_like_debuginfo, output);
 
     true
+}
+
+fn push_effect_param<'tcx>(_tcx: TyCtxt<'tcx>, e: ty::Effect<'tcx>, output: &mut String) {
+    match e.kind {
+        ty::EffectKind::Host => match e.val {
+            // nothing to add, the host effect is our default symbol
+            ty::EffectValue::Rigid { on: true } => {}
+            ty::EffectValue::Rigid { on: false } => write!(output, "const").unwrap(),
+            ty::EffectValue::Param { index } => write!(output, "~const<{index}>").unwrap(),
+            ty::EffectValue::Infer(_)
+            | ty::EffectValue::Bound(_, _)
+            | ty::EffectValue::Placeholder(_)
+            | ty::EffectValue::Err(_) => unreachable!(),
+        },
+    };
 }
 
 fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut String) {

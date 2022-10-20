@@ -1,5 +1,5 @@
 error: const bounds must start with `~`
-  --> $DIR/without-tilde.rs:5:13
+  --> $DIR/without-tilde.rs:6:13
    |
 LL | struct S<T: const Tr>;
    |             -^^^^

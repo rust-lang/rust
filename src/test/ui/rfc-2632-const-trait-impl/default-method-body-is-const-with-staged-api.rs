@@ -7,6 +7,7 @@
 
 #![feature(staged_api)]
 #![feature(const_trait_impl)]
+#![feature(effects)]
 #![stable(since = "1", feature = "foo")]
 
 #[const_trait]

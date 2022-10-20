@@ -271,6 +271,22 @@ impl<'tcx> Generics {
         }
     }
 
+    /// Returns the `GenericParamDef` associated with the effect param (if any).
+    pub fn effect_param(
+        &'tcx self,
+        effect_kind: ty::EffectKind,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<&GenericParamDef> {
+        self.params
+            .iter()
+            .rev()
+            .find(|pred| match pred.kind {
+                GenericParamDefKind::Effect { kind } => kind == effect_kind,
+                _ => false,
+            })
+            .or_else(|| tcx.generics_of(self.parent?).effect_param(effect_kind, tcx))
+    }
+
     /// Returns `true` if `params` has `impl Trait`.
     pub fn has_impl_trait(&'tcx self) -> bool {
         self.params.iter().any(|param| {
