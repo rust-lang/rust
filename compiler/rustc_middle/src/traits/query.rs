@@ -116,10 +116,22 @@ pub enum NoSolutionOrAmbiguous {
 }
 
 impl NoSolutionOrAmbiguous {
+    // Expect unambiguous errors only
     pub fn expect_unambiguous(self) -> NoSolution {
         match self {
             NoSolutionOrAmbiguous::NoSolution => NoSolution,
             NoSolutionOrAmbiguous::Ambiguous => bug!("unexpected ambiguity"),
+        }
+    }
+
+    /// Delay an ambiguity as a `delay_span_bug`.
+    pub fn delay_ambiguous(self, tcx: TyCtxt<'_>, span: Span) -> NoSolution {
+        match self {
+            NoSolutionOrAmbiguous::NoSolution => NoSolution,
+            NoSolutionOrAmbiguous::Ambiguous => {
+                tcx.sess.delay_span_bug(span, "unexpected ambiguity");
+                NoSolution
+            }
         }
     }
 }
