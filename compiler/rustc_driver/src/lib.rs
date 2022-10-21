@@ -367,6 +367,13 @@ fn run_compiler(
                 return early_exit();
             }
 
+            // We need to get at least far before we have even a hope of generating a binary.
+            // FIXME: is that true? maybe we can ignore unresolved locals in dead code and that sort of thing
+            // That might require making name-resolution incremental, though.
+            if !sess.opts.unstable_opts.borrowck_unreachable {
+                return queries.linker().map(Some);
+            }
+
             queries.global_ctxt()?;
 
             if sess.opts.unstable_opts.no_analysis {

@@ -1311,6 +1311,8 @@ options! {
         (default: no)"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
+    borrowck_unreachable: bool = (true, parse_bool, [TRACKED],
+        "force borrowck to run even on functions that are never used"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
         "set the optimization fuel quota for a crate"),
     function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
