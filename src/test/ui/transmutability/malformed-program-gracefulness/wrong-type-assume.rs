@@ -24,10 +24,6 @@ mod assert {
             Src,
             Context,
             { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
-            //~^ ERROR E0080
-            //~| ERROR E0080
-            //~| ERROR E0080
-            //~| ERROR E0080
         >,
     {}
 

@@ -7,6 +7,8 @@ LL |     pub bar: Vec<i32>ö
 error: expected `:`, found `}`
   --> $DIR/issue-68000-unicode-ident-after-missing-comma.rs:4:1
    |
+LL | pub struct Foo {
+   |            --- while parsing this struct
 LL |     pub bar: Vec<i32>ö
    |                       - expected `:`
 LL |

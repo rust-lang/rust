@@ -4,12 +4,12 @@ error: declaration of a `no_mangle` function
 LL | #[no_mangle] fn foo() {}
    | ^^^^^^^^^^^^
    |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 note: the lint level is defined here
   --> $DIR/lint-unsafe-code.rs:3:9
    |
 LL | #![deny(unsafe_code)]
    |         ^^^^^^^^^^^
-   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: declaration of a `no_mangle` static
   --> $DIR/lint-unsafe-code.rs:32:1

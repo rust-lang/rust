@@ -1,7 +1,7 @@
 use super::{
     ObligationCauseCode, OnUnimplementedDirective, OnUnimplementedNote, PredicateObligation,
 };
-use crate::infer::InferCtxt;
+use crate::infer::error_reporting::TypeErrCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::SubstsRef;
@@ -11,7 +11,7 @@ use std::iter;
 
 use super::InferCtxtPrivExt;
 
-pub trait InferCtxtExt<'tcx> {
+pub trait TypeErrCtxtExt<'tcx> {
     /*private*/
     fn impl_similar_to(
         &self,
@@ -29,7 +29,7 @@ pub trait InferCtxtExt<'tcx> {
     ) -> OnUnimplementedNote;
 }
 
-impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
+impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn impl_similar_to(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
@@ -162,6 +162,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         if let Some(k) = obligation.cause.span.desugaring_kind() {
             flags.push((sym::from_desugaring, None));
             flags.push((sym::from_desugaring, Some(format!("{:?}", k))));
+        }
+
+        if let ObligationCauseCode::MainFunctionType = obligation.cause.code() {
+            flags.push((sym::cause, Some("MainFunctionType".to_string())));
         }
 
         // Add all types without trimmed paths.

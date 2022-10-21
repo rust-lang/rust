@@ -1,4 +1,5 @@
 #![deny(clippy::fallible_impl_from)]
+#![allow(clippy::uninlined_format_args)]
 
 // docs example
 struct Foo(i32);

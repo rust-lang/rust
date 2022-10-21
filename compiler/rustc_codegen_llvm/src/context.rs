@@ -154,6 +154,11 @@ pub unsafe fn create_module<'ll>(
             target_data_layout = target_data_layout.replace("-p10:8:8-p20:8:8", "");
         }
     }
+    if llvm_version < (16, 0, 0) {
+        if sess.target.arch == "s390x" {
+            target_data_layout = target_data_layout.replace("-v128:64", "");
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.is_builtin {
@@ -453,7 +458,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         self.coverage_cx.as_ref()
     }
 
-    fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
+    pub(crate) fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
         let section = cstr!("llvm.metadata");
         let array = self.const_array(self.type_ptr_to(self.type_i8()), values);
 
@@ -551,14 +556,6 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.codegen_unit
     }
 
-    fn used_statics(&self) -> &RefCell<Vec<&'ll Value>> {
-        &self.used_statics
-    }
-
-    fn compiler_used_statics(&self) -> &RefCell<Vec<&'ll Value>> {
-        &self.compiler_used_statics
-    }
-
     fn set_frame_pointer_type(&self, llfn: &'ll Value) {
         if let Some(attr) = attributes::frame_pointer_type_attr(self) {
             attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[attr]);
@@ -570,17 +567,6 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         attrs.push(attributes::target_cpu_attr(self));
         attrs.extend(attributes::tune_cpu_attr(self));
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
-    }
-
-    fn create_used_variable(&self) {
-        self.create_used_variable_impl(cstr!("llvm.used"), &*self.used_statics.borrow());
-    }
-
-    fn create_compiler_used_variable(&self) {
-        self.create_used_variable_impl(
-            cstr!("llvm.compiler.used"),
-            &*self.compiler_used_statics.borrow(),
-        );
     }
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {

@@ -1,14 +1,14 @@
-error[E0700]: hidden type for `Opaque(DefId(0:11 ~ impl_trait_captures[1afc]::foo::{opaque#0}), [ReStatic, T, ReEarlyBound(0, 'a)])` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `Opaque(DefId(0:13 ~ impl_trait_captures[1afc]::foo::{opaque#0}), [ReStatic, T, ReEarlyBound(0, 'a)])` captures lifetime that does not appear in bounds
   --> $DIR/impl-trait-captures.rs:11:5
    |
 LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
-   |                  -- hidden type `&ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrNamed(DefId(0:13 ~ impl_trait_captures[1afc]::foo::'_), '_)) T` captures the anonymous lifetime defined here
+   |                  -- hidden type `&ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[1afc]::foo::'_), '_)) T` captures the anonymous lifetime defined here
 LL |     x
    |     ^
    |
-help: to declare that the `impl Trait` captures `ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrNamed(DefId(0:13 ~ impl_trait_captures[1afc]::foo::'_), '_))`, you can add an explicit `ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrNamed(DefId(0:13 ~ impl_trait_captures[1afc]::foo::'_), '_))` lifetime bound
+help: to declare that the `impl Trait` captures `ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[1afc]::foo::'_), '_))`, you can add an explicit `ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[1afc]::foo::'_), '_))` lifetime bound
    |
-LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrNamed(DefId(0:13 ~ impl_trait_captures[1afc]::foo::'_), '_)) {
+LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[1afc]::foo::'_), '_)) {
    |                                      ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error

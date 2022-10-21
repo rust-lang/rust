@@ -8,6 +8,10 @@ LL |     println!("{}", x);
    |                    ^ `x` used here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let x: i32 = 0;
+   |                +++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/issue-24267-flow-exit.rs:18:20
@@ -19,6 +23,10 @@ LL |     println!("{}", x);
    |                    ^ `x` used here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider assigning a value
+   |
+LL |     let x: i32 = 0;
+   |                +++
 
 error: aborting due to 2 previous errors
 

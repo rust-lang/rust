@@ -17,6 +17,7 @@ use crate::MemFlags;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
+use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Abi, Align, Scalar, Size, WrappingRange};
 use rustc_target::spec::HasTargetSpec;
 
@@ -71,6 +72,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn invoke(
         &mut self,
         llty: Self::Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Self::Value,
         args: &[Self::Value],
         then: Self::BasicBlock,
@@ -133,8 +135,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: Scalar) -> Self::Value;
 
     fn alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
-    fn dynamic_alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
-    fn array_alloca(&mut self, ty: Self::Type, len: Self::Value, align: Align) -> Self::Value;
+    fn byte_array_alloca(&mut self, len: Self::Value, align: Align) -> Self::Value;
 
     fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
     fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
@@ -320,6 +321,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn call(
         &mut self,
         llty: Self::Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,

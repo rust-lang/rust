@@ -74,7 +74,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 this.source_info(then_expr.span)
                             };
                             let (then_block, else_block) =
-                                this.in_if_then_scope(condition_scope, |this| {
+                                this.in_if_then_scope(condition_scope, then_expr.span, |this| {
                                     let then_blk = unpack!(this.then_else_break(
                                         block,
                                         &this.thir[cond],
@@ -107,7 +107,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Let { expr, ref pat } => {
                 let scope = this.local_scope();
-                let (true_block, false_block) = this.in_if_then_scope(scope, |this| {
+                let (true_block, false_block) = this.in_if_then_scope(scope, expr_span, |this| {
                     this.lower_let_expr(block, &this.thir[expr], pat, scope, None, expr_span)
                 });
 

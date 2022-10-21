@@ -23,6 +23,7 @@ pub fn expand_deriving_rustc_decodable(
     let trait_def = TraitDef {
         span,
         path: Path::new_(vec![krate, sym::Decodable], vec![], PathKind::Global),
+        skip_path_as_bound: false,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         supports_unions: false,

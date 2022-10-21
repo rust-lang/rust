@@ -17,7 +17,7 @@ use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, Switc
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::{build_session, getopts, DiagnosticOutput, Session};
+use rustc_session::{build_session, getopts, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::SourceFileHashAlgorithm;
@@ -40,16 +40,7 @@ fn build_session_options_and_crate_config(matches: getopts::Matches) -> (Options
 fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
     let registry = registry::Registry::new(&[]);
     let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-    let sess = build_session(
-        sessopts,
-        None,
-        None,
-        registry,
-        DiagnosticOutput::Default,
-        Default::default(),
-        None,
-        None,
-    );
+    let sess = build_session(sessopts, None, None, registry, Default::default(), None, None);
     (sess, cfg)
 }
 
@@ -540,7 +531,7 @@ fn test_codegen_options_tracking_hash() {
     }
 
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
-    // This list is in alphabetical order.
+    // tidy-alphabetical-start
     untracked!(ar, String::from("abc"));
     untracked!(codegen_units, Some(42));
     untracked!(default_linker_libraries, true);
@@ -556,6 +547,7 @@ fn test_codegen_options_tracking_hash() {
     untracked!(rpath, true);
     untracked!(save_temps, true);
     untracked!(strip, Strip::Debuginfo);
+    // tidy-alphabetical-end
 
     macro_rules! tracked {
         ($name: ident, $non_default_value: expr) => {
@@ -567,7 +559,7 @@ fn test_codegen_options_tracking_hash() {
     }
 
     // Make sure that changing a [TRACKED] option changes the hash.
-    // This list is in alphabetical order.
+    // tidy-alphabetical-start
     tracked!(code_model, Some(CodeModel::Large));
     tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));
@@ -577,8 +569,8 @@ fn test_codegen_options_tracking_hash() {
     tracked!(force_unwind_tables, Some(true));
     tracked!(inline_threshold, Some(0xf007ba11));
     tracked!(instrument_coverage, Some(InstrumentCoverage::All));
-    tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
     tracked!(link_dead_code, Some(true));
+    tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
     tracked!(llvm_args, vec![String::from("1"), String::from("2")]);
     tracked!(lto, LtoCli::Fat);
     tracked!(metadata, vec![String::from("A"), String::from("B")]);
@@ -599,6 +591,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
     tracked!(target_cpu, Some(String::from("abc")));
     tracked!(target_feature, String::from("all the features, all of them"));
+    // tidy-alphabetical-end
 }
 
 #[test]
@@ -619,12 +612,13 @@ fn test_top_level_options_tracked_no_crate() {
     }
 
     // Make sure that changing a [TRACKED_NO_CRATE_HASH] option leaves the crate hash unchanged but changes the incremental hash.
-    // This list is in alphabetical order.
-    tracked!(remap_path_prefix, vec![("/home/bors/rust".into(), "src".into())]);
+    // tidy-alphabetical-start
     tracked!(
         real_rust_source_base_dir,
         Some("/home/bors/rust/.rustup/toolchains/nightly/lib/rustlib/src/rust".into())
     );
+    tracked!(remap_path_prefix, vec![("/home/bors/rust".into(), "src".into())]);
+    // tidy-alphabetical-end
 }
 
 #[test]
@@ -641,7 +635,7 @@ fn test_unstable_options_tracking_hash() {
     }
 
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
-    // This list is in alphabetical order.
+    // tidy-alphabetical-start
     untracked!(assert_incr_state, Some(String::from("loaded")));
     untracked!(deduplicate_diagnostics, false);
     untracked!(dep_tasks, true);
@@ -678,12 +672,12 @@ fn test_unstable_options_tracking_hash() {
     untracked!(perf_stats, true);
     // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
     untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
-    untracked!(profile_closures, true);
     untracked!(print_llvm_passes, true);
     untracked!(print_mono_items, Some(String::from("abc")));
     untracked!(print_type_sizes, true);
     untracked!(proc_macro_backtrace, true);
     untracked!(proc_macro_execution_strategy, ProcMacroExecutionStrategy::CrossThread);
+    untracked!(profile_closures, true);
     untracked!(query_dep_graph, true);
     untracked!(save_analysis, true);
     untracked!(self_profile, SwitchWithOptPath::Enabled(None));
@@ -692,7 +686,6 @@ fn test_unstable_options_tracking_hash() {
     untracked!(span_free_formats, true);
     untracked!(temps_dir, Some(String::from("abc")));
     untracked!(threads, 99);
-    untracked!(time, true);
     untracked!(time_llvm_passes, true);
     untracked!(time_passes, true);
     untracked!(trace_macros, true);
@@ -702,6 +695,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(unstable_options, true);
     untracked!(validate_mir, true);
     untracked!(verbose, true);
+    // tidy-alphabetical-end
 
     macro_rules! tracked {
         ($name: ident, $non_default_value: expr) => {
@@ -713,7 +707,7 @@ fn test_unstable_options_tracking_hash() {
     }
 
     // Make sure that changing a [TRACKED] option changes the hash.
-    // This list is in alphabetical order.
+    // tidy-alphabetical-start
     tracked!(allow_features, Some(vec![String::from("lang_items")]));
     tracked!(always_encode_mir, true);
     tracked!(asm_comments, true);
@@ -734,10 +728,10 @@ fn test_unstable_options_tracking_hash() {
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);
     tracked!(drop_tracking, true);
-    tracked!(export_executable_symbols, true);
     tracked!(dual_proc_macros, true);
     tracked!(dwarf_version, Some(5));
     tracked!(emit_thin_lto, false);
+    tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
@@ -758,11 +752,10 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, Some(true));
-    tracked!(new_llvm_pass_manager, Some(true));
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
-    tracked!(no_unique_section_names, true);
     tracked!(no_profiler_runtime, true);
+    tracked!(no_unique_section_names, true);
     tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
     tracked!(packed_bundled_libs, true);
@@ -775,8 +768,8 @@ fn test_unstable_options_tracking_hash() {
     tracked!(print_fuel, Some("abc".to_string()));
     tracked!(profile, true);
     tracked!(profile_emit, Some(PathBuf::from("abc")));
-    tracked!(profiler_runtime, "abc".to_string());
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
+    tracked!(profiler_runtime, "abc".to_string());
     tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
@@ -805,6 +798,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(verify_llvm_ir, true);
     tracked!(virtual_function_elimination, true);
     tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));
+    // tidy-alphabetical-end
 
     macro_rules! tracked_no_crate_hash {
         ($name: ident, $non_default_value: expr) => {

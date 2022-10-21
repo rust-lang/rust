@@ -12,8 +12,6 @@ chalk-ir = "0.80.0"
 either = "1.5.0"
 gsgdt = "0.1.2"
 polonius-engine = "0.13.0"
-rand = "0.8.4"
-rand_xoshiro = "0.6.0"
 rustc_apfloat = { path = "../rustc_apfloat" }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }

@@ -1,5 +1,5 @@
 #![feature(type_alias_impl_trait)]
-// check-pass
+
 fn main() {}
 
 // two definitions with different types
@@ -9,7 +9,7 @@ fn foo() -> Foo {
     ""
 }
 
-fn bar() -> Foo {
+fn bar() -> Foo { //~ ERROR: concrete type differs from previous defining opaque type use
     panic!()
 }
 

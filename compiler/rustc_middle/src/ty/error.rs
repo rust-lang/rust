@@ -861,7 +861,7 @@ fn foo(&self) -> Self::T { String::new() }
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let parent_id = self.hir().get_parent_item(hir_id);
-        let item = self.hir().find_by_def_id(parent_id);
+        let item = self.hir().find_by_def_id(parent_id.def_id);
         debug!("expected_projection parent item {:?}", item);
         match item {
             Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. })) => {

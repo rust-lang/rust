@@ -143,7 +143,7 @@ impl GlobalState {
                             project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
                                 cargo_config.target.as_deref(),
-                                &cargo_config,
+                                &cargo_config.extra_env,
                             )
                         }
                     })
@@ -306,41 +306,50 @@ impl GlobalState {
             format!("rust-analyzer-proc-macro-srv{}", std::env::consts::EXE_SUFFIX);
 
         if self.proc_macro_clients.is_empty() {
-            if let Some((path, args)) = self.config.proc_macro_srv() {
+            if let Some((path, path_manually_set)) = self.config.proc_macro_srv() {
                 tracing::info!("Spawning proc-macro servers");
                 self.proc_macro_clients = self
                     .workspaces
                     .iter()
                     .map(|ws| {
-                        let mut args = args.clone();
-                        let mut path = path.clone();
-
-                        if let ProjectWorkspace::Cargo { sysroot, .. }
-                        | ProjectWorkspace::Json { sysroot, .. } = ws
-                        {
-                            tracing::debug!("Found a cargo workspace...");
-                            if let Some(sysroot) = sysroot.as_ref() {
-                                tracing::debug!("Found a cargo workspace with a sysroot...");
-                                let server_path =
-                                    sysroot.root().join("libexec").join(&standalone_server_name);
-                                if std::fs::metadata(&server_path).is_ok() {
-                                    tracing::debug!(
-                                        "And the server exists at {}",
-                                        server_path.display()
-                                    );
-                                    path = server_path;
-                                    args = vec![];
-                                } else {
-                                    tracing::debug!(
-                                        "And the server does not exist at {}",
-                                        server_path.display()
-                                    );
+                        let (path, args) = if path_manually_set {
+                            tracing::debug!(
+                                "Pro-macro server path explicitly set: {}",
+                                path.display()
+                            );
+                            (path.clone(), vec![])
+                        } else {
+                            let mut sysroot_server = None;
+                            if let ProjectWorkspace::Cargo { sysroot, .. }
+                            | ProjectWorkspace::Json { sysroot, .. } = ws
+                            {
+                                if let Some(sysroot) = sysroot.as_ref() {
+                                    let server_path = sysroot
+                                        .root()
+                                        .join("libexec")
+                                        .join(&standalone_server_name);
+                                    if std::fs::metadata(&server_path).is_ok() {
+                                        tracing::debug!(
+                                            "Sysroot proc-macro server exists at {}",
+                                            server_path.display()
+                                        );
+                                        sysroot_server = Some(server_path);
+                                    } else {
+                                        tracing::debug!(
+                                            "Sysroot proc-macro server does not exist at {}",
+                                            server_path.display()
+                                        );
+                                    }
                                 }
                             }
-                        }
+                            sysroot_server.map_or_else(
+                                || (path.clone(), vec!["proc-macro".to_owned()]),
+                                |path| (path, vec![]),
+                            )
+                        };
 
                         tracing::info!(?args, "Using proc-macro server at {}", path.display(),);
-                        ProcMacroServer::spawn(path.clone(), args.clone()).map_err(|err| {
+                        ProcMacroServer::spawn(path.clone(), args).map_err(|err| {
                             let error = format!(
                                 "Failed to run proc-macro server from path {}, error: {:?}",
                                 path.display(),
@@ -402,7 +411,7 @@ impl GlobalState {
                 crate_graph.extend(ws.to_crate_graph(
                     &mut load_proc_macro,
                     &mut load,
-                    &self.config.cargo(),
+                    &self.config.cargo().extra_env,
                 ));
             }
             crate_graph

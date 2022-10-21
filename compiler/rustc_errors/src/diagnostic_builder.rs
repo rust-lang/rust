@@ -5,6 +5,7 @@ use crate::{
 };
 use crate::{Handler, Level, MultiSpan, StashKey};
 use rustc_lint_defs::Applicability;
+use rustc_span::source_map::Spanned;
 
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -21,6 +22,18 @@ pub trait IntoDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `Handler`.
     #[must_use]
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, T>;
+}
+
+impl<'a, T, E> IntoDiagnostic<'a, E> for Spanned<T>
+where
+    T: IntoDiagnostic<'a, E>,
+    E: EmissionGuarantee,
+{
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, E> {
+        let mut diag = self.node.into_diagnostic(handler);
+        diag.set_span(self.span);
+        diag
+    }
 }
 
 /// Used for emitting structured error messages and other diagnostic information.
@@ -239,6 +252,56 @@ impl EmissionGuarantee for () {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
         DiagnosticBuilder::new(handler, Level::Warning(None), msg)
+    }
+}
+
+/// Marker type which enables implementation of `create_note` and `emit_note` functions for
+/// note-without-error struct diagnostics.
+#[derive(Copy, Clone)]
+pub struct Noted;
+
+impl<'a> DiagnosticBuilder<'a, Noted> {
+    /// Convenience function for internal use, clients should use one of the
+    /// `struct_*` methods on [`Handler`].
+    pub(crate) fn new_note(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
+        let diagnostic = Diagnostic::new_with_code(Level::Note, None, message);
+        Self::new_diagnostic_note(handler, diagnostic)
+    }
+
+    /// Creates a new `DiagnosticBuilder` with an already constructed
+    /// diagnostic.
+    pub(crate) fn new_diagnostic_note(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
+        debug!("Created new diagnostic");
+        Self {
+            inner: DiagnosticBuilderInner {
+                state: DiagnosticBuilderState::Emittable(handler),
+                diagnostic: Box::new(diagnostic),
+            },
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl EmissionGuarantee for Noted {
+    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
+        match db.inner.state {
+            // First `.emit()` call, the `&Handler` is still available.
+            DiagnosticBuilderState::Emittable(handler) => {
+                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
+                handler.emit_diagnostic(&mut db.inner.diagnostic);
+            }
+            // `.emit()` was previously called, disallowed from repeating it.
+            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
+        }
+
+        Noted
+    }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new_note(handler, msg)
     }
 }
 
@@ -628,28 +691,4 @@ macro_rules! struct_span_err {
 #[macro_export]
 macro_rules! error_code {
     ($code:ident) => {{ $crate::DiagnosticId::Error(stringify!($code).to_owned()) }};
-}
-
-/// Wrapper around a `DiagnosticBuilder` for creating lints.
-pub struct LintDiagnosticBuilder<'a, G: EmissionGuarantee>(DiagnosticBuilder<'a, G>);
-
-impl<'a, G: EmissionGuarantee> LintDiagnosticBuilder<'a, G> {
-    #[rustc_lint_diagnostics]
-    /// Return the inner `DiagnosticBuilder`, first setting the primary message to `msg`.
-    pub fn build(mut self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'a, G> {
-        self.0.set_primary_message(msg);
-        self.0.set_is_lint();
-        self.0
-    }
-
-    /// Create a `LintDiagnosticBuilder` from some existing `DiagnosticBuilder`.
-    pub fn new(err: DiagnosticBuilder<'a, G>) -> LintDiagnosticBuilder<'a, G> {
-        LintDiagnosticBuilder(err)
-    }
-}
-
-impl<'a> LintDiagnosticBuilder<'a, ErrorGuaranteed> {
-    pub fn forget_guarantee(self) -> LintDiagnosticBuilder<'a, ()> {
-        LintDiagnosticBuilder(self.0.forget_guarantee())
-    }
 }

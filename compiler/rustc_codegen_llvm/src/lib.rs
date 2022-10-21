@@ -7,7 +7,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(hash_raw_entry)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(extern_types)]
 #![feature(once_cell)]
 #![feature(iter_intersperse)]
@@ -132,12 +131,6 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) -> TargetMachineFactoryFn<Self> {
         back::write::target_machine_factory(sess, optlvl, target_features)
     }
-    fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
-        llvm_util::target_cpu(sess)
-    }
-    fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str> {
-        llvm_util::tune_cpu(sess)
-    }
 
     fn spawn_thread<F, T>(time_trace: bool, f: F) -> std::thread::JoinHandle<T>
     where
@@ -171,7 +164,6 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
 impl WriteBackendMethods for LlvmCodegenBackend {
     type Module = ModuleLlvm;
     type ModuleBuffer = back::lto::ModuleBuffer;
-    type Context = llvm::Context;
     type TargetMachine = &'static mut llvm::TargetMachine;
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;

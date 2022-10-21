@@ -55,7 +55,7 @@ function blurHandler(event, parentElem, hideCallback) {
 function setMobileTopbar() {
     // FIXME: It would be nicer to generate this text content directly in HTML,
     // but with the current code it's hard to get the right information in the right place.
-    const mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
+    const mobileLocationTitle = document.querySelector(".mobile-topbar h2");
     const locationTitle = document.querySelector(".sidebar h2.location");
     if (mobileLocationTitle && locationTitle) {
         mobileLocationTitle.innerHTML = locationTitle.innerHTML;
@@ -192,6 +192,8 @@ function loadCss(cssFileName) {
 }
 
 (function() {
+    const isHelpPage = window.location.pathname.endsWith("/help.html");
+
     function loadScript(url) {
         const script = document.createElement("script");
         script.src = url;
@@ -199,6 +201,9 @@ function loadCss(cssFileName) {
     }
 
     getSettingsButton().onclick = event => {
+        if (event.ctrlKey || event.altKey || event.metaKey) {
+            return;
+        }
         addClass(getSettingsButton(), "rotate");
         event.preventDefault();
         // Sending request for the CSS and the JS files at the same time so it will
@@ -404,9 +409,12 @@ function loadCss(cssFileName) {
                 break;
 
             case "+":
+                ev.preventDefault();
+                expandAllDocs();
+                break;
             case "-":
                 ev.preventDefault();
-                toggleAllDocs();
+                collapseAllDocs();
                 break;
 
             case "?":
@@ -442,18 +450,15 @@ function loadCss(cssFileName) {
                 return;
             }
 
-            const div = document.createElement("div");
-            div.className = "block " + shortty;
             const h3 = document.createElement("h3");
             h3.innerHTML = `<a href="index.html#${id}">${longty}</a>`;
-            div.appendChild(h3);
             const ul = document.createElement("ul");
+            ul.className = "block " + shortty;
 
             for (const item of filtered) {
                 const name = item[0];
                 const desc = item[1]; // can be null
 
-                let klass = shortty;
                 let path;
                 if (shortty === "mod") {
                     path = name + "/index.html";
@@ -461,20 +466,19 @@ function loadCss(cssFileName) {
                     path = shortty + "." + name + ".html";
                 }
                 const current_page = document.location.href.split("/").pop();
-                if (path === current_page) {
-                    klass += " current";
-                }
                 const link = document.createElement("a");
                 link.href = path;
                 link.title = desc;
-                link.className = klass;
+                if (path === current_page) {
+                    link.className = "current";
+                }
                 link.textContent = name;
                 const li = document.createElement("li");
                 li.appendChild(link);
                 ul.appendChild(li);
             }
-            div.appendChild(ul);
-            sidebar.appendChild(div);
+            sidebar.appendChild(h3);
+            sidebar.appendChild(ul);
         }
 
         if (sidebar) {
@@ -522,7 +526,7 @@ function loadCss(cssFileName) {
         }
 
         let currentNbImpls = implementors.getElementsByClassName("impl").length;
-        const traitName = document.querySelector("h1.fqn > .in-band > .trait").textContent;
+        const traitName = document.querySelector("h1.fqn > .trait").textContent;
         const baseIdName = "impl-" + traitName + "-";
         const libs = Object.getOwnPropertyNames(imp);
         // We don't want to include impls from this JS file, when the HTML already has them.
@@ -555,7 +559,6 @@ function loadCss(cssFileName) {
                 const code = document.createElement("h3");
                 code.innerHTML = struct[TEXT_IDX];
                 addClass(code, "code-header");
-                addClass(code, "in-band");
 
                 onEachLazy(code.getElementsByTagName("a"), elem => {
                     const href = elem.getAttribute("href");
@@ -593,38 +596,52 @@ function loadCss(cssFileName) {
             return;
         }
         // Draw a convenient sidebar of known crates if we have a listing
-        const div = document.createElement("div");
-        div.className = "block crate";
-        div.innerHTML = "<h3>Crates</h3>";
+        const h3 = document.createElement("h3");
+        h3.innerHTML = "Crates";
         const ul = document.createElement("ul");
-        div.appendChild(ul);
+        ul.className = "block crate";
 
         for (const crate of window.ALL_CRATES) {
-            let klass = "crate";
-            if (window.rootPath !== "./" && crate === window.currentCrate) {
-                klass += " current";
-            }
             const link = document.createElement("a");
             link.href = window.rootPath + crate + "/index.html";
-            link.className = klass;
+            if (window.rootPath !== "./" && crate === window.currentCrate) {
+                link.className = "current";
+            }
             link.textContent = crate;
 
             const li = document.createElement("li");
             li.appendChild(link);
             ul.appendChild(li);
         }
-        sidebarElems.appendChild(div);
+        sidebarElems.appendChild(h3);
+        sidebarElems.appendChild(ul);
     }
 
+    function expandAllDocs() {
+        const innerToggle = document.getElementById(toggleAllDocsId);
+        removeClass(innerToggle, "will-expand");
+        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
+            if (!hasClass(e, "type-contents-toggle")) {
+                e.open = true;
+            }
+        });
+        innerToggle.title = "collapse all docs";
+        innerToggle.children[0].innerText = "\u2212"; // "\u2212" is "−" minus sign
+    }
 
-    function labelForToggleButton(sectionIsCollapsed) {
-        if (sectionIsCollapsed) {
-            // button will expand the section
-            return "+";
-        }
-        // button will collapse the section
-        // note that this text is also set in the HTML template in ../render/mod.rs
-        return "\u2212"; // "\u2212" is "−" minus sign
+    function collapseAllDocs() {
+        const innerToggle = document.getElementById(toggleAllDocsId);
+        addClass(innerToggle, "will-expand");
+        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
+            if (e.parentNode.id !== "implementations-list" ||
+                (!hasClass(e, "implementors-toggle") &&
+                 !hasClass(e, "type-contents-toggle"))
+            ) {
+                e.open = false;
+            }
+        });
+        innerToggle.title = "expand all docs";
+        innerToggle.children[0].innerText = "+";
     }
 
     function toggleAllDocs() {
@@ -632,29 +649,11 @@ function loadCss(cssFileName) {
         if (!innerToggle) {
             return;
         }
-        let sectionIsCollapsed = false;
         if (hasClass(innerToggle, "will-expand")) {
-            removeClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
-                if (!hasClass(e, "type-contents-toggle")) {
-                    e.open = true;
-                }
-            });
-            innerToggle.title = "collapse all docs";
+            expandAllDocs();
         } else {
-            addClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
-                if (e.parentNode.id !== "implementations-list" ||
-                    (!hasClass(e, "implementors-toggle") &&
-                     !hasClass(e, "type-contents-toggle"))
-                ) {
-                    e.open = false;
-                }
-            });
-            sectionIsCollapsed = true;
-            innerToggle.title = "expand all docs";
+            collapseAllDocs();
         }
-        innerToggle.children[0].innerText = labelForToggleButton(sectionIsCollapsed);
     }
 
     (function() {
@@ -697,60 +696,95 @@ function loadCss(cssFileName) {
         }
     }());
 
+    window.rustdoc_add_line_numbers_to_examples = () => {
+        onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
+            const parent = x.parentNode;
+            const line_numbers = parent.querySelectorAll(".example-line-numbers");
+            if (line_numbers.length > 0) {
+                return;
+            }
+            const count = x.textContent.split("\n").length;
+            const elems = [];
+            for (let i = 0; i < count; ++i) {
+                elems.push(i + 1);
+            }
+            const node = document.createElement("pre");
+            addClass(node, "example-line-numbers");
+            node.innerHTML = elems.join("\n");
+            parent.insertBefore(node, x);
+        });
+    };
+
+    window.rustdoc_remove_line_numbers_from_examples = () => {
+        onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
+            const parent = x.parentNode;
+            const line_numbers = parent.querySelectorAll(".example-line-numbers");
+            for (const node of line_numbers) {
+                parent.removeChild(node);
+            }
+        });
+    };
+
     (function() {
         // To avoid checking on "rustdoc-line-numbers" value on every loop...
         if (getSettingValue("line-numbers") === "true") {
-            onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
-                const count = x.textContent.split("\n").length;
-                const elems = [];
-                for (let i = 0; i < count; ++i) {
-                    elems.push(i + 1);
-                }
-                const node = document.createElement("pre");
-                addClass(node, "line-number");
-                node.innerHTML = elems.join("\n");
-                x.parentNode.insertBefore(node, x);
-            });
+            window.rustdoc_add_line_numbers_to_examples();
         }
     }());
 
     let oldSidebarScrollPosition = null;
 
-    function showSidebar() {
-        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+    // Scroll locking used both here and in source-script.js
+
+    window.rustdocMobileScrollLock = function() {
+        const mobile_topbar = document.querySelector(".mobile-topbar");
+        if (window.innerWidth <= window.RUSTDOC_MOBILE_BREAKPOINT) {
             // This is to keep the scroll position on mobile.
             oldSidebarScrollPosition = window.scrollY;
             document.body.style.width = `${document.body.offsetWidth}px`;
             document.body.style.position = "fixed";
             document.body.style.top = `-${oldSidebarScrollPosition}px`;
-            document.querySelector(".mobile-topbar").style.top = `${oldSidebarScrollPosition}px`;
-            document.querySelector(".mobile-topbar").style.position = "relative";
+            if (mobile_topbar) {
+                mobile_topbar.style.top = `${oldSidebarScrollPosition}px`;
+                mobile_topbar.style.position = "relative";
+            }
         } else {
             oldSidebarScrollPosition = null;
         }
-        const sidebar = document.getElementsByClassName("sidebar")[0];
-        addClass(sidebar, "shown");
-    }
+    };
 
-    function hideSidebar() {
+    window.rustdocMobileScrollUnlock = function() {
+        const mobile_topbar = document.querySelector(".mobile-topbar");
         if (oldSidebarScrollPosition !== null) {
             // This is to keep the scroll position on mobile.
             document.body.style.width = "";
             document.body.style.position = "";
             document.body.style.top = "";
-            document.querySelector(".mobile-topbar").style.top = "";
-            document.querySelector(".mobile-topbar").style.position = "";
+            if (mobile_topbar) {
+                mobile_topbar.style.top = "";
+                mobile_topbar.style.position = "";
+            }
             // The scroll position is lost when resetting the style, hence why we store it in
             // `oldSidebarScrollPosition`.
             window.scrollTo(0, oldSidebarScrollPosition);
             oldSidebarScrollPosition = null;
         }
+    };
+
+    function showSidebar() {
+        window.rustdocMobileScrollLock();
+        const sidebar = document.getElementsByClassName("sidebar")[0];
+        addClass(sidebar, "shown");
+    }
+
+    function hideSidebar() {
+        window.rustdocMobileScrollUnlock();
         const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
     }
 
     window.addEventListener("resize", () => {
-        if (window.innerWidth >= window.RUSTDOC_MOBILE_BREAKPOINT &&
+        if (window.innerWidth > window.RUSTDOC_MOBILE_BREAKPOINT &&
             oldSidebarScrollPosition !== null) {
             // If the user opens the sidebar in "mobile" mode, and then grows the browser window,
             // we need to switch away from mobile mode and make the main content area scrollable.
@@ -859,7 +893,10 @@ function loadCss(cssFileName) {
         rustdoc_version.appendChild(rustdoc_version_code);
 
         const container = document.createElement("div");
-        container.className = "popover";
+        if (!isHelpPage) {
+            container.className = "popover";
+        }
+        container.id = "help";
         container.style.display = "none";
 
         const side_by_side = document.createElement("div");
@@ -871,15 +908,22 @@ function loadCss(cssFileName) {
         container.appendChild(side_by_side);
         container.appendChild(rustdoc_version);
 
-        const help_button = getHelpButton();
-        help_button.appendChild(container);
+        if (isHelpPage) {
+            const help_section = document.createElement("section");
+            help_section.appendChild(container);
+            document.getElementById("main-content").appendChild(help_section);
+            container.style.display = "block";
+        } else {
+            const help_button = getHelpButton();
+            help_button.appendChild(container);
 
-        container.onblur = helpBlurHandler;
-        container.onclick = event => {
-            event.preventDefault();
-        };
-        help_button.onblur = helpBlurHandler;
-        help_button.children[0].onblur = helpBlurHandler;
+            container.onblur = helpBlurHandler;
+            container.onclick = event => {
+                event.preventDefault();
+            };
+            help_button.onblur = helpBlurHandler;
+            help_button.children[0].onblur = helpBlurHandler;
+        }
 
         return container;
     }
@@ -920,19 +964,43 @@ function loadCss(cssFileName) {
         }
     }
 
-    document.querySelector(`#${HELP_BUTTON_ID} > button`).addEventListener("click", event => {
-        const target = event.target;
-        if (target.tagName !== "BUTTON" || target.parentElement.id !== HELP_BUTTON_ID) {
-            return;
-        }
-        const menu = getHelpMenu(true);
-        const shouldShowHelp = menu.style.display === "none";
-        if (shouldShowHelp) {
-            showHelp();
-        } else {
-            window.hidePopoverMenus();
-        }
-    });
+    if (isHelpPage) {
+        showHelp();
+        document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
+            // Already on the help page, make help button a no-op.
+            const target = event.target;
+            if (target.tagName !== "A" ||
+                target.parentElement.id !== HELP_BUTTON_ID ||
+                event.ctrlKey ||
+                event.altKey ||
+                event.metaKey) {
+                return;
+            }
+            event.preventDefault();
+        });
+    } else {
+        document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
+            // By default, have help button open docs in a popover.
+            // If user clicks with a moderator, though, use default browser behavior,
+            // probably opening in a new window or tab.
+            const target = event.target;
+            if (target.tagName !== "A" ||
+                target.parentElement.id !== HELP_BUTTON_ID ||
+                event.ctrlKey ||
+                event.altKey ||
+                event.metaKey) {
+                return;
+            }
+            event.preventDefault();
+            const menu = getHelpMenu(true);
+            const shouldShowHelp = menu.style.display === "none";
+            if (shouldShowHelp) {
+                showHelp();
+            } else {
+                window.hidePopoverMenus();
+            }
+        });
+    }
 
     setMobileTopbar();
     addSidebarItems();

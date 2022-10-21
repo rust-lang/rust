@@ -4,8 +4,8 @@ error: non-binding let on a synchronization lock
 LL |     let _ = m.lock();
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::let-underscore-lock` implied by `-D warnings`
    = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+   = note: `-D clippy::let-underscore-lock` implied by `-D warnings`
 
 error: non-binding let on a synchronization lock
   --> $DIR/let_underscore_lock.rs:10:5

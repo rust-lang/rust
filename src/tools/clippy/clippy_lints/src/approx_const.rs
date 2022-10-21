@@ -92,7 +92,7 @@ impl ApproxConstant {
                         cx,
                         APPROX_CONSTANT,
                         e.span,
-                        &format!("approximate value of `{}::consts::{}` found", module, &name),
+                        &format!("approximate value of `{module}::consts::{}` found", &name),
                         None,
                         "consider using the constant directly",
                     );
@@ -126,7 +126,7 @@ fn is_approx_const(constant: f64, value: &str, min_digits: usize) -> bool {
         // The value is a truncated constant
         true
     } else {
-        let round_const = format!("{:.*}", value.len() - 2, constant);
+        let round_const = format!("{constant:.*}", value.len() - 2);
         value == round_const
     }
 }

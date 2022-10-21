@@ -35,6 +35,26 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--keyword-link-color: #39afd7;
 	--mod-link-color: #39afd7;
 	--link-color: #39afd7;
+	--sidebar-link-color: #53b1db;
+	--sidebar-current-link-background-color: transparent;
+	--search-result-link-focus-background-color: #3c3c3c;
+	--stab-background-color: #314559;
+	--stab-code-color: #e6e1cf;
+	--search-color: #fff;
+	--code-highlight-kw-color: #ff7733;
+	--code-highlight-kw-2-color: #ff7733;
+	--code-highlight-lifetime-color: #ff7733;
+	--code-highlight-prelude-color: #69f2df;
+	--code-highlight-prelude-val-color: #ff7733;
+	--code-highlight-number-color: #b8cc52;
+	--code-highlight-string-color: #b8cc52;
+	--code-highlight-literal-color: #ff7733;
+	--code-highlight-attribute-color: #e6e1cf;
+	--code-highlight-self-color: #36a3d9;
+	--code-highlight-macro-color: #a37acc;
+	--code-highlight-question-mark-color: #ff9011;
+	--code-highlight-comment-color: #788797;
+	--code-highlight-doc-comment-color: #a1ac88;
 }
 
 .slider {
@@ -50,7 +70,7 @@ input:focus + .slider {
 h1, h2, h3, h4 {
 	color: white;
 }
-h1.fqn  a {
+h1 a {
 	color: #fff;
 }
 h4 {
@@ -85,7 +105,6 @@ pre, .rustdoc.source .example-wrap {
 
 .sidebar .current,
 .sidebar a:hover {
-	background-color: transparent;
 	color: #ffb44c;
 }
 
@@ -93,8 +112,8 @@ pre, .rustdoc.source .example-wrap {
 	color: #ff7733;
 }
 
-.line-numbers span { color: #5c6773; }
-.line-numbers .line-highlighted {
+.src-line-numbers span { color: #5c6773; }
+.src-line-numbers .line-highlighted {
 	color: #708090;
 	background-color: rgba(255, 236, 164, 0.06);
 	padding-right: 4px;
@@ -119,12 +138,6 @@ pre, .rustdoc.source .example-wrap {
 
 .content .item-info::before { color: #ccc; }
 
-.sidebar a { color: #53b1db; }
-.sidebar a.current.type { color: #53b1db; }
-
-pre.rust .comment { color: #788797; }
-pre.rust .doccomment { color: #a1ac88; }
-
 .sidebar h2 a,
 .sidebar h3 a {
 	color: white;
@@ -148,49 +161,18 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg) brightness(113%) contrast(76%);
 }
 
-.search-input {
-	color: #fff;
-}
-
 .module-item .stab,
 .import-item .stab {
 	color: #000;
-}
-
-.stab {
-	color: #c5c5c5;
-	background: #314559 !important;
-}
-
-.stab.portability > code {
-	color: #e6e1cf;
-	background: none;
 }
 
 .result-name .primitive > i, .result-name .keyword > i {
 	color: #788797;
 }
 
-.line-numbers :target { background-color: transparent; }
+.src-line-numbers :target { background-color: transparent; }
 
-/* Code highlighting */
-pre.rust .number, pre.rust .string { color: #b8cc52; }
-pre.rust .kw, pre.rust .kw-2, pre.rust .prelude-ty,
-pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .lifetime { color: #ff7733; }
-pre.rust .macro, pre.rust .macro-nonterminal { color: #a37acc; }
-pre.rust .question-mark {
-	color: #ff9011;
-}
-pre.rust .self {
-	color: #36a3d9;
-	font-style: italic;
-}
-pre.rust .attribute {
-	color: #e6e1cf;
-}
-
-.example-wrap > pre.line-number {
+pre.example-line-numbers {
 	color: #5c67736e;
 	border: none;
 }
@@ -260,52 +242,13 @@ pre.rust .kw {}
 pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val, pre.rust .attribute {}
 pre.rust .kw-2, pre.rust .prelude-ty {}
 
-.search-results a:focus span {}
-a.result-trait:focus {}
-a.result-traitalias:focus {}
-a.result-mod:focus,
-a.result-externcrate:focus {}
-a.result-mod:focus {}
-a.result-externcrate:focus {}
-a.result-enum:focus {}
-a.result-struct:focus {}
-a.result-union:focus {}
-a.result-fn:focus,
-a.result-method:focus,
-a.result-tymethod:focus {}
-a.result-type:focus {}
-a.result-associatedtype:focus {}
-a.result-foreigntype:focus {}
-a.result-attr:focus,
-a.result-derive:focus,
-a.result-macro:focus {}
-a.result-constant:focus,
-a.result-static:focus {}
-a.result-primitive:focus {}
-a.result-keyword:focus {}
-
-.sidebar a.current.enum {}
-.sidebar a.current.struct {}
-.sidebar a.current.foreigntype {}
-.sidebar a.current.attr,
-.sidebar a.current.derive,
-.sidebar a.current.macro {}
-.sidebar a.current.union {}
-.sidebar a.current.constant
-.sidebar a.current.static {}
-.sidebar a.current.primitive {}
-.sidebar a.current.trait {}
-.sidebar a.current.traitalias {}
-.sidebar a.current.fn {}
-.sidebar a.current.keyword {}
-
 kbd {
 	color: #c5c5c5;
 	background-color: #314559;
 	box-shadow: inset 0 -1px 0 #5c6773;
 }
 
-#settings-menu > a, #help-button > button {
+#settings-menu > a, #help-button > a {
 	color: #fff;
 }
 
@@ -314,7 +257,7 @@ kbd {
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > button:hover, #help-button > button:focus {
+#help-button > a:hover, #help-button > a:focus {
 	border-color: #e0e0e0;
 }
 

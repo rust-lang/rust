@@ -21,11 +21,10 @@ mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
-mod valid_align;
-// For now this type is left crate-local.  It could potentially make sense to expose
-// it publicly, as it would be a nice parameter type for methods which need to take
-// alignment as a parameter, such as `Layout::padding_needed_for`.
-pub(crate) use valid_align::ValidAlign;
+// FIXME: This is left here for now to avoid complications around pending reverts.
+// Once <https://github.com/rust-lang/rust/issues/101899> is fully resolved,
+// this should be removed and the references in `alloc::Layout` updated.
+pub(crate) use ptr::Alignment as ValidAlign;
 
 mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
@@ -1009,18 +1008,18 @@ pub fn copy<T: Copy>(x: &T) -> T {
     *x
 }
 
-/// Interprets `src` as having type `&U`, and then reads `src` without moving
+/// Interprets `src` as having type `&Dst`, and then reads `src` without moving
 /// the contained value.
 ///
-/// This function will unsafely assume the pointer `src` is valid for [`size_of::<U>`][size_of]
-/// bytes by transmuting `&T` to `&U` and then reading the `&U` (except that this is done in a way
-/// that is correct even when `&U` has stricter alignment requirements than `&T`). It will also
-/// unsafely create a copy of the contained value instead of moving out of `src`.
+/// This function will unsafely assume the pointer `src` is valid for [`size_of::<Dst>`][size_of]
+/// bytes by transmuting `&Src` to `&Dst` and then reading the `&Dst` (except that this is done
+/// in a way that is correct even when `&Dst` has stricter alignment requirements than `&Src`).
+/// It will also unsafely create a copy of the contained value instead of moving out of `src`.
 ///
-/// It is not a compile-time error if `T` and `U` have different sizes, but it
-/// is highly encouraged to only invoke this function where `T` and `U` have the
-/// same size. This function triggers [undefined behavior][ub] if `U` is larger than
-/// `T`.
+/// It is not a compile-time error if `Src` and `Dst` have different sizes, but it
+/// is highly encouraged to only invoke this function where `Src` and `Dst` have the
+/// same size. This function triggers [undefined behavior][ub] if `Dst` is larger than
+/// `Src`.
 ///
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
@@ -1053,19 +1052,22 @@ pub fn copy<T: Copy>(x: &T) -> T {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
-pub const unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    assert!(size_of::<T>() >= size_of::<U>(), "cannot transmute_copy if U is larger than T");
+pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
+    assert!(
+        size_of::<Src>() >= size_of::<Dst>(),
+        "cannot transmute_copy if Dst is larger than Src"
+    );
 
-    // If U has a higher alignment requirement, src might not be suitably aligned.
-    if align_of::<U>() > align_of::<T>() {
+    // If Dst has a higher alignment requirement, src might not be suitably aligned.
+    if align_of::<Dst>() > align_of::<Src>() {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
         // The caller must guarantee that the actual transmutation is safe.
-        unsafe { ptr::read_unaligned(src as *const T as *const U) }
+        unsafe { ptr::read_unaligned(src as *const Src as *const Dst) }
     } else {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
-        // We just checked that `src as *const U` was properly aligned.
+        // We just checked that `src as *const Dst` was properly aligned.
         // The caller must guarantee that the actual transmutation is safe.
-        unsafe { ptr::read(src as *const T as *const U) }
+        unsafe { ptr::read(src as *const Src as *const Dst) }
     }
 }
 
@@ -1178,3 +1180,44 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 pub const fn variant_count<T>() -> usize {
     intrinsics::variant_count::<T>()
 }
+
+/// Provides associated constants for various useful properties of types,
+/// to give them a canonical form in our code and make them easier to read.
+///
+/// This is here only to simplify all the ZST checks we need in the library.
+/// It's not on a stabilization track right now.
+#[doc(hidden)]
+#[unstable(feature = "sized_type_properties", issue = "none")]
+pub trait SizedTypeProperties: Sized {
+    /// `true` if this type requires no storage.
+    /// `false` if its [size](size_of) is greater than zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sized_type_properties)]
+    /// use core::mem::SizedTypeProperties;
+    ///
+    /// fn do_something_with<T>() {
+    ///     if T::IS_ZST {
+    ///         // ... special approach ...
+    ///     } else {
+    ///         // ... the normal thing ...
+    ///     }
+    /// }
+    ///
+    /// struct MyUnit;
+    /// assert!(MyUnit::IS_ZST);
+    ///
+    /// // For negative checks, consider using UFCS to emphasize the negation
+    /// assert!(!<i32>::IS_ZST);
+    /// // As it can sometimes hide in the type otherwise
+    /// assert!(!String::IS_ZST);
+    /// ```
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const IS_ZST: bool = size_of::<Self>() == 0;
+}
+#[doc(hidden)]
+#[unstable(feature = "sized_type_properties", issue = "none")]
+impl<T> SizedTypeProperties for T {}

@@ -1,6 +1,5 @@
 //! Defines utf8 error type.
 
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt;
 
@@ -124,7 +123,6 @@ impl fmt::Display for Utf8Error {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for Utf8Error {
     #[allow(deprecated)]
@@ -148,7 +146,6 @@ impl fmt::Display for ParseBoolError {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for ParseBoolError {
     #[allow(deprecated)]

@@ -43,7 +43,7 @@ pub trait PointerArithmetic: HasDataLayout {
         let val = val as i64;
         // Now wrap-around into the machine_isize range.
         if val > self.machine_isize_max() {
-            // This can only happen the the ptr size is < 64, so we know max_usize_plus_1 fits into
+            // This can only happen if the ptr size is < 64, so we know max_usize_plus_1 fits into
             // i64.
             debug_assert!(self.pointer_size().bits() < 64);
             let max_usize_plus_1 = 1u128 << self.pointer_size().bits();

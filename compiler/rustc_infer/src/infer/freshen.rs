@@ -38,7 +38,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVi
 use std::collections::hash_map::Entry;
 
 pub struct TypeFreshener<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     ty_freshen_count: u32,
     const_freshen_count: u32,
     ty_freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
@@ -47,7 +47,7 @@ pub struct TypeFreshener<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>, keep_static: bool) -> TypeFreshener<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'tcx>, keep_static: bool) -> TypeFreshener<'a, 'tcx> {
         TypeFreshener {
             infcx,
             ty_freshen_count: 0,

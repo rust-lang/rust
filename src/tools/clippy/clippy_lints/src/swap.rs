@@ -96,7 +96,7 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
                             cx,
                             MANUAL_SWAP,
                             span,
-                            &format!("this looks like you are swapping elements of `{}` manually", slice),
+                            &format!("this looks like you are swapping elements of `{slice}` manually"),
                             "try",
                             format!(
                                 "{}.swap({}, {})",
@@ -121,16 +121,16 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
         cx,
         MANUAL_SWAP,
         span,
-        &format!("this looks like you are swapping `{}` and `{}` manually", first, second),
+        &format!("this looks like you are swapping `{first}` and `{second}` manually"),
         |diag| {
             diag.span_suggestion(
                 span,
                 "try",
-                format!("{}::mem::swap({}, {})", sugg, first.mut_addr(), second.mut_addr()),
+                format!("{sugg}::mem::swap({}, {})", first.mut_addr(), second.mut_addr()),
                 applicability,
             );
             if !is_xor_based {
-                diag.note(&format!("or maybe you should use `{}::mem::replace`?", sugg));
+                diag.note(&format!("or maybe you should use `{sugg}::mem::replace`?"));
             }
         },
     );
@@ -182,7 +182,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                 let rhs0 = Sugg::hir_opt(cx, rhs0);
                 let (what, lhs, rhs) = if let (Some(first), Some(second)) = (lhs0, rhs0) {
                     (
-                        format!(" `{}` and `{}`", first, second),
+                        format!(" `{first}` and `{second}`"),
                         first.mut_addr().to_string(),
                         second.mut_addr().to_string(),
                     )
@@ -196,22 +196,19 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                 span_lint_and_then(cx,
                     ALMOST_SWAPPED,
                     span,
-                    &format!("this looks like you are trying to swap{}", what),
+                    &format!("this looks like you are trying to swap{what}"),
                     |diag| {
                         if !what.is_empty() {
                             diag.span_suggestion(
                                 span,
                                 "try",
                                 format!(
-                                    "{}::mem::swap({}, {})",
-                                    sugg,
-                                    lhs,
-                                    rhs,
+                                    "{sugg}::mem::swap({lhs}, {rhs})",
                                 ),
                                 Applicability::MaybeIncorrect,
                             );
                             diag.note(
-                                &format!("or maybe you should use `{}::mem::replace`?", sugg)
+                                &format!("or maybe you should use `{sugg}::mem::replace`?")
                             );
                         }
                     });

@@ -30,7 +30,7 @@ pub struct AbstractConst<'tcx> {
 impl<'tcx> AbstractConst<'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        uv: ty::Unevaluated<'tcx, ()>,
+        uv: ty::UnevaluatedConst<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
         let inner = tcx.thir_abstract_const_opt_const_arg(uv.def)?;
         debug!("AbstractConst::new({:?}) = {:?}", uv, inner);
@@ -71,16 +71,16 @@ impl<'tcx> AbstractConst<'tcx> {
         walk_abstract_const::<!, _>(tcx, self, |node| {
             match node.root(tcx) {
                 Node::Leaf(leaf) => {
-                    if leaf.has_infer_types_or_consts() {
+                    if leaf.has_non_region_infer() {
                         failure_kind = FailureKind::MentionsInfer;
-                    } else if leaf.has_param_types_or_consts() {
+                    } else if leaf.has_non_region_param() {
                         failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                     }
                 }
                 Node::Cast(_, _, ty) => {
-                    if ty.has_infer_types_or_consts() {
+                    if ty.has_non_region_infer() {
                         failure_kind = FailureKind::MentionsInfer;
-                    } else if ty.has_param_types_or_consts() {
+                    } else if ty.has_non_region_param() {
                         failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                     }
                 }

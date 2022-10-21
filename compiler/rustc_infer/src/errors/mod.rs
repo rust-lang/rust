@@ -1,6 +1,7 @@
 use hir::GenericParamKind;
 use rustc_errors::{
-    fluent, AddToDiagnostic, Applicability, DiagnosticMessage, DiagnosticStyledString, MultiSpan,
+    fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticMessage, DiagnosticStyledString,
+    MultiSpan, SubdiagnosticMessage,
 };
 use rustc_hir as hir;
 use rustc_hir::{FnRetTy, Ty};
@@ -229,7 +230,10 @@ pub enum RegionOriginNote<'a> {
 }
 
 impl AddToDiagnostic for RegionOriginNote<'_> {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         let mut label_or_note = |span, msg: DiagnosticMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
@@ -290,7 +294,10 @@ pub enum LifetimeMismatchLabels {
 }
 
 impl AddToDiagnostic for LifetimeMismatchLabels {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         match self {
             LifetimeMismatchLabels::InRet { param_span, ret_span, span, label_var1 } => {
                 diag.span_label(param_span, fluent::infer::declared_different);
@@ -340,7 +347,10 @@ pub struct AddLifetimeParamsSuggestion<'a> {
 }
 
 impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         let mut mk_suggestion = || {
             let (
                 hir::Ty { kind: hir::TyKind::Rptr(lifetime_sub, _), .. },
@@ -439,7 +449,10 @@ pub struct IntroducesStaticBecauseUnmetLifetimeReq {
 }
 
 impl AddToDiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
-    fn add_to_diagnostic(mut self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(mut self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         self.unmet_requirements
             .push_span_label(self.binding_span, fluent::infer::msl_introduces_static);
         diag.span_note(self.unmet_requirements, fluent::infer::msl_unmet_req);
@@ -451,7 +464,10 @@ pub struct ImplNote {
 }
 
 impl AddToDiagnostic for ImplNote {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         match self.impl_span {
             Some(span) => diag.span_note(span, fluent::infer::msl_impl_note),
             None => diag.note(fluent::infer::msl_impl_note),
@@ -466,7 +482,10 @@ pub enum TraitSubdiag {
 
 // FIXME(#100717) used in `Vec<TraitSubdiag>` so requires eager translation/list support
 impl AddToDiagnostic for TraitSubdiag {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         match self {
             TraitSubdiag::Note { span } => {
                 diag.span_note(span, "this has an implicit `'static` lifetime requirement");

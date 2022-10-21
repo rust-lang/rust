@@ -1162,7 +1162,7 @@ impl<'a> Resolver<'a> {
                     return Res::Err;
                 }
             }
-            Res::Def(DefKind::TyParam, _) | Res::SelfTy { .. } => {
+            Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => {
                 for rib in ribs {
                     let has_generic_params: HasGenericParams = match rib.kind {
                         NormalRibKind
@@ -1182,11 +1182,21 @@ impl<'a> Resolver<'a> {
                             if !(trivial == ConstantHasGenerics::Yes
                                 || features.generic_const_exprs)
                             {
-                                // HACK(min_const_generics): If we encounter `Self` in an anonymous constant
-                                // we can't easily tell if it's generic at this stage, so we instead remember
-                                // this and then enforce the self type to be concrete later on.
-                                if let Res::SelfTy { trait_, alias_to: Some((def, _)) } = res {
-                                    res = Res::SelfTy { trait_, alias_to: Some((def, true)) }
+                                // HACK(min_const_generics): If we encounter `Self` in an anonymous
+                                // constant we can't easily tell if it's generic at this stage, so
+                                // we instead remember this and then enforce the self type to be
+                                // concrete later on.
+                                if let Res::SelfTyAlias {
+                                    alias_to: def,
+                                    forbid_generic: _,
+                                    is_trait_impl,
+                                } = res
+                                {
+                                    res = Res::SelfTyAlias {
+                                        alias_to: def,
+                                        forbid_generic: true,
+                                        is_trait_impl,
+                                    }
                                 } else {
                                     if let Some(span) = finalize {
                                         self.report_error(

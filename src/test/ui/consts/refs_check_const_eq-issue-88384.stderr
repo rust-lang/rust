@@ -4,8 +4,8 @@ warning: the feature `adt_const_params` is incomplete and may not be safe to use
 LL | #![feature(adt_const_params)]
    |            ^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0741]: using function pointers as const generic parameters is forbidden
   --> $DIR/refs_check_const_eq-issue-88384.rs:10:21

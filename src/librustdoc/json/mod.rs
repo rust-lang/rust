@@ -108,7 +108,6 @@ impl<'tcx> JsonRenderer<'tcx> {
             .filter_map(|(&id, trait_item)| {
                 // only need to synthesize items for external traits
                 if !id.is_local() {
-                    let trait_item = &trait_item.trait_;
                     for item in &trait_item.items {
                         trace!("Adding subitem to {id:?}: {:?}", item.item_id);
                         self.item(item.clone()).unwrap();
@@ -219,12 +218,15 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     u.impls = self.get_impls(item_id.expect_def_id());
                     false
                 }
+                types::ItemEnum::Primitive(ref mut p) => {
+                    p.impls = self.get_impls(item_id.expect_def_id());
+                    false
+                }
 
                 types::ItemEnum::Method(_)
                 | types::ItemEnum::Module(_)
                 | types::ItemEnum::AssocConst { .. }
-                | types::ItemEnum::AssocType { .. }
-                | types::ItemEnum::PrimitiveType(_) => true,
+                | types::ItemEnum::AssocType { .. } => true,
                 types::ItemEnum::ExternCrate { .. }
                 | types::ItemEnum::Import(_)
                 | types::ItemEnum::StructField(_)

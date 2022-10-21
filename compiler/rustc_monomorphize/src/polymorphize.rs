@@ -8,6 +8,7 @@
 use rustc_hir::{def::DefKind, def_id::DefId, ConstContext};
 use rustc_index::bit_set::FiniteBitSet;
 use rustc_middle::mir::{
+    self,
     visit::{TyContext, Visitor},
     Constant, ConstantKind, Local, LocalDecl, Location,
 };
@@ -275,9 +276,21 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
             ConstantKind::Ty(c) => {
                 c.visit_with(self);
             }
-            ConstantKind::Val(_, ty) | ConstantKind::Unevaluated(_, ty) => {
-                Visitor::visit_ty(self, ty, TyContext::Location(location))
+            ConstantKind::Unevaluated(mir::UnevaluatedConst { def, substs: _, promoted }, ty) => {
+                // Avoid considering `T` unused when constants are of the form:
+                //   `<Self as Foo<T>>::foo::promoted[p]`
+                if let Some(p) = promoted {
+                    if self.def_id == def.did && !self.tcx.generics_of(def.did).has_self {
+                        // If there is a promoted, don't look at the substs - since it will always contain
+                        // the generic parameters, instead, traverse the promoted MIR.
+                        let promoted = self.tcx.promoted_mir(def.did);
+                        self.visit_body(&promoted[p]);
+                    }
+                }
+
+                Visitor::visit_ty(self, ty, TyContext::Location(location));
             }
+            ConstantKind::Val(_, ty) => Visitor::visit_ty(self, ty, TyContext::Location(location)),
         }
     }
 
@@ -289,7 +302,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !c.has_param_types_or_consts() {
+        if !c.has_non_region_param() {
             return ControlFlow::CONTINUE;
         }
 
@@ -299,11 +312,9 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 self.unused_parameters.clear(param.index);
                 ControlFlow::CONTINUE
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs })
                 if matches!(self.tcx.def_kind(def.did), DefKind::AnonConst) =>
             {
-                assert_eq!(promoted, ());
-
                 self.visit_child_body(def.did, substs);
                 ControlFlow::CONTINUE
             }
@@ -311,33 +322,9 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         }
     }
 
-    fn visit_mir_const(&mut self, constant: ConstantKind<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !constant.has_param_types_or_consts() {
-            return ControlFlow::CONTINUE;
-        }
-
-        match constant {
-            ConstantKind::Ty(ct) => ct.visit_with(self),
-            ConstantKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted: Some(p) }, _)
-                // Avoid considering `T` unused when constants are of the form:
-                //   `<Self as Foo<T>>::foo::promoted[p]`
-                if self.def_id == def.did && !self.tcx.generics_of(def.did).has_self =>
-            {
-                // If there is a promoted, don't look at the substs - since it will always contain
-                // the generic parameters, instead, traverse the promoted MIR.
-                let promoted = self.tcx.promoted_mir(def.did);
-                self.visit_body(&promoted[p]);
-                ControlFlow::CONTINUE
-            }
-            ConstantKind::Val(..) | ConstantKind::Unevaluated(..) => {
-                constant.super_visit_with(self)
-            }
-        }
-    }
-
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !ty.has_param_types_or_consts() {
+        if !ty.has_non_region_param() {
             return ControlFlow::CONTINUE;
         }
 
@@ -374,7 +361,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !c.has_param_types_or_consts() {
+        if !c.has_non_region_param() {
             return ControlFlow::CONTINUE;
         }
 
@@ -392,7 +379,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !ty.has_param_types_or_consts() {
+        if !ty.has_non_region_param() {
             return ControlFlow::CONTINUE;
         }
 

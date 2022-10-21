@@ -34,7 +34,7 @@ impl FlagComputation {
         result.flags
     }
 
-    pub fn for_unevaluated_const(uv: ty::Unevaluated<'_>) -> TypeFlags {
+    pub fn for_unevaluated_const(uv: ty::UnevaluatedConst<'_>) -> TypeFlags {
         let mut result = FlagComputation::new();
         result.add_unevaluated_const(uv);
         result.flags
@@ -313,7 +313,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_unevaluated_const<P>(&mut self, ct: ty::Unevaluated<'_, P>) {
+    fn add_unevaluated_const(&mut self, ct: ty::UnevaluatedConst<'_>) {
         self.add_substs(ct.substs);
         self.add_flags(TypeFlags::HAS_CT_PROJECTION);
     }

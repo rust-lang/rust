@@ -1,0 +1,26 @@
+error[E0277]: the trait bound `[closure@$DIR/issue-102985.rs:4:23: 4:25]: ~const Fn<()>` is not satisfied
+  --> $DIR/issue-102985.rs:5:14
+   |
+LL |         n => n(),
+   |              ^^^ expected an `Fn<()>` closure, found `[closure@$DIR/issue-102985.rs:4:23: 4:25]`
+   |
+   = help: the trait `~const Fn<()>` is not implemented for closure `[closure@$DIR/issue-102985.rs:4:23: 4:25]`
+note: the trait `Fn<()>` is implemented for `[closure@$DIR/issue-102985.rs:4:23: 4:25]`, but that implementation is not `const`
+  --> $DIR/issue-102985.rs:5:14
+   |
+LL |         n => n(),
+   |              ^^^
+   = note: wrap the `[closure@$DIR/issue-102985.rs:4:23: 4:25]` in a closure with no arguments: `|| { /* code */ }`
+
+error[E0015]: cannot call non-const fn `Bug::inner::{constant#0}::{closure#0}` in constants
+  --> $DIR/issue-102985.rs:5:14
+   |
+LL |         n => n(),
+   |              ^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

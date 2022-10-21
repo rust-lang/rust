@@ -1,9 +1,10 @@
 #![warn(clippy::collapsible_match)]
 #![allow(
+    clippy::equatable_if_let,
     clippy::needless_return,
     clippy::no_effect,
     clippy::single_match,
-    clippy::equatable_if_let
+    clippy::uninlined_format_args
 )]
 
 fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>) {

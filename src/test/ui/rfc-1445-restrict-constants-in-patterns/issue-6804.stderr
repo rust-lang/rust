@@ -4,13 +4,13 @@ error: floating-point types cannot be used in patterns
 LL |         NAN => {},
    |         ^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 note: the lint level is defined here
   --> $DIR/issue-6804.rs:4:9
    |
 LL | #![deny(illegal_floating_point_literal_pattern)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
   --> $DIR/issue-6804.rs:17:10

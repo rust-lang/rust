@@ -483,64 +483,6 @@ impl<T: ?Sized> !Sync for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Sync for *mut T {}
 
-macro_rules! impls {
-    ($t: ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> Hash for $t<T> {
-            #[inline]
-            fn hash<H: Hasher>(&self, _: &mut H) {}
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::PartialEq for $t<T> {
-            fn eq(&self, _other: &$t<T>) -> bool {
-                true
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::Eq for $t<T> {}
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::PartialOrd for $t<T> {
-            fn partial_cmp(&self, _other: &$t<T>) -> Option<cmp::Ordering> {
-                Option::Some(cmp::Ordering::Equal)
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> cmp::Ord for $t<T> {
-            fn cmp(&self, _other: &$t<T>) -> cmp::Ordering {
-                cmp::Ordering::Equal
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> Copy for $t<T> {}
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T: ?Sized> Clone for $t<T> {
-            fn clone(&self) -> Self {
-                Self
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-        impl<T: ?Sized> const Default for $t<T> {
-            fn default() -> Self {
-                Self
-            }
-        }
-
-        #[unstable(feature = "structural_match", issue = "31434")]
-        impl<T: ?Sized> StructuralPartialEq for $t<T> {}
-
-        #[unstable(feature = "structural_match", issue = "31434")]
-        impl<T: ?Sized> StructuralEq for $t<T> {}
-    };
-}
-
 /// Zero-sized type used to mark things that "act like" they own a `T`.
 ///
 /// Adding a `PhantomData<T>` field to your type tells the compiler that your
@@ -678,7 +620,59 @@ macro_rules! impls {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T: ?Sized>;
 
-impls! { PhantomData }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Hash for PhantomData<T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, _: &mut H) {}
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::PartialEq for PhantomData<T> {
+    fn eq(&self, _other: &PhantomData<T>) -> bool {
+        true
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::Eq for PhantomData<T> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::PartialOrd for PhantomData<T> {
+    fn partial_cmp(&self, _other: &PhantomData<T>) -> Option<cmp::Ordering> {
+        Option::Some(cmp::Ordering::Equal)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> cmp::Ord for PhantomData<T> {
+    fn cmp(&self, _other: &PhantomData<T>) -> cmp::Ordering {
+        cmp::Ordering::Equal
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Copy for PhantomData<T> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Clone for PhantomData<T> {
+    fn clone(&self) -> Self {
+        Self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+impl<T: ?Sized> const Default for PhantomData<T> {
+    fn default() -> Self {
+        Self
+    }
+}
+
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<T: ?Sized> StructuralPartialEq for PhantomData<T> {}
+
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<T: ?Sized> StructuralEq for PhantomData<T> {}
 
 mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -799,6 +793,7 @@ impl<T: ?Sized> Unpin for *mut T {}
 #[unstable(feature = "const_trait_impl", issue = "67792")]
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[const_trait]
 pub trait Destruct {}
 
 /// A marker for tuple types.
@@ -806,7 +801,7 @@ pub trait Destruct {}
 /// The implementation of this trait is built-in and cannot be implemented
 /// for any user type.
 #[unstable(feature = "tuple_trait", issue = "none")]
-#[cfg_attr(not(bootstrap), lang = "tuple_trait")]
+#[lang = "tuple_trait"]
 #[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
 pub trait Tuple {}
 

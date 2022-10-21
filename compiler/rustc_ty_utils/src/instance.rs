@@ -134,19 +134,17 @@ fn resolve_associated_item<'tcx>(
                 .unwrap_or_else(|| {
                     bug!("{:?} not found in {:?}", trait_item_id, impl_data.impl_def_id);
                 });
-
-            let substs = tcx.infer_ctxt().enter(|infcx| {
-                let param_env = param_env.with_reveal_all_normalized(tcx);
-                let substs = rcvr_substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
-                let substs = translate_substs(
-                    &infcx,
-                    param_env,
-                    impl_data.impl_def_id,
-                    substs,
-                    leaf_def.defining_node,
-                );
-                infcx.tcx.erase_regions(substs)
-            });
+            let infcx = tcx.infer_ctxt().build();
+            let param_env = param_env.with_reveal_all_normalized(tcx);
+            let substs = rcvr_substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
+            let substs = translate_substs(
+                &infcx,
+                param_env,
+                impl_data.impl_def_id,
+                substs,
+                leaf_def.defining_node,
+            );
+            let substs = infcx.tcx.erase_regions(substs);
 
             // Since this is a trait item, we need to see if the item is either a trait default item
             // or a specialization because we can't resolve those unless we can `Reveal::All`.
@@ -171,9 +169,13 @@ fn resolve_associated_item<'tcx>(
                 return Ok(None);
             }
 
-            // If the item does not have a value, then we cannot return an instance.
+            // Any final impl is required to define all associated items.
             if !leaf_def.item.defaultness(tcx).has_value() {
-                return Ok(None);
+                let guard = tcx.sess.delay_span_bug(
+                    tcx.def_span(leaf_def.item.def_id),
+                    "missing value for assoc item in impl",
+                );
+                return Err(guard);
             }
 
             let substs = tcx.erase_regions(substs);
@@ -182,40 +184,14 @@ fn resolve_associated_item<'tcx>(
             // a `trait` to an associated `const` definition in an `impl`, where
             // the definition in the `impl` has the wrong type (for which an
             // error has already been/will be emitted elsewhere).
-            //
-            // NB: this may be expensive, we try to skip it in all the cases where
-            // we know the error would've been caught (e.g. in an upstream crate).
-            //
-            // A better approach might be to just introduce a query (returning
-            // `Result<(), ErrorGuaranteed>`) for the check that `rustc_typeck`
-            // performs (i.e. that the definition's type in the `impl` matches
-            // the declaration in the `trait`), so that we can cheaply check
-            // here if it failed, instead of approximating it.
             if leaf_def.item.kind == ty::AssocKind::Const
                 && trait_item_id != leaf_def.item.def_id
-                && leaf_def.item.def_id.is_local()
+                && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {
-                let normalized_type_of = |def_id, substs| {
-                    tcx.subst_and_normalize_erasing_regions(substs, param_env, tcx.type_of(def_id))
-                };
-
-                let original_ty = normalized_type_of(trait_item_id, rcvr_substs);
-                let resolved_ty = normalized_type_of(leaf_def.item.def_id, substs);
-
-                if original_ty != resolved_ty {
-                    let msg = format!(
-                        "Instance::resolve: inconsistent associated `const` type: \
-                         was `{}: {}` but resolved to `{}: {}`",
-                        tcx.def_path_str_with_substs(trait_item_id, rcvr_substs),
-                        original_ty,
-                        tcx.def_path_str_with_substs(leaf_def.item.def_id, substs),
-                        resolved_ty,
-                    );
-                    let span = tcx.def_span(leaf_def.item.def_id);
-                    let reported = tcx.sess.delay_span_bug(span, &msg);
-
-                    return Err(reported);
-                }
+                tcx.compare_assoc_const_impl_item_with_trait_item((
+                    leaf_def_item,
+                    trait_item_id,
+                ))?;
             }
 
             Some(ty::Instance::new(leaf_def.item.def_id, substs))
@@ -291,8 +267,7 @@ fn resolve_associated_item<'tcx>(
         | traits::ImplSource::DiscriminantKind(..)
         | traits::ImplSource::Pointee(..)
         | traits::ImplSource::TraitUpcasting(_)
-        | traits::ImplSource::ConstDestruct(_)
-        | traits::ImplSource::Tuple => None,
+        | traits::ImplSource::ConstDestruct(_) => None,
     })
 }
 

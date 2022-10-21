@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::{get_expr_use_or_unification_node, is_lang_ctor, is_no_std_crate};
+use clippy_utils::{get_expr_use_or_unification_node, is_no_std_crate, is_res_lang_ctor, path_res};
 
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -26,26 +26,11 @@ impl IterType {
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, method_name: &str, recv: &Expr<'_>) {
-    let item = match &recv.kind {
-        ExprKind::Array(v) if v.len() <= 1 => v.first(),
-        ExprKind::Path(p) => {
-            if is_lang_ctor(cx, p, OptionNone) {
-                None
-            } else {
-                return;
-            }
-        },
-        ExprKind::Call(f, some_args) if some_args.len() == 1 => {
-            if let ExprKind::Path(p) = &f.kind {
-                if is_lang_ctor(cx, p, OptionSome) {
-                    Some(&some_args[0])
-                } else {
-                    return;
-                }
-            } else {
-                return;
-            }
-        },
+    let item = match recv.kind {
+        ExprKind::Array([]) => None,
+        ExprKind::Array([e]) => Some(e),
+        ExprKind::Path(ref p) if is_res_lang_ctor(cx, cx.qpath_res(p, recv.hir_id), OptionNone) => None,
+        ExprKind::Call(f, [arg]) if is_res_lang_ctor(cx, path_res(cx, f), OptionSome) => Some(arg),
         _ => return,
     };
     let iter_type = match method_name {

@@ -1,17 +1,17 @@
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `String` cannot be evaluated at compile-time
   --> $DIR/drop-elaboration-after-borrowck-error.rs:7:5
    |
 LL |     a[0] = String::new();
    |     ^^^^
    |     |
-   |     statics cannot evaluate destructors
+   |     the destructor for this type cannot be evaluated in statics
    |     value is dropped here
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `[String; 1]` cannot be evaluated at compile-time
   --> $DIR/drop-elaboration-after-borrowck-error.rs:5:9
    |
 LL |     let a: [String; 1];
-   |         ^ statics cannot evaluate destructors
+   |         ^ the destructor for this type cannot be evaluated in statics
 ...
 LL | };
    | - value is dropped here
@@ -24,21 +24,26 @@ LL |     let a: [String; 1];
 LL |
 LL |     a[0] = String::new();
    |     ^^^^ `a` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let a: [String; 1] = todo!();
+   |                        +++++++++
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
   --> $DIR/drop-elaboration-after-borrowck-error.rs:18:9
    |
 LL |         self.0[0] = other;
    |         ^^^^^^^^^
    |         |
-   |         constant functions cannot evaluate destructors
+   |         the destructor for this type cannot be evaluated in constant functions
    |         value is dropped here
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `B<T>` cannot be evaluated at compile-time
   --> $DIR/drop-elaboration-after-borrowck-error.rs:16:13
    |
 LL |         let _this = self;
-   |             ^^^^^ constant functions cannot evaluate destructors
+   |             ^^^^^ the destructor for this type cannot be evaluated in constant functions
 ...
 LL |     }
    |     - value is dropped here

@@ -1,8 +1,8 @@
 error: unknown lint: `test_unstable_lint`
    |
-   = note: requested on the command line with `-D unknown-lints`
    = note: the `test_unstable_lint` lint is unstable
    = help: add `#![feature(test_unstable_lint)]` to the crate attributes to enable
+   = note: requested on the command line with `-D unknown-lints`
 
 error: unknown lint: `test_unstable_lint`
    |

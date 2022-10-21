@@ -219,7 +219,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// signature. This will also compute the relationships that are
     /// known between those regions.
     pub fn new(
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         mir_def: ty::WithOptConstParam<LocalDefId>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
@@ -382,7 +382,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 }
 
 struct UniversalRegionsBuilder<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
     mir_def: ty::WithOptConstParam<LocalDefId>,
     mir_hir_id: HirId,
     param_env: ty::ParamEnv<'tcx>,
@@ -414,7 +414,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let typeck_root_def_id = self.infcx.tcx.typeck_root_def_id(self.mir_def.did.to_def_id());
 
-        // If this is is a 'root' body (not a closure/generator/inline const), then
+        // If this is a 'root' body (not a closure/generator/inline const), then
         // there are no extern regions, so the local regions start at the same
         // position as the (empty) sub-list of extern regions
         let first_local_index = if self.mir_def.did.to_def_id() == typeck_root_def_id {
@@ -699,7 +699,7 @@ trait InferCtxtExt<'tcx> {
     );
 }
 
-impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
         origin: NllRegionVariableOrigin,

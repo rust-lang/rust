@@ -11,7 +11,7 @@ fn test(_1: &dyn X) -> u32 {
         _0 = <dyn X as X>::y(move _2) -> bb1; // scope 0 at $DIR/inline-trait-method.rs:+1:5: +1:10
                                          // mir::Constant
                                          // + span: $DIR/inline-trait-method.rs:9:7: 9:8
-                                         // + literal: Const { ty: for<'r> fn(&'r dyn X) -> u32 {<dyn X as X>::y}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a> fn(&'a dyn X) -> u32 {<dyn X as X>::y}, val: Value(<ZST>) }
     }
 
     bb1: {

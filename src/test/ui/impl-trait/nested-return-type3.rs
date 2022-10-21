@@ -13,6 +13,7 @@ impl<F: Duh> Trait for F {
 }
 
 fn foo() -> impl Trait<Assoc = impl Send> {
+    //~^ WARN opaque type `impl Trait<Assoc = impl Send>` does not satisfy its associated type bounds
     42
 }
 

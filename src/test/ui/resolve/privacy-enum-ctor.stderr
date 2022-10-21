@@ -327,7 +327,7 @@ LL |         let _: Z = Z::Fn;
    |
    = note: expected enum `Z`
            found fn item `fn(u8) -> Z {Z::Fn}`
-help: use parentheses to instantiate this tuple variant
+help: use parentheses to construct this tuple variant
    |
 LL |         let _: Z = Z::Fn(/* u8 */);
    |                         ++++++++++
@@ -362,7 +362,7 @@ LL |     let _: E = m::E::Fn;
    |
    = note: expected enum `E`
            found fn item `fn(u8) -> E {E::Fn}`
-help: use parentheses to instantiate this tuple variant
+help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = m::E::Fn(/* u8 */);
    |                        ++++++++++
@@ -397,7 +397,7 @@ LL |     let _: E = E::Fn;
    |
    = note: expected enum `E`
            found fn item `fn(u8) -> E {E::Fn}`
-help: use parentheses to instantiate this tuple variant
+help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = E::Fn(/* u8 */);
    |                     ++++++++++

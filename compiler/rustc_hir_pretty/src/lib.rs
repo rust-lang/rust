@@ -887,7 +887,7 @@ impl<'a> State<'a> {
                 self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
-            hir::ImplItemKind::TyAlias(ty) => {
+            hir::ImplItemKind::Type(ty) => {
                 self.print_associated_type(ii.ident, ii.generics, None, Some(ty));
             }
         }
@@ -1687,7 +1687,11 @@ impl<'a> State<'a> {
 
             let mut nonelided_generic_args: bool = false;
             let elide_lifetimes = generic_args.args.iter().all(|arg| match arg {
-                GenericArg::Lifetime(lt) => lt.is_elided(),
+                GenericArg::Lifetime(lt) if lt.is_elided() => true,
+                GenericArg::Lifetime(_) => {
+                    nonelided_generic_args = true;
+                    false
+                }
                 _ => {
                     nonelided_generic_args = true;
                     true

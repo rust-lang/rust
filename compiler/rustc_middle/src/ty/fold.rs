@@ -13,8 +13,7 @@
 //!
 //! There are three groups of traits involved in each traversal.
 //! - `TypeFoldable`. This is implemented once for many types, including:
-//!   - Types of interest, for which the the methods delegate to the
-//!     folder.
+//!   - Types of interest, for which the methods delegate to the folder.
 //!   - All other types, including generic containers like `Vec` and `Option`.
 //!     It defines a "skeleton" of how they should be folded.
 //! - `TypeSuperFoldable`. This is implemented only for each type of interest,
@@ -43,7 +42,6 @@
 //!     - ty.super_fold_with(folder)
 //! - u.fold_with(folder)
 //! ```
-use crate::mir;
 use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitable};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
@@ -128,16 +126,15 @@ pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
         c.super_fold_with(self)
     }
 
-    fn fold_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ty::Unevaluated<'tcx> {
+    fn fold_ty_unevaluated(
+        &mut self,
+        uv: ty::UnevaluatedConst<'tcx>,
+    ) -> ty::UnevaluatedConst<'tcx> {
         uv.super_fold_with(self)
     }
 
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         p.super_fold_with(self)
-    }
-
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
-        bug!("most type folders should not be folding MIR datastructures: {:?}", c)
     }
 }
 
@@ -172,10 +169,10 @@ pub trait FallibleTypeFolder<'tcx>: Sized {
         c.try_super_fold_with(self)
     }
 
-    fn try_fold_unevaluated(
+    fn try_fold_ty_unevaluated(
         &mut self,
-        c: ty::Unevaluated<'tcx>,
-    ) -> Result<ty::Unevaluated<'tcx>, Self::Error> {
+        c: ty::UnevaluatedConst<'tcx>,
+    ) -> Result<ty::UnevaluatedConst<'tcx>, Self::Error> {
         c.try_super_fold_with(self)
     }
 
@@ -184,13 +181,6 @@ pub trait FallibleTypeFolder<'tcx>: Sized {
         p: ty::Predicate<'tcx>,
     ) -> Result<ty::Predicate<'tcx>, Self::Error> {
         p.try_super_fold_with(self)
-    }
-
-    fn try_fold_mir_const(
-        &mut self,
-        c: mir::ConstantKind<'tcx>,
-    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
-        bug!("most type folders should not be folding MIR datastructures: {:?}", c)
     }
 }
 
@@ -225,22 +215,15 @@ where
         Ok(self.fold_const(c))
     }
 
-    fn try_fold_unevaluated(
+    fn try_fold_ty_unevaluated(
         &mut self,
-        c: ty::Unevaluated<'tcx>,
-    ) -> Result<ty::Unevaluated<'tcx>, !> {
-        Ok(self.fold_unevaluated(c))
+        c: ty::UnevaluatedConst<'tcx>,
+    ) -> Result<ty::UnevaluatedConst<'tcx>, !> {
+        Ok(self.fold_ty_unevaluated(c))
     }
 
     fn try_fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> Result<ty::Predicate<'tcx>, !> {
         Ok(self.fold_predicate(p))
-    }
-
-    fn try_fold_mir_const(
-        &mut self,
-        c: mir::ConstantKind<'tcx>,
-    ) -> Result<mir::ConstantKind<'tcx>, !> {
-        Ok(self.fold_mir_const(c))
     }
 }
 

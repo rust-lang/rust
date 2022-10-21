@@ -53,6 +53,8 @@ declare_features! (
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),
     /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, adx_target_feature, "1.61.0", Some(44839), None),
+    /// Allows using `sym` operands in inline assembly.
+    (accepted, asm_sym, "CURRENT_RUSTC_VERSION", Some(93333), None),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
     (accepted, associated_consts, "1.20.0", Some(29646), None),
     /// Allows using associated `type`s in `trait`s.
@@ -162,13 +164,15 @@ declare_features! (
     /// Allows capturing variables in scope using format_args!
     (accepted, format_args_capture, "1.58.0", Some(67984), None),
     /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
-    (accepted, generic_associated_types, "CURRENT_RUSTC_VERSION", Some(44265), None),
+    (accepted, generic_associated_types, "1.65.0", Some(44265), None),
     /// Allows attributes on lifetime/type formal parameters in generics (RFC 1327).
     (accepted, generic_param_attrs, "1.27.0", Some(48848), None),
     /// Allows the `#[global_allocator]` attribute.
     (accepted, global_allocator, "1.28.0", Some(27389), None),
     // FIXME: explain `globs`.
     (accepted, globs, "1.0.0", None, None),
+    /// Allows using `..=X` as a pattern.
+    (accepted, half_open_range_patterns, "CURRENT_RUSTC_VERSION", Some(67264), None),
     /// Allows using the `u128` and `i128` types.
     (accepted, i128_type, "1.26.0", Some(35118), None),
     /// Allows the use of `if let` expressions.
@@ -189,9 +193,9 @@ declare_features! (
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
     /// Allows `'a: { break 'a; }`.
-    (accepted, label_break_value, "CURRENT_RUSTC_VERSION", Some(48594), None),
+    (accepted, label_break_value, "1.65.0", Some(48594), None),
     /// Allows `let...else` statements.
-    (accepted, let_else, "CURRENT_RUSTC_VERSION", Some(87335), None),
+    (accepted, let_else, "1.65.0", Some(87335), None),
     /// Allows `break {expr}` with a value inside `loop`s.
     (accepted, loop_break_value, "1.19.0", Some(37339), None),
     /// Allows use of `?` as the Kleene "at most one" operator in macros.

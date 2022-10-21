@@ -1,5 +1,5 @@
 // Checks that the crate search filtering is handled correctly and changes the results.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
 write: (".search-input", "test")
 // To be SURE that the search will be run.
@@ -43,7 +43,7 @@ wait-for: "#titles"
 assert-property: ("#crate-search", {"value": "all crates"})
 
 // Checking that the URL parameter is taken into account for crate filtering.
-goto: file://|DOC_PATH|/test_docs/index.html?search=test&filter-crate=lib2
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html?search=test&filter-crate=lib2"
 wait-for: "#crate-search"
 assert-property: ("#crate-search", {"value": "lib2"})
 assert-false: "#results .externcrate"

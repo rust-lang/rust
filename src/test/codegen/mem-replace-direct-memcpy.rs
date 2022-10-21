@@ -4,6 +4,7 @@
 // known to be `1` after inlining).
 
 // compile-flags: -C no-prepopulate-passes -Zinline-mir=no
+// ignore-debug: the debug assertions get in the way
 
 #![crate_type = "lib"]
 

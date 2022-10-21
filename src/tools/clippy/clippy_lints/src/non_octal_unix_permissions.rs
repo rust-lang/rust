@@ -1,12 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
-use clippy_utils::ty::match_type;
+use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -49,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                 if_chain! {
                     if (path.ident.name == sym!(mode)
                         && (match_type(cx, obj_ty, &paths::OPEN_OPTIONS)
-                            || match_type(cx, obj_ty, &paths::DIR_BUILDER)))
+                            || is_type_diagnostic_item(cx, obj_ty, sym::DirBuilder)))
                         || (path.ident.name == sym!(set_mode) && match_type(cx, obj_ty, &paths::PERMISSIONS));
                     if let ExprKind::Lit(_) = param.kind;
 

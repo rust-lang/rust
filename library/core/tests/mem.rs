@@ -130,7 +130,11 @@ fn test_transmute_copy_grow_panics() {
             payload
                 .downcast::<&'static str>()
                 .and_then(|s| {
-                    if *s == "cannot transmute_copy if U is larger than T" { Ok(s) } else { Err(s) }
+                    if *s == "cannot transmute_copy if Dst is larger than Src" {
+                        Ok(s)
+                    } else {
+                        Err(s)
+                    }
                 })
                 .unwrap_or_else(|p| panic::resume_unwind(p));
         }
@@ -163,18 +167,18 @@ fn assume_init_good() {
 
 #[test]
 fn uninit_array_assume_init() {
-    let mut array: [MaybeUninit<i16>; 5] = MaybeUninit::uninit_array();
+    let mut array = [MaybeUninit::<i16>::uninit(); 5];
     array[0].write(3);
     array[1].write(1);
     array[2].write(4);
     array[3].write(1);
     array[4].write(5);
 
-    let array = unsafe { MaybeUninit::array_assume_init(array) };
+    let array = unsafe { array.transpose().assume_init() };
 
     assert_eq!(array, [3, 1, 4, 1, 5]);
 
-    let [] = unsafe { MaybeUninit::<!>::array_assume_init([]) };
+    let [] = unsafe { [MaybeUninit::<!>::uninit(); 0].transpose().assume_init() };
 }
 
 #[test]

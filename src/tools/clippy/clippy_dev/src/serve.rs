@@ -10,8 +10,8 @@ use std::time::{Duration, SystemTime};
 /// Panics if the python commands could not be spawned
 pub fn run(port: u16, lint: Option<&String>) -> ! {
     let mut url = Some(match lint {
-        None => format!("http://localhost:{}", port),
-        Some(lint) => format!("http://localhost:{}/#{}", port, lint),
+        None => format!("http://localhost:{port}"),
+        Some(lint) => format!("http://localhost:{port}/#{lint}"),
     });
 
     loop {

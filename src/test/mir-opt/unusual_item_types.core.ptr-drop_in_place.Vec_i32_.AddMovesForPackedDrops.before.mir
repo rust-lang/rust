@@ -34,6 +34,6 @@ fn std::ptr::drop_in_place(_1: *mut Vec<i32>) -> () {
         _3 = <Vec<i32> as Drop>::drop(move _2) -> [return: bb5, unwind: bb4]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'r> fn(&'r mut Vec<i32>) {<Vec<i32> as Drop>::drop}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a> fn(&'a mut Vec<i32>) {<Vec<i32> as Drop>::drop}, val: Value(<ZST>) }
     }
 }

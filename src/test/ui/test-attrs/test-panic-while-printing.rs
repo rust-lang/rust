@@ -1,7 +1,6 @@
 // compile-flags:--test
 // run-pass
 // needs-unwind
-// ignore-emscripten no subprocess support
 
 use std::fmt;
 use std::fmt::{Display, Formatter};

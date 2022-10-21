@@ -20,7 +20,7 @@ use super::{
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
-use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
@@ -35,7 +35,6 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
@@ -94,7 +93,7 @@ impl IntercrateAmbiguityCause {
 }
 
 pub struct SelectionContext<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
 
     /// Freshener used specifically for entries on the obligation
     /// stack. This ensures that all entries on the stack at one time
@@ -215,7 +214,7 @@ enum BuiltinImplConditions<'tcx> {
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
+    pub fn new(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
             freshener: infcx.freshener_keep_static(),
@@ -225,12 +224,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
+    pub fn intercrate(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext { intercrate: true, ..SelectionContext::new(infcx) }
     }
 
     pub fn with_query_mode(
-        infcx: &'cx InferCtxt<'cx, 'tcx>,
+        infcx: &'cx InferCtxt<'tcx>,
         query_mode: TraitQueryMode,
     ) -> SelectionContext<'cx, 'tcx> {
         debug!(?query_mode, "with_query_mode");
@@ -254,7 +253,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
 
-    pub fn infcx(&self) -> &'cx InferCtxt<'cx, 'tcx> {
+    pub fn infcx(&self) -> &'cx InferCtxt<'tcx> {
         self.infcx
     }
 
@@ -677,19 +676,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::ConstEquate(c1, c2) => {
+                    assert!(
+                        self.tcx().features().generic_const_exprs,
+                        "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
+                    );
                     debug!(?c1, ?c2, "evaluate_predicate_recursively: equating consts");
 
-                    if self.tcx().features().generic_const_exprs {
-                        // FIXME: we probably should only try to unify abstract constants
-                        // if the constants depend on generic parameters.
-                        //
-                        // Let's just see where this breaks :shrug:
-                        if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
-                            (c1.kind(), c2.kind())
-                        {
-                            if self.infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
-                                return Ok(EvaluatedToOk);
-                            }
+                    // FIXME: we probably should only try to unify abstract constants
+                    // if the constants depend on generic parameters.
+                    //
+                    // Let's just see where this breaks :shrug:
+                    if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
+                        (c1.kind(), c2.kind())
+                    {
+                        if self.infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
+                            return Ok(EvaluatedToOk);
                         }
                     }
 
@@ -729,7 +730,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             )
                         }
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
-                            if c1.has_infer_types_or_consts() || c2.has_infer_types_or_consts() {
+                            if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 Ok(EvaluatedToAmbig)
                             } else {
                                 // Two different constants using generic parameters ~> error.
@@ -827,7 +828,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// must be met of course). One obvious case this comes up is
     /// marker traits like `Send`. Think of a linked list:
     ///
-    ///    struct List<T> { data: T, next: Option<Box<List<T>>> }
+    ///     struct List<T> { data: T, next: Option<Box<List<T>>> }
     ///
     /// `Box<List<T>>` will be `Send` if `T` is `Send` and
     /// `Option<Box<List<T>>>` is `Send`, and in turn
@@ -913,38 +914,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // precise still.
         let unbound_input_types =
             stack.fresh_trait_pred.skip_binder().trait_ref.substs.types().any(|ty| ty.is_fresh());
-
-        if stack.obligation.polarity() != ty::ImplPolarity::Negative {
-            // This check was an imperfect workaround for a bug in the old
-            // intercrate mode; it should be removed when that goes away.
-            if unbound_input_types && self.intercrate {
-                debug!("evaluate_stack --> unbound argument, intercrate -->  ambiguous",);
-                // Heuristics: show the diagnostics when there are no candidates in crate.
-                if self.intercrate_ambiguity_causes.is_some() {
-                    debug!("evaluate_stack: intercrate_ambiguity_causes is some");
-                    if let Ok(candidate_set) = self.assemble_candidates(stack) {
-                        if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
-                            let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
-                            let self_ty = trait_ref.self_ty();
-                            let cause = with_no_trimmed_paths!({
-                                IntercrateAmbiguityCause::DownstreamCrate {
-                                    trait_desc: trait_ref.print_only_trait_path().to_string(),
-                                    self_desc: if self_ty.has_concrete_skeleton() {
-                                        Some(self_ty.to_string())
-                                    } else {
-                                        None
-                                    },
-                                }
-                            });
-
-                            debug!(?cause, "evaluate_stack: pushing cause");
-                            self.intercrate_ambiguity_causes.as_mut().unwrap().insert(cause);
-                        }
-                    }
-                }
-                return Ok(EvaluatedToAmbig);
-            }
-        }
 
         if unbound_input_types
             && stack.iter().skip(1).any(|prev| {
@@ -1128,7 +1097,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             ErrorGuaranteed::unchecked_claim_error_was_emitted(),
                         ));
                     }
-                    self.infcx.report_overflow_error(error_obligation, true);
+                    self.infcx.err_ctxt().report_overflow_error(error_obligation, true);
                 }
                 TraitQueryMode::Canonical => {
                     return Err(OverflowError::Canonical);
@@ -1183,7 +1152,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // const projection
                     ProjectionCandidate(_, ty::BoundConstness::ConstIfConst) => {}
                     // auto trait impl
-                    AutoImplCandidate(..) => {}
+                    AutoImplCandidate => {}
                     // generator, this will raise error in other places
                     // or ignore error with const_async_blocks feature
                     GeneratorCandidate => {}
@@ -1553,7 +1522,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             if !generics.params.is_empty()
                 && obligation.predicate.substs[generics.parent_count..]
                     .iter()
-                    .any(|&p| p.has_infer_types_or_consts() && self.infcx.shallow_resolve(p) != p)
+                    .any(|&p| p.has_non_region_infer() && self.infcx.shallow_resolve(p) != p)
             {
                 ProjectionMatchesProjection::Ambiguous
             } else {
@@ -1595,13 +1564,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
-        // `DiscriminantKindCandidate`, `ConstDestructCandidate`, and `TupleCandidate`
+        // `DiscriminantKindCandidate`, `ConstDestructCandidate`
         // to anything else.
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
         match (&other.candidate, &victim.candidate) {
-            (_, AutoImplCandidate(..)) | (AutoImplCandidate(..), _) => {
+            (_, AutoImplCandidate) | (AutoImplCandidate, _) => {
                 bug!(
                     "default implementations shouldn't be recorded \
                     when there are other valid candidates"
@@ -1616,8 +1585,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
                 | PointeeCandidate
-                | ConstDestructCandidate(_)
-                | TupleCandidate,
+                | ConstDestructCandidate(_),
                 _,
             ) => true,
             (
@@ -1625,8 +1593,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
                 | PointeeCandidate
-                | ConstDestructCandidate(_)
-                | TupleCandidate,
+                | ConstDestructCandidate(_),
             ) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
@@ -1671,7 +1638,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
-                | TraitAliasCandidate(..)
+                | TraitAliasCandidate
                 | ObjectCandidate(_)
                 | ProjectionCandidate(..),
             ) => !is_global(cand),
@@ -1689,7 +1656,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
-                | TraitAliasCandidate(..),
+                | TraitAliasCandidate,
                 ParamCandidate(ref cand),
             ) => {
                 // Prefer these to a global where-clause bound
@@ -1719,7 +1686,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
-                | TraitAliasCandidate(..),
+                | TraitAliasCandidate,
             ) => true,
 
             (
@@ -1731,18 +1698,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
-                | TraitAliasCandidate(..),
+                | TraitAliasCandidate,
                 ObjectCandidate(_) | ProjectionCandidate(..),
             ) => false,
 
             (&ImplCandidate(other_def), &ImplCandidate(victim_def)) => {
                 // See if we can toss out `victim` based on specialization.
-                // This requires us to know *for sure* that the `other` impl applies
-                // i.e., `EvaluatedToOk`.
+                // While this requires us to know *for sure* that the `other` impl applies
+                // we still use modulo regions here.
                 //
-                // FIXME(@lcnr): Using `modulo_regions` here seems kind of scary
-                // to me but is required for `std` to compile, so I didn't change it
-                // for now.
+                // This is fine as specialization currently assumes that specializing
+                // impls have to be always applicable, meaning that the only allowed
+                // region constraints may be constraints also present on the default impl.
                 let tcx = self.tcx();
                 if other.evaluation.must_apply_modulo_regions() {
                     if tcx.specializes((other_def, victim_def)) {
@@ -1812,7 +1779,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
-                | TraitAliasCandidate(..),
+                | TraitAliasCandidate,
                 ImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
@@ -1821,7 +1788,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { has_nested: true }
-                | TraitAliasCandidate(..),
+                | TraitAliasCandidate,
             ) => false,
         }
     }

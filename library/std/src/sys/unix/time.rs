@@ -7,6 +7,12 @@ const NSEC_PER_SEC: u64 = 1_000_000_000;
 pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(0)]
+#[rustc_layout_scalar_valid_range_end(999_999_999)]
+struct Nanoseconds(u32);
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SystemTime {
     pub(in crate::sys::unix) t: Timespec,
 }
@@ -14,7 +20,7 @@ pub struct SystemTime {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(in crate::sys::unix) struct Timespec {
     tv_sec: i64,
-    tv_nsec: i64,
+    tv_nsec: Nanoseconds,
 }
 
 impl SystemTime {
@@ -46,18 +52,20 @@ impl fmt::Debug for SystemTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SystemTime")
             .field("tv_sec", &self.t.tv_sec)
-            .field("tv_nsec", &self.t.tv_nsec)
+            .field("tv_nsec", &self.t.tv_nsec.0)
             .finish()
     }
 }
 
 impl Timespec {
     pub const fn zero() -> Timespec {
-        Timespec { tv_sec: 0, tv_nsec: 0 }
+        Timespec::new(0, 0)
     }
 
-    fn new(tv_sec: i64, tv_nsec: i64) -> Timespec {
-        Timespec { tv_sec, tv_nsec }
+    const fn new(tv_sec: i64, tv_nsec: i64) -> Timespec {
+        assert!(tv_nsec >= 0 && tv_nsec < NSEC_PER_SEC as i64);
+        // SAFETY: The assert above checks tv_nsec is within the valid range
+        Timespec { tv_sec, tv_nsec: unsafe { Nanoseconds(tv_nsec as u32) } }
     }
 
     pub fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
@@ -75,12 +83,12 @@ impl Timespec {
             //
             // Ideally this code could be rearranged such that it more
             // directly expresses the lower-cost behavior we want from it.
-            let (secs, nsec) = if self.tv_nsec >= other.tv_nsec {
-                ((self.tv_sec - other.tv_sec) as u64, (self.tv_nsec - other.tv_nsec) as u32)
+            let (secs, nsec) = if self.tv_nsec.0 >= other.tv_nsec.0 {
+                ((self.tv_sec - other.tv_sec) as u64, self.tv_nsec.0 - other.tv_nsec.0)
             } else {
                 (
                     (self.tv_sec - other.tv_sec - 1) as u64,
-                    self.tv_nsec as u32 + (NSEC_PER_SEC as u32) - other.tv_nsec as u32,
+                    self.tv_nsec.0 + (NSEC_PER_SEC as u32) - other.tv_nsec.0,
                 )
             };
 
@@ -102,7 +110,7 @@ impl Timespec {
 
         // Nano calculations can't overflow because nanos are <1B which fit
         // in a u32.
-        let mut nsec = other.subsec_nanos() + self.tv_nsec as u32;
+        let mut nsec = other.subsec_nanos() + self.tv_nsec.0;
         if nsec >= NSEC_PER_SEC as u32 {
             nsec -= NSEC_PER_SEC as u32;
             secs = secs.checked_add(1)?;
@@ -118,7 +126,7 @@ impl Timespec {
             .and_then(|secs| self.tv_sec.checked_sub(secs))?;
 
         // Similar to above, nanos can't overflow.
-        let mut nsec = self.tv_nsec as i32 - other.subsec_nanos() as i32;
+        let mut nsec = self.tv_nsec.0 as i32 - other.subsec_nanos() as i32;
         if nsec < 0 {
             nsec += NSEC_PER_SEC as i32;
             secs = secs.checked_sub(1)?;
@@ -130,7 +138,7 @@ impl Timespec {
     pub fn to_timespec(&self) -> Option<libc::timespec> {
         Some(libc::timespec {
             tv_sec: self.tv_sec.try_into().ok()?,
-            tv_nsec: self.tv_nsec.try_into().ok()?,
+            tv_nsec: self.tv_nsec.0.try_into().ok()?,
         })
     }
 }
@@ -293,7 +301,7 @@ mod inner {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.debug_struct("Instant")
                 .field("tv_sec", &self.t.tv_sec)
-                .field("tv_nsec", &self.t.tv_nsec)
+                .field("tv_nsec", &self.t.tv_nsec.0)
                 .finish()
         }
     }
@@ -334,7 +342,7 @@ mod inner {
                     let mut t = MaybeUninit::uninit();
                     cvt(unsafe { clock_gettime64(clock, t.as_mut_ptr()) }).unwrap();
                     let t = unsafe { t.assume_init() };
-                    return Timespec { tv_sec: t.tv_sec, tv_nsec: t.tv_nsec as i64 };
+                    return Timespec::new(t.tv_sec, t.tv_nsec as i64);
                 }
             }
 

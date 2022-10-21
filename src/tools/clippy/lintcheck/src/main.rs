@@ -8,13 +8,17 @@
 #![allow(clippy::collapsible_else_if)]
 
 mod config;
+mod driver;
+mod recursive;
 
-use config::LintcheckConfig;
+use crate::config::LintcheckConfig;
+use crate::recursive::LintcheckServer;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
+use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
-use std::fs::write;
+use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,21 +26,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use cargo_metadata::diagnostic::DiagnosticLevel;
+use cargo_metadata::diagnostic::{Diagnostic, DiagnosticLevel};
 use cargo_metadata::Message;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use walkdir::{DirEntry, WalkDir};
-
-#[cfg(not(windows))]
-const CLIPPY_DRIVER_PATH: &str = "target/debug/clippy-driver";
-#[cfg(not(windows))]
-const CARGO_CLIPPY_PATH: &str = "target/debug/cargo-clippy";
-
-#[cfg(windows)]
-const CLIPPY_DRIVER_PATH: &str = "target/debug/clippy-driver.exe";
-#[cfg(windows)]
-const CARGO_CLIPPY_PATH: &str = "target/debug/cargo-clippy.exe";
 
 const LINTCHECK_DOWNLOADS: &str = "target/lintcheck/downloads";
 const LINTCHECK_SOURCES: &str = "target/lintcheck/sources";
@@ -45,6 +39,13 @@ const LINTCHECK_SOURCES: &str = "target/lintcheck/sources";
 #[derive(Debug, Serialize, Deserialize)]
 struct SourceList {
     crates: HashMap<String, TomlCrate>,
+    #[serde(default)]
+    recursive: RecursiveOptions,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct RecursiveOptions {
+    ignore: HashSet<String>,
 }
 
 /// A crate source stored inside the .toml
@@ -105,12 +106,7 @@ struct ClippyWarning {
 
 #[allow(unused)]
 impl ClippyWarning {
-    fn new(cargo_message: Message, krate: &Crate) -> Option<Self> {
-        let diag = match cargo_message {
-            Message::CompilerMessage(message) => message.message,
-            _ => return None,
-        };
-
+    fn new(diag: Diagnostic, crate_name: &str, crate_version: &str) -> Option<Self> {
         let lint_type = diag.code?.code;
         if !(lint_type.contains("clippy") || diag.message.contains("clippy"))
             || diag.message.contains("could not read cargo metadata")
@@ -124,12 +120,12 @@ impl ClippyWarning {
             Ok(stripped) => format!("$CARGO_HOME/{}", stripped.display()),
             Err(_) => format!(
                 "target/lintcheck/sources/{}-{}/{}",
-                krate.name, krate.version, span.file_name
+                crate_name, crate_version, span.file_name
             ),
         };
 
         Some(Self {
-            crate_name: krate.name.clone(),
+            crate_name: crate_name.to_owned(),
             file,
             line: span.line_start,
             column: span.column_start,
@@ -142,8 +138,6 @@ impl ClippyWarning {
     fn to_output(&self, markdown: bool) -> String {
         let file_with_pos = format!("{}:{}:{}", &self.file, &self.line, &self.column);
         if markdown {
-            let lint = format!("`{}`", self.lint_type);
-
             let mut file = self.file.clone();
             if !file.starts_with('$') {
                 file.insert_str(0, "../");
@@ -151,7 +145,7 @@ impl ClippyWarning {
 
             let mut output = String::from("| ");
             let _ = write!(output, "[`{}`]({}#L{})", file_with_pos, file, self.line);
-            let _ = write!(output, r#" | {:<50} | "{}" |"#, lint, self.message);
+            let _ = write!(output, r#" | `{:<50}` | "{}" |"#, self.lint_type, self.message);
             output.push('\n');
             output
         } else {
@@ -243,6 +237,7 @@ impl CrateSource {
                 }
                 // check out the commit/branch/whatever
                 if !Command::new("git")
+                    .args(["-c", "advice.detachedHead=false"])
                     .arg("checkout")
                     .arg(commit)
                     .current_dir(&repo_path)
@@ -309,10 +304,12 @@ impl Crate {
     fn run_clippy_lints(
         &self,
         cargo_clippy_path: &Path,
+        clippy_driver_path: &Path,
         target_dir_index: &AtomicUsize,
         total_crates_to_lint: usize,
         config: &LintcheckConfig,
         lint_filter: &Vec<String>,
+        server: &Option<LintcheckServer>,
     ) -> Vec<ClippyWarning> {
         // advance the atomic index by one
         let index = target_dir_index.fetch_add(1, Ordering::SeqCst);
@@ -336,36 +333,67 @@ impl Crate {
 
         let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
 
-        let mut args = if config.fix {
+        let mut cargo_clippy_args = if config.fix {
             vec!["--fix", "--"]
         } else {
             vec!["--", "--message-format=json", "--"]
         };
 
+        let mut clippy_args = Vec::<&str>::new();
         if let Some(options) = &self.options {
             for opt in options {
-                args.push(opt);
+                clippy_args.push(opt);
             }
         } else {
-            args.extend(&["-Wclippy::pedantic", "-Wclippy::cargo"])
+            clippy_args.extend(&["-Wclippy::pedantic", "-Wclippy::cargo"])
         }
 
         if lint_filter.is_empty() {
-            args.push("--cap-lints=warn");
+            clippy_args.push("--cap-lints=warn");
         } else {
-            args.push("--cap-lints=allow");
-            args.extend(lint_filter.iter().map(|filter| filter.as_str()))
+            clippy_args.push("--cap-lints=allow");
+            clippy_args.extend(lint_filter.iter().map(|filter| filter.as_str()))
         }
 
-        let all_output = std::process::Command::new(&cargo_clippy_path)
+        if let Some(server) = server {
+            let target = shared_target_dir.join("recursive");
+
+            // `cargo clippy` is a wrapper around `cargo check` that mainly sets `RUSTC_WORKSPACE_WRAPPER` to
+            // `clippy-driver`. We do the same thing here with a couple changes:
+            //
+            // `RUSTC_WRAPPER` is used instead of `RUSTC_WORKSPACE_WRAPPER` so that we can lint all crate
+            // dependencies rather than only workspace members
+            //
+            // The wrapper is set to the `lintcheck` so we can force enable linting and ignore certain crates
+            // (see `crate::driver`)
+            let status = Command::new("cargo")
+                .arg("check")
+                .arg("--quiet")
+                .current_dir(&self.path)
+                .env("CLIPPY_ARGS", clippy_args.join("__CLIPPY_HACKERY__"))
+                .env("CARGO_TARGET_DIR", target)
+                .env("RUSTC_WRAPPER", env::current_exe().unwrap())
+                // Pass the absolute path so `crate::driver` can find `clippy-driver`, as it's executed in various
+                // different working directories
+                .env("CLIPPY_DRIVER", clippy_driver_path)
+                .env("LINTCHECK_SERVER", server.local_addr.to_string())
+                .status()
+                .expect("failed to run cargo");
+
+            assert_eq!(status.code(), Some(0));
+
+            return Vec::new();
+        }
+
+        cargo_clippy_args.extend(clippy_args);
+
+        let all_output = Command::new(&cargo_clippy_path)
             // use the looping index to create individual target dirs
             .env(
                 "CARGO_TARGET_DIR",
                 shared_target_dir.join(format!("_{:?}", thread_index)),
             )
-            // lint warnings will look like this:
-            // src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
-            .args(&args)
+            .args(&cargo_clippy_args)
             .current_dir(&self.path)
             .output()
             .unwrap_or_else(|error| {
@@ -404,7 +432,10 @@ impl Crate {
 
         // get all clippy warnings and ICEs
         let warnings: Vec<ClippyWarning> = Message::parse_stream(stdout.as_bytes())
-            .filter_map(|msg| ClippyWarning::new(msg.unwrap(), &self))
+            .filter_map(|msg| match msg {
+                Ok(Message::CompilerMessage(message)) => ClippyWarning::new(message.message, &self.name, &self.version),
+                _ => None,
+            })
             .collect();
 
         warnings
@@ -423,8 +454,8 @@ fn build_clippy() {
     }
 }
 
-/// Read a `toml` file and return a list of `CrateSources` that we want to check with clippy
-fn read_crates(toml_path: &Path) -> Vec<CrateSource> {
+/// Read a `lintcheck_crates.toml` file
+fn read_crates(toml_path: &Path) -> (Vec<CrateSource>, RecursiveOptions) {
     let toml_content: String =
         std::fs::read_to_string(&toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: SourceList =
@@ -484,7 +515,7 @@ fn read_crates(toml_path: &Path) -> Vec<CrateSource> {
     // sort the crates
     crate_sources.sort();
 
-    crate_sources
+    (crate_sources, crate_list.recursive)
 }
 
 /// Generate a short list of occurring lints-types and their count
@@ -516,20 +547,20 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, 
 
 /// check if the latest modification of the logfile is older than the modification date of the
 /// clippy binary, if this is true, we should clean the lintchec shared target directory and recheck
-fn lintcheck_needs_rerun(lintcheck_logs_path: &Path) -> bool {
+fn lintcheck_needs_rerun(lintcheck_logs_path: &Path, paths: [&Path; 2]) -> bool {
     if !lintcheck_logs_path.exists() {
         return true;
     }
 
     let clippy_modified: std::time::SystemTime = {
-        let mut times = [CLIPPY_DRIVER_PATH, CARGO_CLIPPY_PATH].iter().map(|p| {
+        let [cargo, driver] = paths.map(|p| {
             std::fs::metadata(p)
                 .expect("failed to get metadata of file")
                 .modified()
                 .expect("failed to get modification date")
         });
         // the oldest modification of either of the binaries
-        std::cmp::max(times.next().unwrap(), times.next().unwrap())
+        std::cmp::max(cargo, driver)
     };
 
     let logs_modified: std::time::SystemTime = std::fs::metadata(lintcheck_logs_path)
@@ -543,6 +574,11 @@ fn lintcheck_needs_rerun(lintcheck_logs_path: &Path) -> bool {
 }
 
 fn main() {
+    // We're being executed as a `RUSTC_WRAPPER` as part of `--recursive`
+    if let Ok(addr) = env::var("LINTCHECK_SERVER") {
+        driver::drive(&addr);
+    }
+
     // assert that we launch lintcheck from the repo root (via cargo lintcheck)
     if std::fs::metadata("lintcheck/Cargo.toml").is_err() {
         eprintln!("lintcheck needs to be run from clippy's repo root!\nUse `cargo lintcheck` alternatively.");
@@ -555,9 +591,15 @@ fn main() {
     build_clippy();
     println!("Done compiling");
 
+    let cargo_clippy_path = fs::canonicalize(format!("target/debug/cargo-clippy{EXE_SUFFIX}")).unwrap();
+    let clippy_driver_path = fs::canonicalize(format!("target/debug/clippy-driver{EXE_SUFFIX}")).unwrap();
+
     // if the clippy bin is newer than our logs, throw away target dirs to force clippy to
     // refresh the logs
-    if lintcheck_needs_rerun(&config.lintcheck_results_path) {
+    if lintcheck_needs_rerun(
+        &config.lintcheck_results_path,
+        [&cargo_clippy_path, &clippy_driver_path],
+    ) {
         let shared_target_dir = "target/lintcheck/shared_target_dir";
         // if we get an Err here, the shared target dir probably does simply not exist
         if let Ok(metadata) = std::fs::metadata(&shared_target_dir) {
@@ -569,10 +611,6 @@ fn main() {
         }
     }
 
-    let cargo_clippy_path: PathBuf = PathBuf::from(CARGO_CLIPPY_PATH)
-        .canonicalize()
-        .expect("failed to canonicalize path to clippy binary");
-
     // assert that clippy is found
     assert!(
         cargo_clippy_path.is_file(),
@@ -580,7 +618,7 @@ fn main() {
         cargo_clippy_path.display()
     );
 
-    let clippy_ver = std::process::Command::new(CARGO_CLIPPY_PATH)
+    let clippy_ver = std::process::Command::new(&cargo_clippy_path)
         .arg("--version")
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
@@ -589,7 +627,7 @@ fn main() {
     // download and extract the crates, then run clippy on them and collect clippy's warnings
     // flatten into one big list of warnings
 
-    let crates = read_crates(&config.sources_toml_path);
+    let (crates, recursive_options) = read_crates(&config.sources_toml_path);
     let old_stats = read_stats_from_file(&config.lintcheck_results_path);
 
     let counter = AtomicUsize::new(1);
@@ -639,10 +677,30 @@ fn main() {
         .build_global()
         .unwrap();
 
-    let clippy_warnings: Vec<ClippyWarning> = crates
+    let server = config.recursive.then(|| {
+        let _ = fs::remove_dir_all("target/lintcheck/shared_target_dir/recursive");
+
+        LintcheckServer::spawn(recursive_options)
+    });
+
+    let mut clippy_warnings: Vec<ClippyWarning> = crates
         .par_iter()
-        .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, crates.len(), &config, &lint_filter))
+        .flat_map(|krate| {
+            krate.run_clippy_lints(
+                &cargo_clippy_path,
+                &clippy_driver_path,
+                &counter,
+                crates.len(),
+                &config,
+                &lint_filter,
+                &server,
+            )
+        })
         .collect();
+
+    if let Some(server) = server {
+        clippy_warnings.extend(server.warnings());
+    }
 
     // if we are in --fix mode, don't change the log files, terminate here
     if config.fix {
@@ -681,8 +739,8 @@ fn main() {
     }
 
     println!("Writing logs to {}", config.lintcheck_results_path.display());
-    std::fs::create_dir_all(config.lintcheck_results_path.parent().unwrap()).unwrap();
-    write(&config.lintcheck_results_path, text).unwrap();
+    fs::create_dir_all(config.lintcheck_results_path.parent().unwrap()).unwrap();
+    fs::write(&config.lintcheck_results_path, text).unwrap();
 
     print_stats(old_stats, new_stats, &config.lint_filter);
 }

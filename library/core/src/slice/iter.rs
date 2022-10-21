@@ -9,7 +9,7 @@ use crate::fmt;
 use crate::intrinsics::{assume, exact_div, unchecked_sub};
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::marker::{PhantomData, Send, Sized, Sync};
-use crate::mem;
+use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ptr::NonNull;
 
@@ -91,11 +91,8 @@ impl<'a, T> Iter<'a, T> {
         unsafe {
             assume(!ptr.is_null());
 
-            let end = if mem::size_of::<T>() == 0 {
-                ptr.wrapping_byte_add(slice.len())
-            } else {
-                ptr.add(slice.len())
-            };
+            let end =
+                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr as *mut T), end, _marker: PhantomData }
         }
@@ -127,6 +124,7 @@ impl<'a, T> Iter<'a, T> {
     /// ```
     #[must_use]
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
+    #[inline]
     pub fn as_slice(&self) -> &'a [T] {
         self.make_slice()
     }
@@ -146,6 +144,7 @@ iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
+    #[inline]
     fn clone(&self) -> Self {
         Iter { ptr: self.ptr, end: self.end, _marker: self._marker }
     }
@@ -153,6 +152,7 @@ impl<T> Clone for Iter<'_, T> {
 
 #[stable(feature = "slice_iter_as_ref", since = "1.13.0")]
 impl<T> AsRef<[T]> for Iter<'_, T> {
+    #[inline]
     fn as_ref(&self) -> &[T] {
         self.as_slice()
     }
@@ -227,11 +227,8 @@ impl<'a, T> IterMut<'a, T> {
         unsafe {
             assume(!ptr.is_null());
 
-            let end = if mem::size_of::<T>() == 0 {
-                ptr.wrapping_byte_add(slice.len())
-            } else {
-                ptr.add(slice.len())
-            };
+            let end =
+                if T::IS_ZST { ptr.wrapping_byte_add(slice.len()) } else { ptr.add(slice.len()) };
 
             Self { ptr: NonNull::new_unchecked(ptr), end, _marker: PhantomData }
         }
@@ -303,6 +300,7 @@ impl<'a, T> IterMut<'a, T> {
     /// ```
     #[must_use]
     #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
+    #[inline]
     pub fn as_slice(&self) -> &[T] {
         self.make_slice()
     }
@@ -351,6 +349,7 @@ impl<'a, T> IterMut<'a, T> {
 
 #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
 impl<T> AsRef<[T]> for IterMut<'_, T> {
+    #[inline]
     fn as_ref(&self) -> &[T] {
         self.as_slice()
     }

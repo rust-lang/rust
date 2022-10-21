@@ -4,6 +4,27 @@ use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::FluentArgs;
 use std::borrow::Cow;
 
+/// Convert diagnostic arguments (a rustc internal type that exists to implement
+/// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
+///
+/// Typically performed once for each diagnostic at the start of `emit_diagnostic` and then
+/// passed around as a reference thereafter.
+pub fn to_fluent_args<'iter, 'arg: 'iter>(
+    iter: impl Iterator<Item = DiagnosticArg<'iter, 'arg>>,
+) -> FluentArgs<'arg> {
+    let mut args = if let Some(size) = iter.size_hint().1 {
+        FluentArgs::with_capacity(size)
+    } else {
+        FluentArgs::new()
+    };
+
+    for (k, v) in iter {
+        args.set(k.clone(), v.clone());
+    }
+
+    args
+}
+
 pub trait Translate {
     /// Return `FluentBundle` with localized diagnostics for the locale requested by the user. If no
     /// language was requested by the user then this will be `None` and `fallback_fluent_bundle`
@@ -14,15 +35,6 @@ pub trait Translate {
     /// Used when the user has not requested a specific language or when a localized diagnostic is
     /// unavailable for the requested locale.
     fn fallback_fluent_bundle(&self) -> &FluentBundle;
-
-    /// Convert diagnostic arguments (a rustc internal type that exists to implement
-    /// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
-    ///
-    /// Typically performed once for each diagnostic at the start of `emit_diagnostic` and then
-    /// passed around as a reference thereafter.
-    fn to_fluent_args<'arg>(&self, args: &[DiagnosticArg<'arg>]) -> FluentArgs<'arg> {
-        FromIterator::from_iter(args.iter().cloned())
-    }
 
     /// Convert `DiagnosticMessage`s to a string, performing translation if necessary.
     fn translate_messages(
@@ -43,7 +55,9 @@ pub trait Translate {
     ) -> Cow<'_, str> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
-            DiagnosticMessage::Str(msg) => return Cow::Borrowed(&msg),
+            DiagnosticMessage::Str(msg) | DiagnosticMessage::Eager(msg) => {
+                return Cow::Borrowed(&msg);
+            }
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
         };
 

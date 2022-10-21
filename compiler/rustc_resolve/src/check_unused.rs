@@ -6,7 +6,7 @@
 // `use` items.
 //
 // Unused trait imports can't be checked until the method resolution. We save
-// candidates here, and do the actual check in librustc_typeck/check_unused.rs.
+// candidates here, and do the actual check in rustc_hir_analysis/check_unused.rs.
 //
 // Checking for unused imports is split into three steps:
 //

@@ -746,7 +746,7 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
 /// Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
 /// is not exhaustive enough.
 ///
-/// NB: The partner lint for structs lives in `compiler/rustc_typeck/src/check/pat.rs`.
+/// NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
 fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     scrut_ty: Ty<'tcx>,
@@ -754,9 +754,8 @@ fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
     hir_id: HirId,
     witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
 ) {
-    cx.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, hir_id, sp, |build| {
+    cx.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, hir_id, sp, "some variants are not matched explicitly", |lint| {
         let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
-        let mut lint = build.build("some variants are not matched explicitly");
         lint.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
         lint.help(
             "ensure that all variants are matched explicitly by adding the suggested match arms",
@@ -765,7 +764,7 @@ fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
             "the matched value is of type `{}` and the `non_exhaustive_omitted_patterns` attribute was found",
             scrut_ty,
         ));
-        lint.emit();
+        lint
     });
 }
 
@@ -886,7 +885,7 @@ fn is_useful<'p, 'tcx>(
             // that has the potential to trigger the `non_exhaustive_omitted_patterns` lint.
             // To understand the workings checkout `Constructor::split` and `SplitWildcard::new/into_ctors`
             if is_non_exhaustive_and_wild
-                // We check that the match has a wildcard pattern and that that wildcard is useful,
+                // We check that the match has a wildcard pattern and that wildcard is useful,
                 // meaning there are variants that are covered by the wildcard. Without the check
                 // for `witness_preference` the lint would trigger on `if let NonExhaustiveEnum::A = foo {}`
                 && usefulness.is_useful() && matches!(witness_preference, RealArm)

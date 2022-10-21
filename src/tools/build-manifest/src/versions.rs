@@ -20,6 +20,7 @@ pub(crate) enum PkgType {
     Rustfmt,
     LlvmTools,
     Miri,
+    JsonDocs,
     Other(String),
 }
 
@@ -36,6 +37,7 @@ impl PkgType {
             "rustfmt" | "rustfmt-preview" => PkgType::Rustfmt,
             "llvm-tools" | "llvm-tools-preview" => PkgType::LlvmTools,
             "miri" | "miri-preview" => PkgType::Miri,
+            "rust-docs-json" | "rust-docs-json-preview" => PkgType::JsonDocs,
             other => PkgType::Other(other.into()),
         }
     }
@@ -53,6 +55,7 @@ impl PkgType {
             PkgType::Rustfmt => "rustfmt",
             PkgType::LlvmTools => "llvm-tools",
             PkgType::Miri => "miri",
+            PkgType::JsonDocs => "rust-docs-json",
             PkgType::Other(component) => component,
         }
     }
@@ -72,6 +75,7 @@ impl PkgType {
             PkgType::Rust => true,
             PkgType::RustSrc => true,
             PkgType::Rustc => true,
+            PkgType::JsonDocs => true,
             PkgType::Other(_) => true,
         }
     }
@@ -113,6 +117,9 @@ impl Versions {
             Some(version) => Ok(version.clone()),
             None => {
                 let version_info = self.load_version_from_tarball(package)?;
+                if *package == PkgType::Rust && version_info.version.is_none() {
+                    panic!("missing version info for toolchain");
+                }
                 self.versions.insert(package.clone(), version_info.clone());
                 Ok(version_info)
             }
@@ -127,6 +134,7 @@ impl Versions {
             Ok(file) => file,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
                 // Missing tarballs do not return an error, but return empty data.
+                println!("warning: missing tarball {}", tarball.display());
                 return Ok(VersionInfo::default());
             }
             Err(err) => return Err(err.into()),

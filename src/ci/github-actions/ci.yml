@@ -462,7 +462,7 @@ jobs:
 
           - name: dist-x86_64-apple
             env:
-              SCRIPT: ./x.py dist --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
               RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
@@ -474,7 +474,7 @@ jobs:
 
           - name: dist-apple-various
             env:
-              SCRIPT: ./x.py dist --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
               RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
@@ -485,7 +485,7 @@ jobs:
 
           - name: dist-x86_64-apple-alt
             env:
-              SCRIPT: ./x.py dist
+              SCRIPT: ./x.py dist bootstrap --include-default-paths
               RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
@@ -515,7 +515,7 @@ jobs:
           # This target only needs to support 11.0 and up as nothing else supports the hardware
           - name: dist-aarch64-apple
             env:
-              SCRIPT: ./x.py dist --stage 2
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --stage 2
               RUST_CONFIGURE_ARGS: >-
                 --build=x86_64-apple-darwin
                 --host=aarch64-apple-darwin
@@ -659,7 +659,7 @@ jobs:
                 --target=x86_64-pc-windows-msvc
                 --enable-full-tools
                 --enable-profiler
-              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc src/ci/pgo.sh python x.py dist
+              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc src/ci/pgo.sh python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-xl
 
@@ -671,7 +671,7 @@ jobs:
                 --target=i686-pc-windows-msvc,i586-pc-windows-msvc
                 --enable-full-tools
                 --enable-profiler
-              SCRIPT: python x.py dist
+              SCRIPT: python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-xl
 
@@ -682,7 +682,7 @@ jobs:
                 --host=aarch64-pc-windows-msvc
                 --enable-full-tools
                 --enable-profiler
-              SCRIPT: python x.py dist
+              SCRIPT: python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
               # Hack around this SDK version, because it doesn't work with clang.
               # See https://github.com/rust-lang/rust/issues/88796
@@ -699,14 +699,14 @@ jobs:
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
-              SCRIPT: python x.py dist
+              SCRIPT: python x.py dist bootstrap --include-default-paths
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-xl
 
           - name: dist-x86_64-mingw
             env:
-              SCRIPT: python x.py dist
+              SCRIPT: python x.py dist bootstrap --include-default-paths
               RUST_CONFIGURE_ARGS: >-
                 --build=x86_64-pc-windows-gnu
                 --enable-full-tools
@@ -722,7 +722,7 @@ jobs:
           - name: dist-x86_64-msvc-alt
             env:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
-              SCRIPT: python x.py dist
+              SCRIPT: python x.py dist bootstrap --include-default-paths
             <<: *job-windows-xl
 
   try:

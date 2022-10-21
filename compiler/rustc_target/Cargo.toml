@@ -8,7 +8,8 @@ bitflags = "1.2.1"
 tracing = "0.1"
 serde_json = "1.0.59"
 rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
-rustc_index = { path = "../rustc_index" }

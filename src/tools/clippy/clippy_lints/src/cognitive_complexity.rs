@@ -3,10 +3,12 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::LimitStack;
+use core::ops::ControlFlow;
 use rustc_ast::ast::Attribute;
-use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId};
+use rustc_hir::intravisit::FnKind;
+use rustc_hir::{Body, ExprKind, FnDecl, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
@@ -61,11 +63,27 @@ impl CognitiveComplexity {
             return;
         }
 
-        let expr = &body.value;
+        let expr = body.value;
 
-        let mut helper = CcHelper { cc: 1, returns: 0 };
-        helper.visit_expr(expr);
-        let CcHelper { cc, returns } = helper;
+        let mut cc = 1u64;
+        let mut returns = 0u64;
+        let _: Option<!> = for_each_expr(expr, |e| {
+            match e.kind {
+                ExprKind::If(_, _, _) => {
+                    cc += 1;
+                },
+                ExprKind::Match(_, arms, _) => {
+                    if arms.len() > 1 {
+                        cc += 1;
+                    }
+                    cc += arms.iter().filter(|arm| arm.guard.is_some()).count() as u64;
+                },
+                ExprKind::Ret(_) => returns += 1,
+                _ => {},
+            }
+            ControlFlow::Continue(())
+        });
+
         let ret_ty = cx.typeck_results().node_type(expr.hir_id);
         let ret_adjust = if is_type_diagnostic_item(cx, ret_ty, sym::Result) {
             returns
@@ -74,13 +92,12 @@ impl CognitiveComplexity {
             (returns / 2)
         };
 
-        let mut rust_cc = cc;
         // prevent degenerate cases where unreachable code contains `return` statements
-        if rust_cc >= ret_adjust {
-            rust_cc -= ret_adjust;
+        if cc >= ret_adjust {
+            cc -= ret_adjust;
         }
 
-        if rust_cc > self.limit.limit() {
+        if cc > self.limit.limit() {
             let fn_span = match kind {
                 FnKind::ItemFn(ident, _, _) | FnKind::Method(ident, _) => ident.span,
                 FnKind::Closure => {
@@ -107,8 +124,7 @@ impl CognitiveComplexity {
                 COGNITIVE_COMPLEXITY,
                 fn_span,
                 &format!(
-                    "the function has a cognitive complexity of ({}/{})",
-                    rust_cc,
+                    "the function has a cognitive complexity of ({cc}/{})",
                     self.limit.limit()
                 ),
                 None,
@@ -139,29 +155,5 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
     }
     fn exit_lint_attrs(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
         self.limit.pop_attrs(cx.sess(), attrs, "cognitive_complexity");
-    }
-}
-
-struct CcHelper {
-    cc: u64,
-    returns: u64,
-}
-
-impl<'tcx> Visitor<'tcx> for CcHelper {
-    fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-        walk_expr(self, e);
-        match e.kind {
-            ExprKind::If(_, _, _) => {
-                self.cc += 1;
-            },
-            ExprKind::Match(_, arms, _) => {
-                if arms.len() > 1 {
-                    self.cc += 1;
-                }
-                self.cc += arms.iter().filter(|arm| arm.guard.is_some()).count() as u64;
-            },
-            ExprKind::Ret(_) => self.returns += 1,
-            _ => {},
-        }
     }
 }

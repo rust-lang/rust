@@ -211,7 +211,7 @@ macro_rules! impl_Display {
         fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             // 2^128 is about 3*10^38, so 39 gives an extra byte of space
             let mut buf = [MaybeUninit::<u8>::uninit(); 39];
-            let mut curr = buf.len() as isize;
+            let mut curr = buf.len();
             let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
@@ -228,7 +228,7 @@ macro_rules! impl_Display {
 
                 // eagerly decode 4 characters at a time
                 while n >= 10000 {
-                    let rem = (n % 10000) as isize;
+                    let rem = (n % 10000) as usize;
                     n /= 10000;
 
                     let d1 = (rem / 100) << 1;
@@ -238,29 +238,29 @@ macro_rules! impl_Display {
                     // We are allowed to copy to `buf_ptr[curr..curr + 3]` here since
                     // otherwise `curr < 0`. But then `n` was originally at least `10000^10`
                     // which is `10^40 > 2^128 > n`.
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
+                    ptr::copy_nonoverlapping(lut_ptr.add(d1), buf_ptr.add(curr), 2);
+                    ptr::copy_nonoverlapping(lut_ptr.add(d2), buf_ptr.add(curr + 2), 2);
                 }
 
                 // if we reach here numbers are <= 9999, so at most 4 chars long
-                let mut n = n as isize; // possibly reduce 64bit math
+                let mut n = n as usize; // possibly reduce 64bit math
 
                 // decode 2 more chars, if > 2 chars
                 if n >= 100 {
                     let d1 = (n % 100) << 1;
                     n /= 100;
                     curr -= 2;
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                    ptr::copy_nonoverlapping(lut_ptr.add(d1), buf_ptr.add(curr), 2);
                 }
 
                 // decode last 1 or 2 chars
                 if n < 10 {
                     curr -= 1;
-                    *buf_ptr.offset(curr) = (n as u8) + b'0';
+                    *buf_ptr.add(curr) = (n as u8) + b'0';
                 } else {
                     let d1 = n << 1;
                     curr -= 2;
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                    ptr::copy_nonoverlapping(lut_ptr.add(d1), buf_ptr.add(curr), 2);
                 }
             }
 
@@ -268,7 +268,7 @@ macro_rules! impl_Display {
             // UTF-8 since `DEC_DIGITS_LUT` is
             let buf_slice = unsafe {
                 str::from_utf8_unchecked(
-                    slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))
+                    slice::from_raw_parts(buf_ptr.add(curr), buf.len() - curr))
             };
             f.pad_integral(is_nonnegative, "", buf_slice)
         }
@@ -339,18 +339,18 @@ macro_rules! impl_Exp {
             // Since `curr` always decreases by the number of digits copied, this means
             // that `curr >= 0`.
             let mut buf = [MaybeUninit::<u8>::uninit(); 40];
-            let mut curr = buf.len() as isize; //index for buf
+            let mut curr = buf.len(); //index for buf
             let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             // decode 2 chars at a time
             while n >= 100 {
-                let d1 = ((n % 100) as isize) << 1;
+                let d1 = ((n % 100) as usize) << 1;
                 curr -= 2;
                 // SAFETY: `d1 <= 198`, so we can copy from `lut_ptr[d1..d1 + 2]` since
                 // `DEC_DIGITS_LUT` has a length of 200.
                 unsafe {
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                    ptr::copy_nonoverlapping(lut_ptr.add(d1), buf_ptr.add(curr), 2);
                 }
                 n /= 100;
                 exponent += 2;
@@ -362,7 +362,7 @@ macro_rules! impl_Exp {
                 curr -= 1;
                 // SAFETY: Safe since `40 > curr >= 0` (see comment)
                 unsafe {
-                    *buf_ptr.offset(curr) = (n as u8 % 10_u8) + b'0';
+                    *buf_ptr.add(curr) = (n as u8 % 10_u8) + b'0';
                 }
                 n /= 10;
                 exponent += 1;
@@ -372,7 +372,7 @@ macro_rules! impl_Exp {
                 curr -= 1;
                 // SAFETY: Safe since `40 > curr >= 0`
                 unsafe {
-                    *buf_ptr.offset(curr) = b'.';
+                    *buf_ptr.add(curr) = b'.';
                 }
             }
 
@@ -380,10 +380,10 @@ macro_rules! impl_Exp {
             let buf_slice = unsafe {
                 // decode last character
                 curr -= 1;
-                *buf_ptr.offset(curr) = (n as u8) + b'0';
+                *buf_ptr.add(curr) = (n as u8) + b'0';
 
                 let len = buf.len() - curr as usize;
-                slice::from_raw_parts(buf_ptr.offset(curr), len)
+                slice::from_raw_parts(buf_ptr.add(curr), len)
             };
 
             // stores 'e' (or 'E') and the up to 2-digit exponent
@@ -392,13 +392,13 @@ macro_rules! impl_Exp {
             // SAFETY: In either case, `exp_buf` is written within bounds and `exp_ptr[..len]`
             // is contained within `exp_buf` since `len <= 3`.
             let exp_slice = unsafe {
-                *exp_ptr.offset(0) = if upper { b'E' } else { b'e' };
+                *exp_ptr.add(0) = if upper { b'E' } else { b'e' };
                 let len = if exponent < 10 {
-                    *exp_ptr.offset(1) = (exponent as u8) + b'0';
+                    *exp_ptr.add(1) = (exponent as u8) + b'0';
                     2
                 } else {
                     let off = exponent << 1;
-                    ptr::copy_nonoverlapping(lut_ptr.offset(off), exp_ptr.offset(1), 2);
+                    ptr::copy_nonoverlapping(lut_ptr.add(off), exp_ptr.add(1), 2);
                     3
                 };
                 slice::from_raw_parts(exp_ptr, len)
@@ -479,7 +479,7 @@ mod imp {
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
 /// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
-fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut isize) {
+fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut usize) {
     let buf_ptr = MaybeUninit::slice_as_mut_ptr(buf);
     let lut_ptr = DEC_DIGITS_LUT.as_ptr();
     assert!(*curr > 19);
@@ -505,14 +505,14 @@ fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], cu
 
             *curr -= 16;
 
-            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr + 0), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d2 as isize), buf_ptr.offset(*curr + 2), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d3 as isize), buf_ptr.offset(*curr + 4), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d4 as isize), buf_ptr.offset(*curr + 6), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d5 as isize), buf_ptr.offset(*curr + 8), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d6 as isize), buf_ptr.offset(*curr + 10), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d7 as isize), buf_ptr.offset(*curr + 12), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d8 as isize), buf_ptr.offset(*curr + 14), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d1 as usize), buf_ptr.add(*curr + 0), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d2 as usize), buf_ptr.add(*curr + 2), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d3 as usize), buf_ptr.add(*curr + 4), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d4 as usize), buf_ptr.add(*curr + 6), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d5 as usize), buf_ptr.add(*curr + 8), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d6 as usize), buf_ptr.add(*curr + 10), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d7 as usize), buf_ptr.add(*curr + 12), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d8 as usize), buf_ptr.add(*curr + 14), 2);
         }
         if n >= 1e8 as u64 {
             let to_parse = n % 1e8 as u64;
@@ -525,10 +525,10 @@ fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], cu
             let d4 = ((to_parse / 1e0 as u64) % 100) << 1;
             *curr -= 8;
 
-            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr + 0), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d2 as isize), buf_ptr.offset(*curr + 2), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d3 as isize), buf_ptr.offset(*curr + 4), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d4 as isize), buf_ptr.offset(*curr + 6), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d1 as usize), buf_ptr.add(*curr + 0), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d2 as usize), buf_ptr.add(*curr + 2), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d3 as usize), buf_ptr.add(*curr + 4), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d4 as usize), buf_ptr.add(*curr + 6), 2);
         }
         // `n` < 1e8 < (1 << 32)
         let mut n = n as u32;
@@ -540,8 +540,8 @@ fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], cu
             let d2 = (to_parse % 100) << 1;
             *curr -= 4;
 
-            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr + 0), 2);
-            ptr::copy_nonoverlapping(lut_ptr.offset(d2 as isize), buf_ptr.offset(*curr + 2), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d1 as usize), buf_ptr.add(*curr + 0), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d2 as usize), buf_ptr.add(*curr + 2), 2);
         }
 
         // `n` < 1e4 < (1 << 16)
@@ -550,17 +550,17 @@ fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], cu
             let d1 = (n % 100) << 1;
             n /= 100;
             *curr -= 2;
-            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d1 as usize), buf_ptr.add(*curr), 2);
         }
 
         // decode last 1 or 2 chars
         if n < 10 {
             *curr -= 1;
-            *buf_ptr.offset(*curr) = (n as u8) + b'0';
+            *buf_ptr.add(*curr) = (n as u8) + b'0';
         } else {
             let d1 = n << 1;
             *curr -= 2;
-            ptr::copy_nonoverlapping(lut_ptr.offset(d1 as isize), buf_ptr.offset(*curr), 2);
+            ptr::copy_nonoverlapping(lut_ptr.add(d1 as usize), buf_ptr.add(*curr), 2);
         }
     }
 }
@@ -593,21 +593,21 @@ impl fmt::Display for i128 {
 fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     // 2^128 is about 3*10^38, so 39 gives an extra byte of space
     let mut buf = [MaybeUninit::<u8>::uninit(); 39];
-    let mut curr = buf.len() as isize;
+    let mut curr = buf.len();
 
     let (n, rem) = udiv_1e19(n);
     parse_u64_into(rem, &mut buf, &mut curr);
 
     if n != 0 {
         // 0 pad up to point
-        let target = (buf.len() - 19) as isize;
+        let target = buf.len() - 19;
         // SAFETY: Guaranteed that we wrote at most 19 bytes, and there must be space
         // remaining since it has length 39
         unsafe {
             ptr::write_bytes(
-                MaybeUninit::slice_as_mut_ptr(&mut buf).offset(target),
+                MaybeUninit::slice_as_mut_ptr(&mut buf).add(target),
                 b'0',
-                (curr - target) as usize,
+                curr - target,
             );
         }
         curr = target;
@@ -616,16 +616,16 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
         parse_u64_into(rem, &mut buf, &mut curr);
         // Should this following branch be annotated with unlikely?
         if n != 0 {
-            let target = (buf.len() - 38) as isize;
+            let target = buf.len() - 38;
             // The raw `buf_ptr` pointer is only valid until `buf` is used the next time,
             // buf `buf` is not used in this scope so we are good.
             let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
             // SAFETY: At this point we wrote at most 38 bytes, pad up to that point,
             // There can only be at most 1 digit remaining.
             unsafe {
-                ptr::write_bytes(buf_ptr.offset(target), b'0', (curr - target) as usize);
+                ptr::write_bytes(buf_ptr.add(target), b'0', curr - target);
                 curr = target - 1;
-                *buf_ptr.offset(curr) = (n as u8) + b'0';
+                *buf_ptr.add(curr) = (n as u8) + b'0';
             }
         }
     }
@@ -634,8 +634,8 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
     // UTF-8 since `DEC_DIGITS_LUT` is
     let buf_slice = unsafe {
         str::from_utf8_unchecked(slice::from_raw_parts(
-            MaybeUninit::slice_as_mut_ptr(&mut buf).offset(curr),
-            buf.len() - curr as usize,
+            MaybeUninit::slice_as_mut_ptr(&mut buf).add(curr),
+            buf.len() - curr,
         ))
     };
     f.pad_integral(is_nonnegative, "", buf_slice)

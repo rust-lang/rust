@@ -4,7 +4,6 @@ warning: taking a mutable reference to a `const` item
 LL | const CR: &'static mut i32 = &mut C;
    |                              ^^^^^^
    |
-   = note: `#[warn(const_item_mutation)]` on by default
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: `const` item defined here
@@ -12,6 +11,7 @@ note: `const` item defined here
    |
 LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
+   = note: `#[warn(const_item_mutation)]` on by default
 
 error[E0764]: mutable references are not allowed in the final value of constants
   --> $DIR/E0017.rs:5:30

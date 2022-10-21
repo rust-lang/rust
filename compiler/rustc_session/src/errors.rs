@@ -6,7 +6,6 @@ use rustc_errors::{
 };
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
 #[derive(Diagnostic)]
@@ -45,59 +44,6 @@ pub struct FeatureDiagnosticForIssue {
 #[help(session::feature_diagnostic_help)]
 pub struct FeatureDiagnosticHelp {
     pub feature: Symbol,
-}
-
-pub struct TargetDataLayoutErrorsWrapper<'a>(pub TargetDataLayoutErrors<'a>);
-
-impl IntoDiagnostic<'_, !> for TargetDataLayoutErrorsWrapper<'_> {
-    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
-        let mut diag;
-        match self.0 {
-            TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
-                diag = handler.struct_fatal(fluent::session::target_invalid_address_space);
-                diag.set_arg("addr_space", addr_space);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
-            }
-            TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
-                diag = handler.struct_fatal(fluent::session::target_invalid_bits);
-                diag.set_arg("kind", kind);
-                diag.set_arg("bit", bit);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
-            }
-            TargetDataLayoutErrors::MissingAlignment { cause } => {
-                diag = handler.struct_fatal(fluent::session::target_missing_alignment);
-                diag.set_arg("cause", cause);
-                diag
-            }
-            TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                diag = handler.struct_fatal(fluent::session::target_invalid_alignment);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
-                diag
-            }
-            TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
-                diag = handler.struct_fatal(fluent::session::target_inconsistent_architecture);
-                diag.set_arg("dl", dl);
-                diag.set_arg("target", target);
-                diag
-            }
-            TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
-                diag = handler.struct_fatal(fluent::session::target_inconsistent_pointer_width);
-                diag.set_arg("pointer_size", pointer_size);
-                diag.set_arg("target", target);
-                diag
-            }
-            TargetDataLayoutErrors::InvalidBitsSize { err } => {
-                diag = handler.struct_fatal(fluent::session::target_invalid_bits_size);
-                diag.set_arg("err", err);
-                diag
-            }
-        }
-    }
 }
 
 #[derive(Diagnostic)]
@@ -217,5 +163,20 @@ impl IntoDiagnostic<'_> for InvalidCharacterInCrateName<'_> {
         diag.set_arg("character", self.character);
         diag.set_arg("crate_name", self.crate_name);
         diag
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(session::expr_parentheses_needed, applicability = "machine-applicable")]
+pub struct ExprParenthesesNeeded {
+    #[suggestion_part(code = "(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+impl ExprParenthesesNeeded {
+    pub fn surrounding(s: Span) -> Self {
+        ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
     }
 }

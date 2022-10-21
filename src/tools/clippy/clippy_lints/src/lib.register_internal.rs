@@ -13,10 +13,10 @@ store.register_group(true, "clippy::internal", Some("clippy_internal"), vec![
     LintId::of(utils::internal_lints::INVALID_CLIPPY_VERSION_ATTRIBUTE),
     LintId::of(utils::internal_lints::INVALID_PATHS),
     LintId::of(utils::internal_lints::LINT_WITHOUT_LINT_PASS),
-    LintId::of(utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM),
     LintId::of(utils::internal_lints::MISSING_CLIPPY_VERSION_ATTRIBUTE),
     LintId::of(utils::internal_lints::MISSING_MSRV_ATTR_IMPL),
     LintId::of(utils::internal_lints::OUTER_EXPN_EXPN_DATA),
     LintId::of(utils::internal_lints::PRODUCE_ICE),
+    LintId::of(utils::internal_lints::UNNECESSARY_DEF_PATH),
     LintId::of(utils::internal_lints::UNNECESSARY_SYMBOL_STR),
 ])

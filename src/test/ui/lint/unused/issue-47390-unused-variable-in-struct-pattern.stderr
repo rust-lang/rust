@@ -49,8 +49,8 @@ warning: value assigned to `hours_are_suns` is never read
 LL |         hours_are_suns = false;
    |         ^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
    = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
 
 warning: unused variable: `fire`
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:52:32

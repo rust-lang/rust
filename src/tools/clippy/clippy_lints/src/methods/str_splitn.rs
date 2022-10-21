@@ -2,11 +2,11 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
-use clippy_utils::visitors::expr_visitor;
+use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
 use clippy_utils::{is_diag_item_method, match_def_path, meets_msrv, msrvs, path_to_local_id, paths};
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::{
     BindingAnnotation, Expr, ExprKind, HirId, LangItem, Local, MatchSource, Node, Pat, PatKind, QPath, Stmt, StmtKind,
 };
@@ -211,7 +211,7 @@ fn indirect_usage<'tcx>(
     binding: HirId,
     ctxt: SyntaxContext,
 ) -> Option<IndirectUsage<'tcx>> {
-    if let StmtKind::Local(Local {
+    if let StmtKind::Local(&Local {
         pat: Pat {
             kind: PatKind::Binding(BindingAnnotation::NONE, _, ident, None),
             ..
@@ -222,14 +222,12 @@ fn indirect_usage<'tcx>(
     }) = stmt.kind
     {
         let mut path_to_binding = None;
-        expr_visitor(cx, |expr| {
-            if path_to_local_id(expr, binding) {
-                path_to_binding = Some(expr);
+        let _: Option<!> = for_each_expr_with_closures(cx, init_expr, |e| {
+            if path_to_local_id(e, binding) {
+                path_to_binding = Some(e);
             }
-
-            path_to_binding.is_none()
-        })
-        .visit_expr(init_expr);
+            ControlFlow::Continue(Descend::from(path_to_binding.is_none()))
+        });
 
         let mut parents = cx.tcx.hir().parent_iter(path_to_binding?.hir_id);
         let iter_usage = parse_iter_usage(cx, ctxt, &mut parents)?;
@@ -250,7 +248,7 @@ fn indirect_usage<'tcx>(
             ..
         } = iter_usage
         {
-            if parent_id == *local_hir_id {
+            if parent_id == local_hir_id {
                 return Some(IndirectUsage {
                     name: ident.name,
                     span: stmt.span,

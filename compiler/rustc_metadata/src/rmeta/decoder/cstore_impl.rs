@@ -210,6 +210,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_const_stability => { table }
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
+    params_in_repr => { table }
     unused_generic_params => { table }
     opt_def_kind => { table_direct }
     impl_parent => { table }
@@ -223,6 +224,15 @@ provide! { tcx, def_id, other, cdata,
     fn_arg_names => { table }
     generator_kind => { table }
     trait_def => { table }
+    collect_trait_impl_trait_tys => {
+        Ok(cdata
+            .root
+            .tables
+            .trait_impl_trait_tys
+            .get(cdata, def_id.index)
+            .map(|lazy| lazy.decode((cdata, tcx)))
+            .process_decoded(tcx, || panic!("{:?} does not have trait_impl_trait_tys", def_id)))
+     }
 
     visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }

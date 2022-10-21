@@ -4,6 +4,8 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+rand = "0.8.4"
+rand_xoshiro = "0.6.0"
 tracing = "0.1"
 rustc_middle = { path = "../rustc_middle" }
 rustc_data_structures = { path = "../rustc_data_structures" }

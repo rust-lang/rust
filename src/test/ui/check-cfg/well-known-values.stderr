@@ -6,8 +6,8 @@ LL | #[cfg(target_os = "linuz")]
    |                   |
    |                   help: did you mean: `"linux"`
    |
-   = note: `#[warn(unexpected_cfgs)]` on by default
    = note: expected values for `target_os` are: android, cuda, dragonfly, emscripten, espidf, freebsd, fuchsia, haiku, hermit, horizon, illumos, ios, l4re, linux, macos, netbsd, none, openbsd, psp, redox, solaris, solid_asp3, tvos, uefi, unknown, vxworks, wasi, watchos, windows, xous
+   = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value
   --> $DIR/well-known-values.rs:14:7

@@ -18,6 +18,7 @@ use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 use rustc_data_structures::sync::Lock;
 use rustc_errors::Diagnostic;
 use rustc_hir::def::DefKind;
+use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use thin_vec::ThinVec;
 
@@ -29,7 +30,9 @@ pub struct QueryStackFrame {
     pub name: &'static str,
     pub description: String,
     span: Option<Span>,
-    def_kind: Option<DefKind>,
+    pub def_id: Option<DefId>,
+    pub def_kind: Option<DefKind>,
+    pub ty_adt_id: Option<DefId>,
     /// This hash is used to deterministically pick
     /// a query to remove cycles in the parallel compiler.
     #[cfg(parallel_compiler)]
@@ -42,14 +45,18 @@ impl QueryStackFrame {
         name: &'static str,
         description: String,
         span: Option<Span>,
+        def_id: Option<DefId>,
         def_kind: Option<DefKind>,
+        ty_adt_id: Option<DefId>,
         _hash: impl FnOnce() -> u64,
     ) -> Self {
         Self {
             name,
             description,
             span,
+            def_id,
             def_kind,
+            ty_adt_id,
             #[cfg(parallel_compiler)]
             hash: _hash(),
         }

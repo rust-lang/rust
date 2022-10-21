@@ -86,7 +86,7 @@ fn test_errorkind_packing() {
     assert_eq!(Error::from(ErrorKind::NotFound).kind(), ErrorKind::NotFound);
     assert_eq!(Error::from(ErrorKind::PermissionDenied).kind(), ErrorKind::PermissionDenied);
     assert_eq!(Error::from(ErrorKind::Uncategorized).kind(), ErrorKind::Uncategorized);
-    // Check that the innards look like like what we want.
+    // Check that the innards look like what we want.
     assert_matches!(
         Error::from(ErrorKind::OutOfMemory).repr.data(),
         ErrorData::Simple(ErrorKind::OutOfMemory),

@@ -1,5 +1,5 @@
 use super::{ForceCollect, Parser, PathStyle, TrailingToken};
-use crate::parser::diagnostics::RemoveLet;
+use crate::errors::RemoveLet;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
@@ -10,6 +10,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 
@@ -693,7 +694,7 @@ impl<'a> Parser<'a> {
 
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
-            self.sess.expr_parentheses_needed(&mut err, *sp);
+            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
 
         Err(err)
@@ -776,7 +777,6 @@ impl<'a> Parser<'a> {
     /// expression syntax `...expr` for splatting in expressions.
     fn parse_pat_range_to(&mut self, mut re: Spanned<RangeEnd>) -> PResult<'a, PatKind> {
         let end = self.parse_pat_range_end()?;
-        self.sess.gated_spans.gate(sym::half_open_range_patterns, re.span.to(self.prev_token.span));
         if let RangeEnd::Included(ref mut syn @ RangeSyntax::DotDotDot) = &mut re.node {
             *syn = RangeSyntax::DotDotEq;
             self.struct_span_err(re.span, "range-to patterns with `...` are not allowed")

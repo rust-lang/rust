@@ -6,12 +6,12 @@ LL |     m!(0u8, 20..=30, 30..=40);
    |             |
    |             this range overlaps on `30_u8`...
    |
+   = note: you likely meant to write mutually exclusive ranges
 note: the lint level is defined here
   --> $DIR/overlapping_range_endpoints.rs:2:9
    |
 LL | #![deny(overlapping_range_endpoints)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: you likely meant to write mutually exclusive ranges
 
 error: multiple patterns overlap on their endpoints
   --> $DIR/overlapping_range_endpoints.rs:16:22

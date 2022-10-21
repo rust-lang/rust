@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
                 diag.span_suggestion(
                     e.span,
                     "try",
-                    format!("{}.trailing_zeros() >= {}", sugg, n.count_ones()),
+                    format!("{sugg}.trailing_zeros() >= {}", n.count_ones()),
                     Applicability::MaybeIncorrect,
                 );
             },

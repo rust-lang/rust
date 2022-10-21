@@ -1,4 +1,7 @@
-use rustc_errors::{fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgFromDisplay};
+use rustc_errors::{
+    fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgFromDisplay,
+    SubdiagnosticMessage,
+};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -19,7 +22,10 @@ pub struct UseAngleBrackets {
 }
 
 impl AddToDiagnostic for UseAngleBrackets {
-    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         diag.multipart_suggestion(
             fluent::ast_lowering::use_angle_brackets,
             vec![(self.open_param, String::from("<")), (self.close_param, String::from(">"))],
@@ -29,14 +35,28 @@ impl AddToDiagnostic for UseAngleBrackets {
 }
 
 #[derive(Diagnostic)]
-#[help]
 #[diag(ast_lowering::invalid_abi, code = "E0703")]
+#[note]
 pub struct InvalidAbi {
     #[primary_span]
     #[label]
     pub span: Span,
     pub abi: Symbol,
-    pub valid_abis: String,
+    pub command: String,
+    #[subdiagnostic]
+    pub suggestion: Option<InvalidAbiSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    ast_lowering::invalid_abi_suggestion,
+    code = "{suggestion}",
+    applicability = "maybe-incorrect"
+)]
+pub struct InvalidAbiSuggestion {
+    #[primary_span]
+    pub span: Span,
+    pub suggestion: String,
 }
 
 #[derive(Diagnostic, Clone, Copy)]
@@ -55,7 +75,10 @@ pub enum AssocTyParenthesesSub {
 }
 
 impl AddToDiagnostic for AssocTyParenthesesSub {
-    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         match self {
             Self::Empty { parentheses_span } => diag.multipart_suggestion(
                 fluent::ast_lowering::remove_parentheses,

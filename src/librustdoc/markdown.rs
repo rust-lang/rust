@@ -5,7 +5,6 @@ use std::path::Path;
 
 use rustc_span::edition::Edition;
 use rustc_span::source_map::DUMMY_SP;
-use rustc_span::Symbol;
 
 use crate::config::{Options, RenderOptions};
 use crate::doctest::{Collector, GlobalTestOptions};
@@ -36,6 +35,8 @@ fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
 
 /// Render `input` (e.g., "foo.md") into an HTML file in `output`
 /// (e.g., output = "bar" => "bar/foo.html").
+///
+/// Requires session globals to be available, for symbol interning.
 pub(crate) fn render<P: AsRef<Path>>(
     input: P,
     options: RenderOptions,
@@ -133,7 +134,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
     let mut opts = GlobalTestOptions::default();
     opts.no_crate_inject = true;
     let mut collector = Collector::new(
-        Symbol::intern(&options.input.display().to_string()),
+        options.input.display().to_string(),
         options.clone(),
         true,
         opts,
@@ -142,7 +143,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
         options.enable_per_target_ignores,
     );
     collector.set_position(DUMMY_SP);
-    let codes = ErrorCodes::from(options.render_options.unstable_features.is_nightly_build());
+    let codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
 
     find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
 

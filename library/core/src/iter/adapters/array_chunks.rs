@@ -1,6 +1,6 @@
 use crate::array;
 use crate::iter::{ByRefSized, FusedIterator, Iterator};
-use crate::ops::{ControlFlow, NeverShortCircuit, Try};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator over `N` elements of the iterator at a time.
 ///
@@ -82,13 +82,7 @@ where
         }
     }
 
-    fn fold<B, F>(mut self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
-    }
+    impl_fold_via_try_fold! { fold -> try_fold }
 }
 
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
@@ -126,13 +120,7 @@ where
         try { acc }
     }
 
-    fn rfold<B, F>(mut self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).0
-    }
+    impl_fold_via_try_fold! { rfold -> try_rfold }
 }
 
 impl<I, const N: usize> ArrayChunks<I, N>

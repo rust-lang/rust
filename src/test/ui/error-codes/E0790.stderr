@@ -9,8 +9,8 @@ LL |         MyTrait::my_fn();
    |
 help: use the fully-qualified path to the only available implementation
    |
-LL |         <::inner::MyStruct as MyTrait>::my_fn();
-   |         +++++++++++++++++++++        +
+LL |         <MyStruct as MyTrait>::my_fn();
+   |         ++++++++++++        +
 
 error[E0790]: cannot refer to the associated constant on trait without specifying the corresponding `impl` type
   --> $DIR/E0790.rs:21:17
@@ -23,8 +23,8 @@ LL |         let _ = MyTrait::MY_ASSOC_CONST;
    |
 help: use the fully-qualified path to the only available implementation
    |
-LL |         let _ = <::inner::MyStruct as MyTrait>::MY_ASSOC_CONST;
-   |                 +++++++++++++++++++++        +
+LL |         let _ = <MyStruct as MyTrait>::MY_ASSOC_CONST;
+   |                 ++++++++++++        +
 
 error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/E0790.rs:26:5
@@ -37,8 +37,8 @@ LL |     inner::MyTrait::my_fn();
    |
 help: use the fully-qualified path to the only available implementation
    |
-LL |     inner::<::inner::MyStruct as MyTrait>::my_fn();
-   |            +++++++++++++++++++++        +
+LL |     inner::<MyStruct as MyTrait>::my_fn();
+   |            ++++++++++++        +
 
 error[E0790]: cannot refer to the associated constant on trait without specifying the corresponding `impl` type
   --> $DIR/E0790.rs:30:13
@@ -51,8 +51,8 @@ LL |     let _ = inner::MyTrait::MY_ASSOC_CONST;
    |
 help: use the fully-qualified path to the only available implementation
    |
-LL |     let _ = inner::<::inner::MyStruct as MyTrait>::MY_ASSOC_CONST;
-   |                    +++++++++++++++++++++        +
+LL |     let _ = inner::<MyStruct as MyTrait>::MY_ASSOC_CONST;
+   |                    ++++++++++++        +
 
 error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/E0790.rs:50:5
@@ -65,8 +65,8 @@ LL |     MyTrait2::my_fn();
    |
 help: use a fully-qualified path to a specific available implementation (2 found)
    |
-LL |     <::Impl1 as MyTrait2>::my_fn();
-   |     +++++++++++         +
+LL |     <Impl1 as MyTrait2>::my_fn();
+   |     +++++++++         +
 
 error: aborting due to 5 previous errors
 

@@ -2,6 +2,7 @@ use crate::errors::{
     AmbigousImpl, AmbigousReturn, AnnotationRequired, InferenceBadError, NeedTypeInfoInGenerator,
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
+use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
 use rustc_errors::IntoDiagnostic;
@@ -151,7 +152,7 @@ impl UnderspecifiedArgKind {
     }
 }
 
-fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'_, 'tcx>, ns: Namespace) -> FmtPrinter<'a, 'tcx> {
+fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinter<'a, 'tcx> {
     let mut printer = FmtPrinter::new(infcx.tcx, ns);
     let ty_getter = move |ty_vid| {
         if infcx.probe_ty_var(ty_vid).is_ok() {
@@ -182,7 +183,7 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'_, 'tcx>, ns: Namespace) -> FmtPr
     printer
 }
 
-fn ty_to_string<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String {
+fn ty_to_string<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
     let printer = fmt_printer(infcx, Namespace::TypeNS);
     let ty = infcx.resolve_vars_if_possible(ty);
     match ty.kind() {
@@ -201,7 +202,7 @@ fn ty_to_string<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String {
 /// We don't want to directly use `ty_to_string` for closures as their type isn't really
 /// something users are familiar with. Directly printing the `fn_sig` of closures also
 /// doesn't work as they actually use the "rust-call" API.
-fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String {
+fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
     let ty::Closure(_, substs) = ty.kind() else { unreachable!() };
     let fn_sig = substs.as_closure().sig();
     let args = fn_sig
@@ -225,7 +226,7 @@ fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String 
     format!("fn({}){}", args, ret)
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Extracts data used by diagnostic for either types or constants
     /// which were stuck during inference.
     pub fn extract_inference_diagnostics_data(
@@ -317,7 +318,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    /// Used as a fallback in [InferCtxt::emit_inference_failure_err]
+    /// Used as a fallback in [TypeErrCtxt::emit_inference_failure_err]
     /// in case we weren't able to get a better error.
     fn bad_inference_failure_err(
         &self,
@@ -364,7 +365,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
         }
     }
+}
 
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     pub fn emit_inference_failure_err(
         &self,
         body_id: Option<hir::BodyId>,
@@ -376,14 +379,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
 
-        let Some(typeck_results) = self.in_progress_typeck_results else {
+        let Some(typeck_results) = &self.typeck_results else {
             // If we don't have any typeck results we're outside
             // of a body, so we won't be able to get better info
             // here.
             return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
-        let typeck_results = typeck_results.borrow();
-        let typeck_results = &typeck_results;
 
         let mut local_visitor = FindInferSourceVisitor::new(&self, typeck_results, arg);
         if let Some(body_id) = body_id {
@@ -435,6 +436,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 generics_def_id,
                 def_id: _,
                 generic_args,
+                have_turbofish,
             } => {
                 let generics = self.tcx.generics_of(generics_def_id);
                 let is_type = matches!(arg.unpack(), GenericArgKind::Type(_));
@@ -482,11 +484,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     .unwrap()
                     .into_buffer();
 
-                infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
-                    span: insert_span,
-                    arg_count: generic_args.len(),
-                    args,
-                });
+                if !have_turbofish {
+                    infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
+                        span: insert_span,
+                        arg_count: generic_args.len(),
+                        args,
+                    });
+                }
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, substs, def_id } => {
                 let printer = fmt_printer(self, Namespace::ValueNS);
@@ -560,7 +564,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
         }
     }
+}
 
+impl<'tcx> InferCtxt<'tcx> {
     pub fn need_type_info_err_in_generator(
         &self,
         kind: hir::GeneratorKind,
@@ -616,6 +622,7 @@ enum InferSourceKind<'tcx> {
         generics_def_id: DefId,
         def_id: DefId,
         generic_args: &'tcx [GenericArg<'tcx>],
+        have_turbofish: bool,
     },
     FullyQualifiedMethodCall {
         receiver: &'tcx Expr<'tcx>,
@@ -650,7 +657,7 @@ impl<'tcx> InferSource<'tcx> {
 }
 
 impl<'tcx> InferSourceKind<'tcx> {
-    fn ty_localized_msg(&self, infcx: &InferCtxt<'_, 'tcx>) -> (&'static str, String) {
+    fn ty_localized_msg(&self, infcx: &InferCtxt<'tcx>) -> (&'static str, String) {
         match *self {
             InferSourceKind::LetBinding { ty, .. }
             | InferSourceKind::ClosureArg { ty, .. }
@@ -676,6 +683,7 @@ struct InsertableGenericArgs<'tcx> {
     substs: SubstsRef<'tcx>,
     generics_def_id: DefId,
     def_id: DefId,
+    have_turbofish: bool,
 }
 
 /// A visitor which searches for the "best" spot to use in the inference error.
@@ -686,7 +694,7 @@ struct InsertableGenericArgs<'tcx> {
 /// While doing so, the currently best spot is stored in `infer_source`.
 /// For details on how we rank spots, see [Self::source_cost]
 struct FindInferSourceVisitor<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     typeck_results: &'a TypeckResults<'tcx>,
 
     target: GenericArg<'tcx>,
@@ -698,7 +706,7 @@ struct FindInferSourceVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     fn new(
-        infcx: &'a InferCtxt<'a, 'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         typeck_results: &'a TypeckResults<'tcx>,
         target: GenericArg<'tcx>,
     ) -> Self {
@@ -894,11 +902,18 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             // impl is currently the `DefId` of `Output` in the trait definition
             // which makes this somewhat difficult and prevents us from just
             // using `self.path_inferred_subst_iter` here.
-            hir::ExprKind::Struct(&hir::QPath::Resolved(_self_ty, path), _, _) => {
-                if let Some(ty) = self.opt_node_type(expr.hir_id) {
-                    if let ty::Adt(_, substs) = ty.kind() {
-                        return Box::new(self.resolved_path_inferred_subst_iter(path, substs));
-                    }
+            hir::ExprKind::Struct(&hir::QPath::Resolved(_self_ty, path), _, _)
+            // FIXME(TaKO8Ki): Ideally we should support this. For that
+            // we have to map back from the self type to the
+            // type alias though. That's difficult.
+            //
+            // See the `need_type_info/issue-103053.rs` test for
+            // a example.
+            if !matches!(path.res, Res::Def(DefKind::TyAlias, _)) => {
+                if let Some(ty) = self.opt_node_type(expr.hir_id)
+                    && let ty::Adt(_, substs) = ty.kind()
+                {
+                    return Box::new(self.resolved_path_inferred_subst_iter(path, substs));
                 }
             }
             hir::ExprKind::MethodCall(segment, ..) => {
@@ -916,6 +931,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                             substs,
                             generics_def_id: def_id,
                             def_id,
+                            have_turbofish: false,
                         }
                     };
                     return Box::new(insertable.into_iter());
@@ -933,6 +949,9 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'a {
         let tcx = self.infcx.tcx;
+        let have_turbofish = path.segments.iter().any(|segment| {
+            segment.args.map_or(false, |args| args.args.iter().any(|arg| arg.is_ty_or_const()))
+        });
         // The last segment of a path often has `Res::Err` and the
         // correct `Res` is the one of the whole path.
         //
@@ -942,7 +961,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             let generics_def_id = tcx.res_generics_def_id(path.res)?;
             let generics = tcx.generics_of(generics_def_id);
             if generics.has_impl_trait() {
-                None?
+                None?;
             }
             let insert_span =
                 path.segments.last().unwrap().ident.span.shrink_to_hi().with_hi(path.span.hi());
@@ -951,6 +970,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 substs,
                 generics_def_id,
                 def_id: path.res.def_id(),
+                have_turbofish,
             }
         };
 
@@ -970,6 +990,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     substs,
                     generics_def_id,
                     def_id: res.def_id(),
+                    have_turbofish,
                 })
             })
             .chain(last_segment_using_path_data)
@@ -998,7 +1019,13 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     }
                     let span = tcx.hir().span(segment.hir_id);
                     let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
-                    InsertableGenericArgs { insert_span, substs, generics_def_id: def_id, def_id }
+                    InsertableGenericArgs {
+                        insert_span,
+                        substs,
+                        generics_def_id: def_id,
+                        def_id,
+                        have_turbofish: false,
+                    }
                 };
 
                 let parent_def_id = generics.parent.unwrap();
@@ -1021,7 +1048,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                                     }
                                     // There cannot be inference variables in the self type,
                                     // so there's nothing for us to do here.
-                                    Res::SelfTy { .. } => {}
+                                    Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => {}
                                     _ => warn!(
                                         "unexpected path: def={:?} substs={:?} path={:?}",
                                         def, substs, path,
@@ -1121,7 +1148,13 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
 
         for args in self.expr_inferred_subst_iter(expr) {
             debug!(?args);
-            let InsertableGenericArgs { insert_span, substs, generics_def_id, def_id } = args;
+            let InsertableGenericArgs {
+                insert_span,
+                substs,
+                generics_def_id,
+                def_id,
+                have_turbofish,
+            } = args;
             let generics = tcx.generics_of(generics_def_id);
             if let Some(argument_index) = generics
                 .own_substs(substs)
@@ -1144,6 +1177,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                         generics_def_id,
                         def_id,
                         generic_args,
+                        have_turbofish,
                     },
                 });
             }

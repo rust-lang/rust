@@ -1,4 +1,4 @@
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `SafeStruct` cannot be evaluated at compile-time
   --> $DIR/check-static-values-constraints.rs:65:43
    |
 LL |                                           ..SafeStruct{field1: SafeEnum::Variant3(WithDtor),
@@ -7,7 +7,7 @@ LL | |
 LL | |                                                      field2: SafeEnum::Variant1}};
    | |                                                                                ^- value is dropped here
    | |________________________________________________________________________________|
-   |                                                                                  statics cannot evaluate destructors
+   |                                                                                  the destructor for this type cannot be evaluated in statics
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:79:33

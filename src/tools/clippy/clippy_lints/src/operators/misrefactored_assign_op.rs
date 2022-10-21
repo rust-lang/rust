@@ -47,18 +47,14 @@ fn lint_misrefactored_assign_op(
             if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span)) {
                 let a = &sugg::Sugg::hir(cx, assignee, "..");
                 let r = &sugg::Sugg::hir(cx, rhs, "..");
-                let long = format!("{} = {}", snip_a, sugg::make_binop(op.into(), a, r));
+                let long = format!("{snip_a} = {}", sugg::make_binop(op.into(), a, r));
                 diag.span_suggestion(
                     expr.span,
                     &format!(
-                        "did you mean `{} = {} {} {}` or `{}`? Consider replacing it with",
-                        snip_a,
-                        snip_a,
-                        op.as_str(),
-                        snip_r,
-                        long
+                        "did you mean `{snip_a} = {snip_a} {} {snip_r}` or `{long}`? Consider replacing it with",
+                        op.as_str()
                     ),
-                    format!("{} {}= {}", snip_a, op.as_str(), snip_r),
+                    format!("{snip_a} {}= {snip_r}", op.as_str()),
                     Applicability::MaybeIncorrect,
                 );
                 diag.span_suggestion(

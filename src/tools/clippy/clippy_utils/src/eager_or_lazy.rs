@@ -113,7 +113,17 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     },
                     args,
                 ) => match self.cx.qpath_res(path, hir_id) {
-                    Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_) => (),
+                    Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_) => {
+                        if self
+                            .cx
+                            .typeck_results()
+                            .expr_ty(e)
+                            .has_significant_drop(self.cx.tcx, self.cx.param_env)
+                        {
+                            self.eagerness = Lazy;
+                            return;
+                        }
+                    },
                     Res::Def(_, id) if self.cx.tcx.is_promotable_const_fn(id) => (),
                     // No need to walk the arguments here, `is_const_evaluatable` already did
                     Res::Def(..) if is_const_evaluatable(self.cx, e) => {

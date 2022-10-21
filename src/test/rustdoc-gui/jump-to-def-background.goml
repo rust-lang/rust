@@ -1,5 +1,5 @@
 // We check the background color on the jump to definition links in the source code page.
-goto: file://|DOC_PATH|/src/link_to_definition/lib.rs.html
+goto: "file://" + |DOC_PATH| + "/src/link_to_definition/lib.rs.html"
 
 // Set the theme to dark.
 local-storage: {

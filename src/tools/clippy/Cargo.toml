@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.65"
+version = "0.1.66"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -23,12 +23,12 @@ path = "src/driver.rs"
 [dependencies]
 clippy_lints = { path = "clippy_lints" }
 semver = "1.0"
-rustc_tools_util = { path = "rustc_tools_util" }
+rustc_tools_util = "0.2.1"
 tempfile = { version = "3.2", optional = true }
 termize = "0.1"
 
 [dev-dependencies]
-compiletest_rs = { version = "0.8", features = ["tmp"] }
+compiletest_rs = { version = "0.9", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
 toml = "0.5"
@@ -55,7 +55,7 @@ tokio = { version = "1", features = ["io-util"] }
 rustc-semver = "1.1"
 
 [build-dependencies]
-rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }
+rustc_tools_util = "0.2.1"
 
 [features]
 deny-warnings = ["clippy_lints/deny-warnings"]

@@ -7,7 +7,6 @@
 use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
@@ -121,7 +120,6 @@ impl fmt::Display for TryFromSliceError {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "try_from", since = "1.34.0")]
 impl Error for TryFromSliceError {
     #[allow(deprecated)]
@@ -434,7 +432,8 @@ impl<T: Copy> SpecArrayClone for T {
 macro_rules! array_impl_default {
     {$n:expr, $t:ident $($ts:ident)*} => {
         #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] where T: Default {
+        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+        impl<T> const Default for [T; $n] where T: ~const Default {
             fn default() -> [T; $n] {
                 [$t::default(), $($ts::default()),*]
             }
@@ -913,7 +912,7 @@ where
 
     mem::forget(guard);
     // SAFETY: All elements of the array were populated in the loop above.
-    let output = unsafe { MaybeUninit::array_assume_init(array) };
+    let output = unsafe { array.transpose().assume_init() };
     Ok(Try::from_output(output))
 }
 

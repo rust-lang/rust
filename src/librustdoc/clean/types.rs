@@ -21,6 +21,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
+use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
@@ -31,7 +32,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName, Loc};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use rustc_typeck::check::intrinsic::intrinsic_operation_unsafety;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::clean_visibility;
@@ -119,7 +119,7 @@ pub(crate) struct Crate {
     pub(crate) module: Item,
     pub(crate) primitives: ThinVec<(DefId, PrimitiveType)>,
     /// Only here so that they can be filtered through the rustdoc passes.
-    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
+    pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
 }
 
 impl Crate {
@@ -130,13 +130,6 @@ impl Crate {
     pub(crate) fn src(&self, tcx: TyCtxt<'_>) -> FileName {
         ExternalCrate::LOCAL.src(tcx)
     }
-}
-
-/// This struct is used to wrap additional information added by rustdoc on a `trait` item.
-#[derive(Clone, Debug)]
-pub(crate) struct TraitWithExtraInfo {
-    pub(crate) trait_: Trait,
-    pub(crate) is_notable: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -689,7 +682,7 @@ impl Item {
                 let abi = tcx.fn_sig(self.item_id.as_def_id().unwrap()).abi();
                 hir::FnHeader {
                     unsafety: if abi == Abi::RustIntrinsic {
-                        intrinsic_operation_unsafety(self.name.unwrap())
+                        intrinsic_operation_unsafety(tcx, self.item_id.as_def_id().unwrap())
                     } else {
                         hir::Unsafety::Unsafe
                     },
@@ -1357,7 +1350,7 @@ impl Lifetime {
 pub(crate) enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<Lifetime> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: Type, rhs: Term },
+    EqPredicate { lhs: Box<Type>, rhs: Box<Term>, bound_params: Vec<Lifetime> },
 }
 
 impl WherePredicate {
@@ -1365,6 +1358,15 @@ impl WherePredicate {
         match *self {
             WherePredicate::BoundPredicate { ref bounds, .. } => Some(bounds),
             WherePredicate::RegionPredicate { ref bounds, .. } => Some(bounds),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn get_bound_params(&self) -> Option<&[Lifetime]> {
+        match self {
+            Self::BoundPredicate { bound_params, .. } | Self::EqPredicate { bound_params, .. } => {
+                Some(bound_params)
+            }
             _ => None,
         }
     }
@@ -1529,6 +1531,9 @@ pub(crate) struct Trait {
 impl Trait {
     pub(crate) fn is_auto(&self, tcx: TyCtxt<'_>) -> bool {
         tcx.trait_is_auto(self.def_id)
+    }
+    pub(crate) fn is_notable_trait(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.is_doc_notable_trait(self.def_id)
     }
     pub(crate) fn unsafety(&self, tcx: TyCtxt<'_>) -> hir::Unsafety {
         tcx.trait_def(self.def_id).unsafety
@@ -2201,8 +2206,11 @@ impl Path {
     /// Checks if this is a `T::Name` path for an associated type.
     pub(crate) fn is_assoc_ty(&self) -> bool {
         match self.res {
-            Res::SelfTy { .. } if self.segments.len() != 1 => true,
-            Res::Def(DefKind::TyParam, _) if self.segments.len() != 1 => true,
+            Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::Def(DefKind::TyParam, _)
+                if self.segments.len() != 1 =>
+            {
+                true
+            }
             Res::Def(DefKind::AssocTy, _) => true,
             _ => false,
         }
@@ -2532,15 +2540,15 @@ impl SubstParam {
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(Crate, 72); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
-    #[cfg(not(bootstrap))]
-    static_assert_size!(GenericArg, 56);
+    static_assert_size!(GenericArg, 48);
     static_assert_size!(GenericArgs, 32);
     static_assert_size!(GenericParamDef, 56);
     static_assert_size!(Item, 56);
-    static_assert_size!(ItemKind, 96);
+    static_assert_size!(ItemKind, 88);
     static_assert_size!(PathSegment, 40);
-    static_assert_size!(Type, 56);
+    static_assert_size!(Type, 48);
+    // tidy-alphabetical-end
 }

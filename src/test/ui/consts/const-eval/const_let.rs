@@ -14,16 +14,16 @@ const X2: FakeNeedsDrop = { let x; x = FakeNeedsDrop; x };
 
 // error
 const Y: FakeNeedsDrop = { let mut x = FakeNeedsDrop; x = FakeNeedsDrop; x };
-//~^ ERROR destructors cannot be evaluated at compile-time
+//~^ ERROR destructor of
 
 // error
 const Y2: FakeNeedsDrop = { let mut x; x = FakeNeedsDrop; x = FakeNeedsDrop; x };
-//~^ ERROR destructors cannot be evaluated at compile-time
+//~^ ERROR destructor of
 
 // error
 const Z: () = { let mut x = None; x = Some(FakeNeedsDrop); };
-//~^ ERROR destructors cannot be evaluated at compile-time
+//~^ ERROR destructor of
 
 // error
 const Z2: () = { let mut x; x = None; x = Some(FakeNeedsDrop); };
-//~^ ERROR destructors cannot be evaluated at compile-time
+//~^ ERROR destructor of

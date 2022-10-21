@@ -5,13 +5,12 @@
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::project::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::Normalized;
-use rustc_middle::mir;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
@@ -154,7 +153,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
 }
 
 struct QueryNormalizer<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
     cause: &'cx ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
@@ -213,7 +212,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                                 self.param_env,
                                 ty,
                             );
-                            self.infcx.report_overflow_error(&obligation, true);
+                            self.infcx.err_ctxt().report_overflow_error(&obligation, true);
                         }
 
                         let generic_ty = self.tcx().bound_type_of(def_id);
@@ -345,31 +344,6 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             constant,
             |constant| constant.eval(self.infcx.tcx, self.param_env),
         ))
-    }
-
-    fn try_fold_mir_const(
-        &mut self,
-        constant: mir::ConstantKind<'tcx>,
-    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
-        Ok(match constant {
-            mir::ConstantKind::Ty(c) => {
-                let const_folded = c.try_super_fold_with(self)?;
-                match const_folded.kind() {
-                    ty::ConstKind::Value(valtree) => {
-                        let tcx = self.infcx.tcx;
-                        let ty = const_folded.ty();
-                        let const_val = tcx.valtree_to_const_val((ty, valtree));
-                        debug!(?ty, ?valtree, ?const_val);
-
-                        mir::ConstantKind::Val(const_val, ty)
-                    }
-                    _ => mir::ConstantKind::Ty(const_folded),
-                }
-            }
-            mir::ConstantKind::Val(_, _) | mir::ConstantKind::Unevaluated(..) => {
-                constant.try_super_fold_with(self)?
-            }
-        })
     }
 
     #[inline]

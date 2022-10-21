@@ -331,7 +331,8 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                         bounds_display.truncate(bounds_display.len() - " + ".len());
                         write!(f, "{}: {bounds_display}", lifetime.print())
                     }
-                    clean::WherePredicate::EqPredicate { lhs, rhs } => {
+                    // FIXME(fmease): Render bound params.
+                    clean::WherePredicate::EqPredicate { lhs, rhs, bound_params: _ } => {
                         if f.alternate() {
                             write!(f, "{:#} == {:#}", lhs.print(cx), rhs.print(cx))
                         } else {
@@ -611,7 +612,7 @@ fn generate_macro_def_id_path(
     };
     if path.len() < 2 {
         // The minimum we can have is the crate name followed by the macro name. If shorter, then
-        // it means that that `relative` was empty, which is an error.
+        // it means that `relative` was empty, which is an error.
         debug!("macro path cannot be empty!");
         return Err(HrefError::NotInExternalCache);
     }
@@ -1010,15 +1011,25 @@ fn fmt_type<'cx>(
                 write!(f, "]")
             }
         },
-        clean::Array(ref t, ref n) => {
-            primitive_link(f, PrimitiveType::Array, "[", cx)?;
-            fmt::Display::fmt(&t.print(cx), f)?;
-            if f.alternate() {
-                primitive_link(f, PrimitiveType::Array, &format!("; {}]", n), cx)
-            } else {
-                primitive_link(f, PrimitiveType::Array, &format!("; {}]", Escape(n)), cx)
+        clean::Array(ref t, ref n) => match **t {
+            clean::Generic(name) if !f.alternate() => primitive_link(
+                f,
+                PrimitiveType::Array,
+                &format!("[{name}; {n}]", n = Escape(n)),
+                cx,
+            ),
+            _ => {
+                write!(f, "[")?;
+                fmt::Display::fmt(&t.print(cx), f)?;
+                if f.alternate() {
+                    write!(f, "; {n}")?;
+                } else {
+                    write!(f, "; ")?;
+                    primitive_link(f, PrimitiveType::Array, &format!("{n}", n = Escape(n)), cx)?;
+                }
+                write!(f, "]")
             }
-        }
+        },
         clean::RawPointer(m, ref t) => {
             let m = match m {
                 hir::Mutability::Mut => "mut",

@@ -9,8 +9,8 @@ use rustc_hir::intravisit::{
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin,
-    TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
+    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin, TraitFn,
+    TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(ref sig, id) = item.kind {
-            let report_extra_lifetimes = trait_ref_of_method(cx, item.def_id).is_none();
+            let report_extra_lifetimes = trait_ref_of_method(cx, item.def_id.def_id).is_none();
             check_fn_inner(
                 cx,
                 sig.decl,

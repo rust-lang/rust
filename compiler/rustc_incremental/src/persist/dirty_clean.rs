@@ -149,19 +149,19 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         for id in crate_items.trait_items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         for id in crate_items.impl_items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         for id in crate_items.foreign_items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
@@ -302,7 +302,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             HirNode::ImplItem(item) => match item.kind {
                 ImplItemKind::Fn(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
-                ImplItemKind::TyAlias(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
+                ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
             },
             _ => self.tcx.sess.span_fatal(
                 attr.span,

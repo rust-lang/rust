@@ -1,11 +1,11 @@
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/hint.rs:LL:COL
    |
-LL |     unsafe { intrinsics::unreachable() }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |              |
-   |              entering unreachable code
-   |              inside `unreachable_unchecked` at $SRC_DIR/core/src/hint.rs:LL:COL
+LL |         intrinsics::unreachable()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         entering unreachable code
+   |         inside `unreachable_unchecked` at $SRC_DIR/core/src/hint.rs:LL:COL
    |
   ::: $DIR/const_unsafe_unreachable_ub.rs:6:18
    |

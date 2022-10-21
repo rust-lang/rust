@@ -40,8 +40,8 @@ terms of files and offsets, and **not** in terms of Rust concepts like structs,
 traits, etc. The "typed" API with Rust specific types is slightly lower in the
 stack, we'll talk about it later.
 
-[`AnalysisHost`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L265-L284
-[`Analysis`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L291-L478
+[`AnalysisHost`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L265-L284
+[`Analysis`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L291-L478
 
 The reason for this separation of `Analysis` and `AnalysisHost` is that we want to apply
 changes "uniquely", but we might also want to fork an `Analysis` and send it to
@@ -88,9 +88,8 @@ is lower than Cargo's model of packages: each Cargo package consists of several
 targets, each of which is a separate crate (or several crates, if you try
 different feature combinations).
 
-Procedural macros should become inputs as well, but currently they are not
-supported. Procedural macro will be a black box `Box<dyn Fn(TokenStream) -> TokenStream>`
-function, and will be inserted into the crate graph just like dependencies.
+Procedural macros are inputs as well, roughly modeled as a crate with a bunch of
+additional black box `dyn Fn(TokenStream) -> TokenStream` functions.
 
 Soon we'll talk how we build an LSP server on top of `Analysis`, but first,
 let's deal with that paths issue.

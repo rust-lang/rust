@@ -410,7 +410,7 @@ pub(crate) fn build_impl(
                         let assoc_kind = match item.kind {
                             hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
                             hir::ImplItemKind::Fn(..) => ty::AssocKind::Fn,
-                            hir::ImplItemKind::TyAlias(..) => ty::AssocKind::Type,
+                            hir::ImplItemKind::Type(..) => ty::AssocKind::Type,
                         };
                         let trait_item = tcx
                             .associated_items(associated_trait.def_id)
@@ -718,10 +718,6 @@ pub(crate) fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
     debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);
 
-    let trait_ = clean::TraitWithExtraInfo {
-        trait_,
-        is_notable: clean::utils::has_doc_flag(cx.tcx, did, sym::notable_trait),
-    };
     cx.external_traits.borrow_mut().insert(did, trait_);
     cx.active_extern_traits.remove(&did);
 }

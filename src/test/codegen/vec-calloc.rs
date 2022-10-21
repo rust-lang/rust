@@ -1,4 +1,4 @@
-// compile-flags: -O
+// compile-flags: -O -Z merge-functions=disabled
 // only-x86_64
 // ignore-debug
 // min-llvm-version: 15.0
@@ -142,6 +142,23 @@ pub fn vec_non_zero_tuple(n: usize) -> Vec<(i16, u8, char)> {
 
     // CHECK: ret void
     vec![(0, 0, 'A'); n]
+}
+
+// CHECK-LABEL: @vec_option_bool
+#[no_mangle]
+pub fn vec_option_bool(n: usize) -> Vec<Option<bool>> {
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc(
+
+    // CHECK: call {{.*}}__rust_alloc_zeroed(
+
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc(
+
+    // CHECK: ret void
+    vec![Some(false); n]
 }
 
 // Ensure that __rust_alloc_zeroed gets the right attributes for LLVM to optimize it away.

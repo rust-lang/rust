@@ -1,5 +1,4 @@
 #![feature(box_patterns)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(internal_output_capture)]
 #![feature(thread_spawn_unchecked)]
 #![feature(once_cell)]

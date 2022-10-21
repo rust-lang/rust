@@ -1,7 +1,7 @@
 //! Type context book-keeping.
 
 use crate::arena::Arena;
-use crate::dep_graph::{DepGraph, DepKind, DepKindStruct};
+use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::struct_lint_level;
@@ -35,11 +35,14 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, ReadGuard, RwLock, WorkerLocal};
 use rustc_data_structures::vec_map::VecMap;
-use rustc_errors::{DecorateLint, ErrorGuaranteed, LintDiagnosticBuilder, MultiSpan};
+use rustc_errors::{
+    DecorateLint, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
+use rustc_hir::hir_id::OwnerId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
@@ -53,7 +56,6 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{CrateType, OutputFilenames};
 use rustc_session::cstore::CrateStoreDyn;
-use rustc_session::errors::TargetDataLayoutErrorsWrapper;
 use rustc_session::lint::Lint;
 use rustc_session::Limit;
 use rustc_session::Session;
@@ -196,9 +198,9 @@ impl<'tcx> CtxtInterners<'tcx> {
                 .intern(kind, |kind| {
                     let flags = super::flags::FlagComputation::for_kind(&kind);
 
-                    // It's impossible to hash inference regions (and will ICE), so we don't need to try to cache them.
+                    // It's impossible to hash inference variables (and will ICE), so we don't need to try to cache them.
                     // Without incremental, we rarely stable-hash types, so let's not do it proactively.
-                    let stable_hash = if flags.flags.intersects(TypeFlags::HAS_RE_INFER)
+                    let stable_hash = if flags.flags.intersects(TypeFlags::NEEDS_INFER)
                         || sess.opts.incremental.is_none()
                     {
                         Fingerprint::ZERO
@@ -289,7 +291,7 @@ pub struct CommonConsts<'tcx> {
 }
 
 pub struct LocalTableInContext<'a, V> {
-    hir_owner: LocalDefId,
+    hir_owner: OwnerId,
     data: &'a ItemLocalMap<V>,
 }
 
@@ -301,7 +303,7 @@ pub struct LocalTableInContext<'a, V> {
 /// would result in lookup errors, or worse, in silently wrong data being
 /// stored/returned.
 #[inline]
-fn validate_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId) {
+fn validate_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
     if hir_id.owner != hir_owner {
         invalid_hir_id_for_typeck_results(hir_owner, hir_id);
     }
@@ -309,7 +311,7 @@ fn validate_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId)
 
 #[cold]
 #[inline(never)]
-fn invalid_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId) {
+fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: hir::HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} with HirId::owner {:?} cannot be placed in TypeckResults with hir_owner {:?}",
@@ -345,7 +347,7 @@ impl<'a, V> ::std::ops::Index<hir::HirId> for LocalTableInContext<'a, V> {
 }
 
 pub struct LocalTableInContextMut<'a, V> {
-    hir_owner: LocalDefId,
+    hir_owner: OwnerId,
     data: &'a mut ItemLocalMap<V>,
 }
 
@@ -417,7 +419,7 @@ pub struct GeneratorDiagnosticData<'tcx> {
 #[derive(TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
-    pub hir_owner: LocalDefId,
+    pub hir_owner: OwnerId,
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
@@ -536,12 +538,10 @@ pub struct TypeckResults<'tcx> {
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 
     /// All the opaque types that have hidden types set
-    /// by this function. For return-position-impl-trait we also store the
-    /// type here, so that mir-borrowck can figure out hidden types,
+    /// by this function. We also store the
+    /// type here, so that mir-borrowck can use it as a hint for figuring out hidden types,
     /// even if they are only set in dead code (which doesn't show up in MIR).
-    /// For type-alias-impl-trait, this map is only used to prevent query cycles,
-    /// so the hidden types are all `None`.
-    pub concrete_opaque_types: VecMap<LocalDefId, Option<Ty<'tcx>>>,
+    pub concrete_opaque_types: VecMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
@@ -573,7 +573,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
-    /// Details may be find in `rustc_typeck::check::rvalue_scopes`.
+    /// Details may be find in `rustc_hir_analysis::check::rvalue_scopes`.
     pub rvalue_scopes: RvalueScopes,
 
     /// Stores the type, expression, span and optional scope span of all types
@@ -592,7 +592,7 @@ pub struct TypeckResults<'tcx> {
 }
 
 impl<'tcx> TypeckResults<'tcx> {
-    pub fn new(hir_owner: LocalDefId) -> TypeckResults<'tcx> {
+    pub fn new(hir_owner: OwnerId) -> TypeckResults<'tcx> {
         TypeckResults {
             hir_owner,
             type_dependent_defs: Default::default(),
@@ -1084,7 +1084,7 @@ pub struct GlobalCtxt<'tcx> {
 
     pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
-    query_kinds: &'tcx [DepKindStruct<'tcx>],
+    pub(crate) query_kinds: &'tcx [DepKindStruct<'tcx>],
 
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1246,7 +1246,7 @@ impl<'tcx> TyCtxt<'tcx> {
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
-            s.emit_fatal(TargetDataLayoutErrorsWrapper(err));
+            s.emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(
@@ -1289,10 +1289,6 @@ impl<'tcx> TyCtxt<'tcx> {
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames),
         }
-    }
-
-    pub(crate) fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct<'tcx> {
-        &self.query_kinds[k as usize]
     }
 
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
@@ -1726,7 +1722,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn local_visibility(self, def_id: LocalDefId) -> Visibility {
-        self.visibility(def_id.to_def_id()).expect_local()
+        self.visibility(def_id).expect_local()
     }
 }
 
@@ -2822,18 +2818,28 @@ impl<'tcx> TyCtxt<'tcx> {
         span: impl Into<MultiSpan>,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.struct_span_lint_hir(lint, hir_id, span, |diag| decorator.decorate_lint(diag))
+        self.struct_span_lint_hir(lint, hir_id, span, decorator.msg(), |diag| {
+            decorator.decorate_lint(diag)
+        })
     }
 
+    /// Emit a lint at the appropriate level for a hir node, with an associated span.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     pub fn struct_span_lint_hir(
         self,
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'b mut DiagnosticBuilder<'a, ()>,
+        ) -> &'b mut DiagnosticBuilder<'a, ()>,
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        struct_lint_level(self.sess, lint, level, src, Some(span.into()), decorate);
+        struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
     }
 
     /// Emit a lint from a lint struct (some type that implements `DecorateLint`, typically
@@ -2844,17 +2850,25 @@ impl<'tcx> TyCtxt<'tcx> {
         id: HirId,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.struct_lint_node(lint, id, |diag| decorator.decorate_lint(diag))
+        self.struct_lint_node(lint, id, decorator.msg(), |diag| decorator.decorate_lint(diag))
     }
 
+    /// Emit a lint at the appropriate level for a hir node.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     pub fn struct_lint_node(
         self,
         lint: &'static Lint,
         id: HirId,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'b mut DiagnosticBuilder<'a, ()>,
+        ) -> &'b mut DiagnosticBuilder<'a, ()>,
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);
-        struct_lint_level(self.sess, lint, level, src, None, decorate);
+        struct_lint_level(self.sess, lint, level, src, None, msg, decorate);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
@@ -2869,7 +2883,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner).map_or(false, |set| {
+        self.is_late_bound_map(id.owner.def_id).map_or(false, |set| {
             let def_id = self.hir().local_def_id(id);
             set.contains(&def_id)
         })

@@ -1,5 +1,5 @@
 // Checks that the setting "auto hide trait implementations" is working as expected.
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 
 // By default, the trait implementations are not collapsed.
 assert-attribute: ("#trait-implementations-list > details", {"open": ""}, ALL)

@@ -9,15 +9,6 @@ help: Unicode character '➖' (Heavy Minus Sign) looks like '-' (Minus/Hyphen), 
 LL |     let _ = i_like_to_😄_a_lot() - 4;
    |                                  ~
 
-error[E0425]: cannot find function `i_like_to_😄_a_lot` in this scope
-  --> $DIR/emoji-identifiers.rs:13:13
-   |
-LL | fn i_like_to_😅_a_lot() -> 👀 {
-   | ----------------------------- similarly named function `i_like_to_😅_a_lot` defined here
-...
-LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
-   |             ^^^^^^^^^^^^^^^^^^ help: a function with a similar name exists: `i_like_to_😅_a_lot`
-
 error: Ferris cannot be used as an identifier
   --> $DIR/emoji-identifiers.rs:17:9
    |
@@ -84,6 +75,15 @@ LL |     👀::full_of✨()
    |         |
    |         function or associated item not found in `👀`
    |         help: there is an associated function with a similar name: `full_of_✨`
+
+error[E0425]: cannot find function `i_like_to_😄_a_lot` in this scope
+  --> $DIR/emoji-identifiers.rs:13:13
+   |
+LL | fn i_like_to_😅_a_lot() -> 👀 {
+   | ----------------------------- similarly named function `i_like_to_😅_a_lot` defined here
+...
+LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
+   |             ^^^^^^^^^^^^^^^^^^ help: a function with a similar name exists: `i_like_to_😅_a_lot`
 
 error: aborting due to 10 previous errors
 

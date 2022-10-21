@@ -74,7 +74,9 @@ use crate::html::format::{
     PrintWithSpace,
 };
 use crate::html::highlight;
-use crate::html::markdown::{HeadingOffset, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::markdown::{
+    HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
+};
 use crate::html::sources;
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::scrape_examples::{CallData, CallLocation};
@@ -239,8 +241,8 @@ struct AllTypes {
     opaque_tys: FxHashSet<ItemEntry>,
     statics: FxHashSet<ItemEntry>,
     constants: FxHashSet<ItemEntry>,
-    attributes: FxHashSet<ItemEntry>,
-    derives: FxHashSet<ItemEntry>,
+    attribute_macros: FxHashSet<ItemEntry>,
+    derive_macros: FxHashSet<ItemEntry>,
     trait_aliases: FxHashSet<ItemEntry>,
 }
 
@@ -259,8 +261,8 @@ impl AllTypes {
             opaque_tys: new_set(100),
             statics: new_set(100),
             constants: new_set(100),
-            attributes: new_set(100),
-            derives: new_set(100),
+            attribute_macros: new_set(100),
+            derive_macros: new_set(100),
             trait_aliases: new_set(100),
         }
     }
@@ -283,8 +285,10 @@ impl AllTypes {
                 ItemType::OpaqueTy => self.opaque_tys.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
-                ItemType::ProcAttribute => self.attributes.insert(ItemEntry::new(new_url, name)),
-                ItemType::ProcDerive => self.derives.insert(ItemEntry::new(new_url, name)),
+                ItemType::ProcAttribute => {
+                    self.attribute_macros.insert(ItemEntry::new(new_url, name))
+                }
+                ItemType::ProcDerive => self.derive_macros.insert(ItemEntry::new(new_url, name)),
                 ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
                 _ => true,
             };
@@ -327,10 +331,10 @@ impl AllTypes {
         if !self.constants.is_empty() {
             sections.insert(ItemSection::Constants);
         }
-        if !self.attributes.is_empty() {
+        if !self.attribute_macros.is_empty() {
             sections.insert(ItemSection::AttributeMacros);
         }
-        if !self.derives.is_empty() {
+        if !self.derive_macros.is_empty() {
             sections.insert(ItemSection::DeriveMacros);
         }
         if !self.trait_aliases.is_empty() {
@@ -360,11 +364,7 @@ impl AllTypes {
             }
         }
 
-        f.write_str(
-            "<h1 class=\"fqn\">\
-                 <span class=\"in-band\">List of all items</span>\
-             </h1>",
-        );
+        f.write_str("<h1 class=\"fqn\">List of all items</h1>");
         // Note: print_entries does not escape the title, because we know the current set of titles
         // doesn't require escaping.
         print_entries(f, &self.structs, ItemSection::Structs);
@@ -373,8 +373,8 @@ impl AllTypes {
         print_entries(f, &self.primitives, ItemSection::PrimitiveTypes);
         print_entries(f, &self.traits, ItemSection::Traits);
         print_entries(f, &self.macros, ItemSection::Macros);
-        print_entries(f, &self.attributes, ItemSection::AttributeMacros);
-        print_entries(f, &self.derives, ItemSection::DeriveMacros);
+        print_entries(f, &self.attribute_macros, ItemSection::AttributeMacros);
+        print_entries(f, &self.derive_macros, ItemSection::DeriveMacros);
         print_entries(f, &self.functions, ItemSection::Functions);
         print_entries(f, &self.typedefs, ItemSection::TypeDefinitions);
         print_entries(f, &self.trait_aliases, ItemSection::TraitAliases);
@@ -394,9 +394,7 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
     let mut ids = IdMap::default();
     format!(
         "<div class=\"main-heading\">\
-            <h1 class=\"fqn\">\
-                <span class=\"in-band\">About scraped examples</span>\
-            </h1>\
+            <h1 class=\"fqn\">About scraped examples</h1>\
         </div>\
         <div>{}</div>",
         Markdown {
@@ -582,7 +580,6 @@ fn short_item_info(
     parent: Option<&clean::Item>,
 ) -> Vec<String> {
     let mut extra_info = vec![];
-    let error_codes = cx.shared.codes;
 
     if let Some(depr @ Deprecation { note, since, is_since_rustc_version: _, suggestion: _ }) =
         item.deprecation(cx.tcx())
@@ -606,13 +603,7 @@ fn short_item_info(
 
         if let Some(note) = note {
             let note = note.as_str();
-            let html = MarkdownHtml(
-                note,
-                &mut cx.id_map,
-                error_codes,
-                cx.shared.edition(),
-                &cx.shared.playground,
-            );
+            let html = MarkdownItemInfo(note, &mut cx.id_map);
             message.push_str(&format!(": {}", html.into_string()));
         }
         extra_info.push(format!(
@@ -1297,7 +1288,12 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                 if let Some(trait_) = &impl_.trait_ {
                     let trait_did = trait_.def_id();
 
-                    if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable) {
+                    if cx
+                        .cache()
+                        .traits
+                        .get(&trait_did)
+                        .map_or(false, |t| t.is_notable_trait(cx.tcx()))
+                    {
                         if out.is_empty() {
                             write!(
                                 &mut out,
@@ -1601,7 +1597,7 @@ fn render_impl(
             link,
             render_mode,
             false,
-            trait_.map(|t| &t.trait_),
+            trait_,
             rendering_params,
         );
     }
@@ -1661,7 +1657,7 @@ fn render_impl(
                 &mut default_impl_items,
                 &mut impl_items,
                 cx,
-                &t.trait_,
+                t,
                 i.inner_impl(),
                 &i.impl_item,
                 parent,
@@ -1793,7 +1789,7 @@ pub(crate) fn render_impl_summary(
     write!(w, "<section id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
     render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-    write!(w, "<h3 class=\"code-header in-band\">");
+    write!(w, "<h3 class=\"code-header\">");
 
     if let Some(use_absolute) = use_absolute {
         write!(w, "{}", inner_impl.print(use_absolute, cx));
@@ -1857,12 +1853,12 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
 
     buffer.write_str("<div class=\"sidebar-elems\">");
     if it.is_crate() {
-        write!(buffer, "<div class=\"block\"><ul>");
+        write!(buffer, "<ul class=\"block\">");
         if let Some(ref version) = cx.cache().crate_version {
             write!(buffer, "<li class=\"version\">Version {}</li>", Escape(version));
         }
         write!(buffer, "<li><a id=\"all-types\" href=\"all.html\">All Items</a></li>");
-        buffer.write_str("</ul></div>");
+        buffer.write_str("</ul>");
     }
 
     match *it.kind {
@@ -1888,7 +1884,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     if !it.is_mod() {
         let path: String = cx.current.iter().map(|s| s.as_str()).intersperse("::").collect();
 
-        write!(buffer, "<h2 class=\"location\"><a href=\"index.html\">In {}</a></h2>", path);
+        write!(buffer, "<h2><a href=\"index.html\">In {}</a></h2>", path);
     }
 
     // Closes sidebar-elems div.
@@ -2262,21 +2258,8 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
     }
 }
 
-/// Don't call this function directly!!! Use `print_sidebar_title` or `print_sidebar_block` instead!
-fn print_sidebar_title_inner(buf: &mut Buffer, id: &str, title: &str) {
-    write!(
-        buf,
-        "<h3 class=\"sidebar-title\">\
-             <a href=\"#{}\">{}</a>\
-         </h3>",
-        id, title
-    );
-}
-
 fn print_sidebar_title(buf: &mut Buffer, id: &str, title: &str) {
-    buf.push_str("<div class=\"block\">");
-    print_sidebar_title_inner(buf, id, title);
-    buf.push_str("</div>");
+    write!(buf, "<h3><a href=\"#{}\">{}</a></h3>", id, title);
 }
 
 fn print_sidebar_block(
@@ -2285,13 +2268,12 @@ fn print_sidebar_block(
     title: &str,
     items: impl Iterator<Item = impl fmt::Display>,
 ) {
-    buf.push_str("<div class=\"block\">");
-    print_sidebar_title_inner(buf, id, title);
-    buf.push_str("<ul>");
+    print_sidebar_title(buf, id, title);
+    buf.push_str("<ul class=\"block\">");
     for item in items {
         write!(buf, "<li>{}</li>", item);
     }
-    buf.push_str("</ul></div>");
+    buf.push_str("</ul>");
 }
 
 fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
@@ -2680,9 +2662,7 @@ pub(crate) fn sidebar_module_like(buf: &mut Buffer, item_sections_in_use: FxHash
         write!(
             buf,
             "<section>\
-                 <div class=\"block\">\
-                     <ul>{}</ul>\
-                 </div>\
+                 <ul class=\"block\">{}</ul>\
              </section>",
             sidebar
         );

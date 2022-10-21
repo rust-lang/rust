@@ -29,8 +29,9 @@ use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     db::DefDatabase,
     expr::{
-        dummy_expr_id, Array, BindingAnnotation, Expr, ExprId, FloatTypeWrapper, Label, LabelId,
-        Literal, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        dummy_expr_id, Array, BindingAnnotation, ClosureKind, Expr, ExprId, FloatTypeWrapper,
+        Label, LabelId, Literal, MatchArm, Movability, Pat, PatId, RecordFieldPat, RecordLitField,
+        Statement,
     },
     intern::Interned,
     item_scope::BuiltinShadowMode,
@@ -76,7 +77,7 @@ impl<'a> LowerCtx<'a> {
 pub(super) fn lower(
     db: &dyn DefDatabase,
     expander: Expander,
-    params: Option<ast::ParamList>,
+    params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
     ExprCollector {
@@ -97,6 +98,7 @@ pub(super) fn lower(
         name_to_pat_grouping: Default::default(),
         is_lowering_inside_or_pat: false,
         is_lowering_assignee_expr: false,
+        is_lowering_generator: false,
     }
     .collect(params, body)
 }
@@ -111,16 +113,19 @@ struct ExprCollector<'a> {
     name_to_pat_grouping: FxHashMap<Name, Vec<PatId>>,
     is_lowering_inside_or_pat: bool,
     is_lowering_assignee_expr: bool,
+    is_lowering_generator: bool,
 }
 
 impl ExprCollector<'_> {
     fn collect(
         mut self,
-        param_list: Option<ast::ParamList>,
+        param_list: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
-        if let Some(param_list) = param_list {
-            if let Some(self_param) = param_list.self_param() {
+        if let Some((param_list, mut attr_enabled)) = param_list {
+            if let Some(self_param) =
+                param_list.self_param().filter(|_| attr_enabled.next().unwrap_or(false))
+            {
                 let ptr = AstPtr::new(&self_param);
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
@@ -136,7 +141,11 @@ impl ExprCollector<'_> {
                 self.body.params.push(param_pat);
             }
 
-            for pat in param_list.params().filter_map(|param| param.pat()) {
+            for pat in param_list
+                .params()
+                .zip(attr_enabled)
+                .filter_map(|(param, enabled)| param.pat().filter(|_| enabled))
+            {
                 let param_pat = self.collect_pat(pat);
                 self.body.params.push(param_pat);
             }
@@ -358,6 +367,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
             ast::Expr::YieldExpr(e) => {
+                self.is_lowering_generator = true;
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Yield { expr }, syntax_ptr)
             }
@@ -459,13 +469,31 @@ impl ExprCollector<'_> {
                     .ret_type()
                     .and_then(|r| r.ty())
                     .map(|it| Interned::new(TypeRef::from_ast(&self.ctx(), it)));
+
+                let prev_is_lowering_generator = self.is_lowering_generator;
+                self.is_lowering_generator = false;
+
                 let body = self.collect_expr_opt(e.body());
+
+                let closure_kind = if self.is_lowering_generator {
+                    let movability = if e.static_token().is_some() {
+                        Movability::Static
+                    } else {
+                        Movability::Movable
+                    };
+                    ClosureKind::Generator(movability)
+                } else {
+                    ClosureKind::Closure
+                };
+                self.is_lowering_generator = prev_is_lowering_generator;
+
                 self.alloc_expr(
                     Expr::Closure {
                         args: args.into(),
                         arg_types: arg_types.into(),
                         ret_type,
                         body,
+                        closure_kind,
                     },
                     syntax_ptr,
                 )

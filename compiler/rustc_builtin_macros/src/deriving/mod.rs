@@ -131,6 +131,8 @@ fn inject_impl_of_structural_trait(
     // Create generics param list for where clauses and impl headers
     let mut generics = generics.clone();
 
+    let ctxt = span.ctxt();
+
     // Create the type of `self`.
     //
     // in addition, remove defaults from generic params (impls cannot have them).
@@ -138,16 +140,18 @@ fn inject_impl_of_structural_trait(
         .params
         .iter_mut()
         .map(|param| match &mut param.kind {
-            ast::GenericParamKind::Lifetime => {
-                ast::GenericArg::Lifetime(cx.lifetime(span, param.ident))
-            }
+            ast::GenericParamKind::Lifetime => ast::GenericArg::Lifetime(
+                cx.lifetime(param.ident.span.with_ctxt(ctxt), param.ident),
+            ),
             ast::GenericParamKind::Type { default } => {
                 *default = None;
-                ast::GenericArg::Type(cx.ty_ident(span, param.ident))
+                ast::GenericArg::Type(cx.ty_ident(param.ident.span.with_ctxt(ctxt), param.ident))
             }
             ast::GenericParamKind::Const { ty: _, kw_span: _, default } => {
                 *default = None;
-                ast::GenericArg::Const(cx.const_ident(span, param.ident))
+                ast::GenericArg::Const(
+                    cx.const_ident(param.ident.span.with_ctxt(ctxt), param.ident),
+                )
             }
         })
         .collect();
@@ -174,6 +178,8 @@ fn inject_impl_of_structural_trait(
             })
             .cloned(),
     );
+    // Mark as `automatically_derived` to avoid some silly lints.
+    attrs.push(cx.attribute(cx.meta_word(span, sym::automatically_derived)));
 
     let newitem = cx.item(
         span,

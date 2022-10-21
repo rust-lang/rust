@@ -16,3 +16,23 @@ pub fn binary_search_index_no_bounds_check(s: &[u8]) -> u8 {
         42
     }
 }
+
+// Similarly, check that `partition_point` is known to return a valid fencepost.
+
+// CHECK-LABEL: @unknown_split
+#[no_mangle]
+pub fn unknown_split(x: &[i32], i: usize) -> (&[i32], &[i32]) {
+    // This just makes sure that the subsequent function is looking for the
+    // absence of something that might actually be there.
+
+    // CHECK: call core::panicking::panic
+    x.split_at(i)
+}
+
+// CHECK-LABEL: @partition_point_split_no_bounds_check
+#[no_mangle]
+pub fn partition_point_split_no_bounds_check(x: &[i32], needle: i32) -> (&[i32], &[i32]) {
+    // CHECK-NOT: call core::panicking::panic
+    let i = x.partition_point(|p| p < &needle);
+    x.split_at(i)
+}

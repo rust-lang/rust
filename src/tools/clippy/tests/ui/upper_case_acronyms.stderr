@@ -54,5 +54,17 @@ error: name `WASD` contains a capitalized acronym
 LL |     WASD(u8),
    |     ^^^^ help: consider making the acronym lowercase, except the initial letter: `Wasd`
 
-error: aborting due to 9 previous errors
+error: name `JSON` contains a capitalized acronym
+  --> $DIR/upper_case_acronyms.rs:42:8
+   |
+LL | struct JSON;
+   |        ^^^^ help: consider making the acronym lowercase, except the initial letter: `Json`
+
+error: name `YAML` contains a capitalized acronym
+  --> $DIR/upper_case_acronyms.rs:45:6
+   |
+LL | enum YAML {
+   |      ^^^^ help: consider making the acronym lowercase, except the initial letter: `Yaml`
+
+error: aborting due to 11 previous errors
 

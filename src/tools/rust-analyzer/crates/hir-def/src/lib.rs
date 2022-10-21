@@ -474,9 +474,16 @@ pub enum DefWithBodyId {
     FunctionId(FunctionId),
     StaticId(StaticId),
     ConstId(ConstId),
+    VariantId(EnumVariantId),
 }
 
 impl_from!(FunctionId, ConstId, StaticId for DefWithBodyId);
+
+impl From<EnumVariantId> for DefWithBodyId {
+    fn from(id: EnumVariantId) -> Self {
+        DefWithBodyId::VariantId(id)
+    }
+}
 
 impl DefWithBodyId {
     pub fn as_generic_def_id(self) -> Option<GenericDefId> {
@@ -484,6 +491,7 @@ impl DefWithBodyId {
             DefWithBodyId::FunctionId(f) => Some(f.into()),
             DefWithBodyId::StaticId(_) => None,
             DefWithBodyId::ConstId(c) => Some(c.into()),
+            DefWithBodyId::VariantId(c) => Some(c.into()),
         }
     }
 }
@@ -681,6 +689,7 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::FunctionId(it) => it.lookup(db).module(db),
             DefWithBodyId::StaticId(it) => it.lookup(db).module(db),
             DefWithBodyId::ConstId(it) => it.lookup(db).module(db),
+            DefWithBodyId::VariantId(it) => it.parent.lookup(db).container,
         }
     }
 }
@@ -691,6 +700,7 @@ impl DefWithBodyId {
             DefWithBodyId::FunctionId(it) => it.lookup(db).id.value.into(),
             DefWithBodyId::StaticId(it) => it.lookup(db).id.value.into(),
             DefWithBodyId::ConstId(it) => it.lookup(db).id.value.into(),
+            DefWithBodyId::VariantId(it) => it.parent.lookup(db).id.value.into(),
         }
     }
 }

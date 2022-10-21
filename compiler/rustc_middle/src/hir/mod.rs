@@ -39,7 +39,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
 /// bodies.  The Ids are in visitor order.  This is used to partition a pass between modules.
 #[derive(Debug, HashStable, Encodable, Decodable)]
 pub struct ModuleItems {
-    submodules: Box<[LocalDefId]>,
+    submodules: Box<[OwnerId]>,
     items: Box<[ItemId]>,
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,
@@ -67,10 +67,10 @@ impl ModuleItems {
     pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {
         self.items
             .iter()
-            .map(|id| id.def_id)
-            .chain(self.trait_items.iter().map(|id| id.def_id))
-            .chain(self.impl_items.iter().map(|id| id.def_id))
-            .chain(self.foreign_items.iter().map(|id| id.def_id))
+            .map(|id| id.def_id.def_id)
+            .chain(self.trait_items.iter().map(|id| id.def_id.def_id))
+            .chain(self.impl_items.iter().map(|id| id.def_id.def_id))
+            .chain(self.foreign_items.iter().map(|id| id.def_id.def_id))
     }
 
     pub fn par_items(&self, f: impl Fn(ItemId) + Send + Sync) {
@@ -97,7 +97,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn parent_module(self, id: HirId) -> LocalDefId {
-        self.parent_module_from_def_id(id.owner)
+        self.parent_module_from_def_id(id.owner.def_id)
     }
 
     pub fn impl_subject(self, def_id: DefId) -> ImplSubject<'tcx> {
@@ -110,13 +110,13 @@ impl<'tcx> TyCtxt<'tcx> {
 pub fn provide(providers: &mut Providers) {
     providers.parent_module_from_def_id = |tcx, id| {
         let hir = tcx.hir();
-        hir.get_module_parent_node(hir.local_def_id_to_hir_id(id))
+        hir.get_module_parent_node(hir.local_def_id_to_hir_id(id)).def_id
     };
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
     providers.hir_owner = |tcx, id| {
-        let owner = tcx.hir_crate(()).owners.get(id)?.as_owner()?;
+        let owner = tcx.hir_crate(()).owners.get(id.def_id)?.as_owner()?;
         let node = owner.node();
         Some(Owner { node, hash_without_bodies: owner.nodes.hash_without_bodies })
     };
@@ -128,21 +128,24 @@ pub fn provide(providers: &mut Providers) {
             MaybeOwner::NonOwner(hir_id) => hir_id,
         }
     };
-    providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id].map(|i| &i.nodes);
+    providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id.def_id].map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
         // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
-        tcx.opt_local_parent(id).map_or(CRATE_HIR_ID, |parent| {
+        tcx.opt_local_parent(id.def_id).map_or(CRATE_HIR_ID, |parent| {
             let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent);
-            if let Some(local_id) =
-                tcx.hir_crate(()).owners[parent_hir_id.owner].unwrap().parenting.get(&id)
+            if let Some(local_id) = tcx.hir_crate(()).owners[parent_hir_id.owner.def_id]
+                .unwrap()
+                .parenting
+                .get(&id.def_id)
             {
                 parent_hir_id.local_id = *local_id;
             }
             parent_hir_id
         })
     };
-    providers.hir_attrs =
-        |tcx, id| tcx.hir_crate(()).owners[id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs);
+    providers.hir_attrs = |tcx, id| {
+        tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
+    };
     providers.source_span =
         |tcx, def_id| tcx.resolutions(()).source_span.get(def_id).copied().unwrap_or(DUMMY_SP);
     providers.def_span = |tcx, def_id| {
@@ -177,6 +180,7 @@ pub fn provide(providers: &mut Providers) {
         let id = id.expect_local();
         tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root())
     };
-    providers.in_scope_traits_map =
-        |tcx, id| tcx.hir_crate(()).owners[id].as_owner().map(|owner_info| &owner_info.trait_map);
+    providers.in_scope_traits_map = |tcx, id| {
+        tcx.hir_crate(()).owners[id.def_id].as_owner().map(|owner_info| &owner_info.trait_map)
+    };
 }

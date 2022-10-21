@@ -14,8 +14,8 @@ use std::iter;
 /// inference variable, returns `None`, because we are not able to
 /// make any progress at all. This is to prevent "livelock" where we
 /// say "$0 is WF if $0 is WF".
-pub fn obligations<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn obligations<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,
     recursion_depth: usize,
@@ -79,8 +79,8 @@ pub fn obligations<'a, 'tcx>(
 /// well-formed.  For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
-pub fn trait_obligations<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn trait_obligations<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,
     trait_pred: &ty::TraitPredicate<'tcx>,
@@ -102,8 +102,8 @@ pub fn trait_obligations<'a, 'tcx>(
 }
 
 #[instrument(skip(infcx), ret)]
-pub fn predicate_obligations<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn predicate_obligations<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,
     predicate: ty::Predicate<'tcx>,
@@ -224,7 +224,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     };
     let fix_span =
         |impl_item_ref: &hir::ImplItemRef| match tcx.hir().impl_item(impl_item_ref.id).kind {
-            hir::ImplItemKind::Const(ty, _) | hir::ImplItemKind::TyAlias(ty) => ty.span,
+            hir::ImplItemKind::Const(ty, _) | hir::ImplItemKind::Type(ty) => ty.span,
             _ => impl_item_ref.span,
         };
 
@@ -275,7 +275,7 @@ impl<'tcx> WfPredicates<'tcx> {
         traits::ObligationCause::new(self.span, self.body_id, code)
     }
 
-    fn normalize(self, infcx: &InferCtxt<'_, 'tcx>) -> Vec<traits::PredicateObligation<'tcx>> {
+    fn normalize(self, infcx: &InferCtxt<'tcx>) -> Vec<traits::PredicateObligation<'tcx>> {
         let cause = self.cause(traits::WellFormed(None));
         let param_env = self.param_env;
         let mut obligations = Vec::with_capacity(self.out.len());
@@ -308,6 +308,32 @@ impl<'tcx> WfPredicates<'tcx> {
         let obligations = if trait_pred.constness == ty::BoundConstness::NotConst {
             self.nominal_obligations_without_const(trait_ref.def_id, trait_ref.substs)
         } else {
+            if !tcx.has_attr(trait_ref.def_id, rustc_span::sym::const_trait) {
+                if let Some(item) = self.item &&
+                   let hir::ItemKind::Impl(impl_) = item.kind &&
+                   let Some(trait_) = &impl_.of_trait &&
+                   let Some(def_id) = trait_.trait_def_id() &&
+                   def_id == trait_ref.def_id
+                {
+                    let trait_name = tcx.item_name(def_id);
+                    let mut err = tcx.sess.struct_span_err(
+                        self.span,
+                        &format!("const `impl` for trait `{trait_name}` which is not marked with `#[const_trait]`"),
+                    );
+                    if def_id.is_local() {
+                        let sp = tcx.def_span(def_id).shrink_to_lo();
+                        err.span_suggestion(sp, &format!("mark `{trait_name}` as const"), "#[const_trait]", rustc_errors::Applicability::MachineApplicable);
+                    }
+                    err.note("marking a trait with `#[const_trait]` ensures all default method bodies are `const`");
+                    err.note("adding a non-const method body in the future would be a breaking change");
+                    err.emit();
+                } else {
+                    tcx.sess.span_err(
+                        self.span,
+                        "~const can only be applied to `#[const_trait]` traits",
+                    );
+                }
+            }
             self.nominal_obligations(trait_ref.def_id, trait_ref.substs)
         };
 

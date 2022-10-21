@@ -2,16 +2,20 @@
 
 use std::env;
 use std::ffi::{CStr, CString, OsString};
-use std::io;
+use std::fs;
+use std::io::{self, Write};
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::ptr;
 use std::str;
 
+use object::read::macho::FatArch;
+
 use crate::common;
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
+use rustc_data_structures::memmap::Mmap;
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 
@@ -53,13 +57,70 @@ fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
     }
 }
 
+fn try_filter_fat_archs(
+    archs: object::read::Result<&[impl FatArch]>,
+    target_arch: object::Architecture,
+    archive_path: &Path,
+    archive_map_data: &[u8],
+) -> io::Result<Option<PathBuf>> {
+    let archs = archs.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+    let desired = match archs.iter().filter(|a| a.architecture() == target_arch).next() {
+        Some(a) => a,
+        None => return Ok(None),
+    };
+
+    let (mut new_f, extracted_path) = tempfile::Builder::new()
+        .suffix(archive_path.file_name().unwrap())
+        .tempfile()?
+        .keep()
+        .unwrap();
+
+    new_f.write_all(
+        desired.data(archive_map_data).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
+    )?;
+
+    Ok(Some(extracted_path))
+}
+
+fn try_extract_macho_fat_archive(
+    sess: &Session,
+    archive_path: &Path,
+) -> io::Result<Option<PathBuf>> {
+    let archive_map = unsafe { Mmap::map(fs::File::open(&archive_path)?)? };
+    let target_arch = match sess.target.arch.as_ref() {
+        "aarch64" => object::Architecture::Aarch64,
+        "x86_64" => object::Architecture::X86_64,
+        _ => return Ok(None),
+    };
+
+    match object::macho::FatHeader::parse(&*archive_map) {
+        Ok(h) if h.magic.get(object::endian::BigEndian) == object::macho::FAT_MAGIC => {
+            let archs = object::macho::FatHeader::parse_arch32(&*archive_map);
+            try_filter_fat_archs(archs, target_arch, archive_path, &*archive_map)
+        }
+        Ok(h) if h.magic.get(object::endian::BigEndian) == object::macho::FAT_MAGIC_64 => {
+            let archs = object::macho::FatHeader::parse_arch64(&*archive_map);
+            try_filter_fat_archs(archs, target_arch, archive_path, &*archive_map)
+        }
+        // Not a FatHeader at all, just return None.
+        _ => Ok(None),
+    }
+}
+
 impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     fn add_archive(
         &mut self,
         archive: &Path,
         skip: Box<dyn FnMut(&str) -> bool + 'static>,
     ) -> io::Result<()> {
-        let archive_ro = match ArchiveRO::open(archive) {
+        let mut archive = archive.to_path_buf();
+        if self.sess.target.llvm_target.contains("-apple-macosx") {
+            if let Some(new_archive) = try_extract_macho_fat_archive(&self.sess, &archive)? {
+                archive = new_archive
+            }
+        }
+        let archive_ro = match ArchiveRO::open(&archive) {
             Ok(ar) => ar,
             Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
         };
@@ -67,7 +128,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             return Ok(());
         }
         self.additions.push(Addition::Archive {
-            path: archive.to_path_buf(),
+            path: archive,
             archive: archive_ro,
             skip: Box::new(skip),
         });

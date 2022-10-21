@@ -1,6 +1,7 @@
 use crate::creader::CrateMetadataRef;
 use decoder::Metadata;
 use def_path_hash_map::DefPathHashMapRef;
+use rustc_data_structures::fx::FxHashMap;
 use table::TableBuilder;
 
 use rustc_ast as ast;
@@ -12,7 +13,8 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items;
-use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
+use rustc_index::bit_set::{BitSet, FiniteBitSet};
+use rustc_index::vec::IndexVec;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
@@ -382,6 +384,7 @@ define_tables! {
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,
     unused_generic_params: Table<DefIndex, LazyValue<FiniteBitSet<u32>>>,
+    params_in_repr: Table<DefIndex, LazyValue<BitSet<u32>>>,
     repr_options: Table<DefIndex, LazyValue<ReprOptions>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
     // `DefPathTable`. This allows us to avoid deserializing an entire
@@ -399,6 +402,8 @@ define_tables! {
     macro_definition: Table<DefIndex, LazyValue<ast::MacArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
+
+    trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, Ty<'static>>>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]

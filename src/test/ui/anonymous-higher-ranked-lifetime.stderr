@@ -6,7 +6,7 @@ LL |     f1(|_: (), _: ()| {});
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `for<'r, 's> fn(&'r (), &'s ()) -> _`
+   = note: expected closure signature `for<'a, 'b> fn(&'a (), &'b ()) -> _`
               found closure signature `fn((), ()) -> _`
 note: required by a bound in `f1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:16:25
@@ -22,7 +22,7 @@ LL |     f2(|_: (), _: ()| {});
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `for<'a, 'r> fn(&'a (), &'r ()) -> _`
+   = note: expected closure signature `for<'a, 'b> fn(&'a (), &'b ()) -> _`
               found closure signature `fn((), ()) -> _`
 note: required by a bound in `f2`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:17:25
@@ -38,7 +38,7 @@ LL |     f3(|_: (), _: ()| {});
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `for<'r> fn(&(), &'r ()) -> _`
+   = note: expected closure signature `for<'a> fn(&(), &'a ()) -> _`
               found closure signature `fn((), ()) -> _`
 note: required by a bound in `f3`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:18:29
@@ -54,7 +54,7 @@ LL |     f4(|_: (), _: ()| {});
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `for<'r, 's> fn(&'s (), &'r ()) -> _`
+   = note: expected closure signature `for<'r, 'a> fn(&'a (), &'r ()) -> _`
               found closure signature `fn((), ()) -> _`
 note: required by a bound in `f4`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:19:25
@@ -86,7 +86,7 @@ LL |     g1(|_: (), _: ()| {});
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `for<'r> fn(&'r (), Box<(dyn for<'r> Fn(&'r ()) + 'static)>) -> _`
+   = note: expected closure signature `for<'a> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>) -> _`
               found closure signature `fn((), ()) -> _`
 note: required by a bound in `g1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:23:25
@@ -102,7 +102,7 @@ LL |     g2(|_: (), _: ()| {});
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `for<'r> fn(&'r (), for<'r> fn(&'r ())) -> _`
+   = note: expected closure signature `for<'a> fn(&'a (), for<'a> fn(&'a ())) -> _`
               found closure signature `fn((), ()) -> _`
 note: required by a bound in `g2`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:24:25
@@ -118,7 +118,7 @@ LL |     g3(|_: (), _: ()| {});
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `for<'s> fn(&'s (), Box<(dyn for<'r> Fn(&'r ()) + 'static)>) -> _`
+   = note: expected closure signature `for<'s> fn(&'s (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>) -> _`
               found closure signature `fn((), ()) -> _`
 note: required by a bound in `g3`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:25:25
@@ -134,7 +134,7 @@ LL |     g4(|_: (), _: ()| {});
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `for<'s> fn(&'s (), for<'r> fn(&'r ())) -> _`
+   = note: expected closure signature `for<'a> fn(&'a (), for<'r> fn(&'r ())) -> _`
               found closure signature `fn((), ()) -> _`
 note: required by a bound in `g4`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:26:25
@@ -150,7 +150,7 @@ LL |     h1(|_: (), _: (), _: (), _: ()| {});
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `for<'r, 's> fn(&'r (), Box<(dyn for<'r> Fn(&'r ()) + 'static)>, &'s (), for<'r, 's> fn(&'r (), &'s ())) -> _`
+   = note: expected closure signature `for<'a, 'b> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'b (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
               found closure signature `fn((), (), (), ()) -> _`
 note: required by a bound in `h1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:29:25
@@ -166,7 +166,7 @@ LL |     h2(|_: (), _: (), _: (), _: ()| {});
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `for<'t0, 'r> fn(&'r (), Box<(dyn for<'r> Fn(&'r ()) + 'static)>, &'t0 (), for<'r, 's> fn(&'r (), &'s ())) -> _`
+   = note: expected closure signature `for<'t0, 'a> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
               found closure signature `fn((), (), (), ()) -> _`
 note: required by a bound in `h2`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:30:25

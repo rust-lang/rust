@@ -67,7 +67,7 @@ declare_clippy_lint! {
     /// Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#overflow),
     /// or can panic (`/`, `%`).
     ///
-    /// Known safe built-in types like `Wrapping` or `Saturing`, floats, operations in constant
+    /// Known safe built-in types like `Wrapping` or `Saturating`, floats, operations in constant
     /// environments, allowed types and non-constant operations that won't overflow are ignored.
     ///
     /// ### Why is this bad?

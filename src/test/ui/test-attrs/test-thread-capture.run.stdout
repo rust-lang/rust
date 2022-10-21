@@ -10,7 +10,7 @@ fee
 fie
 foe
 fum
-thread 'main' panicked at 'explicit panic', $DIR/test-thread-capture.rs:31:5
+thread 'main' panicked at 'explicit panic', $DIR/test-thread-capture.rs:32:5
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
 

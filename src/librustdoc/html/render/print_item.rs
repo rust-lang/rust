@@ -400,7 +400,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         if myitem.fn_header(cx.tcx()).unwrap().unsafety
                             == hir::Unsafety::Unsafe =>
                     {
-                        "<a title=\"unsafe function\" href=\"#\"><sup>⚠</sup></a>"
+                        "<sup title=\"unsafe function\">⚠</sup>"
                     }
                     _ => "",
                 };
@@ -716,9 +716,9 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         document(&mut content, cx, m, Some(t), HeadingOffset::H5);
         let toggled = !content.is_empty();
         if toggled {
-            write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
+            write!(w, "<details class=\"rustdoc-toggle method-toggle\" open><summary>");
         }
-        write!(w, "<div id=\"{}\" class=\"method has-srclink\">", id);
+        write!(w, "<section id=\"{}\" class=\"method has-srclink\">", id);
         render_rightside(w, cx, m, t, RenderMode::Normal);
         write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(
@@ -730,7 +730,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             RenderMode::Normal,
         );
         w.write_str("</h4>");
-        w.write_str("</div>");
+        w.write_str("</section>");
         if toggled {
             write!(w, "</summary>");
             w.push_buffer(content);
@@ -890,7 +890,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             w,
             "implementors",
             "Implementors",
-            "<div class=\"item-list\" id=\"implementors-list\">",
+            "<div id=\"implementors-list\">",
         );
         for implementor in concrete {
             render_implementor(cx, implementor, it, w, &implementor_dups, &[]);
@@ -902,7 +902,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                 w,
                 "synthetic-implementors",
                 "Auto implementors",
-                "<div class=\"item-list\" id=\"synthetic-implementors-list\">",
+                "<div id=\"synthetic-implementors-list\">",
             );
             for implementor in synthetic {
                 render_implementor(
@@ -923,7 +923,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             w,
             "implementors",
             "Implementors",
-            "<div class=\"item-list\" id=\"implementors-list\"></div>",
+            "<div id=\"implementors-list\"></div>",
         );
 
         if t.is_auto(cx.tcx()) {
@@ -931,7 +931,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                 w,
                 "synthetic-implementors",
                 "Auto implementors",
-                "<div class=\"item-list\" id=\"synthetic-implementors-list\"></div>",
+                "<div id=\"synthetic-implementors-list\"></div>",
             );
         }
     }

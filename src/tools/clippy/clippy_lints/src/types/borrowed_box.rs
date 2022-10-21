@@ -49,15 +49,15 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                     let inner_snippet = snippet(cx, inner.span, "..");
                     let suggestion = match &inner.kind {
                         TyKind::TraitObject(bounds, lt_bound, _) if bounds.len() > 1 || !lt_bound.is_elided() => {
-                            format!("&{}({})", ltopt, &inner_snippet)
+                            format!("&{ltopt}({})", &inner_snippet)
                         },
                         TyKind::Path(qpath)
                             if get_bounds_if_impl_trait(cx, qpath, inner.hir_id)
                                 .map_or(false, |bounds| bounds.len() > 1) =>
                         {
-                            format!("&{}({})", ltopt, &inner_snippet)
+                            format!("&{ltopt}({})", &inner_snippet)
                         },
-                        _ => format!("&{}{}", ltopt, &inner_snippet),
+                        _ => format!("&{ltopt}{}", &inner_snippet),
                     };
                     span_lint_and_sugg(
                         cx,
@@ -104,7 +104,7 @@ fn get_bounds_if_impl_trait<'tcx>(cx: &LateContext<'tcx>, qpath: &QPath<'_>, id:
         if let Some(Node::GenericParam(generic_param)) = cx.tcx.hir().get_if_local(did);
         if let GenericParamKind::Type { synthetic, .. } = generic_param.kind;
         if synthetic;
-        if let Some(generics) = cx.tcx.hir().get_generics(id.owner);
+        if let Some(generics) = cx.tcx.hir().get_generics(id.owner.def_id);
         if let Some(pred) = generics.bounds_for_param(did.expect_local()).next();
         then {
             Some(pred.bounds)

@@ -32,8 +32,8 @@ LL | | //! let x = 12;
 LL | | //! ```
    | |_______^
    |
-   = note: `#[deny(rustdoc::invalid_codeblock_attributes)]` implied by `#[deny(rustdoc::all)]`
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
+   = note: `#[deny(rustdoc::invalid_codeblock_attributes)]` implied by `#[deny(rustdoc::all)]`
 
 error: unknown attribute `testharness`. Did you mean `test_harness`?
   --> $DIR/check-fail.rs:16:1

@@ -23,7 +23,7 @@ help: consider making the type lifetime-generic with a new `'a` lifetime
 LL |     &(non_elidable as for<'a> fn(&'a u8, &'a u8) -> &'a u8);
    |                       +++++++     ++      ++         ++
 
-error[E0605]: non-primitive cast: `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8 {non_elidable}` as `for<'r, 's> fn(&'r u8, &'s u8) -> &u8`
+error[E0605]: non-primitive cast: `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8 {non_elidable}` as `for<'a, 'b> fn(&'a u8, &'b u8) -> &u8`
   --> $DIR/rfc1623-2.rs:10:6
    |
 LL |     &(non_elidable as fn(&u8, &u8) -> &u8);

@@ -7,15 +7,15 @@ LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
    | calling non-const function `<Vec<i32> as Drop>::drop`
    | inside `std::ptr::drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-  ::: $DIR/drop.rs:18:1
+  ::: $DIR/drop.rs:17:1
    |
 LL | };
-   | - inside `TEST_BAD` at $DIR/drop.rs:18:1
+   | - inside `TEST_BAD` at $DIR/drop.rs:17:1
 
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/drop.rs:17:9
+  --> $DIR/drop.rs:16:9
    |
 LL |     let _v: Vec<i32> = Vec::new();
    |         ^^

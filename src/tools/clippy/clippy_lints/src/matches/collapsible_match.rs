@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{is_lang_ctor, is_unit_expr, path_to_local, peel_blocks_with_stmt, peel_ref_operators, SpanlessEq};
+use clippy_utils::{
+    is_res_lang_ctor, is_unit_expr, path_to_local, peel_blocks_with_stmt, peel_ref_operators, SpanlessEq,
+};
 use if_chain::if_chain;
 use rustc_errors::MultiSpan;
 use rustc_hir::LangItem::OptionNone;
@@ -110,7 +112,7 @@ fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     }
     match arm.pat.kind {
         PatKind::Binding(..) | PatKind::Wild => true,
-        PatKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
+        PatKind::Path(ref qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone),
         _ => false,
     }
 }

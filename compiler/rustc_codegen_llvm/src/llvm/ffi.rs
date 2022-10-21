@@ -1792,17 +1792,8 @@ extern "C" {
     /// Writes a module to the specified path. Returns 0 on success.
     pub fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
 
-    /// Creates a pass manager.
+    /// Creates a legacy pass manager -- only used for final codegen.
     pub fn LLVMCreatePassManager<'a>() -> &'a mut PassManager<'a>;
-
-    /// Creates a function-by-function pass manager
-    pub fn LLVMCreateFunctionPassManagerForModule(M: &Module) -> &mut PassManager<'_>;
-
-    /// Disposes a pass manager.
-    pub fn LLVMDisposePassManager<'a>(PM: &'a mut PassManager<'a>);
-
-    /// Runs a pass manager on a module.
-    pub fn LLVMRunPassManager<'a>(PM: &PassManager<'a>, M: &'a Module) -> Bool;
 
     pub fn LLVMInitializePasses();
 
@@ -1813,32 +1804,6 @@ extern "C" {
     pub fn LLVMTimeTraceProfilerFinish(FileName: *const c_char);
 
     pub fn LLVMAddAnalysisPasses<'a>(T: &'a TargetMachine, PM: &PassManager<'a>);
-
-    pub fn LLVMRustPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
-    pub fn LLVMRustPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
-    pub fn LLVMRustPassManagerBuilderUseInlinerWithThreshold(
-        PMB: &PassManagerBuilder,
-        threshold: c_uint,
-    );
-    pub fn LLVMRustPassManagerBuilderPopulateModulePassManager(
-        PMB: &PassManagerBuilder,
-        PM: &PassManager<'_>,
-    );
-
-    pub fn LLVMRustPassManagerBuilderPopulateFunctionPassManager(
-        PMB: &PassManagerBuilder,
-        PM: &PassManager<'_>,
-    );
-    pub fn LLVMRustPassManagerBuilderPopulateLTOPassManager(
-        PMB: &PassManagerBuilder,
-        PM: &PassManager<'_>,
-        Internalize: Bool,
-        RunInliner: Bool,
-    );
-    pub fn LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
-        PMB: &PassManagerBuilder,
-        PM: &PassManager<'_>,
-    );
 
     pub fn LLVMGetHostCPUFeatures() -> *mut c_char;
 
@@ -2244,22 +2209,6 @@ extern "C" {
 
     pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&ConstantInt>;
 
-    pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;
-    pub fn LLVMRustCreateAddressSanitizerFunctionPass(Recover: bool) -> &'static mut Pass;
-    pub fn LLVMRustCreateModuleAddressSanitizerPass(Recover: bool) -> &'static mut Pass;
-    pub fn LLVMRustCreateMemorySanitizerPass(
-        TrackOrigins: c_int,
-        Recover: bool,
-    ) -> &'static mut Pass;
-    pub fn LLVMRustCreateThreadSanitizerPass() -> &'static mut Pass;
-    pub fn LLVMRustCreateHWAddressSanitizerPass(Recover: bool) -> &'static mut Pass;
-    pub fn LLVMRustAddPass(PM: &PassManager<'_>, Pass: &'static mut Pass);
-    pub fn LLVMRustAddLastExtensionPasses(
-        PMB: &PassManagerBuilder,
-        Passes: *const &'static mut Pass,
-        NumPasses: size_t,
-    );
-
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
     pub fn LLVMRustPrintTargetCPUs(T: &TargetMachine);
@@ -2293,29 +2242,11 @@ extern "C" {
         SplitDwarfFile: *const c_char,
     ) -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
-    pub fn LLVMRustAddBuilderLibraryInfo<'a>(
-        PMB: &'a PassManagerBuilder,
-        M: &'a Module,
-        DisableSimplifyLibCalls: bool,
-    );
-    pub fn LLVMRustConfigurePassManagerBuilder(
-        PMB: &PassManagerBuilder,
-        OptLevel: CodeGenOptLevel,
-        MergeFunctions: bool,
-        SLPVectorize: bool,
-        LoopVectorize: bool,
-        PrepareForThinLTO: bool,
-        PGOGenPath: *const c_char,
-        PGOUsePath: *const c_char,
-        PGOSampleUsePath: *const c_char,
-        SizeLevel: c_int,
-    );
     pub fn LLVMRustAddLibraryInfo<'a>(
         PM: &PassManager<'a>,
         M: &'a Module,
         DisableSimplifyLibCalls: bool,
     );
-    pub fn LLVMRustRunFunctionPassManager<'a>(PM: &PassManager<'a>, M: &'a Module);
     pub fn LLVMRustWriteOutputFile<'a>(
         T: &'a TargetMachine,
         PM: &PassManager<'a>,
@@ -2324,7 +2255,7 @@ extern "C" {
         DwoOutput: *const c_char,
         FileType: FileType,
     ) -> LLVMRustResult;
-    pub fn LLVMRustOptimizeWithNewPassManager<'a>(
+    pub fn LLVMRustOptimize<'a>(
         M: &'a Module,
         TM: &'a TargetMachine,
         OptLevel: PassBuilderOptLevel,
@@ -2362,7 +2293,6 @@ extern "C" {
     pub fn LLVMRustSetLLVMOptions(Argc: c_int, Argv: *const *const c_char);
     pub fn LLVMRustPrintPasses();
     pub fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
-    pub fn LLVMRustAddAlwaysInlinePass(P: &PassManagerBuilder, AddLifetimes: bool);
     pub fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
 
     pub fn LLVMRustOpenArchive(path: *const c_char) -> Option<&'static mut Archive>;

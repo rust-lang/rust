@@ -82,6 +82,7 @@ book!(
     Reference, "src/doc/reference", "reference", submodule;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", submodule;
     RustdocBook, "src/doc/rustdoc", "rustdoc";
+    StyleGuide, "src/doc/style-guide", "style-guide";
 );
 
 fn open(builder: &Builder<'_>, path: impl AsRef<Path>) {

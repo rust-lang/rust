@@ -133,7 +133,6 @@ impl<'a, K: Debug + Ord, V: Debug, A: Allocator + Clone> fmt::Display
     }
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "map_try_insert", issue = "82766")]
 impl<'a, K: core::fmt::Debug + Ord, V: core::fmt::Debug> core::error::Error
     for crate::collections::btree_map::OccupiedError<'a, K, V>

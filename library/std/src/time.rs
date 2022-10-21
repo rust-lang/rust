@@ -356,7 +356,7 @@ impl Instant {
     ///
     /// # Panics
     ///
-    /// Previous rust versions panicked when self was earlier than the current time. Currently this
+    /// Previous rust versions panicked when the current time was earlier than self. Currently this
     /// method returns a Duration of zero in that case. Future versions may reintroduce the panic.
     /// See [Monotonicity].
     ///

@@ -26,9 +26,9 @@ where
 {}
 
 // @has issue_60726/struct.IntoIter.html
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
+// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header"]' \
 // "impl<T> !Send for IntoIter<T>"
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
+// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header"]' \
 // "impl<T> !Sync for IntoIter<T>"
 pub struct IntoIter<T>{
     hello:DynTrait<FooInterface<T>>,

@@ -198,7 +198,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     move_span,
                     move_spans,
                     *moved_place,
-                    Some(used_place),
                     partially_str,
                     loop_message,
                     move_msg,
@@ -369,6 +368,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
         visitor.visit_body(&body);
 
+        let mut show_assign_sugg = false;
         let isnt_initialized = if let InitializationRequiringAction::PartialAssignment
         | InitializationRequiringAction::Assignment = desired_action
         {
@@ -396,6 +396,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .count()
             == 0
         {
+            show_assign_sugg = true;
             "isn't initialized"
         } else {
             "is possibly-uninitialized"
@@ -446,8 +447,82 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
         }
+
         err.span_label(decl_span, "binding declared here but left uninitialized");
+        if show_assign_sugg {
+            struct LetVisitor {
+                decl_span: Span,
+                sugg_span: Option<Span>,
+            }
+
+            impl<'v> Visitor<'v> for LetVisitor {
+                fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
+                    if self.sugg_span.is_some() {
+                        return;
+                    }
+                    if let hir::StmtKind::Local(hir::Local {
+                            span, ty, init: None, ..
+                        }) = &ex.kind && span.contains(self.decl_span) {
+                            self.sugg_span = ty.map_or(Some(self.decl_span), |ty| Some(ty.span));
+                    }
+                    hir::intravisit::walk_stmt(self, ex);
+                }
+            }
+
+            let mut visitor = LetVisitor { decl_span, sugg_span: None };
+            visitor.visit_body(&body);
+            if let Some(span) = visitor.sugg_span {
+                self.suggest_assign_value(&mut err, moved_place, span);
+            }
+        }
         err
+    }
+
+    fn suggest_assign_value(
+        &self,
+        err: &mut Diagnostic,
+        moved_place: PlaceRef<'tcx>,
+        sugg_span: Span,
+    ) {
+        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
+        debug!("ty: {:?}, kind: {:?}", ty, ty.kind());
+
+        let tcx = self.infcx.tcx;
+        let implements_default = |ty, param_env| {
+            let Some(default_trait) = tcx.get_diagnostic_item(sym::Default) else {
+                return false;
+            };
+            // Regions are already solved, so we must use a fresh InferCtxt,
+            // but the type has region variables, so erase those.
+            tcx.infer_ctxt()
+                .build()
+                .type_implements_trait(
+                    default_trait,
+                    tcx.erase_regions(ty),
+                    ty::List::empty(),
+                    param_env,
+                )
+                .must_apply_modulo_regions()
+        };
+
+        let assign_value = match ty.kind() {
+            ty::Bool => "false",
+            ty::Float(_) => "0.0",
+            ty::Int(_) | ty::Uint(_) => "0",
+            ty::Never | ty::Error(_) => "",
+            ty::Adt(def, _) if Some(def.did()) == tcx.get_diagnostic_item(sym::Vec) => "vec![]",
+            ty::Adt(_, _) if implements_default(ty, self.param_env) => "Default::default()",
+            _ => "todo!()",
+        };
+
+        if !assign_value.is_empty() {
+            err.span_suggestion_verbose(
+                sugg_span.shrink_to_hi(),
+                format!("consider assigning a value"),
+                format!(" = {}", assign_value),
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 
     fn suggest_borrow_fn_like(
@@ -537,41 +612,40 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .and_then(|def_id| tcx.hir().get_generics(def_id))
         else { return; };
         // Try to find predicates on *generic params* that would allow copying `ty`
-        let predicates: Result<Vec<_>, _> = tcx.infer_ctxt().enter(|infcx| {
-            let mut fulfill_cx = <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
+        let infcx = tcx.infer_ctxt().build();
+        let mut fulfill_cx = <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
 
-            let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
-            let cause = ObligationCause::new(
-                span,
-                self.mir_hir_id(),
-                rustc_infer::traits::ObligationCauseCode::MiscObligation,
-            );
-            fulfill_cx.register_bound(
-                &infcx,
-                self.param_env,
-                // Erase any region vids from the type, which may not be resolved
-                infcx.tcx.erase_regions(ty),
-                copy_did,
-                cause,
-            );
-            // Select all, including ambiguous predicates
-            let errors = fulfill_cx.select_all_or_error(&infcx);
+        let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
+        let cause = ObligationCause::new(
+            span,
+            self.mir_hir_id(),
+            rustc_infer::traits::ObligationCauseCode::MiscObligation,
+        );
+        fulfill_cx.register_bound(
+            &infcx,
+            self.param_env,
+            // Erase any region vids from the type, which may not be resolved
+            infcx.tcx.erase_regions(ty),
+            copy_did,
+            cause,
+        );
+        // Select all, including ambiguous predicates
+        let errors = fulfill_cx.select_all_or_error(&infcx);
 
-            // Only emit suggestion if all required predicates are on generic
-            errors
-                .into_iter()
-                .map(|err| match err.obligation.predicate.kind().skip_binder() {
-                    PredicateKind::Trait(predicate) => match predicate.self_ty().kind() {
-                        ty::Param(param_ty) => Ok((
-                            generics.type_param(param_ty, tcx),
-                            predicate.trait_ref.print_only_trait_path().to_string(),
-                        )),
-                        _ => Err(()),
-                    },
+        // Only emit suggestion if all required predicates are on generic
+        let predicates: Result<Vec<_>, _> = errors
+            .into_iter()
+            .map(|err| match err.obligation.predicate.kind().skip_binder() {
+                PredicateKind::Trait(predicate) => match predicate.self_ty().kind() {
+                    ty::Param(param_ty) => Ok((
+                        generics.type_param(param_ty, tcx),
+                        predicate.trait_ref.print_only_trait_path().to_string(),
+                    )),
                     _ => Err(()),
-                })
-                .collect()
-        });
+                },
+                _ => Err(()),
+            })
+            .collect();
 
         if let Ok(predicates) = predicates {
             suggest_constraining_type_params(
@@ -909,7 +983,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err: &mut Diagnostic,
         location: Location,
         issued_borrow: &BorrowData<'tcx>,
-        explanation: BorrowExplanation<'tcx>,
+        explanation: BorrowExplanation,
     ) {
         let used_in_call = matches!(
             explanation,
@@ -1259,7 +1333,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
-        explanation: BorrowExplanation<'tcx>,
+        explanation: BorrowExplanation,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
@@ -1465,7 +1539,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
         proper_span: Span,
-        explanation: BorrowExplanation<'tcx>,
+        explanation: BorrowExplanation,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
             explanation
@@ -1579,7 +1653,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         borrow_span: Span,
         return_span: Span,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
         opt_place_desc: Option<&String>,
     ) -> Option<DiagnosticBuilder<'cx, ErrorGuaranteed>> {
         let return_kind = match category {
@@ -1674,7 +1748,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         use_span: UseSpans<'tcx>,
         var_span: Span,
         fr_name: &RegionName,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
         constraint_span: Span,
         captured_var: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {

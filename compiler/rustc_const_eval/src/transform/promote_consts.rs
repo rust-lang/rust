@@ -13,6 +13,7 @@
 //! move analysis runs after promotion on broken MIR.
 
 use rustc_hir as hir;
+use rustc_middle::mir;
 use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -840,7 +841,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
                 let substs = tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def.did));
-                let uneval = ty::Unevaluated { def, substs, promoted: Some(promoted_id) };
+                let uneval = mir::UnevaluatedConst { def, substs, promoted: Some(promoted_id) };
 
                 Operand::Constant(Box::new(Constant {
                     span,

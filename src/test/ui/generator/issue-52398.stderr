@@ -6,8 +6,8 @@ LL | |         A.test(yield);
 LL | |     };
    | |______^
    |
-   = note: `#[warn(unused_must_use)]` on by default
    = note: generators are lazy and do nothing unless resumed
+   = note: `#[warn(unused_must_use)]` on by default
 
 warning: unused generator that must be used
   --> $DIR/issue-52398.rs:24:5

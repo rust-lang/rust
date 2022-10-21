@@ -466,10 +466,9 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
                     ty::ConstKind::Unevaluated(uv) => {
                         format!(
-                            "Unevaluated({}, {:?}, {:?})",
+                            "Unevaluated({}, {:?})",
                             self.tcx.def_path_str(uv.def.did),
                             uv.substs,
-                            uv.promoted,
                         )
                     }
                     ty::ConstKind::Value(val) => format!("Value({})", fmt_valtree(&val)),

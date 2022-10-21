@@ -234,8 +234,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
 pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
-        ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) => {
-            assert_eq!(promoted, ());
+        ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs: _ }) => {
             let s = if let Some(def) = def.as_local() {
                 print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(def.did))
             } else {
@@ -305,9 +304,9 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(
-    tcx: TyCtxt<'_>,
-    ct: mir::ConstantKind<'_>,
+fn print_const_with_custom_print_scalar<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ct: mir::ConstantKind<'tcx>,
     underscores_and_type: bool,
 ) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
@@ -321,7 +320,7 @@ fn print_const_with_custom_print_scalar(
             }
         }
         (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Int(i)) => {
-            let ty = tcx.lift(ct.ty()).unwrap();
+            let ty = ct.ty();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
@@ -455,7 +454,9 @@ pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
 
     match path.res {
         Res::PrimTy(p) => Primitive(PrimitiveType::from(p)),
-        Res::SelfTy { .. } if path.segments.len() == 1 => Generic(kw::SelfUpper),
+        Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } if path.segments.len() == 1 => {
+            Generic(kw::SelfUpper)
+        }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => Generic(path.segments[0].name),
         _ => {
             let _ = register_res(cx, path.res);

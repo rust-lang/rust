@@ -1,5 +1,5 @@
-use crate::spec::{CodeModel, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy};
+use crate::spec::{RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -9,7 +9,7 @@ pub fn target() -> Target {
         arch: "riscv64".into(),
 
         options: TargetOptions {
-            linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+            linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             llvm_abiname: "lp64d".into(),
             cpu: "generic-rv64".into(),

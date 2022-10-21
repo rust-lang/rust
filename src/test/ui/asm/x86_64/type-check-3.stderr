@@ -44,9 +44,9 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{0} {0}", in(reg) 0i16);
    |               ^^^ ^^^           ---- for this argument
    |
-   = note: `#[warn(asm_sub_register)]` on by default
    = help: use `{0:x}` to have the register formatted as `ax`
    = help: or use `{0:r}` to keep the default formatting of `rax`
+   = note: `#[warn(asm_sub_register)]` on by default
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:36:15

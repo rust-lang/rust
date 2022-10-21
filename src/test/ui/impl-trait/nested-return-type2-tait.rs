@@ -26,6 +26,7 @@ type Sendable = impl Send;
 // var to make it uphold the `: Duh` bound on `Trait::Assoc`. The opaque
 // type does not implement `Duh`, but if its hidden type does.
 fn foo() -> impl Trait<Assoc = Sendable> {
+    //~^ WARN opaque type `impl Trait<Assoc = Sendable>` does not satisfy its associated type bounds
     || 42
 }
 

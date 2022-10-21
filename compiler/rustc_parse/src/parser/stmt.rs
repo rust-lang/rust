@@ -1,13 +1,17 @@
-use super::attr::DEFAULT_INNER_ATTR_FORBIDDEN;
-use super::diagnostics::{
-    AttemptLocalParseRecovery, Error, InvalidVariableDeclaration, InvalidVariableDeclarationSub,
-};
+use super::attr::InnerAttrForbiddenReason;
+use super::diagnostics::AttemptLocalParseRecovery;
 use super::expr::LhsExpr;
 use super::pat::RecoverComma;
 use super::path::PathStyle;
 use super::TrailingToken;
 use super::{
     AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
+};
+use crate::errors::{
+    AssignmentElseNotAllowed, CompoundAssignmentExpressionInLet, ConstLetMutuallyExclusive,
+    DocCommentDoesNotDocumentAnything, ExpectedStatementAfterOuterAttr, InvalidCurlyInLetElse,
+    InvalidExpressionInLetElse, InvalidVariableDeclaration, InvalidVariableDeclarationSub,
+    WrapExpressionInParentheses,
 };
 use crate::maybe_whole;
 
@@ -112,11 +116,7 @@ impl<'a> Parser<'a> {
                 let bl = self.parse_block()?;
                 // Destructuring assignment ... else.
                 // This is not allowed, but point it out in a nice way.
-                let mut err = self.struct_span_err(
-                    e.span.to(bl.span),
-                    "<assignment> ... else { ... } is not allowed",
-                );
-                err.emit();
+                self.sess.emit_err(AssignmentElseNotAllowed { span: e.span.to(bl.span) });
             }
             self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         } else {
@@ -202,9 +202,12 @@ impl<'a> Parser<'a> {
     fn error_outer_attrs(&self, attrs: &[Attribute]) {
         if let [.., last] = attrs {
             if last.is_doc_comment() {
-                self.span_err(last.span, Error::UselessDocComment).emit();
+                self.sess.emit_err(DocCommentDoesNotDocumentAnything {
+                    span: last.span,
+                    missing_comma: None,
+                });
             } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
-                self.struct_span_err(last.span, "expected statement after outer attribute").emit();
+                self.sess.emit_err(ExpectedStatementAfterOuterAttr { span: last.span });
             }
         }
     }
@@ -255,17 +258,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
 
         if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
-            self.struct_span_err(
-                lo.to(self.token.span),
-                "`const` and `let` are mutually exclusive",
-            )
-            .span_suggestion(
-                lo.to(self.token.span),
-                "remove `let`",
-                "const",
-                Applicability::MaybeIncorrect,
-            )
-            .emit();
+            self.sess.emit_err(ConstLetMutuallyExclusive { span: lo.to(self.token.span) });
             self.bump();
         }
 
@@ -363,44 +356,27 @@ impl<'a> Parser<'a> {
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
         if let ast::ExprKind::Binary(op, ..) = init.kind {
             if op.node.lazy() {
-                let suggs = vec![
-                    (init.span.shrink_to_lo(), "(".to_string()),
-                    (init.span.shrink_to_hi(), ")".to_string()),
-                ];
-                self.struct_span_err(
-                    init.span,
-                    &format!(
-                        "a `{}` expression cannot be directly assigned in `let...else`",
-                        op.node.to_string()
-                    ),
-                )
-                .multipart_suggestion(
-                    "wrap the expression in parentheses",
-                    suggs,
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+                self.sess.emit_err(InvalidExpressionInLetElse {
+                    span: init.span,
+                    operator: op.node.to_string(),
+                    sugg: WrapExpressionInParentheses {
+                        left: init.span.shrink_to_lo(),
+                        right: init.span.shrink_to_hi(),
+                    },
+                });
             }
         }
     }
 
     fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
         if let Some(trailing) = classify::expr_trailing_brace(init) {
-            let err_span = trailing.span.with_lo(trailing.span.hi() - BytePos(1));
-            let suggs = vec![
-                (trailing.span.shrink_to_lo(), "(".to_string()),
-                (trailing.span.shrink_to_hi(), ")".to_string()),
-            ];
-            self.struct_span_err(
-                err_span,
-                "right curly brace `}` before `else` in a `let...else` statement not allowed",
-            )
-            .multipart_suggestion(
-                "try wrapping the expression in parentheses",
-                suggs,
-                Applicability::MachineApplicable,
-            )
-            .emit();
+            self.sess.emit_err(InvalidCurlyInLetElse {
+                span: trailing.span.with_lo(trailing.span.hi() - BytePos(1)),
+                sugg: WrapExpressionInParentheses {
+                    left: trailing.span.shrink_to_lo(),
+                    right: trailing.span.shrink_to_hi(),
+                },
+            });
         }
     }
 
@@ -409,18 +385,7 @@ impl<'a> Parser<'a> {
         let eq_consumed = match self.token.kind {
             token::BinOpEq(..) => {
                 // Recover `let x <op>= 1` as `let x = 1`
-                self.struct_span_err(
-                    self.token.span,
-                    "can't reassign to an uninitialized variable",
-                )
-                .span_suggestion_short(
-                    self.token.span,
-                    "initialize the variable",
-                    "=",
-                    Applicability::MaybeIncorrect,
-                )
-                .help("if you meant to overwrite, remove the `let` binding")
-                .emit();
+                self.sess.emit_err(CompoundAssignmentExpressionInLet { span: self.token.span });
                 self.bump();
                 true
             }
@@ -434,7 +399,12 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_block(&mut self) -> PResult<'a, P<Block>> {
         let (attrs, block) = self.parse_inner_attrs_and_block()?;
         if let [.., last] = &*attrs {
-            self.error_on_forbidden_inner_attr(last.span, DEFAULT_INNER_ATTR_FORBIDDEN);
+            self.error_on_forbidden_inner_attr(
+                last.span,
+                super::attr::InnerAttrPolicy::Forbidden(Some(
+                    InnerAttrForbiddenReason::InCodeBlock,
+                )),
+            );
         }
         Ok(block)
     }

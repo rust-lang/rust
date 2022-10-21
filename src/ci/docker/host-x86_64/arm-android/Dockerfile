@@ -6,7 +6,7 @@ RUN sh /scripts/android-base-apt-get.sh
 
 COPY scripts/android-ndk.sh /scripts/
 RUN . /scripts/android-ndk.sh && \
-    download_and_make_toolchain android-ndk-r15c-linux-x86_64.zip arm 14
+    download_ndk android-ndk-r25b-linux.zip
 
 RUN dpkg --add-architecture i386 && \
     apt-get update && \
@@ -30,7 +30,7 @@ ENV PATH=$PATH:/android/sdk/platform-tools
 
 ENV TARGETS=arm-linux-androideabi
 
-ENV RUST_CONFIGURE_ARGS --arm-linux-androideabi-ndk=/android/ndk/arm-14
+ENV RUST_CONFIGURE_ARGS --arm-linux-androideabi-ndk=/android/ndk/toolchains/llvm/prebuilt/linux-x86_64/
 
 ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target $TARGETS
 

@@ -12,10 +12,16 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{repeat_with, FromIterator};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice;
+
+// This is used in a bunch of intra-doc links.
+// FIXME: For some reason, `#[cfg(doc)]` wasn't sufficient, resulting in
+// failures in linkchecker even though rustdoc built the docs just fine.
+#[allow(unused_imports)]
+use core::mem;
 
 use crate::alloc::{Allocator, Global};
 use crate::collections::TryReserveError;
@@ -177,7 +183,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Marginally more convenient
     #[inline]
     fn cap(&self) -> usize {
-        if mem::size_of::<T>() == 0 {
+        if T::IS_ZST {
             // For zero sized types, we are always at maximum capacity
             MAXIMUM_ZST_CAPACITY
         } else {
@@ -3038,7 +3044,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
     fn from(mut other: Vec<T, A>) -> Self {
         let len = other.len();
-        if mem::size_of::<T>() == 0 {
+        if T::IS_ZST {
             // There's no actual allocation for ZSTs to worry about capacity,
             // but `VecDeque` can't handle as much length as `Vec`.
             assert!(len < MAXIMUM_ZST_CAPACITY, "capacity overflow");
@@ -3124,7 +3130,7 @@ impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
     fn from(arr: [T; N]) -> Self {
         let mut deq = VecDeque::with_capacity(N);
         let arr = ManuallyDrop::new(arr);
-        if mem::size_of::<T>() != 0 {
+        if !<T>::IS_ZST {
             // SAFETY: VecDeque::with_capacity ensures that there is enough capacity.
             unsafe {
                 ptr::copy_nonoverlapping(arr.as_ptr(), deq.ptr(), N);

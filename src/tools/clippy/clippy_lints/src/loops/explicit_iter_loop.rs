@@ -41,7 +41,7 @@ pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, arg: &Expr<'_>, m
         "it is more concise to loop over references to containers instead of using explicit \
          iteration methods",
         "to write this more concisely, try",
-        format!("&{}{}", muta, object),
+        format!("&{muta}{object}"),
         applicability,
     );
 }

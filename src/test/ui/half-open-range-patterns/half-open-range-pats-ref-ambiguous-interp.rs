@@ -1,5 +1,3 @@
-#![feature(half_open_range_patterns)]
-
 fn main() {}
 
 #[cfg(FALSE)]

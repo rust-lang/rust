@@ -1,6 +1,6 @@
 use crate::errors::RegionOriginNote;
-use crate::infer::error_reporting::note_and_explain_region;
-use crate::infer::{self, InferCtxt, SubregionOrigin};
+use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
+use crate::infer::{self, SubregionOrigin};
 use rustc_errors::{
     fluent, struct_span_err, AddToDiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
 };
@@ -10,7 +10,7 @@ use rustc_middle::ty::{self, Region};
 
 use super::ObligationCauseAsDiagArg;
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     pub(super) fn note_region_origin(&self, err: &mut Diagnostic, origin: &SubregionOrigin<'tcx>) {
         match *origin {
             infer::Subtype(ref trace) => RegionOriginNote::WithRequirement {

@@ -4,7 +4,7 @@
 // We will likely have to change this behavior before we allow `&mut` in a `const`.
 
 const _: Vec<i32> = {
-    let mut x = Vec::<i32>::new(); //~ ERROR destructors cannot be evaluated at compile-time
+    let mut x = Vec::<i32>::new(); //~ ERROR destructor of
     let r = &mut x; //~ ERROR mutable references are not allowed in constants
     let y = x;
     y

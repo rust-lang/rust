@@ -4,9 +4,9 @@ error: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib
 LL | #[link]
    | ^^^^^^^
    |
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+   = note: `#[deny(ill_formed_attribute_input)]` on by default
 
 error: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated")]`
   --> $DIR/link-attr-validation-early.rs:4:1

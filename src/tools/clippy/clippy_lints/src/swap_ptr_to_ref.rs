@@ -58,7 +58,7 @@ impl LateLintPass<'_> for SwapPtrToRef {
                         let mut app = Applicability::MachineApplicable;
                         let snip1 = snippet_with_context(cx, arg1_span.unwrap_or(arg1.span), ctxt, "..", &mut app).0;
                         let snip2 = snippet_with_context(cx, arg2_span.unwrap_or(arg2.span), ctxt, "..", &mut app).0;
-                        diag.span_suggestion(e.span, "use ptr::swap", format!("core::ptr::swap({}, {})", snip1, snip2), app);
+                        diag.span_suggestion(e.span, "use ptr::swap", format!("core::ptr::swap({snip1}, {snip2})"), app);
                     }
                 }
             );

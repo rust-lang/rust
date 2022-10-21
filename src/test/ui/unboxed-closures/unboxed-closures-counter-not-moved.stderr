@@ -12,8 +12,8 @@ warning: value assigned to `counter` is never read
 LL |         counter += 1;
    |         ^^^^^^^
    |
-   = note: `#[warn(unused_assignments)]` on by default
    = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` on by default
 
 warning: unused variable: `counter`
   --> $DIR/unboxed-closures-counter-not-moved.rs:24:9

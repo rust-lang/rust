@@ -12,7 +12,7 @@
 #include "llvm/Object/COFFImportFile.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Pass.h"
-#include "llvm/Bitcode/BitcodeWriterPass.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/ADT/Optional.h"
 
@@ -1670,11 +1670,7 @@ LLVMRustModuleBufferCreate(LLVMModuleRef M) {
   auto Ret = std::make_unique<LLVMRustModuleBuffer>();
   {
     raw_string_ostream OS(Ret->data);
-    {
-      legacy::PassManager PM;
-      PM.add(createBitcodeWriterPass(OS));
-      PM.run(*unwrap(M));
-    }
+    WriteBitcodeToFile(*unwrap(M), OS);
   }
   return Ret.release();
 }

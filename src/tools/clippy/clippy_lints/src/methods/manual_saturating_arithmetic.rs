@@ -57,11 +57,10 @@ pub fn check(
         super::MANUAL_SATURATING_ARITHMETIC,
         expr.span,
         "manual saturating arithmetic",
-        &format!("try using `saturating_{}`", arith),
+        &format!("try using `saturating_{arith}`"),
         format!(
-            "{}.saturating_{}({})",
+            "{}.saturating_{arith}({})",
             snippet_with_applicability(cx, arith_lhs.span, "..", &mut applicability),
-            arith,
             snippet_with_applicability(cx, arith_rhs.span, "..", &mut applicability),
         ),
         applicability,

@@ -675,9 +675,9 @@ impl<CTX> HashStable<CTX> for InferTy {
         use InferTy::*;
         discriminant(self).hash_stable(ctx, hasher);
         match self {
-            TyVar(v) => v.as_u32().hash_stable(ctx, hasher),
-            IntVar(v) => v.index.hash_stable(ctx, hasher),
-            FloatVar(v) => v.index.hash_stable(ctx, hasher),
+            TyVar(_) | IntVar(_) | FloatVar(_) => {
+                panic!("type variables should not be hashed: {self:?}")
+            }
             FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
         }
     }

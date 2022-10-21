@@ -2,11 +2,11 @@ error[E0308]: mismatched types
   --> $DIR/issue-101984.rs:21:13
    |
 LL |         let (cmp, router) = self.router.at()?;
-   |             ^^^^^^^^^^^^^   ----------------- this expression has type `Match<&(for<'r> fn(&'r ()), Box<Wrapper>)>`
+   |             ^^^^^^^^^^^^^   ----------------- this expression has type `Match<&(for<'a> fn(&'a ()), Box<Wrapper>)>`
    |             |
    |             expected struct `Match`, found tuple
    |
-   = note: expected struct `Match<&(for<'r> fn(&'r ()), Box<Wrapper>)>`
+   = note: expected struct `Match<&(for<'a> fn(&'a ()), Box<Wrapper>)>`
                found tuple `(_, _)`
 
 error: aborting due to previous error

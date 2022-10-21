@@ -25,10 +25,8 @@ use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
-use rustc_errors::add_elided_lifetime_in_path_suggestion;
-use rustc_errors::{
-    Applicability, DecorateLint, LintDiagnosticBuilder, MultiSpan, SuggestionStyle,
-};
+use rustc_errors::{add_elided_lifetime_in_path_suggestion, DiagnosticBuilder, DiagnosticMessage};
+use rustc_errors::{Applicability, DecorateLint, MultiSpan, SuggestionStyle};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -576,17 +574,23 @@ pub trait LintContext: Sized {
     fn sess(&self) -> &Session;
     fn lints(&self) -> &LintStore;
 
+    /// Emit a lint at the appropriate level, with an optional associated span and an existing diagnostic.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     fn lookup_with_diagnostics(
         &self,
         lint: &'static Lint,
         span: Option<impl Into<MultiSpan>>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'b mut DiagnosticBuilder<'a, ()>,
+        ) -> &'b mut DiagnosticBuilder<'a, ()>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
-        self.lookup(lint, span, |lint| {
-            // We first generate a blank diagnostic.
-            let mut db = lint.build("");
-
+        // We first generate a blank diagnostic.
+        self.lookup(lint, span, msg,|db| {
             // Now, set up surrounding context.
             let sess = self.sess();
             match diagnostic {
@@ -660,7 +664,7 @@ pub trait LintContext: Sized {
                 ) => {
                     add_elided_lifetime_in_path_suggestion(
                         sess.source_map(),
-                        &mut db,
+                        db,
                         n,
                         path_span,
                         incl_angl_brckt,
@@ -696,7 +700,7 @@ pub trait LintContext: Sized {
                     }
                 }
                 BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
-                    stability::deprecation_suggestion(&mut db, "macro", suggestion, span)
+                    stability::deprecation_suggestion(db, "macro", suggestion, span)
                 }
                 BuiltinLintDiagnostics::UnusedDocComment(span) => {
                     db.span_label(span, "rustdoc does not generate documentation for macro invocations");
@@ -867,17 +871,25 @@ pub trait LintContext: Sized {
                 }
             }
             // Rewrap `db`, and pass control to the user.
-            decorate(LintDiagnosticBuilder::new(db));
+            decorate(db)
         });
     }
 
     // FIXME: These methods should not take an Into<MultiSpan> -- instead, callers should need to
     // set the span in their `decorate` function (preferably using set_span).
+    /// Emit a lint at the appropriate level, with an optional associated span.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     fn lookup<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'b mut DiagnosticBuilder<'a, ()>,
+        ) -> &'b mut DiagnosticBuilder<'a, ()>,
     );
 
     /// Emit a lint at `span` from a lint struct (some type that implements `DecorateLint`,
@@ -888,31 +900,48 @@ pub trait LintContext: Sized {
         span: S,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.lookup(lint, Some(span), |diag| decorator.decorate_lint(diag));
+        self.lookup(lint, Some(span), decorator.msg(), |diag| decorator.decorate_lint(diag));
     }
 
+    /// Emit a lint at the appropriate level, with an associated span.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     fn struct_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: S,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'b mut DiagnosticBuilder<'a, ()>,
+        ) -> &'b mut DiagnosticBuilder<'a, ()>,
     ) {
-        self.lookup(lint, Some(span), decorate);
+        self.lookup(lint, Some(span), msg, decorate);
     }
 
     /// Emit a lint from a lint struct (some type that implements `DecorateLint`, typically
     /// generated by `#[derive(LintDiagnostic)]`).
     fn emit_lint(&self, lint: &'static Lint, decorator: impl for<'a> DecorateLint<'a, ()>) {
-        self.lookup(lint, None as Option<Span>, |diag| decorator.decorate_lint(diag));
+        self.lookup(lint, None as Option<Span>, decorator.msg(), |diag| {
+            decorator.decorate_lint(diag)
+        });
     }
 
     /// Emit a lint at the appropriate level, with no associated span.
+    ///
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    ///
+    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     fn lint(
         &self,
         lint: &'static Lint,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'b mut DiagnosticBuilder<'a, ()>,
+        ) -> &'b mut DiagnosticBuilder<'a, ()>,
     ) {
-        self.lookup(lint, None as Option<Span>, decorate);
+        self.lookup(lint, None as Option<Span>, msg, decorate);
     }
 
     /// This returns the lint level for the given lint at the current location.
@@ -975,13 +1004,16 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'b mut DiagnosticBuilder<'a, ()>,
+        ) -> &'b mut DiagnosticBuilder<'a, ()>,
     ) {
         let hir_id = self.last_node_with_lint_attrs;
 
         match span {
-            Some(s) => self.tcx.struct_span_lint_hir(lint, hir_id, s, decorate),
-            None => self.tcx.struct_lint_node(lint, hir_id, decorate),
+            Some(s) => self.tcx.struct_span_lint_hir(lint, hir_id, s, msg, decorate),
+            None => self.tcx.struct_lint_node(lint, hir_id, msg, decorate),
         }
     }
 
@@ -1006,9 +1038,12 @@ impl LintContext for EarlyContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'b mut DiagnosticBuilder<'a, ()>,
+        ) -> &'b mut DiagnosticBuilder<'a, ()>,
     ) {
-        self.builder.struct_lint(lint, span.map(|s| s.into()), decorate)
+        self.builder.struct_lint(lint, span.map(|s| s.into()), msg, decorate)
     }
 
     fn get_lint_level(&self, lint: &'static Lint) -> Level {
@@ -1048,7 +1083,7 @@ impl<'tcx> LateContext<'tcx> {
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
                     if self.tcx.has_typeck_results(id.owner.to_def_id()) {
-                        Some(self.tcx.typeck(id.owner))
+                        Some(self.tcx.typeck(id.owner.def_id))
                     } else {
                         None
                     }

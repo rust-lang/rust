@@ -70,9 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
                 let some_expr_string = snippet_with_applicability(cx, y[0].span, "", &mut applicability);
                 let trimmed_ok = snippet_with_applicability(cx, let_expr.span.until(ok_path.ident.span), "", &mut applicability);
                 let sugg = format!(
-                    "{} let Ok({}) = {}",
-                    ifwhile,
-                    some_expr_string,
+                    "{ifwhile} let Ok({some_expr_string}) = {}",
                     trimmed_ok.trim().trim_end_matches('.'),
                 );
                 span_lint_and_sugg(
@@ -80,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchResultOk {
                     MATCH_RESULT_OK,
                     expr.span.with_hi(let_expr.span.hi()),
                     "matching on `Some` with `ok()` is redundant",
-                    &format!("consider matching on `Ok({})` and removing the call to `ok` instead", some_expr_string),
+                    &format!("consider matching on `Ok({some_expr_string})` and removing the call to `ok` instead"),
                     sugg,
                     applicability,
                 );

@@ -7,7 +7,7 @@
 //! stable sorting implementation.
 
 use crate::cmp;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::ptr;
 
 /// When dropped, copies from `src` into `dest`.
@@ -813,7 +813,7 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     // Sorting has no meaningful behavior on zero-sized types.
-    if mem::size_of::<T>() == 0 {
+    if T::IS_ZST {
         return;
     }
 
@@ -898,7 +898,7 @@ where
         panic!("partition_at_index index {} greater than length of slice {}", index, v.len());
     }
 
-    if mem::size_of::<T>() == 0 {
+    if T::IS_ZST {
         // Sorting has no meaningful behavior on zero-sized types. Do nothing.
     } else if index == v.len() - 1 {
         // Find max element and place it in the last position of the array. We're free to use

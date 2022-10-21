@@ -6,8 +6,7 @@ pub fn opts() -> TargetOptions {
         env: "gnu".into(),
         disable_redzone: true,
         panic_strategy: PanicStrategy::Abort,
-        // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-        stack_probes: StackProbeType::Call,
+        stack_probes: StackProbeType::X86,
         frame_pointer: FramePointer::Always,
         position_independent_executables: true,
         needs_plt: true,

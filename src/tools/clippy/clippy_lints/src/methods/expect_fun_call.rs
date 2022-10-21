@@ -143,9 +143,9 @@ pub(super) fn check<'tcx>(
             cx,
             EXPECT_FUN_CALL,
             span_replace_word,
-            &format!("use of `{}` followed by a function call", name),
+            &format!("use of `{name}` followed by a function call"),
             "try this",
-            format!("unwrap_or_else({} panic!({}))", closure_args, sugg),
+            format!("unwrap_or_else({closure_args} panic!({sugg}))"),
             applicability,
         );
         return;
@@ -160,12 +160,9 @@ pub(super) fn check<'tcx>(
         cx,
         EXPECT_FUN_CALL,
         span_replace_word,
-        &format!("use of `{}` followed by a function call", name),
+        &format!("use of `{name}` followed by a function call"),
         "try this",
-        format!(
-            "unwrap_or_else({} {{ panic!(\"{{}}\", {}) }})",
-            closure_args, arg_root_snippet
-        ),
+        format!("unwrap_or_else({closure_args} {{ panic!(\"{{}}\", {arg_root_snippet}) }})"),
         applicability,
     );
 }

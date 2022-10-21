@@ -1,4 +1,6 @@
-use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
+use crate::errors::{DocCommentDoesNotDocumentAnything, UseEmptyBlockNotSemi};
+
+use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 
@@ -13,7 +15,7 @@ use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, Vari
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
+use rustc_errors::{struct_span_err, Applicability, IntoDiagnostic, PResult, StashKey};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
@@ -664,6 +666,14 @@ impl<'a> Parser<'a> {
         mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
     ) -> PResult<'a, Vec<T>> {
         let open_brace_span = self.token.span;
+
+        // Recover `impl Ty;` instead of `impl Ty {}`
+        if self.token == TokenKind::Semi {
+            self.sess.emit_err(UseEmptyBlockNotSemi { span: self.token.span });
+            self.bump();
+            return Ok(vec![]);
+        }
+
         self.expect(&token::OpenDelim(Delimiter::Brace))?;
         attrs.extend(self.parse_inner_attributes()?);
 
@@ -750,8 +760,8 @@ impl<'a> Parser<'a> {
                 )
                 .span_label(self.token.span, "this doc comment doesn't document anything")
                 .help(
-                    "doc comments must come before what they document, maybe a \
-                    comment was intended with `//`?",
+                    "doc comments must come before what they document, if a comment was \
+                    intended use `//`",
                 )
                 .emit();
                 self.bump();
@@ -1283,12 +1293,10 @@ impl<'a> Parser<'a> {
     /// Parses an enum declaration.
     fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
         if self.token.is_keyword(kw::Struct) {
-            let mut err = self.struct_span_err(
-                self.prev_token.span.to(self.token.span),
-                "`enum` and `struct` are mutually exclusive",
-            );
+            let span = self.prev_token.span.to(self.token.span);
+            let mut err = self.struct_span_err(span, "`enum` and `struct` are mutually exclusive");
             err.span_suggestion(
-                self.prev_token.span.to(self.token.span),
+                span,
                 "replace `enum struct` with",
                 "enum",
                 Applicability::MachineApplicable,
@@ -1305,12 +1313,20 @@ impl<'a> Parser<'a> {
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
 
-        let (variants, _) = self
-            .parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant())
-            .map_err(|e| {
-                self.recover_stmt();
-                e
-            })?;
+        // Possibly recover `enum Foo;` instead of `enum Foo {}`
+        let (variants, _) = if self.token == TokenKind::Semi {
+            self.sess.emit_err(UseEmptyBlockNotSemi { span: self.token.span });
+            self.bump();
+            (vec![], false)
+        } else {
+            self.parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant()).map_err(
+                |mut e| {
+                    e.span_label(id.span, "while parsing this enum");
+                    self.recover_stmt();
+                    e
+                },
+            )?
+        };
 
         let enum_definition = EnumDef { variants: variants.into_iter().flatten().collect() };
         Ok((id, ItemKind::Enum(enum_definition, generics)))
@@ -1332,7 +1348,8 @@ impl<'a> Parser<'a> {
 
                 let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
                     // Parse a struct variant.
-                    let (fields, recovered) = this.parse_record_struct_body("struct", false)?;
+                    let (fields, recovered) =
+                        this.parse_record_struct_body("struct", ident.span, false)?;
                     VariantData::Struct(fields, recovered)
                 } else if this.check(&token::OpenDelim(Delimiter::Parenthesis)) {
                     VariantData::Tuple(this.parse_tuple_struct_body()?, DUMMY_NODE_ID)
@@ -1386,8 +1403,11 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                let (fields, recovered) =
-                    self.parse_record_struct_body("struct", generics.where_clause.has_where_token)?;
+                let (fields, recovered) = self.parse_record_struct_body(
+                    "struct",
+                    class_name.span,
+                    generics.where_clause.has_where_token,
+                )?;
                 VariantData::Struct(fields, recovered)
             }
         // No `where` so: `struct Foo<T>;`
@@ -1395,8 +1415,11 @@ impl<'a> Parser<'a> {
             VariantData::Unit(DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(Delimiter::Brace) {
-            let (fields, recovered) =
-                self.parse_record_struct_body("struct", generics.where_clause.has_where_token)?;
+            let (fields, recovered) = self.parse_record_struct_body(
+                "struct",
+                class_name.span,
+                generics.where_clause.has_where_token,
+            )?;
             VariantData::Struct(fields, recovered)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(Delimiter::Parenthesis) {
@@ -1425,12 +1448,18 @@ impl<'a> Parser<'a> {
 
         let vdata = if self.token.is_keyword(kw::Where) {
             generics.where_clause = self.parse_where_clause()?;
-            let (fields, recovered) =
-                self.parse_record_struct_body("union", generics.where_clause.has_where_token)?;
+            let (fields, recovered) = self.parse_record_struct_body(
+                "union",
+                class_name.span,
+                generics.where_clause.has_where_token,
+            )?;
             VariantData::Struct(fields, recovered)
         } else if self.token == token::OpenDelim(Delimiter::Brace) {
-            let (fields, recovered) =
-                self.parse_record_struct_body("union", generics.where_clause.has_where_token)?;
+            let (fields, recovered) = self.parse_record_struct_body(
+                "union",
+                class_name.span,
+                generics.where_clause.has_where_token,
+            )?;
             VariantData::Struct(fields, recovered)
         } else {
             let token_str = super::token_descr(&self.token);
@@ -1446,6 +1475,7 @@ impl<'a> Parser<'a> {
     fn parse_record_struct_body(
         &mut self,
         adt_ty: &str,
+        ident_span: Span,
         parsed_where: bool,
     ) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
         let mut fields = Vec::new();
@@ -1460,6 +1490,7 @@ impl<'a> Parser<'a> {
                 match field {
                     Ok(field) => fields.push(field),
                     Err(mut err) => {
+                        err.span_label(ident_span, format!("while parsing this {adt_ty}"));
                         err.emit();
                         break;
                     }
@@ -1555,7 +1586,10 @@ impl<'a> Parser<'a> {
             token::CloseDelim(Delimiter::Brace) => {}
             token::DocComment(..) => {
                 let previous_span = self.prev_token.span;
-                let mut err = self.span_err(self.token.span, Error::UselessDocComment);
+                let mut err = DocCommentDoesNotDocumentAnything {
+                    span: self.token.span,
+                    missing_comma: None,
+                };
                 self.bump(); // consume the doc comment
                 let comma_after_doc_seen = self.eat(&token::Comma);
                 // `seen_comma` is always false, because we are inside doc block
@@ -1564,18 +1598,13 @@ impl<'a> Parser<'a> {
                     seen_comma = true;
                 }
                 if comma_after_doc_seen || self.token == token::CloseDelim(Delimiter::Brace) {
-                    err.emit();
+                    self.sess.emit_err(err);
                 } else {
                     if !seen_comma {
-                        let sp = self.sess.source_map().next_point(previous_span);
-                        err.span_suggestion(
-                            sp,
-                            "missing comma here",
-                            ",",
-                            Applicability::MachineApplicable,
-                        );
+                        let sp = previous_span.shrink_to_hi();
+                        err.missing_comma = Some(sp);
                     }
-                    return Err(err);
+                    return Err(err.into_diagnostic(&self.sess.span_diagnostic));
                 }
             }
             _ => {
@@ -1715,6 +1744,7 @@ impl<'a> Parser<'a> {
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err()?;
         if !is_raw && ident.is_reserved() {
+            let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false) {
                 let inherited_vis = Visibility {
                     span: rustc_span::DUMMY_SP,
@@ -1723,20 +1753,63 @@ impl<'a> Parser<'a> {
                 };
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
-                if let Err(mut db) =
-                    self.parse_fn(&mut AttrVec::new(), fn_parse_mode, lo, &inherited_vis)
-                {
-                    db.delay_as_bug();
+                match self.parse_fn(&mut AttrVec::new(), fn_parse_mode, lo, &inherited_vis) {
+                    Ok(_) => {
+                        let mut err = self.struct_span_err(
+                            lo.to(self.prev_token.span),
+                            &format!("functions are not allowed in {adt_ty} definitions"),
+                        );
+                        err.help(
+                            "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
+                        );
+                        err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
+                        err
+                    }
+                    Err(err) => {
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                        self.expected_ident_found()
+                    }
                 }
-                let mut err = self.struct_span_err(
-                    lo.to(self.prev_token.span),
-                    &format!("functions are not allowed in {adt_ty} definitions"),
-                );
-                err.help("unlike in C++, Java, and C#, functions are declared in `impl` blocks");
-                err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
-                err
+            } else if self.eat_keyword(kw::Struct) {
+                match self.parse_item_struct() {
+                    Ok((ident, _)) => {
+                        let mut err = self.struct_span_err(
+                            lo.with_hi(ident.span.hi()),
+                            &format!("structs are not allowed in {adt_ty} definitions"),
+                        );
+                        err.help("consider creating a new `struct` definition instead of nesting");
+                        err
+                    }
+                    Err(err) => {
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                        self.expected_ident_found()
+                    }
+                }
             } else {
-                self.expected_ident_found()
+                let mut err = self.expected_ident_found();
+                if self.eat_keyword_noexpect(kw::Let)
+                    && let removal_span = self.prev_token.span.until(self.token.span)
+                    && let Ok(ident) = self.parse_ident_common(false)
+                        // Cancel this error, we don't need it.
+                        .map_err(|err| err.cancel())
+                    && self.token.kind == TokenKind::Colon
+                {
+                    err.span_suggestion(
+                        removal_span,
+                        "remove this `let` keyword",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
+                    err.note("the `let` keyword is not allowed in `struct` fields");
+                    err.note("see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information");
+                    err.emit();
+                    return Ok(ident);
+                } else {
+                    self.restore_snapshot(snapshot);
+                }
+                err
             };
             return Err(err);
         }

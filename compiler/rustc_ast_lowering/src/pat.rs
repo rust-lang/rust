@@ -239,7 +239,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ident: Ident,
         lower_sub: impl FnOnce(&mut Self) -> Option<&'hir hir::Pat<'hir>>,
     ) -> hir::PatKind<'hir> {
-        match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
+        match self.resolver.get_partial_res(p.id).map(|d| d.expect_full_res()) {
             // `None` can occur in body-less function signatures
             res @ (None | Some(Res::Local(_))) => {
                 let canonical_id = match res {

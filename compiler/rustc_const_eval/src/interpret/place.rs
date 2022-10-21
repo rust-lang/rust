@@ -280,7 +280,7 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
 
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn assert_mem_place(self) -> MPlaceTy<'tcx, Prov> {
+    pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Prov> {
         self.try_as_mplace().unwrap()
     }
 }
@@ -640,11 +640,17 @@ where
         // avoid force_allocation.
         let src = match self.read_immediate_raw(src)? {
             Ok(src_val) => {
-                assert!(!src.layout.is_unsized(), "cannot copy unsized immediates");
-                assert!(
-                    !dest.layout.is_unsized(),
-                    "the src is sized, so the dest must also be sized"
-                );
+                // FIXME(const_prop): Const-prop can possibly evaluate an
+                // unsized copy operation when it thinks that the type is
+                // actually sized, due to a trivially false where-clause
+                // predicate like `where Self: Sized` with `Self = dyn Trait`.
+                // See #102553 for an example of such a predicate.
+                if src.layout.is_unsized() {
+                    throw_inval!(SizeOfUnsizedType(src.layout.ty));
+                }
+                if dest.layout.is_unsized() {
+                    throw_inval!(SizeOfUnsizedType(dest.layout.ty));
+                }
                 assert_eq!(src.layout.size, dest.layout.size);
                 // Yay, we got a value that we can write directly.
                 return if layout_compat {
@@ -886,12 +892,11 @@ where
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(MemPlaceMeta, 24);
+    // tidy-alphabetical-start
     static_assert_size!(MemPlace, 40);
+    static_assert_size!(MemPlaceMeta, 24);
     static_assert_size!(MPlaceTy<'_>, 64);
-    #[cfg(not(bootstrap))]
     static_assert_size!(Place, 40);
-    #[cfg(not(bootstrap))]
     static_assert_size!(PlaceTy<'_>, 64);
+    // tidy-alphabetical-end
 }

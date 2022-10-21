@@ -40,6 +40,11 @@ LL |     let n: Never;
    |         - binding declared here but left uninitialized
 LL |     match n {}
    |           ^ `n` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let n: Never = todo!();
+   |                  +++++++++
 
 error: aborting due to 4 previous errors
 

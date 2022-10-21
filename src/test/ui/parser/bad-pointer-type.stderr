@@ -1,10 +1,15 @@
-error: expected mut or const in raw pointer type
+error: expected `mut` or `const` keyword in raw pointer type
   --> $DIR/bad-pointer-type.rs:1:11
    |
 LL | fn foo(_: *()) {
-   |           ^ expected mut or const in raw pointer type
+   |           ^
    |
-   = help: use `*mut T` or `*const T` as appropriate
+help: add `mut` or `const` here
+   |
+LL | fn foo(_: *const ()) {
+   |            +++++
+LL | fn foo(_: *mut ()) {
+   |            +++
 
 error: aborting due to previous error
 

@@ -430,7 +430,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             extension_css,
             resource_suffix,
             static_root_path,
-            unstable_features,
             generate_redirect_map,
             show_type_layout,
             generate_link_to_definition,
@@ -511,7 +510,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             resource_suffix,
             static_root_path,
             fs: DocFS::new(sender),
-            codes: ErrorCodes::from(unstable_features.is_nightly_build()),
+            codes: ErrorCodes::from(options.unstable_features.is_nightly_build()),
             playground,
             all: RefCell::new(AllTypes::new()),
             errors: receiver,
@@ -581,6 +580,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let crate_name = self.tcx().crate_name(LOCAL_CRATE);
         let final_file = self.dst.join(crate_name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
+        let help_file = self.dst.join("help.html");
         let scrape_examples_help_file = self.dst.join("scrape-examples-help.html");
 
         let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
@@ -634,9 +634,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 write!(
                     buf,
                     "<div class=\"main-heading\">\
-                     <h1 class=\"fqn\">\
-                         <span class=\"in-band\">Rustdoc settings</span>\
-                     </h1>\
+                     <h1 class=\"fqn\">Rustdoc settings</h1>\
                      <span class=\"out-of-band\">\
                          <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
                             Back\
@@ -658,6 +656,39 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             &shared.style_files,
         );
         shared.fs.write(settings_file, v)?;
+
+        // Generating help page.
+        page.title = "Rustdoc help";
+        page.description = "Documentation for Rustdoc";
+        page.root_path = "./";
+
+        let sidebar = "<h2 class=\"location\">Help</h2><div class=\"sidebar-elems\"></div>";
+        let v = layout::render(
+            &shared.layout,
+            &page,
+            sidebar,
+            |buf: &mut Buffer| {
+                write!(
+                    buf,
+                    "<div class=\"main-heading\">\
+                     <h1 class=\"fqn\">Rustdoc help</h1>\
+                     <span class=\"out-of-band\">\
+                         <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
+                            Back\
+                        </a>\
+                     </span>\
+                     </div>\
+                     <noscript>\
+                        <section>\
+                            <p>You need to enable Javascript to use keyboard commands or search.</p>\
+                            <p>For more information, browse the <a href=\"https://doc.rust-lang.org/rustdoc/\">rustdoc handbook</a>.</p>\
+                        </section>\
+                     </noscript>",
+                )
+            },
+            &shared.style_files,
+        );
+        shared.fs.write(help_file, v)?;
 
         if shared.layout.scrape_examples_extension {
             page.title = "About scraped examples";

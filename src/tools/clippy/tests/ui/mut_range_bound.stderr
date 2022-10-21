@@ -4,8 +4,8 @@ error: attempt to mutate range bound within loop
 LL |         m = 5;
    |         ^
    |
-   = note: `-D clippy::mut-range-bound` implied by `-D warnings`
    = note: the range of the loop is unchanged
+   = note: `-D clippy::mut-range-bound` implied by `-D warnings`
 
 error: attempt to mutate range bound within loop
   --> $DIR/mut_range_bound.rs:15:9

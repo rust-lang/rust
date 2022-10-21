@@ -1,6 +1,8 @@
 error: expected identifier, found `String`
   --> $DIR/issue-37113.rs:4:16
    |
+LL |         enum SomeEnum {
+   |              -------- while parsing this enum
 LL |             $( $t, )*
    |                ^^ expected identifier
 ...

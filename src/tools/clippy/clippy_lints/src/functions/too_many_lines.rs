@@ -78,10 +78,7 @@ pub(super) fn check_fn(
             cx,
             TOO_MANY_LINES,
             span,
-            &format!(
-                "this function has too many lines ({}/{})",
-                line_count, too_many_lines_threshold
-            ),
+            &format!("this function has too many lines ({line_count}/{too_many_lines_threshold})"),
         );
     }
 }

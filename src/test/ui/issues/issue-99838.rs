@@ -1,5 +1,5 @@
 // run-pass
-#![feature(bench_black_box)]
+
 use std::hint;
 
 struct U16(u16);

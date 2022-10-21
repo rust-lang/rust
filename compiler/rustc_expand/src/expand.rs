@@ -327,7 +327,7 @@ impl InvocationKind {
     fn placeholder_visibility(&self) -> Option<ast::Visibility> {
         // HACK: For unnamed fields placeholders should have the same visibility as the actual
         // fields because for tuple structs/variants resolve determines visibilities of their
-        // constructor using these field visibilities before attributes on them are are expanded.
+        // constructor using these field visibilities before attributes on them are expanded.
         // The assumption is that the attribute expansion cannot change field visibilities,
         // and it holds because only inert attributes are supported in this position.
         match self {
@@ -937,13 +937,12 @@ pub fn ensure_complete_parse<'a>(
             kind_name,
         );
         err.note(&msg);
-        let semi_span = this.sess.source_map().next_point(span);
 
-        let semi_full_span = semi_span.to(this.sess.source_map().next_point(semi_span));
-        match this.sess.source_map().span_to_snippet(semi_full_span) {
+        let semi_span = this.sess.source_map().next_point(span);
+        match this.sess.source_map().span_to_snippet(semi_span) {
             Ok(ref snippet) if &snippet[..] != ";" && kind_name == "expression" => {
                 err.span_suggestion(
-                    semi_span,
+                    span.shrink_to_hi(),
                     "you might be missing a semicolon here",
                     ";",
                     Applicability::MaybeIncorrect,

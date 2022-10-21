@@ -28,7 +28,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle, MultiSpan,
+    ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle, MultiSpan, Noted,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -44,7 +44,6 @@ use rustc_target::spec::{
 use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
-use std::io::Write;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -288,8 +287,6 @@ impl Session {
     }
 
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_warn<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -298,8 +295,6 @@ impl Session {
         self.diagnostic().struct_span_warn(sp, msg)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_warn_with_expectation<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -309,8 +304,6 @@ impl Session {
         self.diagnostic().struct_span_warn_with_expectation(sp, msg, id)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -320,14 +313,10 @@ impl Session {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_warn(msg)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_warn_with_expectation(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -336,8 +325,6 @@ impl Session {
         self.diagnostic().struct_warn_with_expectation(msg, id)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_allow<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -346,14 +333,10 @@ impl Session {
         self.diagnostic().struct_span_allow(sp, msg)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_allow(msg)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_expect(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -362,8 +345,6 @@ impl Session {
         self.diagnostic().struct_expect(msg, id)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -372,8 +353,6 @@ impl Session {
         self.diagnostic().struct_span_err(sp, msg)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -384,8 +363,6 @@ impl Session {
     }
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -393,8 +370,6 @@ impl Session {
         self.parse_sess.struct_err(msg)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_err_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -403,8 +378,6 @@ impl Session {
         self.diagnostic().struct_err_with_code(msg, code)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_warn_with_code(
         &self,
         msg: impl Into<DiagnosticMessage>,
@@ -413,8 +386,6 @@ impl Session {
         self.diagnostic().struct_warn_with_code(msg, code)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_fatal<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -423,8 +394,6 @@ impl Session {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -434,21 +403,15 @@ impl Session {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         self.diagnostic().struct_fatal(msg)
     }
 
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
         self.diagnostic().span_fatal(sp, msg)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -458,14 +421,10 @@ impl Session {
         self.diagnostic().span_fatal_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
         self.diagnostic().fatal(msg).raise()
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_err_or_warn<S: Into<MultiSpan>>(
         &self,
         is_warning: bool,
@@ -479,8 +438,6 @@ impl Session {
         }
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -489,8 +446,6 @@ impl Session {
         self.diagnostic().span_err(sp, msg)
     }
     #[rustc_lint_diagnostics]
-    #[allow(rustc::untranslatable_diagnostic)]
-    #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -532,6 +487,15 @@ impl Session {
     }
     pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
         self.parse_sess.emit_warning(warning)
+    }
+    pub fn create_note<'a>(
+        &'a self,
+        note: impl IntoDiagnostic<'a, Noted>,
+    ) -> DiagnosticBuilder<'a, Noted> {
+        self.parse_sess.create_note(note)
+    }
+    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, Noted>) -> Noted {
+        self.parse_sess.emit_note(note)
     }
     pub fn create_fatal<'a>(
         &'a self,
@@ -648,10 +612,6 @@ impl Session {
     #[inline]
     pub fn source_map(&self) -> &SourceMap {
         self.parse_sess.source_map()
-    }
-
-    pub fn time_passes(&self) -> bool {
-        self.opts.time_passes()
     }
 
     /// Returns `true` if internal lints should be added to the lint store - i.e. if
@@ -971,6 +931,10 @@ impl Session {
         self.opts.unstable_opts.instrument_mcount
     }
 
+    pub fn time_passes(&self) -> bool {
+        self.opts.unstable_opts.time_passes
+    }
+
     pub fn time_llvm_passes(&self) -> bool {
         self.opts.unstable_opts.time_llvm_passes
     }
@@ -1248,11 +1212,10 @@ fn default_emitter(
     source_map: Lrc<SourceMap>,
     bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: LazyFallbackBundle,
-    emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
-    match (sopts.error_format, emitter_dest) {
-        (config::ErrorOutputType::HumanReadable(kind), dst) => {
+    match sopts.error_format {
+        config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
 
             if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
@@ -1265,48 +1228,21 @@ fn default_emitter(
                 );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
-                let emitter = match dst {
-                    None => EmitterWriter::stderr(
-                        color_config,
-                        Some(source_map),
-                        bundle,
-                        fallback_bundle,
-                        short,
-                        sopts.unstable_opts.teach,
-                        sopts.diagnostic_width,
-                        macro_backtrace,
-                    ),
-                    Some(dst) => EmitterWriter::new(
-                        dst,
-                        Some(source_map),
-                        bundle,
-                        fallback_bundle,
-                        short,
-                        false, // no teach messages when writing to a buffer
-                        false, // no colors when writing to a buffer
-                        None,  // no diagnostic width
-                        macro_backtrace,
-                    ),
-                };
+                let emitter = EmitterWriter::stderr(
+                    color_config,
+                    Some(source_map),
+                    bundle,
+                    fallback_bundle,
+                    short,
+                    sopts.unstable_opts.teach,
+                    sopts.diagnostic_width,
+                    macro_backtrace,
+                );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         }
-        (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
+        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(
             JsonEmitter::stderr(
-                Some(registry),
-                source_map,
-                bundle,
-                fallback_bundle,
-                pretty,
-                json_rendered,
-                sopts.diagnostic_width,
-                macro_backtrace,
-            )
-            .ui_testing(sopts.unstable_opts.ui_testing),
-        ),
-        (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
-            JsonEmitter::new(
-                dst,
                 Some(registry),
                 source_map,
                 bundle,
@@ -1321,11 +1257,6 @@ fn default_emitter(
     }
 }
 
-pub enum DiagnosticOutput {
-    Default,
-    Raw(Box<dyn Write + Send>),
-}
-
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
 pub fn build_session(
@@ -1333,7 +1264,6 @@ pub fn build_session(
     local_crate_source_file: Option<PathBuf>,
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
-    diagnostics_output: DiagnosticOutput,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target_override: Option<Target>,
@@ -1348,11 +1278,6 @@ pub fn build_session(
         .map_or(false, |&(_, level)| level == lint::Allow);
     let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
-
-    let write_dest = match diagnostics_output {
-        DiagnosticOutput::Default => None,
-        DiagnosticOutput::Raw(write) => Some(write),
-    };
 
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
@@ -1386,8 +1311,7 @@ pub fn build_session(
         rustc_errors::DEFAULT_LOCALE_RESOURCES,
         sopts.unstable_opts.translate_directionality_markers,
     );
-    let emitter =
-        default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle, write_dest);
+    let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
     let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
@@ -1447,8 +1371,7 @@ pub fn build_session(
         CguReuseTracker::new_disabled()
     };
 
-    let prof =
-        SelfProfilerRef::new(self_profiler, sopts.time_passes(), sopts.unstable_opts.time_passes);
+    let prof = SelfProfilerRef::new(self_profiler, sopts.unstable_opts.time_passes);
 
     let ctfe_backtrace = Lock::new(match env::var("RUSTC_CTFE_BACKTRACE") {
         Ok(ref val) if val == "immediate" => CtfeBacktrace::Immediate,

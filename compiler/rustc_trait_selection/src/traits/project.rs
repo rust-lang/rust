@@ -18,7 +18,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
-use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
@@ -62,7 +62,8 @@ enum ProjectionCandidate<'tcx> {
     /// From a where-clause in the env or object type
     ParamEnv(ty::PolyProjectionPredicate<'tcx>),
 
-    /// From the definition of `Trait` when you have something like <<A as Trait>::B as Trait2>::C
+    /// From the definition of `Trait` when you have something like
+    /// `<<A as Trait>::B as Trait2>::C`.
     TraitDef(ty::PolyProjectionPredicate<'tcx>),
 
     /// Bounds specified on an object type
@@ -71,7 +72,15 @@ enum ProjectionCandidate<'tcx> {
     /// From an "impl" (or a "pseudo-impl" returned by select)
     Select(Selection<'tcx>),
 
-    ImplTraitInTrait(ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>>),
+    ImplTraitInTrait(ImplTraitInTraitCandidate<'tcx>),
+}
+
+#[derive(PartialEq, Eq, Debug)]
+enum ImplTraitInTraitCandidate<'tcx> {
+    // The `impl Trait` from a trait function's default body
+    Trait,
+    // A concrete type provided from a trait's `impl Trait` from an impl
+    Impl(ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>>),
 }
 
 enum ProjectionCandidateSet<'tcx> {
@@ -513,7 +522,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                                 self.param_env,
                                 ty,
                             );
-                            self.selcx.infcx().report_overflow_error(&obligation, true);
+                            self.selcx.infcx().err_ctxt().report_overflow_error(&obligation, true);
                         }
 
                         let substs = substs.fold_with(self);
@@ -557,7 +566,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                     .unwrap_or_else(|| ty.super_fold_with(self).into())
                 };
                 // For cases like #95134 we would like to catch overflows early
-                // otherwise they slip away away and cause ICE.
+                // otherwise they slip away and cause ICE.
                 let recursion_limit = self.tcx().recursion_limit();
                 if !recursion_limit.value_within_limit(self.depth)
                     // HACK: Don't overflow when running cargo doc see #100991
@@ -569,7 +578,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                         self.param_env,
                         ty,
                     );
-                    self.selcx.infcx().report_overflow_error(&obligation, true);
+                    self.selcx.infcx().err_ctxt().report_overflow_error(&obligation, true);
                 }
                 debug!(
                     ?self.depth,
@@ -663,7 +672,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
 }
 
 pub struct BoundVarReplacer<'me, 'tcx> {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
     // These three maps track the bound variable that were replaced by placeholders. It might be
     // nice to remove these since we already have the `kind` in the placeholder; we really just need
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
@@ -691,7 +700,7 @@ pub struct BoundVarReplacer<'me, 'tcx> {
 /// FIXME(@lcnr): We may even consider experimenting with eagerly replacing bound vars during
 /// normalization as well, at which point this function will be unnecessary and can be removed.
 pub fn with_replaced_escaping_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>, R: TypeFoldable<'tcx>>(
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     universe_indices: &'a mut Vec<Option<ty::UniverseIndex>>,
     value: T,
     f: impl FnOnce(T) -> R,
@@ -717,7 +726,7 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
     /// Returns `Some` if we *were* able to replace bound vars. If there are any bound vars that
     /// use a binding level above `universe_indices.len()`, we fail.
     pub fn replace_bound_vars<T: TypeFoldable<'tcx>>(
-        infcx: &'me InferCtxt<'me, 'tcx>,
+        infcx: &'me InferCtxt<'tcx>,
         universe_indices: &'me mut Vec<Option<ty::UniverseIndex>>,
         value: T,
     ) -> (
@@ -837,7 +846,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
 
 // The inverse of `BoundVarReplacer`: replaces placeholders with the bound vars from which they came.
 pub struct PlaceholderReplacer<'me, 'tcx> {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
     mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
@@ -847,7 +856,7 @@ pub struct PlaceholderReplacer<'me, 'tcx> {
 
 impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
     pub fn replace_placeholders<T: TypeFoldable<'tcx>>(
-        infcx: &'me InferCtxt<'me, 'tcx>,
+        infcx: &'me InferCtxt<'tcx>,
         mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
         mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
@@ -1318,6 +1327,19 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
     let tcx = selcx.tcx();
     if tcx.def_kind(obligation.predicate.item_def_id) == DefKind::ImplTraitPlaceholder {
         let trait_fn_def_id = tcx.impl_trait_in_trait_parent(obligation.predicate.item_def_id);
+        // If we are trying to project an RPITIT with trait's default `Self` parameter,
+        // then we must be within a default trait body.
+        if obligation.predicate.self_ty()
+            == ty::InternalSubsts::identity_for_item(tcx, obligation.predicate.item_def_id)
+                .type_at(0)
+            && tcx.associated_item(trait_fn_def_id).defaultness(tcx).has_value()
+        {
+            candidate_set.push_candidate(ProjectionCandidate::ImplTraitInTrait(
+                ImplTraitInTraitCandidate::Trait,
+            ));
+            return;
+        }
+
         let trait_def_id = tcx.parent(trait_fn_def_id);
         let trait_substs =
             obligation.predicate.substs.truncate_to(tcx, tcx.generics_of(trait_def_id));
@@ -1329,7 +1351,9 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
         let _ =
             selcx.infcx().commit_if_ok(|_| match selcx.select(&obligation.with(trait_predicate)) {
                 Ok(Some(super::ImplSource::UserDefined(data))) => {
-                    candidate_set.push_candidate(ProjectionCandidate::ImplTraitInTrait(data));
+                    candidate_set.push_candidate(ProjectionCandidate::ImplTraitInTrait(
+                        ImplTraitInTraitCandidate::Impl(data),
+                    ));
                     Ok(())
                 }
                 Ok(None) => {
@@ -1367,7 +1391,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
     );
 }
 
-/// In the case of a nested projection like <<A as Foo>::FooT as Bar>::BarT, we may find
+/// In the case of a nested projection like `<<A as Foo>::FooT as Bar>::BarT`, we may find
 /// that the definition of `Foo` has some clues:
 ///
 /// ```ignore (illustrative)
@@ -1488,7 +1512,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
                     candidate_set.push_candidate(ctor(data));
 
                     if potentially_unnormalized_candidates
-                        && !obligation.predicate.has_infer_types_or_consts()
+                        && !obligation.predicate.has_non_region_infer()
                     {
                         // HACK: Pick the first trait def candidate for a fully
                         // inferred predicate. This is to allow duplicates that
@@ -1750,8 +1774,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
             super::ImplSource::AutoImpl(..)
             | super::ImplSource::Builtin(..)
             | super::ImplSource::TraitUpcasting(_)
-            | super::ImplSource::ConstDestruct(_)
-            | super::ImplSource::Tuple => {
+            | super::ImplSource::ConstDestruct(_) => {
                 // These traits have no associated types.
                 selcx.tcx().sess.delay_span_bug(
                     obligation.cause.span,
@@ -1792,9 +1815,18 @@ fn confirm_candidate<'cx, 'tcx>(
         ProjectionCandidate::Select(impl_source) => {
             confirm_select_candidate(selcx, obligation, impl_source)
         }
-        ProjectionCandidate::ImplTraitInTrait(data) => {
+        ProjectionCandidate::ImplTraitInTrait(ImplTraitInTraitCandidate::Impl(data)) => {
             confirm_impl_trait_in_trait_candidate(selcx, obligation, data)
         }
+        // If we're projecting an RPITIT for a default trait body, that's just
+        // the same def-id, but as an opaque type (with regular RPIT semantics).
+        ProjectionCandidate::ImplTraitInTrait(ImplTraitInTraitCandidate::Trait) => Progress {
+            term: selcx
+                .tcx()
+                .mk_opaque(obligation.predicate.item_def_id, obligation.predicate.substs)
+                .into(),
+            obligations: vec![],
+        },
     };
 
     // When checking for cycle during evaluation, we compare predicates with
@@ -1829,8 +1861,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
         | super::ImplSource::Builtin(..)
         | super::ImplSource::TraitUpcasting(_)
         | super::ImplSource::TraitAlias(..)
-        | super::ImplSource::ConstDestruct(_)
-        | super::ImplSource::Tuple => {
+        | super::ImplSource::ConstDestruct(_) => {
             // we don't create Select candidates with this kind of resolution
             span_bug!(
                 obligation.cause.span,
@@ -2141,21 +2172,59 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         let identity_substs =
             crate::traits::InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         let did = ty::WithOptConstParam::unknown(assoc_ty.item.def_id);
-        let kind = ty::ConstKind::Unevaluated(ty::Unevaluated::new(did, identity_substs));
+        let kind = ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
         ty.map_bound(|ty| tcx.mk_const(ty::ConstS { ty, kind }).into())
     } else {
         ty.map_bound(|ty| ty.into())
     };
-    if substs.len() != tcx.generics_of(assoc_ty.item.def_id).count() {
+    if !check_substs_compatible(tcx, &assoc_ty.item, substs) {
         let err = tcx.ty_error_with_message(
             obligation.cause.span,
-            "impl item and trait item have different parameter counts",
+            "impl item and trait item have different parameters",
         );
         Progress { term: err.into(), obligations: nested }
     } else {
         assoc_ty_own_obligations(selcx, obligation, &mut nested);
         Progress { term: term.subst(tcx, substs), obligations: nested }
     }
+}
+
+// Verify that the trait item and its implementation have compatible substs lists
+fn check_substs_compatible<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    assoc_ty: &ty::AssocItem,
+    substs: ty::SubstsRef<'tcx>,
+) -> bool {
+    fn check_substs_compatible_inner<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        generics: &'tcx ty::Generics,
+        args: &'tcx [ty::GenericArg<'tcx>],
+    ) -> bool {
+        if generics.count() != args.len() {
+            return false;
+        }
+
+        let (parent_args, own_args) = args.split_at(generics.parent_count);
+
+        if let Some(parent) = generics.parent
+            && let parent_generics = tcx.generics_of(parent)
+            && !check_substs_compatible_inner(tcx, parent_generics, parent_args) {
+            return false;
+        }
+
+        for (param, arg) in std::iter::zip(&generics.params, own_args) {
+            match (&param.kind, arg.unpack()) {
+                (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
+                | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
+                | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}
+                _ => return false,
+            }
+        }
+
+        true
+    }
+
+    check_substs_compatible_inner(tcx, tcx.generics_of(assoc_ty.def_id), substs.as_slice())
 }
 
 fn confirm_impl_trait_in_trait_candidate<'tcx>(
@@ -2174,8 +2243,21 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         return Progress { term: tcx.ty_error().into(), obligations };
     }
 
+    // Use the default `impl Trait` for the trait, e.g., for a default trait body
+    if leaf_def.item.container == ty::AssocItemContainer::TraitContainer {
+        return Progress {
+            term: tcx
+                .mk_opaque(obligation.predicate.item_def_id, obligation.predicate.substs)
+                .into(),
+            obligations,
+        };
+    }
+
     let impl_fn_def_id = leaf_def.item.def_id;
-    let impl_fn_substs = obligation.predicate.substs.rebase_onto(tcx, trait_fn_def_id, data.substs);
+    // Rebase from {trait}::{fn}::{opaque} to {impl}::{fn}::{opaque},
+    // since `data.substs` are the impl substs.
+    let impl_fn_substs =
+        obligation.predicate.substs.rebase_onto(tcx, tcx.parent(trait_fn_def_id), data.substs);
 
     let cause = ObligationCause::new(
         obligation.cause.span,

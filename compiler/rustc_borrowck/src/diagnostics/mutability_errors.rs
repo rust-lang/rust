@@ -932,7 +932,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let opt_suggestions = self
                     .infcx
                     .tcx
-                    .typeck(path_segment.hir_id.owner)
+                    .typeck(path_segment.hir_id.owner.def_id)
                     .type_dependent_def_id(*hir_id)
                     .and_then(|def_id| self.infcx.tcx.impl_of_method(def_id))
                     .map(|def_id| self.infcx.tcx.associated_items(def_id))
@@ -1032,7 +1032,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if look_at_return && hir.get_return_block(closure_id).is_some() {
             // ...otherwise we are probably in the tail expression of the function, point at the
             // return type.
-            match hir.get_by_def_id(hir.get_parent_item(fn_call_id)) {
+            match hir.get_by_def_id(hir.get_parent_item(fn_call_id).def_id) {
                 hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(sig, ..), .. })
                 | hir::Node::TraitItem(hir::TraitItem {
                     ident,

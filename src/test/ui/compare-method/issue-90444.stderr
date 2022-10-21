@@ -5,10 +5,10 @@ LL |     fn from(_: fn((), (), &mut ())) -> Self {
    |                ^^^^^^^^^^^^^^^^^^^
    |                |
    |                types differ in mutability
-   |                help: change the parameter type to match the trait: `for<'r> fn((), (), &'r ())`
+   |                help: change the parameter type to match the trait: `for<'a> fn((), (), &'a ())`
    |
-   = note: expected fn pointer `fn(for<'r> fn((), (), &'r ())) -> A`
-              found fn pointer `fn(for<'r> fn((), (), &'r mut ())) -> A`
+   = note: expected fn pointer `fn(for<'a> fn((), (), &'a ())) -> A`
+              found fn pointer `fn(for<'a> fn((), (), &'a mut ())) -> A`
 
 error[E0053]: method `from` has an incompatible type for trait
   --> $DIR/issue-90444.rs:11:16

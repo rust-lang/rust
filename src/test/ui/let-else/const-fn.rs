@@ -1,7 +1,6 @@
 // run-pass
 // issue #101932
 
-#![cfg_attr(bootstrap, feature(let_else))]
 
 const fn foo(a: Option<i32>) -> i32 {
     let Some(a) = a else {

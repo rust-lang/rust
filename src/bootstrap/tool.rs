@@ -698,7 +698,7 @@ pub struct RustAnalyzer {
 impl Step for RustAnalyzer {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = false;
+    const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -742,7 +742,7 @@ pub struct RustAnalyzerProcMacroSrv {
 impl Step for RustAnalyzerProcMacroSrv {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = false;
+    const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -870,10 +870,10 @@ tool_extended!((self, builder),
     Clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
     Miri, "src/tools/miri", "miri", stable=false, in_tree=true, {};
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, in_tree=true, {};
-    Rls, "src/tools/rls", "rls", stable=true, {};
     // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
     // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
     // and this is close enough for now.
+    Rls, "src/tools/rls", "rls", stable=true, in_tree=true, tool_std=true, {};
     RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, tool_std=true, {};
     Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
 );

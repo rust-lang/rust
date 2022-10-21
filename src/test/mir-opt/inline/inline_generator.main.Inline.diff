@@ -70,7 +70,7 @@
 -         _1 = <[generator@$DIR/inline-generator.rs:15:5: 15:8] as Generator<bool>>::resume(move _2, const false) -> [return: bb3, unwind: bb4]; // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-generator.rs:9:33: 9:39
--                                          // + literal: Const { ty: for<'r> fn(Pin<&'r mut [generator@$DIR/inline-generator.rs:15:5: 15:8]>, bool) -> GeneratorState<<[generator@$DIR/inline-generator.rs:15:5: 15:8] as Generator<bool>>::Yield, <[generator@$DIR/inline-generator.rs:15:5: 15:8] as Generator<bool>>::Return> {<[generator@$DIR/inline-generator.rs:15:5: 15:8] as Generator<bool>>::resume}, val: Value(<ZST>) }
+-                                          // + literal: Const { ty: for<'a> fn(Pin<&'a mut [generator@$DIR/inline-generator.rs:15:5: 15:8]>, bool) -> GeneratorState<<[generator@$DIR/inline-generator.rs:15:5: 15:8] as Generator<bool>>::Yield, <[generator@$DIR/inline-generator.rs:15:5: 15:8] as Generator<bool>>::Return> {<[generator@$DIR/inline-generator.rs:15:5: 15:8] as Generator<bool>>::resume}, val: Value(<ZST>) }
 +         StorageLive(_7);                 // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
 +         _7 = const false;                // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
 +         StorageLive(_10);                // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46

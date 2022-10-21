@@ -5,6 +5,11 @@ LL |     let x: isize;
    |         - binding declared here but left uninitialized
 LL |     x += 1;
    |     ^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-in-assignop.rs:9:5
@@ -13,6 +18,11 @@ LL |     let x: isize;
    |         - binding declared here but left uninitialized
 LL |     x -= 1;
    |     ^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-in-assignop.rs:12:5
@@ -21,6 +31,11 @@ LL |     let x: isize;
    |         - binding declared here but left uninitialized
 LL |     x *= 1;
    |     ^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-in-assignop.rs:15:5
@@ -29,6 +44,11 @@ LL |     let x: isize;
    |         - binding declared here but left uninitialized
 LL |     x /= 1;
    |     ^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-in-assignop.rs:18:5
@@ -37,6 +57,11 @@ LL |     let x: isize;
    |         - binding declared here but left uninitialized
 LL |     x %= 1;
    |     ^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-in-assignop.rs:21:5
@@ -45,6 +70,11 @@ LL |     let x: isize;
    |         - binding declared here but left uninitialized
 LL |     x ^= 1;
    |     ^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-in-assignop.rs:24:5
@@ -53,6 +83,11 @@ LL |     let x: isize;
    |         - binding declared here but left uninitialized
 LL |     x &= 1;
    |     ^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-in-assignop.rs:27:5
@@ -61,6 +96,11 @@ LL |     let x: isize;
    |         - binding declared here but left uninitialized
 LL |     x |= 1;
    |     ^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-in-assignop.rs:30:5
@@ -69,6 +109,11 @@ LL |     let x: isize;
    |         - binding declared here but left uninitialized
 LL |     x <<= 1;
    |     ^^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-in-assignop.rs:33:5
@@ -77,6 +122,11 @@ LL |     let x: isize;
    |         - binding declared here but left uninitialized
 LL |     x >>= 1;
    |     ^^^^^^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error: aborting due to 10 previous errors
 

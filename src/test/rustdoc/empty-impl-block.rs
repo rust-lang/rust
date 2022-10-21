@@ -16,5 +16,5 @@ pub struct Another;
 pub trait Bar {}
 
 // @has 'foo/struct.Another.html'
-// @has - '//h3[@class="code-header in-band"]' 'impl Bar for Another'
+// @has - '//h3[@class="code-header"]' 'impl Bar for Another'
 impl Bar for Another {}

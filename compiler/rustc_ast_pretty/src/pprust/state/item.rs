@@ -516,7 +516,7 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Const(def, ty, body) => {
                 self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
             }
-            ast::AssocItemKind::TyAlias(box ast::TyAlias {
+            ast::AssocItemKind::Type(box ast::TyAlias {
                 defaultness,
                 generics,
                 where_clauses,

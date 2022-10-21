@@ -214,12 +214,12 @@ fn check_print_in_format_impl(cx: &LateContext<'_>, expr: &Expr<'_>, impl_trait:
                 cx,
                 PRINT_IN_FORMAT_IMPL,
                 macro_call.span,
-                &format!("use of `{}!` in `{}` impl", name, impl_trait.name),
+                &format!("use of `{name}!` in `{}` impl", impl_trait.name),
                 "replace with",
                 if let Some(formatter_name) = impl_trait.formatter_name {
-                    format!("{}!({}, ..)", replacement, formatter_name)
+                    format!("{replacement}!({formatter_name}, ..)")
                 } else {
-                    format!("{}!(..)", replacement)
+                    format!("{replacement}!(..)")
                 },
                 Applicability::HasPlaceholders,
             );

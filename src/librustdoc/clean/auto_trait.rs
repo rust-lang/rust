@@ -475,6 +475,12 @@ where
 
         let mut ty_to_fn: FxHashMap<Type, (PolyTrait, Option<Type>)> = Default::default();
 
+        // FIXME: This code shares much of the logic found in `clean_ty_generics` and
+        //        `simplify::where_clause`. Consider deduplicating it to avoid diverging
+        //        implementations.
+        //        Further, the code below does not merge (partially re-sugared) bounds like
+        //        `Tr<A = T>` & `Tr<B = U>` and it does not render higher-ranked parameters
+        //        originating from equality predicates.
         for p in clean_where_predicates {
             let (orig_p, p) = (p, clean_predicate(p, self.cx));
             if p.is_none() {
@@ -549,8 +555,8 @@ where
                 WherePredicate::RegionPredicate { lifetime, bounds } => {
                     lifetime_to_bounds.entry(lifetime).or_default().extend(bounds);
                 }
-                WherePredicate::EqPredicate { lhs, rhs } => {
-                    match lhs {
+                WherePredicate::EqPredicate { lhs, rhs, bound_params } => {
+                    match *lhs {
                         Type::QPath(box QPathData {
                             ref assoc, ref self_type, ref trait_, ..
                         }) => {
@@ -585,13 +591,14 @@ where
                                 GenericArgs::AngleBracketed { ref mut bindings, .. } => {
                                     bindings.push(TypeBinding {
                                         assoc: assoc.clone(),
-                                        kind: TypeBindingKind::Equality { term: rhs },
+                                        kind: TypeBindingKind::Equality { term: *rhs },
                                     });
                                 }
                                 GenericArgs::Parenthesized { .. } => {
                                     existing_predicates.push(WherePredicate::EqPredicate {
                                         lhs: lhs.clone(),
                                         rhs,
+                                        bound_params,
                                     });
                                     continue; // If something other than a Fn ends up
                                     // with parentheses, leave it alone

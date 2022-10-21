@@ -32,7 +32,7 @@ use rustc_span::Span;
 use std::fmt::Debug;
 use std::iter;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
     /// implementation. It is given:
     ///
@@ -632,7 +632,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 /// creates query region constraints.
 pub fn make_query_region_constraints<'tcx>(
     tcx: TyCtxt<'tcx>,
-    outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>, ConstraintCategory<'tcx>)>,
+    outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>, ConstraintCategory)>,
     region_constraints: &RegionConstraintData<'tcx>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys, givens, member_constraints } =
@@ -677,7 +677,7 @@ pub fn make_query_region_constraints<'tcx>(
 }
 
 struct QueryTypeRelatingDelegate<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     cause: &'a ObligationCause<'tcx>,

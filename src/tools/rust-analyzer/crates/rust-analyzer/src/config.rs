@@ -7,7 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{ffi::OsString, fmt, iter, path::PathBuf};
+use std::{fmt, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use ide::{
@@ -22,7 +22,8 @@ use ide_db::{
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{
-    CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource, UnsetTestCrates,
+    CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource,
+    UnsetTestCrates,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de::DeserializeOwned, Deserialize};
@@ -90,11 +91,16 @@ config_data! {
         /// List of features to activate.
         ///
         /// Set this to `"all"` to pass `--all-features` to cargo.
-        cargo_features: CargoFeatures      = "[]",
+        cargo_features: CargoFeaturesDef      = "[]",
         /// Whether to pass `--no-default-features` to cargo.
         cargo_noDefaultFeatures: bool    = "false",
-        /// Internal config for debugging, disables loading of sysroot crates.
-        cargo_noSysroot: bool            = "false",
+        /// Relative path to the sysroot, or "discover" to try to automatically find it via
+        /// "rustc --print sysroot".
+        ///
+        /// Unsetting this disables sysroot loading.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        cargo_sysroot: Option<String>    = "\"discover\"",
         /// Compilation target override (target triple).
         cargo_target: Option<String>     = "null",
         /// Unsets `#[cfg(test)]` for the specified crates.
@@ -109,12 +115,13 @@ config_data! {
         /// Extra arguments for `cargo check`.
         checkOnSave_extraArgs: Vec<String>               = "[]",
         /// Extra environment variables that will be set when running `cargo check`.
+        /// Extends `#rust-analyzer.cargo.extraEnv#`.
         checkOnSave_extraEnv: FxHashMap<String, String> = "{}",
         /// List of features to activate. Defaults to
         /// `#rust-analyzer.cargo.features#`.
         ///
         /// Set to `"all"` to pass `--all-features` to Cargo.
-        checkOnSave_features: Option<CargoFeatures>      = "null",
+        checkOnSave_features: Option<CargoFeaturesDef>      = "null",
         /// Whether to pass `--no-default-features` to Cargo. Defaults to
         /// `#rust-analyzer.cargo.noDefaultFeatures#`.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
@@ -975,15 +982,17 @@ impl Config {
         self.data.lru_capacity
     }
 
-    pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, Vec<OsString>)> {
+    pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, /* is path explicitly set */ bool)> {
         if !self.data.procMacro_enable {
             return None;
         }
-        let path = match &self.data.procMacro_server {
-            Some(it) => self.root_path.join(it),
-            None => AbsPathBuf::assert(std::env::current_exe().ok()?),
-        };
-        Some((path, vec!["proc-macro".into()]))
+        Some(match &self.data.procMacro_server {
+            Some(it) => (
+                AbsPathBuf::try_from(it.clone()).unwrap_or_else(|path| self.root_path.join(path)),
+                true,
+            ),
+            None => (AbsPathBuf::assert(std::env::current_exe().ok()?), false),
+        })
     }
 
     pub fn dummy_replacements(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
@@ -1026,16 +1035,24 @@ impl Config {
                 RustcSource::Path(self.root_path.join(rustc_src))
             }
         });
+        let sysroot = self.data.cargo_sysroot.as_ref().map(|sysroot| {
+            if sysroot == "discover" {
+                RustcSource::Discover
+            } else {
+                RustcSource::Path(self.root_path.join(sysroot))
+            }
+        });
 
         CargoConfig {
-            no_default_features: self.data.cargo_noDefaultFeatures,
-            all_features: matches!(self.data.cargo_features, CargoFeatures::All),
             features: match &self.data.cargo_features {
-                CargoFeatures::All => vec![],
-                CargoFeatures::Listed(it) => it.clone(),
+                CargoFeaturesDef::All => CargoFeatures::All,
+                CargoFeaturesDef::Selected(features) => CargoFeatures::Selected {
+                    features: features.clone(),
+                    no_default_features: self.data.cargo_noDefaultFeatures,
+                },
             },
             target: self.data.cargo_target.clone(),
-            no_sysroot: self.data.cargo_noSysroot,
+            sysroot,
             rustc_source,
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
@@ -1086,7 +1103,7 @@ impl Config {
                     .unwrap_or(self.data.cargo_noDefaultFeatures),
                 all_features: matches!(
                     self.data.checkOnSave_features.as_ref().unwrap_or(&self.data.cargo_features),
-                    CargoFeatures::All
+                    CargoFeaturesDef::All
                 ),
                 features: match self
                     .data
@@ -1094,8 +1111,8 @@ impl Config {
                     .clone()
                     .unwrap_or_else(|| self.data.cargo_features.clone())
                 {
-                    CargoFeatures::All => vec![],
-                    CargoFeatures::Listed(it) => it,
+                    CargoFeaturesDef::All => vec![],
+                    CargoFeaturesDef::Selected(it) => it,
                 },
                 extra_args: self.data.checkOnSave_extraArgs.clone(),
                 extra_env: self.check_on_save_extra_env(),
@@ -1564,10 +1581,10 @@ enum CallableCompletionDef {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
-enum CargoFeatures {
+enum CargoFeaturesDef {
     #[serde(deserialize_with = "de_unit_v::all")]
     All,
-    Listed(Vec<String>),
+    Selected(Vec<String>),
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1912,7 +1929,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Only show mutable reborrow hints."
             ]
         },
-        "CargoFeatures" => set! {
+        "CargoFeaturesDef" => set! {
             "anyOf": [
                 {
                     "type": "string",
@@ -1929,7 +1946,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 }
             ],
         },
-        "Option<CargoFeatures>" => set! {
+        "Option<CargoFeaturesDef>" => set! {
             "anyOf": [
                 {
                     "type": "string",

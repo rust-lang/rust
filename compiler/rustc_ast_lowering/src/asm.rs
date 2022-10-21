@@ -192,26 +192,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                     InlineAsmOperand::Sym { ref sym } => {
-                        if !self.tcx.features().asm_sym {
-                            feature_err(
-                                &sess.parse_sess,
-                                sym::asm_sym,
-                                *op_sp,
-                                "sym operands for inline assembly are unstable",
-                            )
-                            .emit();
-                        }
-
                         let static_def_id = self
                             .resolver
                             .get_partial_res(sym.id)
-                            .filter(|res| res.unresolved_segments() == 0)
-                            .and_then(|res| {
-                                if let Res::Def(DefKind::Static(_), def_id) = res.base_res() {
-                                    Some(def_id)
-                                } else {
-                                    None
-                                }
+                            .and_then(|res| res.full_res())
+                            .and_then(|res| match res {
+                                Res::Def(DefKind::Static(_), def_id) => Some(def_id),
+                                _ => None,
                             });
 
                         if let Some(def_id) = static_def_id {
@@ -237,7 +224,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             // Wrap the expression in an AnonConst.
                             let parent_def_id = self.current_hir_id_owner;
                             let node_id = self.next_node_id();
-                            self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
+                            self.create_def(parent_def_id.def_id, node_id, DefPathData::AnonConst);
                             let anon_const = AnonConst { id: node_id, value: P(expr) };
                             hir::InlineAsmOperand::SymFn {
                                 anon_const: self.lower_anon_const(&anon_const),

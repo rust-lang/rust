@@ -12,6 +12,8 @@ query_system_cycle_usage = cycle used when {$usage}
 
 query_system_cycle_stack_single = ...which immediately requires {$stack_bottom} again
 
+query_system_cycle_stack_middle = ...which requires {$desc}...
+
 query_system_cycle_stack_multiple = ...which again requires {$stack_bottom}, completing the cycle
 
 query_system_cycle_recursive_ty_alias = type aliases cannot be recursive

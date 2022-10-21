@@ -9,7 +9,6 @@ use crate::borrow::Borrow;
 use crate::cell::Cell;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt::{self, Debug};
 #[allow(deprecated)]
@@ -281,7 +280,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
+    #[rustc_const_unstable(feature = "const_collections_with_hasher", issue = "102575")]
+    pub const fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
         HashMap { base: base::HashMap::with_hasher(hash_builder) }
     }
 
@@ -2160,7 +2160,6 @@ impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "map_try_insert", issue = "82766")]
 impl<'a, K: fmt::Debug, V: fmt::Debug> Error for OccupiedError<'a, K, V> {
     #[allow(deprecated)]

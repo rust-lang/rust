@@ -3,7 +3,6 @@
 
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![recursion_limit = "256"]
 
 #[macro_use]

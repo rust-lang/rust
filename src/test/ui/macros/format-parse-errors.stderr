@@ -22,7 +22,7 @@ error: positional arguments cannot follow named arguments
   --> $DIR/format-parse-errors.rs:10:9
    |
 LL |         foo = foo,
-   |               --- named argument
+   |         --------- named argument
 LL |         bar,
    |         ^^^ positional arguments must be before named arguments
 

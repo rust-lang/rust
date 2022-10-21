@@ -1,8 +1,8 @@
 // @has manual/struct.Foo.html
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
+// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header"]' \
 // 'impl<T> Sync for Foo<T>where T: Sync'
 //
-// @has - '//*[@id="trait-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
+// @has - '//*[@id="trait-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header"]' \
 // 'impl<T> Send for Foo<T>'
 //
 // @count - '//*[@id="trait-implementations-list"]//*[@class="impl has-srclink"]' 1

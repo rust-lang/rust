@@ -1,8 +1,6 @@
 // run-pass
 #![allow(overflowing_literals)]
 
-#[deny(const_err)]
-
 fn main() {
     #[cfg(target_pointer_width = "32")]
     const I: isize = -2147483648isize;
