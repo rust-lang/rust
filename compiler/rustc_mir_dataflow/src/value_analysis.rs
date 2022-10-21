@@ -1,69 +1,49 @@
 //! This module provides a framework on top of the normal MIR dataflow framework to simplify the
-//! implementation of analyses that track the values stored in places of interest.
+//! implementation of analyses that track information about the values stored in certain places.
+//! We are using the term "place" here to refer to a `mir::Place` (a place expression) instead of
+//! an `interpret::Place` (a memory location).
 //!
 //! The default methods of [`ValueAnalysis`] (prefixed with `super_` instead of `handle_`)
 //! provide some behavior that should be valid for all abstract domains that are based only on the
 //! value stored in a certain place. On top of these default rules, an implementation should
 //! override some of the `handle_` methods. For an example, see `ConstAnalysis`.
 //!
-//! An implementation must also provide a [`Map`]. Before the anaylsis begins, all places that
-//! should be tracked during the analysis must be registered. Currently, the projections of these
-//! places may only contain derefs, fields and downcasts (otherwise registration fails). During the
-//! analysis, no new places can be registered.
+//! An implementation must also provide a [`Map`]. Before the analysis begins, all places that
+//! should be tracked during the analysis must be registered. During the analysis, no new places
+//! can be registered. The [`State`] can be queried to retrieve the abstract value stored for a
+//! certain place by passing the map.
 //!
-//! Note that if you want to track values behind references, you have to register the dereferenced
-//! place. For example: Assume `let x = (0, 0)` and that we want to propagate values from `x.0` and
-//! `x.1` also through the assignment `let y = &x`. In this case, we should register `x.0`, `x.1`,
-//! `(*y).0` and `(*y).1`.
-//!
-//!
-//! # Correctness
-//!
-//! Warning: This is a semi-formal attempt to argue for the correctness of this analysis. If you
-//! find any weak spots, let me know! Recommended reading: Abstract Interpretation. We will use the
-//! term "place" to refer to a place expression (like `mir::Place`), and we will call the
-//! underlying entity "object". For instance, `*_1` and `*_2` are not the same place, but depending
-//! on the value of `_1` and `_2`, they could refer to the same object. Also, the same place can
-//! refer to different objects during execution. If `_1` is reassigned, then `*_1` may refer to
-//! different objects before and after assignment. Additionally, when saying "access to a place",
-//! what we really mean is "access to an object denoted by arbitrary projections of that place".
-//!
-//! In the following, we will assume a constant propagation analysis. Our analysis is correct if
-//! every transfer function is correct. This is the case if for every pair (f, f#) and abstract
-//! state s, we have f(y(s)) <= y(f#(s)), where s is a mapping from tracked place to top, bottom or
-//! a constant. Since pointers (and mutable references) are not tracked, but can be used to change
-//! values in the concrete domain, f# must assume that all places that can be affected in this way
-//! for a given program point are already marked with top in s (otherwise many assignments and
-//! function calls would have no choice but to mark all tracked places with top). This leads us to
-//! an invariant: For all possible program points where there could possibly exist means of mutable
-//! access to a tracked place (in the concrete domain), this place must be assigned to top (in the
-//! abstract domain). The concretization function y can be defined as expected for the constant
-//! propagation analysis, although the concrete state of course contains all kinds of non-tracked
-//! data. However, by the invariant above, no mutable access to tracked places that are not marked
-//! with top may be introduced.
-//!
-//! Note that we (at least currently) do not differentiate between "this place may assume different
-//! values" and "a pointer to this place escaped the analysis". However, we still want to handle
-//! assignments to constants as usual for f#. This adds an assumption: Whenever we have an
-//! assignment that is captured by the analysis, all mutable access to the underlying place (which
-//! is not observable by the analysis) must be invalidated. This is (hopefully) covered by Stacked
-//! Borrows.
-//!
-//! To be continued...
-//!
-//! The bottom state denotes uninitalized memory.
+//! This framework is currently experimental. In particular, the features related to references are
+//! currently guarded behind `-Zunsound-mir-opts`, because their correctness relies on Stacked
+//! Borrows. Also, only places with scalar types can be tracked currently. This is because scalar
+//! types are indivisible, which simplifies the current implementation. But this limitation could be
+//! lifted in the future.
 //!
 //!
-//! # Assumptions
+//! # Notes
 //!
-//! - (A1) Assignment to any tracked place invalidates all pointers that could be used to change
-//!     the underlying value.
-//! - (A2) `StorageLive`, `StorageDead` and `Deinit` make the underlying memory at least
-//!     uninitialized (at least in the sense that declaring access UB is also fine).
-//! - (A3) An assignment with `State::assign_place_idx` either involves non-overlapping places, or
-//!     the places are the same.
-//! - (A4) If the value behind a reference to a `Freeze` place is changed, dereferencing the
-//!     reference is UB.
+//! - The bottom state denotes uninitialized memory. Because we are only doing a sound approximation
+//! of the actual execution, we can also use this state for places where access would be UB.
+//!
+//! - The assignment logic in `State::assign_place_idx` assumes that the places are non-overlapping,
+//! or identical. Note that this refers to place expressions, not memory locations.
+//!
+//! - Since pointers (and mutable references) are not tracked, but can be used to change the
+//! underlying values, we are conservative and immediately flood the referenced place upon creation
+//! of the pointer. Also, we have to uphold the invariant that the place must stay that way as long
+//! as this mutable access could exist. However...
+//!
+//! - Without an aliasing model like Stacked Borrows (i.e., `-Zunsound-mir-opts` is not given),
+//! such mutable access is never revoked. And even shared references could be used to obtain the
+//! address of a value an modify it. When not assuming Stacked Borrows, we prevent such places from
+//! being tracked at all. This means that the analysis itself can assume that writes to a *tracked*
+//! place always invalidate all other means of mutable access, regardless of the aliasing model.
+//!
+//! - Likewise, the analysis itself assumes that if the value of a *tracked* place behind a shared
+//! reference is changed, the reference may not be used to access that value anymore. This is true
+//! for all places if the referenced type is `Freeze` and we assume Stacked Borrows. If we are not
+//! assuming Stacking Borrows (or if the referenced type could be `!Freeze`), we again prevent such
+//! places from being tracked at all, making this assertion trivially true.
 
 use std::fmt::{Debug, Formatter};
 
@@ -107,11 +87,12 @@ pub trait ValueAnalysis<'tcx> {
                 self.handle_intrinsic(intrinsic, state);
             }
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                // (A2)
+                // StorageLive leaves the local in an uninitialized state.
+                // StorageDead makes it UB to access the local afterwards.
                 state.flood_with(Place::from(*local).as_ref(), self.map(), Self::Value::bottom());
             }
             StatementKind::Deinit(box place) => {
-                // (A2)
+                // Deinit makes the place uninitialized.
                 state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
             }
             StatementKind::Retag(..) => {
@@ -477,9 +458,9 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     /// Copies `source` to `target`, including all tracked places beneath.
     ///
     /// If `target` contains a place that is not contained in `source`, it will be overwritten with
-    /// Top. Also, because this will copy all entries one after another, it may only be
+    /// Top. Also, because this will copy all entries one after another, it may only be used for
+    /// places that are non-overlapping or identical.
     pub fn assign_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
-        // We use (A3) and copy all entries one after another.
         let StateData::Reachable(values) = &mut self.0 else { return };
 
         // If both places are tracked, we copy the value to the target. If the target is tracked,
@@ -528,21 +509,24 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
                 if let Some(value_index) = map.places[target].value_index {
                     values[value_index] = V::top();
                 }
-                // Instead of tracking of *where* a reference points to (as in, which place), we
-                // track *what* it points to (as in, what do we know about the target). For an
-                // assignment `x = &y`, we thus copy the info we have for `y` to `*x`. This is
-                // sound because we only track places that are `Freeze`, and (A4).
+                // Instead of tracking of *where* a reference points to (as in, which memory
+                // location), we track *what* it points to (as in, what do we know about the
+                // target). For an assignment `x = &y`, we thus copy the info of `y` to `*x`.
                 if let Some(target_deref) = map.apply(target, TrackElem::Deref) {
+                    // We know here that `*x` is `Freeze`, because we only track through
+                    // dereferences if the target type is `Freeze`.
                     self.assign_place_idx(target_deref, source, map);
                 }
             }
         }
     }
 
+    /// Retrieve the value stored for a place, or ⊥ if it is not tracked.
     pub fn get(&self, place: PlaceRef<'_>, map: &Map) -> V {
         map.find(place).map(|place| self.get_idx(place, map)).unwrap_or(V::top())
     }
 
+    /// Retrieve the value stored for a place index, or ⊥ if it is not tracked.
     pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V {
         match &self.0 {
             StateData::Reachable(values) => {
@@ -569,11 +553,11 @@ impl<V: JoinSemiLattice + Clone> JoinSemiLattice for State<V> {
     }
 }
 
-/// A partial mapping from `Place` to `PlaceIndex`.
+/// A partial mapping from `Place` to `PlaceIndex`, where some place indices have value indices.
 ///
-/// Some additioanl bookkeeping is done to speed up traversal:
+/// Some additional bookkeeping is done to speed up traversal:
 /// - For iteration, every [`PlaceInfo`] contains an intrusive linked list of its children.
-/// - To directly get the child for a specific projection, there is `projections` map.
+/// - To directly get the child for a specific projection, there is a `projections` map.
 #[derive(Debug)]
 pub struct Map {
     locals: IndexVec<Local, Option<PlaceIndex>>,
@@ -595,7 +579,7 @@ impl Map {
     /// Returns a map that only tracks places whose type passes the filter.
     ///
     /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
-    /// chosen is an implementation detail an may not be relied upon.
+    /// chosen is an implementation detail and may not be relied upon.
     pub fn from_filter<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
@@ -609,7 +593,7 @@ impl Map {
         // not yet guaranteed).
         if tcx.sess.opts.unstable_opts.unsound_mir_opts {
             // We might want to add additional limitations. If a struct has 10 boxed fields of
-            // itself, will currently be `10.pow(max_derefs)` tracked places.
+            // itself, there will currently be `10.pow(max_derefs)` tracked places.
             map.register_with_filter(tcx, body, 2, filter, &[]);
         } else {
             map.register_with_filter(tcx, body, 0, filter, &escaped_places(body));
@@ -668,7 +652,7 @@ impl Map {
 
         if max_derefs > 0 {
             if let Some(ty::TypeAndMut { ty: deref_ty, .. }) = ty.builtin_deref(false) {
-                // References can only be tracked if the target is `!Freeze`.
+                // Values behind references can only be tracked if the target is `Freeze`.
                 if deref_ty.is_freeze(tcx.at(DUMMY_SP), param_env) {
                     projection.push(PlaceElem::Deref);
                     self.register_with_filter_rec(
@@ -953,6 +937,8 @@ fn iter_fields<'tcx>(
 }
 
 /// Returns all places, that have their reference or address taken.
+///
+/// This includes shared references.
 fn escaped_places<'tcx>(body: &Body<'tcx>) -> Vec<Place<'tcx>> {
     struct Collector<'tcx> {
         result: Vec<Place<'tcx>>,
