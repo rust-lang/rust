@@ -51,7 +51,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match ty::Instance::resolve_opt_const_arg(
             self, param_env,
-            // FIXME: maybe have a seperate version for resolving mir::UnevaluatedConst?
+            // FIXME: maybe have a separate version for resolving mir::UnevaluatedConst?
             ct.def, ct.substs,
         ) {
             Ok(Some(instance)) => {

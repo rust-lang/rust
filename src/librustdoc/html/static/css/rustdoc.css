@@ -634,7 +634,6 @@ pre.example-line-numbers {
 .out-of-band {
 	flex-grow: 0;
 	font-size: 1.125rem;
-	font-weight: normal;
 }
 
 .docblock code, .docblock-short code,
@@ -1536,6 +1535,7 @@ details.dir-entry a {
 	https://developer.mozilla.org/en-US/docs/Web/CSS/contain */
 details.rustdoc-toggle {
 	contain: layout;
+	position: relative;
 }
 
 /* The hideme class is used on summary tags that contain a span with
@@ -1627,10 +1627,6 @@ details.rustdoc-toggle > summary:not(.hideme)::before {
 	on the parent <details> to make this work properly. */
 details.rustdoc-toggle[open] > summary.hideme {
 	position: absolute;
-}
-
-details.rustdoc-toggle {
-	position: relative;
 }
 
 details.rustdoc-toggle[open] > summary.hideme > span {
@@ -1983,8 +1979,8 @@ in storage.js
 	}
 }
 
-.method-toggle summary,
-.implementors-toggle summary,
+.method-toggle > summary,
+.implementors-toggle > summary,
 .impl,
 #implementors-list > .docblock,
 .impl-items > section,
@@ -1993,10 +1989,7 @@ in storage.js
 	margin-bottom: 0.75em;
 }
 
-.method-toggle[open]:not(:last-child) {
-	margin-bottom: 2em;
-}
-
+.method-toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {
 	margin-bottom: 2em;
 }
