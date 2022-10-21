@@ -14,7 +14,7 @@ rules.
 	display: none;
 }
 
-.sub {
+nav.sub {
 	/* The search bar and related controls don't work without JS */
 	display: none;
 }
