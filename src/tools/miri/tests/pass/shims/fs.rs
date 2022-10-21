@@ -3,6 +3,7 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
+#![feature(is_terminal)]
 
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -10,7 +11,7 @@ use std::fs::{
     canonicalize, create_dir, read_dir, read_link, remove_dir, remove_dir_all, remove_file, rename,
     File, OpenOptions,
 };
-use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
+use std::io::{Error, ErrorKind, IsTerminal, Read, Result, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 fn main() {
@@ -90,6 +91,8 @@ fn test_file() {
     // Reading until EOF should get the whole text.
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
+
+    assert!(!file.is_terminal());
 
     // Removing file should succeed.
     remove_file(&path).unwrap();
