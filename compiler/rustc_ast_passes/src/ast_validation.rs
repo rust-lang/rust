@@ -14,6 +14,7 @@ use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, fluent, pluralize, struct_span_err, Applicability};
+use rustc_macros::Subdiagnostic;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -1805,15 +1806,17 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> 
 }
 
 /// Used to forbid `let` expressions in certain syntactic locations.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Subdiagnostic)]
 pub(crate) enum ForbiddenLetReason {
     /// `let` is not valid and the source environment is not important
     GenericForbidden,
     /// A let chain with the `||` operator
-    NotSupportedOr(Span),
+    #[note(ast_passes::not_supported_or)]
+    NotSupportedOr(#[primary_span] Span),
     /// A let chain with invalid parentheses
     ///
     /// For example, `let 1 = 1 && (expr && expr)` is allowed
     /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
-    NotSupportedParentheses(Span),
+    #[note(ast_passes::not_supported_parentheses)]
+    NotSupportedParentheses(#[primary_span] Span),
 }

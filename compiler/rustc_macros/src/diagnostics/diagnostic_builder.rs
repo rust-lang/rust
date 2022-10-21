@@ -5,7 +5,7 @@ use crate::diagnostics::error::{
     DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    build_field_mapping, report_error_if_not_applied_to_span, report_type_error,
+    build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span, report_type_error,
     should_generate_set_arg, type_is_unit, type_matches_path, FieldInfo, FieldInnerTy, FieldMap,
     HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
@@ -152,8 +152,12 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
     fn parse_subdiag_attribute(
         &self,
         attr: &Attribute,
-    ) -> Result<(SubdiagnosticKind, Path), DiagnosticDeriveError> {
-        let (subdiag, slug) = SubdiagnosticKind::from_attr(attr, self)?;
+    ) -> Result<Option<(SubdiagnosticKind, Path)>, DiagnosticDeriveError> {
+        let Some((subdiag, slug)) = SubdiagnosticKind::from_attr(attr, self)? else {
+            // Some attributes aren't errors - like documentation comments - but also aren't
+            // subdiagnostics.
+            return Ok(None);
+        };
 
         if let SubdiagnosticKind::MultipartSuggestion { .. } = subdiag {
             let meta = attr.parse_meta()?;
@@ -170,7 +174,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
         });
 
-        Ok((subdiag, slug))
+        Ok(Some((subdiag, slug)))
     }
 
     /// Establishes state in the `DiagnosticDeriveBuilder` resulting from the struct
@@ -181,6 +185,11 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         attr: &Attribute,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
         let diag = &self.parent.diag;
+
+        // Always allow documentation comments.
+        if is_doc_comment(attr) {
+            return Ok(quote! {});
+        }
 
         let name = attr.path.segments.last().unwrap().ident.to_string();
         let name = name.as_str();
@@ -250,7 +259,11 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             return Ok(tokens);
         }
 
-        let (subdiag, slug) = self.parse_subdiag_attribute(attr)?;
+        let Some((subdiag, slug)) = self.parse_subdiag_attribute(attr)? else {
+            // Some attributes aren't errors - like documentation comments - but also aren't
+            // subdiagnostics.
+            return Ok(quote! {});
+        };
         let fn_ident = format_ident!("{}", subdiag);
         match subdiag {
             SubdiagnosticKind::Note | SubdiagnosticKind::Help | SubdiagnosticKind::Warn => {
@@ -291,6 +304,11 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             .attrs
             .iter()
             .map(move |attr| {
+                // Always allow documentation comments.
+                if is_doc_comment(attr) {
+                    return quote! {};
+                }
+
                 let name = attr.path.segments.last().unwrap().ident.to_string();
                 let needs_clone =
                     name == "primary_span" && matches!(inner_ty, FieldInnerTy::Vec(_));
@@ -397,8 +415,11 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             _ => (),
         }
 
-        let (subdiag, slug) = self.parse_subdiag_attribute(attr)?;
-
+        let Some((subdiag, slug)) = self.parse_subdiag_attribute(attr)? else {
+            // Some attributes aren't errors - like documentation comments - but also aren't
+            // subdiagnostics.
+            return Ok(quote! {});
+        };
         let fn_ident = format_ident!("{}", subdiag);
         match subdiag {
             SubdiagnosticKind::Label => {

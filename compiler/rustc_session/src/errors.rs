@@ -1,9 +1,7 @@
 use std::num::NonZeroU32;
 
 use crate::cgu_reuse_tracker::CguReuse;
-use rustc_errors::{
-    fluent, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, MultiSpan,
-};
+use rustc_errors::MultiSpan;
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
@@ -148,22 +146,13 @@ pub struct CrateNameEmpty {
     pub span: Option<Span>,
 }
 
+#[derive(Diagnostic)]
+#[diag(session::invalid_character_in_create_name)]
 pub struct InvalidCharacterInCrateName<'a> {
+    #[primary_span]
     pub span: Option<Span>,
     pub character: char,
     pub crate_name: &'a str,
-}
-
-impl IntoDiagnostic<'_> for InvalidCharacterInCrateName<'_> {
-    fn into_diagnostic(self, sess: &Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = sess.struct_err(fluent::session::invalid_character_in_create_name);
-        if let Some(sp) = self.span {
-            diag.set_span(sp);
-        }
-        diag.set_arg("character", self.character);
-        diag.set_arg("crate_name", self.crate_name);
-        diag
-    }
 }
 
 #[derive(Subdiagnostic)]
@@ -179,4 +168,26 @@ impl ExprParenthesesNeeded {
     pub fn surrounding(s: Span) -> Self {
         ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(session::skipping_const_checks)]
+pub struct SkippingConstChecks {
+    #[subdiagnostic(eager)]
+    pub unleashed_features: Vec<UnleashedFeatureHelp>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnleashedFeatureHelp {
+    #[help(session::unleashed_feature_help_named)]
+    Named {
+        #[primary_span]
+        span: Span,
+        gate: Symbol,
+    },
+    #[help(session::unleashed_feature_help_unnamed)]
+    Unnamed {
+        #[primary_span]
+        span: Span,
+    },
 }

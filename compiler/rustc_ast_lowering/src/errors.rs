@@ -1,7 +1,4 @@
-use rustc_errors::{
-    fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgFromDisplay,
-    SubdiagnosticMessage,
-};
+use rustc_errors::DiagnosticArgFromDisplay;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -15,23 +12,13 @@ pub struct GenericTypeWithParentheses {
     pub sub: Option<UseAngleBrackets>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Subdiagnostic)]
+#[multipart_suggestion(ast_lowering::use_angle_brackets, applicability = "maybe-incorrect")]
 pub struct UseAngleBrackets {
+    #[suggestion_part(code = "<")]
     pub open_param: Span,
+    #[suggestion_part(code = ">")]
     pub close_param: Span,
-}
-
-impl AddToDiagnostic for UseAngleBrackets {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        diag.multipart_suggestion(
-            fluent::ast_lowering::use_angle_brackets,
-            vec![(self.open_param, String::from("<")), (self.close_param, String::from(">"))],
-            Applicability::MaybeIncorrect,
-        );
-    }
 }
 
 #[derive(Diagnostic)]
@@ -68,30 +55,20 @@ pub struct AssocTyParentheses {
     pub sub: AssocTyParenthesesSub,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Subdiagnostic)]
 pub enum AssocTyParenthesesSub {
-    Empty { parentheses_span: Span },
-    NotEmpty { open_param: Span, close_param: Span },
-}
-
-impl AddToDiagnostic for AssocTyParenthesesSub {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        match self {
-            Self::Empty { parentheses_span } => diag.multipart_suggestion(
-                fluent::ast_lowering::remove_parentheses,
-                vec![(parentheses_span, String::new())],
-                Applicability::MaybeIncorrect,
-            ),
-            Self::NotEmpty { open_param, close_param } => diag.multipart_suggestion(
-                fluent::ast_lowering::use_angle_brackets,
-                vec![(open_param, String::from("<")), (close_param, String::from(">"))],
-                Applicability::MaybeIncorrect,
-            ),
-        };
-    }
+    #[multipart_suggestion(ast_lowering::remove_parentheses)]
+    Empty {
+        #[suggestion_part(code = "")]
+        parentheses_span: Span,
+    },
+    #[multipart_suggestion(ast_lowering::use_angle_brackets)]
+    NotEmpty {
+        #[suggestion_part(code = "<")]
+        open_param: Span,
+        #[suggestion_part(code = ">")]
+        close_param: Span,
+    },
 }
 
 #[derive(Diagnostic)]
