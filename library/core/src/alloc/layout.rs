@@ -186,7 +186,9 @@ impl Layout {
     ///       call, but may panic or otherwise return the wrong value, as the
     ///       extern type's layout is not known. This is the same behavior as
     ///       [`Layout::for_value`] on a reference to an extern type tail.
-    ///     - otherwise, it is conservatively not allowed to call this function.
+    ///     - otherwise, it is conservatively allowed to call this function
+    ///       only when it would be safe to reborrow `t` as a shared reference
+    ///       and pass it to [`Layout::for_value`].
     ///
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
