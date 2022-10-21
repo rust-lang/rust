@@ -583,7 +583,6 @@ pub struct TraitObjectWithMaybe {
 
 #[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_maybe_const)]
-#[note]
 pub struct ForbiddenMaybeConst<'a, 'b> {
     #[primary_span]
     pub span: Span,
