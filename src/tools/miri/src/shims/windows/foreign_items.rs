@@ -425,6 +425,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Just make it fail.
                 this.write_null(dest)?;
             }
+            "GetFileType" if this.frame_in_std() => {
+                #[allow(non_snake_case)]
+                let [_hFile] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                // Return unknown file type.
+                this.write_null(dest)?;
+            }
             "AddVectoredExceptionHandler" if this.frame_in_std() => {
                 #[allow(non_snake_case)]
                 let [_First, _Handler] =
