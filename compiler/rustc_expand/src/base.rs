@@ -22,7 +22,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{FileName, Span, DUMMY_SP};
+use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::default::Default;
@@ -1228,8 +1228,9 @@ pub fn expr_to_spanned_string<'a>(
             ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
             ast::LitKind::ByteStr(_) => {
                 let mut err = cx.struct_span_err(l.span, err_msg);
+                let span = expr.span.shrink_to_lo();
                 err.span_suggestion(
-                    expr.span.shrink_to_lo(),
+                    span.with_hi(span.lo() + BytePos(1)),
                     "consider removing the leading `b`",
                     "",
                     Applicability::MaybeIncorrect,

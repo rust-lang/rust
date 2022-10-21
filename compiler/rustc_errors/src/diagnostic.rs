@@ -567,6 +567,11 @@ impl Diagnostic {
         style: SuggestionStyle,
     ) -> &mut Self {
         assert!(!suggestion.is_empty());
+        debug_assert!(
+            !(suggestion.iter().any(|(sp, text)| sp.is_empty() && text.is_empty())),
+            "Span must not be empty and have no suggestion"
+        );
+
         self.push_suggestion(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: suggestion
@@ -644,6 +649,10 @@ impl Diagnostic {
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
+        debug_assert!(
+            !(sp.is_empty() && suggestion.to_string().is_empty()),
+            "Span must not be empty and have no suggestion"
+        );
         self.push_suggestion(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: vec![SubstitutionPart { snippet: suggestion.to_string(), span: sp }],
@@ -684,6 +693,12 @@ impl Diagnostic {
     ) -> &mut Self {
         let mut suggestions: Vec<_> = suggestions.collect();
         suggestions.sort();
+
+        debug_assert!(
+            !(sp.is_empty() && suggestions.iter().any(|suggestion| suggestion.is_empty())),
+            "Span must not be empty and have no suggestion"
+        );
+
         let substitutions = suggestions
             .into_iter()
             .map(|snippet| Substitution { parts: vec![SubstitutionPart { snippet, span: sp }] })
@@ -705,8 +720,18 @@ impl Diagnostic {
         suggestions: impl Iterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self {
+        let suggestions: Vec<_> = suggestions.collect();
+        debug_assert!(
+            !(suggestions
+                .iter()
+                .flat_map(|suggs| suggs)
+                .any(|(sp, suggestion)| sp.is_empty() && suggestion.is_empty())),
+            "Span must not be empty and have no suggestion"
+        );
+
         self.push_suggestion(CodeSuggestion {
             substitutions: suggestions
+                .into_iter()
                 .map(|sugg| Substitution {
                     parts: sugg
                         .into_iter()

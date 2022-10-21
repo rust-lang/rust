@@ -3051,24 +3051,27 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .map_or(false, |s| s.trim_end().ends_with('<'));
 
             let is_global = poly_trait_ref.trait_ref.path.is_global();
-            let sugg = Vec::from_iter([
-                (
-                    self_ty.span.shrink_to_lo(),
-                    format!(
-                        "{}dyn {}",
-                        if needs_bracket { "<" } else { "" },
-                        if is_global { "(" } else { "" },
-                    ),
+
+            let mut sugg = Vec::from_iter([(
+                self_ty.span.shrink_to_lo(),
+                format!(
+                    "{}dyn {}",
+                    if needs_bracket { "<" } else { "" },
+                    if is_global { "(" } else { "" },
                 ),
-                (
+            )]);
+
+            if is_global || needs_bracket {
+                sugg.push((
                     self_ty.span.shrink_to_hi(),
                     format!(
                         "{}{}",
                         if is_global { ")" } else { "" },
                         if needs_bracket { ">" } else { "" },
                     ),
-                ),
-            ]);
+                ));
+            }
+
             if self_ty.span.edition() >= Edition::Edition2021 {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";
