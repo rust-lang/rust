@@ -1,5 +1,6 @@
 use super::{find_testable_code, plain_text_summary, short_markdown_summary};
 use super::{ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, Markdown, MarkdownItemInfo};
+use rustc_span::create_default_session_globals_then;
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 
 #[test]
@@ -308,4 +309,66 @@ fn test_find_testable_code_line() {
     t("\n ```rust\n```", &[2]);
     t("```rust\n```\n```rust\n```", &[1, 3]);
     t("```rust\n```\n ```rust\n```", &[1, 3]);
+}
+
+#[test]
+fn test_handling_of_starting_and_trailing_empty_lines() {
+    fn t(input: &str, expect: &str) {
+        let mut map = IdMap::new();
+        let output = Markdown {
+            content: input,
+            links: &[],
+            ids: &mut map,
+            error_codes: ErrorCodes::Yes,
+            edition: DEFAULT_EDITION,
+            playground: &None,
+            heading_offset: HeadingOffset::H2,
+        }
+        .into_string();
+        assert_eq!(output, expect, "original: {}", input);
+    }
+
+    create_default_session_globals_then(|| {
+        t(
+            "\
+```
+// hello
+
+
+f();
+
+// bye
+```",
+            r#"
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// hello
+
+
+</span>f();
+
+<span class="comment">// bye</span></code></pre></div>
+"#,
+        );
+        t(
+            "\
+```
+
+
+// hello
+
+f();
+
+// bye
+
+
+
+```",
+            r#"
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// hello
+
+</span>f();
+
+<span class="comment">// bye</span></code></pre></div>
+"#,
+        );
+    });
 }
