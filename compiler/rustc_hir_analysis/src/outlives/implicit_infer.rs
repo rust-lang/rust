@@ -166,61 +166,60 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 debug!("Adt");
                 if let Some(unsubstituted_predicates) = global_inferred_outlives.get(&adt.did()) {
                     for (unsubstituted_predicate, stack) in &unsubstituted_predicates.0 {
-                        // `unsubstituted_predicate` is `U: 'b` in the
-                        // example above.  So apply the substitution to
-                        // get `T: 'a` (or `predicate`):
-                        let predicate = unsubstituted_predicates
-                            .rebind(*unsubstituted_predicate)
-                            .subst(tcx, substs);
-
                         // We must detect cycles in the inference. If we don't, rustc can hang.
                         // Cycles can be formed by associated types on traits when they are used like so:
                         //
                         // ```
-                        // trait Trait<'a> { type Assoc: 'a; }
-                        // struct Node<'node, T: Trait<'node>>(Var<'node, T::Assoc>, Option<T::Assoc>);
+                        // trait Trait<'a> {
+                        //     type Assoc: 'a;
+                        // }
+                        // struct Node<'node, T: Trait<'node>> {
+                        //     var: Var<'node, T::Assoc>,
+                        // }
+                        // struct Var<'var, R: 'var> {
+                        //     node: Box<Node<'var, RGen<R>>>,
+                        // }
                         // struct RGen<R>(std::marker::PhantomData<R>);
-                        // impl<'a, R: 'a> Trait<'a> for RGen<R> { type Assoc = R; }
-                        // struct Var<'var, R: 'var>(Box<Node<'var, RGen<R>>>);
+                        // impl<'a, R: 'a> Trait<'a> for RGen<R> {
+                        //     type Assoc = R; // works with () too
+                        // }
                         // ```
                         //
                         // Visiting Node, we walk the fields and find a Var. Var has an explicit
                         //     R                         : 'var.
-                        // Node finds this on its Var field, substitutes through, and gets an inferred
+                        // Node finds this in check_explicit_predicates.
+                        // Node substitutes its type parameters for Var through, and gets an inferred
                         //     <T as Trait<'node>>::Assoc: 'node.
-                        // Visiting Var, we walk the fields and find a Node. So Var then picks up
-                        // Node's new inferred predicate (in global_inferred_outlives) and substitutes
-                        // the types it passed to Node ('var for 'node, RGen<R> for T).
-                        // So Var gets
+                        // Visiting Var, we walk the fields and find Node, for which there us an
+                        // unsubstituted predicate in the global map. So Var gets
                         //     <RGen<R> as Trait<'var>>::Assoc: 'var
                         // But Node contains a Var. So Node gets
                         //     <RGen<<T as Trait<'node>>::Assoc> as Trait<'node>>::Assoc 'node
                         // Var gets
                         //     <RGen<<RGen<R> as Trait<'var>>::Assoc> as Trait<'var>>::Assoc: 'var
-                        // Etc. This goes on forever.
                         //
-                        // We cut off the cycle formation by tracking in a stack the defs that
-                        // have picked up a substituted predicate each time we produce an edge,
-                        // and don't insert a predicate that is simply a substituted version of
-                        // one we've already seen and added.
+                        // Etc. This goes on forever. The fact that RGen<R>::Assoc *is* R is
+                        // irrelevant. It is simply that both types find a way to add a bigger
+                        // predicate each time.
+                        //
+                        // The outlives requirements propagate through the crate's types like a
+                        // graph walk, so to detect this cycle we can just track visited nodes in
+                        // our branch by pushing them on a stack when we move through the graph.
+                        // An edge move is when a type picks up a predicate from one of its fields
+                        // that it hasn't seen before. We store the stacks alongside the predicates,
+                        // so they carry their provenance with them through the current and
+                        // subsequent rounds of crate-wide inference.
                         //
                         // Try: RUSTC_LOG=rustc_hir_analysis::outlives=debug \
-                        //      rustc +stage1 src/test/ui/typeck/issue-102966.rs 2>&1 \
+                        //      rustc +stage1 src/test/ui/rfc-2093-infer-outlives/issue-102966.rs 2>&1 \
                         //      | rg '(grew|cycle)'
                         //
-                        // We do not currently treat a type with an explicit bound as the first
-                        // in the visit stack. So Var here does not appear first in the stack,
-                        // Node does, and each of Node and Var will get a version of
-                        // `<RGen<R> as Trait<'node>>::Assoc: 'node` before the cycle is cut at
-                        // Node. This avoids having a second equivalent bound on Node, and also
-                        // having RGen involved in Node's predicates (which would be silly).
-                        //
-                        // It is not clear whether cyclically-substituted versions of bounds we
-                        // already have are always redundant/unnecessary to add to Self.
-                        // This solution avoids digging into `impl Trait for RGen` to find that it
-                        // unifies with an existing bound but it is really a guess that this
-                        // cyclic substitution cannot add valuable information. There may be
-                        // situations when an error is appropriate.
+                        // We do not treat a type with an explicit bound as the first in the visit
+                        // stack. So in the example, Node appears first in the stack, and each of
+                        // Node and Var will get a new bound constraining an ::Assoc projection
+                        // before the cycle is cut at Node. If Var were already in the visit stack,
+                        // it would not receive the projection bound, which is something it needs.
+
                         if stack.iter().any(|&(did, _span)| did == self_did) {
                             debug!(
                                 "detected cycle in inferred_outlives_predicates,\
@@ -228,12 +227,16 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                                 {self_did:?} found in {stack:?}"
                             );
                         } else {
+                            // `unsubstituted_predicate` is `U: 'b` in Example 1 above.
+                            // So apply the substitution to get `T: 'a` (or `predicate`):
+                            let predicate = unsubstituted_predicates
+                                .rebind(*unsubstituted_predicate)
+                                .subst(tcx, substs);
+
                             insert_outlives_predicate(
                                 tcx,
                                 predicate.0,
                                 predicate.1,
-                                // Treat the top-level definition we are currently walking the fields of as the
-                                // type visited in the DefStack. Not the field type.
                                 self_did,
                                 field_span,
                                 required_predicates,
