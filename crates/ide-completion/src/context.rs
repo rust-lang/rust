@@ -1,4 +1,4 @@
-//! See `CompletionContext` structure.
+//! See [`CompletionContext`] structure.
 
 mod analysis;
 #[cfg(test)]
@@ -23,7 +23,10 @@ use syntax::{
 };
 use text_edit::Indel;
 
-use crate::CompletionConfig;
+use crate::{
+    context::analysis::{expand_and_analyze, AnalysisResult},
+    CompletionConfig,
+};
 
 const COMPLETION_MARKER: &str = "intellijRulezz";
 
@@ -561,15 +564,27 @@ impl<'a> CompletionContext<'a> {
             let edit = Indel::insert(offset, COMPLETION_MARKER.to_string());
             parse.reparse(&edit).tree()
         };
-        let fake_ident_token =
-            file_with_fake_ident.syntax().token_at_offset(offset).right_biased()?;
 
+        // always pick the token to the immediate left of the cursor, as that is what we are actually
+        // completing on
         let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
-        let token = sema.descend_into_macros_single(original_token.clone());
+
+        let AnalysisResult {
+            analysis,
+            expected: (expected_type, expected_name),
+            qualifier_ctx,
+            token,
+            offset,
+        } = expand_and_analyze(
+            &sema,
+            original_file.syntax().clone(),
+            file_with_fake_ident.syntax().clone(),
+            offset,
+            &original_token,
+        )?;
 
         // adjust for macro input, this still fails if there is no token written yet
-        let scope_offset = if original_token == token { offset } else { token.text_range().end() };
-        let scope = sema.scope_at_offset(&token.parent()?, scope_offset)?;
+        let scope = sema.scope_at_offset(&token.parent()?, offset)?;
 
         let krate = scope.krate();
         let module = scope.module();
@@ -583,7 +598,7 @@ impl<'a> CompletionContext<'a> {
 
         let depth_from_crate_root = iter::successors(module.parent(db), |m| m.parent(db)).count();
 
-        let mut ctx = CompletionContext {
+        let ctx = CompletionContext {
             sema,
             scope,
             db,
@@ -593,19 +608,13 @@ impl<'a> CompletionContext<'a> {
             token,
             krate,
             module,
-            expected_name: None,
-            expected_type: None,
-            qualifier_ctx: Default::default(),
+            expected_name,
+            expected_type,
+            qualifier_ctx,
             locals,
             depth_from_crate_root,
         };
-        let ident_ctx = ctx.expand_and_analyze(
-            original_file.syntax().clone(),
-            file_with_fake_ident.syntax().clone(),
-            offset,
-            fake_ident_token,
-        )?;
-        Some((ctx, ident_ctx))
+        Some((ctx, analysis))
     }
 }
 

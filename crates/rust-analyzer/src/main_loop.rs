@@ -425,7 +425,9 @@ impl GlobalState {
     fn handle_task(&mut self, prime_caches_progress: &mut Vec<PrimeCachesProgress>, task: Task) {
         match task {
             Task::Response(response) => self.respond(response),
-            Task::Retry(req) => self.on_request(req),
+            // Only retry requests that haven't been cancelled. Otherwise we do unnecessary work.
+            Task::Retry(req) if !self.is_completed(&req) => self.on_request(req),
+            Task::Retry(_) => (),
             Task::Diagnostics(diagnostics_per_file) => {
                 for (file_id, diagnostics) in diagnostics_per_file {
                     self.diagnostics.set_native_diagnostics(file_id, diagnostics)

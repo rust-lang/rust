@@ -156,6 +156,8 @@ pub(super) fn find_importable_node(
     {
         ImportAssets::for_method_call(&method_under_caret, &ctx.sema)
             .zip(Some(method_under_caret.syntax().clone().into()))
+    } else if let Some(_) = ctx.find_node_at_offset_with_descend::<ast::Param>() {
+        None
     } else if let Some(pat) = ctx
         .find_node_at_offset_with_descend::<ast::IdentPat>()
         .filter(ast::IdentPat::is_simple_ident)
@@ -266,6 +268,20 @@ mod tests {
         let labels = assists.iter().map(|assist| assist.label.to_string()).collect::<Vec<_>>();
 
         assert_eq!(labels, order);
+    }
+
+    #[test]
+    fn ignore_parameter_name() {
+        check_assist_not_applicable(
+            auto_import,
+            r"
+            mod foo {
+                pub mod bar {}
+            }
+
+            fn foo(bar$0: &str) {}
+            ",
+        );
     }
 
     #[test]

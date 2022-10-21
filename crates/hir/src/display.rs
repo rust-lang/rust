@@ -492,6 +492,9 @@ impl HirDisplay for TypeAlias {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         let data = f.db.type_alias_data(self.id);
         write!(f, "type {}", data.name)?;
+        let def_id = GenericDefId::TypeAliasId(self.id);
+        write_generic_params(def_id, f)?;
+        write_where_clause(def_id, f)?;
         if !data.bounds.is_empty() {
             f.write_str(": ")?;
             f.write_joined(&data.bounds, " + ")?;
