@@ -362,7 +362,7 @@ macro_rules! dbg {
 
 #[macro_export]
 #[cfg_attr(not(test), rustc_diagnostic_item = "dbg_macro")]
-#[unstable(feature = "dbg_macro")]
+#[feature(pdbg)]
 macro_rules! pdbg {
     () => {
         $crate::eprintln!()
