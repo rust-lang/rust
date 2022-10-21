@@ -1,5 +1,6 @@
 // run-rustfix
 #![allow(unused)]
+#![feature(custom_inner_attributes)]
 #![warn(clippy::rewind_instead_of_seek_to_start)]
 
 use std::fs::OpenOptions;
@@ -86,6 +87,48 @@ fn main() {
     seek_to_5(&mut f);
     seek_to_end(&mut f);
     seek_to_start(&mut f);
+
+    let mut buf = String::new();
+    f.read_to_string(&mut buf).unwrap();
+
+    assert_eq!(&buf, hello);
+}
+
+fn msrv_1_54() {
+    #![clippy::msrv = "1.54"]
+
+    let mut f = OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .open("foo.txt")
+        .unwrap();
+
+    let hello = "Hello!\n";
+    write!(f, "{hello}").unwrap();
+
+    f.seek(SeekFrom::Start(0));
+
+    let mut buf = String::new();
+    f.read_to_string(&mut buf).unwrap();
+
+    assert_eq!(&buf, hello);
+}
+
+fn msrv_1_55() {
+    #![clippy::msrv = "1.55"]
+
+    let mut f = OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .open("foo.txt")
+        .unwrap();
+
+    let hello = "Hello!\n";
+    write!(f, "{hello}").unwrap();
+
+    f.rewind();
 
     let mut buf = String::new();
     f.read_to_string(&mut buf).unwrap();

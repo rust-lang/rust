@@ -1,5 +1,5 @@
 error: used `seek` to go to the start of the stream
-  --> $DIR/rewind_instead_of_seek_to_start.rs:53:7
+  --> $DIR/rewind_instead_of_seek_to_start.rs:54:7
    |
 LL |     t.seek(SeekFrom::Start(0));
    |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `rewind()`
@@ -7,10 +7,16 @@ LL |     t.seek(SeekFrom::Start(0));
    = note: `-D clippy::rewind-instead-of-seek-to-start` implied by `-D warnings`
 
 error: used `seek` to go to the start of the stream
-  --> $DIR/rewind_instead_of_seek_to_start.rs:58:7
+  --> $DIR/rewind_instead_of_seek_to_start.rs:59:7
    |
 LL |     t.seek(SeekFrom::Start(0));
    |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `rewind()`
 
-error: aborting due to 2 previous errors
+error: used `seek` to go to the start of the stream
+  --> $DIR/rewind_instead_of_seek_to_start.rs:131:7
+   |
+LL |     f.seek(SeekFrom::Start(0));
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `rewind()`
+
+error: aborting due to 3 previous errors
 

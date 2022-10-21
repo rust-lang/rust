@@ -3638,7 +3638,9 @@ impl Methods {
                     vec_resize_to_zero::check(cx, expr, count_arg, default_arg, span);
                 },
                 ("seek", [arg]) => {
-                    rewind_instead_of_seek_to_start::check(cx, expr, recv, arg, span);
+                    if meets_msrv(self.msrv, msrvs::SEEK_REWIND) {
+                        rewind_instead_of_seek_to_start::check(cx, expr, recv, arg, span);
+                    }
                 },
                 ("sort", []) => {
                     stable_sort_primitive::check(cx, expr, recv);
