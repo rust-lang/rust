@@ -1,5 +1,5 @@
 error: equal expressions as operands to `==`
-  --> $DIR/eq_op.rs:8:13
+  --> $DIR/eq_op.rs:9:13
    |
 LL |     let _ = 1 == 1;
    |             ^^^^^^
@@ -7,163 +7,163 @@ LL |     let _ = 1 == 1;
    = note: `-D clippy::eq-op` implied by `-D warnings`
 
 error: equal expressions as operands to `==`
-  --> $DIR/eq_op.rs:9:13
+  --> $DIR/eq_op.rs:10:13
    |
 LL |     let _ = "no" == "no";
    |             ^^^^^^^^^^^^
 
 error: equal expressions as operands to `!=`
-  --> $DIR/eq_op.rs:11:13
+  --> $DIR/eq_op.rs:12:13
    |
 LL |     let _ = false != false;
    |             ^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `<`
-  --> $DIR/eq_op.rs:12:13
+  --> $DIR/eq_op.rs:13:13
    |
 LL |     let _ = 1.5 < 1.5;
    |             ^^^^^^^^^
 
 error: equal expressions as operands to `>=`
-  --> $DIR/eq_op.rs:13:13
+  --> $DIR/eq_op.rs:14:13
    |
 LL |     let _ = 1u64 >= 1u64;
    |             ^^^^^^^^^^^^
 
 error: equal expressions as operands to `&`
-  --> $DIR/eq_op.rs:16:13
+  --> $DIR/eq_op.rs:17:13
    |
 LL |     let _ = (1u32 as u64) & (1u32 as u64);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `^`
-  --> $DIR/eq_op.rs:19:17
+  --> $DIR/eq_op.rs:20:17
    |
 LL |         let _ = 1 ^ ((((((1))))));
    |                 ^^^^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `<`
-  --> $DIR/eq_op.rs:23:13
+  --> $DIR/eq_op.rs:24:13
    |
 LL |     let _ = (-(2) < -(2));
    |             ^^^^^^^^^^^^^
 
 error: equal expressions as operands to `==`
-  --> $DIR/eq_op.rs:24:13
+  --> $DIR/eq_op.rs:25:13
    |
 LL |     let _ = ((1 + 1) & (1 + 1) == (1 + 1) & (1 + 1));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `&`
-  --> $DIR/eq_op.rs:24:14
+  --> $DIR/eq_op.rs:25:14
    |
 LL |     let _ = ((1 + 1) & (1 + 1) == (1 + 1) & (1 + 1));
    |              ^^^^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `&`
-  --> $DIR/eq_op.rs:24:35
+  --> $DIR/eq_op.rs:25:35
    |
 LL |     let _ = ((1 + 1) & (1 + 1) == (1 + 1) & (1 + 1));
    |                                   ^^^^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `==`
-  --> $DIR/eq_op.rs:25:13
+  --> $DIR/eq_op.rs:26:13
    |
 LL |     let _ = (1 * 2) + (3 * 4) == 1 * 2 + 3 * 4;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `!=`
-  --> $DIR/eq_op.rs:28:13
+  --> $DIR/eq_op.rs:29:13
    |
 LL |     let _ = ([1] != [1]);
    |             ^^^^^^^^^^^^
 
 error: equal expressions as operands to `!=`
-  --> $DIR/eq_op.rs:29:13
+  --> $DIR/eq_op.rs:30:13
    |
 LL |     let _ = ((1, 2) != (1, 2));
    |             ^^^^^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `==`
-  --> $DIR/eq_op.rs:33:13
+  --> $DIR/eq_op.rs:34:13
    |
 LL |     let _ = 1 + 1 == 2;
    |             ^^^^^^^^^^
 
 error: equal expressions as operands to `==`
-  --> $DIR/eq_op.rs:34:13
+  --> $DIR/eq_op.rs:35:13
    |
 LL |     let _ = 1 - 1 == 0;
    |             ^^^^^^^^^^
 
 error: equal expressions as operands to `-`
-  --> $DIR/eq_op.rs:34:13
+  --> $DIR/eq_op.rs:35:13
    |
 LL |     let _ = 1 - 1 == 0;
    |             ^^^^^
 
 error: equal expressions as operands to `-`
-  --> $DIR/eq_op.rs:36:13
+  --> $DIR/eq_op.rs:37:13
    |
 LL |     let _ = 1 - 1;
    |             ^^^^^
 
 error: equal expressions as operands to `/`
-  --> $DIR/eq_op.rs:37:13
+  --> $DIR/eq_op.rs:38:13
    |
 LL |     let _ = 1 / 1;
    |             ^^^^^
 
 error: equal expressions as operands to `&&`
-  --> $DIR/eq_op.rs:38:13
+  --> $DIR/eq_op.rs:39:13
    |
 LL |     let _ = true && true;
    |             ^^^^^^^^^^^^
 
 error: equal expressions as operands to `||`
-  --> $DIR/eq_op.rs:40:13
+  --> $DIR/eq_op.rs:41:13
    |
 LL |     let _ = true || true;
    |             ^^^^^^^^^^^^
 
 error: equal expressions as operands to `&&`
-  --> $DIR/eq_op.rs:45:13
+  --> $DIR/eq_op.rs:46:13
    |
 LL |     let _ = a == b && b == a;
    |             ^^^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `&&`
-  --> $DIR/eq_op.rs:46:13
+  --> $DIR/eq_op.rs:47:13
    |
 LL |     let _ = a != b && b != a;
    |             ^^^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `&&`
-  --> $DIR/eq_op.rs:47:13
+  --> $DIR/eq_op.rs:48:13
    |
 LL |     let _ = a < b && b > a;
    |             ^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `&&`
-  --> $DIR/eq_op.rs:48:13
+  --> $DIR/eq_op.rs:49:13
    |
 LL |     let _ = a <= b && b >= a;
    |             ^^^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `==`
-  --> $DIR/eq_op.rs:51:13
+  --> $DIR/eq_op.rs:52:13
    |
 LL |     let _ = a == a;
    |             ^^^^^^
 
 error: equal expressions as operands to `/`
-  --> $DIR/eq_op.rs:61:20
+  --> $DIR/eq_op.rs:62:20
    |
 LL |     const D: u32 = A / A;
    |                    ^^^^^
 
 error: equal expressions as operands to `==`
-  --> $DIR/eq_op.rs:92:5
+  --> $DIR/eq_op.rs:93:5
    |
 LL |     (n1.inner.0).0 == (n1.inner.0).0 && (n1.inner.1).0 == (n2.inner.1).0 && (n1.inner.2).0 == (n2.inner.2).0
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
