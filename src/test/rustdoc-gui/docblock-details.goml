@@ -21,3 +21,14 @@ assert-property: (".top-doc .docblock summary h4", {"offsetHeight": "33"})
 assert-css: (".top-doc .docblock summary h4", {"margin-top": "15px", "margin-bottom": "5px"})
 // So `33 + 15 + 5` == `53`
 assert-property: (".top-doc .docblock summary", {"offsetHeight": "53"})
+
+// We now check the `<summary>` on a method.
+assert-css: (
+    ".method-toggle .docblock summary h4",
+    {"border-bottom-width": "0px"},
+)
+// This allows to ensure that summary is on one line only!
+assert-property: (".method-toggle .docblock summary h4", {"offsetHeight": "30"})
+assert-css: (".method-toggle .docblock summary h4", {"margin-top": "15px", "margin-bottom": "5px"})
+// So `30 + 15 + 5` == `50`
+assert-property: (".method-toggle .docblock summary", {"offsetHeight": "50"})

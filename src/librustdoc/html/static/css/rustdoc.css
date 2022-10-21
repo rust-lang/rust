@@ -1980,8 +1980,8 @@ in storage.js
 	}
 }
 
-.method-toggle summary,
-.implementors-toggle summary,
+.method-toggle > summary,
+.implementors-toggle > summary,
 .impl,
 #implementors-list > .docblock,
 .impl-items > section,
