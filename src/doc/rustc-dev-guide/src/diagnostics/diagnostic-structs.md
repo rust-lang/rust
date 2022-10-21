@@ -17,13 +17,13 @@ shown below:
 
 ```rust,ignore
 #[derive(Diagnostic)]
-#[diag(hir_analysis::field_already_declared, code = "E0124")]
+#[diag(hir_analysis_field_already_declared, code = "E0124")]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(hir_analysis::previous_decl_label)]
+    #[label(hir_analysis_previous_decl_label)]
     pub prev_span: Span,
 }
 ```
@@ -113,15 +113,15 @@ In the end, the `Diagnostic` derive will generate an implementation of
 ```rust,ignore
 impl IntoDiagnostic<'_> for FieldAlreadyDeclared {
     fn into_diagnostic(self, handler: &'_ rustc_errors::Handler) -> DiagnosticBuilder<'_> {
-        let mut diag = handler.struct_err(rustc_errors::fluent::hir_analysis::field_already_declared);
+        let mut diag = handler.struct_err(rustc_errors::fluent::hir_analysis_field_already_declared);
         diag.set_span(self.span);
         diag.span_label(
             self.span,
-            rustc_errors::fluent::hir_analysis::label
+            rustc_errors::fluent::hir_analysis_label
         );
         diag.span_label(
             self.prev_span,
-            rustc_errors::fluent::hir_analysis::previous_decl_label
+            rustc_errors::fluent::hir_analysis_previous_decl_label
         );
         diag
     }
@@ -151,12 +151,10 @@ following attributes:
   - Slug (_Mandatory_)
     - Uniquely identifies the diagnostic and corresponds to its Fluent message,
       mandatory.
-    - A path to an item in `rustc_errors::fluent`. Always in a module starting
-      with a Fluent resource name (which is typically the name of the crate
-      that the diagnostic is from), e.g.
-      `rustc_errors::fluent::hir_analysis::field_already_declared`
+    - A path to an item in `rustc_errors::fluent`, e.g.
+      `rustc_errors::fluent::hir_analysis_field_already_declared`
       (`rustc_errors::fluent` is implicit in the attribute, so just
-      `hir_analysis::field_already_declared`).
+      `hir_analysis_field_already_declared`).
     - See [translation documentation](./translation.md).
   - `code = "..."` (_Optional_)
     - Specifies the error code.
@@ -191,14 +189,12 @@ following attributes:
   - _Applied to `(Span, MachineApplicability)` or `Span` fields._
   - Adds a suggestion subdiagnostic.
   - Slug (_Mandatory_)
-    - A path to an item in `rustc_errors::fluent`. Always in a module starting
-      with a Fluent resource name (which is typically the name of the crate
-      that the diagnostic is from), e.g.
-      `rustc_errors::fluent::hir_analysis::field_already_declared`
+    - A path to an item in `rustc_errors::fluent`, e.g.
+      `rustc_errors::fluent::hir_analysis_field_already_declared`
       (`rustc_errors::fluent` is implicit in the attribute, so just
-      `hir_analysis::field_already_declared`). Fluent attributes for all messages
+      `hir_analysis_field_already_declared`). Fluent attributes for all messages
       exist as top-level items in that module (so `hir_analysis_message.attr` is just
-      `hir_analysis::attr`).
+      `attr`).
     - See [translation documentation](./translation.md).
     - Defaults to `rustc_errors::fluent::_subdiag::suggestion` (or
     - `.suggestion` in Fluent).
@@ -233,12 +229,12 @@ shown below:
 ```rust
 #[derive(Subdiagnostic)]
 pub enum ExpectedReturnTypeLabel<'tcx> {
-    #[label(hir_analysis::expected_default_return_type)]
+    #[label(hir_analysis_expected_default_return_type)]
     Unit {
         #[primary_span]
         span: Span,
     },
-    #[label(hir_analysis::expected_return_type)]
+    #[label(hir_analysis_expected_return_type)]
     Other {
         #[primary_span]
         span: Span,
@@ -315,11 +311,11 @@ impl<'tcx> AddToDiagnostic for ExpectedReturnTypeLabel<'tcx> {
         use rustc_errors::{Applicability, IntoDiagnosticArg};
         match self {
             ExpectedReturnTypeLabel::Unit { span } => {
-                diag.span_label(span, rustc_errors::fluent::hir_analysis::expected_default_return_type)
+                diag.span_label(span, rustc_errors::fluent::hir_analysis_expected_default_return_type)
             }
             ExpectedReturnTypeLabel::Other { span, expected } => {
                 diag.set_arg("expected", expected);
-                diag.span_label(span, rustc_errors::fluent::hir_analysis::expected_return_type)
+                diag.span_label(span, rustc_errors::fluent::hir_analysis_expected_return_type)
             }
 
         }
@@ -342,22 +338,18 @@ diagnostic struct.
   - Slug (_Mandatory_)
     - Uniquely identifies the diagnostic and corresponds to its Fluent message,
       mandatory.
-    - A path to an item in `rustc_errors::fluent`. Always in a module starting
-      with a Fluent resource name (which is typically the name of the crate
-      that the diagnostic is from), e.g.
-      `rustc_errors::fluent::hir_analysis::field_already_declared`
+    - A path to an item in `rustc_errors::fluent`, e.g.
+      `rustc_errors::fluent::hir_analysis_field_already_declared`
       (`rustc_errors::fluent` is implicit in the attribute, so just
-      `hir_analysis::field_already_declared`).
+      `hir_analysis_field_already_declared`).
     - See [translation documentation](./translation.md).
 - `#[suggestion{,_hidden,_short,_verbose}(slug, code = "...", applicability = "...")]`
   - _Applied to struct or enum variant. Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
   - Defines the type to be representing a suggestion.
   - Slug (_Mandatory_)
-    - A path to an item in `rustc_errors::fluent`. Always in a module starting
-      with a Fluent resource name (which is typically the name of the crate
-      that the diagnostic is from), e.g.
-      `rustc_errors::fluent::hir_analysis::field_already_declared`
+    - A path to an item in `rustc_errors::fluent`, e.g.
+      `rustc_errors::fluent::hir_analysis_field_already_declared`
       (`rustc_errors::fluent` is implicit in the attribute, so just
       `hir_analysis::field_already_declared`). Fluent attributes for all messages
       exist as top-level items in that module (so `hir_analysis_message.attr` is just
