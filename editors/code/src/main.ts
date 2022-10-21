@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 
 import * as commands from "./commands";
-import { Ctx, Workspace } from "./ctx";
+import { CommandFactory, Ctx, Workspace } from "./ctx";
 import { isRustDocument } from "./util";
 import { activateTaskProvider } from "./tasks";
 import { setContextValue } from "./util";
@@ -57,7 +57,7 @@ export async function activate(
               }
             : { kind: "Workspace Folder" };
 
-    const ctx = new Ctx(context, workspace);
+    const ctx = new Ctx(context, workspace, createCommands());
     // VS Code doesn't show a notification when an extension fails to activate
     // so we do it ourselves.
     const api = await activateServer(ctx).catch((err) => {
@@ -75,8 +75,6 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
         ctx.pushExtCleanup(activateTaskProvider(ctx.config));
     }
 
-    await initCommonContext(ctx);
-
     vscode.workspace.onDidChangeConfiguration(
         async (_) => {
             await ctx
@@ -91,85 +89,78 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
     return ctx.clientFetcher();
 }
 
-async function initCommonContext(ctx: Ctx) {
-    // Register a "dumb" onEnter command for the case where server fails to
-    // start.
-    //
-    // FIXME: refactor command registration code such that commands are
-    // **always** registered, even if the server does not start. Use API like
-    // this perhaps?
-    //
-    // ```TypeScript
-    // registerCommand(
-    //    factory: (Ctx) => ((Ctx) => any),
-    //    fallback: () => any = () => vscode.window.showErrorMessage(
-    //        "rust-analyzer is not available"
-    //    ),
-    // )
-    const defaultOnEnter = vscode.commands.registerCommand("rust-analyzer.onEnter", () =>
-        vscode.commands.executeCommand("default:type", { text: "\n" })
-    );
-    ctx.pushExtCleanup(defaultOnEnter);
+function createCommands(): Record<string, CommandFactory> {
+    return {
+        onEnter: {
+            enabled: commands.onEnter,
+            disabled: (_) => () => vscode.commands.executeCommand("default:type", { text: "\n" }),
+        },
+        reload: {
+            enabled: (ctx) => async () => {
+                void vscode.window.showInformationMessage("Reloading rust-analyzer...");
+                // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
+                await ctx.stop();
+                await ctx.activate();
+            },
+            disabled: (ctx) => async () => {
+                void vscode.window.showInformationMessage("Reloading rust-analyzer...");
+                await ctx.activate();
+            },
+        },
+        startServer: {
+            enabled: (ctx) => async () => {
+                await ctx.activate();
+            },
+            disabled: (ctx) => async () => {
+                await ctx.activate();
+            },
+        },
+        stopServer: {
+            enabled: (ctx) => async () => {
+                // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
+                await ctx.stop();
+                ctx.setServerStatus({
+                    health: "ok",
+                    quiescent: true,
+                    message: "server is not running",
+                });
+            },
+        },
 
-    // Commands which invokes manually via command palette, shortcut, etc.
-    ctx.registerCommand("reload", (_) => async () => {
-        void vscode.window.showInformationMessage("Reloading rust-analyzer...");
-        // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
-        await ctx.disposeClient();
-        await ctx.activate();
-    });
-
-    ctx.registerCommand("startServer", (_) => async () => {
-        await ctx.activate();
-    });
-    ctx.registerCommand("stopServer", (_) => async () => {
-        // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
-        await ctx.disposeClient();
-        ctx.setServerStatus({
-            health: "ok",
-            quiescent: true,
-            message: "server is not running",
-        });
-    });
-    ctx.registerCommand("analyzerStatus", commands.analyzerStatus);
-    ctx.registerCommand("memoryUsage", commands.memoryUsage);
-    ctx.registerCommand("shuffleCrateGraph", commands.shuffleCrateGraph);
-    ctx.registerCommand("reloadWorkspace", commands.reloadWorkspace);
-    ctx.registerCommand("matchingBrace", commands.matchingBrace);
-    ctx.registerCommand("joinLines", commands.joinLines);
-    ctx.registerCommand("parentModule", commands.parentModule);
-    ctx.registerCommand("syntaxTree", commands.syntaxTree);
-    ctx.registerCommand("viewHir", commands.viewHir);
-    ctx.registerCommand("viewFileText", commands.viewFileText);
-    ctx.registerCommand("viewItemTree", commands.viewItemTree);
-    ctx.registerCommand("viewCrateGraph", commands.viewCrateGraph);
-    ctx.registerCommand("viewFullCrateGraph", commands.viewFullCrateGraph);
-    ctx.registerCommand("expandMacro", commands.expandMacro);
-    ctx.registerCommand("run", commands.run);
-    ctx.registerCommand("copyRunCommandLine", commands.copyRunCommandLine);
-    ctx.registerCommand("debug", commands.debug);
-    ctx.registerCommand("newDebugConfig", commands.newDebugConfig);
-    ctx.registerCommand("openDocs", commands.openDocs);
-    ctx.registerCommand("openCargoToml", commands.openCargoToml);
-    ctx.registerCommand("peekTests", commands.peekTests);
-    ctx.registerCommand("moveItemUp", commands.moveItemUp);
-    ctx.registerCommand("moveItemDown", commands.moveItemDown);
-    ctx.registerCommand("cancelFlycheck", commands.cancelFlycheck);
-
-    ctx.registerCommand("ssr", commands.ssr);
-    ctx.registerCommand("serverVersion", commands.serverVersion);
-
-    // Internal commands which are invoked by the server.
-    ctx.registerCommand("runSingle", commands.runSingle);
-    ctx.registerCommand("debugSingle", commands.debugSingle);
-    ctx.registerCommand("showReferences", commands.showReferences);
-    ctx.registerCommand("applySnippetWorkspaceEdit", commands.applySnippetWorkspaceEditCommand);
-    ctx.registerCommand("resolveCodeAction", commands.resolveCodeAction);
-    ctx.registerCommand("applyActionGroup", commands.applyActionGroup);
-    ctx.registerCommand("gotoLocation", commands.gotoLocation);
-
-    ctx.registerCommand("linkToCommand", commands.linkToCommand);
-
-    defaultOnEnter.dispose();
-    ctx.registerCommand("onEnter", commands.onEnter);
+        analyzerStatus: { enabled: commands.analyzerStatus },
+        memoryUsage: { enabled: commands.memoryUsage },
+        shuffleCrateGraph: { enabled: commands.shuffleCrateGraph },
+        reloadWorkspace: { enabled: commands.reloadWorkspace },
+        matchingBrace: { enabled: commands.matchingBrace },
+        joinLines: { enabled: commands.joinLines },
+        parentModule: { enabled: commands.parentModule },
+        syntaxTree: { enabled: commands.syntaxTree },
+        viewHir: { enabled: commands.viewHir },
+        viewFileText: { enabled: commands.viewFileText },
+        viewItemTree: { enabled: commands.viewItemTree },
+        viewCrateGraph: { enabled: commands.viewCrateGraph },
+        viewFullCrateGraph: { enabled: commands.viewFullCrateGraph },
+        expandMacro: { enabled: commands.expandMacro },
+        run: { enabled: commands.run },
+        copyRunCommandLine: { enabled: commands.copyRunCommandLine },
+        debug: { enabled: commands.debug },
+        newDebugConfig: { enabled: commands.newDebugConfig },
+        openDocs: { enabled: commands.openDocs },
+        openCargoToml: { enabled: commands.openCargoToml },
+        peekTests: { enabled: commands.peekTests },
+        moveItemUp: { enabled: commands.moveItemUp },
+        moveItemDown: { enabled: commands.moveItemDown },
+        cancelFlycheck: { enabled: commands.cancelFlycheck },
+        ssr: { enabled: commands.ssr },
+        serverVersion: { enabled: commands.serverVersion },
+        // Internal commands which are invoked by the server.
+        applyActionGroup: { enabled: commands.applyActionGroup },
+        applySnippetWorkspaceEdit: { enabled: commands.applySnippetWorkspaceEditCommand },
+        debugSingle: { enabled: commands.debugSingle },
+        gotoLocation: { enabled: commands.gotoLocation },
+        linkToCommand: { enabled: commands.linkToCommand },
+        resolveCodeAction: { enabled: commands.resolveCodeAction },
+        runSingle: { enabled: commands.runSingle },
+        showReferences: { enabled: commands.showReferences },
+    };
 }
