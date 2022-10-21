@@ -5,9 +5,10 @@ use crate::config::{self, CrateType, InstrumentCoverage, OptLevel, OutputType, S
 use crate::errors::{
     CannotEnableCrtStaticLinux, CannotMixAndMatchSanitizers, LinkerPluginToWindowsNotSupported,
     NotCircumventFeature, ProfileSampleUseFileDoesNotExist, ProfileUseFileDoesNotExist,
-    SanitizerCfiEnabled, SanitizerNotSupported, SanitizersNotSupported,
+    SanitizerCfiEnabled, SanitizerNotSupported, SanitizersNotSupported, SkippingConstChecks,
     SplitDebugInfoUnstablePlatform, StackProtectorNotSupportedForTarget,
-    TargetRequiresUnwindTables, UnstableVirtualFunctionElimination, UnsupportedDwarfVersion,
+    TargetRequiresUnwindTables, UnleashedFeatureHelp, UnstableVirtualFunctionElimination,
+    UnsupportedDwarfVersion,
 };
 use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
@@ -232,21 +233,19 @@ impl Session {
         if !unleashed_features.is_empty() {
             let mut must_err = false;
             // Create a diagnostic pointing at where things got unleashed.
-            // FIXME(#100717): needs eager translation/lists
-            #[allow(rustc::untranslatable_diagnostic)]
-            #[allow(rustc::diagnostic_outside_of_impl)]
-            let mut diag = self.struct_warn("skipping const checks");
-            for &(span, feature_gate) in unleashed_features.iter() {
-                // FIXME: `span_label` doesn't do anything, so we use "help" as a hack.
-                if let Some(gate) = feature_gate {
-                    diag.span_help(span, &format!("skipping check for `{gate}` feature"));
-                    // The unleash flag must *not* be used to just "hack around" feature gates.
-                    must_err = true;
-                } else {
-                    diag.span_help(span, "skipping check that does not even have a feature gate");
-                }
-            }
-            diag.emit();
+            self.emit_warning(SkippingConstChecks {
+                unleashed_features: unleashed_features
+                    .iter()
+                    .map(|(span, gate)| {
+                        gate.map(|gate| {
+                            must_err = true;
+                            UnleashedFeatureHelp::Named { span: *span, gate }
+                        })
+                        .unwrap_or(UnleashedFeatureHelp::Unnamed { span: *span })
+                    })
+                    .collect(),
+            });
+
             // If we should err, make sure we did.
             if must_err && self.has_errors().is_none() {
                 // We have skipped a feature gate, and not run into other errors... reject.

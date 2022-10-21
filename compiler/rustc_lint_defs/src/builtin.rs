@@ -2878,7 +2878,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(naked_functions)]
+    /// #![feature(asm_experimental_arch, naked_functions)]
     ///
     /// use std::arch::asm;
     ///

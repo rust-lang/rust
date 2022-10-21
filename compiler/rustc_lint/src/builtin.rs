@@ -3176,6 +3176,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
+    /// # #![feature(asm_experimental_arch)]
     /// use std::arch::asm;
     ///
     /// fn main() {

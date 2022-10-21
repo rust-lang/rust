@@ -69,11 +69,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
                     "only a `panic!` in `if`-then statement",
                     |diag| {
                         // comments can be noisy, do not show them to the user
-                        diag.tool_only_span_suggestion(
-                                    expr.span.shrink_to_lo(),
-                                    "add comments back",
-                                    comments,
-                                    applicability);
+                        if !comments.is_empty() {
+                            diag.tool_only_span_suggestion(
+                                        expr.span.shrink_to_lo(),
+                                        "add comments back",
+                                        comments,
+                                        applicability);
+                        }
                         diag.span_suggestion(
                                     expr.span,
                                     "try instead",

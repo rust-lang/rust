@@ -131,6 +131,7 @@ pub(super) enum LifetimeElisionCandidate {
 }
 
 /// Only used for diagnostics.
+#[derive(Debug)]
 struct BaseError {
     msg: String,
     fallback_label: String,
@@ -138,6 +139,22 @@ struct BaseError {
     span_label: Option<(Span, &'static str)>,
     could_be_expr: bool,
     suggestion: Option<(Span, &'static str, String)>,
+}
+
+#[derive(Debug)]
+enum TypoCandidate {
+    Typo(TypoSuggestion),
+    Shadowed(Res),
+    None,
+}
+
+impl TypoCandidate {
+    fn to_opt_suggestion(self) -> Option<TypoSuggestion> {
+        match self {
+            TypoCandidate::Typo(sugg) => Some(sugg),
+            TypoCandidate::Shadowed(_) | TypoCandidate::None => None,
+        }
+    }
 }
 
 impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
@@ -496,7 +513,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
 
         // Try Levenshtein algorithm.
-        let typo_sugg = self.lookup_typo_candidate(path, source.namespace(), is_expected);
+        let typo_sugg =
+            self.lookup_typo_candidate(path, source.namespace(), is_expected).to_opt_suggestion();
         if path.len() == 1 && self.self_type_is_available() {
             if let Some(candidate) = self.lookup_assoc_candidate(ident, ns, is_expected) {
                 let self_is_available = self.self_value_is_available(path[0].ident.span);
@@ -660,7 +678,18 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let is_expected = &|res| source.is_expected(res);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let typo_sugg = self.lookup_typo_candidate(path, source.namespace(), is_expected);
+        if let TypoCandidate::Shadowed(res) = typo_sugg
+            && let Some(id) = res.opt_def_id()
+            && let Some(sugg_span) = self.r.opt_span(id)
+        {
+            err.span_label(
+                sugg_span,
+                format!("you might have meant to refer to this {}", res.descr()),
+            );
+            return true;
+        }
         let mut fallback = false;
+        let typo_sugg = typo_sugg.to_opt_suggestion();
         if !self.r.add_typo_suggestion(err, typo_sugg, ident_span) {
             fallback = true;
             match self.diagnostic_metadata.current_let_binding {
@@ -1581,22 +1610,38 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         path: &[Segment],
         ns: Namespace,
         filter_fn: &impl Fn(Res) -> bool,
-    ) -> Option<TypoSuggestion> {
+    ) -> TypoCandidate {
         let mut names = Vec::new();
         if path.len() == 1 {
+            let mut ctxt = path.last().unwrap().ident.span.ctxt();
+
             // Search in lexical scope.
             // Walk backwards up the ribs in scope and collect candidates.
             for rib in self.ribs[ns].iter().rev() {
+                let rib_ctxt = if rib.kind.contains_params() {
+                    ctxt.normalize_to_macros_2_0()
+                } else {
+                    ctxt.normalize_to_macro_rules()
+                };
+
                 // Locals and type parameters
                 for (ident, &res) in &rib.bindings {
-                    if filter_fn(res) {
+                    if filter_fn(res) && ident.span.ctxt() == rib_ctxt {
                         names.push(TypoSuggestion::typo_from_res(ident.name, res));
                     }
                 }
+
+                if let RibKind::MacroDefinition(def) = rib.kind && def == self.r.macro_def(ctxt) {
+                    // If an invocation of this macro created `ident`, give up on `ident`
+                    // and switch to `ident`'s source from the macro definition.
+                    ctxt.remove_mark();
+                    continue;
+                }
+
                 // Items in scope
                 if let RibKind::ModuleRibKind(module) = rib.kind {
                     // Items from this module
-                    self.r.add_module_candidates(module, &mut names, &filter_fn);
+                    self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
 
                     if let ModuleKind::Block = module.kind {
                         // We can see through blocks
@@ -1622,7 +1667,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             }));
 
                             if let Some(prelude) = self.r.prelude {
-                                self.r.add_module_candidates(prelude, &mut names, &filter_fn);
+                                self.r.add_module_candidates(prelude, &mut names, &filter_fn, None);
                             }
                         }
                         break;
@@ -1641,7 +1686,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(mod_path, Some(TypeNS), None)
             {
-                self.r.add_module_candidates(module, &mut names, &filter_fn);
+                self.r.add_module_candidates(module, &mut names, &filter_fn, None);
             }
         }
 
@@ -1654,10 +1699,17 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             name,
             None,
         ) {
-            Some(found) if found != name => {
-                names.into_iter().find(|suggestion| suggestion.candidate == found)
+            Some(found) => {
+                let Some(sugg) = names.into_iter().find(|suggestion| suggestion.candidate == found) else {
+                    return TypoCandidate::None;
+                };
+                if found == name {
+                    TypoCandidate::Shadowed(sugg.res)
+                } else {
+                    TypoCandidate::Typo(sugg)
+                }
             }
-            _ => None,
+            _ => TypoCandidate::None,
         }
     }
 
