@@ -1,7 +1,6 @@
 //! Error types for conversion to integral types.
 
 use crate::convert::Infallible;
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt;
 
@@ -147,7 +146,6 @@ impl fmt::Display for ParseIntError {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for ParseIntError {
     #[allow(deprecated)]
@@ -156,7 +154,6 @@ impl Error for ParseIntError {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "try_from", since = "1.34.0")]
 impl Error for TryFromIntError {
     #[allow(deprecated)]

@@ -1332,8 +1332,8 @@ where
             RePlaceholder(p) => {
                 p.hash_stable(hcx, hasher);
             }
-            ReVar(reg) => {
-                reg.hash_stable(hcx, hasher);
+            ReVar(_) => {
+                panic!("region variables should not be hashed: {self:?}")
             }
         }
     }

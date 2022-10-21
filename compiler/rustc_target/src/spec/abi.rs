@@ -1,6 +1,8 @@
 use std::fmt;
 
 use rustc_macros::HashStable_Generic;
+use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol};
 
 #[cfg(test)]
 mod tests;
@@ -92,6 +94,142 @@ pub fn lookup(name: &str) -> Option<Abi> {
 
 pub fn all_names() -> Vec<&'static str> {
     AbiDatas.iter().map(|d| d.name).collect()
+}
+
+pub fn enabled_names(features: &rustc_feature::Features, span: Span) -> Vec<&'static str> {
+    AbiDatas
+        .iter()
+        .map(|d| d.name)
+        .filter(|name| is_enabled(features, span, name).is_ok())
+        .collect()
+}
+
+pub enum AbiDisabled {
+    Unstable { feature: Symbol, explain: &'static str },
+    Unrecognized,
+}
+
+pub fn is_enabled(
+    features: &rustc_feature::Features,
+    span: Span,
+    name: &str,
+) -> Result<(), AbiDisabled> {
+    let s = is_stable(name);
+    if let Err(AbiDisabled::Unstable { feature, .. }) = s {
+        if features.enabled(feature) || span.allows_unstable(feature) {
+            return Ok(());
+        }
+    }
+    s
+}
+
+pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
+    match name {
+        // Stable
+        "Rust" | "C" | "cdecl" | "stdcall" | "fastcall" | "aapcs" | "win64" | "sysv64"
+        | "system" => Ok(()),
+        "rust-intrinsic" => Err(AbiDisabled::Unstable {
+            feature: sym::intrinsics,
+            explain: "intrinsics are subject to change",
+        }),
+        "platform-intrinsic" => Err(AbiDisabled::Unstable {
+            feature: sym::platform_intrinsics,
+            explain: "platform intrinsics are experimental and possibly buggy",
+        }),
+        "vectorcall" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_vectorcall,
+            explain: "vectorcall is experimental and subject to change",
+        }),
+        "thiscall" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_thiscall,
+            explain: "thiscall is experimental and subject to change",
+        }),
+        "rust-call" => Err(AbiDisabled::Unstable {
+            feature: sym::unboxed_closures,
+            explain: "rust-call ABI is subject to change",
+        }),
+        "rust-cold" => Err(AbiDisabled::Unstable {
+            feature: sym::rust_cold_cc,
+            explain: "rust-cold is experimental and subject to change",
+        }),
+        "ptx-kernel" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_ptx,
+            explain: "PTX ABIs are experimental and subject to change",
+        }),
+        "unadjusted" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_unadjusted,
+            explain: "unadjusted ABI is an implementation detail and perma-unstable",
+        }),
+        "msp430-interrupt" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_msp430_interrupt,
+            explain: "msp430-interrupt ABI is experimental and subject to change",
+        }),
+        "x86-interrupt" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_x86_interrupt,
+            explain: "x86-interrupt ABI is experimental and subject to change",
+        }),
+        "amdgpu-kernel" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_amdgpu_kernel,
+            explain: "amdgpu-kernel ABI is experimental and subject to change",
+        }),
+        "avr-interrupt" | "avr-non-blocking-interrupt" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_avr_interrupt,
+            explain: "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change",
+        }),
+        "efiapi" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_efiapi,
+            explain: "efiapi ABI is experimental and subject to change",
+        }),
+        "C-cmse-nonsecure-call" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_c_cmse_nonsecure_call,
+            explain: "C-cmse-nonsecure-call ABI is experimental and subject to change",
+        }),
+        "C-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "C-unwind ABI is experimental and subject to change",
+        }),
+        "stdcall-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "stdcall-unwind ABI is experimental and subject to change",
+        }),
+        "system-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "system-unwind ABI is experimental and subject to change",
+        }),
+        "thiscall-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "thiscall-unwind ABI is experimental and subject to change",
+        }),
+        "cdecl-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "cdecl-unwind ABI is experimental and subject to change",
+        }),
+        "fastcall-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "fastcall-unwind ABI is experimental and subject to change",
+        }),
+        "vectorcall-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "vectorcall-unwind ABI is experimental and subject to change",
+        }),
+        "aapcs-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "aapcs-unwind ABI is experimental and subject to change",
+        }),
+        "win64-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "win64-unwind ABI is experimental and subject to change",
+        }),
+        "sysv64-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "sysv64-unwind ABI is experimental and subject to change",
+        }),
+        "wasm" => Err(AbiDisabled::Unstable {
+            feature: sym::wasm_abi,
+            explain: "wasm ABI is experimental and subject to change",
+        }),
+        _ => Err(AbiDisabled::Unrecognized),
+    }
 }
 
 impl Abi {

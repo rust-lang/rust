@@ -31,7 +31,7 @@ use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
 
 pub struct At<'a, 'tcx> {
-    pub infcx: &'a InferCtxt<'a, 'tcx>,
+    pub infcx: &'a InferCtxt<'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     /// Whether we should define opaque types
@@ -48,9 +48,9 @@ pub struct Trace<'a, 'tcx> {
     trace: TypeTrace<'tcx>,
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     #[inline]
-    pub fn at(
+    pub fn at<'a>(
         &'a self,
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -66,7 +66,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             tcx: self.tcx,
             defining_use_anchor: self.defining_use_anchor,
             considering_regions: self.considering_regions,
-            in_progress_typeck_results: self.in_progress_typeck_results,
             inner: self.inner.clone(),
             skip_leak_check: self.skip_leak_check.clone(),
             lexical_region_resolutions: self.lexical_region_resolutions.clone(),

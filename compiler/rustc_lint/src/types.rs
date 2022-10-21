@@ -144,12 +144,18 @@ fn lint_overflowing_range_endpoint<'tcx>(
     // We can suggest using an inclusive range
     // (`..=`) instead only if it is the `end` that is
     // overflowing and only by 1.
-    if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
-        cx.struct_span_lint(OVERFLOWING_LITERALS, struct_expr.span, |lint| {
-            let mut err = lint.build(fluent::lint::range_endpoint_out_of_range);
-            err.set_arg("ty", ty);
-            if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
+    if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max
+        && let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span)
+    {
+        cx.struct_span_lint(
+            OVERFLOWING_LITERALS,
+            struct_expr.span,
+            fluent::lint::range_endpoint_out_of_range,
+            |lint| {
                 use ast::{LitIntType, LitKind};
+
+                lint.set_arg("ty", ty);
+
                 // We need to preserve the literal's suffix,
                 // as it may determine typing information.
                 let suffix = match lit.node {
@@ -159,16 +165,17 @@ fn lint_overflowing_range_endpoint<'tcx>(
                     _ => bug!(),
                 };
                 let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
-                err.span_suggestion(
+                lint.span_suggestion(
                     struct_expr.span,
                     fluent::lint::suggestion,
                     suggestion,
                     Applicability::MachineApplicable,
                 );
-                err.emit();
                 overwritten = true;
-            }
-        });
+
+                lint
+            },
+        );
     }
     overwritten
 }
@@ -221,52 +228,58 @@ fn report_bin_hex_error(
     negative: bool,
 ) {
     let size = Integer::from_attr(&cx.tcx, ty).size();
-    cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
-        let (t, actually) = match ty {
-            attr::IntType::SignedInt(t) => {
-                let actually = if negative {
-                    -(size.sign_extend(val) as i128)
-                } else {
-                    size.sign_extend(val) as i128
-                };
-                (t.name_str(), actually.to_string())
-            }
-            attr::IntType::UnsignedInt(t) => {
-                let actually = size.truncate(val);
-                (t.name_str(), actually.to_string())
-            }
-        };
-        let mut err = lint.build(fluent::lint::overflowing_bin_hex);
-        if negative {
-            // If the value is negative,
-            // emits a note about the value itself, apart from the literal.
-            err.note(fluent::lint::negative_note);
-            err.note(fluent::lint::negative_becomes_note);
-        } else {
-            err.note(fluent::lint::positive_note);
-        }
-        if let Some(sugg_ty) =
-            get_type_suggestion(cx.typeck_results().node_type(expr.hir_id), val, negative)
-        {
-            err.set_arg("suggestion_ty", sugg_ty);
-            if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
-                let (sans_suffix, _) = repr_str.split_at(pos);
-                err.span_suggestion(
-                    expr.span,
-                    fluent::lint::suggestion,
-                    format!("{}{}", sans_suffix, sugg_ty),
-                    Applicability::MachineApplicable,
-                );
+    cx.struct_span_lint(
+        OVERFLOWING_LITERALS,
+        expr.span,
+        fluent::lint::overflowing_bin_hex,
+        |lint| {
+            let (t, actually) = match ty {
+                attr::IntType::SignedInt(t) => {
+                    let actually = if negative {
+                        -(size.sign_extend(val) as i128)
+                    } else {
+                        size.sign_extend(val) as i128
+                    };
+                    (t.name_str(), actually.to_string())
+                }
+                attr::IntType::UnsignedInt(t) => {
+                    let actually = size.truncate(val);
+                    (t.name_str(), actually.to_string())
+                }
+            };
+
+            if negative {
+                // If the value is negative,
+                // emits a note about the value itself, apart from the literal.
+                lint.note(fluent::lint::negative_note);
+                lint.note(fluent::lint::negative_becomes_note);
             } else {
-                err.help(fluent::lint::help);
+                lint.note(fluent::lint::positive_note);
             }
-        }
-        err.set_arg("ty", t);
-        err.set_arg("lit", repr_str);
-        err.set_arg("dec", val);
-        err.set_arg("actually", actually);
-        err.emit();
-    });
+            if let Some(sugg_ty) =
+                get_type_suggestion(cx.typeck_results().node_type(expr.hir_id), val, negative)
+            {
+                lint.set_arg("suggestion_ty", sugg_ty);
+                if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
+                    let (sans_suffix, _) = repr_str.split_at(pos);
+                    lint.span_suggestion(
+                        expr.span,
+                        fluent::lint::suggestion,
+                        format!("{}{}", sans_suffix, sugg_ty),
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    lint.help(fluent::lint::help);
+                }
+            }
+            lint.set_arg("ty", t)
+                .set_arg("lit", repr_str)
+                .set_arg("dec", val)
+                .set_arg("actually", actually);
+
+            lint
+        },
+    );
 }
 
 // This function finds the next fitting type and generates a suggestion string.
@@ -349,26 +362,27 @@ fn lint_int_literal<'tcx>(
             return;
         }
 
-        cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-            let mut err = lint.build(fluent::lint::overflowing_int);
-            err.set_arg("ty", t.name_str());
-            err.set_arg(
-                "lit",
-                cx.sess()
-                    .source_map()
-                    .span_to_snippet(lit.span)
-                    .expect("must get snippet from literal"),
-            );
-            err.set_arg("min", min);
-            err.set_arg("max", max);
-            err.note(fluent::lint::note);
+        cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, fluent::lint::overflowing_int, |lint| {
+            lint.set_arg("ty", t.name_str())
+                .set_arg(
+                    "lit",
+                    cx.sess()
+                        .source_map()
+                        .span_to_snippet(lit.span)
+                        .expect("must get snippet from literal"),
+                )
+                .set_arg("min", min)
+                .set_arg("max", max)
+                .note(fluent::lint::note);
+
             if let Some(sugg_ty) =
                 get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             {
-                err.set_arg("suggestion_ty", sugg_ty);
-                err.help(fluent::lint::help);
+                lint.set_arg("suggestion_ty", sugg_ty);
+                lint.help(fluent::lint::help);
             }
-            err.emit();
+
+            lint
         });
     }
 }
@@ -393,16 +407,19 @@ fn lint_uint_literal<'tcx>(
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
-                        cx.struct_span_lint(OVERFLOWING_LITERALS, par_e.span, |lint| {
-                            lint.build(fluent::lint::only_cast_u8_to_char)
-                                .span_suggestion(
+                        cx.struct_span_lint(
+                            OVERFLOWING_LITERALS,
+                            par_e.span,
+                            fluent::lint::only_cast_u8_to_char,
+                            |lint| {
+                                lint.span_suggestion(
                                     par_e.span,
                                     fluent::lint::suggestion,
                                     format!("'\\u{{{:X}}}'", lit_val),
                                     Applicability::MachineApplicable,
                                 )
-                                .emit();
-                        });
+                            },
+                        );
                         return;
                     }
                 }
@@ -424,9 +441,8 @@ fn lint_uint_literal<'tcx>(
             );
             return;
         }
-        cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-            lint.build(fluent::lint::overflowing_uint)
-                .set_arg("ty", t.name_str())
+        cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, fluent::lint::overflowing_uint, |lint| {
+            lint.set_arg("ty", t.name_str())
                 .set_arg(
                     "lit",
                     cx.sess()
@@ -437,7 +453,6 @@ fn lint_uint_literal<'tcx>(
                 .set_arg("min", min)
                 .set_arg("max", max)
                 .note(fluent::lint::note)
-                .emit();
         });
     }
 }
@@ -467,19 +482,22 @@ fn lint_literal<'tcx>(
                 _ => bug!(),
             };
             if is_infinite == Ok(true) {
-                cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-                    lint.build(fluent::lint::overflowing_literal)
-                        .set_arg("ty", t.name_str())
-                        .set_arg(
-                            "lit",
-                            cx.sess()
-                                .source_map()
-                                .span_to_snippet(lit.span)
-                                .expect("must get snippet from literal"),
-                        )
-                        .note(fluent::lint::note)
-                        .emit();
-                });
+                cx.struct_span_lint(
+                    OVERFLOWING_LITERALS,
+                    e.span,
+                    fluent::lint::overflowing_literal,
+                    |lint| {
+                        lint.set_arg("ty", t.name_str())
+                            .set_arg(
+                                "lit",
+                                cx.sess()
+                                    .source_map()
+                                    .span_to_snippet(lit.span)
+                                    .expect("must get snippet from literal"),
+                            )
+                            .note(fluent::lint::note)
+                    },
+                );
             }
         }
         _ => {}
@@ -497,9 +515,12 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
-                    cx.struct_span_lint(UNUSED_COMPARISONS, e.span, |lint| {
-                        lint.build(fluent::lint::unused_comparisons).emit();
-                    });
+                    cx.struct_span_lint(
+                        UNUSED_COMPARISONS,
+                        e.span,
+                        fluent::lint::unused_comparisons,
+                        |lint| lint,
+                    );
                 }
             }
             hir::ExprKind::Lit(ref lit) => lint_literal(cx, self, e, lit),
@@ -1150,25 +1171,24 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             CItemKind::Definition => IMPROPER_CTYPES_DEFINITIONS,
         };
 
-        self.cx.struct_span_lint(lint, sp, |lint| {
+        self.cx.struct_span_lint(lint, sp, fluent::lint::improper_ctypes, |lint| {
             let item_description = match self.mode {
                 CItemKind::Declaration => "block",
                 CItemKind::Definition => "fn",
             };
-            let mut diag = lint.build(fluent::lint::improper_ctypes);
-            diag.set_arg("ty", ty);
-            diag.set_arg("desc", item_description);
-            diag.span_label(sp, fluent::lint::label);
+            lint.set_arg("ty", ty);
+            lint.set_arg("desc", item_description);
+            lint.span_label(sp, fluent::lint::label);
             if let Some(help) = help {
-                diag.help(help);
+                lint.help(help);
             }
-            diag.note(note);
+            lint.note(note);
             if let ty::Adt(def, _) = ty.kind() {
                 if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did()) {
-                    diag.span_note(sp, fluent::lint::note);
+                    lint.span_note(sp, fluent::lint::note);
                 }
             }
-            diag.emit();
+            lint
         });
     }
 
@@ -1381,11 +1401,8 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
                 cx.struct_span_lint(
                     VARIANT_SIZE_DIFFERENCES,
                     enum_definition.variants[largest_index].span,
-                    |lint| {
-                        lint.build(fluent::lint::variant_size_differences)
-                            .set_arg("largest", largest)
-                            .emit();
-                    },
+                    fluent::lint::variant_size_differences,
+                    |lint| lint.set_arg("largest", largest),
                 );
             }
         }
@@ -1493,25 +1510,16 @@ impl InvalidAtomicOrdering {
 
     fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::load, sym::store])
-            && let Some((ordering_arg, invalid_ordering)) = match method {
-                sym::load => Some((&args[0], sym::Release)),
-                sym::store => Some((&args[1], sym::Acquire)),
+            && let Some((ordering_arg, invalid_ordering, msg)) = match method {
+                sym::load => Some((&args[0], sym::Release, fluent::lint::atomic_ordering_load)),
+                sym::store => Some((&args[1], sym::Acquire, fluent::lint::atomic_ordering_store)),
                 _ => None,
             }
             && let Some(ordering) = Self::match_ordering(cx, ordering_arg)
             && (ordering == invalid_ordering || ordering == sym::AcqRel)
         {
-            cx.struct_span_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, |diag| {
-                if method == sym::load {
-                    diag.build(fluent::lint::atomic_ordering_load)
-                        .help(fluent::lint::help)
-                        .emit()
-                } else {
-                    debug_assert_eq!(method, sym::store);
-                    diag.build(fluent::lint::atomic_ordering_store)
-                        .help(fluent::lint::help)
-                        .emit();
-                }
+            cx.struct_span_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, msg, |lint| {
+                lint.help(fluent::lint::help)
             });
         }
     }
@@ -1523,10 +1531,9 @@ impl InvalidAtomicOrdering {
             && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::fence | sym::compiler_fence))
             && Self::match_ordering(cx, &args[0]) == Some(sym::Relaxed)
         {
-            cx.struct_span_lint(INVALID_ATOMIC_ORDERING, args[0].span, |diag| {
-                diag.build(fluent::lint::atomic_ordering_fence)
+            cx.struct_span_lint(INVALID_ATOMIC_ORDERING, args[0].span, fluent::lint::atomic_ordering_fence, |lint| {
+                lint
                     .help(fluent::lint::help)
-                    .emit();
             });
         }
     }

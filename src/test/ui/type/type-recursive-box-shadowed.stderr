@@ -2,12 +2,12 @@ error[E0072]: recursive type `Foo` has infinite size
   --> $DIR/type-recursive-box-shadowed.rs:7:1
    |
 LL | struct Foo {
-   | ^^^^^^^^^^ recursive type has infinite size
+   | ^^^^^^^^^^
 LL |
 LL |     inner: Foo,
    |            --- recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL |     inner: Box<Foo>,
    |            ++++   +

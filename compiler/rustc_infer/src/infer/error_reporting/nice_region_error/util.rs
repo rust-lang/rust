@@ -130,7 +130,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             let ret_ty = fn_ty.fn_sig(self.tcx()).output();
             let span = hir_sig.decl.output.span();
             let future_output = if hir_sig.header.is_async() {
-                ret_ty.map_bound(|ty| self.infcx.get_impl_future_output_ty(ty)).transpose()
+                ret_ty.map_bound(|ty| self.cx.get_impl_future_output_ty(ty)).transpose()
             } else {
                 None
             };

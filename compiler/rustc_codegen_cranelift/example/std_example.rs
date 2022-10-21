@@ -1,4 +1,4 @@
-#![feature(core_intrinsics, generators, generator_trait, is_sorted, bench_black_box)]
+#![feature(core_intrinsics, generators, generator_trait, is_sorted)]
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;

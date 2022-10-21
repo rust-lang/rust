@@ -104,8 +104,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///
     /// ```
     /// #![feature(array_into_iter_constructors)]
-    ///
-    /// #![feature(maybe_uninit_array_assume_init)]
+    /// #![feature(maybe_uninit_uninit_array_transpose)]
     /// #![feature(maybe_uninit_uninit_array)]
     /// use std::array::IntoIter;
     /// use std::mem::MaybeUninit;
@@ -134,7 +133,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///     }
     ///
     ///     // SAFETY: We've initialized all N items
-    ///     unsafe { Ok(MaybeUninit::array_assume_init(buffer)) }
+    ///     unsafe { Ok(buffer.transpose().assume_init()) }
     /// }
     ///
     /// let r: [_; 4] = next_chunk(&mut (10..16)).unwrap();

@@ -1,9 +1,9 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
-use crate::diagnostics::Suggestion;
+use crate::diagnostics::{import_candidates, Suggestion};
 use crate::Determinacy::{self, *};
-use crate::Namespace::{MacroNS, TypeNS};
-use crate::{module_to_string, names_to_string};
+use crate::Namespace::{self, *};
+use crate::{module_to_string, names_to_string, ImportSuggestion};
 use crate::{AmbiguityKind, BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
 use crate::{NameBinding, NameBindingKind, PathResult};
@@ -252,7 +252,7 @@ impl<'a> Resolver<'a> {
         self.set_binding_parent_module(binding, module);
         self.update_resolution(module, key, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
-                if res == Res::Err {
+                if res == Res::Err && old_binding.res() != Res::Err {
                     // Do not override real bindings with `Res::Err`s from error recovery.
                     return Ok(());
                 }
@@ -371,6 +371,31 @@ impl<'a> Resolver<'a> {
             self.used_imports.insert(import.id);
         }
     }
+
+    /// Take primary and additional node IDs from an import and select one that corresponds to the
+    /// given namespace. The logic must match the corresponding logic from `fn lower_use_tree` that
+    /// assigns resolutons to IDs.
+    pub(crate) fn import_id_for_ns(&self, import: &Import<'_>, ns: Namespace) -> NodeId {
+        if let ImportKind::Single { additional_ids: (id1, id2), .. } = import.kind {
+            if let Some(resolutions) = self.import_res_map.get(&import.id) {
+                assert!(resolutions[ns].is_some(), "incorrectly finalized import");
+                return match ns {
+                    TypeNS => import.id,
+                    ValueNS => match resolutions.type_ns {
+                        Some(_) => id1,
+                        None => import.id,
+                    },
+                    MacroNS => match (resolutions.type_ns, resolutions.value_ns) {
+                        (Some(_), Some(_)) => id2,
+                        (Some(_), None) | (None, Some(_)) => id1,
+                        (None, None) => import.id,
+                    },
+                };
+            }
+        }
+
+        import.id
+    }
 }
 
 /// An error that may be transformed into a diagnostic later. Used to combine multiple unresolved
@@ -381,6 +406,7 @@ struct UnresolvedImportError {
     label: Option<String>,
     note: Option<String>,
     suggestion: Option<Suggestion>,
+    candidate: Option<Vec<ImportSuggestion>>,
 }
 
 pub struct ImportResolver<'a, 'b> {
@@ -472,6 +498,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     label: None,
                     note: None,
                     suggestion: None,
+                    candidate: None,
                 };
                 if path.contains("::") {
                     errors.push((path, err))
@@ -521,6 +548,16 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     continue;
                 }
                 diag.multipart_suggestion(&msg, suggestions, applicability);
+            }
+
+            if let Some(candidate) = &err.candidate {
+                import_candidates(
+                    self.r.session,
+                    &self.r.source_span,
+                    &mut diag,
+                    Some(err.span),
+                    &candidate,
+                )
             }
         }
 
@@ -639,6 +676,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             Some(finalize),
             ignore_binding,
         );
+
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
         import.vis.set(orig_vis);
         let module = match path_res {
@@ -681,12 +719,14 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                 String::from("a similar path exists"),
                                 Applicability::MaybeIncorrect,
                             )),
+                            candidate: None,
                         },
                         None => UnresolvedImportError {
                             span,
                             label: Some(label),
                             note: None,
                             suggestion,
+                            candidate: None,
                         },
                     };
                     return Some(err);
@@ -729,6 +769,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             label: Some(String::from("cannot glob-import a module into itself")),
                             note: None,
                             suggestion: None,
+                            candidate: None,
                         });
                     }
                 }
@@ -894,11 +935,19 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     }
                 };
 
+                let parent_suggestion =
+                    self.r.lookup_import_candidates(ident, TypeNS, &import.parent_scope, |_| true);
+
                 Some(UnresolvedImportError {
                     span: import.span,
                     label: Some(label),
                     note,
                     suggestion,
+                    candidate: if !parent_suggestion.is_empty() {
+                        Some(parent_suggestion)
+                    } else {
+                        None
+                    },
                 })
             } else {
                 // `resolve_ident_in_module` reported a privacy error.

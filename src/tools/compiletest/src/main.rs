@@ -5,9 +5,7 @@
 
 extern crate test;
 
-use crate::common::{
-    expected_output_path, output_base_dir, output_relative_path, PanicStrategy, UI_EXTENSIONS,
-};
+use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
 use getopts::Options;
@@ -105,7 +103,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
         .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
         .optflag("", "optimize-tests", "run tests with optimizations enabled")
-        .optopt("", "target-panic", "what panic strategy the target supports", "unwind | abort")
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
             "",
@@ -203,7 +200,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
+        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version).or_else(
+            || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
+        );
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
@@ -258,11 +257,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         host_rustcflags: Some(matches.opt_strs("host-rustcflags").join(" ")),
         target_rustcflags: Some(matches.opt_strs("target-rustcflags").join(" ")),
         optimize_tests: matches.opt_present("optimize-tests"),
-        target_panic: match matches.opt_str("target-panic").as_deref() {
-            Some("unwind") | None => PanicStrategy::Unwind,
-            Some("abort") => PanicStrategy::Abort,
-            _ => panic!("unknown `--target-panic` option `{}` given", mode),
-        },
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
@@ -805,7 +799,10 @@ fn make_test_closure(
     let config = config.clone();
     let testpaths = testpaths.clone();
     let revision = revision.cloned();
-    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths, revision.as_deref())))
+    test::DynTestFn(Box::new(move || {
+        runtest::run(config, &testpaths, revision.as_deref());
+        Ok(())
+    }))
 }
 
 /// Returns `true` if the given target is an Android target for the

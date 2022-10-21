@@ -391,7 +391,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         record_variants!(
             (self, ii, ii.kind, Id::Node(ii.hir_id()), hir, ImplItem, ImplItemKind),
-            [Const, Fn, TyAlias]
+            [Const, Fn, Type]
         );
         hir_visit::walk_impl_item(self, ii)
     }
@@ -620,7 +620,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_assoc_item(&mut self, i: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
         record_variants!(
             (self, i, i.kind, Id::None, ast, AssocItem, AssocItemKind),
-            [Const, Fn, TyAlias, MacCall]
+            [Const, Fn, Type, MacCall]
         );
         ast_visit::walk_assoc_item(self, i, ctxt);
     }

@@ -329,7 +329,7 @@ impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
             let typeck_results = self.maybe_typeck_results.get().or_else(|| {
                 self.tcx
                     .hir()
-                    .maybe_body_owned_by(expr.hir_id.owner)
+                    .maybe_body_owned_by(expr.hir_id.owner.def_id)
                     .map(|body_id| self.tcx.typeck_body(body_id))
             });
 
@@ -502,7 +502,7 @@ fn print_with_analysis(
 
         ThirTree => {
             let mut out = String::new();
-            abort_on_err(rustc_typeck::check_crate(tcx), tcx.sess);
+            abort_on_err(rustc_hir_analysis::check_crate(tcx), tcx.sess);
             debug!("pretty printing THIR tree");
             for did in tcx.hir().body_owners() {
                 let _ = writeln!(

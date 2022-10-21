@@ -5,6 +5,11 @@ LL |         let x: u64;
    |             - binding declared here but left uninitialized
 LL |         asm!("{}", in(reg) x);
    |                            ^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |         let x: u64 = 0;
+   |                    +++
 
 error[E0381]: used binding `y` isn't initialized
   --> $DIR/type-check-5.rs:18:9
@@ -13,6 +18,11 @@ LL |         let mut y: u64;
    |             ----- binding declared here but left uninitialized
 LL |         asm!("{}", inout(reg) y);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ `y` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |         let mut y: u64 = 0;
+   |                        +++
 
 error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
   --> $DIR/type-check-5.rs:26:29

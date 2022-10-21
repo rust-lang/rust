@@ -230,6 +230,26 @@ For targets: `aarch64-unknown-linux-gnu`
 - C compiler > gcc version = 8.3.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
+### `i586-linux-gnu.config`
+
+For targets: `i586-unknown-linux-gnu`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Patches origin = Bundled only
+- Target options > Target Architecture = x86
+- Target options > Architecture level = i586
+- Target options > Target CFLAGS = -Wa,-mrelax-relocations=no
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 3.2.101
+- Binary utilities > Version of binutils = 2.32
+- Binary utilities > binutils extra config = --enable-compressed-debug-sections=none -- (\*)
+- C-library > glibc version = 2.17.0
+- C compiler > gcc version = 8.3.0
+- C compiler > C++ = ENABLE
+
+(\*) Compressed debug is enabled by default for gas (assembly) on Linux/x86 targets,
+     but that makes our `compiler_builtins` incompatible with binutils < 2.32.
+
 ### `powerpc-linux-gnu.config`
 
 For targets: `powerpc-unknown-linux-gnu`

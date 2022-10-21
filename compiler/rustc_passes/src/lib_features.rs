@@ -6,7 +6,6 @@
 
 use rustc_ast::{Attribute, MetaItemKind};
 use rustc_attr::{rust_version_symbol, VERSION_PLACEHOLDER};
-use rustc_errors::struct_span_err;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::LibFeatures;
@@ -14,6 +13,8 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
+
+use crate::errors::{FeaturePreviouslyDeclared, FeatureStableTwice};
 
 fn new_lib_features() -> LibFeatures {
     LibFeatures { stable: Default::default(), unstable: Default::default() }
@@ -92,14 +93,12 @@ impl<'tcx> LibFeatureCollector<'tcx> {
             (Some(since), _, false) => {
                 if let Some((prev_since, _)) = self.lib_features.stable.get(&feature) {
                     if *prev_since != since {
-                        self.span_feature_error(
+                        self.tcx.sess.emit_err(FeatureStableTwice {
                             span,
-                            &format!(
-                                "feature `{}` is declared stable since {}, \
-                                 but was previously declared stable since {}",
-                                feature, since, prev_since,
-                            ),
-                        );
+                            feature,
+                            since,
+                            prev_since: *prev_since,
+                        });
                         return;
                     }
                 }
@@ -110,21 +109,16 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                 self.lib_features.unstable.insert(feature, span);
             }
             (Some(_), _, true) | (None, true, _) => {
-                self.span_feature_error(
+                let declared = if since.is_some() { "stable" } else { "unstable" };
+                let prev_declared = if since.is_none() { "stable" } else { "unstable" };
+                self.tcx.sess.emit_err(FeaturePreviouslyDeclared {
                     span,
-                    &format!(
-                        "feature `{}` is declared {}, but was previously declared {}",
-                        feature,
-                        if since.is_some() { "stable" } else { "unstable" },
-                        if since.is_none() { "stable" } else { "unstable" },
-                    ),
-                );
+                    feature,
+                    declared,
+                    prev_declared,
+                });
             }
         }
-    }
-
-    fn span_feature_error(&self, span: Span, msg: &str) {
-        struct_span_err!(self.tcx.sess, span, E0711, "{}", &msg).emit();
     }
 }
 

@@ -20,7 +20,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
 use smallvec::SmallVec;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Canonicalizes a query value `V`. When we canonicalize a query,
     /// we not only canonicalize unbound inference variables, but we
     /// *also* replace all free regions whatsoever. So for example a
@@ -316,7 +316,7 @@ impl CanonicalizeMode for CanonicalizeFreeRegionsOtherThanStatic {
 }
 
 struct Canonicalizer<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
     tcx: TyCtxt<'tcx>,
     variables: SmallVec<[CanonicalVarInfo<'tcx>; 8]>,
     query_state: &'cx mut OriginalQueryValues<'tcx>,
@@ -521,7 +521,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     /// `canonicalize_query` and `canonicalize_response`.
     fn canonicalize<V>(
         value: V,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         canonicalize_region_mode: &dyn CanonicalizeMode,
         query_state: &mut OriginalQueryValues<'tcx>,

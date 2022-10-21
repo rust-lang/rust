@@ -22,6 +22,7 @@ pub fn expand_deriving_hash(
     let hash_trait_def = TraitDef {
         span,
         path,
+        skip_path_as_bound: false,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         supports_unions: false,

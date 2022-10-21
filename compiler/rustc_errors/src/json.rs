@@ -13,7 +13,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
-use crate::translation::Translate;
+use crate::translation::{to_fluent_args, Translate};
 use crate::DiagnosticId;
 use crate::{
     CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, SubDiagnostic,
@@ -312,7 +312,7 @@ struct UnusedExterns<'a, 'b, 'c> {
 
 impl Diagnostic {
     fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
-        let args = je.to_fluent_args(diag.args());
+        let args = to_fluent_args(diag.args());
         let sugg = diag.suggestions.iter().flatten().map(|sugg| {
             let translated_message = je.translate_message(&sugg.msg, &args);
             Diagnostic {

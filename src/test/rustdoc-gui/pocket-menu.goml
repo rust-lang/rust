@@ -1,5 +1,5 @@
 // This test ensures that the "pocket menus" are working as expected.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // First we check that the help menu doesn't exist yet.
 assert-false: "#help-button .popover"
 // Then we display the help menu.

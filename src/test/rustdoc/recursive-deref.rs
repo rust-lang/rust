@@ -9,7 +9,7 @@ impl C {
     pub fn c(&self) {}
 }
 
-// @has recursive_deref/struct.A.html '//h3[@class="code-header in-band"]' 'impl Deref for A'
+// @has recursive_deref/struct.A.html '//h3[@class="code-header"]' 'impl Deref for A'
 // @has '-' '//*[@class="impl-items"]//*[@id="method.c"]' 'pub fn c(&self)'
 impl Deref for A {
     type Target = B;
@@ -19,7 +19,7 @@ impl Deref for A {
     }
 }
 
-// @has recursive_deref/struct.B.html '//h3[@class="code-header in-band"]' 'impl Deref for B'
+// @has recursive_deref/struct.B.html '//h3[@class="code-header"]' 'impl Deref for B'
 // @has '-' '//*[@class="impl-items"]//*[@id="method.c"]' 'pub fn c(&self)'
 impl Deref for B {
     type Target = C;
@@ -29,7 +29,7 @@ impl Deref for B {
     }
 }
 
-// @has recursive_deref/struct.C.html '//h3[@class="code-header in-band"]' 'impl Deref for C'
+// @has recursive_deref/struct.C.html '//h3[@class="code-header"]' 'impl Deref for C'
 impl Deref for C {
     type Target = B;
 
@@ -49,7 +49,7 @@ impl G {
     pub fn g() {}
 }
 
-// @has recursive_deref/struct.D.html '//h3[@class="code-header in-band"]' 'impl Deref for D'
+// @has recursive_deref/struct.D.html '//h3[@class="code-header"]' 'impl Deref for D'
 // We also check that `G::g` method isn't rendered because there is no `self` argument.
 // @!has '-' '//*[@id="deref-methods-G"]' ''
 impl Deref for D {
@@ -60,7 +60,7 @@ impl Deref for D {
     }
 }
 
-// @has recursive_deref/struct.E.html '//h3[@class="code-header in-band"]' 'impl Deref for E'
+// @has recursive_deref/struct.E.html '//h3[@class="code-header"]' 'impl Deref for E'
 // We also check that `G::g` method isn't rendered because there is no `self` argument.
 // @!has '-' '//*[@id="deref-methods-G"]' ''
 impl Deref for E {
@@ -71,7 +71,7 @@ impl Deref for E {
     }
 }
 
-// @has recursive_deref/struct.F.html '//h3[@class="code-header in-band"]' 'impl Deref for F'
+// @has recursive_deref/struct.F.html '//h3[@class="code-header"]' 'impl Deref for F'
 // We also check that `G::g` method isn't rendered because there is no `self` argument.
 // @!has '-' '//*[@id="deref-methods-G"]' ''
 impl Deref for F {
@@ -82,7 +82,7 @@ impl Deref for F {
     }
 }
 
-// @has recursive_deref/struct.G.html '//h3[@class="code-header in-band"]' 'impl Deref for G'
+// @has recursive_deref/struct.G.html '//h3[@class="code-header"]' 'impl Deref for G'
 impl Deref for G {
     type Target = E;
 
@@ -100,7 +100,7 @@ impl I {
     pub fn i() {}
 }
 
-// @has recursive_deref/struct.H.html '//h3[@class="code-header in-band"]' 'impl Deref for H'
+// @has recursive_deref/struct.H.html '//h3[@class="code-header"]' 'impl Deref for H'
 // @!has '-' '//*[@id="deref-methods-I"]' ''
 impl Deref for H {
     type Target = I;
@@ -110,7 +110,7 @@ impl Deref for H {
     }
 }
 
-// @has recursive_deref/struct.I.html '//h3[@class="code-header in-band"]' 'impl Deref for I'
+// @has recursive_deref/struct.I.html '//h3[@class="code-header"]' 'impl Deref for I'
 impl Deref for I {
     type Target = H;
 

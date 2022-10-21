@@ -142,8 +142,6 @@ pub(crate) struct Options {
     // Options that alter generated documentation pages
     /// Crate version to note on the sidebar of generated docs.
     pub(crate) crate_version: Option<String>,
-    /// Collected options specific to outputting final pages.
-    pub(crate) render_options: RenderOptions,
     /// The format that we output when rendering.
     ///
     /// Currently used only for the `--show-coverage` option.
@@ -159,6 +157,10 @@ pub(crate) struct Options {
     /// Configuration for scraping examples from the current crate. If this option is Some(..) then
     /// the compiler will scrape examples and not generate documentation.
     pub(crate) scrape_examples_options: Option<ScrapeExamplesOptions>,
+
+    /// Note: this field is duplicated in `RenderOptions` because it's useful
+    /// to have it in both places.
+    pub(crate) unstable_features: rustc_feature::UnstableFeatures,
 }
 
 impl fmt::Debug for Options {
@@ -194,7 +196,6 @@ impl fmt::Debug for Options {
             .field("persist_doctests", &self.persist_doctests)
             .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
-            .field("render_options", &self.render_options)
             .field("runtool", &self.runtool)
             .field("runtool_args", &self.runtool_args)
             .field("enable-per-target-ignores", &self.enable_per_target_ignores)
@@ -202,6 +203,7 @@ impl fmt::Debug for Options {
             .field("no_run", &self.no_run)
             .field("nocapture", &self.nocapture)
             .field("scrape_examples_options", &self.scrape_examples_options)
+            .field("unstable_features", &self.unstable_features)
             .finish()
     }
 }
@@ -267,6 +269,8 @@ pub(crate) struct RenderOptions {
     pub(crate) generate_redirect_map: bool,
     /// Show the memory layout of types in the docs.
     pub(crate) show_type_layout: bool,
+    /// Note: this field is duplicated in `Options` because it's useful to have
+    /// it in both places.
     pub(crate) unstable_features: rustc_feature::UnstableFeatures,
     pub(crate) emit: Vec<EmitType>,
     /// If `true`, HTML source pages will generate links for items to their definition.
@@ -316,7 +320,7 @@ impl Options {
     pub(crate) fn from_matches(
         matches: &getopts::Matches,
         args: Vec<String>,
-    ) -> Result<Options, i32> {
+    ) -> Result<(Options, RenderOptions), i32> {
         let args = &args[1..];
         // Check for unstable options.
         nightly_options::check_nightly_options(matches, &opts());
@@ -710,7 +714,9 @@ impl Options {
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
 
-        Ok(Options {
+        let unstable_features =
+            rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
+        let options = Options {
             input,
             proc_macro_crate,
             error_format,
@@ -744,42 +750,42 @@ impl Options {
             run_check,
             no_run,
             nocapture,
-            render_options: RenderOptions {
-                output,
-                external_html,
-                id_map,
-                playground_url,
-                module_sorting,
-                themes,
-                extension_css,
-                extern_html_root_urls,
-                extern_html_root_takes_precedence,
-                default_settings,
-                resource_suffix,
-                enable_minification,
-                enable_index_page,
-                index_page,
-                static_root_path,
-                markdown_no_toc,
-                markdown_css,
-                markdown_playground_url,
-                document_private,
-                document_hidden,
-                generate_redirect_map,
-                show_type_layout,
-                unstable_features: rustc_feature::UnstableFeatures::from_environment(
-                    crate_name.as_deref(),
-                ),
-                emit,
-                generate_link_to_definition,
-                call_locations,
-                no_emit_shared: false,
-            },
             crate_name,
             output_format,
             json_unused_externs,
             scrape_examples_options,
-        })
+            unstable_features,
+        };
+        let render_options = RenderOptions {
+            output,
+            external_html,
+            id_map,
+            playground_url,
+            module_sorting,
+            themes,
+            extension_css,
+            extern_html_root_urls,
+            extern_html_root_takes_precedence,
+            default_settings,
+            resource_suffix,
+            enable_minification,
+            enable_index_page,
+            index_page,
+            static_root_path,
+            markdown_no_toc,
+            markdown_css,
+            markdown_playground_url,
+            document_private,
+            document_hidden,
+            generate_redirect_map,
+            show_type_layout,
+            unstable_features,
+            emit,
+            generate_link_to_definition,
+            call_locations,
+            no_emit_shared: false,
+        };
+        Ok((options, render_options))
     }
 
     /// Returns `true` if the file given as `self.input` is a Markdown file.

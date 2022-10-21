@@ -116,5 +116,23 @@ error: redundant closure
 LL |         Some(1).map(|n| in_loop(n));
    |                     ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `in_loop`
 
-error: aborting due to 19 previous errors
+error: redundant closure
+  --> $DIR/eta.rs:310:18
+   |
+LL |     takes_fn_mut(|| f());
+   |                  ^^^^^^ help: replace the closure with the function itself: `&mut f`
+
+error: redundant closure
+  --> $DIR/eta.rs:313:19
+   |
+LL |     takes_fn_once(|| f());
+   |                   ^^^^^^ help: replace the closure with the function itself: `&mut f`
+
+error: redundant closure
+  --> $DIR/eta.rs:317:26
+   |
+LL |     move || takes_fn_mut(|| f_used_once())
+   |                          ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut f_used_once`
+
+error: aborting due to 22 previous errors
 

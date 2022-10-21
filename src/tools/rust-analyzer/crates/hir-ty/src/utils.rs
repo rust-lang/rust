@@ -4,7 +4,7 @@
 use std::iter;
 
 use base_db::CrateId;
-use chalk_ir::{fold::Shift, BoundVar, DebruijnIndex};
+use chalk_ir::{cast::Cast, fold::Shift, BoundVar, DebruijnIndex};
 use hir_def::{
     db::DefDatabase,
     generics::{
@@ -24,8 +24,7 @@ use smallvec::{smallvec, SmallVec};
 use syntax::SmolStr;
 
 use crate::{
-    db::HirDatabase, ChalkTraitId, ConstData, ConstValue, GenericArgData, Interner, Substitution,
-    TraitRef, TraitRefExt, TyKind, WhereClause,
+    db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, WhereClause,
 };
 
 pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: CrateId) -> impl Iterator<Item = TraitId> {
@@ -174,31 +173,6 @@ pub(super) fn associated_type_by_name_including_super_traits(
 
 pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
-    if parent_generics.is_some() && matches!(def, GenericDefId::TypeAliasId(_)) {
-        let params = db.generic_params(def);
-        let parent_params = &parent_generics.as_ref().unwrap().params;
-        let has_consts =
-            params.iter().any(|(_, x)| matches!(x, TypeOrConstParamData::ConstParamData(_)));
-        let parent_has_consts =
-            parent_params.iter().any(|(_, x)| matches!(x, TypeOrConstParamData::ConstParamData(_)));
-        return if has_consts || parent_has_consts {
-            // XXX: treat const generic associated types as not existing to avoid crashes
-            // (#11769)
-            //
-            // Note: Also crashes when the parent has const generics (also even if the GAT
-            // doesn't use them), see `tests::regression::gat_crash_3` for an example.
-            // Avoids that by disabling GATs when the parent (i.e. `impl` block) has
-            // const generics (#12193).
-            //
-            // Chalk expects the inner associated type's parameters to come
-            // *before*, not after the trait's generics as we've always done it.
-            // Adapting to this requires a larger refactoring
-            cov_mark::hit!(ignore_gats);
-            Generics { def, params: Interned::new(Default::default()), parent_generics }
-        } else {
-            Generics { def, params, parent_generics }
-        };
-    }
     Generics { def, params: db.generic_params(def), parent_generics }
 }
 
@@ -221,23 +195,30 @@ impl Generics {
         })
     }
 
-    /// Iterator over types and const params of parent, then self.
+    /// Iterator over types and const params of self, then parent.
     pub(crate) fn iter<'a>(
         &'a self,
     ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
         let to_toc_id = |it: &'a Generics| {
             move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p)
         };
-        self.parent_generics()
-            .into_iter()
-            .flat_map(move |it| it.params.iter().map(to_toc_id(it)))
-            .chain(self.params.iter().map(to_toc_id(self)))
+        self.params.iter().map(to_toc_id(self)).chain(self.iter_parent())
+    }
+
+    /// Iterate over types and const params without parent params.
+    pub(crate) fn iter_self<'a>(
+        &'a self,
+    ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
+        let to_toc_id = |it: &'a Generics| {
+            move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p)
+        };
+        self.params.iter().map(to_toc_id(self))
     }
 
     /// Iterator over types and const params of parent.
     pub(crate) fn iter_parent<'a>(
         &'a self,
-    ) -> impl Iterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
+    ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
         self.parent_generics().into_iter().flat_map(|it| {
             let to_toc_id =
                 move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p);
@@ -245,10 +226,16 @@ impl Generics {
         })
     }
 
+    /// Returns total number of generic parameters in scope, including those from parent.
     pub(crate) fn len(&self) -> usize {
         let parent = self.parent_generics().map_or(0, Generics::len);
         let child = self.params.type_or_consts.len();
         parent + child
+    }
+
+    /// Returns numbers of generic parameters excluding those from parent.
+    pub(crate) fn len_self(&self) -> usize {
+        self.params.type_or_consts.len()
     }
 
     /// (parent total, self param, type param list, const param list, impl trait)
@@ -275,15 +262,17 @@ impl Generics {
         if param.parent == self.def {
             let (idx, (_local_id, data)) =
                 self.params.iter().enumerate().find(|(_, (idx, _))| *idx == param.local_id)?;
-            let parent_len = self.parent_generics().map_or(0, Generics::len);
-            Some((parent_len + idx, data))
+            Some((idx, data))
         } else {
-            self.parent_generics().and_then(|g| g.find_param(param))
+            self.parent_generics()
+                .and_then(|g| g.find_param(param))
+                // Remember that parent parameters come after parameters for self.
+                .map(|(idx, data)| (self.len_self() + idx, data))
         }
     }
 
-    fn parent_generics(&self) -> Option<&Generics> {
-        self.parent_generics.as_ref().map(|it| &**it)
+    pub(crate) fn parent_generics(&self) -> Option<&Generics> {
+        self.parent_generics.as_deref()
     }
 
     /// Returns a Substitution that replaces each parameter by a bound variable.
@@ -295,18 +284,10 @@ impl Generics {
         Substitution::from_iter(
             Interner,
             self.iter_id().enumerate().map(|(idx, id)| match id {
-                Either::Left(_) => GenericArgData::Ty(
-                    TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(Interner),
-                )
-                .intern(Interner),
-                Either::Right(id) => GenericArgData::Const(
-                    ConstData {
-                        value: ConstValue::BoundVar(BoundVar::new(debruijn, idx)),
-                        ty: db.const_param_ty(id),
-                    }
-                    .intern(Interner),
-                )
-                .intern(Interner),
+                Either::Left(_) => BoundVar::new(debruijn, idx).to_ty(Interner).cast(Interner),
+                Either::Right(id) => BoundVar::new(debruijn, idx)
+                    .to_const(Interner, db.const_param_ty(id))
+                    .cast(Interner),
             }),
         )
     }
@@ -316,18 +297,12 @@ impl Generics {
         Substitution::from_iter(
             Interner,
             self.iter_id().map(|id| match id {
-                Either::Left(id) => GenericArgData::Ty(
-                    TyKind::Placeholder(crate::to_placeholder_idx(db, id.into())).intern(Interner),
-                )
-                .intern(Interner),
-                Either::Right(id) => GenericArgData::Const(
-                    ConstData {
-                        value: ConstValue::Placeholder(crate::to_placeholder_idx(db, id.into())),
-                        ty: db.const_param_ty(id),
-                    }
-                    .intern(Interner),
-                )
-                .intern(Interner),
+                Either::Left(id) => {
+                    crate::to_placeholder_idx(db, id.into()).to_ty(Interner).cast(Interner)
+                }
+                Either::Right(id) => crate::to_placeholder_idx(db, id.into())
+                    .to_const(Interner, db.const_param_ty(id))
+                    .cast(Interner),
             }),
         )
     }

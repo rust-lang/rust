@@ -1,8 +1,7 @@
 // Targets the Big endian Cortex-R4/R5 processor (ARMv7-R)
 
 use crate::abi::Endian;
-use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +12,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             abi: "eabi".into(),
             endian: Endian::Big,
-            linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+            linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,

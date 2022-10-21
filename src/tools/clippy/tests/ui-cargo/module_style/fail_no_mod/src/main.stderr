@@ -4,8 +4,8 @@ error: `mod.rs` files are not allowed, found `bad/mod.rs`
 LL | pub struct Thing;
    | ^
    |
-   = note: `-D clippy::mod-module-files` implied by `-D warnings`
    = help: move `bad/mod.rs` to `bad.rs`
+   = note: `-D clippy::mod-module-files` implied by `-D warnings`
 
 error: aborting due to previous error
 

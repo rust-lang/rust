@@ -82,16 +82,16 @@ pub fn run(check: bool, verbose: bool) {
     fn output_err(err: CliError) {
         match err {
             CliError::CommandFailed(command, stderr) => {
-                eprintln!("error: A command failed! `{}`\nstderr: {}", command, stderr);
+                eprintln!("error: A command failed! `{command}`\nstderr: {stderr}");
             },
             CliError::IoError(err) => {
-                eprintln!("error: {}", err);
+                eprintln!("error: {err}");
             },
             CliError::RustfmtNotInstalled => {
                 eprintln!("error: rustfmt nightly is not installed.");
             },
             CliError::WalkDirError(err) => {
-                eprintln!("error: {}", err);
+                eprintln!("error: {err}");
             },
             CliError::IntellijSetupActive => {
                 eprintln!(

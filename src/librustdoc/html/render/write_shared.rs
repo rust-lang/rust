@@ -517,9 +517,7 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
             };
 
             let content = format!(
-                "<h1 class=\"fqn\">\
-                     <span class=\"in-band\">List of all crates</span>\
-                </h1><ul class=\"all-items\">{}</ul>",
+                "<h1 class=\"fqn\">List of all crates</h1><ul class=\"all-items\">{}</ul>",
                 krates
                     .iter()
                     .map(|s| {

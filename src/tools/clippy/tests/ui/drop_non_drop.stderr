@@ -4,12 +4,12 @@ error: call to `std::mem::drop` with a value that does not implement `Drop`. Dro
 LL |     drop(Foo);
    |     ^^^^^^^^^
    |
-   = note: `-D clippy::drop-non-drop` implied by `-D warnings`
 note: argument has type `main::Foo`
   --> $DIR/drop_non_drop.rs:22:10
    |
 LL |     drop(Foo);
    |          ^^^
+   = note: `-D clippy::drop-non-drop` implied by `-D warnings`
 
 error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
   --> $DIR/drop_non_drop.rs:37:5

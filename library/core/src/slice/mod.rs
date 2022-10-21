@@ -9,7 +9,7 @@
 use crate::cmp::Ordering::{self, Greater, Less};
 use crate::intrinsics::{assert_unsafe_precondition, exact_div};
 use crate::marker::Copy;
-use crate::mem;
+use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ops::{Bound, FnMut, OneSidedRange, Range, RangeBounds};
 use crate::option::Option;
@@ -1580,7 +1580,8 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
+    pub const fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         assert!(mid <= self.len());
         // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
         // fulfills the requirements of `from_raw_parts_mut`.
@@ -1679,9 +1680,10 @@ impl<T> [T] {
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[rustc_const_unstable(feature = "const_slice_split_at_mut", issue = "101804")]
     #[inline]
     #[must_use]
-    pub unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    pub const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
@@ -2074,7 +2076,7 @@ impl<T> [T] {
         SplitN::new(self.split(pred), n)
     }
 
-    /// Returns an iterator over subslices separated by elements that match
+    /// Returns an iterator over mutable subslices separated by elements that match
     /// `pred`, limited to returning at most `n` items. The matched element is
     /// not contained in the subslices.
     ///
@@ -2357,6 +2359,28 @@ impl<T> [T] {
     /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
     ///
+    /// If you want to find that whole *range* of matching items, rather than
+    /// an arbitrary matching one, that can be done using [`partition_point`]:
+    /// ```
+    /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    ///
+    /// let low = s.partition_point(|x| x < &1);
+    /// assert_eq!(low, 1);
+    /// let high = s.partition_point(|x| x <= &1);
+    /// assert_eq!(high, 5);
+    /// let r = s.binary_search(&1);
+    /// assert!((low..high).contains(&r.unwrap()));
+    ///
+    /// assert!(s[..low].iter().all(|&x| x < 1));
+    /// assert!(s[low..high].iter().all(|&x| x == 1));
+    /// assert!(s[high..].iter().all(|&x| x > 1));
+    ///
+    /// // For something not found, the "range" of equal items is empty
+    /// assert_eq!(s.partition_point(|x| x < &11), 9);
+    /// assert_eq!(s.partition_point(|x| x <= &11), 9);
+    /// assert_eq!(s.binary_search(&11), Err(9));
+    /// ```
+    ///
     /// If you want to insert an item to a sorted vector, while maintaining
     /// sort order, consider using [`partition_point`]:
     ///
@@ -2424,15 +2448,20 @@ impl<T> [T] {
     where
         F: FnMut(&'a T) -> Ordering,
     {
+        // INVARIANTS:
+        // - 0 <= left <= left + size = right <= self.len()
+        // - f returns Less for everything in self[..left]
+        // - f returns Greater for everything in self[right..]
         let mut size = self.len();
         let mut left = 0;
         let mut right = size;
         while left < right {
             let mid = left + size / 2;
 
-            // SAFETY: the call is made safe by the following invariants:
-            // - `mid >= 0`
-            // - `mid < size`: `mid` is limited by `[left; right)` bound.
+            // SAFETY: the while condition means `size` is strictly positive, so
+            // `size/2 < size`.  Thus `left + size/2 < left + size`, which
+            // coupled with the `left + size <= self.len()` invariant means
+            // we have `left + size/2 < self.len()`, and this is in-bounds.
             let cmp = f(unsafe { self.get_unchecked(mid) });
 
             // The reason why we use if/else control flow rather than match
@@ -2450,6 +2479,10 @@ impl<T> [T] {
 
             size = right - left;
         }
+
+        // SAFETY: directly true from the overall invariant.
+        // Note that this is `<=`, unlike the assume in the `Ok` path.
+        unsafe { crate::intrinsics::assume(left <= self.len()) };
         Err(left)
     }
 
@@ -2643,9 +2676,10 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
     /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
     /// (i.e. does not allocate), and *O*(*n*) worst-case. This function is also/ known as "kth
-    /// element" in other libraries. It returns a triplet of the following values: all elements less
-    /// than the one at the given index, the value at the given index, and all elements greater than
-    /// the one at the given index.
+    /// element" in other libraries. It returns a triplet of the following from the reordered slice:
+    /// the subslice prior to `index`, the element at `index`, and the subslice after `index`;
+    /// accordingly, the values in those two subslices will respectively all be less-than-or-equal-to
+    /// and greater-than-or-equal-to the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -2689,10 +2723,11 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index` using the comparator function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
     /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following
-    /// values: all elements less than the one at the given index, the value at the given index,
-    /// and all elements greater than the one at the given index, using the provided comparator
-    /// function.
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following from
+    /// the slice reordered according to the provided comparator function: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
+    /// the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -2740,10 +2775,11 @@ impl<T> [T] {
     /// less than or equal to any value at a position `j > index` using the key extraction function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
     /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
-    /// is also known as "kth element" in other libraries. It returns a triplet of the following
-    /// values: all elements less than the one at the given index, the value at the given index, and
-    /// all elements greater than the one at the given index, using the provided key extraction
-    /// function.
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following from
+    /// the slice reordered according to the provided key extraction function: the subslice prior to
+    /// `index`, the element at `index`, and the subslice after `index`; accordingly, the values in
+    /// those two subslices will respectively all be less-than-or-equal-to and greater-than-or-equal-to
+    /// the value of the element at `index`.
     ///
     /// # Current implementation
     ///
@@ -3456,7 +3492,7 @@ impl<T> [T] {
     #[must_use]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
+        if U::IS_ZST || T::IS_ZST {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &[], &[]);
         }
@@ -3517,7 +3553,7 @@ impl<T> [T] {
     #[must_use]
     pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
         // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
+        if U::IS_ZST || T::IS_ZST {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &mut [], &mut []);
         }
@@ -3771,6 +3807,16 @@ impl<T> [T] {
     /// assert_eq!(i, 4);
     /// assert!(v[..i].iter().all(|&x| x < 5));
     /// assert!(v[i..].iter().all(|&x| !(x < 5)));
+    /// ```
+    ///
+    /// If all elements of the slice match the predicate, including if the slice
+    /// is empty, then the length of the slice will be returned:
+    ///
+    /// ```
+    /// let a = [2, 4, 8];
+    /// assert_eq!(a.partition_point(|x| x < &100), a.len());
+    /// let a: [i32; 0] = [];
+    /// assert_eq!(a.partition_point(|x| x < &100), 0);
     /// ```
     ///
     /// If you want to insert an item to a sorted vector, while maintaining
@@ -4063,7 +4109,7 @@ impl<T, const N: usize> [[T; N]] {
     /// ```
     #[unstable(feature = "slice_flatten", issue = "95629")]
     pub fn flatten(&self) -> &[T] {
-        let len = if crate::mem::size_of::<T>() == 0 {
+        let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
         } else {
             // SAFETY: `self.len() * N` cannot overflow because `self` is
@@ -4101,7 +4147,7 @@ impl<T, const N: usize> [[T; N]] {
     /// ```
     #[unstable(feature = "slice_flatten", issue = "95629")]
     pub fn flatten_mut(&mut self) -> &mut [T] {
-        let len = if crate::mem::size_of::<T>() == 0 {
+        let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
         } else {
             // SAFETY: `self.len() * N` cannot overflow because `self` is

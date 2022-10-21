@@ -580,7 +580,7 @@ impl<K, V> BTreeMap<K, V> {
     /// map.insert(1, "a");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_stable(feature = "const_btree_new", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub const fn new() -> BTreeMap<K, V> {
         BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(Global), _marker: PhantomData }
@@ -703,7 +703,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -712,7 +711,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(2, "a");
     /// assert_eq!(map.first_key_value(), Some((&1, &"b")));
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn first_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
@@ -727,7 +726,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -741,7 +739,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(*map.get(&1).unwrap(), "first");
     /// assert_eq!(*map.get(&2).unwrap(), "b");
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, A>>
     where
         K: Ord,
@@ -765,7 +763,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Draining elements in ascending order, while keeping a usable map each iteration.
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -776,7 +773,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_first(&mut self) -> Option<(K, V)>
     where
         K: Ord,
@@ -792,7 +789,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -800,7 +796,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(2, "a");
     /// assert_eq!(map.last_key_value(), Some((&2, &"a")));
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn last_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
@@ -815,7 +811,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -829,7 +824,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(*map.get(&1).unwrap(), "a");
     /// assert_eq!(*map.get(&2).unwrap(), "last");
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, A>>
     where
         K: Ord,
@@ -853,7 +848,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Draining elements in descending order, while keeping a usable map each iteration.
     ///
     /// ```
-    /// #![feature(map_first_last)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -864,7 +858,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    #[unstable(feature = "map_first_last", issue = "62924")]
+    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_last(&mut self) -> Option<(K, V)>
     where
         K: Ord,
@@ -1099,6 +1093,9 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
+    /// If a key from `other` is already present in `self`, the respective
+    /// value from `self` will be overwritten with the respective value from `other`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1107,10 +1104,10 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// let mut a = BTreeMap::new();
     /// a.insert(1, "a");
     /// a.insert(2, "b");
-    /// a.insert(3, "c");
+    /// a.insert(3, "c"); // Note: Key (3) also present in b.
     ///
     /// let mut b = BTreeMap::new();
-    /// b.insert(3, "d");
+    /// b.insert(3, "d"); // Note: Key (3) also present in a.
     /// b.insert(4, "e");
     /// b.insert(5, "f");
     ///
@@ -1121,7 +1118,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// assert_eq!(a[&1], "a");
     /// assert_eq!(a[&2], "b");
-    /// assert_eq!(a[&3], "d");
+    /// assert_eq!(a[&3], "d"); // Note: "c" has been overwritten.
     /// assert_eq!(a[&4], "e");
     /// assert_eq!(a[&5], "f");
     /// ```
@@ -2392,7 +2389,11 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn len(&self) -> usize {
         self.length
     }
@@ -2413,7 +2414,11 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    #[rustc_const_unstable(
+        feature = "const_btree_len",
+        issue = "71835",
+        implied_by = "const_btree_new"
+    )]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }

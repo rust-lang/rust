@@ -4,12 +4,6 @@ error[E0425]: cannot find value `field` in this scope
 LL |             field;
    |             ^^^^^ not found in this scope
 
-error[E0425]: cannot find function `method` in this scope
-  --> $DIR/resolve-speculative-adjustment.rs:19:13
-   |
-LL |             method();
-   |             ^^^^^^ not found in this scope
-
 error[E0425]: cannot find value `field` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:23:9
    |
@@ -21,6 +15,12 @@ error[E0425]: cannot find function `method` in this scope
    |
 LL |         method();
    |         ^^^^^^ help: you might have meant to call the method: `self.method`
+
+error[E0425]: cannot find function `method` in this scope
+  --> $DIR/resolve-speculative-adjustment.rs:19:13
+   |
+LL |             method();
+   |             ^^^^^^ not found in this scope
 
 error: aborting due to 4 previous errors
 

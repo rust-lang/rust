@@ -20,7 +20,7 @@
           _2 = core::str::<impl str>::as_bytes(move _3) -> bb1; // scope 0 at $DIR/deduplicate_blocks.rs:+1:11: +1:23
                                            // mir::Constant
                                            // + span: $DIR/deduplicate_blocks.rs:5:13: 5:21
-                                           // + literal: Const { ty: for<'r> fn(&'r str) -> &'r [u8] {core::str::<impl str>::as_bytes}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: for<'a> fn(&'a str) -> &'a [u8] {core::str::<impl str>::as_bytes}, val: Value(<ZST>) }
       }
   
       bb1: {

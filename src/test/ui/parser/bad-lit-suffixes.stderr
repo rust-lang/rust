@@ -1,46 +1,46 @@
-error: suffixes on a string literal are invalid
+error: suffixes on string literals are invalid
   --> $DIR/bad-lit-suffixes.rs:2:5
    |
 LL |     "C"suffix
    |     ^^^^^^^^^ invalid suffix `suffix`
 
-error: suffixes on a string literal are invalid
+error: suffixes on string literals are invalid
   --> $DIR/bad-lit-suffixes.rs:6:5
    |
 LL |     "C"suffix
    |     ^^^^^^^^^ invalid suffix `suffix`
 
-error: suffixes on a string literal are invalid
+error: suffixes on string literals are invalid
   --> $DIR/bad-lit-suffixes.rs:10:5
    |
 LL |     ""suffix;
    |     ^^^^^^^^ invalid suffix `suffix`
 
-error: suffixes on a byte string literal are invalid
+error: suffixes on byte string literals are invalid
   --> $DIR/bad-lit-suffixes.rs:11:5
    |
 LL |     b""suffix;
    |     ^^^^^^^^^ invalid suffix `suffix`
 
-error: suffixes on a string literal are invalid
+error: suffixes on string literals are invalid
   --> $DIR/bad-lit-suffixes.rs:12:5
    |
 LL |     r#""#suffix;
    |     ^^^^^^^^^^^ invalid suffix `suffix`
 
-error: suffixes on a byte string literal are invalid
+error: suffixes on byte string literals are invalid
   --> $DIR/bad-lit-suffixes.rs:13:5
    |
 LL |     br#""#suffix;
    |     ^^^^^^^^^^^^ invalid suffix `suffix`
 
-error: suffixes on a char literal are invalid
+error: suffixes on char literals are invalid
   --> $DIR/bad-lit-suffixes.rs:14:5
    |
 LL |     'a'suffix;
    |     ^^^^^^^^^ invalid suffix `suffix`
 
-error: suffixes on a byte literal are invalid
+error: suffixes on byte literals are invalid
   --> $DIR/bad-lit-suffixes.rs:15:5
    |
 LL |     b'a'suffix;

@@ -10,13 +10,13 @@ LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-nonnull.rs:19:30
+  --> $DIR/ub-nonnull.rs:18:30
    |
 LL |     let out_of_bounds_ptr = &ptr[255];
    |                              ^^^^^^^^ dereferencing pointer failed: alloc11 has size 1, so pointer to 256 bytes starting at offset 0 is out-of-bounds
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:23:1
+  --> $DIR/ub-nonnull.rs:22:1
    |
 LL | const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
@@ -27,7 +27,7 @@ LL | const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:25:1
+  --> $DIR/ub-nonnull.rs:24:1
    |
 LL | const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
@@ -38,13 +38,13 @@ LL | const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-nonnull.rs:33:36
+  --> $DIR/ub-nonnull.rs:32:36
    |
 LL | const UNINIT: NonZeroU8 = unsafe { MaybeUninit { uninit: () }.init };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:42:1
+  --> $DIR/ub-nonnull.rs:41:1
    |
 LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 42, but expected something in the range 10..=30
@@ -55,7 +55,7 @@ LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:48:1
+  --> $DIR/ub-nonnull.rs:47:1
    |
 LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 20, but expected something less or equal to 10, or greater or equal to 30

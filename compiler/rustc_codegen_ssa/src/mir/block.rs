@@ -162,9 +162,15 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             } else {
                 fx.unreachable_block()
             };
-            let invokeret =
-                bx.invoke(fn_ty, fn_ptr, &llargs, ret_llbb, unwind_block, self.funclet(fx));
-            bx.apply_attrs_callsite(&fn_abi, invokeret);
+            let invokeret = bx.invoke(
+                fn_ty,
+                Some(&fn_abi),
+                fn_ptr,
+                &llargs,
+                ret_llbb,
+                unwind_block,
+                self.funclet(fx),
+            );
             if fx.mir[self.bb].is_cleanup {
                 bx.do_not_inline(invokeret);
             }
@@ -178,8 +184,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
             }
         } else {
-            let llret = bx.call(fn_ty, fn_ptr, &llargs, self.funclet(fx));
-            bx.apply_attrs_callsite(&fn_abi, llret);
+            let llret = bx.call(fn_ty, Some(&fn_abi), fn_ptr, &llargs, self.funclet(fx));
             if fx.mir[self.bb].is_cleanup {
                 // Cleanup is always the cold path. Don't inline
                 // drop glue. Also, when there is a deeply-nested
@@ -1533,8 +1538,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, LangItem::PanicNoUnwind);
             let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
-            let llret = bx.call(fn_ty, fn_ptr, &[], None);
-            bx.apply_attrs_callsite(&fn_abi, llret);
+            let llret = bx.call(fn_ty, Some(&fn_abi), fn_ptr, &[], None);
             bx.do_not_inline(llret);
 
             bx.unreachable();

@@ -1,5 +1,5 @@
-use crate::spec::TargetOptions;
-use crate::spec::{FramePointer, LinkerFlavor, SanitizerSet, StackProbeType, Target};
+use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet};
+use crate::spec::{StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = "x86_64";
@@ -7,10 +7,9 @@ pub fn target() -> Target {
     base.cpu = "core2".into();
     base.max_atomic_width = Some(128); // core2 support cmpxchg16b
     base.frame_pointer = FramePointer::Always;
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64"]);
+    base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m64"]);
     base.link_env_remove.to_mut().extend(super::apple_base::macos_link_env_remove());
-    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-    base.stack_probes = StackProbeType::Call;
+    base.stack_probes = StackProbeType::X86;
     base.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;
 

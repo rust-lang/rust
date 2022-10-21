@@ -32,7 +32,7 @@ pub trait TypeOp<'tcx>: Sized + fmt::Debug {
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
     /// (they will be given over to the NLL region solver).
-    fn fully_perform(self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>>;
+    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>>;
 }
 
 /// The output from performing a type op
@@ -78,7 +78,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<'tcx> + 'tcx {
 
     fn fully_perform_into(
         query_key: ParamEnvAnd<'tcx, Self>,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
     ) -> Fallible<(
         Self::QueryResponse,
@@ -120,7 +120,7 @@ where
     type Output = Q::QueryResponse;
     type ErrorInfo = Canonical<'tcx, ParamEnvAnd<'tcx, Q>>;
 
-    fn fully_perform(self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
+    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
         let mut region_constraints = QueryRegionConstraints::default();
         let (output, error_info, mut obligations, _) =
             Q::fully_perform_into(self, infcx, &mut region_constraints)?;

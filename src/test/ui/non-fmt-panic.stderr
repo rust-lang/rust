@@ -4,8 +4,8 @@ warning: panic message contains a brace
 LL |     panic!("here's a brace: {");
    |                             ^
    |
-   = note: `#[warn(non_fmt_panics)]` on by default
    = note: this message is not used as a format string, but will be in Rust 2021
+   = note: `#[warn(non_fmt_panics)]` on by default
 help: add a "{}" format string to use the message literally
    |
 LL |     panic!("{}", "here's a brace: {");

@@ -71,6 +71,7 @@ pub type BCRYPT_ALG_HANDLE = LPVOID;
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
 pub type PSRWLOCK = *mut SRWLOCK;
+pub type LPINIT_ONCE = *mut INIT_ONCE;
 
 pub type SOCKET = crate::os::windows::raw::SOCKET;
 pub type socklen_t = c_int;
@@ -125,6 +126,8 @@ pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
 pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
 pub const FIONBIO: c_ulong = 0x8004667e;
+
+pub const MAX_PATH: usize = 260;
 
 #[repr(C)]
 #[derive(Copy)]
@@ -194,6 +197,9 @@ pub const DUPLICATE_SAME_ACCESS: DWORD = 0x00000002;
 
 pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE { ptr: ptr::null_mut() };
 pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { ptr: ptr::null_mut() };
+pub const INIT_ONCE_STATIC_INIT: INIT_ONCE = INIT_ONCE { ptr: ptr::null_mut() };
+
+pub const INIT_ONCE_INIT_FAILED: DWORD = 0x00000004;
 
 pub const DETACHED_PROCESS: DWORD = 0x00000008;
 pub const CREATE_NEW_PROCESS_GROUP: DWORD = 0x00000200;
@@ -279,7 +285,6 @@ pub const STATUS_INVALID_PARAMETER: NTSTATUS = 0xc000000d_u32 as _;
 pub const STATUS_PENDING: NTSTATUS = 0x103 as _;
 pub const STATUS_END_OF_FILE: NTSTATUS = 0xC0000011_u32 as _;
 pub const STATUS_NOT_IMPLEMENTED: NTSTATUS = 0xC0000002_u32 as _;
-pub const STATUS_NOT_SUPPORTED: NTSTATUS = 0xC00000BB_u32 as _;
 
 // Equivalent to the `NT_SUCCESS` C preprocessor macro.
 // See: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/using-ntstatus-values
@@ -289,6 +294,7 @@ pub fn nt_success(status: NTSTATUS) -> bool {
 
 // "RNG\0"
 pub const BCRYPT_RNG_ALGORITHM: &[u16] = &[b'R' as u16, b'N' as u16, b'G' as u16, 0];
+pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
 
 #[repr(C)]
 pub struct UNICODE_STRING {
@@ -535,6 +541,12 @@ pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
 /// NB: Use carefully! In general using this as a reference is likely to get the
 /// provenance wrong for the `PathBuffer` field!
 #[repr(C)]
+pub struct FILE_NAME_INFO {
+    pub FileNameLength: DWORD,
+    pub FileName: [WCHAR; 1],
+}
+
+#[repr(C)]
 pub struct MOUNT_POINT_REPARSE_BUFFER {
     pub SubstituteNameOffset: c_ushort,
     pub SubstituteNameLength: c_ushort,
@@ -563,6 +575,10 @@ pub struct CONDITION_VARIABLE {
 }
 #[repr(C)]
 pub struct SRWLOCK {
+    pub ptr: LPVOID,
+}
+#[repr(C)]
+pub struct INIT_ONCE {
     pub ptr: LPVOID,
 }
 
@@ -817,10 +833,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     #[link(name = "advapi32")]
     extern "system" {
-        // Forbidden when targeting UWP
-        #[link_name = "SystemFunction036"]
-        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
-
         // Allowed but unused by UWP
         pub fn OpenProcessToken(
             ProcessHandle: HANDLE,
@@ -959,6 +971,7 @@ extern "system" {
     pub fn TlsAlloc() -> DWORD;
     pub fn TlsGetValue(dwTlsIndex: DWORD) -> LPVOID;
     pub fn TlsSetValue(dwTlsIndex: DWORD, lpTlsvalue: LPVOID) -> BOOL;
+    pub fn TlsFree(dwTlsIndex: DWORD) -> BOOL;
     pub fn GetLastError() -> DWORD;
     pub fn QueryPerformanceFrequency(lpFrequency: *mut LARGE_INTEGER) -> BOOL;
     pub fn QueryPerformanceCounter(lpPerformanceCount: *mut LARGE_INTEGER) -> BOOL;
@@ -1117,6 +1130,14 @@ extern "system" {
     pub fn ReleaseSRWLockShared(SRWLock: PSRWLOCK);
     pub fn TryAcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> BOOLEAN;
     pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN;
+
+    pub fn InitOnceBeginInitialize(
+        lpInitOnce: LPINIT_ONCE,
+        dwFlags: DWORD,
+        fPending: LPBOOL,
+        lpContext: *mut LPVOID,
+    ) -> BOOL;
+    pub fn InitOnceComplete(lpInitOnce: LPINIT_ONCE, dwFlags: DWORD, lpContext: LPVOID) -> BOOL;
 
     pub fn CompareStringOrdinal(
         lpString1: LPCWSTR,

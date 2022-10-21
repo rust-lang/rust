@@ -50,6 +50,7 @@ pub struct NoCheck;
 
 #[allow(dead_code)]
 impl NoCheck {
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Self {
         Self
     }

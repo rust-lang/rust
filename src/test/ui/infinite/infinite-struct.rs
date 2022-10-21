@@ -6,4 +6,11 @@ fn foo() -> Take {
     Take(loop {})
 }
 
+// mutually infinite structs
+struct Foo { //~ ERROR has infinite size
+    x: Bar<Foo>,
+}
+
+struct Bar<T>([T; 1]);
+
 fn main() {}

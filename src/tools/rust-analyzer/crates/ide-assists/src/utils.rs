@@ -2,8 +2,6 @@
 
 use std::ops;
 
-use itertools::Itertools;
-
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{db::HirDatabase, HirDisplay, Semantics};
 use ide_db::{famous_defs::FamousDefs, path_transform::PathTransform, RootDatabase, SnippetCap};
@@ -15,7 +13,7 @@ use syntax::{
         edit_in_place::{AttrsOwnerEdit, Removable},
         make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
     },
-    ted, AstNode, AstToken, Direction, SmolStr, SourceFile,
+    ted, AstNode, AstToken, Direction, SourceFile,
     SyntaxKind::*,
     SyntaxNode, TextRange, TextSize, T,
 };
@@ -424,34 +422,44 @@ pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &
 }
 
 fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str) -> String {
-    let generic_params = adt.generic_param_list();
+    // Ensure lifetime params are before type & const params
+    let generic_params = adt.generic_param_list().map(|generic_params| {
+        let lifetime_params =
+            generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
+        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+            // remove defaults since they can't be specified in impls
+            match param {
+                ast::TypeOrConstParam::Type(param) => {
+                    let param = param.clone_for_update();
+                    param.remove_default();
+                    Some(ast::GenericParam::TypeParam(param))
+                }
+                ast::TypeOrConstParam::Const(param) => {
+                    let param = param.clone_for_update();
+                    param.remove_default();
+                    Some(ast::GenericParam::ConstParam(param))
+                }
+            }
+        });
+
+        make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
+    });
+
+    // FIXME: use syntax::make & mutable AST apis instead
+    // `trait_text` and `code` can't be opaque blobs of text
     let mut buf = String::with_capacity(code.len());
+
+    // Copy any cfg attrs from the original adt
     buf.push_str("\n\n");
-    adt.attrs()
-        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false))
-        .for_each(|attr| buf.push_str(format!("{}\n", attr).as_str()));
+    let cfg_attrs = adt
+        .attrs()
+        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false));
+    cfg_attrs.for_each(|attr| buf.push_str(&format!("{attr}\n")));
+
+    // `impl{generic_params} {trait_text} for {name}{generic_params.to_generic_args()}`
     buf.push_str("impl");
     if let Some(generic_params) = &generic_params {
-        let lifetimes = generic_params.lifetime_params().map(|lt| format!("{}", lt.syntax()));
-        let toc_params = generic_params.type_or_const_params().map(|toc_param| {
-            let type_param = match toc_param {
-                ast::TypeOrConstParam::Type(x) => x,
-                ast::TypeOrConstParam::Const(x) => return x.syntax().to_string(),
-            };
-            let mut buf = String::new();
-            if let Some(it) = type_param.name() {
-                format_to!(buf, "{}", it.syntax());
-            }
-            if let Some(it) = type_param.colon_token() {
-                format_to!(buf, "{} ", it);
-            }
-            if let Some(it) = type_param.type_bound_list() {
-                format_to!(buf, "{}", it.syntax());
-            }
-            buf
-        });
-        let generics = lifetimes.chain(toc_params).format(", ");
-        format_to!(buf, "<{}>", generics);
+        format_to!(buf, "{generic_params}");
     }
     buf.push(' ');
     if let Some(trait_text) = trait_text {
@@ -460,23 +468,15 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
     }
     buf.push_str(&adt.name().unwrap().text());
     if let Some(generic_params) = generic_params {
-        let lifetime_params = generic_params
-            .lifetime_params()
-            .filter_map(|it| it.lifetime())
-            .map(|it| SmolStr::from(it.text()));
-        let toc_params = generic_params
-            .type_or_const_params()
-            .filter_map(|it| it.name())
-            .map(|it| SmolStr::from(it.text()));
-        format_to!(buf, "<{}>", lifetime_params.chain(toc_params).format(", "))
+        format_to!(buf, "{}", generic_params.to_generic_args());
     }
 
     match adt.where_clause() {
         Some(where_clause) => {
-            format_to!(buf, "\n{}\n{{\n{}\n}}", where_clause, code);
+            format_to!(buf, "\n{where_clause}\n{{\n{code}\n}}");
         }
         None => {
-            format_to!(buf, " {{\n{}\n}}", code);
+            format_to!(buf, " {{\n{code}\n}}");
         }
     }
 

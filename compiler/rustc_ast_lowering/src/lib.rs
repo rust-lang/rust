@@ -32,7 +32,6 @@
 
 #![feature(box_patterns)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(never_type)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
@@ -62,8 +61,8 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DesugaringKind;
@@ -126,7 +125,7 @@ struct LoweringContext<'a, 'hir> {
     is_in_trait_impl: bool,
     is_in_dyn_type: bool,
 
-    current_hir_id_owner: LocalDefId,
+    current_hir_id_owner: hir::OwnerId,
     item_local_id_counter: hir::ItemLocalId,
     local_id_to_def_id: SortedMap<ItemLocalId, LocalDefId>,
     trait_map: FxHashMap<ItemLocalId, Box<[TraitCandidate]>>,
@@ -161,6 +160,10 @@ trait ResolverAstLoweringExt {
     fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>>;
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes>;
     fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
+    // Clones the resolution (if any) on 'source' and applies it
+    // to 'target'. Used when desugaring a `UseTreeKind::Nested` to
+    // multiple `UseTreeKind::Simple`s
+    fn clone_res(&mut self, source: NodeId, target: NodeId);
     fn get_label_res(&self, id: NodeId) -> Option<NodeId>;
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes>;
     fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)>;
@@ -176,12 +179,7 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
                 return None;
             }
 
-            let partial_res = self.partial_res_map.get(&expr.id)?;
-            if partial_res.unresolved_segments() != 0 {
-                return None;
-            }
-
-            if let Res::Def(DefKind::Fn, def_id) = partial_res.base_res() {
+            if let Res::Def(DefKind::Fn, def_id) = self.partial_res_map.get(&expr.id)?.full_res()? {
                 // We only support cross-crate argument rewriting. Uses
                 // within the same crate should be updated to use the new
                 // const generics style.
@@ -196,6 +194,12 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
         }
 
         None
+    }
+
+    fn clone_res(&mut self, source: NodeId, target: NodeId) {
+        if let Some(res) = self.partial_res_map.get(&source) {
+            self.partial_res_map.insert(target, *res);
+        }
     }
 
     /// Obtains resolution for a `NodeId` with a single resolution.
@@ -503,6 +507,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
+    /// resolver (if any).
+    fn orig_opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
+        self.resolver.node_id_to_def_id.get(&node).map(|local_def_id| *local_def_id)
+    }
+
+    fn orig_local_def_id(&self, node: NodeId) -> LocalDefId {
+        self.orig_opt_local_def_id(node)
+            .unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+    }
+
+    /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any), after applying any remapping from `get_remapped_def_id`.
     ///
     /// For example, in a function like `fn foo<'a>(x: &'a u32)`,
@@ -516,10 +531,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// we would create an opaque type `type FooReturn<'a1> = impl Debug + 'a1`.
     /// When lowering the `Debug + 'a` bounds, we add a remapping to map `'a` to `'a1`.
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.resolver
-            .node_id_to_def_id
-            .get(&node)
-            .map(|local_def_id| self.get_remapped_def_id(*local_def_id))
+        self.orig_opt_local_def_id(node).map(|local_def_id| self.get_remapped_def_id(local_def_id))
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
@@ -528,9 +540,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Get the previously recorded `to` local def id given the `from` local def id, obtained using
     /// `generics_def_id_map` field.
-    fn get_remapped_def_id(&self, mut local_def_id: LocalDefId) -> LocalDefId {
+    fn get_remapped_def_id(&self, local_def_id: LocalDefId) -> LocalDefId {
         // `generics_def_id_map` is a stack of mappings. As we go deeper in impl traits nesting we
-        // push new mappings so we need to try first the latest mappings, hence `iter().rev()`.
+        // push new mappings, so we first need to get the latest (innermost) mappings, hence `iter().rev()`.
         //
         // Consider:
         //
@@ -540,18 +552,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //
         // `[[fn#'b -> impl_trait#'b], [fn#'b -> impl_sized#'b]]`
         //
-        // for the opaque type generated on `impl Sized + 'b`, We want the result to be:
-        // impl_sized#'b, so iterating forward is the wrong thing to do.
-        for map in self.generics_def_id_map.iter().rev() {
-            if let Some(r) = map.get(&local_def_id) {
-                debug!("def_id_remapper: remapping from `{local_def_id:?}` to `{r:?}`");
-                local_def_id = *r;
-            } else {
-                debug!("def_id_remapper: no remapping for `{local_def_id:?}` found in map");
-            }
-        }
-
-        local_def_id
+        // for the opaque type generated on `impl Sized + 'b`, we want the result to be: impl_sized#'b.
+        // So, if we were trying to find first from the start (outermost) would give the wrong result, impl_trait#'b.
+        self.generics_def_id_map
+            .iter()
+            .rev()
+            .find_map(|map| map.get(&local_def_id).map(|local_def_id| *local_def_id))
+            .unwrap_or(local_def_id)
     }
 
     /// Freshen the `LoweringContext` and ready it to lower a nested item.
@@ -572,7 +579,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_node_ids = std::mem::take(&mut self.node_id_to_local_id);
         let current_id_to_def_id = std::mem::take(&mut self.local_id_to_def_id);
         let current_trait_map = std::mem::take(&mut self.trait_map);
-        let current_owner = std::mem::replace(&mut self.current_hir_id_owner, def_id);
+        let current_owner =
+            std::mem::replace(&mut self.current_hir_id_owner, hir::OwnerId { def_id });
         let current_local_counter =
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
         let current_impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
@@ -587,7 +595,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug_assert_eq!(_old, None);
 
         let item = f(self);
-        debug_assert_eq!(def_id, item.def_id());
+        debug_assert_eq!(def_id, item.def_id().def_id);
         // `f` should have consumed all the elements in these vectors when constructing `item`.
         debug_assert!(self.impl_trait_defs.is_empty());
         debug_assert!(self.impl_trait_bounds.is_empty());
@@ -753,12 +761,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn expect_full_res(&mut self, id: NodeId) -> Res<NodeId> {
-        self.resolver.get_partial_res(id).map_or(Res::Err, |pr| {
-            if pr.unresolved_segments() != 0 {
-                panic!("path not fully resolved: {:?}", pr);
-            }
-            pr.base_res()
-        })
+        self.resolver.get_partial_res(id).map_or(Res::Err, |pr| pr.expect_full_res())
     }
 
     fn expect_full_res_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Res<NodeId>> {
@@ -786,7 +789,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
         if self.tcx.sess.opts.unstable_opts.incremental_relative_spans {
-            span.with_parent(Some(self.current_hir_id_owner))
+            span.with_parent(Some(self.current_hir_id_owner.def_id))
         } else {
             // Do not make spans relative when not using incremental compilation.
             span
@@ -812,7 +815,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Fresh { param, .. } => {
                 // Late resolution delegates to us the creation of the `LocalDefId`.
                 let _def_id = self.create_def(
-                    self.current_hir_id_owner,
+                    self.current_hir_id_owner.def_id,
                     param,
                     DefPathData::LifetimeNs(kw::UnderscoreLifetime),
                 );
@@ -1060,9 +1063,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
 
-                    let parent_def_id = self.current_hir_id_owner;
                     let impl_trait_node_id = self.next_node_id();
-                    self.create_def(parent_def_id, impl_trait_node_id, DefPathData::ImplTrait);
 
                     self.with_dyn_type_scope(false, |this| {
                         let node_id = this.next_node_id();
@@ -1140,8 +1141,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // type and value namespaces. If we resolved the path in the value namespace, we
                     // transform it into a generic const argument.
                     TyKind::Path(ref qself, ref path) => {
-                        if let Some(partial_res) = self.resolver.get_partial_res(ty.id) {
-                            let res = partial_res.base_res();
+                        if let Some(res) = self
+                            .resolver
+                            .get_partial_res(ty.id)
+                            .and_then(|partial_res| partial_res.full_res())
+                        {
                             if !res.matches_ns(Namespace::TypeNS) {
                                 debug!(
                                     "lower_generic_arg: Lowering type argument as const argument: {:?}",
@@ -1154,7 +1158,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 let node_id = self.next_node_id();
 
                                 // Add a definition for the in-band const def.
-                                self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
+                                self.create_def(
+                                    parent_def_id.def_id,
+                                    node_id,
+                                    DefPathData::AnonConst,
+                                );
 
                                 let span = self.lower_span(ty.span);
                                 let path_expr = Expr {
@@ -1204,8 +1212,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // by `ty_path`.
         if qself.is_none()
             && let Some(partial_res) = self.resolver.get_partial_res(t.id)
-            && partial_res.unresolved_segments() == 0
-            && let Res::Def(DefKind::Trait | DefKind::TraitAlias, _) = partial_res.base_res()
+            && let Some(Res::Def(DefKind::Trait | DefKind::TraitAlias, _)) = partial_res.full_res()
         {
             let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
                 let poly_trait_ref = this.ast_arena.ptr.alloc(PolyTraitRef {
@@ -1349,9 +1356,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         def_node_id,
                         bounds,
                         false,
-                        &ImplTraitContext::TypeAliasesOpaqueTy,
+                        itctx,
                     ),
                     ImplTraitContext::Universal => {
+                        self.create_def(
+                            self.current_hir_id_owner.def_id,
+                            def_node_id,
+                            DefPathData::ImplTrait,
+                        );
                         let span = t.span;
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
                         let (param, bounds, path) =
@@ -1445,7 +1457,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
+        let opaque_ty_def_id = match origin {
+            hir::OpaqueTyOrigin::TyAlias => self.create_def(
+                self.current_hir_id_owner.def_id,
+                opaque_ty_node_id,
+                DefPathData::ImplTrait,
+            ),
+            hir::OpaqueTyOrigin::FnReturn(fn_def_id) => {
+                self.create_def(fn_def_id, opaque_ty_node_id, DefPathData::ImplTrait)
+            }
+            hir::OpaqueTyOrigin::AsyncFn(..) => bug!("unreachable"),
+        };
         debug!(?opaque_ty_def_id);
 
         // Contains the new lifetime definitions created for the TAIT (if any).
@@ -1551,7 +1573,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!(?lifetimes);
 
         // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-        hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes, in_trait)
+        hir::TyKind::OpaqueDef(
+            hir::ItemId { def_id: hir::OwnerId { def_id: opaque_ty_def_id } },
+            lifetimes,
+            in_trait,
+        )
     }
 
     /// Registers a new opaque type with the proper `NodeId`s and
@@ -1567,7 +1593,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Generate an `type Foo = impl Trait;` declaration.
         trace!("registering opaque type with id {:#?}", opaque_ty_id);
         let opaque_ty_item = hir::Item {
-            def_id: opaque_ty_id,
+            def_id: hir::OwnerId { def_id: opaque_ty_id },
             ident: Ident::empty(),
             kind: opaque_ty_item_kind,
             vis_span: self.lower_span(span.shrink_to_lo()),
@@ -1610,7 +1636,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 LifetimeRes::Fresh { param, binder: _ } => {
                     debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
-                    if let Some(old_def_id) = self.opt_local_def_id(param) && remapping.get(&old_def_id).is_none() {
+                    if let Some(old_def_id) = self.orig_opt_local_def_id(param) && remapping.get(&old_def_id).is_none() {
                         let node_id = self.next_node_id();
 
                         let new_def_id = self.create_def(
@@ -1855,7 +1881,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let extra_lifetime_params = self.resolver.take_extra_lifetime_params(opaque_ty_node_id);
         debug!(?extra_lifetime_params);
         for (ident, outer_node_id, outer_res) in extra_lifetime_params {
-            let outer_def_id = self.local_def_id(outer_node_id);
+            let outer_def_id = self.orig_local_def_id(outer_node_id);
             let inner_node_id = self.next_node_id();
 
             // Add a definition for the in scope lifetime def.
@@ -2018,7 +2044,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // async fn, so the *type parameters* are inherited.  It's
         // only the lifetime parameters that we must supply.
         let opaque_ty_ref = hir::TyKind::OpaqueDef(
-            hir::ItemId { def_id: opaque_ty_def_id },
+            hir::ItemId { def_id: hir::OwnerId { def_id: opaque_ty_def_id } },
             generic_args,
             in_trait,
         );

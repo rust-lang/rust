@@ -11,7 +11,7 @@ pub struct Bar {
 pub struct Foo<T: ?Sized>(T);
 
 // @has foo/struct.Unsized.html
-// @has - '//*[@id="impl-Sized-for-Unsized"]//h3[@class="code-header in-band"]' 'impl !Sized for Unsized'
+// @has - '//*[@id="impl-Sized-for-Unsized"]//h3[@class="code-header"]' 'impl !Sized for Unsized'
 pub struct Unsized {
     data: [u8],
 }

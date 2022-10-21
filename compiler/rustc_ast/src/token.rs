@@ -13,7 +13,7 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
-use std::{fmt, mem};
+use std::fmt;
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum CommentKind {
@@ -256,10 +256,6 @@ pub enum TokenKind {
     Eof,
 }
 
-// `TokenKind` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(TokenKind, 16);
-
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Token {
     pub kind: TokenKind,
@@ -335,11 +331,6 @@ impl Token {
         Token::new(Ident(ident.name, ident.is_raw_guess()), ident.span)
     }
 
-    /// Return this token by value and leave a dummy token in its place.
-    pub fn take(&mut self) -> Self {
-        mem::replace(self, Token::dummy())
-    }
-
     /// For interpolated tokens, returns a span of the fragment to which the interpolated
     /// token refers. For all other tokens this is just a regular span.
     /// It is particularly important to use this for identifiers and lifetimes
@@ -354,17 +345,14 @@ impl Token {
     }
 
     pub fn is_op(&self) -> bool {
-        !matches!(
-            self.kind,
-            OpenDelim(..)
-                | CloseDelim(..)
-                | Literal(..)
-                | DocComment(..)
-                | Ident(..)
-                | Lifetime(..)
-                | Interpolated(..)
-                | Eof
-        )
+        match self.kind {
+            Eq | Lt | Le | EqEq | Ne | Ge | Gt | AndAnd | OrOr | Not | Tilde | BinOp(_)
+            | BinOpEq(_) | At | Dot | DotDot | DotDotDot | DotDotEq | Comma | Semi | Colon
+            | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
+
+            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
+            | Lifetime(..) | Interpolated(..) | Eof => false,
+        }
     }
 
     pub fn is_like_plus(&self) -> bool {
@@ -733,6 +721,7 @@ impl Token {
 }
 
 impl PartialEq<TokenKind> for Token {
+    #[inline]
     fn eq(&self, rhs: &TokenKind) -> bool {
         self.kind == *rhs
     }
@@ -755,10 +744,6 @@ pub enum Nonterminal {
     NtPath(P<ast::Path>),
     NtVis(P<ast::Visibility>),
 }
-
-// `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Nonterminal, 16);
 
 #[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable)]
 pub enum NonterminalKind {
@@ -897,4 +882,18 @@ where
     fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
         panic!("interpolated tokens should not be present in the HIR")
     }
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // tidy-alphabetical-start
+    static_assert_size!(Lit, 12);
+    static_assert_size!(LitKind, 2);
+    static_assert_size!(Nonterminal, 16);
+    static_assert_size!(Token, 24);
+    static_assert_size!(TokenKind, 16);
+    // tidy-alphabetical-end
 }

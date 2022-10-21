@@ -1,5 +1,5 @@
 #![warn(clippy::panic_in_result_fn)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::uninlined_format_args, clippy::unnecessary_wraps)]
 
 // debug_assert should never trigger the `panic_in_result_fn` lint
 

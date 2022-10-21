@@ -64,46 +64,6 @@ const DEFAULT_LINT_LEVELS: &[(&str, &str)] = &[
 /// This prefix is in front of the lint groups in the lint store. The prefix will be trimmed
 /// to only keep the actual lint group in the output.
 const CLIPPY_LINT_GROUP_PREFIX: &str = "clippy::";
-
-/// This template will be used to format the configuration section in the lint documentation.
-/// The `configurations` parameter will be replaced with one or multiple formatted
-/// `ClippyConfiguration` instances. See `CONFIGURATION_VALUE_TEMPLATE` for further customizations
-macro_rules! CONFIGURATION_SECTION_TEMPLATE {
-    () => {
-        r#"
-### Configuration
-This lint has the following configuration variables:
-
-{configurations}
-"#
-    };
-}
-/// This template will be used to format an individual `ClippyConfiguration` instance in the
-/// lint documentation.
-///
-/// The format function will provide strings for the following parameters: `name`, `ty`, `doc` and
-/// `default`
-macro_rules! CONFIGURATION_VALUE_TEMPLATE {
-    () => {
-        "* `{name}`: `{ty}`: {doc} (defaults to `{default}`)\n"
-    };
-}
-
-macro_rules! RENAMES_SECTION_TEMPLATE {
-    () => {
-        r#"
-### Past names
-
-{names}
-"#
-    };
-}
-macro_rules! RENAME_VALUE_TEMPLATE {
-    () => {
-        "* `{name}`\n"
-    };
-}
-
 const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint"],
     &["clippy_utils", "diagnostics", "span_lint_and_help"],
@@ -205,7 +165,16 @@ impl MetadataCollector {
             .filter(|config| config.lints.iter().any(|lint| lint == lint_name))
             .map(ToString::to_string)
             .reduce(|acc, x| acc + &x)
-            .map(|configurations| format!(CONFIGURATION_SECTION_TEMPLATE!(), configurations = configurations))
+            .map(|configurations| {
+                format!(
+                    r#"
+### Configuration
+This lint has the following configuration variables:
+
+{configurations}
+"#
+                )
+            })
     }
 }
 
@@ -291,16 +260,13 @@ fn replace_produces(lint_name: &str, docs: &mut String, clippy_project_root: &Pa
                             continue;
                         }
 
-                        panic!("lint `{}` has an unterminated code block", lint_name)
+                        panic!("lint `{lint_name}` has an unterminated code block")
                     }
 
                     break;
                 },
                 Some(line) if line.trim_start() == "{{produces}}" => {
-                    panic!(
-                        "lint `{}` has marker {{{{produces}}}} with an ignored or missing code block",
-                        lint_name
-                    )
+                    panic!("lint `{lint_name}` has marker {{{{produces}}}} with an ignored or missing code block")
                 },
                 Some(line) => {
                     let line = line.trim();
@@ -319,7 +285,7 @@ fn replace_produces(lint_name: &str, docs: &mut String, clippy_project_root: &Pa
             match lines.next() {
                 Some(line) if line.trim_start() == "```" => break,
                 Some(line) => example.push(line),
-                None => panic!("lint `{}` has an unterminated code block", lint_name),
+                None => panic!("lint `{lint_name}` has an unterminated code block"),
             }
         }
 
@@ -336,10 +302,9 @@ fn replace_produces(lint_name: &str, docs: &mut String, clippy_project_root: &Pa
                             <summary>Produces</summary>\n\
                             \n\
                             ```text\n\
-                            {}\n\
+                            {output}\n\
                             ```\n\
-                        </details>",
-                            output
+                        </details>"
                         ),
                     );
 
@@ -394,7 +359,7 @@ fn get_lint_output(lint_name: &str, example: &[&mut String], clippy_project_root
         panic!("failed to write to `{}`: {e}", file.as_path().to_string_lossy());
     }
 
-    let prefixed_name = format!("{}{lint_name}", CLIPPY_LINT_GROUP_PREFIX);
+    let prefixed_name = format!("{CLIPPY_LINT_GROUP_PREFIX}{lint_name}");
 
     let mut cmd = Command::new("cargo");
 
@@ -417,7 +382,7 @@ fn get_lint_output(lint_name: &str, example: &[&mut String], clippy_project_root
     let output = cmd
         .arg(file.as_path())
         .output()
-        .unwrap_or_else(|e| panic!("failed to run `{:?}`: {e}", cmd));
+        .unwrap_or_else(|e| panic!("failed to run `{cmd:?}`: {e}"));
 
     let tmp_file_path = file.to_string_lossy();
     let stderr = std::str::from_utf8(&output.stderr).unwrap();
@@ -441,8 +406,7 @@ fn get_lint_output(lint_name: &str, example: &[&mut String], clippy_project_root
         let rendered: Vec<&str> = msgs.iter().filter_map(|msg| msg["rendered"].as_str()).collect();
         let non_json: Vec<&str> = stderr.lines().filter(|line| !line.starts_with('{')).collect();
         panic!(
-            "did not find lint `{}` in output of example, got:\n{}\n{}",
-            lint_name,
+            "did not find lint `{lint_name}` in output of example, got:\n{}\n{}",
             non_json.join("\n"),
             rendered.join("\n")
         );
@@ -588,13 +552,10 @@ fn to_kebab(config_name: &str) -> String {
 
 impl fmt::Display for ClippyConfiguration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
-        write!(
+        writeln!(
             f,
-            CONFIGURATION_VALUE_TEMPLATE!(),
-            name = self.name,
-            ty = self.config_type,
-            doc = self.doc,
-            default = self.default
+            "* `{}`: `{}`: {} (defaults to `{}`)",
+            self.name, self.config_type, self.doc, self.default
         )
     }
 }
@@ -811,7 +772,7 @@ fn get_lint_group_and_level_or_lint(
                 lint_collection_error_item(
                     cx,
                     item,
-                    &format!("Unable to determine lint level for found group `{}`", group),
+                    &format!("Unable to determine lint level for found group `{group}`"),
                 );
                 None
             }
@@ -869,7 +830,7 @@ fn collect_renames(lints: &mut Vec<LintMetadata>) {
                         if name == lint_name;
                         if let Some(past_name) = k.strip_prefix(CLIPPY_LINT_GROUP_PREFIX);
                         then {
-                            write!(collected, RENAME_VALUE_TEMPLATE!(), name = past_name).unwrap();
+                            writeln!(collected, "* `{past_name}`").unwrap();
                             names.push(past_name.to_string());
                         }
                     }
@@ -882,7 +843,15 @@ fn collect_renames(lints: &mut Vec<LintMetadata>) {
         }
 
         if !collected.is_empty() {
-            write!(&mut lint.docs, RENAMES_SECTION_TEMPLATE!(), names = collected).unwrap();
+            write!(
+                &mut lint.docs,
+                r#"
+### Past names
+
+{collected}
+"#
+            )
+            .unwrap();
         }
     }
 }
@@ -895,7 +864,7 @@ fn lint_collection_error_item(cx: &LateContext<'_>, item: &Item<'_>, message: &s
         cx,
         INTERNAL_METADATA_COLLECTOR,
         item.ident.span,
-        &format!("metadata collection error for `{}`: {}", item.ident.name, message),
+        &format!("metadata collection error for `{}`: {message}", item.ident.name),
     );
 }
 

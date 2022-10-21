@@ -10,7 +10,6 @@ Rust MIR: a lowered representation of Rust.
 #![feature(decl_macro)]
 #![feature(exact_size_is_empty)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(slice_ptr_get)]
@@ -21,7 +20,7 @@ Rust MIR: a lowered representation of Rust.
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![feature(is_some_with)]
+#![feature(is_some_and)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
@@ -33,7 +32,6 @@ extern crate rustc_middle;
 pub mod const_eval;
 mod errors;
 pub mod interpret;
-mod might_permit_raw_init;
 pub mod transform;
 pub mod util;
 
@@ -62,7 +60,6 @@ pub fn provide(providers: &mut Providers) {
         const_eval::deref_mir_constant(tcx, param_env, value)
     };
     providers.permits_uninit_init =
-        |tcx, ty| might_permit_raw_init::might_permit_raw_init(tcx, ty, InitKind::Uninit);
-    providers.permits_zero_init =
-        |tcx, ty| might_permit_raw_init::might_permit_raw_init(tcx, ty, InitKind::Zero);
+        |tcx, ty| util::might_permit_raw_init(tcx, ty, InitKind::UninitMitigated0x01Fill);
+    providers.permits_zero_init = |tcx, ty| util::might_permit_raw_init(tcx, ty, InitKind::Zero);
 }

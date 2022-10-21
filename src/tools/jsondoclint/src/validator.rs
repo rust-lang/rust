@@ -4,8 +4,8 @@ use std::hash::Hash;
 use rustdoc_json_types::{
     Constant, Crate, DynTrait, Enum, FnDecl, Function, FunctionPointer, GenericArg, GenericArgs,
     GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, Method, Module, OpaqueTy,
-    Path, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type, TypeBinding,
-    TypeBindingKind, Typedef, Union, Variant, WherePredicate,
+    Path, Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type,
+    TypeBinding, TypeBindingKind, Typedef, Union, Variant, WherePredicate,
 };
 
 use crate::{item_kind::Kind, Error, ErrorKind};
@@ -76,7 +76,7 @@ impl<'a> Validator<'a> {
                 ItemEnum::ForeignType => {} // nop
                 ItemEnum::Macro(x) => self.check_macro(x),
                 ItemEnum::ProcMacro(x) => self.check_proc_macro(x),
-                ItemEnum::PrimitiveType(x) => self.check_primitive_type(x),
+                ItemEnum::Primitive(x) => self.check_primitive_type(x),
                 ItemEnum::Module(x) => self.check_module(x),
                 // FIXME: Why don't these have their own structs?
                 ItemEnum::ExternCrate { .. } => {}
@@ -219,8 +219,8 @@ impl<'a> Validator<'a> {
         // nop
     }
 
-    fn check_primitive_type(&mut self, _: &'a str) {
-        // nop
+    fn check_primitive_type(&mut self, x: &'a Primitive) {
+        x.impls.iter().for_each(|i| self.add_impl_id(i));
     }
 
     fn check_generics(&mut self, x: &'a Generics) {

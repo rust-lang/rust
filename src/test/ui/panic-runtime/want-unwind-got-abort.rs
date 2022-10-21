@@ -3,7 +3,6 @@
 // error-pattern:is not compiled with this crate's panic strategy `unwind`
 // aux-build:panic-runtime-abort.rs
 // aux-build:panic-runtime-lang-items.rs
-// ignore-wasm32-bare compiled with panic=abort by default
 
 #![no_std]
 #![no_main]

@@ -29,20 +29,15 @@ const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
 // but that would fail to compile; so we ended up breaking user code that would
 // have worked fine had we not promoted.
 const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
-//~^ ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
+//~^ ERROR evaluation of constant value failed
 
 const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
-//~^ ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
-//~| ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
+//~^ ERROR evaluation of constant value failed
+//~| ERROR evaluation of constant value failed
 
 const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
-//~^ ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
-//~| ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
+//~^ ERROR evaluation of constant value failed
+//~| ERROR evaluation of constant value failed
 
 const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
 //~^ ERROR it is undefined behavior to use this value

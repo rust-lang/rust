@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{get_parent_expr, is_lang_ctor, match_def_path, paths};
+use clippy_utils::{get_parent_expr, is_res_lang_ctor, match_def_path, path_res, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
@@ -27,8 +27,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
         if let ExprKind::Path(ref match_fun_path) = match_fun.kind;
         if matches!(match_fun_path, QPath::LangItem(LangItem::TryTraitBranch, ..));
         if let ExprKind::Call(err_fun, [err_arg, ..]) = try_arg.kind;
-        if let ExprKind::Path(ref err_fun_path) = err_fun.kind;
-        if is_lang_ctor(cx, err_fun_path, ResultErr);
+        if is_res_lang_ctor(cx, path_res(cx, err_fun), ResultErr);
         if let Some(return_ty) = find_return_type(cx, &expr.kind);
         then {
             let prefix;
@@ -61,9 +60,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
                 "return "
             };
             let suggestion = if err_ty == expr_err_ty {
-                format!("{}{}{}{}", ret_prefix, prefix, origin_snippet, suffix)
+                format!("{ret_prefix}{prefix}{origin_snippet}{suffix}")
             } else {
-                format!("{}{}{}.into(){}", ret_prefix, prefix, origin_snippet, suffix)
+                format!("{ret_prefix}{prefix}{origin_snippet}.into(){suffix}")
             };
 
             span_lint_and_sugg(

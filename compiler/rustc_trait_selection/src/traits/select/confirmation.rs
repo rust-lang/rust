@@ -11,9 +11,10 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
-use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
-use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
+use rustc_middle::ty::{
+    self, GenericArg, GenericArgKind, GenericParamDefKind, InternalSubsts, SubstsRef,
+    ToPolyTraitRef, ToPredicate, Ty, TyCtxt,
+};
 use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
@@ -63,8 +64,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::UserDefined(self.confirm_impl_candidate(obligation, impl_def_id))
             }
 
-            AutoImplCandidate(trait_def_id) => {
-                let data = self.confirm_auto_impl_candidate(obligation, trait_def_id);
+            AutoImplCandidate => {
+                let data = self.confirm_auto_impl_candidate(obligation);
                 ImplSource::AutoImpl(data)
             }
 
@@ -99,8 +100,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             PointeeCandidate => ImplSource::Pointee(ImplSourcePointeeData),
 
-            TraitAliasCandidate(alias_def_id) => {
-                let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);
+            TraitAliasCandidate => {
+                let data = self.confirm_trait_alias_candidate(obligation);
                 ImplSource::TraitAlias(data)
             }
 
@@ -125,8 +126,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let data = self.confirm_const_destruct_candidate(obligation, def_id)?;
                 ImplSource::ConstDestruct(data)
             }
-
-            TupleCandidate => ImplSource::Tuple,
         };
 
         if !obligation.predicate.is_const_if_const() {
@@ -289,8 +288,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let scope = type_at(2).skip_binder();
 
-        let assume =
-            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, const_at(3));
+        let Some(assume) =
+            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, const_at(3)) else {
+                return Err(Unimplemented);
+            };
 
         let cause = obligation.cause.clone();
 
@@ -314,13 +315,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_auto_impl_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        trait_def_id: DefId,
     ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
-        debug!(?obligation, ?trait_def_id, "confirm_auto_impl_candidate");
+        debug!(?obligation, "confirm_auto_impl_candidate");
 
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
         let types = self.constituent_types_for_ty(self_ty);
-        self.vtable_auto_impl(obligation, trait_def_id, types)
+        self.vtable_auto_impl(obligation, obligation.predicate.def_id(), types)
     }
 
     /// See `confirm_auto_impl_candidate`.
@@ -626,7 +626,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // the signature, as evidenced by how we treat it during projection.
         // The safe thing to do here is to liberate it, though, which should
         // have no worse effect than skipping the binder here.
-        let liberated_fn_ty = self.infcx.replace_bound_vars_with_placeholders(obligation.self_ty());
+        let liberated_fn_ty =
+            self.infcx.replace_bound_vars_with_placeholders(obligation.predicate.rebind(self_ty));
         let output_ty = self
             .infcx
             .replace_bound_vars_with_placeholders(liberated_fn_ty.fn_sig(self.tcx()).output());
@@ -654,10 +655,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_trait_alias_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-        alias_def_id: DefId,
     ) -> ImplSourceTraitAliasData<'tcx, PredicateObligation<'tcx>> {
-        debug!(?obligation, ?alias_def_id, "confirm_trait_alias_candidate");
+        debug!(?obligation, "confirm_trait_alias_candidate");
 
+        let alias_def_id = obligation.predicate.def_id();
         let predicate = self.infcx().replace_bound_vars_with_placeholders(obligation.predicate);
         let trait_ref = predicate.trait_ref;
         let trait_def_id = trait_ref.def_id;
@@ -1223,6 +1224,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::FnPtr(_)
                 | ty::Never
                 | ty::Foreign(_) => {}
+
+                // `ManuallyDrop` is trivially drop
+                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().manually_drop() => {}
 
                 // These types are built-in, so we can fast-track by registering
                 // nested predicates for their constituent type(s)

@@ -5,7 +5,7 @@ LL |         &*ptr::slice_from_raw_parts(data, len)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
    |         dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
-   |         inside `std::slice::from_raw_parts::<u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
+   |         inside `std::slice::from_raw_parts::<'_, u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
   ::: $DIR/forbidden_slices.rs:18:34
    |
@@ -19,7 +19,7 @@ LL |         &*ptr::slice_from_raw_parts(data, len)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
    |         dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
-   |         inside `std::slice::from_raw_parts::<()>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
+   |         inside `std::slice::from_raw_parts::<'_, ()>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
   ::: $DIR/forbidden_slices.rs:19:33
    |
@@ -33,7 +33,7 @@ LL |         &*ptr::slice_from_raw_parts(data, len)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
    |         dereferencing pointer failed: ALLOC_ID has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
-   |         inside `std::slice::from_raw_parts::<u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
+   |         inside `std::slice::from_raw_parts::<'_, u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
   ::: $DIR/forbidden_slices.rs:22:34
    |
@@ -92,7 +92,7 @@ LL |         &*ptr::slice_from_raw_parts(data, len)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
    |         dereferencing pointer failed: ALLOC_ID has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
-   |         inside `std::slice::from_raw_parts::<u64>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
+   |         inside `std::slice::from_raw_parts::<'_, u64>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
   ::: $DIR/forbidden_slices.rs:43:5
    |
@@ -111,7 +111,7 @@ LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
   ::: $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
 LL |     unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
-   |                                          ------------------------------ inside `from_ptr_range::<u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
+   |                                          ------------------------------ inside `from_ptr_range::<'_, u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
   ::: $DIR/forbidden_slices.rs:46:34
    |
@@ -130,7 +130,7 @@ LL |         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
   ::: $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
 LL |     unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
-   |                                          ------------------------------ inside `from_ptr_range::<()>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
+   |                                          ------------------------------ inside `from_ptr_range::<'_, ()>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
   ::: $DIR/forbidden_slices.rs:47:33
    |
@@ -230,7 +230,7 @@ LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
   ::: $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
 LL |     unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
-   |                                          ------------------------------ inside `from_ptr_range::<u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
+   |                                          ------------------------------ inside `from_ptr_range::<'_, u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
   ::: $DIR/forbidden_slices.rs:79:34
    |
@@ -249,7 +249,7 @@ LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
   ::: $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
 LL |     unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
-   |                                          ------------------------------ inside `from_ptr_range::<u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
+   |                                          ------------------------------ inside `from_ptr_range::<'_, u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
   ::: $DIR/forbidden_slices.rs:80:35
    |

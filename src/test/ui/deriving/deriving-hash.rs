@@ -44,6 +44,17 @@ fn fake_hash<A: Hash>(v: &mut Vec<u8>, a: A) {
     a.hash(&mut FakeHasher(v));
 }
 
+struct OnlyOneByteHasher;
+impl Hasher for OnlyOneByteHasher {
+    fn finish(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        assert_eq!(bytes.len(), 1);
+    }
+}
+
 fn main() {
     let person1 = Person {
         id: 5,
@@ -73,4 +84,13 @@ fn main() {
     let mut v = vec![];
     fake_hash(&mut v, SingleVariantEnum::A(17));
     assert_eq!(vec![17], v);
+
+    // issue #39137
+    #[repr(u8)]
+    #[derive(Hash)]
+    enum E {
+        A,
+        B,
+    }
+    E::A.hash(&mut OnlyOneByteHasher);
 }

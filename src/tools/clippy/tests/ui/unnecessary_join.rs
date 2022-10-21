@@ -1,6 +1,6 @@
 // run-rustfix
-
 #![warn(clippy::unnecessary_join)]
+#![allow(clippy::uninlined_format_args)]
 
 fn main() {
     // should be linted

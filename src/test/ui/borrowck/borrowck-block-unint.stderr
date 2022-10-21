@@ -7,6 +7,11 @@ LL |     force(|| {
    |           ^^ `x` used here but it isn't initialized
 LL |         println!("{}", x);
    |                        - borrow occurs due to use in closure
+   |
+help: consider assigning a value
+   |
+LL |     let x: isize = 0;
+   |                  +++
 
 error: aborting due to previous error
 

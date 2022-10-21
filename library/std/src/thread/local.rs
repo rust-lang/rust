@@ -95,6 +95,7 @@ use crate::fmt;
 /// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
 /// [`JoinHandle::join`]: crate::thread::JoinHandle::join
 /// [`with`]: LocalKey::with
+#[cfg_attr(not(test), rustc_diagnostic_item = "LocalKey")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LocalKey<T: 'static> {
     // This outer `LocalKey<T>` type is what's going to be stored in statics,
@@ -900,7 +901,7 @@ pub mod statik {
 }
 
 #[doc(hidden)]
-#[cfg(target_thread_local)]
+#[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics"))),))]
 pub mod fast {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
@@ -1036,7 +1037,10 @@ pub mod fast {
 }
 
 #[doc(hidden)]
-#[cfg(not(target_thread_local))]
+#[cfg(all(
+    not(target_thread_local),
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 pub mod os {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;

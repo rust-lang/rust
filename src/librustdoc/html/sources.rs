@@ -274,7 +274,7 @@ pub(crate) fn print_src(
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
-    line_numbers.write_str("<pre class=\"line-numbers\">");
+    line_numbers.write_str("<pre class=\"src-line-numbers\">");
     match source_context {
         SourceContext::Standalone => {
             for line in 1..=lines {

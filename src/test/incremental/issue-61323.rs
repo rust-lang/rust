@@ -1,7 +1,7 @@
 // revisions: rpass cfail
 
 enum A {
-    //[cfail]~^ ERROR 3:1: 3:7: recursive type `A` has infinite size [E0072]
+    //[cfail]~^ ERROR 3:1: 3:7: recursive types `A` and `C` have infinite size [E0072]
     B(C),
 }
 
@@ -10,6 +10,5 @@ struct C(Box<A>);
 
 #[cfg(cfail)]
 struct C(A);
-//[cfail]~^ ERROR 12:1: 12:9: recursive type `C` has infinite size [E0072]
 
 fn main() {}

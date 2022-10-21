@@ -220,7 +220,7 @@ fn trait_item_search_pat(item: &TraitItem<'_>) -> (Pat, Pat) {
 fn impl_item_search_pat(item: &ImplItem<'_>) -> (Pat, Pat) {
     let (start_pat, end_pat) = match &item.kind {
         ImplItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
-        ImplItemKind::TyAlias(..) => (Pat::Str("type"), Pat::Str(";")),
+        ImplItemKind::Type(..) => (Pat::Str("type"), Pat::Str(";")),
         ImplItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
     };
     if item.vis_span.is_empty() {

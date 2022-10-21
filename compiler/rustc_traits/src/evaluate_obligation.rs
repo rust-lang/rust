@@ -18,17 +18,15 @@ fn evaluate_obligation<'tcx>(
     debug!("evaluate_obligation(canonical_goal={:#?})", canonical_goal);
     // HACK This bubble is required for this tests to pass:
     // impl-trait/issue99642.rs
-    tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter_with_canonical(
-        DUMMY_SP,
-        &canonical_goal,
-        |ref infcx, goal, _canonical_inference_vars| {
-            debug!("evaluate_obligation: goal={:#?}", goal);
-            let ParamEnvAnd { param_env, value: predicate } = goal;
+    let (ref infcx, goal, _canonical_inference_vars) = tcx
+        .infer_ctxt()
+        .with_opaque_type_inference(DefiningAnchor::Bubble)
+        .build_with_canonical(DUMMY_SP, &canonical_goal);
+    debug!("evaluate_obligation: goal={:#?}", goal);
+    let ParamEnvAnd { param_env, value: predicate } = goal;
 
-            let mut selcx = SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);
-            let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
+    let mut selcx = SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);
+    let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
 
-            selcx.evaluate_root_obligation(&obligation)
-        },
-    )
+    selcx.evaluate_root_obligation(&obligation)
 }

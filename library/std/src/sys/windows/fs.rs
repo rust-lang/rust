@@ -572,6 +572,14 @@ impl File {
                 "Cannot set file timestamp to 0",
             ));
         }
+        let is_max =
+            |t: c::FILETIME| t.dwLowDateTime == c::DWORD::MAX && t.dwHighDateTime == c::DWORD::MAX;
+        if times.accessed.map_or(false, is_max) || times.modified.map_or(false, is_max) {
+            return Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "Cannot set file timestamp to 0xFFFF_FFFF_FFFF_FFFF",
+            ));
+        }
         cvt(unsafe {
             c::SetFileTime(self.as_handle(), None, times.accessed.as_ref(), times.modified.as_ref())
         })?;

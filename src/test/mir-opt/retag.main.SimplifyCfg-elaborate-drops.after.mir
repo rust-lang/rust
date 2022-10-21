@@ -11,7 +11,7 @@ fn main() -> () {
     let mut _9: &mut i32;                // in scope 0 at $DIR/retag.rs:+4:19: +4:20
     let mut _12: *mut i32;               // in scope 0 at $DIR/retag.rs:+7:18: +7:29
     let mut _14: [closure@main::{closure#0}]; // in scope 0 at $DIR/retag.rs:+11:31: +14:6
-    let mut _16: for<'r> fn(&'r i32) -> &'r i32; // in scope 0 at $DIR/retag.rs:+15:14: +15:15
+    let mut _16: for<'a> fn(&'a i32) -> &'a i32; // in scope 0 at $DIR/retag.rs:+15:14: +15:15
     let mut _17: &i32;                   // in scope 0 at $DIR/retag.rs:+15:16: +15:18
     let _18: &i32;                       // in scope 0 at $DIR/retag.rs:+15:16: +15:18
     let _19: &i32;                       // in scope 0 at $DIR/retag.rs:+18:5: +18:24
@@ -25,7 +25,7 @@ fn main() -> () {
     scope 1 {
         debug x => _1;                   // in scope 1 at $DIR/retag.rs:+1:9: +1:14
         let _3: &mut i32;                // in scope 1 at $DIR/retag.rs:+3:13: +3:14
-        let _13: for<'r> fn(&'r i32) -> &'r i32; // in scope 1 at $DIR/retag.rs:+11:9: +11:10
+        let _13: for<'a> fn(&'a i32) -> &'a i32; // in scope 1 at $DIR/retag.rs:+11:9: +11:10
         scope 2 {
             debug v => _3;               // in scope 2 at $DIR/retag.rs:+3:13: +3:14
             let _8: &mut i32;            // in scope 2 at $DIR/retag.rs:+4:13: +4:14
@@ -75,7 +75,7 @@ fn main() -> () {
         _3 = Test::foo(move _4, move _6) -> [return: bb1, unwind: bb8]; // scope 1 at $DIR/retag.rs:+3:17: +3:36
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:33:25: 33:28
-                                         // + literal: Const { ty: for<'r, 'x> fn(&'r Test, &'x mut i32) -> &'x mut i32 {Test::foo}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a, 'x> fn(&'a Test, &'x mut i32) -> &'x mut i32 {Test::foo}, val: Value(<ZST>) }
     }
 
     bb1: {
@@ -114,7 +114,7 @@ fn main() -> () {
         StorageLive(_14);                // scope 1 at $DIR/retag.rs:+11:31: +14:6
         Deinit(_14);                     // scope 1 at $DIR/retag.rs:+11:31: +14:6
         Retag(_14);                      // scope 1 at $DIR/retag.rs:+11:31: +14:6
-        _13 = move _14 as for<'r> fn(&'r i32) -> &'r i32 (Pointer(ClosureFnPointer(Normal))); // scope 1 at $DIR/retag.rs:+11:31: +14:6
+        _13 = move _14 as for<'a> fn(&'a i32) -> &'a i32 (Pointer(ClosureFnPointer(Normal))); // scope 1 at $DIR/retag.rs:+11:31: +14:6
         StorageDead(_14);                // scope 1 at $DIR/retag.rs:+11:47: +11:48
         StorageLive(_15);                // scope 6 at $DIR/retag.rs:+15:9: +15:11
         StorageLive(_16);                // scope 6 at $DIR/retag.rs:+15:14: +15:15
@@ -154,7 +154,7 @@ fn main() -> () {
         _19 = Test::foo_shr(move _20, move _22) -> [return: bb4, unwind: bb7]; // scope 7 at $DIR/retag.rs:+18:5: +18:24
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:48:13: 48:20
-                                         // + literal: Const { ty: for<'r, 'x> fn(&'r Test, &'x i32) -> &'x i32 {Test::foo_shr}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a, 'x> fn(&'a Test, &'x i32) -> &'x i32 {Test::foo_shr}, val: Value(<ZST>) }
     }
 
     bb4: {

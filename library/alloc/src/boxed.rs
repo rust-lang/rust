@@ -151,7 +151,6 @@ use core::async_iter::AsyncIterator;
 use core::borrow;
 use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
-#[cfg(not(bootstrap))]
 use core::error::Error;
 use core::fmt;
 use core::future::Future;
@@ -176,7 +175,6 @@ use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
@@ -1622,6 +1620,22 @@ impl<T, const N: usize> From<[T; N]> for Box<[T]> {
     }
 }
 
+/// Casts a boxed slice to a boxed array.
+///
+/// # Safety
+///
+/// `boxed_slice.len()` must be exactly `N`.
+unsafe fn boxed_slice_as_array_unchecked<T, A: Allocator, const N: usize>(
+    boxed_slice: Box<[T], A>,
+) -> Box<[T; N], A> {
+    debug_assert_eq!(boxed_slice.len(), N);
+
+    let (ptr, alloc) = Box::into_raw_with_allocator(boxed_slice);
+    // SAFETY: Pointer and allocator came from an existing box,
+    // and our safety condition requires that the length is exactly `N`
+    unsafe { Box::from_raw_in(ptr as *mut [T; N], alloc) }
+}
+
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     type Error = Box<[T]>;
@@ -1637,9 +1651,42 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     /// `boxed_slice.len()` does not equal `N`.
     fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
         if boxed_slice.len() == N {
-            Ok(unsafe { Box::from_raw(Box::into_raw(boxed_slice) as *mut [T; N]) })
+            Ok(unsafe { boxed_slice_as_array_unchecked(boxed_slice) })
         } else {
             Err(boxed_slice)
+        }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "boxed_array_try_from_vec", since = "CURRENT_RUSTC_VERSION")]
+impl<T, const N: usize> TryFrom<Vec<T>> for Box<[T; N]> {
+    type Error = Vec<T>;
+
+    /// Attempts to convert a `Vec<T>` into a `Box<[T; N]>`.
+    ///
+    /// Like [`Vec::into_boxed_slice`], this is in-place if `vec.capacity() == N`,
+    /// but will require a reallocation otherwise.
+    ///
+    /// # Errors
+    ///
+    /// Returns the original `Vec<T>` in the `Err` variant if
+    /// `boxed_slice.len()` does not equal `N`.
+    ///
+    /// # Examples
+    ///
+    /// This can be used with [`vec!`] to create an array on the heap:
+    ///
+    /// ```
+    /// let state: Box<[f32; 100]> = vec![1.0; 100].try_into().unwrap();
+    /// assert_eq!(state.len(), 100);
+    /// ```
+    fn try_from(vec: Vec<T>) -> Result<Self, Self::Error> {
+        if vec.len() == N {
+            let boxed_slice = vec.into_boxed_slice();
+            Ok(unsafe { boxed_slice_as_array_unchecked(boxed_slice) })
+        } else {
+            Err(vec)
         }
     }
 }
@@ -2090,7 +2137,6 @@ impl<S: ?Sized + AsyncIterator + Unpin> AsyncIterator for Box<S> {
     }
 }
 
-#[cfg(not(bootstrap))]
 impl dyn Error {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -2108,7 +2154,6 @@ impl dyn Error {
     }
 }
 
-#[cfg(not(bootstrap))]
 impl dyn Error + Send {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -2123,7 +2168,6 @@ impl dyn Error + Send {
     }
 }
 
-#[cfg(not(bootstrap))]
 impl dyn Error + Send + Sync {
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
@@ -2138,7 +2182,6 @@ impl dyn Error + Send + Sync {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
@@ -2172,7 +2215,6 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
@@ -2212,7 +2254,6 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for Box<dyn Error + Send + Sync> {
@@ -2257,7 +2298,6 @@ impl From<String> for Box<dyn Error + Send + Sync> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_box_error", since = "1.6.0")]
 impl From<String> for Box<dyn Error> {
@@ -2280,7 +2320,6 @@ impl From<String> for Box<dyn Error> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
@@ -2305,7 +2344,6 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_box_error", since = "1.6.0")]
 impl From<&str> for Box<dyn Error> {
@@ -2328,7 +2366,6 @@ impl From<&str> for Box<dyn Error> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
@@ -2351,7 +2388,6 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
@@ -2373,7 +2409,6 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "box_error", since = "1.8.0")]
 impl<T: core::error::Error> core::error::Error for Box<T> {
     #[allow(deprecated, deprecated_in_future)]

@@ -1,9 +1,9 @@
 // run-rustfix
-
 #![feature(custom_inner_attributes, lint_reasons)]
 
 #[warn(clippy::all, clippy::needless_borrow)]
-#[allow(unused_variables, clippy::unnecessary_mut_passed)]
+#[allow(unused_variables)]
+#[allow(clippy::uninlined_format_args, clippy::unnecessary_mut_passed)]
 fn main() {
     let a = 5;
     let ref_a = &a;
@@ -296,5 +296,34 @@ mod meets_msrv {
 
     fn foo() {
         let _ = std::process::Command::new("ls").args(&["-a", "-l"]).status().unwrap();
+    }
+}
+
+#[allow(unused)]
+fn issue9383() {
+    // Should not lint because unions need explicit deref when accessing field
+    use std::mem::ManuallyDrop;
+
+    union Coral {
+        crab: ManuallyDrop<Vec<i32>>,
+    }
+
+    union Ocean {
+        coral: ManuallyDrop<Coral>,
+    }
+
+    let mut ocean = Ocean {
+        coral: ManuallyDrop::new(Coral {
+            crab: ManuallyDrop::new(vec![1, 2, 3]),
+        }),
+    };
+
+    unsafe {
+        ManuallyDrop::drop(&mut (&mut ocean.coral).crab);
+
+        (*ocean.coral).crab = ManuallyDrop::new(vec![4, 5, 6]);
+        ManuallyDrop::drop(&mut (*ocean.coral).crab);
+
+        ManuallyDrop::drop(&mut ocean.coral);
     }
 }

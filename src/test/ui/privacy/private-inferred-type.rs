@@ -47,7 +47,7 @@ mod m {
         PubTupleStruct;
         //~^ ERROR type `fn(u8) -> PubTupleStruct {PubTupleStruct}` is private
         Pub(0u8).priv_method();
-        //~^ ERROR type `for<'r> fn(&'r Pub<u8>) {Pub::<u8>::priv_method}` is private
+        //~^ ERROR type `for<'a> fn(&'a Pub<u8>) {Pub::<u8>::priv_method}` is private
     }
 
     trait Trait {}

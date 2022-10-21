@@ -278,10 +278,6 @@ pub struct Config {
     /// override this setting.
     pub optimize_tests: bool,
 
-    /// What panic strategy the target is built with.  Unwind supports Abort, but
-    /// not vice versa.
-    pub target_panic: PanicStrategy,
-
     /// Target system to be tested
     pub target: String,
 
@@ -389,7 +385,8 @@ impl Config {
     }
 
     fn target_cfg(&self) -> &TargetCfg {
-        self.target_cfg.borrow_with(|| TargetCfg::new(&self.rustc_path, &self.target))
+        self.target_cfg
+            .borrow_with(|| TargetCfg::new(&self.rustc_path, &self.target, &self.target_rustcflags))
     }
 
     pub fn matches_arch(&self, arch: &str) -> bool {
@@ -426,6 +423,10 @@ impl Config {
         *&self.target_cfg().pointer_width
     }
 
+    pub fn can_unwind(&self) -> bool {
+        self.target_cfg().panic == PanicStrategy::Unwind
+    }
+
     pub fn has_asm_support(&self) -> bool {
         static ASM_SUPPORTED_ARCHS: &[&str] = &[
             "x86", "x86_64", "arm", "aarch64", "riscv32",
@@ -446,6 +447,7 @@ pub struct TargetCfg {
     families: Vec<String>,
     pointer_width: u32,
     endian: Endian,
+    panic: PanicStrategy,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -455,11 +457,12 @@ pub enum Endian {
 }
 
 impl TargetCfg {
-    fn new(rustc_path: &Path, target: &str) -> TargetCfg {
+    fn new(rustc_path: &Path, target: &str, target_rustcflags: &Option<String>) -> TargetCfg {
         let output = match Command::new(rustc_path)
             .arg("--print=cfg")
             .arg("--target")
             .arg(target)
+            .args(target_rustcflags.into_iter().map(|s| s.split_whitespace()).flatten())
             .output()
         {
             Ok(output) => output,
@@ -481,6 +484,7 @@ impl TargetCfg {
         let mut families = Vec::new();
         let mut pointer_width = None;
         let mut endian = None;
+        let mut panic = None;
         for line in print_cfg.lines() {
             if let Some((name, value)) = line.split_once('=') {
                 let value = value.trim_matches('"');
@@ -498,6 +502,13 @@ impl TargetCfg {
                             s => panic!("unexpected {s}"),
                         })
                     }
+                    "panic" => {
+                        panic = match value {
+                            "abort" => Some(PanicStrategy::Abort),
+                            "unwind" => Some(PanicStrategy::Unwind),
+                            s => panic!("unexpected {s}"),
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -510,6 +521,7 @@ impl TargetCfg {
             families,
             pointer_width: pointer_width.unwrap(),
             endian: endian.unwrap(),
+            panic: panic.unwrap(),
         }
     }
 }

@@ -16,9 +16,7 @@ use core::borrow::{Borrow, BorrowMut};
 #[cfg(not(no_global_oom_handling))]
 use core::cmp::Ordering::{self, Less};
 #[cfg(not(no_global_oom_handling))]
-use core::mem;
-#[cfg(not(no_global_oom_handling))]
-use core::mem::size_of;
+use core::mem::{self, SizedTypeProperties};
 #[cfg(not(no_global_oom_handling))]
 use core::ptr;
 
@@ -1018,7 +1016,7 @@ where
     const MIN_RUN: usize = 10;
 
     // Sorting has no meaningful behavior on zero-sized types.
-    if size_of::<T>() == 0 {
+    if T::IS_ZST {
         return;
     }
 

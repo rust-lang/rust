@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub(crate) struct ConstraintConversion<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     /// Each RBP `GK: 'a` is assumed to be true. These encode
@@ -37,20 +37,20 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
     span: Span,
-    category: ConstraintCategory<'tcx>,
+    category: ConstraintCategory,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 }
 
 impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     pub(crate) fn new(
-        infcx: &'a InferCtxt<'a, 'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: ty::Region<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
         span: Span,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
         constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     ) -> Self {
         Self {
@@ -175,7 +175,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         &mut self,
         sup: ty::RegionVid,
         sub: ty::RegionVid,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
     ) {
         let category = match self.category {
             ConstraintCategory::Boring | ConstraintCategory::BoringNoLocation => category,
@@ -203,7 +203,7 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         _origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
-        constraint_category: ConstraintCategory<'tcx>,
+        constraint_category: ConstraintCategory,
     ) {
         let b = self.to_region_vid(b);
         let a = self.to_region_vid(a);

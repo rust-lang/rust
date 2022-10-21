@@ -33,7 +33,7 @@
           _0 = core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/const-promotion-extern-static.rs:+0:31: +0:44
                                            // mir::Constant
                                            // + span: $DIR/const-promotion-extern-static.rs:9:36: 9:42
-                                           // + literal: Const { ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: for<'a> fn(&'a [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}, val: Value(<ZST>) }
       }
   
       bb1: {

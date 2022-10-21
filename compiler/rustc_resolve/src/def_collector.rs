@@ -1,6 +1,5 @@
 use crate::{ImplTraitContext, Resolver};
 use rustc_ast::visit::{self, FnKind};
-use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def_id::LocalDefId;
@@ -148,8 +147,13 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 self.with_parent(return_impl_trait_id, |this| {
                     this.visit_fn_ret_ty(&sig.decl.output)
                 });
-                let closure_def = self.create_def(closure_id, DefPathData::ClosureExpr, span);
-                self.with_parent(closure_def, |this| walk_list!(this, visit_block, body));
+                // If this async fn has no body (i.e. it's an async fn signature in a trait)
+                // then the closure_def will never be used, and we should avoid generating a
+                // def-id for it.
+                if let Some(body) = body {
+                    let closure_def = self.create_def(closure_id, DefPathData::ClosureExpr, span);
+                    self.with_parent(closure_def, |this| this.visit_block(body));
+                }
                 return;
             }
         }
@@ -235,7 +239,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let def_data = match &i.kind {
             AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident.name),
-            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
+            AssocItemKind::Type(..) => DefPathData::TypeNs(i.ident.name),
             AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
         };
 
@@ -281,21 +285,6 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.kind {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
-            TyKind::ImplTrait(node_id, _) => {
-                let parent_def = match self.impl_trait_context {
-                    ImplTraitContext::Universal(item_def) => self.resolver.create_def(
-                        item_def,
-                        node_id,
-                        DefPathData::ImplTrait,
-                        self.expansion.to_expn_id(),
-                        ty.span,
-                    ),
-                    ImplTraitContext::Existential => {
-                        self.create_def(node_id, DefPathData::ImplTrait, ty.span)
-                    }
-                };
-                self.with_parent(parent_def, |this| visit::walk_ty(this, ty))
-            }
             _ => visit::walk_ty(self, ty),
         }
     }

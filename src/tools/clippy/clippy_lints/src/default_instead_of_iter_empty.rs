@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// let _ = std::iter::empty::<usize>();
     /// let iter: std::iter::Empty<usize> = std::iter::empty();
     /// ```
-    #[clippy::version = "1.63.0"]
+    #[clippy::version = "1.64.0"]
     pub DEFAULT_INSTEAD_OF_ITER_EMPTY,
     style,
     "check `std::iter::Empty::default()` and replace with `std::iter::empty()`"

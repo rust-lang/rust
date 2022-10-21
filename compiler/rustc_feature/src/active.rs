@@ -300,8 +300,6 @@ declare_features! (
     (active, asm_const, "1.58.0", Some(93332), None),
     /// Enables experimental inline assembly support for additional architectures.
     (active, asm_experimental_arch, "1.58.0", Some(93335), None),
-    /// Allows using `sym` operands in inline assembly.
-    (active, asm_sym, "1.58.0", Some(93333), None),
     /// Allows the `may_unwind` option in inline assembly.
     (active, asm_unwind, "1.58.0", Some(93334), None),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
@@ -341,7 +339,7 @@ declare_features! (
     /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
     (active, cmse_nonsecure_entry, "1.48.0", Some(75835), None),
     /// Allows use of the `#[collapse_debuginfo]` attribute.
-    (active, collapse_debuginfo, "CURRENT_RUSTC_VERSION", Some(100758), None),
+    (active, collapse_debuginfo, "1.65.0", Some(100758), None),
     /// Allows `async {}` expressions in const contexts.
     (active, const_async_blocks, "1.53.0", Some(85368), None),
     // Allows limiting the evaluation steps of const expressions
@@ -387,7 +385,7 @@ declare_features! (
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
     /// Allows `dyn* Trait` objects.
-    (incomplete, dyn_star, "CURRENT_RUSTC_VERSION", Some(91611), None),
+    (incomplete, dyn_star, "1.65.0", Some(91611), None),
     /// Allows `X..Y` patterns.
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
@@ -403,7 +401,7 @@ declare_features! (
     /// Allows using `#[repr(align(...))]` on function items
     (active, fn_align, "1.53.0", Some(82232), None),
     /// Allows generators to be cloned.
-    (active, generator_clone, "CURRENT_RUSTC_VERSION", Some(95360), None),
+    (active, generator_clone, "1.65.0", Some(95360), None),
     /// Allows defining generators.
     (active, generators, "1.21.0", Some(43122), None),
     /// Infer generic args for both consts and types.
@@ -412,8 +410,8 @@ declare_features! (
     (incomplete, generic_associated_types_extended, "1.61.0", Some(95451), None),
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
-    /// Allows using `..X`, `..=X`, `...X`, and `X..` as a pattern.
-    (active, half_open_range_patterns, "1.41.0", Some(67264), None),
+    /// Allows using `..=X` as a patterns in slices.
+    (active, half_open_range_patterns_in_slices, "CURRENT_RUSTC_VERSION", Some(67264), None),
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
     /// Allows using imported `main` function
@@ -484,7 +482,7 @@ declare_features! (
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (active, proc_macro_hygiene, "1.30.0", Some(54727), None),
     /// Allows the use of raw-dylibs (RFC 2627).
-    (active, raw_dylib, "CURRENT_RUSTC_VERSION", Some(58713), None),
+    (active, raw_dylib, "1.65.0", Some(58713), None),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (active, raw_ref_op, "1.41.0", Some(64490), None),
     /// Allows using the `#[register_tool]` attribute.
@@ -494,7 +492,7 @@ declare_features! (
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (active, repr_simd, "1.4.0", Some(27731), None),
     /// Allows return-position `impl Trait` in traits.
-    (incomplete, return_position_impl_trait_in_trait, "CURRENT_RUSTC_VERSION", Some(91611), None),
+    (incomplete, return_position_impl_trait_in_trait, "1.65.0", Some(91611), None),
     /// Allows `extern "rust-cold"`.
     (active, rust_cold_cc, "1.63.0", Some(97544), None),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
@@ -528,7 +526,7 @@ declare_features! (
     /// not changed from prior instances of the same struct (RFC #2528)
     (active, type_changing_struct_update, "1.58.0", Some(86555), None),
     /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
-    (active, unix_sigpipe, "CURRENT_RUSTC_VERSION", Some(97889), None),
+    (active, unix_sigpipe, "1.65.0", Some(97889), None),
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
     /// Allows unsized rvalues at arguments and parameters.

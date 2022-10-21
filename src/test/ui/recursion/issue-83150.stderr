@@ -6,8 +6,8 @@ LL | fn func<T: Iterator<Item = u8>>(iter: &mut T) {
 LL |     func(&mut iter.map(|x| x + 1))
    |     ------------------------------ recursive call site
    |
-   = note: `#[warn(unconditional_recursion)]` on by default
    = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
 
 error[E0275]: overflow evaluating the requirement `<std::ops::Range<u8> as Iterator>::Item`
    |

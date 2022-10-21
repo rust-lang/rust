@@ -129,7 +129,7 @@ use crate::ops::ControlFlow;
 #[doc(alias = "?")]
 #[lang = "Try"]
 #[const_trait]
-pub trait Try: FromResidual {
+pub trait Try: ~const FromResidual {
     /// The type of the value produced by `?` when *not* short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     type Output;
@@ -223,7 +223,7 @@ pub trait Try: FromResidual {
 /// Every `Try` type needs to be recreatable from its own associated
 /// `Residual` type, but can also have additional `FromResidual` implementations
 /// to support interconversion with other `Try` types.
-#[cfg_attr(not(bootstrap), rustc_on_unimplemented(
+#[rustc_on_unimplemented(
     on(
         all(
             from_desugaring = "QuestionMark",
@@ -302,87 +302,7 @@ pub trait Try: FromResidual {
         label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
         parent_label = "this function should return `Result` or `Option` to accept `?`"
     ),
-))]
-#[cfg_attr(bootstrap, rustc_on_unimplemented(
-    on(
-        all(
-            from_desugaring = "QuestionMark",
-            _Self = "std::result::Result<T, E>",
-            R = "std::option::Option<std::convert::Infallible>"
-        ),
-        message = "the `?` operator can only be used on `Result`s, not `Option`s, \
-            in {ItemContext} that returns `Result`",
-        label = "use `.ok_or(...)?` to provide an error compatible with `{Self}`",
-        enclosing_scope = "this function returns a `Result`"
-    ),
-    on(
-        all(
-            from_desugaring = "QuestionMark",
-            _Self = "std::result::Result<T, E>",
-        ),
-        // There's a special error message in the trait selection code for
-        // `From` in `?`, so this is not shown for result-in-result errors,
-        // and thus it can be phrased more strongly than `ControlFlow`'s.
-        message = "the `?` operator can only be used on `Result`s \
-            in {ItemContext} that returns `Result`",
-        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns a `Result`"
-    ),
-    on(
-        all(
-            from_desugaring = "QuestionMark",
-            _Self = "std::option::Option<T>",
-            R = "std::result::Result<T, E>",
-        ),
-        message = "the `?` operator can only be used on `Option`s, not `Result`s, \
-            in {ItemContext} that returns `Option`",
-        label = "use `.ok()?` if you want to discard the `{R}` error information",
-        enclosing_scope = "this function returns an `Option`"
-    ),
-    on(
-        all(
-            from_desugaring = "QuestionMark",
-            _Self = "std::option::Option<T>",
-        ),
-        // `Option`-in-`Option` always works, as there's only one possible
-        // residual, so this can also be phrased strongly.
-        message = "the `?` operator can only be used on `Option`s \
-            in {ItemContext} that returns `Option`",
-        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns an `Option`"
-    ),
-    on(
-        all(
-            from_desugaring = "QuestionMark",
-            _Self = "std::ops::ControlFlow<B, C>",
-            R = "std::ops::ControlFlow<B, C>",
-        ),
-        message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
-            can only be used on other `ControlFlow<B, _>`s (with the same Break type)",
-        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns a `ControlFlow`",
-        note = "unlike `Result`, there's no `From`-conversion performed for `ControlFlow`"
-    ),
-    on(
-        all(
-            from_desugaring = "QuestionMark",
-            _Self = "std::ops::ControlFlow<B, C>",
-            // `R` is not a `ControlFlow`, as that case was matched previously
-        ),
-        message = "the `?` operator can only be used on `ControlFlow`s \
-            in {ItemContext} that returns `ControlFlow`",
-        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
-        enclosing_scope = "this function returns a `ControlFlow`",
-    ),
-    on(
-        all(from_desugaring = "QuestionMark"),
-        message = "the `?` operator can only be used in {ItemContext} \
-                    that returns `Result` or `Option` \
-                    (or another type that implements `{FromResidual}`)",
-        label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
-        enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
-    ),
-))]
+)]
 #[rustc_diagnostic_item = "FromResidual"]
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 #[const_trait]
@@ -438,10 +358,11 @@ where
 /// and in the other direction,
 /// `<Result<Infallible, E> as Residual<T>>::TryType = Result<T, E>`.
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+#[const_trait]
 pub trait Residual<O> {
     /// The "return" type of this meta-function.
     #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-    type TryType: Try<Output = O, Residual = Self>;
+    type TryType: ~const Try<Output = O, Residual = Self>;
 }
 
 #[unstable(feature = "pub_crate_should_not_need_unstable_attr", issue = "none")]
@@ -458,16 +379,19 @@ pub(crate) type ChangeOutputType<T, V> = <<T as Try>::Residual as Residual<V>>::
 pub(crate) struct NeverShortCircuit<T>(pub T);
 
 impl<T> NeverShortCircuit<T> {
-    /// Wrap a binary `FnMut` to return its result wrapped in a `NeverShortCircuit`.
+    /// Implementation for building `ConstFnMutClosure` for wrapping the output of a ~const FnMut in a `NeverShortCircuit`.
     #[inline]
-    pub fn wrap_mut_2<A, B>(mut f: impl FnMut(A, B) -> T) -> impl FnMut(A, B) -> Self {
-        move |a, b| NeverShortCircuit(f(a, b))
+    pub const fn wrap_mut_2_imp<A, B, F: ~const FnMut(A, B) -> T>(
+        f: &mut F,
+        (a, b): (A, B),
+    ) -> NeverShortCircuit<T> {
+        NeverShortCircuit(f(a, b))
     }
 }
 
 pub(crate) enum NeverShortCircuitResidual {}
 
-impl<T> Try for NeverShortCircuit<T> {
+impl<T> const Try for NeverShortCircuit<T> {
     type Output = T;
     type Residual = NeverShortCircuitResidual;
 
@@ -482,14 +406,14 @@ impl<T> Try for NeverShortCircuit<T> {
     }
 }
 
-impl<T> FromResidual for NeverShortCircuit<T> {
+impl<T> const FromResidual for NeverShortCircuit<T> {
     #[inline]
     fn from_residual(never: NeverShortCircuitResidual) -> Self {
         match never {}
     }
 }
 
-impl<T> Residual<T> for NeverShortCircuitResidual {
+impl<T> const Residual<T> for NeverShortCircuitResidual {
     type TryType = NeverShortCircuit<T>;
 }
 

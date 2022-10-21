@@ -15,11 +15,11 @@ tracing = "0.1.35"
 either = "1.7.0"
 rustc-hash = "1.1.0"
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
-itertools = "0.10.3"
+itertools = "0.10.5"
 hashbrown = { version = "0.12.1", features = [
     "inline-more",
 ], default-features = false }
-smallvec = { version = "1.9.0", features = ["const_new"] }
+smallvec = { version = "1.10.0", features = ["const_new"] }
 
 stdx = { path = "../stdx", version = "0.0.0" }
 base-db = { path = "../base-db", version = "0.0.0" }

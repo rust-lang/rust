@@ -7,11 +7,11 @@ LL |     let r = &mut x;
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `Vec<i32>` cannot be evaluated at compile-time
   --> $DIR/issue-65394.rs:7:9
    |
 LL |     let mut x = Vec::<i32>::new();
-   |         ^^^^^ constants cannot evaluate destructors
+   |         ^^^^^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
    | - value is dropped here

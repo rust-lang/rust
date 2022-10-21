@@ -1,5 +1,5 @@
 error: untyped pointers are not allowed in constant
-  --> $DIR/raw_mutable_const.rs:7:1
+  --> $DIR/raw_mutable_const.rs:5:1
    |
 LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *m
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/raw_mutable_const.rs:7:38
+  --> $DIR/raw_mutable_const.rs:5:38
    |
 LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    |                                      ^^^^^^^^^^^^^^^^^^^^

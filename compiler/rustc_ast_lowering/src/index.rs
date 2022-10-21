@@ -24,7 +24,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// The parent of this node
     parent_node: hir::ItemLocalId,
 
-    owner: LocalDefId,
+    owner: OwnerId,
 
     definitions: &'a definitions::Definitions,
 }
@@ -81,9 +81,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
                     self.source_map.span_to_diagnostic_string(span),
                     node,
-                    self.definitions.def_path(self.owner).to_string_no_crate_verbose(),
+                    self.definitions.def_path(self.owner.def_id).to_string_no_crate_verbose(),
                     self.owner,
-                    self.definitions.def_path(hir_id.owner).to_string_no_crate_verbose(),
+                    self.definitions.def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
                     hir_id.owner,
                 )
             }
@@ -112,19 +112,19 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_nested_item(&mut self, item: ItemId) {
         debug!("visit_nested_item: {:?}", item);
-        self.insert_nested(item.def_id);
+        self.insert_nested(item.def_id.def_id);
     }
 
     fn visit_nested_trait_item(&mut self, item_id: TraitItemId) {
-        self.insert_nested(item_id.def_id);
+        self.insert_nested(item_id.def_id.def_id);
     }
 
     fn visit_nested_impl_item(&mut self, item_id: ImplItemId) {
-        self.insert_nested(item_id.def_id);
+        self.insert_nested(item_id.def_id.def_id);
     }
 
     fn visit_nested_foreign_item(&mut self, foreign_id: ForeignItemId) {
-        self.insert_nested(foreign_id.def_id);
+        self.insert_nested(foreign_id.def_id.def_id);
     }
 
     fn visit_nested_body(&mut self, id: BodyId) {

@@ -203,7 +203,7 @@ pub enum StmtKind<'tcx> {
         /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
 
-        /// `let pat: ty = <INIT> else { <ELSE> }
+        /// `let pat: ty = <INIT> else { <ELSE> }`
         else_block: Option<BlockId>,
 
         /// The lint level for this `let` statement.
@@ -848,16 +848,13 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(Block, 56);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    #[cfg(not(bootstrap))]
     static_assert_size!(Pat<'_>, 72);
-    #[cfg(not(bootstrap))]
     static_assert_size!(PatKind<'_>, 56);
-    #[cfg(not(bootstrap))]
     static_assert_size!(Stmt<'_>, 48);
-    #[cfg(not(bootstrap))]
     static_assert_size!(StmtKind<'_>, 40);
+    // tidy-alphabetical-end
 }

@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `T: TraitFoo` is not satisfied
-  --> $DIR/copy-impl-cannot-normalize.rs:22:1
+  --> $DIR/copy-impl-cannot-normalize.rs:22:18
    |
 LL | impl<T> Copy for Foo<T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^ the trait `TraitFoo` is not implemented for `T`
+   |                  ^^^^^^ the trait `TraitFoo` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |

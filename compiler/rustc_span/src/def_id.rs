@@ -218,7 +218,9 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 /// index and a def index.
 ///
 /// You can create a `DefId` from a `LocalDefId` using `local_def_id.to_def_id()`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Copy)]
+#[derive(Clone, PartialEq, Eq, Copy)]
+// Don't derive order on 64-bit big-endian, so we can be consistent regardless of field order.
+#[cfg_attr(not(all(target_pointer_width = "64", target_endian = "big")), derive(PartialOrd, Ord))]
 // On below-64 bit systems we can simply use the derived `Hash` impl
 #[cfg_attr(not(target_pointer_width = "64"), derive(Hash))]
 #[repr(C)]
@@ -257,6 +259,22 @@ pub struct DefId {
 impl Hash for DefId {
     fn hash<H: Hasher>(&self, h: &mut H) {
         (((self.krate.as_u32() as u64) << 32) | (self.index.as_u32() as u64)).hash(h)
+    }
+}
+
+// Implement the same comparison as derived with the other field order.
+#[cfg(all(target_pointer_width = "64", target_endian = "big"))]
+impl Ord for DefId {
+    #[inline]
+    fn cmp(&self, other: &DefId) -> std::cmp::Ordering {
+        Ord::cmp(&(self.index, self.krate), &(other.index, other.krate))
+    }
+}
+#[cfg(all(target_pointer_width = "64", target_endian = "big"))]
+impl PartialOrd for DefId {
+    #[inline]
+    fn partial_cmp(&self, other: &DefId) -> Option<std::cmp::Ordering> {
+        Some(Ord::cmp(self, other))
     }
 }
 

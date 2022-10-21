@@ -4,7 +4,7 @@
 //! Paths in macros, imports, expressions, types, patterns are resolved here.
 //! Label and lifetime names are resolved here as well.
 //!
-//! Type-relative name resolution (methods, fields, associated items) happens in `rustc_typeck`.
+//! Type-relative name resolution (methods, fields, associated items) happens in `rustc_hir_analysis`.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
@@ -12,7 +12,6 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(never_type)]
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
@@ -43,7 +42,6 @@ use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::span_bug;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::{CrateStore, CrateStoreDyn, MetadataLoaderDyn};
@@ -237,6 +235,8 @@ enum ResolutionError<'a> {
         trait_item_span: Span,
         code: rustc_errors::DiagnosticId,
     },
+    /// Error E0201: multiple impl items for the same trait item.
+    TraitImplDuplicate { name: Symbol, trait_item_span: Span, old_span: Span },
     /// Inline asm `sym` operand must refer to a `fn` or `static`.
     InvalidAsmSym,
 }
@@ -675,6 +675,8 @@ struct UseError<'a> {
     /// Path `Segment`s at the place of use that failed. Used for accurate suggestion after telling
     /// the user to import the item directly.
     path: Vec<Segment>,
+    /// Whether the expected source is a call
+    is_call: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -1881,12 +1883,10 @@ impl<'a> Resolver<'a> {
 
         match self.maybe_resolve_path(&segments, Some(ns), &parent_scope) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
-            PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
-                Some(path_res.base_res())
+            PathResult::NonModule(path_res) => path_res.full_res(),
+            PathResult::Module(ModuleOrUniformRoot::ExternPrelude) | PathResult::Failed { .. } => {
+                None
             }
-            PathResult::Module(ModuleOrUniformRoot::ExternPrelude)
-            | PathResult::NonModule(..)
-            | PathResult::Failed { .. } => None,
             PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
         }
     }
@@ -1937,12 +1937,8 @@ impl<'a> Resolver<'a> {
                 return None;
             }
 
-            let partial_res = self.partial_res_map.get(&expr.id)?;
-            if partial_res.unresolved_segments() != 0 {
-                return None;
-            }
-
-            if let Res::Def(def::DefKind::Fn, def_id) = partial_res.base_res() {
+            let res = self.partial_res_map.get(&expr.id)?.full_res()?;
+            if let Res::Def(def::DefKind::Fn, def_id) = res {
                 // We only support cross-crate argument rewriting. Uses
                 // within the same crate should be updated to use the new
                 // const generics style.
@@ -2064,7 +2060,7 @@ struct Finalize {
     /// Span of the whole path or some its characteristic fragment.
     /// E.g. span of `b` in `foo::{a, b, c}`, or full span for regular paths.
     path_span: Span,
-    /// Span of the path start, suitable for prepending something to to it.
+    /// Span of the path start, suitable for prepending something to it.
     /// E.g. span of `foo` in `foo::{a, b, c}`, or full span for regular paths.
     root_span: Span,
     /// Whether to report privacy errors or silently return "no resolution" for them,
@@ -2080,8 +2076,4 @@ impl Finalize {
     fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
         Finalize { node_id, path_span, root_span, report_private: true }
     }
-}
-
-pub fn provide(providers: &mut Providers) {
-    late::lifetimes::provide(providers);
 }

@@ -30,6 +30,26 @@
 	--keyword-link-color: #3873ad;
 	--mod-link-color: #3873ad;
 	--link-color: #3873ad;
+	--sidebar-link-color: #356da4;
+	--sidebar-current-link-background-color: #fff;
+	--search-result-link-focus-background-color: #ccc;
+	--stab-background-color: #fff5d6;
+	--stab-code-color: #000;
+	--search-color: #000;
+	--code-highlight-kw-color: #8959a8;
+	--code-highlight-kw-2-color: #4271ae;
+	--code-highlight-lifetime-color: #b76514;
+	--code-highlight-prelude-color: #4271ae;
+	--code-highlight-prelude-val-color: #c82829;
+	--code-highlight-number-color: #718c00;
+	--code-highlight-string-color: #718c00;
+	--code-highlight-literal-color: #c82829;
+	--code-highlight-attribute-color: #c82829;
+	--code-highlight-self-color: #c82829;
+	--code-highlight-macro-color: #3e999f;
+	--code-highlight-question-mark-color: #ff9011;
+	--code-highlight-comment-color: #8e908c;
+	--code-highlight-doc-comment-color: #4d4d4c;
 }
 
 .slider {
@@ -48,64 +68,12 @@ input:focus + .slider {
 	 */
 }
 
-.sidebar .current,
-.sidebar a:hover {
-	background-color: #fff;
-}
-
-.line-numbers span { color: #c67e2d; }
-.line-numbers .line-highlighted {
+.src-line-numbers span { color: #c67e2d; }
+.src-line-numbers .line-highlighted {
 	background-color: #FDFFD3 !important;
 }
 
-.search-results a:hover {
-	background-color: #ddd;
-}
-
-.search-results a:focus {
-	color: #000 !important;
-	background-color: #ccc;
-}
-.search-results a:focus span { color: #000 !important; }
-a.result-trait:focus { background-color: #c7b6ff; }
-a.result-traitalias:focus { background-color: #c7b6ff; }
-a.result-mod:focus,
-a.result-externcrate:focus { background-color: #afc6e4; }
-a.result-enum:focus { background-color: #e7b1a0; }
-a.result-struct:focus { background-color: #e7b1a0; }
-a.result-union:focus { background-color: #e7b1a0; }
-a.result-fn:focus,
-a.result-method:focus,
-a.result-tymethod:focus { background-color: #c6afb3; }
-a.result-type:focus { background-color: #e7b1a0; }
-a.result-associatedtype:focus { background-color: #afc6e4; }
-a.result-foreigntype:focus { background-color: #e7b1a0; }
-a.result-attr:focus,
-a.result-derive:focus,
-a.result-macro:focus { background-color: #8ce488; }
-a.result-constant:focus,
-a.result-static:focus { background-color: #afc6e4; }
-a.result-primitive:focus { background-color: #e7b1a0; }
-a.result-keyword:focus { background-color: #afc6e4; }
-
 .content .item-info::before { color: #ccc; }
-
-.sidebar a { color: #356da4; }
-.sidebar a.current.enum { color: #a63283; }
-.sidebar a.current.struct { color: #a63283; }
-.sidebar a.current.type { color: #a63283; }
-.sidebar a.current.foreigntype { color: #356da4; }
-.sidebar a.current.attr,
-.sidebar a.current.derive,
-.sidebar a.current.macro { color: #067901; }
-.sidebar a.current.union { color: #a63283; }
-.sidebar a.current.constant
-.sidebar a.current.static { color: #356da4; }
-.sidebar a.current.primitive { color: #a63283; }
-.sidebar a.current.trait { color: #6849c3; }
-.sidebar a.current.traitalias { color: #4b349e; }
-.sidebar a.current.fn { color: #a67736; }
-.sidebar a.current.keyword { color: #356da4; }
 
 body.source .example-wrap pre.rust a {
 	background: #eee;
@@ -122,26 +90,9 @@ body.source .example-wrap pre.rust a {
 	filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg) brightness(96%) contrast(93%);
 }
 
-.stab { background: #FFF5D6; border-color: #FFC600; }
-.stab.portability > code { background: none; }
+.src-line-numbers :target { background-color: transparent; }
 
-.line-numbers :target { background-color: transparent; }
-
-/* Code highlighting */
-pre.rust .kw { color: #8959A8; }
-pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
-pre.rust .number, pre.rust .string { color: #718C00; }
-pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .attribute { color: #C82829; }
-pre.rust .comment { color: #8E908C; }
-pre.rust .doccomment { color: #4D4D4C; }
-pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
-pre.rust .lifetime { color: #B76514; }
-pre.rust .question-mark {
-	color: #ff9011;
-}
-
-.example-wrap > pre.line-number {
+pre.example-line-numbers {
 	border-color: #c7c7c7;
 }
 
@@ -196,8 +147,12 @@ kbd {
 	box-shadow: inset 0 -1px 0 #c6cbd1;
 }
 
+#settings-menu > a, #help-button > a {
+	color: #000;
+}
+
 #settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > button:hover, #help-button > button:focus {
+#help-button > a:hover, #help-button > a:focus {
 	border-color: #717171;
 }
 

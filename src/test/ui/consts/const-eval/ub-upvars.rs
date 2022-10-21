@@ -1,5 +1,5 @@
 // stderr-per-bitwidth
-#![allow(const_err, invalid_value)] // make sure we cannot allow away the errors tested here
+#![allow(invalid_value)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
 

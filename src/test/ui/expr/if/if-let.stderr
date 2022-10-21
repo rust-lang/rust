@@ -9,9 +9,9 @@ LL | |         println!("irrefutable pattern");
 LL | |     });
    | |______- in this macro invocation
    |
-   = note: `#[warn(irrefutable_let_patterns)]` on by default
    = note: this pattern will always match, so the `if let` is useless
    = help: consider replacing the `if let` with a `let`
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: irrefutable `if let` pattern

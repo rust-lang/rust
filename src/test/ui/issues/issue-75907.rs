@@ -1,4 +1,4 @@
-// Test for for diagnostic improvement issue #75907
+// Test for diagnostic improvement issue #75907
 
 mod foo {
     pub(crate) struct Foo(u8);

@@ -1,8 +1,6 @@
 // build-fail
 // compile-flags: -Zunleash-the-miri-inside-of-you
 
-#![allow(const_err)]
-
 // a test demonstrating why we do need to run static const qualification on associated constants
 // instead of just checking the final constant
 

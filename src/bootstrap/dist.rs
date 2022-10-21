@@ -16,6 +16,7 @@ use std::process::Command;
 
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
+use crate::channel;
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
@@ -918,12 +919,13 @@ impl Step for PlainSourceTarball {
 
         // Create the version file
         builder.create(&plain_dst_src.join("version"), &builder.rust_version());
-        if let Some(sha) = builder.rust_sha() {
-            builder.create(&plain_dst_src.join("git-commit-hash"), &sha);
+        if let Some(info) = builder.rust_info.info() {
+            channel::write_commit_hash_file(&plain_dst_src, &info.sha);
+            channel::write_commit_info_file(&plain_dst_src, info);
         }
 
         // If we're building from git sources, we need to vendor a complete distribution.
-        if builder.rust_info.is_git() {
+        if builder.rust_info.is_managed_git_subrepository() {
             // Ensure we have the submodules checked out.
             builder.update_submodule(Path::new("src/tools/rust-analyzer"));
 
@@ -1365,6 +1367,7 @@ impl Step for Extended {
         }
 
         add_component!("rust-docs" => Docs { host: target });
+        add_component!("rust-json-docs" => JsonDocs { host: target });
         add_component!("rust-demangler"=> RustDemangler { compiler, target });
         add_component!("cargo" => Cargo { compiler, target });
         add_component!("rustfmt" => Rustfmt { compiler, target });
@@ -1424,7 +1427,7 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
-            for tool in &["rust-demangler", "rust-analyzer", "rustfmt"] {
+            for tool in &["rust-demangler"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
@@ -1465,7 +1468,8 @@ impl Step for Extended {
             prepare("rust-analysis");
             prepare("clippy");
             prepare("miri");
-            for tool in &["rust-docs", "rust-demangler", "rust-analyzer"] {
+            prepare("rust-analyzer");
+            for tool in &["rust-docs", "rust-demangler"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1525,7 +1529,8 @@ impl Step for Extended {
             prepare("rust-std");
             prepare("clippy");
             prepare("miri");
-            for tool in &["rust-demangler", "rust-analyzer"] {
+            prepare("rust-analyzer");
+            for tool in &["rust-demangler"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1609,25 +1614,23 @@ impl Step for Extended {
                     .arg("-out")
                     .arg(exe.join("StdGroup.wxs")),
             );
-            if built_tools.contains("rust-analyzer") {
-                builder.run(
-                    Command::new(&heat)
-                        .current_dir(&exe)
-                        .arg("dir")
-                        .arg("rust-analyzer")
-                        .args(&heat_flags)
-                        .arg("-cg")
-                        .arg("RustAnalyzerGroup")
-                        .arg("-dr")
-                        .arg("RustAnalyzer")
-                        .arg("-var")
-                        .arg("var.RustAnalyzerDir")
-                        .arg("-out")
-                        .arg(exe.join("RustAnalyzerGroup.wxs"))
-                        .arg("-t")
-                        .arg(etc.join("msi/remove-duplicates.xsl")),
-                );
-            }
+            builder.run(
+                Command::new(&heat)
+                    .current_dir(&exe)
+                    .arg("dir")
+                    .arg("rust-analyzer")
+                    .args(&heat_flags)
+                    .arg("-cg")
+                    .arg("RustAnalyzerGroup")
+                    .arg("-dr")
+                    .arg("RustAnalyzer")
+                    .arg("-var")
+                    .arg("var.RustAnalyzerDir")
+                    .arg("-out")
+                    .arg(exe.join("RustAnalyzerGroup.wxs"))
+                    .arg("-t")
+                    .arg(etc.join("msi/remove-duplicates.xsl")),
+            );
             builder.run(
                 Command::new(&heat)
                     .current_dir(&exe)
@@ -1844,23 +1847,21 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
 ///
 /// Returns whether the files were actually copied.
 fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) -> bool {
-    if let Some(config) = builder.config.target_config.get(&target) {
-        if config.llvm_config.is_some() && !builder.config.llvm_from_ci {
-            // If the LLVM was externally provided, then we don't currently copy
-            // artifacts into the sysroot. This is not necessarily the right
-            // choice (in particular, it will require the LLVM dylib to be in
-            // the linker's load path at runtime), but the common use case for
-            // external LLVMs is distribution provided LLVMs, and in that case
-            // they're usually in the standard search path (e.g., /usr/lib) and
-            // copying them here is going to cause problems as we may end up
-            // with the wrong files and isn't what distributions want.
-            //
-            // This behavior may be revisited in the future though.
-            //
-            // If the LLVM is coming from ourselves (just from CI) though, we
-            // still want to install it, as it otherwise won't be available.
-            return false;
-        }
+    if !builder.is_rust_llvm(target) {
+        // If the LLVM was externally provided, then we don't currently copy
+        // artifacts into the sysroot. This is not necessarily the right
+        // choice (in particular, it will require the LLVM dylib to be in
+        // the linker's load path at runtime), but the common use case for
+        // external LLVMs is distribution provided LLVMs, and in that case
+        // they're usually in the standard search path (e.g., /usr/lib) and
+        // copying them here is going to cause problems as we may end up
+        // with the wrong files and isn't what distributions want.
+        //
+        // This behavior may be revisited in the future though.
+        //
+        // If the LLVM is coming from ourselves (just from CI) though, we
+        // still want to install it, as it otherwise won't be available.
+        return false;
     }
 
     // On macOS, rustc (and LLVM tools) link to an unversioned libLLVM.dylib
@@ -1879,7 +1880,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
         let mut cmd = Command::new(llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(&format!("running {:?}", cmd));
-        let files = output(&mut cmd);
+        let files = if builder.config.dry_run { "".into() } else { output(&mut cmd) };
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
         for file in files.trim_end().split(' ') {
@@ -2026,6 +2027,8 @@ impl Step for RustDev {
             "llvm-dwp",
             "llvm-nm",
             "llvm-dwarfdump",
+            "llvm-dis",
+            "llvm-tblgen",
         ] {
             tarball.add_file(src_bindir.join(exe(bin, target)), "bin", 0o755);
         }
@@ -2051,6 +2054,41 @@ impl Step for RustDev {
         maybe_install_llvm(builder, target, &dst_libdir);
         let link_type = if builder.llvm_link_shared() { "dynamic" } else { "static" };
         t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
+
+        Some(tarball.generate())
+    }
+}
+
+// Tarball intended for internal consumption to ease rustc/std development.
+//
+// Should not be considered stable by end users.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Bootstrap {
+    pub target: TargetSelection,
+}
+
+impl Step for Bootstrap {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("bootstrap")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Bootstrap { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        let target = self.target;
+
+        let tarball = Tarball::new(builder, "bootstrap", &target.triple);
+
+        let bootstrap_outdir = &builder.bootstrap_out;
+        for file in &["bootstrap", "llvm-config-wrapper", "rustc", "rustdoc", "sccache-plus-cl"] {
+            tarball.add_file(bootstrap_outdir.join(exe(file, target)), "bootstrap/bin", 0o755);
+        }
 
         Some(tarball.generate())
     }
@@ -2118,6 +2156,10 @@ impl Step for ReproducibleArtifacts {
             added_anything = true;
         }
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
+            tarball.add_file(path, ".", 0o644);
+            added_anything = true;
+        }
+        if let Some(path) = builder.config.llvm_bolt_profile_use.as_ref() {
             tarball.add_file(path, ".", 0o644);
             added_anything = true;
         }

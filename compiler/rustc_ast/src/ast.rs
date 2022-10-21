@@ -2060,8 +2060,11 @@ impl TyKind {
     }
 
     pub fn is_simple_path(&self) -> Option<Symbol> {
-        if let TyKind::Path(None, Path { segments, .. }) = &self && segments.len() == 1 {
-            Some(segments[0].ident.name)
+        if let TyKind::Path(None, Path { segments, .. }) = &self
+            && let [segment] = &segments[..]
+            && segment.args.is_none()
+        {
+            Some(segment.ident.name)
         } else {
             None
         }
@@ -2953,7 +2956,7 @@ pub enum AssocItemKind {
     /// An associated function.
     Fn(Box<Fn>),
     /// An associated type.
-    TyAlias(Box<TyAlias>),
+    Type(Box<TyAlias>),
     /// A macro expanding to associated items.
     MacCall(P<MacCall>),
 }
@@ -2963,7 +2966,7 @@ impl AssocItemKind {
         match *self {
             Self::Const(defaultness, ..)
             | Self::Fn(box Fn { defaultness, .. })
-            | Self::TyAlias(box TyAlias { defaultness, .. }) => defaultness,
+            | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) => Defaultness::Final,
         }
     }
@@ -2974,7 +2977,7 @@ impl From<AssocItemKind> for ItemKind {
         match assoc_item_kind {
             AssocItemKind::Const(a, b, c) => ItemKind::Const(a, b, c),
             AssocItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
-            AssocItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
+            AssocItemKind::Type(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
         }
     }
@@ -2987,7 +2990,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
         Ok(match item_kind {
             ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
             ItemKind::Fn(fn_kind) => AssocItemKind::Fn(fn_kind),
-            ItemKind::TyAlias(ty_alias_kind) => AssocItemKind::TyAlias(ty_alias_kind),
+            ItemKind::TyAlias(ty_kind) => AssocItemKind::Type(ty_kind),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
             _ => return Err(item_kind),
         })
@@ -3039,14 +3042,13 @@ pub type ForeignItem = Item<ForeignItemKind>;
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(AssocItem, 104);
     static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(ExprKind, 72);
-    #[cfg(not(bootstrap))]
     static_assert_size!(Fn, 184);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
@@ -3061,11 +3063,12 @@ mod size_asserts {
     static_assert_size!(Local, 72);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 120);
-    static_assert_size!(PatKind, 96);
     static_assert_size!(Path, 40);
     static_assert_size!(PathSegment, 24);
+    static_assert_size!(PatKind, 96);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
     static_assert_size!(Ty, 96);
     static_assert_size!(TyKind, 72);
+    // tidy-alphabetical-end
 }

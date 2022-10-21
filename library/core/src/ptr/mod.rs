@@ -377,6 +377,10 @@ use crate::intrinsics::{
 
 use crate::mem::{self, MaybeUninit};
 
+mod alignment;
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+pub use alignment::Alignment;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::copy_nonoverlapping;
@@ -1114,6 +1118,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // Also, since we just wrote a valid value into `tmp`, it is guaranteed
     // to be properly initialized.
     unsafe {
+        assert_unsafe_precondition!([T](src: *const T) => is_aligned_and_not_null(src));
         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
         tmp.assume_init()
     }
@@ -1307,6 +1312,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
+        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
         copy_nonoverlapping(&src as *const T, dst, 1);
         intrinsics::forget(src);
     }

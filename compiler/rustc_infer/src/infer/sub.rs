@@ -12,8 +12,8 @@ use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
-pub struct Sub<'combine, 'infcx, 'tcx> {
-    fields: &'combine mut CombineFields<'infcx, 'tcx>,
+pub struct Sub<'combine, 'a, 'tcx> {
+    fields: &'combine mut CombineFields<'a, 'tcx>,
     a_is_expected: bool,
 }
 

@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binop_traits, trait_ref_of_method, BINOP_TRAITS, OP_ASSIGN_TRAITS};
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -64,11 +65,11 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
 
             // Check for more than one binary operation in the implemented function
             // Linting when multiple operations are involved can result in false positives
-            let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
+            let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id).def_id;
             if let hir::Node::ImplItem(impl_item) = cx.tcx.hir().get_by_def_id(parent_fn);
             if let hir::ImplItemKind::Fn(_, body_id) = impl_item.kind;
             let body = cx.tcx.hir().body(body_id);
-            let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
+            let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id).def_id;
             if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
             let trait_id = trait_ref.path.res.def_id();
             if ![binop_trait_id, op_assign_trait_id].contains(&trait_id);
@@ -92,25 +93,17 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
 }
 
 fn count_binops(expr: &hir::Expr<'_>) -> u32 {
-    let mut visitor = BinaryExprVisitor::default();
-    visitor.visit_expr(expr);
-    visitor.nb_binops
-}
-
-#[derive(Default)]
-struct BinaryExprVisitor {
-    nb_binops: u32,
-}
-
-impl<'tcx> Visitor<'tcx> for BinaryExprVisitor {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        match expr.kind {
+    let mut count = 0u32;
+    let _: Option<!> = for_each_expr(expr, |e| {
+        if matches!(
+            e.kind,
             hir::ExprKind::Binary(..)
-            | hir::ExprKind::Unary(hir::UnOp::Not | hir::UnOp::Neg, _)
-            | hir::ExprKind::AssignOp(..) => self.nb_binops += 1,
-            _ => {},
+                | hir::ExprKind::Unary(hir::UnOp::Not | hir::UnOp::Neg, _)
+                | hir::ExprKind::AssignOp(..)
+        ) {
+            count += 1;
         }
-
-        walk_expr(self, expr);
-    }
+        ControlFlow::Continue(())
+    });
+    count
 }

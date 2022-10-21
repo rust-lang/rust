@@ -25,6 +25,9 @@ macro_rules! pluralize {
     ($x:expr) => {
         if $x != 1 { "s" } else { "" }
     };
+    ("has", $x:expr) => {
+        if $x == 1 { "has" } else { "have" }
+    };
     ("is", $x:expr) => {
         if $x == 1 { "is" } else { "are" }
     };

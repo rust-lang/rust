@@ -161,7 +161,7 @@ LL |     m::m!();
    |
    = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `for<'r> fn(&'r Pub<u8>) {Pub::<u8>::priv_method}` is private
+error: type `for<'a> fn(&'a Pub<u8>) {Pub::<u8>::priv_method}` is private
   --> $DIR/private-inferred-type.rs:49:18
    |
 LL |         Pub(0u8).priv_method();

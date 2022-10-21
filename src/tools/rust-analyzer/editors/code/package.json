@@ -468,10 +468,13 @@
                     "default": false,
                     "type": "boolean"
                 },
-                "rust-analyzer.cargo.noSysroot": {
-                    "markdownDescription": "Internal config for debugging, disables loading of sysroot crates.",
-                    "default": false,
-                    "type": "boolean"
+                "rust-analyzer.cargo.sysroot": {
+                    "markdownDescription": "Relative path to the sysroot, or \"discover\" to try to automatically find it via\n\"rustc --print sysroot\".\n\nUnsetting this disables sysroot loading.\n\nThis option does not take effect until rust-analyzer is restarted.",
+                    "default": "discover",
+                    "type": [
+                        "null",
+                        "string"
+                    ]
                 },
                 "rust-analyzer.cargo.target": {
                     "markdownDescription": "Compilation target override (target triple).",
@@ -515,7 +518,7 @@
                     }
                 },
                 "rust-analyzer.checkOnSave.extraEnv": {
-                    "markdownDescription": "Extra environment variables that will be set when running `cargo check`.",
+                    "markdownDescription": "Extra environment variables that will be set when running `cargo check`.\nExtends `#rust-analyzer.cargo.extraEnv#`.",
                     "default": {},
                     "type": "object"
                 },

@@ -25,10 +25,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_PTR_TO_REF,
                 e.span,
-                &format!(
-                    "transmute from a pointer type (`{}`) to a reference type (`{}`)",
-                    from_ty, to_ty
-                ),
+                &format!("transmute from a pointer type (`{from_ty}`) to a reference type (`{to_ty}`)"),
                 |diag| {
                     let arg = sugg::Sugg::hir(cx, arg, "..");
                     let (deref, cast) = if *mutbl == Mutability::Mut {
@@ -41,26 +38,25 @@ pub(super) fn check<'tcx>(
                     let sugg = if let Some(ty) = get_explicit_type(path) {
                         let ty_snip = snippet_with_applicability(cx, ty.span, "..", &mut app);
                         if meets_msrv(msrv, msrvs::POINTER_CAST) {
-                            format!("{}{}.cast::<{}>()", deref, arg.maybe_par(), ty_snip)
+                            format!("{deref}{}.cast::<{ty_snip}>()", arg.maybe_par())
                         } else if from_ptr_ty.has_erased_regions() {
-                            sugg::make_unop(deref, arg.as_ty(format!("{} () as {} {}", cast, cast, ty_snip)))
-                                .to_string()
+                            sugg::make_unop(deref, arg.as_ty(format!("{cast} () as {cast} {ty_snip}"))).to_string()
                         } else {
-                            sugg::make_unop(deref, arg.as_ty(format!("{} {}", cast, ty_snip))).to_string()
+                            sugg::make_unop(deref, arg.as_ty(format!("{cast} {ty_snip}"))).to_string()
                         }
                     } else if from_ptr_ty.ty == *to_ref_ty {
                         if from_ptr_ty.has_erased_regions() {
                             if meets_msrv(msrv, msrvs::POINTER_CAST) {
-                                format!("{}{}.cast::<{}>()", deref, arg.maybe_par(), to_ref_ty)
+                                format!("{deref}{}.cast::<{to_ref_ty}>()", arg.maybe_par())
                             } else {
-                                sugg::make_unop(deref, arg.as_ty(format!("{} () as {} {}", cast, cast, to_ref_ty)))
+                                sugg::make_unop(deref, arg.as_ty(format!("{cast} () as {cast} {to_ref_ty}")))
                                     .to_string()
                             }
                         } else {
                             sugg::make_unop(deref, arg).to_string()
                         }
                     } else {
-                        sugg::make_unop(deref, arg.as_ty(format!("{} {}", cast, to_ref_ty))).to_string()
+                        sugg::make_unop(deref, arg.as_ty(format!("{cast} {to_ref_ty}"))).to_string()
                     };
 
                     diag.span_suggestion(e.span, "try", sugg, app);

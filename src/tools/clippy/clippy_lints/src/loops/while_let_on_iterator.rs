@@ -3,13 +3,12 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{
-    get_enclosing_loop_or_multi_call_closure, is_refutable, is_trait_method, match_def_path, paths,
-    visitors::is_res_used,
+    get_enclosing_loop_or_multi_call_closure, is_refutable, is_res_lang_ctor, is_trait_method, visitors::is_res_used,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{def::Res, Closure, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
+use rustc_hir::{def::Res, Closure, Expr, ExprKind, HirId, LangItem, Local, Mutability, PatKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::adjustment::Adjust;
@@ -19,9 +18,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     let (scrutinee_expr, iter_expr_struct, iter_expr, some_pat, loop_expr) = if_chain! {
         if let Some(higher::WhileLet { if_then, let_pat, let_expr }) = higher::WhileLet::hir(expr);
         // check for `Some(..)` pattern
-        if let PatKind::TupleStruct(QPath::Resolved(None, pat_path), some_pat, _) = let_pat.kind;
-        if let Res::Def(_, pat_did) = pat_path.res;
-        if match_def_path(cx, pat_did, &paths::OPTION_SOME);
+        if let PatKind::TupleStruct(ref pat_path, some_pat, _) = let_pat.kind;
+        if is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome);
         // check for call to `Iterator::next`
         if let ExprKind::MethodCall(method_name, iter_expr, [], _) = let_expr.kind;
         if method_name.ident.name == sym::next;
@@ -67,7 +65,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         expr.span.with_hi(scrutinee_expr.span.hi()),
         "this loop could be written as a `for` loop",
         "try",
-        format!("for {} in {}{}", loop_var, iterator, by_ref),
+        format!("for {loop_var} in {iterator}{by_ref}"),
         applicability,
     );
 }

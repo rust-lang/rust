@@ -84,7 +84,7 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
 
     bb13: {
         _15 = &raw mut (*_1);            // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        _9 = move _15 as *mut std::string::String (Misc); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        _9 = move _15 as *mut std::string::String (PtrToPtr); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
         _10 = Offset(_9, move _3);       // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
         goto -> bb12;                    // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
     }

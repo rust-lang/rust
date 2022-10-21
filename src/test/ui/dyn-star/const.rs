@@ -6,7 +6,7 @@ use std::fmt::Debug;
 
 fn make_dyn_star() {
     let i = 42usize;
-    let dyn_i: dyn* Debug = i as dyn* Debug;
+    let dyn_i: dyn* Debug = i;
 }
 
 fn main() {

@@ -4,8 +4,8 @@ error: methods called `from_*` usually take no `self`
 LL |     fn from_i32(self) {}
    |                 ^^^^
    |
-   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
    = help: consider choosing a less ambiguous name
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
 
 error: methods called `from_*` usually take no `self`
   --> $DIR/wrong_self_convention.rs:22:21

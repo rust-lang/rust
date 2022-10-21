@@ -489,21 +489,20 @@ fn unsafety_check_result<'tcx>(
 
 fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
     let span = tcx.sess.source_map().guess_head_span(tcx.hir().span(id));
-    tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, |lint| {
-        let msg = "unnecessary `unsafe` block";
-        let mut db = lint.build(msg);
-        db.span_label(span, msg);
+    let msg = "unnecessary `unsafe` block";
+    tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, msg, |lint| {
+        lint.span_label(span, msg);
         match kind {
             UnusedUnsafe::Unused => {}
             UnusedUnsafe::InUnsafeBlock(id) => {
-                db.span_label(
+                lint.span_label(
                     tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
                     "because it's nested under this `unsafe` block",
                 );
             }
         }
 
-        db.emit();
+        lint
     });
 }
 
@@ -543,15 +542,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 UNSAFE_OP_IN_UNSAFE_FN,
                 lint_root,
                 source_info.span,
-                |lint| {
-                    lint.build(&format!(
-                        "{} is unsafe and requires unsafe block (error E0133)",
-                        description,
-                    ))
-                    .span_label(source_info.span, description)
-                    .note(note)
-                    .emit();
-                },
+                format!("{} is unsafe and requires unsafe block (error E0133)", description,),
+                |lint| lint.span_label(source_info.span, description).note(note),
             ),
         }
     }

@@ -1,3 +1,4 @@
+use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
@@ -214,6 +215,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn invoke(
         &mut self,
         llty: &'ll Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
         args: &[&'ll Value],
         then: &'ll BasicBlock,
@@ -226,7 +228,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let bundle = funclet.map(|funclet| funclet.bundle());
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
-        unsafe {
+        let invoke = unsafe {
             llvm::LLVMRustBuildInvoke(
                 self.llbuilder,
                 llty,
@@ -238,7 +240,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 bundle,
                 UNNAMED,
             )
+        };
+        if let Some(fn_abi) = fn_abi {
+            fn_abi.apply_attrs_callsite(self, invoke);
         }
+        invoke
     }
 
     fn unreachable(&mut self) {
@@ -405,20 +411,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
         let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
-        bx.dynamic_alloca(ty, align)
-    }
-
-    fn dynamic_alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
         unsafe {
-            let alloca = llvm::LLVMBuildAlloca(self.llbuilder, ty, UNNAMED);
+            let alloca = llvm::LLVMBuildAlloca(bx.llbuilder, ty, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             alloca
         }
     }
 
-    fn array_alloca(&mut self, ty: &'ll Type, len: &'ll Value, align: Align) -> &'ll Value {
+    fn byte_array_alloca(&mut self, len: &'ll Value, align: Align) -> &'ll Value {
         unsafe {
-            let alloca = llvm::LLVMBuildArrayAlloca(self.llbuilder, ty, len, UNNAMED);
+            let alloca =
+                llvm::LLVMBuildArrayAlloca(self.llbuilder, self.cx().type_i8(), len, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             alloca
         }
@@ -1145,6 +1148,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn call(
         &mut self,
         llty: &'ll Type,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
         args: &[&'ll Value],
         funclet: Option<&Funclet<'ll>>,
@@ -1155,7 +1159,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let bundle = funclet.map(|funclet| funclet.bundle());
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
-        unsafe {
+        let call = unsafe {
             llvm::LLVMRustBuildCall(
                 self.llbuilder,
                 llty,
@@ -1164,7 +1168,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 args.len() as c_uint,
                 bundle,
             )
+        };
+        if let Some(fn_abi) = fn_abi {
+            fn_abi.apply_attrs_callsite(self, call);
         }
+        call
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
@@ -1397,7 +1405,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     pub(crate) fn call_intrinsic(&mut self, intrinsic: &str, args: &[&'ll Value]) -> &'ll Value {
         let (ty, f) = self.cx.get_intrinsic(intrinsic);
-        self.call(ty, f, args, None)
+        self.call(ty, None, f, args, None)
     }
 
     fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
@@ -1459,7 +1467,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             format!("llvm.{}.sat.i{}.f{}", instr, int_width, float_width)
         };
         let f = self.declare_cfn(&name, llvm::UnnamedAddr::No, self.type_func(&[src_ty], dest_ty));
-        self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None)
+        self.call(self.type_func(&[src_ty], dest_ty), None, f, &[val], None)
     }
 
     pub(crate) fn landing_pad(

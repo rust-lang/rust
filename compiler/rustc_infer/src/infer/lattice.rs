@@ -31,7 +31,7 @@ use rustc_middle::ty::{self, Ty};
 /// GLB moves "down" the lattice (to smaller values); LUB moves
 /// "up" the lattice (to bigger values).
 pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
-    fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
+    fn infcx(&self) -> &'f InferCtxt<'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;
 

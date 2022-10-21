@@ -27,7 +27,7 @@ fn foo(_1: Box<[T]>) -> T {
         _2 = <T as Clone>::clone(move _3) -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/issue-91633.rs:+2:14: +2:27
                                          // mir::Constant
                                          // + span: $DIR/issue-91633.rs:28:20: 28:25
-                                         // + literal: Const { ty: for<'r> fn(&'r T) -> T {<T as Clone>::clone}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a> fn(&'a T) -> T {<T as Clone>::clone}, val: Value(<ZST>) }
     }
 
     bb2: {

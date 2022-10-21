@@ -160,15 +160,12 @@ fn lang_start<T: crate::process::Termination + 'static>(
     main: fn() -> T,
     argc: isize,
     argv: *const *const u8,
-    #[cfg(not(bootstrap))] sigpipe: u8,
+    sigpipe: u8,
 ) -> isize {
     let Ok(v) = lang_start_internal(
         &move || crate::sys_common::backtrace::__rust_begin_short_backtrace(main).report().to_i32(),
         argc,
         argv,
-        #[cfg(bootstrap)]
-        2, // Temporary inlining of sigpipe::DEFAULT until bootstrap stops being special
-        #[cfg(not(bootstrap))]
         sigpipe,
     );
     v

@@ -359,7 +359,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let node_id = self.next_node_id();
 
                 // Add a definition for the in-band const def.
-                self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
+                self.create_def(parent_def_id.def_id, node_id, DefPathData::AnonConst);
 
                 let anon_const = AnonConst { id: node_id, value: arg };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
@@ -387,32 +387,58 @@ impl<'hir> LoweringContext<'_, 'hir> {
         then: &Block,
         else_opt: Option<&Expr>,
     ) -> hir::ExprKind<'hir> {
-        let lowered_cond = self.lower_expr(cond);
-        let new_cond = self.manage_let_cond(lowered_cond);
+        let lowered_cond = self.lower_cond(cond);
         let then_expr = self.lower_block_expr(then);
         if let Some(rslt) = else_opt {
-            hir::ExprKind::If(new_cond, self.arena.alloc(then_expr), Some(self.lower_expr(rslt)))
+            hir::ExprKind::If(
+                lowered_cond,
+                self.arena.alloc(then_expr),
+                Some(self.lower_expr(rslt)),
+            )
         } else {
-            hir::ExprKind::If(new_cond, self.arena.alloc(then_expr), None)
+            hir::ExprKind::If(lowered_cond, self.arena.alloc(then_expr), None)
         }
     }
 
-    // If `cond` kind is `let`, returns `let`. Otherwise, wraps and returns `cond`
-    // in a temporary block.
-    fn manage_let_cond(&mut self, cond: &'hir hir::Expr<'hir>) -> &'hir hir::Expr<'hir> {
-        fn has_let_expr<'hir>(expr: &'hir hir::Expr<'hir>) -> bool {
-            match expr.kind {
-                hir::ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
-                hir::ExprKind::Let(..) => true,
+    // Lowers a condition (i.e. `cond` in `if cond` or `while cond`), wrapping it in a terminating scope
+    // so that temporaries created in the condition don't live beyond it.
+    fn lower_cond(&mut self, cond: &Expr) -> &'hir hir::Expr<'hir> {
+        fn has_let_expr(expr: &Expr) -> bool {
+            match &expr.kind {
+                ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
+                ExprKind::Let(..) => true,
                 _ => false,
             }
         }
-        if has_let_expr(cond) {
-            cond
-        } else {
-            let reason = DesugaringKind::CondTemporary;
-            let span_block = self.mark_span_with_reason(reason, cond.span, None);
-            self.expr_drop_temps(span_block, cond, AttrVec::new())
+
+        // We have to take special care for `let` exprs in the condition, e.g. in
+        // `if let pat = val` or `if foo && let pat = val`, as we _do_ want `val` to live beyond the
+        // condition in this case.
+        //
+        // In order to mantain the drop behavior for the non `let` parts of the condition,
+        // we still wrap them in terminating scopes, e.g. `if foo && let pat = val` essentially
+        // gets transformed into `if { let _t = foo; _t } && let pat = val`
+        match &cond.kind {
+            ExprKind::Binary(op @ Spanned { node: ast::BinOpKind::And, .. }, lhs, rhs)
+                if has_let_expr(cond) =>
+            {
+                let op = self.lower_binop(*op);
+                let lhs = self.lower_cond(lhs);
+                let rhs = self.lower_cond(rhs);
+
+                self.arena.alloc(self.expr(
+                    cond.span,
+                    hir::ExprKind::Binary(op, lhs, rhs),
+                    AttrVec::new(),
+                ))
+            }
+            ExprKind::Let(..) => self.lower_expr(cond),
+            _ => {
+                let cond = self.lower_expr(cond);
+                let reason = DesugaringKind::CondTemporary;
+                let span_block = self.mark_span_with_reason(reason, cond.span, None);
+                self.expr_drop_temps(span_block, cond, AttrVec::new())
+            }
         }
     }
 
@@ -439,14 +465,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::ExprKind<'hir> {
-        let lowered_cond = self.with_loop_condition_scope(|t| t.lower_expr(cond));
-        let new_cond = self.manage_let_cond(lowered_cond);
+        let lowered_cond = self.with_loop_condition_scope(|t| t.lower_cond(cond));
         let then = self.lower_block_expr(body);
         let expr_break = self.expr_break(span, AttrVec::new());
         let stmt_break = self.stmt_expr(span, expr_break);
         let else_blk = self.block_all(span, arena_vec![self; stmt_break], None);
         let else_expr = self.arena.alloc(self.expr_block(else_blk, AttrVec::new()));
-        let if_kind = hir::ExprKind::If(new_cond, self.arena.alloc(then), Some(else_expr));
+        let if_kind = hir::ExprKind::If(lowered_cond, self.arena.alloc(then), Some(else_expr));
         let if_expr = self.expr(span, if_kind, AttrVec::new());
         let block = self.block_expr(self.arena.alloc(if_expr));
         let span = self.lower_span(span.with_hi(cond.span.hi()));
@@ -1044,9 +1069,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a tuple struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
-                if partial_res.unresolved_segments() == 0
-                    && !partial_res.base_res().expected_in_tuple_struct_pat()
-                {
+                if let Some(res) = partial_res.full_res() && !res.expected_in_tuple_struct_pat() {
                     return None;
                 }
             }
@@ -1066,9 +1089,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a unit struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
-                if partial_res.unresolved_segments() == 0
-                    && !partial_res.base_res().expected_in_unit_struct_pat()
-                {
+                if let Some(res) = partial_res.full_res() && !res.expected_in_unit_struct_pat() {
                     return None;
                 }
             }
@@ -1609,11 +1630,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Desugar `ExprKind::Yeet` from: `do yeet <expr>` into:
-    /// ```rust
+    /// ```ignore(illustrative)
     /// // If there is an enclosing `try {...}`:
-    /// break 'catch_target FromResidual::from_residual(Yeet(residual)),
+    /// break 'catch_target FromResidual::from_residual(Yeet(residual));
     /// // Otherwise:
-    /// return FromResidual::from_residual(Yeet(residual)),
+    /// return FromResidual::from_residual(Yeet(residual));
     /// ```
     /// But to simplify this, there's a `from_yeet` lang item function which
     /// handles the combined `FromResidual::from_residual(Yeet(residual))`.

@@ -48,7 +48,6 @@ pub(crate) fn early_resolve_intra_doc_links(
     link_resolver.resolve_doc_links_local(&krate.attrs);
     link_resolver.process_module_children_or_reexports(CRATE_DEF_ID.to_def_id());
     visit::walk_crate(&mut link_resolver, krate);
-    link_resolver.process_extern_impls();
 
     // FIXME: somehow rustdoc is still missing crates even though we loaded all
     // the known necessary crates. Load them all unconditionally until we find a way to fix this.
@@ -57,6 +56,8 @@ pub(crate) fn early_resolve_intra_doc_links(
     for (extern_name, _) in externs.iter().filter(|(_, entry)| entry.add_prelude) {
         link_resolver.resolver.resolve_rustdoc_path(extern_name, TypeNS, parent_scope);
     }
+
+    link_resolver.process_extern_impls();
 
     ResolverCaches {
         markdown_links: Some(link_resolver.markdown_links),

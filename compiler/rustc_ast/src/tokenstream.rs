@@ -47,10 +47,6 @@ pub enum TokenTree {
     Delimited(DelimSpan, Delimiter, TokenStream),
 }
 
-// This type is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(TokenTree, 32);
-
 // Ensure all fields of `TokenTree` is `Send` and `Sync`.
 #[cfg(parallel_compiler)]
 fn _dummy()
@@ -249,12 +245,12 @@ impl AttrTokenStream {
                                 // properly implemented - we always synthesize fake tokens,
                                 // so we never reach this code.
 
-                                let mut builder = TokenStreamBuilder::new();
+                                let mut stream = TokenStream::default();
                                 for inner_attr in inner_attrs {
-                                    builder.push(inner_attr.tokens());
+                                    stream.push_stream(inner_attr.tokens());
                                 }
-                                builder.push(delim_tokens.clone());
-                                *tree = TokenTree::Delimited(*span, *delim, builder.build());
+                                stream.push_stream(delim_tokens.clone());
+                                *tree = TokenTree::Delimited(*span, *delim, stream);
                                 found = true;
                                 break;
                             }
@@ -308,13 +304,20 @@ pub struct AttributesData {
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
 
-// `TokenStream` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(TokenStream, 8);
-
+/// Similar to `proc_macro::Spacing`, but for tokens.
+///
+/// Note that all `ast::TokenTree::Token` instances have a `Spacing`, but when
+/// we convert to `proc_macro::TokenTree` for proc macros only `Punct`
+/// `TokenTree`s have a `proc_macro::Spacing`.
 #[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum Spacing {
+    /// The token is not immediately followed by an operator token (as
+    /// determined by `Token::is_op`). E.g. a `+` token is `Alone` in `+ =`,
+    /// `+/*foo*/=`, `+ident`, and `+()`.
     Alone,
+
+    /// The token is immediately followed by an operator token. E.g. a `+`
+    /// token is `Joint` in `+=` and `++`.
     Joint,
 }
 
@@ -502,76 +505,49 @@ impl TokenStream {
 
         self.trees().map(|tree| TokenStream::flatten_token_tree(tree)).collect()
     }
-}
 
-// 99.5%+ of the time we have 1 or 2 elements in this vector.
-#[derive(Clone)]
-pub struct TokenStreamBuilder(SmallVec<[TokenStream; 2]>);
-
-impl TokenStreamBuilder {
-    pub fn new() -> TokenStreamBuilder {
-        TokenStreamBuilder(SmallVec::new())
+    // If `vec` is not empty, try to glue `tt` onto its last token. The return
+    // value indicates if gluing took place.
+    fn try_glue_to_last(vec: &mut Vec<TokenTree>, tt: &TokenTree) -> bool {
+        if let Some(TokenTree::Token(last_tok, Spacing::Joint)) = vec.last()
+            && let TokenTree::Token(tok, spacing) = tt
+            && let Some(glued_tok) = last_tok.glue(&tok)
+        {
+            // ...then overwrite the last token tree in `vec` with the
+            // glued token, and skip the first token tree from `stream`.
+            *vec.last_mut().unwrap() = TokenTree::Token(glued_tok, *spacing);
+            true
+        } else {
+            false
+        }
     }
 
-    pub fn push(&mut self, stream: TokenStream) {
-        self.0.push(stream);
+    // Push `tt` onto the end of the stream, possibly gluing it to the last
+    // token. Uses `make_mut` to maximize efficiency.
+    pub fn push_tree(&mut self, tt: TokenTree) {
+        let vec_mut = Lrc::make_mut(&mut self.0);
+
+        if Self::try_glue_to_last(vec_mut, &tt) {
+            // nothing else to do
+        } else {
+            vec_mut.push(tt);
+        }
     }
 
-    pub fn build(self) -> TokenStream {
-        let mut streams = self.0;
-        match streams.len() {
-            0 => TokenStream::default(),
-            1 => streams.pop().unwrap(),
-            _ => {
-                // We will extend the first stream in `streams` with the
-                // elements from the subsequent streams. This requires using
-                // `make_mut()` on the first stream, and in practice this
-                // doesn't cause cloning 99.9% of the time.
-                //
-                // One very common use case is when `streams` has two elements,
-                // where the first stream has any number of elements within
-                // (often 1, but sometimes many more) and the second stream has
-                // a single element within.
+    // Push `stream` onto the end of the stream, possibly gluing the first
+    // token tree to the last token. (No other token trees will be glued.)
+    // Uses `make_mut` to maximize efficiency.
+    pub fn push_stream(&mut self, stream: TokenStream) {
+        let vec_mut = Lrc::make_mut(&mut self.0);
 
-                // Determine how much the first stream will be extended.
-                // Needed to avoid quadratic blow up from on-the-fly
-                // reallocations (#57735).
-                let num_appends = streams.iter().skip(1).map(|ts| ts.len()).sum();
+        let stream_iter = stream.0.iter().cloned();
 
-                // Get the first stream, which will become the result stream.
-                // If it's `None`, create an empty stream.
-                let mut iter = streams.into_iter();
-                let mut res_stream_lrc = iter.next().unwrap().0;
-
-                // Append the subsequent elements to the result stream, after
-                // reserving space for them.
-                let res_vec_mut = Lrc::make_mut(&mut res_stream_lrc);
-                res_vec_mut.reserve(num_appends);
-                for stream in iter {
-                    let stream_iter = stream.0.iter().cloned();
-
-                    // If (a) `res_mut_vec` is not empty and the last tree
-                    // within it is a token tree marked with `Joint`, and (b)
-                    // `stream` is not empty and the first tree within it is a
-                    // token tree, and (c) the two tokens can be glued
-                    // together...
-                    if let Some(TokenTree::Token(last_tok, Spacing::Joint)) = res_vec_mut.last()
-                        && let Some(TokenTree::Token(tok, spacing)) = stream.0.first()
-                        && let Some(glued_tok) = last_tok.glue(&tok)
-                    {
-                        // ...then overwrite the last token tree in
-                        // `res_vec_mut` with the glued token, and skip the
-                        // first token tree from `stream`.
-                        *res_vec_mut.last_mut().unwrap() = TokenTree::Token(glued_tok, *spacing);
-                        res_vec_mut.extend(stream_iter.skip(1));
-                    } else {
-                        // Append all of `stream`.
-                        res_vec_mut.extend(stream_iter);
-                    }
-                }
-
-                TokenStream(res_stream_lrc)
-            }
+        if let Some(first) = stream.0.first() && Self::try_glue_to_last(vec_mut, first) {
+            // Now skip the first token tree from `stream`.
+            vec_mut.extend(stream_iter.skip(1));
+        } else {
+            // Append all of `stream`.
+            vec_mut.extend(stream_iter);
         }
     }
 }
@@ -663,4 +639,18 @@ impl DelimSpan {
     pub fn entire(self) -> Span {
         self.open.with_hi(self.close.hi())
     }
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // tidy-alphabetical-start
+    static_assert_size!(AttrTokenStream, 8);
+    static_assert_size!(AttrTokenTree, 32);
+    static_assert_size!(LazyAttrTokenStream, 8);
+    static_assert_size!(TokenStream, 8);
+    static_assert_size!(TokenTree, 32);
+    // tidy-alphabetical-end
 }

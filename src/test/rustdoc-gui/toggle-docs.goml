@@ -1,5 +1,5 @@
 // Checks that the documentation toggles have the correct position, style and work as expected.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-attribute: ("#main-content > details.top-doc", {"open": ""})
 assert-text: ("#toggle-all-docs", "[−]")
 click: "#toggle-all-docs"
@@ -13,7 +13,7 @@ wait-for-attribute: ("#main-content > details.top-doc", {"open": ""})
 assert-text: ("#toggle-all-docs", "[−]")
 
 // Check that it works on non-module pages as well.
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 // We first check that everything is visible.
 assert-text: ("#toggle-all-docs", "[−]")
 assert-attribute: ("#implementations-list details.rustdoc-toggle", {"open": ""}, ALL)

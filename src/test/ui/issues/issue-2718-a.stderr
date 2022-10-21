@@ -3,10 +3,8 @@ error[E0072]: recursive type `Pong` has infinite size
    |
 LL |     pub struct Pong(SendPacket<Ping>);
    |     ^^^^^^^^^^^^^^^ ---------------- recursive without indirection
-   |     |
-   |     recursive type has infinite size
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Pong` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL |     pub struct Pong(Box<SendPacket<Ping>>);
    |                     ++++                +

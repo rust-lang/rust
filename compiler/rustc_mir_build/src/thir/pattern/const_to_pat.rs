@@ -1,3 +1,4 @@
+use rustc_errors::DelayDm;
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -27,14 +28,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         span: Span,
         mir_structural_match_violation: bool,
     ) -> Box<Pat<'tcx>> {
-        self.tcx.infer_ctxt().enter(|infcx| {
-            let mut convert = ConstToPat::new(self, id, span, infcx);
-            convert.to_pat(cv, mir_structural_match_violation)
-        })
+        let infcx = self.tcx.infer_ctxt().build();
+        let mut convert = ConstToPat::new(self, id, span, infcx);
+        convert.to_pat(cv, mir_structural_match_violation)
     }
 }
 
-struct ConstToPat<'a, 'tcx> {
+struct ConstToPat<'tcx> {
     id: hir::HirId,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
@@ -54,7 +54,7 @@ struct ConstToPat<'a, 'tcx> {
     behind_reference: Cell<bool>,
 
     // inference context used for checking `T: Structural` bounds.
-    infcx: InferCtxt<'a, 'tcx>,
+    infcx: InferCtxt<'tcx>,
 
     include_lint_checks: bool,
 
@@ -70,21 +70,19 @@ mod fallback_to_const_ref {
     /// hoops to get a reference to the value.
     pub(super) struct FallbackToConstRef(());
 
-    pub(super) fn fallback_to_const_ref<'a, 'tcx>(
-        c2p: &super::ConstToPat<'a, 'tcx>,
-    ) -> FallbackToConstRef {
+    pub(super) fn fallback_to_const_ref<'tcx>(c2p: &super::ConstToPat<'tcx>) -> FallbackToConstRef {
         assert!(c2p.behind_reference.get());
         FallbackToConstRef(())
     }
 }
 use fallback_to_const_ref::{fallback_to_const_ref, FallbackToConstRef};
 
-impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
+impl<'tcx> ConstToPat<'tcx> {
     fn new(
         pat_ctxt: &PatCtxt<'_, 'tcx>,
         id: hir::HirId,
         span: Span,
-        infcx: InferCtxt<'a, 'tcx>,
+        infcx: InferCtxt<'tcx>,
     ) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat {
@@ -205,9 +203,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         self.id,
                         self.span,
-                        |lint| {
-                            lint.build(&msg).emit();
-                        },
+                        msg,
+                        |lint| lint,
                     );
                 } else {
                     debug!(
@@ -286,9 +283,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                         id,
                         span,
-                        |lint| {
-                            lint.build("floating-point types cannot be used in patterns").emit();
-                        },
+                        "floating-point types cannot be used in patterns",
+                        |lint| lint,
                     );
                 }
                 PatKind::Constant { value: cv }
@@ -340,15 +336,15 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         id,
                         span,
-                        |lint| {
-                            let msg = format!(
+                        DelayDm(|| {
+                            format!(
                                 "to use a constant of type `{}` in a pattern, \
                                  `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
                                 cv.ty(),
                                 cv.ty(),
-                            );
-                            lint.build(&msg).emit();
-                        },
+                            )
+                        }),
+                        |lint| lint,
                     );
                 }
                 // Since we are behind a reference, we can just bubble the error up so we get a
@@ -488,7 +484,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                 lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                                 self.id,
                                 self.span,
-                                |lint| {lint.build(&msg).emit();},
+                                msg,
+                                |lint| lint,
                             );
                         }
                         PatKind::Constant { value: cv }
@@ -556,9 +553,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         lint::builtin::POINTER_STRUCTURAL_MATCH,
                         id,
                         span,
-                        |lint| {
-                            lint.build(msg).emit();
-                        },
+                        msg,
+                        |lint| lint,
                     );
                 }
                 PatKind::Constant { value: cv }
@@ -594,9 +590,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 lint::builtin::NONTRIVIAL_STRUCTURAL_MATCH,
                 id,
                 span,
-                |lint| {
-                    lint.build(&msg).emit();
-                },
+                msg,
+                |lint| lint,
             );
         }
 

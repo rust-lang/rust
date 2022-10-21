@@ -12,6 +12,7 @@ unsafe impl Sync for RwLock {} // no threads on this platform
 
 impl RwLock {
     #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> RwLock {
         RwLock { mode: Cell::new(0) }
     }

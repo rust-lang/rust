@@ -42,7 +42,7 @@ fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> FxHashMap<DefId
 fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
     let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let parent_def_id = tcx.hir().get_parent_item(id);
-    let parent_item = tcx.hir().expect_item(parent_def_id);
+    let parent_item = tcx.hir().expect_item(parent_def_id.def_id);
     match parent_item.kind {
         hir::ItemKind::Impl(ref impl_) => {
             if let Some(impl_item_ref) =

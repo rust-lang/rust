@@ -57,6 +57,7 @@ fn test_get_resource() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(for_loops_over_fallibles))]
 fn test_option_dance() {
     let x = Some(());
     let mut y = Some(5);

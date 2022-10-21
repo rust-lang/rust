@@ -499,6 +499,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(rustc_const_unstable, Normal, template!(List: r#"feature = "name""#), DuplicatesOk),
     ungated!(rustc_const_stable, Normal, template!(List: r#"feature = "name""#), DuplicatesOk),
+    ungated!(rustc_safe_intrinsic, Normal, template!(Word), DuplicatesOk),
     ungated!(
         rustc_default_body_unstable, Normal,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#), DuplicatesOk
@@ -535,7 +536,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(rustc_allocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
-    rustc_attr!(rustc_allocator_nounwind, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    rustc_attr!(rustc_nounwind, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
     rustc_attr!(rustc_reallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
     rustc_attr!(rustc_deallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
     rustc_attr!(rustc_allocator_zeroed, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),

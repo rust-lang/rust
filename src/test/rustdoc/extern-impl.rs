@@ -19,9 +19,9 @@ impl Foo {
 // @has foo/trait.Bar.html
 pub trait Bar {}
 
-// @has - '//h3[@class="code-header in-band"]' 'impl Bar for fn()'
+// @has - '//h3[@class="code-header"]' 'impl Bar for fn()'
 impl Bar for fn() {}
-// @has - '//h3[@class="code-header in-band"]' 'impl Bar for extern "C" fn()'
+// @has - '//h3[@class="code-header"]' 'impl Bar for extern "C" fn()'
 impl Bar for extern fn() {}
-// @has - '//h3[@class="code-header in-band"]' 'impl Bar for extern "system" fn()'
+// @has - '//h3[@class="code-header"]' 'impl Bar for extern "system" fn()'
 impl Bar for extern "system" fn() {}

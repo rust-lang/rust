@@ -25,7 +25,7 @@ struct AutoderefSnapshot<'tcx> {
 
 pub struct Autoderef<'a, 'tcx> {
     // Meta infos:
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     span: Span,
     overloaded_span: Span,
     body_id: hir::HirId,
@@ -94,7 +94,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
 
 impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     pub fn new(
-        infcx: &'a InferCtxt<'a, 'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_id: hir::HirId,
         span: Span,

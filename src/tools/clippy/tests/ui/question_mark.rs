@@ -259,3 +259,12 @@ fn pattern() -> Result<(), PatternedError> {
 }
 
 fn main() {}
+
+// should not lint, `?` operator not available in const context
+const fn issue9175(option: Option<()>) -> Option<()> {
+    if option.is_none() {
+        return None;
+    }
+    //stuff
+    Some(())
+}

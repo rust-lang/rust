@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, ToPredicate};
 
 pub(crate) fn update<'tcx, T>(
     engine: &mut T,
-    infcx: &InferCtxt<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     obligation: &PredicateObligation<'tcx>,
 ) where
     T: TraitEngine<'tcx>,

@@ -7,16 +7,16 @@ LL |
 LL |     let _y = x;
    |         ^^ unreachable definition
    |
-note: the lint level is defined here
-  --> $DIR/issue-85071-2.rs:7:26
-   |
-LL | #![warn(unused_variables,unreachable_code)]
-   |                          ^^^^^^^^^^^^^^^^
 note: this expression has type `Foo`, which is uninhabited
   --> $DIR/issue-85071-2.rs:18:13
    |
 LL |     let x = s.f();
    |             ^^^^^
+note: the lint level is defined here
+  --> $DIR/issue-85071-2.rs:7:26
+   |
+LL | #![warn(unused_variables,unreachable_code)]
+   |                          ^^^^^^^^^^^^^^^^
 
 warning: unused variable: `x`
   --> $DIR/issue-85071-2.rs:18:9

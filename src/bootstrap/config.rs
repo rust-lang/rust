@@ -73,6 +73,8 @@ pub struct Config {
     pub color: Color,
     pub patch_binaries_for_nix: bool,
     pub stage0_metadata: Stage0Metadata,
+    /// Whether to use the `c` feature of the `compiler_builtins` crate.
+    pub optimized_compiler_builtins: bool,
 
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -159,6 +161,8 @@ pub struct Config {
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
+    pub llvm_bolt_profile_generate: bool,
+    pub llvm_bolt_profile_use: Option<String>,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -597,6 +601,7 @@ define_config! {
         bench_stage: Option<u32> = "bench-stage",
         patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
         metrics: Option<bool> = "metrics",
+        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
     }
 }
 
@@ -772,21 +777,20 @@ impl Config {
 
         // set by build.rs
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
+
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         // Undo `src/bootstrap`
         config.src = manifest_dir.parent().unwrap().parent().unwrap().to_owned();
         config.out = PathBuf::from("build");
-
-        config.initial_cargo = PathBuf::from(env!("CARGO"));
-        config.initial_rustc = PathBuf::from(env!("RUSTC"));
 
         config
     }
 
     pub fn parse(args: &[String]) -> Config {
         let flags = Flags::parse(&args);
-
         let mut config = Config::default_opts();
+
+        // Set flags.
         config.exclude = flags.exclude.into_iter().map(|path| TaskPath::parse(path)).collect();
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
@@ -804,8 +808,68 @@ impl Config {
         }
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
+        config.llvm_bolt_profile_generate = flags.llvm_bolt_profile_generate;
+        config.llvm_bolt_profile_use = flags.llvm_bolt_profile_use;
+
+        if config.llvm_bolt_profile_generate && config.llvm_bolt_profile_use.is_some() {
+            eprintln!(
+                "Cannot use both `llvm_bolt_profile_generate` and `llvm_bolt_profile_use` at the same time"
+            );
+            crate::detail_exit(1);
+        }
+
+        // Infer the rest of the configuration.
+
+        // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
+        // running on a completely machine from where it was compiled.
+        let mut cmd = Command::new("git");
+        // NOTE: we cannot support running from outside the repository because the only path we have available
+        // is set at compile time, which can be wrong if bootstrap was downloaded from source.
+        // We still support running outside the repository if we find we aren't in a git directory.
+        cmd.arg("rev-parse").arg("--show-toplevel");
+        // Discard stderr because we expect this to fail when building from a tarball.
+        let output = cmd
+            .stderr(std::process::Stdio::null())
+            .output()
+            .ok()
+            .and_then(|output| if output.status.success() { Some(output) } else { None });
+        if let Some(output) = output {
+            let git_root = String::from_utf8(output.stdout).unwrap();
+            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes.
+            let git_root = PathBuf::from(git_root.trim()).canonicalize().unwrap();
+            let s = git_root.to_str().unwrap();
+
+            // Bootstrap is quite bad at handling /? in front of paths
+            let src = match s.strip_prefix("\\\\?\\") {
+                Some(p) => PathBuf::from(p),
+                None => PathBuf::from(git_root),
+            };
+            // If this doesn't have at least `stage0.json`, we guessed wrong. This can happen when,
+            // for example, the build directory is inside of another unrelated git directory.
+            // In that case keep the original `CARGO_MANIFEST_DIR` handling.
+            //
+            // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
+            // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
+            if src.join("src").join("stage0.json").exists() {
+                config.src = src;
+            }
+        } else {
+            // We're building from a tarball, not git sources.
+            // We don't support pre-downloaded bootstrap in this case.
+        }
+
+        if cfg!(test) {
+            // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
+            config.out = Path::new(
+                &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
+            )
+            .parent()
+            .unwrap()
+            .to_path_buf();
+        }
 
         let stage0_json = t!(std::fs::read(&config.src.join("src").join("stage0.json")));
+
         config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
 
         #[cfg(test)]
@@ -861,7 +925,6 @@ impl Config {
 
         let build = toml.build.unwrap_or_default();
 
-        set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
         set(&mut config.out, flags.build_dir.or_else(|| build.build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
@@ -870,6 +933,16 @@ impl Config {
             config.out = crate::util::absolute(&config.out);
         }
 
+        config.initial_rustc = build
+            .rustc
+            .map(PathBuf::from)
+            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/rustc"));
+        config.initial_cargo = build
+            .cargo
+            .map(PathBuf::from)
+            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/cargo"));
+
+        // NOTE: it's important this comes *after* we set `initial_rustc` just above.
         if config.dry_run {
             let dir = config.out.join("tmp-dry-run");
             t!(fs::create_dir_all(&dir));
@@ -916,6 +989,7 @@ impl Config {
         set(&mut config.print_step_timings, build.print_step_timings);
         set(&mut config.print_step_rusage, build.print_step_rusage);
         set(&mut config.patch_binaries_for_nix, build.patch_binaries_for_nix);
+        set(&mut config.optimized_compiler_builtins, build.optimized_compiler_builtins);
 
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
@@ -1280,11 +1354,22 @@ impl Config {
         git
     }
 
-    pub(crate) fn artifact_channel(&self, commit: &str) -> String {
-        let mut channel = self.git();
-        channel.arg("show").arg(format!("{}:src/ci/channel", commit));
-        let channel = output(&mut channel);
-        channel.trim().to_owned()
+    pub(crate) fn artifact_channel(&self, builder: &Builder<'_>, commit: &str) -> String {
+        if builder.rust_info.is_managed_git_subrepository() {
+            let mut channel = self.git();
+            channel.arg("show").arg(format!("{}:src/ci/channel", commit));
+            let channel = output(&mut channel);
+            channel.trim().to_owned()
+        } else if let Ok(channel) = fs::read_to_string(builder.src.join("src/ci/channel")) {
+            channel.trim().to_owned()
+        } else {
+            let src = builder.src.display();
+            eprintln!("error: failed to determine artifact channel");
+            eprintln!(
+                "help: either use git or ensure that {src}/src/ci/channel contains the name of the channel to use"
+            );
+            panic!();
+        }
     }
 
     /// Try to find the relative path of `bindir`, otherwise return it in full.
@@ -1421,7 +1506,7 @@ impl Config {
     }
 
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
-        self.submodules.unwrap_or(rust_info.is_git())
+        self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
     }
 }
 
@@ -1526,7 +1611,7 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
 
 fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     builder.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
-    let channel = builder.config.artifact_channel(commit);
+    let channel = builder.config.artifact_channel(builder, commit);
     let host = builder.config.build.triple;
     let bin_root = builder.out.join(host).join("ci-rustc");
     let rustc_stamp = bin_root.join(".rustc-stamp");

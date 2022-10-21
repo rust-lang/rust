@@ -5,6 +5,11 @@ LL |     let mut v: isize;
    |         ----- binding declared here but left uninitialized
 LL |     v = v + 1;
    |         ^ `v` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let mut v: isize = 0;
+   |                      +++
 
 error: aborting due to previous error
 

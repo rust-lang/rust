@@ -13,7 +13,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::
     if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[0], &mut applicability) {
         let base_string_snippet =
             snippet_with_applicability(cx, receiver.span.source_callsite(), "..", &mut applicability);
-        let sugg = format!("{}.push({})", base_string_snippet, extension_string);
+        let sugg = format!("{base_string_snippet}.push({extension_string})");
         span_lint_and_sugg(
             cx,
             SINGLE_CHAR_ADD_STR,

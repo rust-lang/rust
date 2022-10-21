@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ub.rs:33:1
+  --> $DIR/union-ub.rs:32:1
    |
 LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};
    | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0x2a, but expected a boolean
@@ -10,7 +10,7 @@ LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/union-ub.rs:35:36
+  --> $DIR/union-ub.rs:34:36
    |
 LL | const UNINIT_BOOL: bool = unsafe { DummyUnion { unit: () }.bool};
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory

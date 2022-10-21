@@ -106,14 +106,12 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
                 .lint_root;
             let span = terminator.source_info.span;
 
-            tcx.struct_span_lint_hir(FFI_UNWIND_CALLS, lint_root, span, |lint| {
-                let msg = match fn_def_id {
-                    Some(_) => "call to foreign function with FFI-unwind ABI",
-                    None => "call to function pointer with FFI-unwind ABI",
-                };
-                let mut db = lint.build(msg);
-                db.span_label(span, msg);
-                db.emit();
+            let msg = match fn_def_id {
+                Some(_) => "call to foreign function with FFI-unwind ABI",
+                None => "call to function pointer with FFI-unwind ABI",
+            };
+            tcx.struct_span_lint_hir(FFI_UNWIND_CALLS, lint_root, span, msg, |lint| {
+                lint.span_label(span, msg)
             });
 
             tainted = true;

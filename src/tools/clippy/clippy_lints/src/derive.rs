@@ -191,7 +191,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.63.0"]
     pub DERIVE_PARTIAL_EQ_WITHOUT_EQ,
-    style,
+    nursery,
     "deriving `PartialEq` on a type that can implement `Eq`, without implementing `Eq`"
 }
 

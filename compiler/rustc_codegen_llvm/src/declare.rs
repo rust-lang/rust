@@ -32,6 +32,7 @@ fn declare_raw_fn<'ll>(
     name: &str,
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
+    visibility: llvm::Visibility,
     ty: &'ll Type,
 ) -> &'ll Value {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
@@ -41,6 +42,7 @@ fn declare_raw_fn<'ll>(
 
     llvm::SetFunctionCallConv(llfn, callconv);
     llvm::SetUnnamedAddress(llfn, unnamed);
+    llvm::set_visibility(llfn, visibility);
 
     let mut attrs = SmallVec::<[_; 4]>::new();
 
@@ -78,7 +80,14 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         unnamed: llvm::UnnamedAddr,
         fn_type: &'ll Type,
     ) -> &'ll Value {
-        declare_raw_fn(self, name, llvm::CCallConv, unnamed, fn_type)
+        // Declare C ABI functions with the visibility used by C by default.
+        let visibility = if self.tcx.sess.target.default_hidden_visibility {
+            llvm::Visibility::Hidden
+        } else {
+            llvm::Visibility::Default
+        };
+
+        declare_raw_fn(self, name, llvm::CCallConv, unnamed, visibility, fn_type)
     }
 
     /// Declare a Rust function.
@@ -95,6 +104,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             name,
             fn_abi.llvm_cconv(),
             llvm::UnnamedAddr::Global,
+            llvm::Visibility::Default,
             fn_abi.llvm_type(self),
         );
         fn_abi.apply_attrs_llfn(self, llfn);

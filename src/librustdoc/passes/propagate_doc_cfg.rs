@@ -48,7 +48,7 @@ impl<'a, 'tcx> CfgPropagator<'a, 'tcx> {
             let expected_parent = hir.get_parent_item(hir_id);
             // If parents are different, it means that `item` is a reexport and we need
             // to compute the actual `cfg` by iterating through its "real" parents.
-            if self.parent == Some(expected_parent) {
+            if self.parent == Some(expected_parent.def_id) {
                 return;
             }
         }

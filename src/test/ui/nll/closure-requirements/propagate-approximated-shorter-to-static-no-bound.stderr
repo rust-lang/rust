@@ -6,7 +6,7 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<'r, 's, 't0, 't1, 't2> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('r) }) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('s) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrNamed('t0) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('s) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrNamed('t1) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrNamed('t2) }) u32>)),
+               for<'a, 'b, 'c, 'd, 'e> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('a) }) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('b) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrNamed('c) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('b) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrNamed('d) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrNamed('e) }) u32>)),
                (),
            ]
    = note: late-bound region is '_#2r

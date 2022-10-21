@@ -1,7 +1,7 @@
 //! Defines the set of legal keys that can be used in queries.
 
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-use rustc_hir::hir_id::HirId;
+use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::mir;
 use rustc_middle::traits;
@@ -25,6 +25,10 @@ pub trait Key {
     /// If the key is a [`DefId`] or `DefId`--equivalent, return that `DefId`.
     /// Otherwise, return `None`.
     fn key_as_def_id(&self) -> Option<DefId> {
+        None
+    }
+
+    fn ty_adt_id(&self) -> Option<DefId> {
         None
     }
 }
@@ -102,6 +106,19 @@ impl Key for CrateNum {
     }
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
+    }
+}
+
+impl Key for OwnerId {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.to_def_id().default_span(tcx)
+    }
+    fn key_as_def_id(&self) -> Option<DefId> {
+        Some(self.to_def_id())
     }
 }
 
@@ -276,7 +293,7 @@ impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>) {
+impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         (self.0).def.did.krate == LOCAL_CRATE
@@ -393,6 +410,12 @@ impl<'tcx> Key for Ty<'tcx> {
     }
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
+    }
+    fn ty_adt_id(&self) -> Option<DefId> {
+        match self.kind() {
+            ty::Adt(adt, _) => Some(adt.did()),
+            _ => None,
+        }
     }
 }
 

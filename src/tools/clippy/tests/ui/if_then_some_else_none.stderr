@@ -10,8 +10,8 @@ LL | |         None
 LL | |     };
    | |_____^
    |
-   = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
    = help: consider using `bool::then` like: `foo().then(|| { /* snippet */ "foo" })`
+   = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
 
 error: this could be simplified with `bool::then`
   --> $DIR/if_then_some_else_none.rs:14:13

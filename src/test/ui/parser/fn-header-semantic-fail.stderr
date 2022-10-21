@@ -199,7 +199,7 @@ note: ...which requires borrow-checking `main::ff5`...
    |
 LL |     const async unsafe extern "C" fn ff5() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing `main::ff5`...
+note: ...which requires processing MIR for `main::ff5`...
   --> $DIR/fn-header-semantic-fail.rs:12:5
    |
 LL |     const async unsafe extern "C" fn ff5() {}
@@ -235,7 +235,7 @@ note: ...which requires borrow-checking `main::<impl at $DIR/fn-header-semantic-
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5`...
+note: ...which requires processing MIR for `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5`...
   --> $DIR/fn-header-semantic-fail.rs:33:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
@@ -271,7 +271,7 @@ note: ...which requires borrow-checking `main::<impl at $DIR/fn-header-semantic-
    |
 LL |         const async unsafe extern "C" fn fi5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing `main::<impl at $DIR/fn-header-semantic-fail.rs:40:5: 40:11>::fi5`...
+note: ...which requires processing MIR for `main::<impl at $DIR/fn-header-semantic-fail.rs:40:5: 40:11>::fi5`...
   --> $DIR/fn-header-semantic-fail.rs:45:9
    |
 LL |         const async unsafe extern "C" fn fi5() {}

@@ -26,19 +26,19 @@ pub fn report_symbol_names(tcx: TyCtxt<'_>) {
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.items() {
-            symbol_names.process_attrs(id.def_id);
+            symbol_names.process_attrs(id.def_id.def_id);
         }
 
         for id in crate_items.trait_items() {
-            symbol_names.process_attrs(id.def_id);
+            symbol_names.process_attrs(id.def_id.def_id);
         }
 
         for id in crate_items.impl_items() {
-            symbol_names.process_attrs(id.def_id);
+            symbol_names.process_attrs(id.def_id.def_id);
         }
 
         for id in crate_items.foreign_items() {
-            symbol_names.process_attrs(id.def_id);
+            symbol_names.process_attrs(id.def_id.def_id);
         }
     })
 }

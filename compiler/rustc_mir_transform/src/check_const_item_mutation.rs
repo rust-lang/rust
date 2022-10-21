@@ -1,4 +1,4 @@
-use rustc_errors::{DiagnosticBuilder, LintDiagnosticBuilder};
+use rustc_errors::{DiagnosticBuilder, DiagnosticMessage};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -63,7 +63,10 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
         place: &Place<'tcx>,
         const_item: DefId,
         location: Location,
-        decorate: impl for<'b> FnOnce(LintDiagnosticBuilder<'b, ()>) -> DiagnosticBuilder<'b, ()>,
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'a mut DiagnosticBuilder<'b, ()>,
+        ) -> &'a mut DiagnosticBuilder<'b, ()>,
     ) {
         // Don't lint on borrowing/assigning when a dereference is involved.
         // If we 'leave' the temporary via a dereference, we must
@@ -84,10 +87,10 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
                 CONST_ITEM_MUTATION,
                 lint_root,
                 source_info.span,
+                msg,
                 |lint| {
                     decorate(lint)
                         .span_note(self.tcx.def_span(const_item), "`const` item defined here")
-                        .emit();
                 },
             );
         }
@@ -102,10 +105,8 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
             // so emitting a lint would be redundant.
             if !lhs.projection.is_empty() {
                 if let Some(def_id) = self.is_const_item_without_destructor(lhs.local) {
-                    self.lint_const_item_usage(&lhs, def_id, loc, |lint| {
-                        let mut lint = lint.build("attempting to modify a `const` item");
-                        lint.note("each usage of a `const` item creates a new temporary; the original `const` item will not be modified");
-                        lint
+                    self.lint_const_item_usage(&lhs, def_id, loc, "attempting to modify a `const` item",|lint| {
+                        lint.note("each usage of a `const` item creates a new temporary; the original `const` item will not be modified")
                     })
                 }
             }
@@ -137,8 +138,7 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
                 });
                 let lint_loc =
                     if method_did.is_some() { self.body.terminator_loc(loc.block) } else { loc };
-                self.lint_const_item_usage(place, def_id, lint_loc, |lint| {
-                    let mut lint = lint.build("taking a mutable reference to a `const` item");
+                self.lint_const_item_usage(place, def_id, lint_loc, "taking a mutable reference to a `const` item", |lint| {
                     lint
                         .note("each usage of a `const` item creates a new temporary")
                         .note("the mutable reference will refer to this temporary, not the original `const` item");

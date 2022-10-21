@@ -44,7 +44,7 @@ pub struct TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
 
     /// Callback to use when we deduce an outlives relationship.
     delegate: D,
@@ -149,11 +149,7 @@ impl<'me, 'tcx, D> TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    pub fn new(
-        infcx: &'me InferCtxt<'me, 'tcx>,
-        delegate: D,
-        ambient_variance: ty::Variance,
-    ) -> Self {
+    pub fn new(infcx: &'me InferCtxt<'tcx>, delegate: D, ambient_variance: ty::Variance) -> Self {
         Self {
             infcx,
             delegate,
@@ -357,7 +353,7 @@ where
             // In NLL, we don't have type inference variables
             // floating around, so we can do this rather imprecise
             // variant of the occurs-check.
-            assert!(!generalized_ty.has_infer_types_or_consts());
+            assert!(!generalized_ty.has_non_region_infer());
         }
 
         self.infcx.inner.borrow_mut().type_variables().instantiate(vid, generalized_ty);
@@ -867,7 +863,7 @@ struct TypeGeneralizer<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
 
     delegate: &'me mut D,
 

@@ -244,14 +244,12 @@ pub trait Visitor<'ast>: Sized {
 
 #[macro_export]
 macro_rules! walk_list {
-    ($visitor: expr, $method: ident, $list: expr) => {
-        for elem in $list {
-            $visitor.$method(elem)
-        }
-    };
-    ($visitor: expr, $method: ident, $list: expr, $($extra_args: expr),*) => {
-        for elem in $list {
-            $visitor.$method(elem, $($extra_args,)*)
+    ($visitor: expr, $method: ident, $list: expr $(, $($extra_args: expr),* )?) => {
+        {
+            #[cfg_attr(not(bootstrap), allow(for_loops_over_fallibles))]
+            for elem in $list {
+                $visitor.$method(elem $(, $($extra_args,)* )?)
+            }
         }
     }
 }
@@ -685,7 +683,7 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
             let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, generics, body.as_deref());
             visitor.visit_fn(kind, span, id);
         }
-        AssocItemKind::TyAlias(box TyAlias { generics, bounds, ty, .. }) => {
+        AssocItemKind::Type(box TyAlias { generics, bounds, ty, .. }) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
             walk_list!(visitor, visit_ty, ty);

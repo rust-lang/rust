@@ -8,13 +8,13 @@ LL | |         Ok(true)
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::panic-in-result-fn` implied by `-D warnings`
    = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
   --> $DIR/panic_in_result_fn_assertions.rs:9:9
    |
 LL |         assert!(x == 5, "wrong argument");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::panic-in-result-fn` implied by `-D warnings`
 
 error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
   --> $DIR/panic_in_result_fn_assertions.rs:13:5

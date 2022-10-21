@@ -9,6 +9,11 @@ LL |         _ if { x = 2; true } => 1,
 LL |         _ if {
 LL |             x;
    |             ^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x = 0;
+   |           +++
 
 error[E0382]: use of moved value: `x`
   --> $DIR/match-cfg-fake-edges.rs:35:13

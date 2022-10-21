@@ -2,7 +2,6 @@
 // https://github.com/matthieu-m/rfc2580/blob/b58d1d3cba0d4b5e859d3617ea2d0943aaa31329/examples/thin.rs
 // by matthieu-m
 use crate::alloc::{self, Layout, LayoutError};
-#[cfg(not(bootstrap))]
 use core::error::Error;
 use core::fmt::{self, Debug, Display, Formatter};
 use core::marker::PhantomData;
@@ -274,7 +273,6 @@ impl<H> WithHeader<H> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<T: ?Sized + Error> Error for ThinBox<T> {
     fn source(&self) -> Option<&(dyn Error + 'static)> {

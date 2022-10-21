@@ -546,7 +546,7 @@ impl Span {
     /// Note: The observable result of a macro should only rely on the tokens and
     /// not on this source text. The result of this function is a best effort to
     /// be used for diagnostics only.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_source_text", since = "CURRENT_RUSTC_VERSION")]
     pub fn source_text(&self) -> Option<String> {
         self.0.source_text()
     }

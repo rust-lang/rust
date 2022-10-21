@@ -847,20 +847,28 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
 ) {
     match *predicate {
         WherePredicate::BoundPredicate(WhereBoundPredicate {
+            hir_id,
             ref bounded_ty,
             bounds,
             bound_generic_params,
-            ..
+            origin: _,
+            span: _,
         }) => {
+            visitor.visit_id(hir_id);
             visitor.visit_ty(bounded_ty);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_generic_param, bound_generic_params);
         }
-        WherePredicate::RegionPredicate(WhereRegionPredicate { ref lifetime, bounds, .. }) => {
+        WherePredicate::RegionPredicate(WhereRegionPredicate {
+            ref lifetime,
+            bounds,
+            span: _,
+            in_where_clause: _,
+        }) => {
             visitor.visit_lifetime(lifetime);
             walk_list!(visitor, visit_param_bound, bounds);
         }
-        WherePredicate::EqPredicate(WhereEqPredicate { ref lhs_ty, ref rhs_ty, .. }) => {
+        WherePredicate::EqPredicate(WhereEqPredicate { ref lhs_ty, ref rhs_ty, span: _ }) => {
             visitor.visit_ty(lhs_ty);
             visitor.visit_ty(rhs_ty);
         }
@@ -971,7 +979,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
                 impl_item.hir_id(),
             );
         }
-        ImplItemKind::TyAlias(ref ty) => {
+        ImplItemKind::Type(ref ty) => {
             visitor.visit_id(impl_item.hir_id());
             visitor.visit_ty(ty);
         }

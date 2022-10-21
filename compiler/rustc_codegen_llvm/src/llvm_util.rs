@@ -1,7 +1,6 @@
 use crate::back::write::create_informational_target_machine;
-use crate::{llvm, llvm_util};
+use crate::llvm;
 use libc::c_int;
-use libloading::Library;
 use rustc_codegen_ssa::target_features::{
     supported_target_features, tied_target_features, RUSTC_SPECIFIC_FEATURES,
 };
@@ -16,7 +15,6 @@ use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use smallvec::{smallvec, SmallVec};
 use std::ffi::{CStr, CString};
 
-use std::mem;
 use std::path::Path;
 use std::ptr;
 use std::slice;
@@ -119,22 +117,6 @@ unsafe fn configure_llvm(sess: &Session) {
     }
 
     llvm::LLVMInitializePasses();
-
-    // Use the legacy plugin registration if we don't use the new pass manager
-    if !should_use_new_llvm_pass_manager(
-        &sess.opts.unstable_opts.new_llvm_pass_manager,
-        &sess.target.arch,
-    ) {
-        // Register LLVM plugins by loading them into the compiler process.
-        for plugin in &sess.opts.unstable_opts.llvm_plugins {
-            let lib = Library::new(plugin).unwrap_or_else(|e| bug!("couldn't load plugin: {}", e));
-            debug!("LLVM plugin loaded successfully {:?} ({})", lib, plugin);
-
-            // Intentionally leak the dynamic library. We can't ever unload it
-            // since the library can make things that will live arbitrarily long.
-            mem::forget(lib);
-        }
-    }
 
     rustc_llvm::initialize_available_targets();
 
@@ -538,20 +520,4 @@ fn backend_feature_name(s: &str) -> Option<&str> {
 pub fn tune_cpu(sess: &Session) -> Option<&str> {
     let name = sess.opts.unstable_opts.tune_cpu.as_ref()?;
     Some(handle_native(name))
-}
-
-pub(crate) fn should_use_new_llvm_pass_manager(user_opt: &Option<bool>, target_arch: &str) -> bool {
-    // The new pass manager is enabled by default for LLVM >= 13.
-    // This matches Clang, which also enables it since Clang 13.
-
-    // Since LLVM 15, the legacy pass manager is no longer supported.
-    if llvm_util::get_version() >= (15, 0, 0) {
-        return true;
-    }
-
-    // There are some perf issues with the new pass manager when targeting
-    // s390x with LLVM 13, so enable the new pass manager only with LLVM 14.
-    // See https://github.com/rust-lang/rust/issues/89609.
-    let min_version = if target_arch == "s390x" { 14 } else { 13 };
-    user_opt.unwrap_or_else(|| llvm_util::get_version() >= (min_version, 0, 0))
 }

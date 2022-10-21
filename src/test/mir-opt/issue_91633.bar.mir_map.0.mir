@@ -15,7 +15,7 @@ fn bar(_1: Box<[T]>) -> () {
         _2 = <[T] as Index<usize>>::index(move _3, const 0_usize) -> [return: bb1, unwind: bb3]; // scope 0 at $DIR/issue-91633.rs:+4:14: +4:19
                                          // mir::Constant
                                          // + span: $DIR/issue-91633.rs:15:14: 15:19
-                                         // + literal: Const { ty: for<'r> fn(&'r [T], usize) -> &'r <[T] as Index<usize>>::Output {<[T] as Index<usize>>::index}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: for<'a> fn(&'a [T], usize) -> &'a <[T] as Index<usize>>::Output {<[T] as Index<usize>>::index}, val: Value(<ZST>) }
     }
 
     bb1: {

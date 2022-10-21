@@ -93,7 +93,8 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Default),+> Default for ($($T,)+) {
+            #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+            impl<$($T: ~const Default),+> const Default for ($($T,)+) {
                 #[inline]
                 fn default() -> ($($T,)+) {
                     ($({ let x: $T = Default::default(); x},)+)

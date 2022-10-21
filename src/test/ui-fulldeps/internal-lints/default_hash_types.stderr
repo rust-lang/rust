@@ -4,12 +4,12 @@ error: prefer `FxHashMap` over `HashMap`, it has better performance
 LL |     let _map: HashMap<String, String> = HashMap::default();
    |                                         ^^^^^^^
    |
+   = note: a `use rustc_data_structures::fx::FxHashMap` may be necessary
 note: the lint level is defined here
   --> $DIR/default_hash_types.rs:4:9
    |
 LL | #![deny(rustc::default_hash_types)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: a `use rustc_data_structures::fx::FxHashMap` may be necessary
 
 error: prefer `FxHashMap` over `HashMap`, it has better performance
   --> $DIR/default_hash_types.rs:16:15

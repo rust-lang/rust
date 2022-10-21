@@ -660,7 +660,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.push_rewrite(ai.span, rewrite);
                 }
             }
-            (ast::AssocItemKind::TyAlias(ref ty_alias), _) => {
+            (ast::AssocItemKind::Type(ref ty_alias), _) => {
                 self.visit_ty_alias_kind(ty_alias, visitor_kind, ai.span);
             }
             (ast::AssocItemKind::MacCall(ref mac), _) => {

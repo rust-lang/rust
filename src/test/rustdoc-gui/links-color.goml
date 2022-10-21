@@ -1,5 +1,5 @@
 // This test checks links colors.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // This is needed so that the text color is computed.
 show-text: true

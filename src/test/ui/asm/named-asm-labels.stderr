@@ -4,9 +4,9 @@ error: avoid using named labels in inline assembly
 LL |         asm!("bar: nop");
    |               ^^^
    |
-   = note: `#[deny(named_asm_labels)]` on by default
    = help: only local labels of the form `<number>:` should be used in inline asm
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
+   = note: `#[deny(named_asm_labels)]` on by default
 
 error: avoid using named labels in inline assembly
   --> $DIR/named-asm-labels.rs:27:15
@@ -259,13 +259,13 @@ warning: avoid using named labels in inline assembly
 LL |             asm!("warned: nop");
    |                   ^^^^^^
    |
+   = help: only local labels of the form `<number>:` should be used in inline asm
+   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 note: the lint level is defined here
   --> $DIR/named-asm-labels.rs:132:16
    |
 LL |         #[warn(named_asm_labels)]
    |                ^^^^^^^^^^^^^^^^
-   = help: only local labels of the form `<number>:` should be used in inline asm
-   = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
   --> $DIR/named-asm-labels.rs:143:20

@@ -138,6 +138,7 @@
 #![feature(const_size_of_val)]
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_ptr_len)]
+#![feature(const_slice_split_at_mut)]
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_swap)]
 #![feature(const_trait_impl)]
@@ -151,6 +152,7 @@
 #![feature(core_panic)]
 #![feature(duration_consts_float)]
 #![feature(maybe_uninit_uninit_array)]
+#![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
 #![feature(slice_split_at_unchecked)]
@@ -163,6 +165,7 @@
 #![feature(const_slice_index)]
 #![feature(const_is_char_boundary)]
 #![feature(const_cstr_methods)]
+#![feature(is_ascii_octdigit)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
@@ -194,7 +197,6 @@
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
-#![feature(mixed_integer_ops)]
 #![feature(must_not_suspend)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -208,12 +210,14 @@
 #![feature(simd_ffi)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
+#![feature(target_feature_11)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(asm_const)]
+#![feature(const_transmute_copy)]
 //
 // Target features:
 #![feature(arm_target_feature)]
@@ -223,6 +227,7 @@
 #![feature(hexagon_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(powerpc_target_feature)]
+#![feature(riscv_target_feature)]
 #![feature(rtm_target_feature)]
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
@@ -309,7 +314,6 @@ pub mod clone;
 pub mod cmp;
 pub mod convert;
 pub mod default;
-#[cfg(not(bootstrap))]
 pub mod error;
 pub mod marker;
 pub mod ops;
@@ -326,8 +330,6 @@ pub mod cell;
 pub mod char;
 pub mod ffi;
 pub mod iter;
-#[unstable(feature = "once_cell", issue = "74465")]
-pub mod lazy;
 pub mod option;
 pub mod panic;
 pub mod panicking;
@@ -355,6 +357,8 @@ pub mod alloc;
 mod bool;
 mod tuple;
 mod unit;
+
+mod const_closure;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub mod primitive;

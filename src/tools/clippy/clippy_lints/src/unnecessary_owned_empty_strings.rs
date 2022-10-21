@@ -3,7 +3,7 @@ use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
+use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyStrings {
                         );
                 } else {
                     if_chain! {
-                        if match_def_path(cx, fun_def_id, &paths::FROM_FROM);
+                        if cx.tcx.lang_items().require(LangItem::FromFrom).ok() == Some(fun_def_id);
                         if let [.., last_arg] = args;
                         if let ExprKind::Lit(spanned) = &last_arg.kind;
                         if let LitKind::Str(symbol, _) = spanned.node;

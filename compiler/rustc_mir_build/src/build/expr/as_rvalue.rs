@@ -12,7 +12,7 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::Place;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
 
@@ -197,13 +197,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // create all the steps directly in MIR with operations all backends need to support anyway.
                 let (source, ty) = if let ty::Adt(adt_def, ..) = source.ty.kind() && adt_def.is_enum() {
                     let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
-                    let place = unpack!(block = this.as_place(block, source));
+                    let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
                     let discr = this.temp(discr_ty, source.span);
                     this.cfg.push_assign(
                         block,
                         source_info,
                         discr,
-                        Rvalue::Discriminant(place),
+                        Rvalue::Discriminant(temp.into()),
                     );
 
                     (Operand::Move(discr), discr_ty)
@@ -217,16 +217,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let from_ty = CastTy::from_ty(ty);
                 let cast_ty = CastTy::from_ty(expr.ty);
                 debug!("ExprKind::Cast from_ty={from_ty:?}, cast_ty={:?}/{cast_ty:?}", expr.ty,);
-                let cast_kind = match (from_ty, cast_ty) {
-                    (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
-                        CastKind::PointerExposeAddress
-                    }
-                    (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => {
-                        CastKind::PointerFromExposedAddress
-                    }
-                    (_, Some(CastTy::DynStar)) => CastKind::DynStar,
-                    (_, _) => CastKind::Misc,
-                };
+                let cast_kind = mir_cast_kind(ty, expr.ty);
                 block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }
             ExprKind::Pointer { cast, source } => {

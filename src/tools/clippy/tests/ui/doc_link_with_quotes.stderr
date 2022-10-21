@@ -1,8 +1,8 @@
 error: possible intra-doc link using quotes instead of backticks
-  --> $DIR/doc_link_with_quotes.rs:7:1
+  --> $DIR/doc_link_with_quotes.rs:7:12
    |
-LL | /// Calls ['bar']
-   | ^^^^^^^^^^^^^^^^^
+LL | /// Calls ['bar'] uselessly
+   |            ^^^^^
    |
    = note: `-D clippy::doc-link-with-quotes` implied by `-D warnings`
 

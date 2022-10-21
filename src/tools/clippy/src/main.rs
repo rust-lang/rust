@@ -37,12 +37,12 @@ You can use tool lints to allow or deny lints from your code, eg.:
 "#;
 
 fn show_help() {
-    println!("{}", CARGO_CLIPPY_HELP);
+    println!("{CARGO_CLIPPY_HELP}");
 }
 
 fn show_version() {
     let version_info = rustc_tools_util::get_version_info!();
-    println!("{}", version_info);
+    println!("{version_info}");
 }
 
 pub fn main() {
@@ -133,7 +133,7 @@ impl ClippyCmd {
         let clippy_args: String = self
             .clippy_args
             .iter()
-            .map(|arg| format!("{}__CLIPPY_HACKERY__", arg))
+            .map(|arg| format!("{arg}__CLIPPY_HACKERY__"))
             .collect();
 
         // Currently, `CLIPPY_TERMINAL_WIDTH` is used only to format "unknown field" error messages.

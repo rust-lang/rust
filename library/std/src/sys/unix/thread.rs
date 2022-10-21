@@ -154,9 +154,8 @@ impl Thread {
 
     #[cfg(target_os = "netbsd")]
     pub fn set_name(name: &CStr) {
-        use crate::ffi::CString;
-        let cname = CString::new(&b"%s"[..]).unwrap();
         unsafe {
+            let cname = CStr::from_bytes_with_nul_unchecked(b"%s\0".as_slice());
             libc::pthread_setname_np(
                 libc::pthread_self(),
                 cname.as_ptr(),
@@ -767,6 +766,16 @@ pub mod guard {
             const GUARD_PAGES: usize = 1;
             let guard = guardaddr..guardaddr + GUARD_PAGES * page_size;
             Some(guard)
+        } else if cfg!(target_os = "openbsd") {
+            // OpenBSD stack already includes a guard page, and stack is
+            // immutable.
+            //
+            // We'll just note where we expect rlimit to start
+            // faulting, so our handler can report "stack overflow", and
+            // trust that the kernel's own stack guard will work.
+            let stackptr = get_stack_start_aligned()?;
+            let stackaddr = stackptr.addr();
+            Some(stackaddr - page_size..stackaddr)
         } else {
             // Reallocate the last page of the stack.
             // This ensures SIGBUS will be raised on

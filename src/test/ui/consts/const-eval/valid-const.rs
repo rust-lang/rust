@@ -1,7 +1,6 @@
 // check-pass
 
 // Some constants that *are* valid
-#![deny(const_err)]
 
 use std::mem;
 use std::ptr::NonNull;

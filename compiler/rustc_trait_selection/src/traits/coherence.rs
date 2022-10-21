@@ -60,23 +60,17 @@ pub fn add_placeholder_note(err: &mut Diagnostic) {
     );
 }
 
-/// If there are types that satisfy both impls, invokes `on_overlap`
+/// If there are types that satisfy both impls, returns `Some`
 /// with a suitably-freshened `ImplHeader` with those types
-/// substituted. Otherwise, invokes `no_overlap`.
-#[instrument(skip(tcx, skip_leak_check, on_overlap, no_overlap), level = "debug")]
-pub fn overlapping_impls<F1, F2, R>(
+/// substituted. Otherwise, returns `None`.
+#[instrument(skip(tcx, skip_leak_check), level = "debug")]
+pub fn overlapping_impls(
     tcx: TyCtxt<'_>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     skip_leak_check: SkipLeakCheck,
     overlap_mode: OverlapMode,
-    on_overlap: F1,
-    no_overlap: F2,
-) -> R
-where
-    F1: FnOnce(OverlapResult<'_>) -> R,
-    F2: FnOnce() -> R,
-{
+) -> Option<OverlapResult<'_>> {
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
@@ -97,28 +91,24 @@ where
     if !may_overlap {
         // Some types involved are definitely different, so the impls couldn't possibly overlap.
         debug!("overlapping_impls: fast_reject early-exit");
-        return no_overlap();
+        return None;
     }
 
-    let overlaps = tcx.infer_ctxt().enter(|infcx| {
-        let selcx = &mut SelectionContext::intercrate(&infcx);
-        overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some()
-    });
-
+    let infcx = tcx.infer_ctxt().build();
+    let selcx = &mut SelectionContext::intercrate(&infcx);
+    let overlaps =
+        overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some();
     if !overlaps {
-        return no_overlap();
+        return None;
     }
 
     // In the case where we detect an error, run the check again, but
     // this time tracking intercrate ambiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
-    tcx.infer_ctxt().enter(|infcx| {
-        let selcx = &mut SelectionContext::intercrate(&infcx);
-        selcx.enable_tracking_intercrate_ambiguity_causes();
-        on_overlap(
-            overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap(),
-        )
-    })
+    let infcx = tcx.infer_ctxt().build();
+    let selcx = &mut SelectionContext::intercrate(&infcx);
+    selcx.enable_tracking_intercrate_ambiguity_causes();
+    Some(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())
 }
 
 fn with_fresh_ty_vars<'cx, 'tcx>(
@@ -167,7 +157,7 @@ fn overlap_within_probe<'cx, 'tcx>(
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     overlap_mode: OverlapMode,
-    snapshot: &CombinedSnapshot<'_, 'tcx>,
+    snapshot: &CombinedSnapshot<'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
     let infcx = selcx.infcx();
 
@@ -197,7 +187,7 @@ fn overlap_within_probe<'cx, 'tcx>(
         }
     }
 
-    // We disable the leak when when creating the `snapshot` by using
+    // We disable the leak when creating the `snapshot` by using
     // `infcx.probe_maybe_disable_leak_check`.
     if infcx.leak_check(true, snapshot).is_err() {
         debug!("overlap: leak check failed");
@@ -298,37 +288,36 @@ fn negative_impl<'cx, 'tcx>(
     let tcx = selcx.infcx().tcx;
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
-    tcx.infer_ctxt().enter(|infcx| {
-        // create a parameter environment corresponding to a (placeholder) instantiation of impl1
-        let impl_env = tcx.param_env(impl1_def_id);
-        let subject1 = match traits::fully_normalize(
-            &infcx,
-            ObligationCause::dummy(),
-            impl_env,
-            tcx.impl_subject(impl1_def_id),
-        ) {
-            Ok(s) => s,
-            Err(err) => {
-                tcx.sess.delay_span_bug(
-                    tcx.def_span(impl1_def_id),
-                    format!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
-                );
-                return false;
-            }
-        };
+    let infcx = tcx.infer_ctxt().build();
+    // create a parameter environment corresponding to a (placeholder) instantiation of impl1
+    let impl_env = tcx.param_env(impl1_def_id);
+    let subject1 = match traits::fully_normalize(
+        &infcx,
+        ObligationCause::dummy(),
+        impl_env,
+        tcx.impl_subject(impl1_def_id),
+    ) {
+        Ok(s) => s,
+        Err(err) => {
+            tcx.sess.delay_span_bug(
+                tcx.def_span(impl1_def_id),
+                format!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
+            );
+            return false;
+        }
+    };
 
-        // Attempt to prove that impl2 applies, given all of the above.
-        let selcx = &mut SelectionContext::new(&infcx);
-        let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
-        let (subject2, obligations) =
-            impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
+    // Attempt to prove that impl2 applies, given all of the above.
+    let selcx = &mut SelectionContext::new(&infcx);
+    let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
+    let (subject2, obligations) =
+        impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
 
-        !equate(&infcx, impl_env, subject1, subject2, obligations, impl1_def_id)
-    })
+    !equate(&infcx, impl_env, subject1, subject2, obligations, impl1_def_id)
 }
 
-fn equate<'cx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'tcx>,
+fn equate<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     impl_env: ty::ParamEnv<'tcx>,
     subject1: ImplSubject<'tcx>,
     subject2: ImplSubject<'tcx>,
@@ -379,8 +368,8 @@ fn negative_impl_exists<'cx, 'tcx>(
 }
 
 #[instrument(level = "debug", skip(infcx))]
-fn resolve_negative_obligation<'cx, 'tcx>(
-    infcx: InferCtxt<'cx, 'tcx>,
+fn resolve_negative_obligation<'tcx>(
+    infcx: InferCtxt<'tcx>,
     o: &PredicateObligation<'tcx>,
     body_def_id: DefId,
 ) -> bool {

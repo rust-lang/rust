@@ -1,7 +1,7 @@
 // aux-build:macro_rules.rs
-
-#![allow(unused, clippy::no_effect, clippy::unnecessary_operation)]
 #![warn(clippy::mut_mut)]
+#![allow(unused)]
+#![allow(clippy::no_effect, clippy::uninlined_format_args, clippy::unnecessary_operation)]
 
 #[macro_use]
 extern crate macro_rules;

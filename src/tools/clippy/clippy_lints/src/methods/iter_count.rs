@@ -37,7 +37,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
         cx,
         ITER_COUNT,
         expr.span,
-        &format!("called `.{}().count()` on a `{}`", iter_method, caller_type),
+        &format!("called `.{iter_method}().count()` on a `{caller_type}`"),
         "try",
         format!(
             "{}.len()",

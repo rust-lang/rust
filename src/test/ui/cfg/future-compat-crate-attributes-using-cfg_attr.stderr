@@ -4,9 +4,9 @@ error: `crate_type` within an `#![cfg_attr] attribute is deprecated`
 LL | #![cfg_attr(foo, crate_type="bin")]
    |                  ^^^^^^^^^^^^^^^^
    |
-   = note: `#[deny(deprecated_cfg_attr_crate_type_name)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #91632 <https://github.com/rust-lang/rust/issues/91632>
+   = note: `#[deny(deprecated_cfg_attr_crate_type_name)]` on by default
 
 error: `crate_name` within an `#![cfg_attr] attribute is deprecated`
   --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:9:18

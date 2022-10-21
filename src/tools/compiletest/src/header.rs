@@ -4,10 +4,11 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use tracing::*;
 
-use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PanicStrategy, PassMode};
+use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PassMode};
 use crate::util;
 use crate::{extract_cdb_version, extract_gdb_version};
 
@@ -843,6 +844,20 @@ pub fn extract_llvm_version(version: &str) -> Option<u32> {
     Some(version)
 }
 
+pub fn extract_llvm_version_from_binary(binary_path: &str) -> Option<u32> {
+    let output = Command::new(binary_path).arg("--version").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let version = String::from_utf8(output.stdout).ok()?;
+    for line in version.lines() {
+        if let Some(version) = line.split("LLVM version ").skip(1).next() {
+            return extract_llvm_version(version);
+        }
+    }
+    None
+}
+
 /// Takes a directive of the form "<version1> [- <version2>]",
 /// returns the numeric representation of <version1> and <version2> as
 /// tuple: (<version1> as u32, <version2> as u32)
@@ -949,8 +964,7 @@ pub fn make_test_description<R: Read>(
         ignore |= !has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag");
         ignore |= !has_shadow_call_stack
             && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack");
-        ignore |= config.target_panic == PanicStrategy::Abort
-            && config.parse_name_directive(ln, "needs-unwind");
+        ignore |= !config.can_unwind() && config.parse_name_directive(ln, "needs-unwind");
         ignore |= config.target == "wasm32-unknown-unknown"
             && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS);
         ignore |= config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln);

@@ -1,12 +1,12 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
 #![feature(try_blocks)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(once_cell)]
 #![feature(associated_type_bounds)]
 #![feature(strict_provenance)]
 #![feature(int_roundings)]
 #![feature(if_let_guard)]
+#![feature(never_type)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
@@ -44,6 +44,7 @@ pub mod base;
 pub mod common;
 pub mod coverageinfo;
 pub mod debuginfo;
+pub mod errors;
 pub mod glue;
 pub mod meth;
 pub mod mir;

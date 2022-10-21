@@ -62,6 +62,11 @@ error[E0308]: mismatched types
    |
 LL |     if let x = 1 && i = 2 {}
    |        ^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if let x = 1 && i == 2 {}
+   |                        +
 
 error: aborting due to 8 previous errors
 

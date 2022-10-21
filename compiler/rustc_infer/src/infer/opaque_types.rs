@@ -41,7 +41,7 @@ pub struct OpaqueTypeDecl<'tcx> {
     pub origin: hir::OpaqueTyOrigin,
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// This is a backwards compatibility hack to prevent breaking changes from
     /// lazy TAIT around RPIT handling.
     pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<'tcx>>(
@@ -511,7 +511,7 @@ impl UseKind {
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn register_hidden_type(
         &self,
@@ -616,7 +616,7 @@ fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hi
     let scope = tcx.hir().get_defining_scope(opaque_hir_id);
     // We walk up the node tree until we hit the root or the scope of the opaque type.
     while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
-        hir_id = tcx.hir().local_def_id_to_hir_id(tcx.hir().get_parent_item(hir_id));
+        hir_id = tcx.hir().get_parent_item(hir_id).into();
     }
     // Syntactically, we are allowed to define the concrete type if:
     let res = hir_id == scope;

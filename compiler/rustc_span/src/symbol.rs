@@ -224,6 +224,7 @@ symbols! {
         Left,
         LinkedList,
         LintPass,
+        LocalKey,
         Mutex,
         MutexGuard,
         N,
@@ -266,6 +267,7 @@ symbols! {
         Rc,
         Ready,
         Receiver,
+        RefCell,
         Relaxed,
         Release,
         Result,
@@ -274,6 +276,7 @@ symbols! {
         Rust,
         RustcDecodable,
         RustcEncodable,
+        RwLock,
         RwLockReadGuard,
         RwLockWriteGuard,
         Send,
@@ -448,6 +451,7 @@ symbols! {
         call_once,
         caller_location,
         capture_disjoint_fields,
+        cause,
         cdylib,
         ceilf32,
         ceilf64,
@@ -782,6 +786,7 @@ symbols! {
         globs,
         gt,
         half_open_range_patterns,
+        half_open_range_patterns_in_slices,
         hash,
         hexagon_target_feature,
         hidden,
@@ -991,7 +996,18 @@ symbols! {
         never_type,
         never_type_fallback,
         new,
+        new_binary,
+        new_debug,
+        new_display,
+        new_lower_exp,
+        new_lower_hex,
+        new_octal,
+        new_pointer,
         new_unchecked,
+        new_upper_exp,
+        new_upper_hex,
+        new_v1,
+        new_v1_formatted,
         next,
         nll,
         no,
@@ -1216,7 +1232,6 @@ symbols! {
         rust_oom,
         rustc,
         rustc_allocator,
-        rustc_allocator_nounwind,
         rustc_allocator_zeroed,
         rustc_allow_const_fn_unstable,
         rustc_allow_incoherent_impl,
@@ -1263,6 +1278,7 @@ symbols! {
         rustc_mir,
         rustc_must_implement_one_of,
         rustc_nonnull_optimization_guaranteed,
+        rustc_nounwind,
         rustc_object_lifetime_default,
         rustc_on_unimplemented,
         rustc_outlives,
@@ -1282,6 +1298,7 @@ symbols! {
         rustc_reallocator,
         rustc_regions,
         rustc_reservation_impl,
+        rustc_safe_intrinsic,
         rustc_serialize,
         rustc_skip_array_during_method_dispatch,
         rustc_specialization_trait,
@@ -1689,6 +1706,7 @@ impl Ident {
     /// macro (e.g., `macro` or `macro_rules!` items) and stay different if they came from different
     /// non-transparent macros.
     /// Technically, this operation strips all transparent marks from ident's syntactic context.
+    #[inline]
     pub fn normalize_to_macro_rules(self) -> Ident {
         Ident::new(self.name, self.span.normalize_to_macro_rules())
     }
@@ -1704,6 +1722,7 @@ impl Ident {
 }
 
 impl PartialEq for Ident {
+    #[inline]
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name && self.span.eq_ctxt(rhs.span)
     }

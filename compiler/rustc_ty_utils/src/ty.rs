@@ -85,9 +85,13 @@ fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
 ///     - a type parameter or projection whose Sizedness can't be known
 ///     - a tuple of type parameters or projections, if there are multiple
 ///       such.
-///     - an Error, if a type contained itself. The representability
-///       check should catch this case.
-fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstraint<'_> {
+///     - an Error, if a type is infinitely sized
+fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
+    if let Some(def_id) = def_id.as_local() {
+        if matches!(tcx.representability(def_id), ty::Representability::Infinite) {
+            return tcx.intern_type_list(&[tcx.ty_error()]);
+        }
+    }
     let def = tcx.adt_def(def_id);
 
     let result = tcx.mk_type_list(
@@ -99,7 +103,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstrain
 
     debug!("adt_sized_constraint: {:?} => {:?}", def, result);
 
-    ty::AdtSizedConstraint(result)
+    result
 }
 
 /// See `ParamEnv` struct definition for details.
@@ -133,77 +137,10 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     let local_did = def_id.as_local();
     let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
 
-    let constness = match hir_id {
-        Some(hir_id) => match tcx.hir().get(hir_id) {
-            hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
-                if tcx.is_const_default_method(def_id) =>
-            {
-                hir::Constness::Const
-            }
-
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(..), .. })
-            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Static(..), .. })
-            | hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Const(..), ..
-            })
-            | hir::Node::AnonConst(_)
-            | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
-            | hir::Node::ImplItem(hir::ImplItem {
-                kind:
-                    hir::ImplItemKind::Fn(
-                        hir::FnSig {
-                            header: hir::FnHeader { constness: hir::Constness::Const, .. },
-                            ..
-                        },
-                        ..,
-                    ),
-                ..
-            }) => hir::Constness::Const,
-
-            hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::TyAlias(..) | hir::ImplItemKind::Fn(..),
-                ..
-            }) => {
-                let parent_hir_id = tcx.hir().get_parent_node(hir_id);
-                match tcx.hir().get(parent_hir_id) {
-                    hir::Node::Item(hir::Item {
-                        kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
-                        ..
-                    }) => *constness,
-                    _ => span_bug!(
-                        tcx.def_span(parent_hir_id.owner),
-                        "impl item's parent node is not an impl",
-                    ),
-                }
-            }
-
-            hir::Node::Item(hir::Item {
-                kind:
-                    hir::ItemKind::Fn(hir::FnSig { header: hir::FnHeader { constness, .. }, .. }, ..),
-                ..
-            })
-            | hir::Node::TraitItem(hir::TraitItem {
-                kind:
-                    hir::TraitItemKind::Fn(
-                        hir::FnSig { header: hir::FnHeader { constness, .. }, .. },
-                        ..,
-                    ),
-                ..
-            })
-            | hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
-                ..
-            }) => *constness,
-
-            _ => hir::Constness::NotConst,
-        },
-        None => hir::Constness::NotConst,
-    };
-
     let unnormalized_env = ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
         traits::Reveal::UserFacing,
-        constness,
+        tcx.constness(def_id),
     );
 
     let body_id =

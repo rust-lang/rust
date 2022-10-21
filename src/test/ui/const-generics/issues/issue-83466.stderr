@@ -7,9 +7,9 @@ LL |     fn func<'a, U>(self) -> U {
 LL |     S.func::<'a, 10_u32>()
    |              ^^
    |
-   = note: `#[warn(late_bound_lifetime_arguments)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: `#[warn(late_bound_lifetime_arguments)]` on by default
 
 error[E0747]: constant provided when a type was expected
   --> $DIR/issue-83466.rs:11:18

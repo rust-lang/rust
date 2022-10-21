@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     let _: fn(&mut &isize, &mut &isize) = a;
    |                                           ^ one type is more general than the other
    |
-   = note: expected fn pointer `for<'r, 's, 't0, 't1> fn(&'r mut &'s isize, &'t0 mut &'t1 isize)`
-                 found fn item `for<'r, 's> fn(&'r mut &isize, &'s mut &isize) {a::<'_, '_>}`
+   = note: expected fn pointer `for<'a, 'b, 'c, 'd> fn(&'a mut &'b isize, &'c mut &'d isize)`
+                 found fn item `for<'a, 'b> fn(&'a mut &isize, &'b mut &isize) {a::<'_, '_>}`
 
 error: aborting due to previous error
 

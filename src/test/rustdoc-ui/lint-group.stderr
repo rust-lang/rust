@@ -35,8 +35,8 @@ error: unresolved link to `error`
 LL | /// what up, let's make an [error]
    |                             ^^^^^ no item named `error` in scope
    |
-   = note: `#[deny(rustdoc::broken_intra_doc_links)]` implied by `#[deny(rustdoc::all)]`
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: `#[deny(rustdoc::broken_intra_doc_links)]` implied by `#[deny(rustdoc::all)]`
 
 error: unclosed HTML tag `unknown`
   --> $DIR/lint-group.rs:28:5

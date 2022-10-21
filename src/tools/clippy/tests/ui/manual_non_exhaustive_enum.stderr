@@ -13,12 +13,12 @@ LL | |     _C,
 LL | | }
    | |_^
    |
-   = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
 help: remove this variant
   --> $DIR/manual_non_exhaustive_enum.rs:9:5
    |
 LL |     _C,
    |     ^^
+   = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
 
 error: this seems like a manual implementation of the non-exhaustive pattern
   --> $DIR/manual_non_exhaustive_enum.rs:14:1

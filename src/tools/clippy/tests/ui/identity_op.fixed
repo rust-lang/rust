@@ -1,13 +1,13 @@
 // run-rustfix
-
 #![warn(clippy::identity_op)]
+#![allow(unused)]
 #![allow(
     clippy::eq_op,
     clippy::no_effect,
     clippy::unnecessary_operation,
     clippy::op_ref,
     clippy::double_parens,
-    unused
+    clippy::uninlined_format_args
 )]
 
 use std::fmt::Write as _;

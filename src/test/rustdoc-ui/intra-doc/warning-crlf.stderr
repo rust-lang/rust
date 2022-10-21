@@ -4,8 +4,8 @@ warning: unresolved link to `error`
 LL | /// [error]
    |      ^^^^^ no item named `error` in scope
    |
-   = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
 
 warning: unresolved link to `error1`
   --> $DIR/warning-crlf.rs:12:11

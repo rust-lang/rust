@@ -3,6 +3,11 @@ error[E0432]: unresolved import `single_err::something`
    |
 LL | use single_err::something;
    |     ^^^^^^^^^^^^^^^^^^^^^ no `something` in `single_err`
+   |
+help: consider importing this module instead
+   |
+LL | use glob_ok::something;
+   |     ~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

@@ -160,6 +160,17 @@ fn manual_rem_euclid() {
     let _: i32 = ((x % 4) + 4) % 4;
 }
 
+fn manual_clamp() {
+    let (input, min, max) = (0, -1, 2);
+    let _ = if input < min {
+        min
+    } else if input > max {
+        max
+    } else {
+        input
+    };
+}
+
 fn main() {
     filter_map_next();
     checked_conversion();
@@ -180,6 +191,7 @@ fn main() {
     err_expect();
     cast_abs_to_unsigned();
     manual_rem_euclid();
+    manual_clamp();
 }
 
 mod just_under_msrv {

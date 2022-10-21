@@ -7,8 +7,8 @@ LL |     unsafe {
 LL |         vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::uninit-vec` implied by `-D warnings`
    = help: initialize the buffer or wrap the content in `MaybeUninit`
+   = note: `-D clippy::uninit-vec` implied by `-D warnings`
 
 error: calling `set_len()` immediately after reserving a buffer creates uninitialized values
   --> $DIR/uninit_vec.rs:18:5

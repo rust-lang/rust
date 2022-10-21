@@ -134,8 +134,6 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         opt_level: config::OptLevel,
         target_features: &[String],
     ) -> TargetMachineFactoryFn<Self>;
-    fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str;
-    fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str>;
 
     fn spawn_thread<F, T>(_time_trace: bool, f: F) -> std::thread::JoinHandle<T>
     where

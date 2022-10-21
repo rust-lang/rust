@@ -1,4 +1,4 @@
-use crate::spec::{cvs, TargetOptions};
+use crate::spec::{cvs, Cc, LinkerFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
@@ -7,7 +7,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         families: cvs!["unix"],
         is_like_solaris: true,
-        linker_is_gnu: false,
+        linker_flavor: LinkerFlavor::Unix(Cc::Yes),
         limit_rdylib_exports: false, // Linker doesn't support this
         eh_frame_header: false,
 

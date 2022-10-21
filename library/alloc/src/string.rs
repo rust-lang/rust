@@ -44,7 +44,6 @@
 
 #[cfg(not(no_global_oom_handling))]
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
-#[cfg(not(bootstrap))]
 use core::error::Error;
 use core::fmt;
 use core::hash;
@@ -1941,7 +1940,6 @@ impl fmt::Display for FromUtf16Error {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for FromUtf8Error {
     #[allow(deprecated)]
@@ -1950,7 +1948,6 @@ impl Error for FromUtf8Error {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for FromUtf16Error {
     #[allow(deprecated)]

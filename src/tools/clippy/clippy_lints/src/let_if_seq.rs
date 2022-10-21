@@ -106,8 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                     // use mutably after the `if`
 
                     let sug = format!(
-                        "let {mut}{name} = if {cond} {{{then} {value} }} else {{{else} {default} }};",
-                        mut=mutability,
+                        "let {mutability}{name} = if {cond} {{{then} {value} }} else {{{else} {default} }};",
                         name=ident.name,
                         cond=snippet(cx, cond.span, "_"),
                         then=if then.stmts.len() > 1 { " ..;" } else { "" },

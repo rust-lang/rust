@@ -16,7 +16,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 _ => "<..>",
             };
 
-            let box_content = format!("{outer}{generic}", outer = item_type);
+            let box_content = format!("{item_type}{generic}");
             span_lint_and_help(
                 cx,
                 BOX_COLLECTION,

@@ -9,6 +9,7 @@
 
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-fuchsia Filesystem manipulation privileged
 
 use std::io::prelude::*;
 use std::io;

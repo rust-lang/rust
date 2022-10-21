@@ -7,7 +7,6 @@
 #![feature(if_let_guard)]
 #![feature(adt_const_params)]
 #![feature(let_chains)]
-#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(never_type)]
 #![feature(result_option_inspect)]
 #![feature(rustc_attrs)]
@@ -31,7 +30,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent, fluent_bundle, DiagnosticMessage, FluentBundle,
+    fallback_fluent_bundle, fluent, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
     LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
     DEFAULT_LOCALE_RESOURCES,
 };
@@ -52,6 +51,7 @@ use termcolor::{Color, ColorSpec};
 pub mod annotate_snippet_emitter_writer;
 mod diagnostic;
 mod diagnostic_builder;
+mod diagnostic_impls;
 pub mod emitter;
 pub mod json;
 mod lock;
@@ -63,13 +63,14 @@ pub mod translation;
 pub use diagnostic_builder::IntoDiagnostic;
 pub use snippet::Style;
 
-pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a, ErrorGuaranteed>>;
+pub type PErr<'a> = DiagnosticBuilder<'a, ErrorGuaranteed>;
+pub type PResult<'a, T> = Result<T, PErr<'a>>;
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
-// (See also the comment on `DiagnosticBuilder`'s `diagnostic` field.)
+// (See also the comment on `DiagnosticBuilderInner`'s `diagnostic` field.)
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(PResult<'_, ()>, 16);
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64", not(bootstrap)))]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(PResult<'_, bool>, 16);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]
@@ -371,10 +372,11 @@ impl fmt::Display for ExplicitBug {
 impl error::Error for ExplicitBug {}
 
 pub use diagnostic::{
-    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgFromDisplay,
-    DiagnosticArgValue, DiagnosticId, DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
+    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
+    DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
-pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, LintDiagnosticBuilder};
+pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, Noted};
+pub use diagnostic_impls::DiagnosticArgFromDisplay;
 use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.
@@ -411,7 +413,7 @@ struct HandlerInner {
     /// would be unnecessary repetition.
     taught_diagnostics: FxHashSet<DiagnosticId>,
 
-    /// Used to suggest rustc --explain <error code>
+    /// Used to suggest rustc --explain `<error code>`
     emitted_diagnostic_codes: FxIndexSet<DiagnosticId>,
 
     /// This set contains a hash of every diagnostic that has been emitted by
@@ -460,6 +462,7 @@ pub enum StashKey {
     ItemNoType,
     UnderscoreForArrayLengths,
     EarlySyntaxWarning,
+    CallIntoMethod,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}
@@ -595,6 +598,17 @@ impl Handler {
                 fulfilled_expectations: Default::default(),
             }),
         }
+    }
+
+    /// Translate `message` eagerly with `args`.
+    pub fn eagerly_translate<'a>(
+        &self,
+        message: DiagnosticMessage,
+        args: impl Iterator<Item = DiagnosticArg<'a, 'static>>,
+    ) -> SubdiagnosticMessage {
+        let inner = self.inner.borrow();
+        let args = crate::translation::to_fluent_args(args);
+        SubdiagnosticMessage::Eager(inner.emitter.translate_message(&message, &args).to_string())
     }
 
     // This is here to not allow mutation of flags;
@@ -1133,6 +1147,12 @@ impl Handler {
             "`HandlerInner::unstable_expect_diagnostics` should be empty at this point",
         );
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
+    }
+
+    pub fn flush_delayed(&self) {
+        let mut inner = self.inner.lock();
+        let bugs = std::mem::replace(&mut inner.delayed_span_bugs, Vec::new());
+        inner.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
     }
 }
 

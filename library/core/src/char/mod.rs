@@ -38,7 +38,6 @@ pub use self::methods::encode_utf16_raw;
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf8_raw;
 
-#[cfg(not(bootstrap))]
 use crate::error::Error;
 use crate::fmt::{self, Write};
 use crate::iter::FusedIterator;
@@ -587,6 +586,5 @@ impl fmt::Display for TryFromCharError {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "u8_from_char", since = "1.59.0")]
 impl Error for TryFromCharError {}
