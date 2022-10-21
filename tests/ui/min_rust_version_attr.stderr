@@ -1,37 +1,27 @@
-error: stripping a prefix manually
-  --> $DIR/min_rust_version_attr.rs:216:24
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> $DIR/min_rust_version_attr.rs:13:19
    |
-LL |             assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
-   |                        ^^^^^^^^^^^^^^^^^^^^
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
    |
-note: the prefix was tested here
-  --> $DIR/min_rust_version_attr.rs:215:9
-   |
-LL |         if s.starts_with("hello, ") {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: `-D clippy::manual-strip` implied by `-D warnings`
-help: try using the `strip_prefix` method
-   |
-LL ~         if let Some(<stripped>) = s.strip_prefix("hello, ") {
-LL ~             assert_eq!(<stripped>.to_uppercase(), "WORLD!");
-   |
+   = help: consider using the constant directly
+   = note: `#[deny(clippy::approx_constant)]` on by default
 
-error: stripping a prefix manually
-  --> $DIR/min_rust_version_attr.rs:228:24
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> $DIR/min_rust_version_attr.rs:18:19
    |
-LL |             assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
-   |                        ^^^^^^^^^^^^^^^^^^^^
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
    |
-note: the prefix was tested here
-  --> $DIR/min_rust_version_attr.rs:227:9
-   |
-LL |         if s.starts_with("hello, ") {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using the `strip_prefix` method
-   |
-LL ~         if let Some(<stripped>) = s.strip_prefix("hello, ") {
-LL ~             assert_eq!(<stripped>.to_uppercase(), "WORLD!");
-   |
+   = help: consider using the constant directly
 
-error: aborting due to 2 previous errors
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> $DIR/min_rust_version_attr.rs:28:19
+   |
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: aborting due to 3 previous errors
 
