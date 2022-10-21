@@ -210,7 +210,7 @@ pub trait TypeOutlivesDelegate<'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
-        constraint_category: ConstraintCategory<'tcx>,
+        constraint_category: ConstraintCategory,
     );
 
     fn push_verify(
@@ -259,7 +259,7 @@ where
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
     ) {
         assert!(!ty.has_escaping_bound_vars());
 
@@ -273,7 +273,7 @@ where
         origin: infer::SubregionOrigin<'tcx>,
         components: &[Component<'tcx>],
         region: ty::Region<'tcx>,
-        category: ConstraintCategory<'tcx>,
+        category: ConstraintCategory,
     ) {
         for component in components.iter() {
             let origin = origin.clone();
@@ -529,7 +529,7 @@ impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
-        _constraint_category: ConstraintCategory<'tcx>,
+        _constraint_category: ConstraintCategory,
     ) {
         self.sub_regions(origin, a, b)
     }

@@ -698,7 +698,7 @@ pub struct RustAnalyzer {
 impl Step for RustAnalyzer {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = false;
+    const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -742,7 +742,7 @@ pub struct RustAnalyzerProcMacroSrv {
 impl Step for RustAnalyzerProcMacroSrv {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = false;
+    const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;

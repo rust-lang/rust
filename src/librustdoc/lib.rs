@@ -674,39 +674,6 @@ fn usage(argv0: &str) {
 /// A result type used by several functions under `main()`.
 type MainResult = Result<(), ErrorGuaranteed>;
 
-fn main_args(at_args: &[String]) -> MainResult {
-    let args = rustc_driver::args::arg_expand_all(at_args);
-
-    let mut options = getopts::Options::new();
-    for option in opts() {
-        (option.apply)(&mut options);
-    }
-    let matches = match options.parse(&args[1..]) {
-        Ok(m) => m,
-        Err(err) => {
-            early_error(ErrorOutputType::default(), &err.to_string());
-        }
-    };
-
-    // Note that we discard any distinction between different non-zero exit
-    // codes from `from_matches` here.
-    let options = match config::Options::from_matches(&matches, args) {
-        Ok(opts) => opts,
-        Err(code) => {
-            return if code == 0 {
-                Ok(())
-            } else {
-                Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-            };
-        }
-    };
-    rustc_interface::util::run_in_thread_pool_with_globals(
-        options.edition,
-        1, // this runs single-threaded, even in a parallel compiler
-        move || main_options(options),
-    )
-}
-
 fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
     match res {
         Ok(()) => Ok(()),
@@ -737,7 +704,33 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     }
 }
 
-fn main_options(options: config::Options) -> MainResult {
+fn main_args(at_args: &[String]) -> MainResult {
+    let args = rustc_driver::args::arg_expand_all(at_args);
+
+    let mut options = getopts::Options::new();
+    for option in opts() {
+        (option.apply)(&mut options);
+    }
+    let matches = match options.parse(&args[1..]) {
+        Ok(m) => m,
+        Err(err) => {
+            early_error(ErrorOutputType::default(), &err.to_string());
+        }
+    };
+
+    // Note that we discard any distinction between different non-zero exit
+    // codes from `from_matches` here.
+    let (options, render_options) = match config::Options::from_matches(&matches, args) {
+        Ok(opts) => opts,
+        Err(code) => {
+            return if code == 0 {
+                Ok(())
+            } else {
+                Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+            };
+        }
+    };
+
     let diag = core::new_handler(
         options.error_format,
         None,
@@ -749,9 +742,18 @@ fn main_options(options: config::Options) -> MainResult {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
         (true, false) => return doctest::run(options),
         (false, true) => {
+            let input = options.input.clone();
+            let edition = options.edition;
+            let config = core::create_config(options);
+
+            // `markdown::render` can invoke `doctest::make_test`, which
+            // requires session globals and a thread pool, so we use
+            // `run_compiler`.
             return wrap_return(
                 &diag,
-                markdown::render(&options.input, options.render_options, options.edition),
+                interface::run_compiler(config, |_compiler| {
+                    markdown::render(&input, render_options, edition)
+                }),
             );
         }
         (false, false) => {}
@@ -772,14 +774,12 @@ fn main_options(options: config::Options) -> MainResult {
     let crate_version = options.crate_version.clone();
 
     let output_format = options.output_format;
-    // FIXME: fix this clone (especially render_options)
     let externs = options.externs.clone();
-    let render_options = options.render_options.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
-    let document_private = options.render_options.document_private;
+
     let config = core::create_config(options);
 
-    interface::create_compiler_and_run(config, |compiler| {
+    interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
 
         if sess.opts.describe_lints {
@@ -811,7 +811,7 @@ fn main_options(options: config::Options) -> MainResult {
                         sess,
                         krate,
                         externs,
-                        document_private,
+                        render_options.document_private,
                     )
                 });
                 (resolver.clone(), resolver_caches)

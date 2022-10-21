@@ -564,6 +564,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 opaque_type_key,
                 self.fcx.infcx.tcx,
                 true,
+                decl.origin,
             );
 
             self.typeck_results.concrete_opaque_types.insert(opaque_type_key.def_id, hidden_type);

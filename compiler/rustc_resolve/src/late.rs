@@ -1862,9 +1862,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
         for (index, (pat, ty)) in inputs.enumerate() {
             debug!(?pat, ?ty);
-            if let Some(pat) = pat {
-                self.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
-            }
+            self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                if let Some(pat) = pat {
+                    this.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
+                }
+            });
             self.visit_ty(ty);
 
             if let Some(ref candidates) = self.lifetime_elision_candidates {
@@ -1937,11 +1939,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 match ty.kind {
                     TyKind::ImplicitSelf => true,
                     TyKind::Path(None, _) => {
-                        let path_res = self.r.partial_res_map[&ty.id].expect_full_res();
-                        if let Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } = path_res {
+                        let path_res = self.r.partial_res_map[&ty.id].full_res();
+                        if let Some(Res::SelfTyParam { .. } | Res::SelfTyAlias { .. }) = path_res {
                             return true;
                         }
-                        Some(path_res) == self.impl_self
+                        self.impl_self.is_some() && path_res == self.impl_self
                     }
                     _ => false,
                 }
@@ -2834,10 +2836,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     fn resolve_params(&mut self, params: &'ast [Param]) {
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
-        for Param { pat, ty, .. } in params {
-            self.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
+        self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+            for Param { pat, .. } in params {
+                this.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
+            }
+        });
+        for Param { ty, .. } in params {
             self.visit_ty(ty);
-            debug!("(resolving function / closure) recorded parameter");
         }
     }
 

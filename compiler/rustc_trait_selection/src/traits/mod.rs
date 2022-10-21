@@ -764,12 +764,9 @@ fn dump_vtable_entries<'tcx>(
     });
 }
 
-fn own_existential_vtable_entries<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
-) -> &'tcx [DefId] {
+fn own_existential_vtable_entries<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId) -> &'tcx [DefId] {
     let trait_methods = tcx
-        .associated_items(trait_ref.def_id())
+        .associated_items(trait_def_id)
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Fn);
     // Now list each method's DefId (for within its trait).
@@ -778,7 +775,7 @@ fn own_existential_vtable_entries<'tcx>(
         let def_id = trait_method.def_id;
 
         // Some methods cannot be called on an object; skip those.
-        if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
+        if !is_vtable_safe_method(tcx, trait_def_id, &trait_method) {
             debug!("own_existential_vtable_entry: not vtable safe");
             return None;
         }
@@ -810,7 +807,7 @@ fn vtable_entries<'tcx>(
 
                 // Lookup the shape of vtable for the trait.
                 let own_existential_entries =
-                    tcx.own_existential_vtable_entries(existential_trait_ref);
+                    tcx.own_existential_vtable_entries(existential_trait_ref.def_id());
 
                 let own_entries = own_existential_entries.iter().copied().map(|def_id| {
                     debug!("vtable_entries: trait_method={:?}", def_id);

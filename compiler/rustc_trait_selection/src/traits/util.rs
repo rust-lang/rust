@@ -268,10 +268,7 @@ pub fn count_own_vtable_entries<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> usize {
-    let existential_trait_ref =
-        trait_ref.map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
-    let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
-    tcx.own_existential_vtable_entries(existential_trait_ref).len()
+    tcx.own_existential_vtable_entries(trait_ref.def_id()).len()
 }
 
 /// Given an upcast trait object described by `object`, returns the
@@ -282,15 +279,10 @@ pub fn get_vtable_index_of_object_method<'tcx, N>(
     object: &super::ImplSourceObjectData<'tcx, N>,
     method_def_id: DefId,
 ) -> Option<usize> {
-    let existential_trait_ref = object
-        .upcast_trait_ref
-        .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
-    let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
-
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.
     if let Some(index) = tcx
-        .own_existential_vtable_entries(existential_trait_ref)
+        .own_existential_vtable_entries(object.upcast_trait_ref.def_id())
         .iter()
         .copied()
         .position(|def_id| def_id == method_def_id)

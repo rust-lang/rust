@@ -18,7 +18,6 @@ use rustc_session::{lint, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
-use rustc_span::Symbol;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::TargetTriple;
 use tempfile::Builder as TempFileBuilder;
@@ -80,7 +79,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         lint_cap: Some(options.lint_cap.unwrap_or(lint::Forbid)),
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
-        unstable_features: options.render_options.unstable_features,
+        unstable_features: options.unstable_features,
         actually_rustdoc: true,
         edition: options.edition,
         target_triple: options.target.clone(),
@@ -124,7 +123,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                     let opts = scrape_test_config(crate_attrs);
                     let enable_per_target_ignores = options.enable_per_target_ignores;
                     let mut collector = Collector::new(
-                        tcx.crate_name(LOCAL_CRATE),
+                        tcx.crate_name(LOCAL_CRATE).to_string(),
                         options,
                         false,
                         opts,
@@ -908,7 +907,7 @@ pub(crate) struct Collector {
     rustdoc_options: RustdocOptions,
     use_headers: bool,
     enable_per_target_ignores: bool,
-    crate_name: Symbol,
+    crate_name: String,
     opts: GlobalTestOptions,
     position: Span,
     source_map: Option<Lrc<SourceMap>>,
@@ -920,7 +919,7 @@ pub(crate) struct Collector {
 
 impl Collector {
     pub(crate) fn new(
-        crate_name: Symbol,
+        crate_name: String,
         rustdoc_options: RustdocOptions,
         use_headers: bool,
         opts: GlobalTestOptions,
@@ -983,7 +982,7 @@ impl Tester for Collector {
     fn add_test(&mut self, test: String, config: LangString, line: usize) {
         let filename = self.get_filename();
         let name = self.generate_name(line, &filename);
-        let crate_name = self.crate_name.to_string();
+        let crate_name = self.crate_name.clone();
         let opts = self.opts.clone();
         let edition = config.edition.unwrap_or(self.rustdoc_options.edition);
         let rustdoc_options = self.rustdoc_options.clone();

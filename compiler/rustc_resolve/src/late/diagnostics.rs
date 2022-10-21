@@ -1731,7 +1731,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             for _ in 0..100 {
                                 // Try to find an assignment
                                 sp = sm.next_point(sp);
-                                let snippet = sm.span_to_snippet(sp.to(sm.next_point(sp)));
+                                let snippet = sm.span_to_snippet(sp);
                                 match snippet {
                                     Ok(ref x) if x.as_str() == "=" => {
                                         err.span_suggestion(

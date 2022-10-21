@@ -13,9 +13,9 @@ doctest = false
 rustc-hash = "1.1.0"
 either = "1.7.0"
 arrayvec = "0.7.2"
-itertools = "0.10.3"
-smallvec = "1.9.0"
-once_cell = "1.12.0"
+itertools = "0.10.5"
+smallvec = "1.10.0"
+once_cell = "1.15.0"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }

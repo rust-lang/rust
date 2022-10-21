@@ -311,7 +311,20 @@ impl Body {
             DefWithBodyId::FunctionId(f) => {
                 let f = f.lookup(db);
                 let src = f.source(db);
-                params = src.value.param_list();
+                params = src.value.param_list().map(|param_list| {
+                    let item_tree = f.id.item_tree(db);
+                    let func = &item_tree[f.id.value];
+                    let krate = f.container.module(db).krate;
+                    let crate_graph = db.crate_graph();
+                    (
+                        param_list,
+                        func.params.clone().map(move |param| {
+                            item_tree
+                                .attrs(db, krate, param.into())
+                                .is_cfg_enabled(&crate_graph[krate].cfg_options)
+                        }),
+                    )
+                });
                 (src.file_id, f.module(db), src.value.body().map(ast::Expr::from))
             }
             DefWithBodyId::ConstId(c) => {
@@ -334,6 +347,7 @@ impl Body {
         let expander = Expander::new(db, file_id, module);
         let (mut body, source_map) = Body::new(db, expander, params, body);
         body.shrink_to_fit();
+
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -370,7 +384,7 @@ impl Body {
     fn new(
         db: &dyn DefDatabase,
         expander: Expander,
-        params: Option<ast::ParamList>,
+        params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
         lower::lower(db, expander, params, body)

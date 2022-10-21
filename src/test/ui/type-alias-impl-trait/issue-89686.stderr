@@ -6,7 +6,7 @@ LL |         async move { self.f().await }
    |
 help: consider restricting type parameter `T`
    |
-LL | type G<'a, T: Trait> = impl Future<Output = ()>;
+LL | type G<'a, T: Trait> = impl Future<Output = ()> + 'a;
    |             +++++++
 
 error: aborting due to previous error

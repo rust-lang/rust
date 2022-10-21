@@ -1130,11 +1130,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        self.check_lhs_assignable(lhs, "E0070", span, |err| {
-            let rhs_ty = self.check_expr(&rhs);
-            suggest_deref_binop(err, rhs_ty);
-        });
-
         // This is (basically) inlined `check_expr_coercable_to_type`, but we want
         // to suggest an additional fixup here in `suggest_deref_binop`.
         let rhs_ty = self.check_expr_with_hint(&rhs, lhs_ty);
@@ -1144,6 +1139,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             suggest_deref_binop(&mut diag, rhs_ty);
             diag.emit();
         }
+
+        self.check_lhs_assignable(lhs, "E0070", span, |err| {
+            if let Some(rhs_ty) = self.typeck_results.borrow().expr_ty_opt(rhs) {
+                suggest_deref_binop(err, rhs_ty);
+            }
+        });
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 

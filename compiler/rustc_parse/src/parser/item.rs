@@ -1601,7 +1601,7 @@ impl<'a> Parser<'a> {
                     self.sess.emit_err(err);
                 } else {
                     if !seen_comma {
-                        let sp = self.sess.source_map().next_point(previous_span);
+                        let sp = previous_span.shrink_to_hi();
                         err.missing_comma = Some(sp);
                     }
                     return Err(err.into_diagnostic(&self.sess.span_diagnostic));

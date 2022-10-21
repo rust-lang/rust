@@ -254,13 +254,13 @@ impl CallableSig {
 }
 
 impl TypeFoldable<Interner> for CallableSig {
-    fn fold_with<E>(
+    fn try_fold_with<E>(
         self,
-        folder: &mut dyn chalk_ir::fold::TypeFolder<Interner, Error = E>,
+        folder: &mut dyn chalk_ir::fold::FallibleTypeFolder<Interner, Error = E>,
         outer_binder: DebruijnIndex,
     ) -> Result<Self, E> {
         let vec = self.params_and_return.to_vec();
-        let folded = vec.fold_with(folder, outer_binder)?;
+        let folded = vec.try_fold_with(folder, outer_binder)?;
         Ok(CallableSig { params_and_return: folded.into(), is_varargs: self.is_varargs })
     }
 }
@@ -292,16 +292,19 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
     for_ty: impl FnMut(BoundVar, DebruijnIndex) -> Ty,
     for_const: impl FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
 ) -> T {
-    use chalk_ir::{fold::TypeFolder, Fallible};
-    struct FreeVarFolder<F1, F2>(F1, F2);
+    use chalk_ir::fold::TypeFolder;
+
+    #[derive(chalk_derive::FallibleTypeFolder)]
+    #[has_interner(Interner)]
+    struct FreeVarFolder<
+        F1: FnMut(BoundVar, DebruijnIndex) -> Ty,
+        F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
+    >(F1, F2);
     impl<
-            'i,
-            F1: FnMut(BoundVar, DebruijnIndex) -> Ty + 'i,
-            F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const + 'i,
+            F1: FnMut(BoundVar, DebruijnIndex) -> Ty,
+            F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
         > TypeFolder<Interner> for FreeVarFolder<F1, F2>
     {
-        type Error = NoSolution;
-
         fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
             self
         }
@@ -310,12 +313,8 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
             Interner
         }
 
-        fn fold_free_var_ty(
-            &mut self,
-            bound_var: BoundVar,
-            outer_binder: DebruijnIndex,
-        ) -> Fallible<Ty> {
-            Ok(self.0(bound_var, outer_binder))
+        fn fold_free_var_ty(&mut self, bound_var: BoundVar, outer_binder: DebruijnIndex) -> Ty {
+            self.0(bound_var, outer_binder)
         }
 
         fn fold_free_var_const(
@@ -323,12 +322,11 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
             ty: Ty,
             bound_var: BoundVar,
             outer_binder: DebruijnIndex,
-        ) -> Fallible<Const> {
-            Ok(self.1(ty, bound_var, outer_binder))
+        ) -> Const {
+            self.1(ty, bound_var, outer_binder)
         }
     }
     t.fold_with(&mut FreeVarFolder(for_ty, for_const), DebruijnIndex::INNERMOST)
-        .expect("fold failed unexpectedly")
 }
 
 pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
@@ -351,16 +349,13 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
     f: impl FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>,
     binders: DebruijnIndex,
 ) -> T {
-    use chalk_ir::{
-        fold::{TypeFolder, TypeSuperFoldable},
-        Fallible,
-    };
-    struct TyFolder<F>(F);
-    impl<'i, F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const> + 'i>
-        TypeFolder<Interner> for TyFolder<F>
+    use chalk_ir::fold::{TypeFolder, TypeSuperFoldable};
+    #[derive(chalk_derive::FallibleTypeFolder)]
+    #[has_interner(Interner)]
+    struct TyFolder<F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>>(F);
+    impl<F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>> TypeFolder<Interner>
+        for TyFolder<F>
     {
-        type Error = NoSolution;
-
         fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
             self
         }
@@ -369,16 +364,16 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
             Interner
         }
 
-        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
-            let ty = ty.super_fold_with(self.as_dyn(), outer_binder)?;
-            Ok(self.0(Either::Left(ty), outer_binder).left().unwrap())
+        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Ty {
+            let ty = ty.super_fold_with(self.as_dyn(), outer_binder);
+            self.0(Either::Left(ty), outer_binder).left().unwrap()
         }
 
-        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Fallible<Const> {
-            Ok(self.0(Either::Right(c), outer_binder).right().unwrap())
+        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Const {
+            self.0(Either::Right(c), outer_binder).right().unwrap()
         }
     }
-    t.fold_with(&mut TyFolder(f), binders).expect("fold failed unexpectedly")
+    t.fold_with(&mut TyFolder(f), binders)
 }
 
 /// 'Canonicalizes' the `t` by replacing any errors with new variables. Also
@@ -390,16 +385,16 @@ where
     T: HasInterner<Interner = Interner>,
 {
     use chalk_ir::{
-        fold::{TypeFolder, TypeSuperFoldable},
+        fold::{FallibleTypeFolder, TypeSuperFoldable},
         Fallible,
     };
     struct ErrorReplacer {
         vars: usize,
     }
-    impl TypeFolder<Interner> for ErrorReplacer {
+    impl FallibleTypeFolder<Interner> for ErrorReplacer {
         type Error = NoSolution;
 
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn FallibleTypeFolder<Interner, Error = Self::Error> {
             self
         }
 
@@ -407,18 +402,17 @@ where
             Interner
         }
 
-        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
+        fn try_fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
             if let TyKind::Error = ty.kind(Interner) {
                 let index = self.vars;
                 self.vars += 1;
                 Ok(TyKind::BoundVar(BoundVar::new(outer_binder, index)).intern(Interner))
             } else {
-                let ty = ty.super_fold_with(self.as_dyn(), outer_binder)?;
-                Ok(ty)
+                ty.try_super_fold_with(self.as_dyn(), outer_binder)
             }
         }
 
-        fn fold_inference_ty(
+        fn try_fold_inference_ty(
             &mut self,
             _var: InferenceVar,
             _kind: TyVariableKind,
@@ -433,7 +427,7 @@ where
             }
         }
 
-        fn fold_free_var_ty(
+        fn try_fold_free_var_ty(
             &mut self,
             _bound_var: BoundVar,
             _outer_binder: DebruijnIndex,
@@ -447,7 +441,7 @@ where
             }
         }
 
-        fn fold_inference_const(
+        fn try_fold_inference_const(
             &mut self,
             ty: Ty,
             _var: InferenceVar,
@@ -460,7 +454,7 @@ where
             }
         }
 
-        fn fold_free_var_const(
+        fn try_fold_free_var_const(
             &mut self,
             ty: Ty,
             _bound_var: BoundVar,
@@ -473,7 +467,7 @@ where
             }
         }
 
-        fn fold_inference_lifetime(
+        fn try_fold_inference_lifetime(
             &mut self,
             _var: InferenceVar,
             _outer_binder: DebruijnIndex,
@@ -485,7 +479,7 @@ where
             }
         }
 
-        fn fold_free_var_lifetime(
+        fn try_fold_free_var_lifetime(
             &mut self,
             _bound_var: BoundVar,
             _outer_binder: DebruijnIndex,
@@ -498,7 +492,7 @@ where
         }
     }
     let mut error_replacer = ErrorReplacer { vars: 0 };
-    let value = match t.clone().fold_with(&mut error_replacer, DebruijnIndex::INNERMOST) {
+    let value = match t.clone().try_fold_with(&mut error_replacer, DebruijnIndex::INNERMOST) {
         Ok(t) => t,
         Err(_) => panic!("Encountered unbound or inference vars in {:?}", t),
     };

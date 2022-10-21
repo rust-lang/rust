@@ -809,8 +809,8 @@ enum Mixed {
     Q,
     R(u32),
     S {
-        d1: u32,
-        d2: u32,
+        d1: Option<u32>,
+        d2: Option<i32>,
     },
 }
 #[automatically_derived]
@@ -818,6 +818,8 @@ impl ::core::clone::Clone for Mixed {
     #[inline]
     fn clone(&self) -> Mixed {
         let _: ::core::clone::AssertParamIsClone<u32>;
+        let _: ::core::clone::AssertParamIsClone<Option<u32>>;
+        let _: ::core::clone::AssertParamIsClone<Option<i32>>;
         *self
     }
 }
@@ -886,6 +888,8 @@ impl ::core::cmp::Eq for Mixed {
     #[no_coverage]
     fn assert_receiver_is_total_eq(&self) -> () {
         let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<Option<u32>>;
+        let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
     }
 }
 #[automatically_derived]

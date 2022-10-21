@@ -171,7 +171,7 @@ h1.fqn {
 	 Rustdoc-generated h2 section headings (e.g. "Implementations", "Required Methods", etc)
 	Underlines elsewhere in the documentation break up visual flow and tend to invert
 	section hierarchies. */
-h2,
+.content h2,
 .top-doc .docblock > h3,
 .top-doc .docblock > h4 {
 	border-bottom: 1px solid var(--headings-border-bottom-color);
@@ -229,44 +229,44 @@ h1 a,
 	color: var(--main-color);
 }
 
-span.enum, a.enum,
-span.struct, a.struct,
-span.union, a.union,
-span.primitive, a.primitive,
-span.type, a.type,
-span.foreigntype, a.foreigntype {
+.content span.enum, .content a.enum,
+.content span.struct, .content a.struct,
+.content span.union, .content a.union,
+.content span.primitive, .content a.primitive,
+.content span.type, .content a.type,
+.content span.foreigntype, .content a.foreigntype {
 	color: var(--type-link-color);
 }
 
-span.trait, a.trait,
-span.traitalias, a.traitalias {
+.content span.trait, .content a.trait,
+.content span.traitalias, .content a.traitalias {
 	color: var(--trait-link-color);
 }
 
-span.associatedtype, a.associatedtype,
-span.constant, a.constant,
-span.static, a.static {
+.content span.associatedtype, .content a.associatedtype,
+.content span.constant, .content a.constant,
+.content span.static, .content a.static {
 	color: var(--assoc-item-link-color);
 }
 
-span.fn, a.fn,
-.fnname,
-span.method, a.method,
-span.tymethod, a.tymethod {
+.content span.fn, .content a.fn,
+.content .fnname,
+.content span.method, .content a.method,
+.content span.tymethod, .content a.tymethod {
 	color: var(--function-link-color);
 }
 
-span.attr, a.attr,
-span.derive, a.derive,
-span.macro, a.macro {
+.content span.attr, .content a.attr,
+.content span.derive, .content a.derive,
+.content span.macro, .content a.macro {
 	color: var(--macro-link-color);
 }
 
-span.mod, a.mod {
+.content span.mod, .content a.mod {
 	color: var(--mod-link-color);
 }
 
-span.keyword, a.keyword {
+.content span.keyword, .content a.keyword {
 	color: var(--keyword-link-color);
 }
 
@@ -397,15 +397,6 @@ img {
 	left: 0;
 }
 
-.sidebar-elems,
-.sidebar > .location {
-	padding-left: 24px;
-}
-
-.sidebar .location {
-	overflow-wrap: anywhere;
-}
-
 .rustdoc.source .sidebar {
 	width: 50px;
 	min-width: 0px;
@@ -437,6 +428,7 @@ img {
 
 .source-sidebar-expanded .source .sidebar {
 	overflow-y: auto;
+	width: 300px;
 }
 
 .source-sidebar-expanded .source .sidebar > *:not(#sidebar-toggle) {
@@ -504,8 +496,8 @@ ul.block, .block li {
 }
 
 .block a,
-.sidebar h3 a,
-h2.location a {
+.sidebar h2 a,
+.sidebar h3 a {
 	display: block;
 	padding: 0.25rem;
 	margin-left: -0.25rem;
@@ -515,8 +507,7 @@ h2.location a {
 }
 
 .sidebar h2 {
-	border-bottom: none;
-	font-weight: 500;
+	overflow-wrap: anywhere;
 	padding: 0;
 	margin: 0;
 	margin-top: 0.7rem;
@@ -525,9 +516,13 @@ h2.location a {
 
 .sidebar h3 {
 	font-size: 1.125rem; /* 18px */
-	font-weight: 500;
 	padding: 0;
 	margin: 0;
+}
+
+.sidebar-elems,
+.sidebar > h2 {
+	padding-left: 24px;
 }
 
 .sidebar a, .sidebar .current {
@@ -702,7 +697,6 @@ pre, .rustdoc.source .example-wrap {
 
 nav.sub {
 	position: relative;
-	font-size: 1rem;
 	flex-grow: 1;
 	margin-bottom: 25px;
 }
@@ -1473,25 +1467,6 @@ h3.variant {
 	animation: rotating 2s linear infinite;
 }
 
-.setting-line .radio-line input:checked {
-	box-shadow: inset 0 0 0 3px var(--main-background-color);
-	background-color: var(--settings-input-color);
-}
-.setting-line .radio-line input:focus {
-	box-shadow: 0 0 1px 1px var(--settings-input-color);
-}
-/* In here we combine both `:focus` and `:checked` properties. */
-.setting-line .radio-line input:checked:focus {
-	box-shadow: inset 0 0 0 3px var(--main-background-color),
-		0 0 2px 2px var(--settings-input-color);
-}
-.setting-line .radio-line input:hover {
-	border-color: var(--settings-input-color) !important;
-}
-input:checked + .slider {
-	background-color: var(--settings-input-color);
-}
-
 #help-button > a {
 	text-align: center;
 	/* Rare exception to specifying font sizes in rem. Since this is acting
@@ -1692,31 +1667,20 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	display: inline-block;
 }
 
-/* Media Queries */
-
-/*
-WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY;
-If you update this line, then you also need to update the line with the same warning
-in storage.js plus the media query with (max-width: 700px)
-*/
-@media (min-width: 701px) {
-	/* In case there is no documentation before a code block, we need to add some margin at the top
-	to prevent an overlay between the "collapse toggle" and the information tooltip.
-	However, it's not needed with smaller screen width because the doc/code block is always put
-	"one line" below. */
-	.docblock > .example-wrap:first-child .tooltip {
-		margin-top: 16px;
-	}
-
-	.source-sidebar-expanded .source .sidebar {
-		width: 300px;
-	}
+/* In case there is no documentation before a code block, we need to add some margin at the top
+to prevent an overlay between the "collapse toggle" and the information tooltip.
+However, it's not needed with smaller screen width because the doc/code block is always put
+"one line" below. */
+.docblock > .example-wrap:first-child .tooltip {
+	margin-top: 16px;
 }
+
+/* Media Queries */
 
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
-in storage.js plus the media query with (min-width: 701px)
+in storage.js
 */
 @media (max-width: 700px) {
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
@@ -1798,23 +1762,22 @@ in storage.js plus the media query with (min-width: 701px)
 		width: 0;
 	}
 
-	.mobile-topbar .location a {
-		padding: 0;
-		margin: 0;
-	}
-
-	.mobile-topbar .location {
-		border: none;
-		padding: 0;
+	.mobile-topbar h2 {
+		padding-bottom: 0;
 		margin: auto 0.5em auto auto;
-		text-overflow: ellipsis;
 		overflow: hidden;
-		white-space: nowrap;
 		/* Rare exception to specifying font sizes in rem. Since the topbar
 		   height is specified in pixels, this also has to be specified in
 		   pixels to avoid overflowing the topbar when the user sets a bigger
 		   font size. */
 		font-size: 24px;
+	}
+
+	.mobile-topbar h2 a {
+		display: block;
+		text-overflow: ellipsis;
+		overflow: hidden;
+		white-space: nowrap;
 	}
 
 	.mobile-topbar .logo-container {

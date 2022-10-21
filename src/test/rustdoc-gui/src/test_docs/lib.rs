@@ -5,6 +5,7 @@
 #![crate_name = "test_docs"]
 #![feature(rustdoc_internals)]
 #![feature(doc_cfg)]
+#![feature(associated_type_defaults)]
 
 /*!
 Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
@@ -386,3 +387,20 @@ impl TypeWithNoDocblocks {
 pub unsafe fn unsafe_fn() {}
 
 pub fn safe_fn() {}
+
+#[repr(C)]
+pub struct WithGenerics<T: TraitWithNoDocblocks, S = String, E = WhoLetTheDogOut, P = i8> {
+    s: S,
+    t: T,
+    e: E,
+    p: P,
+}
+
+pub const CONST: u8 = 0;
+
+pub trait TraitWithoutGenerics {
+    const C: u8 = CONST;
+    type T = SomeType;
+
+    fn foo();
+}

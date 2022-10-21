@@ -2,7 +2,6 @@ use super::FnCtxt;
 use crate::astconv::AstConv;
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 
-use hir::def_id::DefId;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
@@ -19,6 +18,7 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -90,7 +90,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if ty.is_suggestable(self.tcx, false) {
                                 format!("/* {ty} */")
                             } else {
-                                "".to_string()
+                                "/* value */".to_string()
                             }
                         })
                         .collect::<Vec<_>>()
@@ -102,10 +102,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let msg = match def_id_or_name {
                 DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
-                    DefKind::Ctor(CtorOf::Struct, _) => "instantiate this tuple struct".to_string(),
-                    DefKind::Ctor(CtorOf::Variant, _) => {
-                        "instantiate this tuple variant".to_string()
-                    }
+                    DefKind::Ctor(CtorOf::Struct, _) => "construct this tuple struct".to_string(),
+                    DefKind::Ctor(CtorOf::Variant, _) => "construct this tuple variant".to_string(),
                     kind => format!("call this {}", kind.descr(def_id)),
                 },
                 DefIdOrName::Name(name) => format!("call this {name}"),
@@ -1208,9 +1206,4 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             false
         }
     }
-}
-
-pub enum DefIdOrName {
-    DefId(DefId),
-    Name(&'static str),
 }

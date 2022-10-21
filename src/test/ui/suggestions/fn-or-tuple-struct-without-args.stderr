@@ -49,7 +49,7 @@ LL |     let _: S = S;
    |
    = note: expected struct `S`
              found fn item `fn(usize, usize) -> S {S}`
-help: use parentheses to instantiate this tuple struct
+help: use parentheses to construct this tuple struct
    |
 LL |     let _: S = S(/* usize */, /* usize */);
    |                 ++++++++++++++++++++++++++
@@ -85,7 +85,7 @@ LL |     let _: V = V;
    |
    = note: expected struct `V`
              found fn item `fn() -> V {V}`
-help: use parentheses to instantiate this tuple struct
+help: use parentheses to construct this tuple struct
    |
 LL |     let _: V = V();
    |                 ++
@@ -139,7 +139,7 @@ LL |     let _: E = E::A;
    |
    = note: expected enum `E`
            found fn item `fn(usize) -> E {E::A}`
-help: use parentheses to instantiate this tuple variant
+help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = E::A(/* usize */);
    |                    +++++++++++++
