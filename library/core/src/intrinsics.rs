@@ -997,6 +997,8 @@ extern "rust-intrinsic" {
     /// are passed by-value, which means if `Src` or `Dst` contain padding, that padding
     /// is *not* guaranteed to be preserved by `transmute`.
     ///
+    /// # Safety
+    ///
     /// Both the argument and the result must be [valid](../../nomicon/what-unsafe-does.html) at
     /// their given type. Violating this condition leads to [undefined behavior][ub]. The compiler
     /// will generate code *assuming that you, the programmer, ensure that there will never be
@@ -1005,10 +1007,9 @@ extern "rust-intrinsic" {
     /// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
     /// unsafe**. `transmute` should be the absolute last resort.
     ///
-    /// Transmuting pointers to integers in a `const` context is [undefined behavior][ub].
-    /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
-    /// (And even outside `const`, such transmutation is touching on many unspecified aspects of the
-    /// Rust memory model and should be avoided. See below for alternatives.)
+    /// `transmute` can be used in a way that breaks internal safety invariants of the transmuted
+    /// types. This can later lead to violations of memory safety. It is the responsibility
+    /// of the caller to ensure that internal invariants of foreign types are not broken.
     ///
     /// Because `transmute` is a by-value operation, alignment of the *transmuted values
     /// themselves* is not a concern. As with any other function, the compiler already ensures
@@ -1017,6 +1018,13 @@ extern "rust-intrinsic" {
     /// alignment of the pointed-to values.
     ///
     /// The [nomicon](../../nomicon/transmutes.html) has additional documentation.
+    ///
+    /// # Const Eval Safety
+    ///
+    /// Transmuting pointers to integers in a `const` context is [undefined behavior][ub].
+    /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
+    /// (And even outside `const`, such transmutation is touching on many unspecified aspects of the
+    /// Rust memory model and should be avoided. See below for alternatives.)
     ///
     /// [ub]: ../../reference/behavior-considered-undefined.html
     ///

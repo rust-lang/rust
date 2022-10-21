@@ -1011,16 +1011,48 @@ pub fn copy<T: Copy>(x: &T) -> T {
 /// Interprets `src` as having type `&Dst`, and then reads `src` without moving
 /// the contained value.
 ///
-/// This function will unsafely assume the pointer `src` is valid for [`size_of::<Dst>`][size_of]
-/// bytes by transmuting `&Src` to `&Dst` and then reading the `&Dst` (except that this is done
-/// in a way that is correct even when `&Dst` has stricter alignment requirements than `&Src`).
-/// It will also unsafely create a copy of the contained value instead of moving out of `src`.
+/// `transmute_copy` is semantically equivalent to a bitwise copy of one type
+/// into another. It copies the bits from the source value into the destination
+/// value. Unlike [`transmute`], it preserves the original. Note that
+/// destination is passed by-value, which means if `Dst` contains padding,
+/// that padding is *not* guaranteed to be preserved by `transmute`.
 ///
 /// It is not a compile-time error if `Src` and `Dst` have different sizes, but it
 /// is highly encouraged to only invoke this function where `Src` and `Dst` have the
 /// same size. This function triggers [undefined behavior][ub] if `Dst` is larger than
 /// `Src`.
 ///
+/// # Safety
+///
+/// Behavior is [undefined][ub] if any of the following conditions are violated:
+///
+/// * The reference `src` must be valid for [`size_of::<Dst>`][size_of] bytes. In other words,
+///   [`size_of::<Src>`][size_of] must be greater than or equal to [`size_of::<Dst>`][size_of].
+///
+/// * All the safety conditions of [`transmute`] must hold:
+///
+///     * Both the argument and the result must be [valid](../../nomicon/what-unsafe-does.html)
+///       at their given type.
+///
+/// Like [`transmute`], `transmute_copy` can break internal safety invariants of the transmuted
+/// types. Additionally, like [`ptr::read`], `transmute_copy` creates a bitwise copy of `Src`, regardless
+/// of whether `Src` or `Dst` is [`Copy`]. If `Src` is not [`Copy`], using or dropping both
+/// the returned value and the value at `*src` can [violate memory safety][read-ownership].
+///
+/// Note that there is no requirement on the alignment of the *transmuted values themselves*
+/// beyond the usual alignment requirements of references. This function will ensure that reads
+/// from `Src` respect its alignment and, as with any other function, the compiler already ensures
+/// that `Dst` will be properly aligned. However, when transmuting values that *point
+/// elsewhere* (such as pointers, references, boxes…), the caller has to ensure proper
+/// alignment of the pointed-to values.
+///
+/// # Const Eval Safety
+///
+/// * All the const eval safety conditions of [`transmute`] must hold:
+///
+///     * Transmuting pointers to integers in a `const` context is [undefined behavior][ub].
+///
+/// [read-ownership]: ptr::read#ownership-of-the-returned-value
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
