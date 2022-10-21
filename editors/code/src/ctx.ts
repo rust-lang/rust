@@ -18,6 +18,11 @@ export type Workspace =
           files: vscode.TextDocument[];
       };
 
+export type CommandFactory = {
+    enabled: (ctx: Ctx) => Cmd;
+    disabled?: (ctx: Ctx) => Cmd;
+};
+
 export class Ctx {
     readonly statusBar: vscode.StatusBarItem;
     readonly config: Config;
@@ -26,31 +31,40 @@ export class Ctx {
     private _serverPath: string | undefined;
     private traceOutputChannel: vscode.OutputChannel | undefined;
     private outputChannel: vscode.OutputChannel | undefined;
+    private clientSubscriptions: Disposable[];
     private state: PersistentState;
+    private commandFactories: Record<string, CommandFactory>;
+    private commandDisposables: Disposable[];
 
     workspace: Workspace;
 
-    constructor(readonly extCtx: vscode.ExtensionContext, workspace: Workspace) {
-        this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-        extCtx.subscriptions.push(this.statusBar);
-        extCtx.subscriptions.push({
-            dispose() {
-                this.dispose();
-            },
-        });
+    constructor(
+        readonly extCtx: vscode.ExtensionContext,
+        workspace: Workspace,
+        commandFactories: Record<string, CommandFactory>
+    ) {
         extCtx.subscriptions.push(this);
+        this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         this.statusBar.text = "rust-analyzer";
         this.statusBar.tooltip = "ready";
         this.statusBar.command = "rust-analyzer.analyzerStatus";
         this.statusBar.show();
         this.workspace = workspace;
+        this.clientSubscriptions = [];
+        this.commandDisposables = [];
+        this.commandFactories = commandFactories;
 
         this.state = new PersistentState(extCtx.globalState);
         this.config = new Config(extCtx);
+
+        this.updateCommands();
     }
 
     dispose() {
         this.config.dispose();
+        this.statusBar.dispose();
+        void this.disposeClient();
+        this.commandDisposables.forEach((disposable) => disposable.dispose());
     }
 
     clientFetcher() {
@@ -63,7 +77,6 @@ export class Ctx {
     }
 
     async getClient() {
-        // if server path changes -> dispose
         if (!this.traceOutputChannel) {
             this.traceOutputChannel = vscode.window.createOutputChannel(
                 "Rust Analyzer Language Server Trace"
@@ -118,7 +131,11 @@ export class Ctx {
                 initializationOptions,
                 serverOptions
             );
-            this.client.onNotification(ra.serverStatus, (params) => this.setServerStatus(params));
+            this.pushClientCleanup(
+                this.client.onNotification(ra.serverStatus, (params) =>
+                    this.setServerStatus(params)
+                )
+            );
         }
         return this.client;
     }
@@ -127,16 +144,25 @@ export class Ctx {
         log.info("Activating language client");
         const client = await this.getClient();
         await client.start();
+        this.updateCommands();
         return client;
     }
 
     async deactivate() {
         log.info("Deactivating language client");
         await this.client?.stop();
+        this.updateCommands();
     }
 
-    async disposeClient() {
-        log.info("Deactivating language client");
+    async stop() {
+        log.info("Stopping language client");
+        await this.disposeClient();
+        this.updateCommands();
+    }
+
+    private async disposeClient() {
+        this.clientSubscriptions?.forEach((disposable) => disposable.dispose());
+        this.clientSubscriptions = [];
         await this.client?.dispose();
         this._serverPath = undefined;
         this.client = undefined;
@@ -157,6 +183,25 @@ export class Ctx {
 
     get serverPath(): string | undefined {
         return this._serverPath;
+    }
+
+    private updateCommands() {
+        this.commandDisposables.forEach((disposable) => disposable.dispose());
+        this.commandDisposables = [];
+        const fetchFactory = (factory: CommandFactory, fullName: string) => {
+            return this.client && this.client.isRunning()
+                ? factory.enabled
+                : factory.disabled ||
+                      ((_) => () =>
+                          vscode.window.showErrorMessage(
+                              `command ${fullName} failed: rust-analyzer server is not running`
+                          ));
+        };
+        for (const [name, factory] of Object.entries(this.commandFactories)) {
+            const fullName = `rust-analyzer.${name}`;
+            const callback = fetchFactory(factory, fullName)(this);
+            this.commandDisposables.push(vscode.commands.registerCommand(fullName, callback));
+        }
     }
 
     setServerStatus(status: ServerStatusParams) {
@@ -194,15 +239,12 @@ export class Ctx {
         statusBar.text = `${icon}rust-analyzer`;
     }
 
-    registerCommand(name: string, factory: (ctx: Ctx) => Cmd) {
-        const fullName = `rust-analyzer.${name}`;
-        const cmd = factory(this);
-        const d = vscode.commands.registerCommand(fullName, cmd);
-        this.pushExtCleanup(d);
-    }
-
     pushExtCleanup(d: Disposable) {
         this.extCtx.subscriptions.push(d);
+    }
+
+    private pushClientCleanup(d: Disposable) {
+        this.clientSubscriptions.push(d);
     }
 }
 
