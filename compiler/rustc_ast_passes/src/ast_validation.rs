@@ -252,20 +252,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn visit_struct_field_def(&mut self, field: &'a FieldDef) {
-        if let Some(ident) = field.ident {
-            if ident.name == kw::Underscore {
-                self.visit_vis(&field.vis);
-                self.visit_ident(ident);
-                self.visit_ty_common(&field.ty);
-                self.walk_ty(&field.ty);
-                walk_list!(self, visit_attribute, &field.attrs);
-                return;
-            }
-        }
-        self.visit_field_def(field);
-    }
-
     fn err_handler(&self) -> &rustc_errors::Handler {
         &self.session.diagnostic()
     }
@@ -1006,8 +992,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_lifetime(self, lifetime);
     }
 
-    fn visit_field_def(&mut self, s: &'a FieldDef) {
-        visit::walk_field_def(self, s)
+    fn visit_field_def(&mut self, field: &'a FieldDef) {
+        visit::walk_field_def(self, field)
     }
 
     fn visit_item(&mut self, item: &'a Item) {
@@ -1195,41 +1181,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.check_mod_file_item_asciionly(item.ident);
                 }
             }
-            ItemKind::Struct(ref vdata, ref generics) => match vdata {
-                // Duplicating the `Visitor` logic allows catching all cases
-                // of `Anonymous(Struct, Union)` outside of a field struct or union.
-                //
-                // Inside `visit_ty` the validator catches every `Anonymous(Struct, Union)` it
-                // encounters, and only on `ItemKind::Struct` and `ItemKind::Union`
-                // it uses `visit_ty_common`, which doesn't contain that specific check.
-                VariantData::Struct(ref fields, ..) => {
-                    self.visit_vis(&item.vis);
-                    self.visit_ident(item.ident);
-                    self.visit_generics(generics);
-                    self.with_banned_assoc_ty_bound(|this| {
-                        walk_list!(this, visit_struct_field_def, fields);
-                    });
-                    walk_list!(self, visit_attribute, &item.attrs);
-                    return;
-                }
-                _ => {}
-            },
-            ItemKind::Union(ref vdata, ref generics) => {
+            ItemKind::Union(ref vdata, ..) => {
                 if vdata.fields().is_empty() {
                     self.err_handler().span_err(item.span, "unions cannot have zero fields");
-                }
-                match vdata {
-                    VariantData::Struct(ref fields, ..) => {
-                        self.visit_vis(&item.vis);
-                        self.visit_ident(item.ident);
-                        self.visit_generics(generics);
-                        self.with_banned_assoc_ty_bound(|this| {
-                            walk_list!(this, visit_struct_field_def, fields);
-                        });
-                        walk_list!(self, visit_attribute, &item.attrs);
-                        return;
-                    }
-                    _ => {}
                 }
             }
             ItemKind::Const(def, .., None) => {
