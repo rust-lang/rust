@@ -434,10 +434,9 @@ impl<'a> State<'a> {
     // longer incomplete
     pub(crate) fn print_restriction(&mut self, kw: &'static str, restriction: &ast::Restriction) {
         match restriction.kind {
-            ast::RestrictionKind::Unrestricted => self.word_nbsp(kw),
-            ast::RestrictionKind::Restricted { ref path, .. } => {
+            ast::RestrictionKind::Restricted { ref path, id: _, shorthand } => {
                 let path = Self::to_string(|s| s.print_path(path, false, 0));
-                if path == "crate" || path == "self" || path == "super" {
+                if shorthand {
                     self.word_nbsp(format!("{kw}({path})"))
                 } else {
                     self.word_nbsp(format!("{kw}(in {path})"))

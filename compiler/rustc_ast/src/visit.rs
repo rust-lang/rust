@@ -962,7 +962,7 @@ pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
 }
 
 pub fn walk_restriction<'a, V: Visitor<'a>>(visitor: &mut V, restriction: &'a Restriction) {
-    if let RestrictionKind::Restricted { ref path, id } = restriction.kind {
+    if let RestrictionKind::Restricted { ref path, id, shorthand: _ } = restriction.kind {
         visitor.visit_path(path, id);
     }
 }

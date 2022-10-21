@@ -1,0 +1,8 @@
+error: expected `(`, found keyword `trait`
+  --> $DIR/naked-impl-restriction.rs:4:10
+   |
+LL | pub impl trait Foo {}
+   |          ^^^^^ expected `(`
+
+error: aborting due to previous error
+

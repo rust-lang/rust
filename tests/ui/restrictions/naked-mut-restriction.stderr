@@ -1,0 +1,10 @@
+error: expected `(`, found `x`
+  --> $DIR/naked-mut-restriction.rs:5:13
+   |
+LL | pub struct Foo {
+   |            --- while parsing this struct
+LL |     pub mut x: u32,
+   |             ^ expected `(`
+
+error: aborting due to previous error
+

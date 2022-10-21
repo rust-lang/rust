@@ -1459,7 +1459,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses `kw` and `kw(in path)` plus shortcuts `kw(crate)` for `kw(in crate)`, `kw(self)` for
+    /// Parses `kw(in path)` plus shortcuts `kw(crate)` for `kw(in crate)`, `kw(self)` for
     /// `kw(in self)` and `kw(super)` for `kw(in super)`.
     fn parse_restriction(
         &mut self,
@@ -1484,37 +1484,33 @@ impl<'a> Parser<'a> {
 
         let lo = self.prev_token.span;
 
-        if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
-            // We don't `self.bump()` the `(` yet because this might be a struct definition where
-            // `()` or a tuple might be allowed. For example, `struct Struct(kw (), kw (usize));`.
-            // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
-            // by the following tokens.
-            if self.is_keyword_ahead(1, &[kw::In]) {
-                // Parse `kw(in path)`.
-                self.bump(); // `(`
-                self.bump(); // `in`
-                let path = self.parse_path(PathStyle::Mod)?; // `path`
-                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
-                return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID)
-                    .with_span(lo.to(gate(lo.to(self.prev_token.span)))));
-            } else if self.look_ahead(2, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
-                && self.is_keyword_ahead(1, &[kw::Crate, kw::Super, kw::SelfLower])
-            {
-                // Parse `kw(crate)`, `kw(self)`, or `kw(super)`.
-                self.bump(); // `(`
-                let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
-                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
-                return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID)
-                    .with_span(gate(lo.to(self.prev_token.span))));
-            } else if let FollowedByType::No = fbt {
-                // Provide this diagnostic if a type cannot follow;
-                // in particular, if this is not a tuple struct.
-                self.recover_incorrect_restriction(kw.as_str(), action)?;
-                // Emit diagnostic, but continue unrestricted.
-            }
-        }
+        self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
-        Ok(Restriction::unrestricted().with_span(gate(lo)))
+        if self.check_keyword(kw::In) {
+            // Parse `kw(in path)`.
+            self.bump(); // `in`
+            let path = self.parse_path(PathStyle::Mod)?; // `path`
+            self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
+            return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, false)
+                .with_span(lo.to(gate(lo.to(self.prev_token.span)))));
+        } else if self.look_ahead(1, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
+            && self.is_keyword_ahead(0, &[kw::Crate, kw::Super, kw::SelfLower])
+        {
+            // Parse `kw(crate)`, `kw(self)`, or `kw(super)`.
+            let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
+            self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
+            return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, true)
+                .with_span(gate(lo.to(self.prev_token.span))));
+        } else if let FollowedByType::No = fbt {
+            // Provide this diagnostic if a type cannot follow;
+            // in particular, if this is not a tuple struct.
+            self.recover_incorrect_restriction(kw.as_str(), action)?;
+            // Emit diagnostic, but continue unrestricted.
+            Ok(Restriction::implied())
+        } else {
+            // FIXME(jhpratt) Is this case ever actually encountered?
+            Ok(Restriction::implied())
+        }
     }
 
     /// Recovery for e.g. `kw(something) fn ...` or `struct X { kw(something) y: Z }`
@@ -1526,9 +1522,9 @@ impl<'a> Parser<'a> {
         let msg = "incorrect restriction";
         let suggestion = format!(
             r##"some possible restrictions are:\n\
-            `{kw}(crate)`: {action} only on the current crate\n\
+            `{kw}(crate)`: {action} only in the current crate\n\
             `{kw}(super)`: {action} only in the current module's parent\n\
-            `{kw}(in path::to::module)`: {action} only on the specified path"##
+            `{kw}(in path::to::module)`: {action} only in the specified path"##
         );
 
         let path_str = pprust::path_to_string(&path);

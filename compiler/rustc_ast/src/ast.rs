@@ -2729,18 +2729,15 @@ pub struct Restriction {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum RestrictionKind {
-    Unrestricted,
-    Restricted { path: P<Path>, id: NodeId },
+    // kw(path)
+    Restricted { path: P<Path>, id: NodeId, shorthand: bool },
+    // nothing
     Implied,
 }
 
 impl Restriction {
-    pub fn unrestricted() -> Self {
-        Restriction { kind: RestrictionKind::Unrestricted, span: DUMMY_SP }
-    }
-
-    pub fn restricted(path: P<Path>, id: NodeId) -> Self {
-        Restriction { kind: RestrictionKind::Restricted { path, id }, span: DUMMY_SP }
+    pub fn restricted(path: P<Path>, id: NodeId, shorthand: bool) -> Self {
+        Restriction { kind: RestrictionKind::Restricted { path, id, shorthand }, span: DUMMY_SP }
     }
 
     pub fn implied() -> Self {

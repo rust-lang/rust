@@ -5,7 +5,6 @@
 
 #![cfg_attr(with_gate, feature(impl_restriction))]
 
-pub impl trait Foo {} //[without_gate]~ ERROR
 pub impl(crate) trait Bar {} //[without_gate]~ ERROR
 
 mod foo {

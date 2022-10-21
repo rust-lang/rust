@@ -1568,7 +1568,7 @@ pub fn noop_visit_vis<T: MutVisitor>(visibility: &mut Visibility, vis: &mut T) {
 }
 
 pub fn noop_visit_restriction<T: MutVisitor>(restriction: &mut Restriction, vis: &mut T) {
-    if let RestrictionKind::Restricted { path, id } = &mut restriction.kind {
+    if let RestrictionKind::Restricted { path, id, shorthand: _ } = &mut restriction.kind {
         vis.visit_path(path);
         vis.visit_id(id);
     }

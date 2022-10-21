@@ -63,7 +63,7 @@ LL |         pub mut(self) alpha: u8,
 LL |     let _alpha = &mut foo.alpha;
    |                  ^^^^^^^^^^^^^^
 
-error: field cannot be mutated outside `mut_restriction`
+error: field cannot be mutated outside `external_mut_restriction`
   --> $DIR/mut-restriction.rs:63:5
    |
 LL |     external_top_level.alpha = 1;
@@ -74,7 +74,7 @@ LL |     external_top_level.alpha = 1;
 LL |     pub mut(self) alpha: u8,
    |         --------- mutability restricted here
 
-error: field cannot be mutated outside `mut_restriction`
+error: field cannot be mutated outside `external_mut_restriction`
   --> $DIR/mut-restriction.rs:67:5
    |
 LL |     external_inner.beta = 1;

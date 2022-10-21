@@ -23,7 +23,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 fn mut_restriction(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Restriction {
     tracing::debug!("mut_restriction({def_id:?})");
 
-    match (&tcx.resolutions(()).mut_restrictions).get(&def_id) {
+    match tcx.resolutions(()).mut_restrictions.get(&def_id) {
         Some(restriction) => *restriction,
         None => {
             let hir_id = tcx.local_def_id_to_hir_id(def_id);
@@ -86,8 +86,9 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
         self.super_statement(statement, location);
     }
 
-    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
+    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
         if !context.is_mutating_use() {
+            self.super_place(place, context, location);
             return;
         }
 
@@ -115,6 +116,8 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
                 _ => {}
             }
         }
+
+        self.super_place(place, context, location)
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {

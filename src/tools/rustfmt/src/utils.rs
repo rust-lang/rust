@@ -81,18 +81,20 @@ pub(crate) fn format_restriction(
     restriction: &Restriction,
 ) -> String {
     match restriction.kind {
-        RestrictionKind::Unrestricted => format!("{kw} "),
-        RestrictionKind::Restricted { ref path, .. } => {
+        RestrictionKind::Restricted {
+            ref path,
+            id: _,
+            shorthand,
+        } => {
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
             if path.is_global() && segments_iter.next().is_none() {
                 panic!("non-global path in {kw}(restricted)?");
             }
-            let is_keyword = |s| s == "crate" || s == "self" || s == "super";
             // FIXME use `segments_iter.intersperse("::").collect::<String>()` once
             // `#![feature(iter_intersperse)]` is re-stabilized.
             let path = itertools::join(segments_iter, "::");
-            let in_str = if is_keyword(&path) { "" } else { "in " };
+            let in_str = if shorthand { "" } else { "in " };
 
             format!("{kw}({in_str}{path}) ")
         }
