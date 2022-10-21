@@ -634,7 +634,6 @@ pre.example-line-numbers {
 .out-of-band {
 	flex-grow: 0;
 	font-size: 1.125rem;
-	font-weight: normal;
 }
 
 .docblock code, .docblock-short code,
