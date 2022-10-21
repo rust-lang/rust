@@ -3,6 +3,7 @@ use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
 use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
 
+use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
@@ -764,6 +765,40 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
+/// Returns whether an attribute needs to be recorded in metadata, that is, if it's usable and
+/// useful in downstream crates. Local-only attributes are an obvious example, but some
+/// rustdoc-specific attributes can equally be of use while documenting the current crate only.
+///
+/// Removing these superfluous attributes speeds up compilation by making the metadata smaller.
+///
+/// Note: the `is_def_id_public` parameter is used to cache whether the given `DefId` has a public
+/// visibility: this is a piece of data that can be computed once per defid, and not once per
+/// attribute. Some attributes would only be usable downstream if they are public.
+#[inline]
+fn should_encode_attr(
+    tcx: TyCtxt<'_>,
+    attr: &Attribute,
+    def_id: LocalDefId,
+    is_def_id_public: &mut Option<bool>,
+) -> bool {
+    if rustc_feature::is_builtin_only_local(attr.name_or_empty()) {
+        // Attributes marked local-only don't need to be encoded for downstream crates.
+        false
+    } else if attr.doc_str().is_some() {
+        // We keep all public doc comments because they might be "imported" into downstream crates
+        // if they use `#[doc(inline)]` to copy an item's documentation into their own.
+        *is_def_id_public.get_or_insert_with(|| {
+            tcx.privacy_access_levels(()).get_effective_vis(def_id).is_some()
+        })
+    } else if attr.has_name(sym::doc) {
+        // If this is a `doc` attribute, and it's marked `inline` (as in `#[doc(inline)]`), we can
+        // remove it. It won't be inlinable in downstream crates.
+        attr.meta_item_list().map(|l| l.iter().any(|l| !l.has_name(sym::inline))).unwrap_or(false)
+    } else {
+        true
+    }
+}
+
 fn should_encode_visibility(def_kind: DefKind) -> bool {
     match def_kind {
         DefKind::Mod
@@ -1126,12 +1161,14 @@ fn should_encode_trait_impl_trait_tys<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) ->
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
-        let mut attrs = self
-            .tcx
+        let tcx = self.tcx;
+        let mut is_public: Option<bool> = None;
+
+        let mut attrs = tcx
             .hir()
-            .attrs(self.tcx.hir().local_def_id_to_hir_id(def_id))
+            .attrs(tcx.hir().local_def_id_to_hir_id(def_id))
             .iter()
-            .filter(|attr| !rustc_feature::is_builtin_only_local(attr.name_or_empty()));
+            .filter(move |attr| should_encode_attr(tcx, attr, def_id, &mut is_public));
 
         record_array!(self.tables.attributes[def_id.to_def_id()] <- attrs.clone());
         if attrs.any(|attr| attr.may_have_doc_links()) {

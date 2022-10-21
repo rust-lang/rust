@@ -296,20 +296,24 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Lints:
     ungated!(
-        warn, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk
+        warn, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#),
+        DuplicatesOk, @only_local: true,
     ),
     ungated!(
-        allow, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk
+        allow, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#),
+        DuplicatesOk, @only_local: true,
     ),
     gated!(
         expect, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk,
         lint_reasons, experimental!(expect)
     ),
     ungated!(
-        forbid, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk
+        forbid, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#),
+        DuplicatesOk, @only_local: true,
     ),
     ungated!(
-        deny, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk
+        deny, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#),
+        DuplicatesOk, @only_local: true,
     ),
     ungated!(must_use, Normal, template!(Word, NameValueStr: "reason"), FutureWarnFollowing),
     gated!(
@@ -340,7 +344,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(link_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(no_link, Normal, template!(Word), WarnFollowing),
-    ungated!(repr, Normal, template!(List: "C"), DuplicatesOk),
+    ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, @only_local: true),
     ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(no_mangle, Normal, template!(Word), WarnFollowing, @only_local: true),
@@ -382,7 +386,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing, @only_local: true),
     ungated!(cold, Normal, template!(Word), WarnFollowing, @only_local: true),
     ungated!(no_builtins, CrateLevel, template!(Word), WarnFollowing),
-    ungated!(target_feature, Normal, template!(List: r#"enable = "name""#), DuplicatesOk),
+    ungated!(
+        target_feature, Normal, template!(List: r#"enable = "name""#),
+        DuplicatesOk, @only_local: true,
+    ),
     ungated!(track_caller, Normal, template!(Word), WarnFollowing),
     gated!(
         no_sanitize, Normal,
@@ -488,18 +495,24 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
 
-    ungated!(feature, CrateLevel, template!(List: "name1, name2, ..."), DuplicatesOk),
+    ungated!(
+        feature, CrateLevel,
+        template!(List: "name1, name2, ..."), DuplicatesOk, @only_local: true,
+    ),
     // DuplicatesOk since it has its own validation
     ungated!(
-        stable, Normal, template!(List: r#"feature = "name", since = "version""#), DuplicatesOk,
+        stable, Normal,
+        template!(List: r#"feature = "name", since = "version""#), DuplicatesOk, @only_local: true,
     ),
     ungated!(
         unstable, Normal,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#), DuplicatesOk,
     ),
     ungated!(rustc_const_unstable, Normal, template!(List: r#"feature = "name""#), DuplicatesOk),
-    ungated!(rustc_const_stable, Normal, template!(List: r#"feature = "name""#), DuplicatesOk),
-    ungated!(rustc_safe_intrinsic, Normal, template!(Word), DuplicatesOk),
+    ungated!(
+        rustc_const_stable, Normal,
+        template!(List: r#"feature = "name""#), DuplicatesOk, @only_local: true,
+    ),
     ungated!(
         rustc_default_body_unstable, Normal,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#), DuplicatesOk
@@ -517,6 +530,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
         "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
+    ungated!(rustc_safe_intrinsic, Normal, template!(Word), DuplicatesOk),
     rustc_attr!(rustc_allowed_through_unstable_modules, Normal, template!(Word), WarnFollowing,
     "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
     through unstable paths"),
@@ -823,6 +837,8 @@ pub fn is_builtin_attr_name(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()
 }
 
+/// Whether this builtin attribute is only used in the local crate.
+/// If so, it is not encoded in the crate metadata.
 pub fn is_builtin_only_local(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| attr.only_local)
 }
