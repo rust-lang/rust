@@ -360,6 +360,29 @@ macro_rules! dbg {
     };
 }
 
+#[macro_export]
+#[cfg_attr(not(test), rustc_diagnostic_item = "dbg_macro")]
+#[unstable(feature = "dbg_macro")]
+macro_rules! pdbg {
+    () => {
+        $crate::eprintln!()
+    };
+    ($val:expr $(,)?) => {
+        // Use of `match` here is intentional because it affects the lifetimes
+        // of temporaries - https://stackoverflow.com/a/48732525/1063961
+        match $val {
+            tmp => {
+                $crate::eprintln!("{} = {:#?}\n",
+                    $crate::stringify!($val), &tmp);
+                tmp
+            }
+        }
+    };
+    ($($val:expr),+ $(,)?) => {
+        ($($crate::pdbg!($val)),+,)
+    };
+}
+
 #[cfg(test)]
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {{
