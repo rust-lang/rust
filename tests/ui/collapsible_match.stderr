@@ -175,5 +175,37 @@ LL |         Some(val) => match val {
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
-error: aborting due to 10 previous errors
+error: this `if let` can be collapsed into the outer `if let`
+  --> $DIR/collapsible_match.rs:263:9
+   |
+LL | /         if let Some(u) = a {
+LL | |             println!("{u:?}")
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> $DIR/collapsible_match.rs:262:27
+   |
+LL |     if let Issue9647::A { a, .. } = x {
+   |                           ^ replace this binding
+LL |         if let Some(u) = a {
+   |                ^^^^^^^ with this pattern, prefixed by a:
+
+error: this `if let` can be collapsed into the outer `if let`
+  --> $DIR/collapsible_match.rs:271:9
+   |
+LL | /         if let Some(u) = a {
+LL | |             println!("{u}")
+LL | |         }
+   | |_________^
+   |
+help: the outer pattern can be modified to include the inner pattern
+  --> $DIR/collapsible_match.rs:270:35
+   |
+LL |     if let Issue9647::A { a: Some(a), .. } = x {
+   |                                   ^ replace this binding
+LL |         if let Some(u) = a {
+   |                ^^^^^^^ with this pattern
+
+error: aborting due to 12 previous errors
 
