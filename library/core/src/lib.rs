@@ -174,6 +174,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
+#![feature(c_unwind)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
