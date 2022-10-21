@@ -223,6 +223,71 @@ impl<'p, 'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'p, 'a, I> {
     }
 }
 
+/// This iterator strips all the leading and trailing empty lines in the code block. For example:
+///
+/// ```
+///
+/// let x = 12;
+///
+/// // hello
+///
+/// ```
+///
+/// It'll only keep:
+///
+/// ```
+/// let x = 12;
+///
+/// // hello
+/// ```
+struct CodeblockTextIter<'a, T: Iterator<Item = Cow<'a, str>>> {
+    iter: T,
+    found_first_non_empty: bool,
+    pending_content: VecDeque<Cow<'a, str>>,
+}
+
+impl<'a, T: Iterator<Item = Cow<'a, str>>> CodeblockTextIter<'a, T> {
+    fn new(iter: T) -> Self {
+        Self { iter, found_first_non_empty: false, pending_content: VecDeque::new() }
+    }
+}
+
+impl<'a, T: Iterator<Item = Cow<'a, str>>> Iterator for CodeblockTextIter<'a, T> {
+    type Item = Cow<'a, str>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // If there are still stored content because there were empty lines before a non-empty one,
+        // we need to provide all of them too.
+        if let Some(next) = self.pending_content.pop_front() {
+            return Some(next);
+        }
+        while let Some(next) = self.iter.next() {
+            // As long as we don't encounter the first non-empty lines, we skip all of them.
+            if !self.found_first_non_empty {
+                if !next.trim().is_empty() {
+                    self.found_first_non_empty = true;
+                    return Some(next);
+                }
+            } else if !next.trim().is_empty() {
+                // We need to check the buffer since it could have been filled in the meantime
+                // if empty lines were encountered.
+                if let Some(front) = self.pending_content.pop_front() {
+                    self.pending_content.push_back(next);
+                    return Some(front);
+                }
+                return Some(next);
+            } else {
+                // We encountered an empty line but it's maybe not the last line so we need to
+                // store it just in case.
+                self.pending_content.push_back(next);
+            }
+        }
+        // We clear the content in case `next` is called afterwards.
+        self.pending_content.clear();
+        None
+    }
+}
+
 impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
     type Item = Event<'a>;
 
@@ -246,8 +311,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 _ => {}
             }
         }
-        let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
-        let text = lines.intersperse("\n".into()).collect::<String>();
+        let lines = CodeblockTextIter::new(origtext.lines().filter_map(|l| map_line(l).for_html()));
+        let text = lines.intersperse(Cow::Borrowed("\n")).collect::<String>();
 
         let parse_result = match kind {
             CodeBlockKind::Fenced(ref lang) => {
