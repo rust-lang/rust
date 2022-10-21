@@ -1,11 +1,11 @@
 //! Errors emitted by ast_passes.
 
-use rustc_ast::ParamKindOrd;
+use rustc_ast::{visit::FnKind, ParamKindOrd};
 use rustc_errors::{fluent, AddToDiagnostic, Applicability, Diagnostic, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
-use crate::ast_validation::ForbiddenLetReason;
+use crate::ast_validation::{DisallowTildeConstContext, ForbiddenLetReason};
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_forbidden_let)]
@@ -584,26 +584,26 @@ pub struct TraitObjectWithMaybe {
 #[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_maybe_const)]
 #[note]
-pub struct ForbiddenMaybeConst {
+pub struct ForbiddenMaybeConst<'a, 'b> {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub reason: DisallowTildeConstContext,
+    pub(crate) reason: &'a DisallowTildeConstContext<'b>,
 }
 
-impl AddToDiagnostic for DisallowTildeConstContext {
+impl<'a> AddToDiagnostic for &'a DisallowTildeConstContext<'_> {
     fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
         match self {
-            Self::TraitObject => {
+            DisallowTildeConstContext::TraitObject => {
                 diag.note(fluent::ast_passes::trait_object);
             }
-            Self::Fn(FnKind::Closure(..)) => {
+            DisallowTildeConstContext::Fn(FnKind::Closure(..)) => {
                 diag.note(fluent::ast_passes::closure);
             }
-            Self::Fn(FnKind::Fn(_, ident, ..)) => {
+            DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => {
                 diag.span_note(ident.span, fluent::ast_passes::fn_not_const);
             }
         }

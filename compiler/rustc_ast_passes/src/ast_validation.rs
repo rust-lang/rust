@@ -37,7 +37,7 @@ enum SelfSemantic {
 }
 
 /// What is the context that prevents using `~const`?
-enum DisallowTildeConstContext<'a> {
+pub(crate) enum DisallowTildeConstContext<'a> {
     TraitObject,
     Fn(FnKind<'a>),
 }
