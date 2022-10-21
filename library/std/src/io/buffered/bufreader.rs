@@ -224,6 +224,14 @@ impl<R> BufReader<R> {
     }
 }
 
+// This is only used by a test which asserts that the initialization-tracking is correct.
+#[cfg(test)]
+impl<R> BufReader<R> {
+    pub fn initialized(&self) -> usize {
+        self.buf.initialized()
+    }
+}
+
 impl<R: Seek> BufReader<R> {
     /// Seeks relative to the current position. If the new position lies within the buffer,
     /// the buffer will not be flushed, allowing for more efficient seeks.

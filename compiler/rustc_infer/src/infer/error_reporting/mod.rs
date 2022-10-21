@@ -2765,7 +2765,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
     where
         T: relate::Relate<'tcx>,
     {
-        Ok(ty::Binder::dummy(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn consts(
