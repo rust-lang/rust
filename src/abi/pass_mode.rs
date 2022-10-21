@@ -193,7 +193,7 @@ pub(super) fn from_casted_value<'tcx>(
         kind: StackSlotKind::ExplicitSlot,
         // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
         // specify stack slot alignment.
-        // Stack slot size may be bigger for for example `[u8; 3]` which is packed into an `i32`.
+        // Stack slot size may be bigger for example `[u8; 3]` which is packed into an `i32`.
         // It may also be smaller for example when the type is a wrapper around an integer with a
         // larger alignment than the integer.
         size: (std::cmp::max(abi_param_size, layout_size) + 15) / 16 * 16,

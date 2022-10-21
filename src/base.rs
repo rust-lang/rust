@@ -633,7 +633,12 @@ fn codegen_stmt<'tcx>(
                     lval.write_cvalue(fx, operand.cast_pointer_to(to_layout));
                 }
                 Rvalue::Cast(
-                    CastKind::Misc
+                    CastKind::IntToInt
+                    | CastKind::FloatToFloat
+                    | CastKind::FloatToInt
+                    | CastKind::IntToFloat
+                    | CastKind::FnPtrToPtr
+                    | CastKind::PtrToPtr
                     | CastKind::PointerExposeAddress
                     | CastKind::PointerFromExposedAddress,
                     ref operand,
