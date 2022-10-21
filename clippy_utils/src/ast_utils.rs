@@ -438,14 +438,14 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
             eq_defaultness(*ld, *rd) && eq_fn_sig(lf, rf) && eq_generics(lg, rg) && both(lb, rb, |l, r| eq_block(l, r))
         },
         (
-            TyAlias(box ast::TyAlias {
+            Type(box ast::TyAlias {
                 defaultness: ld,
                 generics: lg,
                 bounds: lb,
                 ty: lt,
                 ..
             }),
-            TyAlias(box ast::TyAlias {
+            Type(box ast::TyAlias {
                 defaultness: rd,
                 generics: rg,
                 bounds: rb,

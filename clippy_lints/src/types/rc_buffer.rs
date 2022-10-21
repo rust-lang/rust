@@ -17,7 +17,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 hir_ty.span,
                 "usage of `Rc<T>` when T is a buffer type",
                 "try",
-                format!("Rc<{}>", alternate),
+                format!("Rc<{alternate}>"),
                 Applicability::MachineApplicable,
             );
         } else {
@@ -57,7 +57,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 hir_ty.span,
                 "usage of `Arc<T>` when T is a buffer type",
                 "try",
-                format!("Arc<{}>", alternate),
+                format!("Arc<{alternate}>"),
                 Applicability::MachineApplicable,
             );
         } else if let Some(ty) = qpath_generic_tys(qpath).next() {

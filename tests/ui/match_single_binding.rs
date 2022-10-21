@@ -1,7 +1,7 @@
 // run-rustfix
-
 #![warn(clippy::match_single_binding)]
-#![allow(unused_variables, clippy::toplevel_ref_arg)]
+#![allow(unused_variables)]
+#![allow(clippy::toplevel_ref_arg, clippy::uninlined_format_args)]
 
 struct Point {
     x: i32,

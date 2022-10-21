@@ -103,10 +103,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
                 return;
             }
 
-            format!(
-                "casting `{}` to `{}` may truncate the value{}",
-                cast_from, cast_to, suffix,
-            )
+            format!("casting `{cast_from}` to `{cast_to}` may truncate the value{suffix}",)
         },
 
         (ty::Adt(def, _), true) if def.is_enum() => {
@@ -142,20 +139,17 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
                     CAST_ENUM_TRUNCATION,
                     expr.span,
                     &format!(
-                        "casting `{}::{}` to `{}` will truncate the value{}",
-                        cast_from, variant.name, cast_to, suffix,
+                        "casting `{cast_from}::{}` to `{cast_to}` will truncate the value{suffix}",
+                        variant.name,
                     ),
                 );
                 return;
             }
-            format!(
-                "casting `{}` to `{}` may truncate the value{}",
-                cast_from, cast_to, suffix,
-            )
+            format!("casting `{cast_from}` to `{cast_to}` may truncate the value{suffix}",)
         },
 
         (ty::Float(_), true) => {
-            format!("casting `{}` to `{}` may truncate the value", cast_from, cast_to)
+            format!("casting `{cast_from}` to `{cast_to}` may truncate the value")
         },
 
         (ty::Float(FloatTy::F64), false) if matches!(cast_to.kind(), &ty::Float(FloatTy::F32)) => {

@@ -284,7 +284,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                     e.span,
                     "calling a slice of `as_bytes()` with `from_utf8` should be not necessary",
                     "try",
-                    format!("Some(&{}[{}])", snippet_app, snippet(cx, right.span, "..")),
+                    format!("Some(&{snippet_app}[{}])", snippet(cx, right.span, "..")),
                     applicability
                 )
             }
@@ -500,8 +500,8 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
                     cx,
                     TRIM_SPLIT_WHITESPACE,
                     trim_span.with_hi(split_ws_span.lo()),
-                    &format!("found call to `str::{}` before `str::split_whitespace`", trim_fn_name),
-                    &format!("remove `{}()`", trim_fn_name),
+                    &format!("found call to `str::{trim_fn_name}` before `str::split_whitespace`"),
+                    &format!("remove `{trim_fn_name}()`"),
                     String::new(),
                     Applicability::MachineApplicable,
                 );

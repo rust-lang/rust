@@ -134,7 +134,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                     diag.span_suggestion(
                         keep_arm.pat.span,
                         "try merging the arm patterns",
-                        format!("{} | {}", keep_pat_snip, move_pat_snip),
+                        format!("{keep_pat_snip} | {move_pat_snip}"),
                         Applicability::MaybeIncorrect,
                     )
                     .help("or try changing either arm body")

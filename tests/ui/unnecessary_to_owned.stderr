@@ -4,12 +4,12 @@ error: redundant clone
 LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
    |                                                                ^^^^^^^^^^^ help: remove this
    |
-   = note: `-D clippy::redundant-clone` implied by `-D warnings`
 note: this value is dropped without further use
   --> $DIR/unnecessary_to_owned.rs:151:20
    |
 LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::redundant-clone` implied by `-D warnings`
 
 error: redundant clone
   --> $DIR/unnecessary_to_owned.rs:152:40

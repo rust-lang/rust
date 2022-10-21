@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             "borrow as raw pointer",
             "try",
-            format!("{}::ptr::{}!({})", core_or_std, macro_name, snip),
+            format!("{core_or_std}::ptr::{macro_name}!({snip})"),
             Applicability::MachineApplicable,
         );
     }

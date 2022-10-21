@@ -4,12 +4,12 @@ error: method's name is the same as an existing method in a trait
 LL |             fn foo() {}
    |             ^^^^^^^^^^^
    |
-   = note: `-D clippy::same-name-method` implied by `-D warnings`
 note: existing `foo` defined here
   --> $DIR/same_name_method.rs:25:13
    |
 LL |             fn foo() {}
    |             ^^^^^^^^^^^
+   = note: `-D clippy::same-name-method` implied by `-D warnings`
 
 error: method's name is the same as an existing method in a trait
   --> $DIR/same_name_method.rs:35:13

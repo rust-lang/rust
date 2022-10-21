@@ -24,4 +24,7 @@ use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
 use mod_with_some_unsafe_things::Safe as IPromiseItsSafeThisTime;
 use mod_with_some_unsafe_things::Unsafe as SuperUnsafeModThing;
 
+#[allow(clippy::unsafe_removed_from_name)]
+use mod_with_some_unsafe_things::Unsafe as SuperSafeThing;
+
 fn main() {}

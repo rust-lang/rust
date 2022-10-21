@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     cx,
                     DEFAULT_TRAIT_ACCESS,
                     expr.span,
-                    &format!("calling `{}` is more clear than this expression", replacement),
+                    &format!("calling `{replacement}` is more clear than this expression"),
                     "try",
                     replacement,
                     Applicability::Unspecified, // First resolve the TODO above
@@ -210,7 +210,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     .map(|(field, rhs)| {
                         // extract and store the assigned value for help message
                         let value_snippet = snippet_with_macro_callsite(cx, rhs.span, "..");
-                        format!("{}: {}", field, value_snippet)
+                        format!("{field}: {value_snippet}")
                     })
                     .collect::<Vec<String>>()
                     .join(", ");
@@ -227,7 +227,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                             .map(ToString::to_string)
                             .collect::<Vec<_>>()
                             .join(", ");
-                        format!("{}::<{}>", adt_def_ty_name, &tys_str)
+                        format!("{adt_def_ty_name}::<{}>", &tys_str)
                     } else {
                         binding_type.to_string()
                     }
@@ -235,12 +235,12 @@ impl<'tcx> LateLintPass<'tcx> for Default {
 
                 let sugg = if ext_with_default {
                     if field_list.is_empty() {
-                        format!("{}::default()", binding_type)
+                        format!("{binding_type}::default()")
                     } else {
-                        format!("{} {{ {}, ..Default::default() }}", binding_type, field_list)
+                        format!("{binding_type} {{ {field_list}, ..Default::default() }}")
                     }
                 } else {
-                    format!("{} {{ {} }}", binding_type, field_list)
+                    format!("{binding_type} {{ {field_list} }}")
                 };
 
                 // span lint once per statement that binds default
@@ -250,10 +250,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     first_assign.unwrap().span,
                     "field assignment outside of initializer for an instance created with Default::default()",
                     Some(local.span),
-                    &format!(
-                        "consider initializing the variable with `{}` and removing relevant reassignments",
-                        sugg
-                    ),
+                    &format!("consider initializing the variable with `{sugg}` and removing relevant reassignments"),
                 );
                 self.reassigned_linted.insert(span);
             }

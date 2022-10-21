@@ -8,12 +8,12 @@ use std::fs;
 #[test]
 fn check_that_clippy_lints_and_clippy_utils_have_the_same_version_as_clippy() {
     fn read_version(path: &str) -> String {
-        let contents = fs::read_to_string(path).unwrap_or_else(|e| panic!("error reading `{}`: {:?}", path, e));
+        let contents = fs::read_to_string(path).unwrap_or_else(|e| panic!("error reading `{path}`: {e:?}"));
         contents
             .lines()
             .filter_map(|l| l.split_once('='))
             .find_map(|(k, v)| (k.trim() == "version").then(|| v.trim()))
-            .unwrap_or_else(|| panic!("error finding version in `{}`", path))
+            .unwrap_or_else(|| panic!("error finding version in `{path}`"))
             .to_string()
     }
 
@@ -83,7 +83,7 @@ fn check_that_clippy_has_the_same_major_version_as_rustc() {
             // we don't want our tests failing suddenly
         },
         _ => {
-            panic!("Failed to parse rustc version: {:?}", vsplit);
+            panic!("Failed to parse rustc version: {vsplit:?}");
         },
     };
 }

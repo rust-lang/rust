@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// let x: i32 = 24;
     /// let rem = x.rem_euclid(4);
     /// ```
-    #[clippy::version = "1.63.0"]
+    #[clippy::version = "1.64.0"]
     pub MANUAL_REM_EUCLID,
     complexity,
     "manually reimplementing `rem_euclid`"

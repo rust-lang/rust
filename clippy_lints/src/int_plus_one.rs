@@ -138,8 +138,8 @@ impl IntPlusOne {
         if let Some(snippet) = snippet_opt(cx, node.span) {
             if let Some(other_side_snippet) = snippet_opt(cx, other_side.span) {
                 let rec = match side {
-                    Side::Lhs => Some(format!("{} {} {}", snippet, binop_string, other_side_snippet)),
-                    Side::Rhs => Some(format!("{} {} {}", other_side_snippet, binop_string, snippet)),
+                    Side::Lhs => Some(format!("{snippet} {binop_string} {other_side_snippet}")),
+                    Side::Rhs => Some(format!("{other_side_snippet} {binop_string} {snippet}")),
                 };
                 return rec;
             }

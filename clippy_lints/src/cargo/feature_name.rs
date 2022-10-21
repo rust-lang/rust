@@ -57,10 +57,8 @@ fn lint(cx: &LateContext<'_>, feature: &str, substring: &str, is_prefix: bool) {
         },
         DUMMY_SP,
         &format!(
-            "the \"{}\" {} in the feature name \"{}\" is {}",
-            substring,
+            "the \"{substring}\" {} in the feature name \"{feature}\" is {}",
             if is_prefix { "prefix" } else { "suffix" },
-            feature,
             if is_negative { "negative" } else { "redundant" }
         ),
         None,

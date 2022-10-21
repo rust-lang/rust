@@ -48,8 +48,8 @@ impl std::fmt::Display for VersionInfo {
         if (hash_trimmed.len() + date_trimmed.len()) > 0 {
             write!(
                 f,
-                "{} {}.{}.{} ({} {})",
-                self.crate_name, self.major, self.minor, self.patch, hash_trimmed, date_trimmed,
+                "{} {}.{}.{} ({hash_trimmed} {date_trimmed})",
+                self.crate_name, self.major, self.minor, self.patch,
             )?;
         } else {
             write!(f, "{} {}.{}.{}", self.crate_name, self.major, self.minor, self.patch)?;
@@ -137,7 +137,7 @@ mod test {
         let vi = get_version_info!();
         assert_eq!(vi.major, 0);
         assert_eq!(vi.minor, 2);
-        assert_eq!(vi.patch, 0);
+        assert_eq!(vi.patch, 1);
         assert_eq!(vi.crate_name, "rustc_tools_util");
         // hard to make positive tests for these since they will always change
         assert!(vi.commit_hash.is_none());
@@ -147,16 +147,16 @@ mod test {
     #[test]
     fn test_display_local() {
         let vi = get_version_info!();
-        assert_eq!(vi.to_string(), "rustc_tools_util 0.2.0");
+        assert_eq!(vi.to_string(), "rustc_tools_util 0.2.1");
     }
 
     #[test]
     fn test_debug_local() {
         let vi = get_version_info!();
-        let s = format!("{:?}", vi);
+        let s = format!("{vi:?}");
         assert_eq!(
             s,
-            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 2, patch: 0 }"
+            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 2, patch: 1 }"
         );
     }
 }

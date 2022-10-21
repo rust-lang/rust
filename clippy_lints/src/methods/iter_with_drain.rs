@@ -22,7 +22,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span
             cx,
             ITER_WITH_DRAIN,
             span.with_hi(expr.span.hi()),
-            &format!("`drain(..)` used on a `{}`", ty_name),
+            &format!("`drain(..)` used on a `{ty_name}`"),
             "try this",
             "into_iter()".to_string(),
             Applicability::MaybeIncorrect,

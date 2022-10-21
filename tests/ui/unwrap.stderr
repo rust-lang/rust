@@ -4,8 +4,8 @@ error: used `unwrap()` on `an Option` value
 LL |     let _ = opt.unwrap();
    |             ^^^^^^^^^^^^
    |
-   = note: `-D clippy::unwrap-used` implied by `-D warnings`
    = help: if you don't want to handle the `None` case gracefully, consider using `expect()` to provide a better panic message
+   = note: `-D clippy::unwrap-used` implied by `-D warnings`
 
 error: used `unwrap()` on `a Result` value
   --> $DIR/unwrap.rs:10:13

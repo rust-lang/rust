@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for PtrOffsetWithCast {
             None => return,
         };
 
-        let msg = format!("use of `{}` with a `usize` casted to an `isize`", method);
+        let msg = format!("use of `{method}` with a `usize` casted to an `isize`");
         if let Some(sugg) = build_suggestion(cx, method, receiver_expr, cast_lhs_expr) {
             span_lint_and_sugg(
                 cx,
@@ -124,7 +124,7 @@ fn build_suggestion<'tcx>(
 ) -> Option<String> {
     let receiver = snippet_opt(cx, receiver_expr.span)?;
     let cast_lhs = snippet_opt(cx, cast_lhs_expr.span)?;
-    Some(format!("{}.{}({})", receiver, method.suggestion(), cast_lhs))
+    Some(format!("{receiver}.{}({cast_lhs})", method.suggestion()))
 }
 
 #[derive(Copy, Clone)]

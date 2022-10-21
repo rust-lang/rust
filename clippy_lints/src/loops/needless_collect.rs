@@ -45,7 +45,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                         let (arg, pred) = contains_arg
                             .strip_prefix('&')
                             .map_or(("&x", &*contains_arg), |s| ("x", s));
-                        format!("any(|{}| x == {})", arg, pred)
+                        format!("any(|{arg}| x == {pred})")
                     }
                     _ => return,
                 }
@@ -141,9 +141,9 @@ impl IterFunction {
             IterFunctionKind::Contains(span) => {
                 let s = snippet(cx, *span, "..");
                 if let Some(stripped) = s.strip_prefix('&') {
-                    format!(".any(|x| x == {})", stripped)
+                    format!(".any(|x| x == {stripped})")
                 } else {
-                    format!(".any(|x| x == *{})", s)
+                    format!(".any(|x| x == *{s})")
                 }
             },
         }

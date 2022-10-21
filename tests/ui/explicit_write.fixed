@@ -1,6 +1,7 @@
 // run-rustfix
-#![allow(unused_imports)]
 #![warn(clippy::explicit_write)]
+#![allow(unused_imports)]
+#![allow(clippy::uninlined_format_args)]
 
 fn stdout() -> String {
     String::new()

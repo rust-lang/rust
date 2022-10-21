@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::SpanlessEq;
-use rustc_ast::LitKind;
+use clippy_utils::{is_integer_literal, SpanlessEq};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -26,8 +25,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
         && lhs_path.ident.name == sym::len
 
         // RHS of subtraction is 1
-        && let ExprKind::Lit(rhs_lit) = &rhs.kind
-        && let LitKind::Int(1, ..) = rhs_lit.node
+        && is_integer_literal(rhs, 1)
 
         // check that recv == lhs_recv `recv.get(lhs_recv.len() - 1)`
         && SpanlessEq::new(cx).eq_expr(recv, lhs_recv)

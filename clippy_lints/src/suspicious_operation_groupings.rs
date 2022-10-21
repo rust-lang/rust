@@ -326,8 +326,7 @@ fn replace_left_sugg(
     applicability: &mut Applicability,
 ) -> String {
     format!(
-        "{} {} {}",
-        left_suggestion,
+        "{left_suggestion} {} {}",
         binop.op.to_string(),
         snippet_with_applicability(cx, binop.right.span, "..", applicability),
     )
@@ -340,10 +339,9 @@ fn replace_right_sugg(
     applicability: &mut Applicability,
 ) -> String {
     format!(
-        "{} {} {}",
+        "{} {} {right_suggestion}",
         snippet_with_applicability(cx, binop.left.span, "..", applicability),
         binop.op.to_string(),
-        right_suggestion,
     )
 }
 
@@ -676,9 +674,8 @@ fn suggestion_with_swapped_ident(
         }
 
         Some(format!(
-            "{}{}{}",
+            "{}{new_ident}{}",
             snippet_with_applicability(cx, expr.span.with_hi(current_ident.span.lo()), "..", applicability),
-            new_ident,
             snippet_with_applicability(cx, expr.span.with_lo(current_ident.span.hi()), "..", applicability),
         ))
     })

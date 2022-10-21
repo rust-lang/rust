@@ -6,8 +6,8 @@ LL | |     4
 LL | | }
    | |_^
    |
-   = note: `-D clippy::unused-async` implied by `-D warnings`
    = help: consider removing the `async` from this function
+   = note: `-D clippy::unused-async` implied by `-D warnings`
 
 error: unused `async` for function with no await statements
   --> $DIR/unused_async.rs:17:5

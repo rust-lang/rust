@@ -4,8 +4,8 @@ error: `std::string::String` may not be held across an `await` point per `clippy
 LL |     let _x = String::from("hello");
    |         ^^
    |
-   = note: `-D clippy::await-holding-invalid-type` implied by `-D warnings`
    = note: strings are bad
+   = note: `-D clippy::await-holding-invalid-type` implied by `-D warnings`
 
 error: `std::net::Ipv4Addr` may not be held across an `await` point per `clippy.toml`
   --> $DIR/await_holding_invalid_type.rs:10:9

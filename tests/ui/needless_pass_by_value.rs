@@ -1,10 +1,11 @@
 #![warn(clippy::needless_pass_by_value)]
+#![allow(dead_code)]
 #![allow(
-    dead_code,
-    clippy::single_match,
-    clippy::redundant_pattern_matching,
     clippy::option_option,
-    clippy::redundant_clone
+    clippy::redundant_clone,
+    clippy::redundant_pattern_matching,
+    clippy::single_match,
+    clippy::uninlined_format_args
 )]
 
 use std::borrow::Borrow;

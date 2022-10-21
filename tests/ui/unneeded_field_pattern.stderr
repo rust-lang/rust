@@ -4,8 +4,8 @@ error: you matched a field with a wildcard pattern, consider using `..` instead
 LL |         Foo { a: _, b: 0, .. } => {},
    |               ^^^^
    |
-   = note: `-D clippy::unneeded-field-pattern` implied by `-D warnings`
    = help: try with `Foo { b: 0, .. }`
+   = note: `-D clippy::unneeded-field-pattern` implied by `-D warnings`
 
 error: all the struct fields are matched to a wildcard pattern, consider using `..`
   --> $DIR/unneeded_field_pattern.rs:16:9

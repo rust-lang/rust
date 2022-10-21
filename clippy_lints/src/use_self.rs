@@ -12,11 +12,11 @@ use rustc_hir::{
     Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath,
     TyKind,
 };
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
-use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !is_from_proc_macro(cx, item); // expensive, should be last check
             then {
                 StackItem::Check {
-                    impl_id: item.def_id,
+                    impl_id: item.def_id.def_id,
                     in_body: 0,
                     types_to_skip: std::iter::once(self_ty.hir_id).collect(),
                 }
@@ -206,7 +206,12 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 ref types_to_skip,
             }) = self.stack.last();
             if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
-            if !matches!(path.res, Res::SelfTy { .. } | Res::Def(DefKind::TyParam, _));
+            if !matches!(
+                path.res,
+                Res::SelfTyParam { .. }
+                | Res::SelfTyAlias { .. }
+                | Res::Def(DefKind::TyParam, _)
+            );
             if !types_to_skip.contains(&hir_ty.hir_id);
             let ty = if in_body > 0 {
                 cx.typeck_results().node_type(hir_ty.hir_id)
@@ -230,7 +235,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         }
         match expr.kind {
             ExprKind::Struct(QPath::Resolved(_, path), ..) => match path.res {
-                Res::SelfTy { .. } => (),
+                Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => (),
                 Res::Def(DefKind::Variant, _) => lint_path_to_variant(cx, path),
                 _ => span_lint(cx, path.span),
             },

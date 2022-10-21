@@ -1,5 +1,5 @@
 use crate::clippy_project_root;
-use indoc::{indoc, writedoc};
+use indoc::{formatdoc, writedoc};
 use std::fmt::Write as _;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
@@ -23,7 +23,7 @@ impl<T> Context for io::Result<T> {
         match self {
             Ok(t) => Ok(t),
             Err(e) => {
-                let message = format!("{}: {}", text.as_ref(), e);
+                let message = format!("{}: {e}", text.as_ref());
                 Err(io::Error::new(ErrorKind::Other, message))
             },
         }
@@ -72,7 +72,7 @@ fn create_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
         let lint_contents = get_lint_file_contents(lint, enable_msrv);
         let lint_path = format!("clippy_lints/src/{}.rs", lint.name);
         write_file(lint.project_root.join(&lint_path), lint_contents.as_bytes())?;
-        println!("Generated lint file: `{}`", lint_path);
+        println!("Generated lint file: `{lint_path}`");
 
         Ok(())
     }
@@ -86,7 +86,7 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
 
         path.push("src");
         fs::create_dir(&path)?;
-        let header = format!("// compile-flags: --crate-name={}", lint_name);
+        let header = format!("// compile-flags: --crate-name={lint_name}");
         write_file(path.join("main.rs"), get_test_file_contents(lint_name, Some(&header)))?;
 
         Ok(())
@@ -106,7 +106,7 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
         let test_contents = get_test_file_contents(lint.name, None);
         write_file(lint.project_root.join(&test_path), test_contents)?;
 
-        println!("Generated test file: `{}`", test_path);
+        println!("Generated test file: `{test_path}`");
     }
 
     Ok(())
@@ -186,38 +186,36 @@ pub(crate) fn get_stabilization_version() -> String {
 }
 
 fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {
-    let mut contents = format!(
-        indoc! {"
-            #![allow(unused)]
-            #![warn(clippy::{})]
+    let mut contents = formatdoc!(
+        r#"
+        #![allow(unused)]
+        #![warn(clippy::{lint_name})]
 
-            fn main() {{
-                // test code goes here
-            }}
-        "},
-        lint_name
+        fn main() {{
+            // test code goes here
+        }}
+    "#
     );
 
     if let Some(header) = header_commands {
-        contents = format!("{}\n{}", header, contents);
+        contents = format!("{header}\n{contents}");
     }
 
     contents
 }
 
 fn get_manifest_contents(lint_name: &str, hint: &str) -> String {
-    format!(
-        indoc! {r#"
-            # {}
+    formatdoc!(
+        r#"
+        # {hint}
 
-            [package]
-            name = "{}"
-            version = "0.1.0"
-            publish = false
+        [package]
+        name = "{lint_name}"
+        version = "0.1.0"
+        publish = false
 
-            [workspace]
-        "#},
-        hint, lint_name
+        [workspace]
+    "#
     )
 }
 
@@ -238,76 +236,61 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
     let name_upper = lint_name.to_uppercase();
 
     result.push_str(&if enable_msrv {
-        format!(
-            indoc! {"
-                use clippy_utils::msrvs;
-                {pass_import}
-                use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
-                use rustc_semver::RustcVersion;
-                use rustc_session::{{declare_tool_lint, impl_lint_pass}};
+        formatdoc!(
+            r#"
+            use clippy_utils::msrvs;
+            {pass_import}
+            use rustc_lint::{{{context_import}, {pass_type}, LintContext}};
+            use rustc_semver::RustcVersion;
+            use rustc_session::{{declare_tool_lint, impl_lint_pass}};
 
-            "},
-            pass_type = pass_type,
-            pass_import = pass_import,
-            context_import = context_import,
+        "#
         )
     } else {
-        format!(
-            indoc! {"
-                {pass_import}
-                use rustc_lint::{{{context_import}, {pass_type}}};
-                use rustc_session::{{declare_lint_pass, declare_tool_lint}};
+        formatdoc!(
+            r#"
+            {pass_import}
+            use rustc_lint::{{{context_import}, {pass_type}}};
+            use rustc_session::{{declare_lint_pass, declare_tool_lint}};
 
-            "},
-            pass_import = pass_import,
-            pass_type = pass_type,
-            context_import = context_import
+        "#
         )
     });
 
     let _ = write!(result, "{}", get_lint_declaration(&name_upper, category));
 
     result.push_str(&if enable_msrv {
-        format!(
-            indoc! {"
-                pub struct {name_camel} {{
-                    msrv: Option<RustcVersion>,
+        formatdoc!(
+            r#"
+            pub struct {name_camel} {{
+                msrv: Option<RustcVersion>,
+            }}
+
+            impl {name_camel} {{
+                #[must_use]
+                pub fn new(msrv: Option<RustcVersion>) -> Self {{
+                    Self {{ msrv }}
                 }}
+            }}
 
-                impl {name_camel} {{
-                    #[must_use]
-                    pub fn new(msrv: Option<RustcVersion>) -> Self {{
-                        Self {{ msrv }}
-                    }}
-                }}
+            impl_lint_pass!({name_camel} => [{name_upper}]);
 
-                impl_lint_pass!({name_camel} => [{name_upper}]);
+            impl {pass_type}{pass_lifetimes} for {name_camel} {{
+                extract_msrv_attr!({context_import});
+            }}
 
-                impl {pass_type}{pass_lifetimes} for {name_camel} {{
-                    extract_msrv_attr!({context_import});
-                }}
-
-                // TODO: Add MSRV level to `clippy_utils/src/msrvs.rs` if needed.
-                // TODO: Add MSRV test to `tests/ui/min_rust_version_attr.rs`.
-                // TODO: Update msrv config comment in `clippy_lints/src/utils/conf.rs`
-            "},
-            pass_type = pass_type,
-            pass_lifetimes = pass_lifetimes,
-            name_upper = name_upper,
-            name_camel = name_camel,
-            context_import = context_import,
+            // TODO: Add MSRV level to `clippy_utils/src/msrvs.rs` if needed.
+            // TODO: Add MSRV test to `tests/ui/min_rust_version_attr.rs`.
+            // TODO: Update msrv config comment in `clippy_lints/src/utils/conf.rs`
+        "#
         )
     } else {
-        format!(
-            indoc! {"
-                declare_lint_pass!({name_camel} => [{name_upper}]);
+        formatdoc!(
+            r#"
+            declare_lint_pass!({name_camel} => [{name_upper}]);
 
-                impl {pass_type}{pass_lifetimes} for {name_camel} {{}}
-            "},
-            pass_type = pass_type,
-            pass_lifetimes = pass_lifetimes,
-            name_upper = name_upper,
-            name_camel = name_camel,
+            impl {pass_type}{pass_lifetimes} for {name_camel} {{}}
+        "#
         )
     });
 
@@ -315,8 +298,8 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 }
 
 fn get_lint_declaration(name_upper: &str, category: &str) -> String {
-    format!(
-        indoc! {r#"
+    formatdoc!(
+        r#"
             declare_clippy_lint! {{
                 /// ### What it does
                 ///
@@ -330,15 +313,13 @@ fn get_lint_declaration(name_upper: &str, category: &str) -> String {
                 /// ```rust
                 /// // example code which does not raise clippy warning
                 /// ```
-                #[clippy::version = "{version}"]
+                #[clippy::version = "{}"]
                 pub {name_upper},
                 {category},
                 "default lint description"
             }}
-        "#},
-        version = get_stabilization_version(),
-        name_upper = name_upper,
-        category = category,
+        "#,
+        get_stabilization_version(),
     )
 }
 
@@ -352,7 +333,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
         _ => {},
     }
 
-    let ty_dir = lint.project_root.join(format!("clippy_lints/src/{}", ty));
+    let ty_dir = lint.project_root.join(format!("clippy_lints/src/{ty}"));
     assert!(
         ty_dir.exists() && ty_dir.is_dir(),
         "Directory `{}` does not exist!",
@@ -412,10 +393,10 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
     }
 
     write_file(lint_file_path.as_path(), lint_file_contents)?;
-    println!("Generated lint file: `clippy_lints/src/{}/{}.rs`", ty, lint.name);
+    println!("Generated lint file: `clippy_lints/src/{ty}/{}.rs`", lint.name);
     println!(
-        "Be sure to add a call to `{}::check` in `clippy_lints/src/{}/mod.rs`!",
-        lint.name, ty
+        "Be sure to add a call to `{}::check` in `clippy_lints/src/{ty}/mod.rs`!",
+        lint.name
     );
 
     Ok(())
@@ -542,7 +523,7 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
         .chain(std::iter::once(&*lint_name_upper))
         .filter(|s| !s.is_empty())
     {
-        let _ = write!(new_arr_content, "\n    {},", ident);
+        let _ = write!(new_arr_content, "\n    {ident},");
     }
     new_arr_content.push('\n');
 

@@ -32,8 +32,8 @@ pub(super) fn check<'tcx>(
         cx,
         ITER_NTH,
         expr.span,
-        &format!("called `.iter{0}().nth()` on a {1}", mut_str, caller_type),
+        &format!("called `.iter{mut_str}().nth()` on a {caller_type}"),
         None,
-        &format!("calling `.get{}()` is both faster and more readable", mut_str),
+        &format!("calling `.get{mut_str}()` is both faster and more readable"),
     );
 }

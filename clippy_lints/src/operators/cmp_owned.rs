@@ -99,7 +99,7 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
             let expr_snip;
             let eq_impl;
             if with_deref.is_implemented() {
-                expr_snip = format!("*{}", arg_snip);
+                expr_snip = format!("*{arg_snip}");
                 eq_impl = with_deref;
             } else {
                 expr_snip = arg_snip.to_string();
@@ -121,17 +121,15 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
                 };
                 if eq_impl.ty_eq_other {
                     hint = format!(
-                        "{}{}{}",
-                        expr_snip,
+                        "{expr_snip}{}{}",
                         snippet(cx, cmp_span, ".."),
                         snippet(cx, other.span, "..")
                     );
                 } else {
                     hint = format!(
-                        "{}{}{}",
+                        "{}{}{expr_snip}",
                         snippet(cx, other.span, ".."),
-                        snippet(cx, cmp_span, ".."),
-                        expr_snip
+                        snippet(cx, cmp_span, "..")
                     );
                 }
             }

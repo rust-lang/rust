@@ -131,12 +131,12 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
         },
         hir::ExprKind::Block(block, _) => {
             match (block.stmts, block.expr.as_ref()) {
-                (&[], Some(inner_expr)) => {
+                ([], Some(inner_expr)) => {
                     // If block only contains an expression,
                     // reduce `{ X }` to `X`
                     reduce_unit_expression(cx, inner_expr)
                 },
-                (&[ref inner_stmt], None) => {
+                ([inner_stmt], None) => {
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.kind {
@@ -194,10 +194,7 @@ fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
 
 #[must_use]
 fn suggestion_msg(function_type: &str, map_type: &str) -> String {
-    format!(
-        "called `map(f)` on an `{0}` value where `f` is a {1} that returns the unit type `()`",
-        map_type, function_type
-    )
+    format!("called `map(f)` on an `{map_type}` value where `f` is a {function_type} that returns the unit type `()`")
 }
 
 fn lint_map_unit_fn(

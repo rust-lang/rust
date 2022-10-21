@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{higher, is_adjusted, path_to_local, path_to_local_id};
 use if_chain::if_chain;
@@ -11,7 +11,7 @@ use rustc_hir::{Closure, Expr, ExprKind, Param, PatKind, Unsafety};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
-use rustc_middle::ty::{self, ClosureKind, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
@@ -122,15 +122,12 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(mut snippet) = snippet_opt(cx, callee.span) {
-                        if_chain! {
-                            if let ty::Closure(_, substs) = callee_ty.peel_refs().kind();
-                            if substs.as_closure().kind() == ClosureKind::FnMut;
-                            if path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, expr));
-
-                            then {
+                        if let Some(fn_mut_id) = cx.tcx.lang_items().fn_mut_trait()
+                            && implements_trait(cx, callee_ty.peel_refs(), fn_mut_id, &[])
+                            && path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, expr))
+                        {
                                 // Mutable closure is used after current expr; we cannot consume it.
-                                snippet = format!("&mut {}", snippet);
-                            }
+                                snippet = format!("&mut {snippet}");
                         }
                         diag.span_suggestion(
                             expr.span,
@@ -157,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                     diag.span_suggestion(
                         expr.span,
                         "replace the closure with the method itself",
-                        format!("{}::{}", name, path.ident.name),
+                        format!("{name}::{}", path.ident.name),
                         Applicability::MachineApplicable,
                     );
                 })

@@ -50,13 +50,13 @@ fn set_diagnostic<'tcx>(diag: &mut Diagnostic, cx: &LateContext<'tcx>, expr: &'t
     let trailing_indent = " ".repeat(indent_of(cx, found.found_span).unwrap_or(0));
 
     let replacement = if found.lint_suggestion == LintSuggestion::MoveAndDerefToCopy {
-        format!("let value = *{};\n{}", original, trailing_indent)
+        format!("let value = *{original};\n{trailing_indent}")
     } else if found.is_unit_return_val {
         // If the return value of the expression to be moved is unit, then we don't need to
         // capture the result in a temporary -- we can just replace it completely with `()`.
-        format!("{};\n{}", original, trailing_indent)
+        format!("{original};\n{trailing_indent}")
     } else {
-        format!("let value = {};\n{}", original, trailing_indent)
+        format!("let value = {original};\n{trailing_indent}")
     };
 
     let suggestion_message = if found.lint_suggestion == LintSuggestion::MoveOnly {

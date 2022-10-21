@@ -4,8 +4,8 @@ error: unused `self` argument
 LL |         fn unused_self_move(self) {}
    |                             ^^^^
    |
-   = note: `-D clippy::unused-self` implied by `-D warnings`
    = help: consider refactoring to a associated function
+   = note: `-D clippy::unused-self` implied by `-D warnings`
 
 error: unused `self` argument
   --> $DIR/unused_self.rs:12:28

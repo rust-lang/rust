@@ -202,12 +202,11 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         cx,
         ENUM_VARIANT_NAMES,
         span,
-        &format!("all variants have the same {}fix: `{}`", what, value),
+        &format!("all variants have the same {what}fix: `{value}`"),
         None,
         &format!(
-            "remove the {}fixes and use full paths to \
-             the variants instead of glob imports",
-            what
+            "remove the {what}fixes and use full paths to \
+             the variants instead of glob imports"
         ),
     );
 }
@@ -297,7 +296,7 @@ impl LateLintPass<'_> for EnumVariantNames {
             }
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
-            if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.def_id)) {
+            if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.def_id.def_id)) {
                 check_variant(cx, self.threshold, def, item_name, item.span);
             }
         }
