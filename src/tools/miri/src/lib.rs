@@ -9,6 +9,7 @@
 #![feature(is_some_and)]
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
+#![feature(is_terminal)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,

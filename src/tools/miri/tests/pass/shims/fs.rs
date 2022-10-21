@@ -3,14 +3,15 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
+#![feature(is_terminal)]
 
 use std::collections::HashMap;
-use std::ffi::{CString, OsString};
+use std::ffi::OsString;
 use std::fs::{
-    create_dir, read_dir, read_link, remove_dir, remove_dir_all, remove_file, rename, File,
-    OpenOptions,
+    canonicalize, create_dir, read_dir, read_link, remove_dir, remove_dir_all, remove_file, rename,
+    File, OpenOptions,
 };
-use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
+use std::io::{Error, ErrorKind, IsTerminal, Read, Result, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 fn main() {
@@ -26,13 +27,7 @@ fn main() {
     test_rename();
     test_directory();
     test_canonicalize();
-    test_dup_stdout_stderr();
     test_from_raw_os_error();
-
-    // These all require unix, if the test is changed to no longer `ignore-windows`, move these to a unix test
-    test_file_open_unix_allow_two_args();
-    test_file_open_unix_needs_three_args();
-    test_file_open_unix_extra_third_arg();
 }
 
 fn tmp() -> PathBuf {
@@ -97,41 +92,10 @@ fn test_file() {
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
 
+    assert!(!file.is_terminal());
+
     // Removing file should succeed.
     remove_file(&path).unwrap();
-}
-
-fn test_file_open_unix_allow_two_args() {
-    use std::os::unix::ffi::OsStrExt;
-
-    let path = prepare_with_content("test_file_open_unix_allow_two_args.txt", &[]);
-
-    let mut name = path.into_os_string();
-    name.push("\0");
-    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
-    let _fd = unsafe { libc::open(name_ptr, libc::O_RDONLY) };
-}
-
-fn test_file_open_unix_needs_three_args() {
-    use std::os::unix::ffi::OsStrExt;
-
-    let path = prepare_with_content("test_file_open_unix_needs_three_args.txt", &[]);
-
-    let mut name = path.into_os_string();
-    name.push("\0");
-    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
-    let _fd = unsafe { libc::open(name_ptr, libc::O_CREAT, 0o666) };
-}
-
-fn test_file_open_unix_extra_third_arg() {
-    use std::os::unix::ffi::OsStrExt;
-
-    let path = prepare_with_content("test_file_open_unix_extra_third_arg.txt", &[]);
-
-    let mut name = path.into_os_string();
-    name.push("\0");
-    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
-    let _fd = unsafe { libc::open(name_ptr, libc::O_RDONLY, 42) };
 }
 
 fn test_file_clone() {
@@ -279,46 +243,6 @@ fn test_symlink() {
     symlink_file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::ffi::OsStrExt;
-
-        let expected_path = path.as_os_str().as_bytes();
-
-        // Test that the expected string gets written to a buffer of proper
-        // length, and that a trailing null byte is not written.
-        let symlink_c_str = CString::new(symlink_path.as_os_str().as_bytes()).unwrap();
-        let symlink_c_ptr = symlink_c_str.as_ptr();
-
-        // Make the buf one byte larger than it needs to be,
-        // and check that the last byte is not overwritten.
-        let mut large_buf = vec![0xFF; expected_path.len() + 1];
-        let res = unsafe {
-            libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len())
-        };
-        // Check that the resovled path was properly written into the buf.
-        assert_eq!(&large_buf[..(large_buf.len() - 1)], expected_path);
-        assert_eq!(large_buf.last(), Some(&0xFF));
-        assert_eq!(res, large_buf.len() as isize - 1);
-
-        // Test that the resolved path is truncated if the provided buffer
-        // is too small.
-        let mut small_buf = [0u8; 2];
-        let res = unsafe {
-            libc::readlink(symlink_c_ptr, small_buf.as_mut_ptr().cast(), small_buf.len())
-        };
-        assert_eq!(small_buf, &expected_path[..small_buf.len()]);
-        assert_eq!(res, small_buf.len() as isize);
-
-        // Test that we report a proper error for a missing path.
-        let bad_path = CString::new("MIRI_MISSING_FILE_NAME").unwrap();
-        let res = unsafe {
-            libc::readlink(bad_path.as_ptr(), small_buf.as_mut_ptr().cast(), small_buf.len())
-        };
-        assert_eq!(res, -1);
-        assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
-    }
-
     // Test that metadata of a symbolic link (i.e., the file it points to) is correct.
     check_metadata(bytes, &symlink_path).unwrap();
     // Test that the metadata of a symbolic link is correct when not following it.
@@ -369,7 +293,6 @@ fn test_rename() {
 }
 
 fn test_canonicalize() {
-    use std::fs::canonicalize;
     let dir_path = prepare_dir("miri_test_fs_dir");
     create_dir(&dir_path).unwrap();
     let path = dir_path.join("test_file");
@@ -379,11 +302,6 @@ fn test_canonicalize() {
     assert_eq!(p.to_string_lossy().find('.'), None);
 
     remove_dir_all(&dir_path).unwrap();
-
-    // Make sure we get an error for long paths.
-    use std::convert::TryInto;
-    let too_long = "x/".repeat(libc::PATH_MAX.try_into().unwrap());
-    assert!(canonicalize(too_long).is_err());
 }
 
 fn test_directory() {
@@ -438,16 +356,6 @@ fn test_directory() {
     drop(File::create(&path_1).unwrap());
     create_dir(&path_2).unwrap();
     remove_dir_all(&dir_path).unwrap();
-}
-
-fn test_dup_stdout_stderr() {
-    let bytes = b"hello dup fd\n";
-    unsafe {
-        let new_stdout = libc::fcntl(1, libc::F_DUPFD, 0);
-        let new_stderr = libc::fcntl(2, libc::F_DUPFD, 0);
-        libc::write(new_stdout, bytes.as_ptr() as *const libc::c_void, bytes.len());
-        libc::write(new_stderr, bytes.as_ptr() as *const libc::c_void, bytes.len());
-    }
 }
 
 fn test_from_raw_os_error() {
