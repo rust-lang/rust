@@ -1,5 +1,3 @@
-// run-pass
-
 #![allow(unused)]
 
 struct S;
@@ -12,8 +10,7 @@ impl S {
 
 fn dont_crash<'a, U>() -> U {
     S.func::<'a, U>()
-    //~^ WARN cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
+    //~^ ERROR cannot specify lifetime arguments explicitly
 }
 
 fn main() {}

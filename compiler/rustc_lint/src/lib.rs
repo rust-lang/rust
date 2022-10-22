@@ -504,6 +504,11 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see issue #82523 \
          <https://github.com/rust-lang/rust/issues/82523> for more information",
     );
+    store.register_removed(
+        "late_bound_lifetime_arguments",
+        "converted into hard error, see issue #42868 \
+         <https://github.com/rust-lang/rust/issues/42868> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

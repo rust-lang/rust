@@ -9,6 +9,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
    |             ^^
+   = help: remove the explicit lifetime argument
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/method-call-lifetime-args.rs:11:24
@@ -21,6 +22,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL |     fn late_implicit(self, _: &u8, _: &u8) {}
    |                               ^
+   = help: remove the explicit lifetime argument
 
 error: aborting due to 2 previous errors
 
