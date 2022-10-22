@@ -171,7 +171,9 @@ impl Layout {
     ///
     /// # Safety
     ///
-    /// This function is only safe to call if the following conditions hold:
+    /// This function is safe to call if the pointer is safe to reborrow as `&T`
+    /// (in which case you could also call [`Layout::for_value`]). Otherwise,
+    /// the following conditions must hold:
     ///
     /// - If `T` is `Sized`, this function is always safe to call.
     /// - If the unsized tail of `T` is:
@@ -187,8 +189,7 @@ impl Layout {
     ///       extern type's layout is not known. This is the same behavior as
     ///       [`Layout::for_value`] on a reference to an extern type tail.
     ///     - otherwise, it is conservatively allowed to call this function
-    ///       only when it would be safe to reborrow `t` as a shared reference
-    ///       and pass it to [`Layout::for_value`].
+    ///       only when it would be safe to reborrow `t` as a shared reference.
     ///
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html

@@ -351,7 +351,9 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// # Safety
 ///
-/// This function is only safe to call if the following conditions hold:
+/// This function is safe to call if the pointer is safe to reborrow as `&T`
+/// (in which case you could also call [`size_of_val`]). Otherwise, the
+/// following conditions must hold:
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
 /// - If the unsized tail of `T` is:
@@ -367,8 +369,7 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///       extern type's layout is not known. This is the same behavior as
 ///       [`size_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively allowed to call this function
-///       only when it would be safe to reborrow `val` as a shared reference
-///       and pass it to [`size_of_val`].
+///       only when it would be safe to reborrow `val` as a shared reference.
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
@@ -499,7 +500,9 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// # Safety
 ///
-/// This function is only safe to call if the following conditions hold:
+/// This function is safe to call if the pointer is safe to reborrow as `&T`
+/// (in which case you could also call [`align_of_val`]). Otherwise, the
+/// following conditions must hold:
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
 /// - If the unsized tail of `T` is:
@@ -515,8 +518,7 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///       extern type's layout is not known. This is the same behavior as
 ///       [`align_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively allowed to call this function
-///       only when it would be safe to reborrow `val` as a shared reference
-///       and pass it to [`align_of_val`].
+///       only when it would be safe to reborrow `val` as a shared reference.
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
