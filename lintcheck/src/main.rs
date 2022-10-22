@@ -144,12 +144,12 @@ impl ClippyWarning {
             }
 
             let mut output = String::from("| ");
-            let _ = write!(output, "[`{}`]({}#L{})", file_with_pos, file, self.line);
+            let _ = write!(output, "[`{file_with_pos}`]({file}#L{})", self.line);
             let _ = write!(output, r#" | `{:<50}` | "{}" |"#, self.lint_type, self.message);
             output.push('\n');
             output
         } else {
-            format!("{} {} \"{}\"\n", file_with_pos, self.lint_type, self.message)
+            format!("{file_with_pos} {} \"{}\"\n", self.lint_type, self.message)
         }
     }
 }
@@ -161,10 +161,10 @@ fn get(path: &str) -> Result<ureq::Response, ureq::Error> {
         match ureq::get(path).call() {
             Ok(res) => return Ok(res),
             Err(e) if retries >= MAX_RETRIES => return Err(e),
-            Err(ureq::Error::Transport(e)) => eprintln!("Error: {}", e),
+            Err(ureq::Error::Transport(e)) => eprintln!("Error: {e}"),
             Err(e) => return Err(e),
         }
-        eprintln!("retrying in {} seconds...", retries);
+        eprintln!("retrying in {retries} seconds...");
         thread::sleep(Duration::from_secs(retries as u64));
         retries += 1;
     }
@@ -181,11 +181,11 @@ impl CrateSource {
                 let krate_download_dir = PathBuf::from(LINTCHECK_DOWNLOADS);
 
                 // url to download the crate from crates.io
-                let url = format!("https://crates.io/api/v1/crates/{}/{}/download", name, version);
-                println!("Downloading and extracting {} {} from {}", name, version, url);
+                let url = format!("https://crates.io/api/v1/crates/{name}/{version}/download");
+                println!("Downloading and extracting {name} {version} from {url}");
                 create_dirs(&krate_download_dir, &extract_dir);
 
-                let krate_file_path = krate_download_dir.join(format!("{}-{}.crate.tar.gz", name, version));
+                let krate_file_path = krate_download_dir.join(format!("{name}-{version}.crate.tar.gz"));
                 // don't download/extract if we already have done so
                 if !krate_file_path.is_file() {
                     // create a file path to download and write the crate data into
@@ -205,7 +205,7 @@ impl CrateSource {
                 Crate {
                     version: version.clone(),
                     name: name.clone(),
-                    path: extract_dir.join(format!("{}-{}/", name, version)),
+                    path: extract_dir.join(format!("{name}-{version}/")),
                     options: options.clone(),
                 }
             },
@@ -218,12 +218,12 @@ impl CrateSource {
                 let repo_path = {
                     let mut repo_path = PathBuf::from(LINTCHECK_SOURCES);
                     // add a -git suffix in case we have the same crate from crates.io and a git repo
-                    repo_path.push(format!("{}-git", name));
+                    repo_path.push(format!("{name}-git"));
                     repo_path
                 };
                 // clone the repo if we have not done so
                 if !repo_path.is_dir() {
-                    println!("Cloning {} and checking out {}", url, commit);
+                    println!("Cloning {url} and checking out {commit}");
                     if !Command::new("git")
                         .arg("clone")
                         .arg(url)
@@ -232,7 +232,7 @@ impl CrateSource {
                         .expect("Failed to clone git repo!")
                         .success()
                     {
-                        eprintln!("Failed to clone {} into {}", url, repo_path.display())
+                        eprintln!("Failed to clone {url} into {}", repo_path.display())
                     }
                 }
                 // check out the commit/branch/whatever
@@ -245,7 +245,7 @@ impl CrateSource {
                     .expect("Failed to check out commit")
                     .success()
                 {
-                    eprintln!("Failed to checkout {} of repo at {}", commit, repo_path.display())
+                    eprintln!("Failed to checkout {commit} of repo at {}", repo_path.display())
                 }
 
                 Crate {
@@ -261,11 +261,11 @@ impl CrateSource {
                 // as a result of this filter.
                 let dest_crate_root = PathBuf::from(LINTCHECK_SOURCES).join(name);
                 if dest_crate_root.exists() {
-                    println!("Deleting existing directory at {:?}", dest_crate_root);
+                    println!("Deleting existing directory at {dest_crate_root:?}");
                     std::fs::remove_dir_all(&dest_crate_root).unwrap();
                 }
 
-                println!("Copying {:?} to {:?}", path, dest_crate_root);
+                println!("Copying {path:?} to {dest_crate_root:?}");
 
                 fn is_cache_dir(entry: &DirEntry) -> bool {
                     std::fs::read(entry.path().join("CACHEDIR.TAG"))
@@ -389,10 +389,7 @@ impl Crate {
 
         let all_output = Command::new(&cargo_clippy_path)
             // use the looping index to create individual target dirs
-            .env(
-                "CARGO_TARGET_DIR",
-                shared_target_dir.join(format!("_{:?}", thread_index)),
-            )
+            .env("CARGO_TARGET_DIR", shared_target_dir.join(format!("_{thread_index:?}")))
             .args(&cargo_clippy_args)
             .current_dir(&self.path)
             .output()
@@ -422,8 +419,8 @@ impl Crate {
             {
                 let subcrate = &stderr[63..];
                 println!(
-                    "ERROR: failed to apply some suggetion to {} / to (sub)crate {}",
-                    self.name, subcrate
+                    "ERROR: failed to apply some suggetion to {} / to (sub)crate {subcrate}",
+                    self.name
                 );
             }
             // fast path, we don't need the warnings anyway
@@ -459,7 +456,7 @@ fn read_crates(toml_path: &Path) -> (Vec<CrateSource>, RecursiveOptions) {
     let toml_content: String =
         std::fs::read_to_string(toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: SourceList =
-        toml::from_str(&toml_content).unwrap_or_else(|e| panic!("Failed to parse {}: \n{}", toml_path.display(), e));
+        toml::from_str(&toml_content).unwrap_or_else(|e| panic!("Failed to parse {}: \n{e}", toml_path.display()));
     // parse the hashmap of the toml file into a list of crates
     let tomlcrates: Vec<TomlCrate> = crate_list.crates.into_values().collect();
 
@@ -498,7 +495,7 @@ fn read_crates(toml_path: &Path) -> (Vec<CrateSource>, RecursiveOptions) {
         if tk.versions.is_some() && (tk.git_url.is_some() || tk.git_hash.is_some())
             || tk.git_hash.is_some() != tk.git_url.is_some()
         {
-            eprintln!("tomlkrate: {:?}", tk);
+            eprintln!("tomlkrate: {tk:?}");
             if tk.git_hash.is_some() != tk.git_url.is_some() {
                 panic!("Error: Encountered TomlCrate with only one of git_hash and git_url!");
             }
@@ -526,13 +523,13 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, 
     let mut stats: Vec<(&&String, &usize)> = counter.iter().map(|(lint, count)| (lint, count)).collect();
     // sort by "000{count} {clippy::lintname}"
     // to not have a lint with 200 and 2 warnings take the same spot
-    stats.sort_by_key(|(lint, count)| format!("{:0>4}, {}", count, lint));
+    stats.sort_by_key(|(lint, count)| format!("{count:0>4}, {lint}"));
 
     let mut header = String::from("| lint                                               | count |\n");
     header.push_str("| -------------------------------------------------- | ----- |\n");
     let stats_string = stats
         .iter()
-        .map(|(lint, count)| format!("| {:<50} |  {:>4} |\n", lint, count))
+        .map(|(lint, count)| format!("| {lint:<50} |  {count:>4} |\n"))
         .fold(header, |mut table, line| {
             table.push_str(&line);
             table
@@ -731,7 +728,7 @@ fn main() {
     write!(text, "{}", all_msgs.join("")).unwrap();
     text.push_str("\n\n### ICEs:\n");
     for (cratename, msg) in ices.iter() {
-        let _ = write!(text, "{}: '{}'", cratename, msg);
+        let _ = write!(text, "{cratename}: '{msg}'");
     }
 
     println!("Writing logs to {}", config.lintcheck_results_path.display());
@@ -795,7 +792,7 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
         .iter()
         .filter(|(new_key, _)| old_stats_deduped.get::<str>(new_key).is_none())
         .for_each(|(new_key, new_value)| {
-            println!("{} 0 => {}", new_key, new_value);
+            println!("{new_key} 0 => {new_value}");
         });
 
     // list all changed counts (key is in both maps but value differs)
@@ -804,7 +801,7 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
         .filter(|(new_key, _new_val)| old_stats_deduped.get::<str>(new_key).is_some())
         .for_each(|(new_key, new_val)| {
             let old_val = old_stats_deduped.get::<str>(new_key).unwrap();
-            println!("{} {} => {}", new_key, old_val, new_val);
+            println!("{new_key} {old_val} => {new_val}");
         });
 
     // list all gone counts (key is in old status but not in new stats)
@@ -813,7 +810,7 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
         .filter(|(old_key, _)| new_stats_deduped.get::<&String>(old_key).is_none())
         .filter(|(old_key, _)| lint_filter.is_empty() || lint_filter.contains(old_key))
         .for_each(|(old_key, old_value)| {
-            println!("{} {} => 0", old_key, old_value);
+            println!("{old_key} {old_value} => 0");
         });
 }
 

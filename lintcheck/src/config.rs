@@ -97,7 +97,7 @@ impl LintcheckConfig {
             Some(&0) => {
                 // automatic choice
                 // Rayon seems to return thread count so half that for core count
-                (rayon::current_num_threads() / 2) as usize
+                rayon::current_num_threads() / 2
             },
             Some(&threads) => threads,
             // no -j passed, use a single thread
