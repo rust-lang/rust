@@ -90,6 +90,8 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
 cl::opt<bool> EnzymeJuliaAddrLoad(
     "enzyme-julia-addr-load", cl::init(false), cl::Hidden,
     cl::desc("Mark all loads resulting in an addr(13)* to be legal to redo"));
+
+LLVMValueRef (*EnzymeFixupReturn)(LLVMBuilderRef, LLVMValueRef) = nullptr;
 }
 
 struct CacheAnalysis {
@@ -2630,13 +2632,17 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       if (auto ggep = dyn_cast<GetElementPtrInst>(gep)) {
         ggep->setIsInBounds(true);
       }
+      if (EnzymeFixupReturn)
+        actualrv = unwrap(EnzymeFixupReturn(wrap(&ib), wrap(actualrv)));
       auto storeinst = ib.CreateStore(actualrv, gep);
       PostCacheStore(storeinst, ib);
     }
 
     if (shadowReturnUsed) {
       assert(invertedRetPs[ri]);
-      if (!isa<UndefValue>(invertedRetPs[ri])) {
+      Value *shadowRV = invertedRetPs[ri];
+
+      if (!isa<UndefValue>(shadowRV)) {
         Value *gep =
             removeStruct
                 ? ret
@@ -2648,15 +2654,13 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
         if (auto ggep = dyn_cast<GetElementPtrInst>(gep)) {
           ggep->setIsInBounds(true);
         }
-        if (isa<ConstantExpr>(invertedRetPs[ri]) ||
-            isa<ConstantData>(invertedRetPs[ri])) {
-          auto storeinst = ib.CreateStore(invertedRetPs[ri], gep);
-          PostCacheStore(storeinst, ib);
-        } else {
-          assert(VMap[invertedRetPs[ri]]);
-          auto storeinst = ib.CreateStore(VMap[invertedRetPs[ri]], gep);
-          PostCacheStore(storeinst, ib);
+        if (!(isa<ConstantExpr>(shadowRV) || isa<ConstantData>(shadowRV))) {
+          shadowRV = VMap[shadowRV];
         }
+        if (EnzymeFixupReturn)
+          shadowRV = unwrap(EnzymeFixupReturn(wrap(&ib), wrap(shadowRV)));
+        auto storeinst = ib.CreateStore(shadowRV, gep);
+        PostCacheStore(storeinst, ib);
       }
     }
     if (noReturn)
