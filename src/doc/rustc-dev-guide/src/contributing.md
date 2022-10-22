@@ -183,6 +183,7 @@ As a developer to this repository, you don't have to treat the following externa
 differently from other crates that are directly in this repo:
 
 * [Clippy](https://github.com/rust-lang/rust-clippy)
+* [Miri](https://github.com/rust-lang/miri)
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
 
@@ -257,12 +258,12 @@ some of them are optional (like [Miri]).
 Usage of submodules is discussed more in the [Using Git
 chapter](git.md#git-submodules).
 
-Some of the submodules are allowed to be in a "broken" state where they either
-don't build or their tests don't pass. These include [Miri] and the
-documentation books like [The Rust Reference]. Maintainers of these projects
-will be notified when the project is in a broken state, and they should fix
-them as soon as possible. The current status is tracked on the [toolstate
-website]. More information may be found on the Forge [Toolstate chapter].
+Some of the submodules are allowed to be in a "broken" state where they
+either don't build or their tests don't pass, e.g. the documentation books
+like [The Rust Reference]. Maintainers of these projects will be notified
+when the project is in a broken state, and they should fix them as soon
+as possible. The current status is tracked on the [toolstate website].
+More information may be found on the Forge [Toolstate chapter].
 
 Breakage is not allowed in the beta and stable channels, and must be addressed
 before the PR is merged. They are also not allowed to be broken on master in
@@ -270,7 +271,6 @@ the week leading up to the beta cut.
 
 [git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
 [`.gitmodules`]: https://github.com/rust-lang/rust/blob/master/.gitmodules
-[Miri]: https://github.com/rust-lang/miri
 [The Rust Reference]: https://github.com/rust-lang/reference/
 [toolstate website]: https://rust-lang-nursery.github.io/rust-toolstate/
 [Toolstate chapter]: https://forge.rust-lang.org/infra/toolstate.html
@@ -309,8 +309,8 @@ Here are those same steps in detail:
    from resetting to the original branch after you make your changes. If you
    need to [update any submodules to their latest versions](#updating-submodules),
    see the section of this file about that for more information.
-2. (optional) Run `./x.py test src/tools/miri` (substituting the submodule
-   that broke for `miri`). Fix any errors in the submodule (and possibly others).
+2. (optional) Run `./x.py test src/tools/cargo` (substituting the submodule
+   that broke for `cargo`). Fix any errors in the submodule (and possibly others).
 3. (optional) Make commits for your changes and send them to upstream repositories as a PR.
 4. (optional) Maintainers of these submodules will **not** merge the PR. The PR can't be
    merged because CI will be broken. You'll want to write a message on the PR referencing
@@ -320,23 +320,6 @@ Here are those same steps in detail:
 7. (optional) Help land your PR on the upstream repository now that your changes are in nightly.
 8. (optional) Send a PR to rust-lang/rust updating the submodule.
 
-#### Updating submodules
-
-These instructions are specific to updating `miri`, however they may apply
-to the other submodules as well. Please help by improving these instructions
-if you find any discrepancies or special cases that need to be addressed.
-
-To update the `miri` submodule, start by running the appropriate
-[`git submodule` command](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
-For example, to update to the latest commit on the remote master branch,
-you may want to run:
-```
-git submodule update --remote src/tools/miri
-```
-If you run `./x.py build` now, and you are lucky, it may just work.
-
-To add these changes to a commit, use `git add src/tools/miri` and commit the
-change. You can the push and open a PR.
 
 ## Writing Documentation
 

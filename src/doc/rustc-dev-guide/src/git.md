@@ -148,8 +148,8 @@ Your branch is up to date with 'origin/master'.
 Changes not staged for commit:
   (use "git add <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
+	modified:   src/llvm-project (new commits)
 	modified:   src/tools/cargo (new commits)
-	modified:   src/tools/miri (new commits)
 
 no changes added to commit (use "git add" and/or "git commit -a")
 ```
@@ -175,6 +175,8 @@ There is a workaround in [the issue][#77620-workaround].
 
 [#77620]: https://github.com/rust-lang/rust/issues/77620
 [#77620-workaround]: https://github.com/rust-lang/rust/issues/77620#issuecomment-705228229
+
+(Note that as of Sept 2022 `miri` is a subtree and not a submodule.)
 
 ## Rebasing and Conflicts
 
@@ -391,41 +393,41 @@ you might want to get used to the main concepts of Git before reading this secti
 
 The `rust-lang/rust` repository uses [Git submodules] as a way to use other
 Rust projects from within the `rust` repo. Examples include Rust's fork of
-`llvm-project` and many devtools such as `cargo` and `miri`.
+`llvm-project`, `cargo`  and libraries like `stdarch` and `backtrace`.
 
 Those projects are developed and maintained in an separate Git (and GitHub)
 repository, and they have their own Git history/commits, issue tracker and PRs.
 Submodules allow us to create some sort of embedded sub-repository inside the
 `rust` repository and use them like they were directories in the `rust` repository.
 
-Take `miri` for example. `miri` is maintained in the [`rust-lang/miri`] repository,
-but it is used in `rust-lang/rust` by the compiler for const evaluation. We bring it
-in `rust` as a submodule, in the `src/tools/miri` folder.
+Take `llvm-project` for example. `llvm-project` is maintained in the [`rust-lang/llvm-project`]
+repository, but it is used in `rust-lang/rust` by the compiler for code generation and
+optimization. We bring it in `rust` as a submodule, in the `src/llvm-project` folder.
 
 The contents of submodules are ignored by Git: submodules are in some sense isolated
-from the rest of the repository. However, if you try to `cd src/tools/miri` and then
+from the rest of the repository. However, if you try to `cd src/llvm-project` and then
 run `git status`:
 
 ```
-HEAD detached at 3fafb835
+HEAD detached at 9567f08afc943
 nothing to commit, working tree clean
 ```
 
-As far as git is concerned, you are no longer in the `rust` repo, but in the `miri` repo.
+As far as git is concerned, you are no longer in the `rust` repo, but in the `llvm-project` repo.
 You will notice that we are in "detached HEAD" state, i.e. not on a branch but on a
 particular commit.
 
 This is because, like any dependency, we want to be able to control which version to use.
 Submodules allow us to do just that: every submodule is "pinned" to a certain
 commit, which doesn't change unless modified manually. If you use `git checkout <commit>`
-in the `miri` directory and go back to the `rust` directory, you can stage this
-change like any other, e.g. by running `git add src/tools/miri`. (Note that if
+in the `llvm-project` directory and go back to the `rust` directory, you can stage this
+change like any other, e.g. by running `git add src/llvm-project`. (Note that if
 you *don't* stage the change to commit, then you run the risk that running
 `x.py` will just undo your change by switching back to the previous commit when
 it automatically "updates" the submodules.)
 
 This version selection is usually done by the maintainers of the project, and
-looks like [this][miri-update].
+looks like [this][llvm-update].
 
 Git submodules take some time to get used to, so don't worry if it isn't perfectly
 clear yet. You will rarely have to use them directly and, again, you don't need
@@ -434,5 +436,5 @@ exist and that they correspond to some sort of embedded subrepository dependency
 that Git can nicely and fairly conveniently handle for us.
 
 [Git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
-[`rust-lang/miri`]: https://github.com/rust-lang/miri
-[miri-update]: https://github.com/rust-lang/rust/pull/77500/files
+[`rust-lang/llvm-project`]: https://github.com/rust-lang/llvm-project
+[llvm-update]: https://github.com/rust-lang/rust/pull/99464/files
