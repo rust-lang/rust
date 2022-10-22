@@ -563,10 +563,10 @@ impl Step for Miri {
         cargo.add_rustc_lib_path(builder, compiler);
 
         // miri tests need to know about the stage sysroot
-        cargo.env("MIRI_SYSROOT", miri_sysroot);
+        cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", sysroot);
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-        cargo.env("MIRI", miri);
+        cargo.env("MIRI", &miri);
         // propagate --bless
         if builder.config.cmd.bless() {
             cargo.env("MIRI_BLESS", "Gesundheit");
@@ -576,6 +576,40 @@ impl Step for Miri {
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
         // Forward test filters.
         cargo.arg("--").args(builder.config.cmd.test_args());
+
+        let mut cargo = Command::from(cargo);
+        builder.run(&mut cargo);
+
+        // # Run `cargo miri test`.
+        // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
+        // that we get the desired output), but that is sufficient to make sure that the libtest harness
+        // itself executes properly under Miri.
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            host,
+            "run",
+            "src/tools/miri/cargo-miri",
+            SourceType::Submodule,
+            &[],
+        );
+        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.arg("--").arg("miri").arg("test");
+        cargo
+            .arg("--manifest-path")
+            .arg(builder.src.join("src/tools/miri/test-cargo-miri/Cargo.toml"));
+        cargo.arg("--target").arg(target.rustc_target_arg());
+        cargo.arg("--tests"); // don't run doctests, they are too confused by the staging
+        cargo.arg("--").args(builder.config.cmd.test_args());
+
+        // Tell `cargo miri` where to find things.
+        cargo.env("MIRI_SYSROOT", &miri_sysroot);
+        cargo.env("MIRI_HOST_SYSROOT", sysroot);
+        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
+        cargo.env("MIRI", &miri);
+        // Debug things.
+        cargo.env("RUST_BACKTRACE", "1");
 
         let mut cargo = Command::from(cargo);
         builder.run(&mut cargo);
