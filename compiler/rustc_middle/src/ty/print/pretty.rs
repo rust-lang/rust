@@ -795,8 +795,7 @@ pub trait PrettyPrinter<'tcx>:
         let mut fn_traits = FxIndexMap::default();
         let mut is_sized = false;
 
-        for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
-            let predicate = predicate.subst(tcx, substs);
+        for (predicate, _) in bounds.subst_iter_copied(tcx, substs) {
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {
