@@ -373,7 +373,7 @@ define_Conf! {
     (max_include_file_size: u64 = 1_000_000),
     /// Lint: EXPECT_USED.
     ///
-    /// Whether `expect` should be allowed in test cfg
+    /// Whether `expect` should be allowed within `#[cfg(test)]`
     (allow_expect_in_tests: bool = false),
     /// Lint: UNWRAP_USED.
     ///
