@@ -8,7 +8,8 @@
     simd_ffi,
     staged_api,
     stdsimd,
-    strict_provenance
+    strict_provenance,
+    ptr_metadata
 )]
 #![cfg_attr(feature = "generic_const_exprs", feature(generic_const_exprs))]
 #![cfg_attr(feature = "generic_const_exprs", allow(incomplete_features))]

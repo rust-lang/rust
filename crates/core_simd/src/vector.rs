@@ -220,9 +220,10 @@ where
     /// Lanewise casts pointers to another pointer type.
     #[must_use]
     #[inline]
-    pub fn cast_ptr<U: SimdCastPtr>(self) -> Simd<U, LANES>
+    pub fn cast_ptr<U>(self) -> Simd<U, LANES>
     where
-        T: SimdCastPtr,
+        T: SimdCastPtr<U>,
+        U: SimdElement,
     {
         // Safety: supported types are guaranteed by SimdCastPtr
         unsafe { intrinsics::simd_cast_ptr(self) }
@@ -753,14 +754,24 @@ unsafe impl SimdElement for f64 {
 
 impl<T> Sealed for *const T {}
 
-// Safety: const pointers are valid SIMD element types, and are supported by this API
-unsafe impl<T> SimdElement for *const T {
+// Safety: (thin) const pointers are valid SIMD element types, and are supported by this API
+//
+// Fat pointers may be supported in the future.
+unsafe impl<T> SimdElement for *const T
+where
+    T: core::ptr::Pointee<Metadata = ()>,
+{
     type Mask = isize;
 }
 
 impl<T> Sealed for *mut T {}
 
-// Safety: mut pointers are valid SIMD element types, and are supported by this API
-unsafe impl<T> SimdElement for *mut T {
+// Safety: (thin) mut pointers are valid SIMD element types, and are supported by this API
+//
+// Fat pointers may be supported in the future.
+unsafe impl<T> SimdElement for *mut T
+where
+    T: core::ptr::Pointee<Metadata = ()>,
+{
     type Mask = isize;
 }
