@@ -530,6 +530,11 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         "converted into hard error, see issue #71800 \
          <https://github.com/rust-lang/rust/issues/71800> for more information",
     );
+    store.register_removed(
+        "late_bound_lifetime_arguments",
+        "converted into hard error, see issue #42868 \
+         <https://github.com/rust-lang/rust/issues/42868> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

@@ -9,9 +9,8 @@ impl S {
 }
 fn dont_crash<'a, U>() {
     S.func::<'a, 10_u32>()
-    //~^ WARNING cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-    //~^^ WARNING this was previously accepted by
-    //~^^^ ERROR constant provided when a type was expected [E0747]
+    //~^ ERROR cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+    //~| ERROR constant provided when a type was expected [E0747]
 }
 
 fn main() {}

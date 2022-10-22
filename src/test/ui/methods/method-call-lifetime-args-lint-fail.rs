@@ -1,4 +1,3 @@
-#![deny(late_bound_lifetime_arguments)]
 #![allow(unused)]
 
 struct S;
@@ -22,44 +21,32 @@ fn method_call() {
     S.late(&0, &0); // OK
     S.late::<'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
     S.late::<'static, 'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
     S.late::<'static, 'static, 'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
     S.late_early(&0); // OK
     S.late_early::<'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
     S.late_early::<'static, 'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
     S.late_early::<'static, 'static, 'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
 
     S.late_implicit(&0, &0); // OK
     S.late_implicit::<'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
     S.late_implicit::<'static, 'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
     S.late_implicit::<'static, 'static, 'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
     S.late_implicit_early(&0); // OK
     S.late_implicit_early::<'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
     S.late_implicit_early::<'static, 'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
     S.late_implicit_early::<'static, 'static, 'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
 
     S::early_tricky_explicit::<'static>(loop {}, loop {}); // OK
     S::early_tricky_implicit::<'static>(loop {}, loop {}); // OK
@@ -68,11 +55,9 @@ fn method_call() {
 fn ufcs() {
     S::late_early::<'static>(S, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
 
     S::late_implicit_early::<'static>(S, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
 }
 
 fn lint_not_inference_error() {
@@ -81,7 +66,6 @@ fn lint_not_inference_error() {
     // Make sure `u8` is substituted and not replaced with an inference variable
     f::<'static, u8>;
     //~^ ERROR cannot specify lifetime arguments explicitly
-    //~| WARN this was previously accepted
 }
 
 fn main() {}

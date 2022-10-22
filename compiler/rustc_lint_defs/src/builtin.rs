@@ -1355,47 +1355,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `late_bound_lifetime_arguments` lint detects generic lifetime
-    /// arguments in path segments with late bound lifetime parameters.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// struct S;
-    ///
-    /// impl S {
-    ///     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
-    /// }
-    ///
-    /// fn main() {
-    ///     S.late::<'static>(&0, &0);
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// It is not clear how to provide arguments for early-bound lifetime
-    /// parameters if they are intermixed with late-bound parameters in the
-    /// same list. For now, providing any explicit arguments will trigger this
-    /// lint if late-bound parameters are present, so in the future a solution
-    /// can be adopted without hitting backward compatibility issues. This is
-    /// a [future-incompatible] lint to transition this to a hard error in the
-    /// future. See [issue #42868] for more details, along with a description
-    /// of the difference between early and late-bound parameters.
-    ///
-    /// [issue #42868]: https://github.com/rust-lang/rust/issues/42868
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub LATE_BOUND_LIFETIME_ARGUMENTS,
-    Warn,
-    "detects generic lifetime arguments in path segments with late bound lifetime parameters",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #42868 <https://github.com/rust-lang/rust/issues/42868>",
-    };
-}
-
-declare_lint! {
     /// The `order_dependent_trait_objects` lint detects a trait coherency
     /// violation that would allow creating two trait impls for the same
     /// dynamic trait object involving marker traits.
@@ -3270,7 +3229,6 @@ declare_lint_pass! {
         CONST_ITEM_MUTATION,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         MISSING_FRAGMENT_SPECIFIER,
-        LATE_BOUND_LIFETIME_ARGUMENTS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         COHERENCE_LEAK_CHECK,
         DEPRECATED,

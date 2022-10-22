@@ -6,7 +6,7 @@ use crate::astconv::{
 use crate::errors::AssocTypeBindingNotAllowed;
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -15,7 +15,6 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::{
     self, subst, subst::SubstsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty, TyCtxt,
 };
-use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::{symbol::kw, Span};
 use smallvec::SmallVec;
 
@@ -623,7 +622,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         args: &hir::GenericArgs<'_>,
         position: GenericArgPosition,
     ) -> ExplicitLateBound {
-        let param_counts = def.own_counts();
         let infer_lifetimes = position != GenericArgPosition::Type && !args.has_lifetime_params();
 
         if infer_lifetimes {
@@ -634,25 +632,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let msg = "cannot specify lifetime arguments explicitly \
                        if late bound lifetime parameters are present";
             let note = "the late bound lifetime parameter is introduced here";
-            let span = args.args[0].span();
+            let help = format!(
+                "remove the explicit lifetime argument{}",
+                rustc_errors::pluralize!(args.num_lifetime_params())
+            );
+            let spans: Vec<_> = args
+                .args
+                .iter()
+                .filter_map(|arg| match arg {
+                    hir::GenericArg::Lifetime(l) => Some(l.span),
+                    _ => None,
+                })
+                .collect();
 
-            if position == GenericArgPosition::Value
-                && args.num_lifetime_params() != param_counts.lifetimes
-            {
-                let mut err = tcx.sess.struct_span_err(span, msg);
-                err.span_note(span_late, note);
-                err.emit();
-            } else {
-                let mut multispan = MultiSpan::from_span(span);
-                multispan.push_span_label(span_late, note);
-                tcx.struct_span_lint_hir(
-                    LATE_BOUND_LIFETIME_ARGUMENTS,
-                    args.args[0].hir_id(),
-                    multispan,
-                    msg,
-                    |lint| lint,
-                );
-            }
+            tcx.sess.struct_span_err(spans, msg).span_note(span_late, note).help(help).emit();
 
             ExplicitLateBound::Yes
         } else {
