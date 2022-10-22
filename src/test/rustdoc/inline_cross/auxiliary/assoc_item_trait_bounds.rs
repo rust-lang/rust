@@ -15,6 +15,7 @@ pub trait Main {
     type Out11: for<'r, 's> Helper<A<'s> = &'s (), B<'r> = ()>;
     type Out12: for<'w> Helper<B<'w> = std::borrow::Cow<'w, str>, A<'w> = bool>;
     type Out13: for<'fst, 'snd> Aid<'snd, Result<'fst> = &'fst mut str>;
+    type Out14<P: Copy + Eq, Q: ?Sized>;
 
     fn make<F>(_: F, _: impl FnMut(&str) -> bool)
     where
