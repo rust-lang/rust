@@ -456,6 +456,18 @@ fn align_offset_various_strides() {
 }
 
 #[test]
+fn align_offset_issue_103361() {
+    #[cfg(target_pointer_width = "64")]
+    const SIZE: usize = 1 << 47;
+    #[cfg(target_pointer_width = "32")]
+    const SIZE: usize = 1 << 30;
+    #[cfg(target_pointer_width = "16")]
+    const SIZE: usize = 1 << 13;
+    struct HugeSize([u8; SIZE - 1]);
+    let _ = (SIZE as *const HugeSize).align_offset(SIZE);
+}
+
+#[test]
 fn offset_from() {
     let mut a = [0; 5];
     let ptr1: *mut i32 = &mut a[1];
