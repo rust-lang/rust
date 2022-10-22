@@ -12,7 +12,7 @@ use syn::{spanned::Spanned, Attribute, Field, Meta, Type, TypeTuple};
 use syn::{MetaList, MetaNameValue, NestedMeta, Path};
 use synstructure::{BindingInfo, VariantInfo};
 
-use super::error::invalid_nested_attr;
+use super::error::{invalid_attr, invalid_nested_attr};
 
 thread_local! {
     pub static CODE_IDENT_COUNT: RefCell<u32> = RefCell::new(0);
@@ -496,6 +496,18 @@ impl FromStr for SuggestionKind {
     }
 }
 
+impl fmt::Display for SuggestionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SuggestionKind::Normal => write!(f, "normal"),
+            SuggestionKind::Short => write!(f, "short"),
+            SuggestionKind::Hidden => write!(f, "hidden"),
+            SuggestionKind::Verbose => write!(f, "verbose"),
+            SuggestionKind::ToolOnly => write!(f, "tool-only"),
+        }
+    }
+}
+
 impl SuggestionKind {
     pub fn to_suggestion_style(&self) -> TokenStream {
         match self {
@@ -577,21 +589,24 @@ impl SubdiagnosticKind {
 
         let meta = attr.parse_meta()?;
 
-        let mut opt_suggestion_kind = None;
         let mut kind = match name {
             "label" => SubdiagnosticKind::Label,
             "note" => SubdiagnosticKind::Note,
             "help" => SubdiagnosticKind::Help,
             "warning" => SubdiagnosticKind::Warn,
             _ => {
-                // FIXME(#100717): remove #[suggestion_{short,verbose,hidden}] attributes, use
-                // #[suggestion(style = "...")] instead
+                // Recover old `#[(multipart_)suggestion_*]` syntaxes
+                // FIXME(#100717): remove
                 if let Some(suggestion_kind) =
                     name.strip_prefix("suggestion").and_then(SuggestionKind::from_suffix)
                 {
                     if suggestion_kind != SuggestionKind::Normal {
-                        // Plain `#[suggestion]` can have a `style = "..."` attribute later, so don't set it here
-                        opt_suggestion_kind.set_once(suggestion_kind, attr.path.span().unwrap());
+                        invalid_attr(attr, &meta)
+                            .help(format!(
+                                r#"Use `#[suggestion(..., style = "{}")]` instead"#,
+                                suggestion_kind
+                            ))
+                            .emit();
                     }
 
                     SubdiagnosticKind::Suggestion {
@@ -604,8 +619,12 @@ impl SubdiagnosticKind {
                     name.strip_prefix("multipart_suggestion").and_then(SuggestionKind::from_suffix)
                 {
                     if suggestion_kind != SuggestionKind::Normal {
-                        // Plain `#[multipart_suggestion]` can have a `style = "..."` attribute later, so don't set it here
-                        opt_suggestion_kind.set_once(suggestion_kind, attr.path.span().unwrap());
+                        invalid_attr(attr, &meta)
+                            .help(format!(
+                                r#"Use `#[multipart_suggestion(..., style = "{}")]` instead"#,
+                                suggestion_kind
+                            ))
+                            .emit();
                     }
 
                     SubdiagnosticKind::MultipartSuggestion {
@@ -649,6 +668,7 @@ impl SubdiagnosticKind {
         };
 
         let mut code = None;
+        let mut suggestion_kind = None;
 
         let mut nested_iter = nested.into_iter().peekable();
 
@@ -727,7 +747,7 @@ impl SubdiagnosticKind {
                         SuggestionKind::Normal
                     });
 
-                    opt_suggestion_kind.set_once(value, span);
+                    suggestion_kind.set_once(value, span);
                 }
 
                 // Invalid nested attribute
@@ -753,11 +773,11 @@ impl SubdiagnosticKind {
             SubdiagnosticKind::Suggestion {
                 ref code_field,
                 ref mut code_init,
-                ref mut suggestion_kind,
+                suggestion_kind: ref mut kind_field,
                 ..
             } => {
-                if let Some(kind) = opt_suggestion_kind.value() {
-                    *suggestion_kind = kind;
+                if let Some(kind) = suggestion_kind.value() {
+                    *kind_field = kind;
                 }
 
                 *code_init = if let Some(init) = code.value() {
@@ -767,9 +787,11 @@ impl SubdiagnosticKind {
                     quote! { let #code_field = std::iter::empty(); }
                 };
             }
-            SubdiagnosticKind::MultipartSuggestion { ref mut suggestion_kind, .. } => {
-                if let Some(kind) = opt_suggestion_kind.value() {
-                    *suggestion_kind = kind;
+            SubdiagnosticKind::MultipartSuggestion {
+                suggestion_kind: ref mut kind_field, ..
+            } => {
+                if let Some(kind) = suggestion_kind.value() {
+                    *kind_field = kind;
                 }
             }
             SubdiagnosticKind::Label
