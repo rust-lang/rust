@@ -4,36 +4,36 @@ use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span};
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis::field_multiply_specified_in_initializer, code = "E0062")]
+#[diag(hir_analysis_field_multiply_specified_in_initializer, code = "E0062")]
 pub struct FieldMultiplySpecifiedInInitializer {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(hir_analysis::previous_use_label)]
+    #[label(previous_use_label)]
     pub prev_span: Span,
     pub ident: Ident,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis::return_stmt_outside_of_fn_body, code = "E0572")]
+#[diag(hir_analysis_return_stmt_outside_of_fn_body, code = "E0572")]
 pub struct ReturnStmtOutsideOfFnBody {
     #[primary_span]
     pub span: Span,
-    #[label(hir_analysis::encl_body_label)]
+    #[label(encl_body_label)]
     pub encl_body_span: Option<Span>,
-    #[label(hir_analysis::encl_fn_label)]
+    #[label(encl_fn_label)]
     pub encl_fn_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis::yield_expr_outside_of_generator, code = "E0627")]
+#[diag(hir_analysis_yield_expr_outside_of_generator, code = "E0627")]
 pub struct YieldExprOutsideOfGenerator {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis::struct_expr_non_exhaustive, code = "E0639")]
+#[diag(hir_analysis_struct_expr_non_exhaustive, code = "E0639")]
 pub struct StructExprNonExhaustive {
     #[primary_span]
     pub span: Span,
@@ -41,21 +41,21 @@ pub struct StructExprNonExhaustive {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis::method_call_on_unknown_type, code = "E0699")]
+#[diag(hir_analysis_method_call_on_unknown_type, code = "E0699")]
 pub struct MethodCallOnUnknownType {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis::functional_record_update_on_non_struct, code = "E0436")]
+#[diag(hir_analysis_functional_record_update_on_non_struct, code = "E0436")]
 pub struct FunctionalRecordUpdateOnNonStruct {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis::address_of_temporary_taken, code = "E0745")]
+#[diag(hir_analysis_address_of_temporary_taken, code = "E0745")]
 pub struct AddressOfTemporaryTaken {
     #[primary_span]
     #[label]
@@ -65,7 +65,7 @@ pub struct AddressOfTemporaryTaken {
 #[derive(Subdiagnostic)]
 pub enum AddReturnTypeSuggestion {
     #[suggestion(
-        hir_analysis::add_return_type_add,
+        hir_analysis_add_return_type_add,
         code = "-> {found} ",
         applicability = "machine-applicable"
     )]
@@ -75,7 +75,7 @@ pub enum AddReturnTypeSuggestion {
         found: String,
     },
     #[suggestion(
-        hir_analysis::add_return_type_missing_here,
+        hir_analysis_add_return_type_missing_here,
         code = "-> _ ",
         applicability = "has-placeholders"
     )]
@@ -87,12 +87,12 @@ pub enum AddReturnTypeSuggestion {
 
 #[derive(Subdiagnostic)]
 pub enum ExpectedReturnTypeLabel<'tcx> {
-    #[label(hir_analysis::expected_default_return_type)]
+    #[label(hir_analysis_expected_default_return_type)]
     Unit {
         #[primary_span]
         span: Span,
     },
-    #[label(hir_analysis::expected_return_type)]
+    #[label(hir_analysis_expected_return_type)]
     Other {
         #[primary_span]
         span: Span,
@@ -101,21 +101,20 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis::missing_parentheses_in_range, code = "E0689")]
+#[diag(hir_analysis_missing_parentheses_in_range, code = "E0689")]
 pub struct MissingParentheseInRange {
     #[primary_span]
-    #[label(hir_analysis::missing_parentheses_in_range)]
+    #[label(hir_analysis_missing_parentheses_in_range)]
     pub span: Span,
     pub ty_str: String,
     pub method_name: String,
-
     #[subdiagnostic]
     pub add_missing_parentheses: Option<AddMissingParenthesesInRange>,
 }
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion_verbose(
-    hir_analysis::add_missing_parentheses_in_range,
+    hir_analysis_add_missing_parentheses_in_range,
     applicability = "maybe-incorrect"
 )]
 pub struct AddMissingParenthesesInRange {

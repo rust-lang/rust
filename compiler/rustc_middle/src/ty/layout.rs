@@ -196,16 +196,16 @@ impl<'a> IntoDiagnostic<'a, !> for LayoutError<'a> {
         match self {
             LayoutError::Unknown(ty) => {
                 diag.set_arg("ty", ty);
-                diag.set_primary_message(rustc_errors::fluent::middle::unknown_layout);
+                diag.set_primary_message(rustc_errors::fluent::middle_unknown_layout);
             }
             LayoutError::SizeOverflow(ty) => {
                 diag.set_arg("ty", ty);
-                diag.set_primary_message(rustc_errors::fluent::middle::values_too_big);
+                diag.set_primary_message(rustc_errors::fluent::middle_values_too_big);
             }
             LayoutError::NormalizationFailure(ty, e) => {
                 diag.set_arg("ty", ty);
                 diag.set_arg("failure_ty", e.get_type_for_failure());
-                diag.set_primary_message(rustc_errors::fluent::middle::cannot_be_normalized);
+                diag.set_primary_message(rustc_errors::fluent::middle_cannot_be_normalized);
             }
         }
         diag

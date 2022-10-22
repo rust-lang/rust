@@ -598,12 +598,12 @@ pub fn compile_declarative_macro(
 
 #[derive(Subdiagnostic)]
 enum ExplainDocComment {
-    #[label(expand::explain_doc_comment_inner)]
+    #[label(expand_explain_doc_comment_inner)]
     Inner {
         #[primary_span]
         span: Span,
     },
-    #[label(expand::explain_doc_comment_outer)]
+    #[label(expand_explain_doc_comment_outer)]
     Outer {
         #[primary_span]
         span: Span,

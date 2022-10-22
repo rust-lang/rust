@@ -53,8 +53,8 @@ fn enforce_mem_discriminant(
         cx.struct_span_lint(
             ENUM_INTRINSICS_NON_ENUMS,
             expr_span,
-            fluent::lint::enum_intrinsics_mem_discriminant,
-            |lint| lint.set_arg("ty_param", ty_param).span_note(args_span, fluent::lint::note),
+            fluent::lint_enum_intrinsics_mem_discriminant,
+            |lint| lint.set_arg("ty_param", ty_param).span_note(args_span, fluent::note),
         );
     }
 }
@@ -65,8 +65,8 @@ fn enforce_mem_variant_count(cx: &LateContext<'_>, func_expr: &hir::Expr<'_>, sp
         cx.struct_span_lint(
             ENUM_INTRINSICS_NON_ENUMS,
             span,
-            fluent::lint::enum_intrinsics_mem_variant,
-            |lint| lint.set_arg("ty_param", ty_param).note(fluent::lint::note),
+            fluent::lint_enum_intrinsics_mem_variant,
+            |lint| lint.set_arg("ty_param", ty_param).note(fluent::note),
         );
     }
 }
