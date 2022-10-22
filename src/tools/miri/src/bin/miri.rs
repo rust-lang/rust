@@ -32,7 +32,7 @@ use rustc_middle::{
 };
 use rustc_session::{config::CrateType, search_paths::PathKind, CtfeBacktrace};
 
-use miri::{BacktraceStyle, ProvenanceMode};
+use miri::{BacktraceStyle, ProvenanceMode, RetagFields};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -426,7 +426,14 @@ fn main() {
         } else if arg == "-Zmiri-mute-stdout-stderr" {
             miri_config.mute_stdout_stderr = true;
         } else if arg == "-Zmiri-retag-fields" {
-            miri_config.retag_fields = true;
+            miri_config.retag_fields = RetagFields::Yes;
+        } else if let Some(retag_fields) = arg.strip_prefix("-Zmiri-retag-fields=") {
+            miri_config.retag_fields = match retag_fields {
+                "all" => RetagFields::Yes,
+                "none" => RetagFields::No,
+                "scalar" => RetagFields::OnlyScalar,
+                _ => show_error!("`-Zmiri-retag-fields` can only be `all`, `none`, or `scalar`"),
+            };
         } else if arg == "-Zmiri-track-raw-pointers" {
             eprintln!(
                 "WARNING: `-Zmiri-track-raw-pointers` has no effect; it is enabled by default"

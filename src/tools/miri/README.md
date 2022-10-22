@@ -377,6 +377,11 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-retag-fields` changes Stacked Borrows retagging to recurse into fields.
   This means that references in fields of structs/enums/tuples/arrays/... are retagged,
   and in particular, they are protected when passed as function arguments.
+* `-Zmiri-retag-fields=<all|none|scalar>` controls when Stacked Borrows retagging recurses into
+  fields. `all` means it always recurses (like `-Zmiri-retag-fields`), `none` means it never
+  recurses (the default), `scalar` means it only recurses for types where we would also emit
+  `noalias` annotations in the generated LLVM IR (types passed as indivudal scalars or pairs of
+  scalars).
 * `-Zmiri-tag-gc=<blocks>` configures how often the pointer tag garbage collector runs. The default
   is to search for and remove unreachable tags once every `10000` basic blocks. Setting this to
   `0` disables the garbage collector, which causes some programs to have explosive memory usage
