@@ -432,8 +432,21 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.cargo.buildScripts.invocationLocation": {
+                    "markdownDescription": "Specifies the working directory for running build scripts.\n- \"workspace\": run build scripts for a workspace in the workspace's root directory.\n    This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.\n- \"root\": run build scripts in the project's root directory.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "default": "workspace",
+                    "type": "string",
+                    "enum": [
+                        "workspace",
+                        "root"
+                    ],
+                    "enumDescriptions": [
+                        "The command will be executed in the corresponding workspace root.",
+                        "The command will be executed in the project root."
+                    ]
+                },
                 "rust-analyzer.cargo.buildScripts.invocationStrategy": {
-                    "markdownDescription": "Specifies the invocation strategy to use when running the build scripts command.\nIf `per_workspace` is set, the command will be executed for each workspace from the\ncorresponding workspace root.\nIf `once` is set, the command will be executed once in the project root.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "markdownDescription": "Specifies the invocation strategy to use when running the build scripts command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
                     "default": "per_workspace",
                     "type": "string",
                     "enum": [
@@ -441,8 +454,8 @@
                         "once"
                     ],
                     "enumDescriptions": [
-                        "The command will be executed for each workspace from the corresponding workspace root.",
-                        "The command will be executed once in the project root."
+                        "The command will be executed for each workspace.",
+                        "The command will be executed once."
                     ]
                 },
                 "rust-analyzer.cargo.buildScripts.overrideCommand": {
@@ -570,8 +583,21 @@
                         }
                     ]
                 },
+                "rust-analyzer.checkOnSave.invocationLocation": {
+                    "markdownDescription": "Specifies the working directory for running checks.\n- \"workspace\": run checks for workspaces in the corresponding workspaces' root directories.\n    This falls back to \"root\" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.\n- \"root\": run checks in the project's root directory.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "default": "workspace",
+                    "type": "string",
+                    "enum": [
+                        "workspace",
+                        "root"
+                    ],
+                    "enumDescriptions": [
+                        "The command will be executed in the corresponding workspace root.",
+                        "The command will be executed in the project root."
+                    ]
+                },
                 "rust-analyzer.checkOnSave.invocationStrategy": {
-                    "markdownDescription": "Specifies the invocation strategy to use when running the checkOnSave command.\nIf `per_workspace` is set, the command will be executed for each workspace from the\ncorresponding workspace root.\nIf `once` is set, the command will be executed once in the project root.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "markdownDescription": "Specifies the invocation strategy to use when running the checkOnSave command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
                     "default": "per_workspace",
                     "type": "string",
                     "enum": [
@@ -579,8 +605,8 @@
                         "once"
                     ],
                     "enumDescriptions": [
-                        "The command will be executed for each workspace from the corresponding workspace root.",
-                        "The command will be executed once in the project root."
+                        "The command will be executed for each workspace.",
+                        "The command will be executed once."
                     ]
                 },
                 "rust-analyzer.checkOnSave.noDefaultFeatures": {

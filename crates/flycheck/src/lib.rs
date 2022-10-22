@@ -28,6 +28,13 @@ pub enum InvocationStrategy {
     PerWorkspace,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum InvocationLocation {
+    Root(AbsPathBuf),
+    #[default]
+    Workspace,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
     CargoCommand {
@@ -39,13 +46,13 @@ pub enum FlycheckConfig {
         features: Vec<String>,
         extra_args: Vec<String>,
         extra_env: FxHashMap<String, String>,
-        invocation_strategy: InvocationStrategy,
     },
     CustomCommand {
         command: String,
         args: Vec<String>,
         extra_env: FxHashMap<String, String>,
         invocation_strategy: InvocationStrategy,
+        invocation_location: InvocationLocation,
     },
 }
 
@@ -275,7 +282,7 @@ impl FlycheckActor {
     }
 
     fn check_command(&self) -> Command {
-        let (mut cmd, args, invocation_strategy) = match &self.config {
+        let (mut cmd, args) = match &self.config {
             FlycheckConfig::CargoCommand {
                 command,
                 target_triple,
@@ -285,7 +292,6 @@ impl FlycheckActor {
                 extra_args,
                 features,
                 extra_env,
-                invocation_strategy,
             } => {
                 let mut cmd = Command::new(toolchain::cargo());
                 cmd.arg(command);
@@ -309,18 +315,40 @@ impl FlycheckActor {
                     }
                 }
                 cmd.envs(extra_env);
-                (cmd, extra_args, invocation_strategy)
+                (cmd, extra_args)
             }
-            FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy } => {
+            FlycheckConfig::CustomCommand {
+                command,
+                args,
+                extra_env,
+                invocation_strategy,
+                invocation_location,
+            } => {
                 let mut cmd = Command::new(command);
                 cmd.envs(extra_env);
-                (cmd, args, invocation_strategy)
+
+                match invocation_location {
+                    InvocationLocation::Workspace => {
+                        match invocation_strategy {
+                            InvocationStrategy::Once => {
+                                cmd.current_dir(&self.root);
+                            }
+                            InvocationStrategy::PerWorkspace => {
+                                // FIXME: cmd.current_dir(&affected_workspace);
+                                cmd.current_dir(&self.root);
+                            }
+                        }
+                    }
+                    InvocationLocation::Root(root) => {
+                        cmd.current_dir(root);
+                    }
+                }
+
+                (cmd, args)
             }
         };
-        match invocation_strategy {
-            InvocationStrategy::PerWorkspace => cmd.current_dir(&self.root),
-            InvocationStrategy::Once => cmd.args(args),
-        };
+
+        cmd.args(args);
         cmd
     }
 

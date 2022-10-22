@@ -164,3 +164,10 @@ pub enum InvocationStrategy {
     #[default]
     PerWorkspace,
 }
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum InvocationLocation {
+    Root(AbsPathBuf),
+    #[default]
+    Workspace,
+}
