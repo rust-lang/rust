@@ -752,10 +752,17 @@ struct SuggestionStyleTwice {
 }
 
 #[derive(Subdiagnostic)]
+#[suggestion_hidden(parser_add_paren, code = "")]
+//~^ ERROR #[suggestion_hidden(...)]` is not a valid attribute
+struct SuggestionStyleOldSyntax {
+    #[primary_span]
+    sub: Span,
+}
+
+#[derive(Subdiagnostic)]
 #[suggestion_hidden(parser_add_paren, code = "", style = "normal")]
-//~^ ERROR specified multiple times
-//~| NOTE previously specified here
-struct SuggestionStyleTwiceExplicit {
+//~^ ERROR #[suggestion_hidden(...)]` is not a valid attribute
+struct SuggestionStyleOldAndNewSyntax {
     #[primary_span]
     sub: Span,
 }

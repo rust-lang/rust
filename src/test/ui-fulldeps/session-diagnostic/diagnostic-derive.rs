@@ -211,9 +211,10 @@ struct LabelOnNonSpan {
 #[diag(compiletest_example, code = "E0123")]
 struct Suggest {
     #[suggestion(suggestion, code = "This is the suggested code")]
-    #[suggestion_short(suggestion, code = "This is the suggested code")]
-    #[suggestion_hidden(suggestion, code = "This is the suggested code")]
-    #[suggestion_verbose(suggestion, code = "This is the suggested code")]
+    #[suggestion(suggestion, code = "This is the suggested code", style = "normal")]
+    #[suggestion(suggestion, code = "This is the suggested code", style = "short")]
+    #[suggestion(suggestion, code = "This is the suggested code", style = "hidden")]
+    #[suggestion(suggestion, code = "This is the suggested code", style = "verbose")]
     suggestion: (Span, Applicability),
 }
 
@@ -730,7 +731,7 @@ struct SubdiagnosticEagerCorrect {
 // after the `span_suggestion` call - which breaks eager translation.
 
 #[derive(Subdiagnostic)]
-#[suggestion_short(use_instead, applicability = "machine-applicable", code = "{correct}")]
+#[suggestion(use_instead, applicability = "machine-applicable", code = "{correct}")]
 pub(crate) struct SubdiagnosticWithSuggestion {
     #[primary_span]
     span: Span,
