@@ -840,7 +840,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(..)) => {
+            (_, &ty::Dynamic(_, _, ty::Dyn)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
