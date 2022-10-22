@@ -628,7 +628,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return ExplicitLateBound::No;
         }
 
-        if let Some(span_late) = def.has_late_bound_regions {
+        let has_late_bound_regions = def
+            .params
+            .iter()
+            .find(|param| {
+                matches!(param.kind, ty::GenericParamDefKind::Lifetime { late_bound: true })
+            })
+            .map(|param| tcx.def_span(param.def_id));
+
+        if let Some(span_late) = has_late_bound_regions {
             let msg = "cannot specify lifetime arguments explicitly \
                        if late bound lifetime parameters are present";
             let note = "the late bound lifetime parameter is introduced here";

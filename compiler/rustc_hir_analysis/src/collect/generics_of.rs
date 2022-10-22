@@ -89,7 +89,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         params,
                         param_def_id_to_index,
                         has_self: generics.has_self,
-                        has_late_bound_regions: generics.has_late_bound_regions,
                     };
                 }
 
@@ -371,10 +370,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     }
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
-    let has_late_bound_regions = params
-        .iter()
-        .find(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime { late_bound: true }))
-        .map(|param| tcx.def_span(param.def_id));
 
     ty::Generics {
         parent: parent_def_id,
@@ -382,7 +377,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         params,
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
-        has_late_bound_regions,
     }
 }
 
