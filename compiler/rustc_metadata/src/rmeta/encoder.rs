@@ -31,7 +31,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::common::to_readable_str;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
-use rustc_session::config::CrateType;
+use rustc_session::config::{CrateType, OptLevel};
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind};
 use rustc_span::symbol::{sym, Symbol};
@@ -1476,6 +1476,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let unused = tcx.unused_generic_params(instance);
             if !unused.is_empty() {
                 record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
+            }
+        }
+
+        // Encode all the deduced parameter attributes for everything that has MIR, even for items
+        // that can't be inlined. But don't if we aren't optimizing in non-incremental mode, to
+        // save the query traffic.
+        if tcx.sess.opts.output_types.should_codegen()
+            && tcx.sess.opts.optimize != OptLevel::No
+            && tcx.sess.opts.incremental.is_none()
+        {
+            for &local_def_id in tcx.mir_keys(()) {
+                if let DefKind::AssocFn | DefKind::Fn = tcx.def_kind(local_def_id) {
+                    record_array!(self.tables.deduced_param_attrs[local_def_id.to_def_id()] <-
+                        self.tcx.deduced_param_attrs(local_def_id.to_def_id()));
+                }
             }
         }
     }

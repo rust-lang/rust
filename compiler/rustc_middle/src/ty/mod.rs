@@ -78,7 +78,7 @@ pub use self::consts::{
 };
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorDiagnosticData,
+    CtxtInterners, DeducedParamAttrs, DelaySpanBugEmitted, FreeRegionInfo, GeneratorDiagnosticData,
     GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TypeckResults, UserType,
     UserTypeAnnotationIndex,
 };
