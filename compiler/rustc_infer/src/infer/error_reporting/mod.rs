@@ -2272,6 +2272,25 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 struct_span_err!(self.tcx.sess, span, E0580, "{}", failure_str)
             }
             FailureCode::Error0308(failure_str) => {
+                fn escape_literal(s: &str) -> String {
+                    let mut escaped = String::with_capacity(s.len());
+                    let mut chrs = s.chars().peekable();
+                    while let Some(first) = chrs.next() {
+                        match (first, chrs.peek()) {
+                            ('\\', Some(&delim @ '"') | Some(&delim @ '\'')) => {
+                                escaped.push('\\');
+                                escaped.push(delim);
+                                chrs.next();
+                            }
+                            ('"' | '\'', _) => {
+                                escaped.push('\\');
+                                escaped.push(first)
+                            }
+                            (c, _) => escaped.push(c),
+                        };
+                    }
+                    escaped
+                }
                 let mut err = struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str);
                 if let Some((expected, found)) = trace.values.ty() {
                     match (expected.kind(), found.kind()) {
@@ -2293,7 +2312,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 err.span_suggestion(
                                     span,
                                     "if you meant to write a `char` literal, use single quotes",
-                                    format!("'{}'", code),
+                                    format!("'{}'", escape_literal(code)),
                                     Applicability::MachineApplicable,
                                 );
                             }
@@ -2308,7 +2327,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     err.span_suggestion(
                                         span,
                                         "if you meant to write a `str` literal, use double quotes",
-                                        format!("\"{}\"", code),
+                                        format!("\"{}\"", escape_literal(code)),
                                         Applicability::MachineApplicable,
                                     );
                                 }
