@@ -78,7 +78,7 @@ expected type. The [`astconv` module][astconv] is where the code responsible for
 but also in other parts of the compiler that want to ask questions like "what argument types does
 this function expect?"
 
-[astconv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/astconv/index.html
+[astconv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/astconv/index.html
 
 **How semantics drive the two instances of `Ty`**
 

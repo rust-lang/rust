@@ -125,7 +125,7 @@ You may have a couple of followup questions…
  `MyStruct`: `Adt(Foo, &[Param(0), Param(1)])`.
 
 **`subst`** How do we actually do the substitutions? There is a function for that too! You use
-[`subst`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/trait.Subst.html) to
+[`subst`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/struct.EarlyBinder.html#method.subst) to
 replace a `SubstRef` with another list of types.
 
 [Here is an example of actually using `subst` in the compiler][substex].  The exact details are not
@@ -134,7 +134,7 @@ a real `ty::Ty`. You can see that we first get some substitutions (`substs`).  T
 `type_of` to get a type and call `ty.subst(substs)` to get a new version of `ty` with
 the substitutions made.
 
-[substex]: https://github.com/rust-lang/rust/blob/597f432489f12a3f33419daa039ccef11a12c4fd/src/librustc_typeck/astconv.rs#L942-L953
+[substex]: https://github.com/rust-lang/rust/blob/0940040c0486a536be4f8685c7dd9a078f9e87c2/compiler/rustc_hir_analysis/src/astconv/mod.rs#L1231-L1242
 
 **Note on indices:** It is possible for the indices in `Param` to not match with what we expect. For
 example, the index could be out of bounds or it could be the index of a lifetime when we were

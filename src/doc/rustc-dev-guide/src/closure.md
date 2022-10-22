@@ -135,10 +135,10 @@ appropriate trait: `Fn` trait for immutable borrow, `FnMut` for mutable borrow,
 and `FnOnce` for move semantics.
 
 Most of the code related to the closure is in the
-[`compiler/rustc_typeck/src/check/upvar.rs`][upvar] file and the data structures are
+[`compiler/rustc_hir_typeck/src/upvar.rs`][upvar] file and the data structures are
 declared in the file [`compiler/rustc_middle/src/ty/mod.rs`][ty].
 
-[upvar]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/check/upvar/index.html
+[upvar]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/upvar/index.html
 [ty]:https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
 
 Before we go any further, let's discuss how we can examine the flow of control through the rustc
@@ -146,12 +146,12 @@ codebase. For closures specifically, set the `RUST_LOG` env variable as below an
 output in a file:
 
 ```console
-> RUST_LOG=rustc_typeck::check::upvar rustc +stage1 -Z dump-mir=all \
+> RUST_LOG=rustc_hir_typeck::upvar rustc +stage1 -Z dump-mir=all \
     <.rs file to compile> 2> <file where the output will be dumped>
 ```
 
 This uses the stage1 compiler and enables `debug!` logging for the
-`rustc_typeck::check::upvar` module.
+`rustc_hir_typeck::upvar` module.
 
 The other option is to step through the code using lldb or gdb.
 
@@ -164,7 +164,7 @@ Let's start with [`upvar.rs`][upvar]. This file has something called
 the [`euv::ExprUseVisitor`] which walks the source of the closure and
 invokes a callback for each upvar that is borrowed, mutated, or moved.
 
-[`euv::ExprUseVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/expr_use_visitor/struct.ExprUseVisitor.html
+[`euv::ExprUseVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/expr_use_visitor/struct.ExprUseVisitor.html
 
 ```rust
 fn main() {
@@ -210,6 +210,6 @@ self.tables
     .extend(delegate.adjust_upvar_captures);
 ```
 
-[`Delegate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/expr_use_visitor/trait.Delegate.html
-[ibk]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/check/upvar/struct.InferBorrowKind.html
-[cmt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/mem_categorization/index.html
+[`Delegate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/expr_use_visitor/trait.Delegate.html
+[ibk]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/upvar/struct.InferBorrowKind.html
+[cmt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/mem_categorization/index.html
