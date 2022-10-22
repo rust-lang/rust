@@ -183,7 +183,6 @@ mod handlers {
     mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
     mod replace_or_with_or_else;
-    mod replace_arith_with_saturating;
     mod replace_arith_with_checked;
     mod replace_arith_with_wrapping;
     mod replace_arith_with_saturating;
