@@ -150,12 +150,12 @@ pub trait ChangeMethodSelfnessTrait {
 #[rustc_clean(cfg="cfail6")]
 impl ChangeMethodSelfnessTrait for Foo {
     #[rustc_clean(
-        except="hir_owner,hir_owner_nodes,associated_item,generics_of,fn_sig,typeck,optimized_mir",
+        except="hir_owner,hir_owner_nodes,associated_item,generics_of,type_of,fn_sig,typeck,optimized_mir",
         cfg="cfail2",
     )]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(
-        except="hir_owner,hir_owner_nodes,associated_item,generics_of,fn_sig,typeck,optimized_mir",
+        except="hir_owner,hir_owner_nodes,associated_item,generics_of,type_of,fn_sig,typeck,optimized_mir",
         cfg="cfail5",
     )]
     #[rustc_clean(cfg="cfail6")]
@@ -188,12 +188,12 @@ pub trait RemoveMethodSelfnessTrait {
 #[rustc_clean(cfg="cfail6")]
 impl RemoveMethodSelfnessTrait for Foo {
     #[rustc_clean(
-        except="hir_owner,hir_owner_nodes,associated_item,generics_of,fn_sig,typeck,optimized_mir",
+        except="hir_owner,hir_owner_nodes,associated_item,generics_of,type_of,fn_sig,typeck,optimized_mir",
         cfg="cfail2",
     )]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(
-        except="hir_owner,hir_owner_nodes,associated_item,generics_of,fn_sig,typeck,optimized_mir",
+        except="hir_owner,hir_owner_nodes,associated_item,generics_of,type_of,fn_sig,typeck,optimized_mir",
         cfg="cfail5",
     )]
     #[rustc_clean(cfg="cfail6")]

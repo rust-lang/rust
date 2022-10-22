@@ -158,9 +158,9 @@ pub fn type_parameter<T>() {}
 pub fn lifetime_parameter    () {}
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2", except = "hir_owner, hir_owner_nodes, generics_of,fn_sig")]
+#[rustc_clean(cfg = "cfail2", except = "hir_owner, hir_owner_nodes, generics_of, type_of")]
 #[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5", except = "hir_owner, hir_owner_nodes, generics_of,fn_sig")]
+#[rustc_clean(cfg = "cfail5", except = "hir_owner, hir_owner_nodes, generics_of, type_of")]
 #[rustc_clean(cfg = "cfail6")]
 pub fn lifetime_parameter<'a>() {}
 
@@ -194,12 +194,12 @@ pub fn lifetime_bound<'a, T>() {}
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(
     cfg = "cfail2",
-    except = "hir_owner, hir_owner_nodes, generics_of, type_of, predicates_of,fn_sig"
+    except = "hir_owner, hir_owner_nodes, generics_of, type_of, predicates_of"
 )]
 #[rustc_clean(cfg = "cfail3")]
 #[rustc_clean(
     cfg = "cfail5",
-    except = "hir_owner, hir_owner_nodes, generics_of, type_of, predicates_of,fn_sig,optimized_mir"
+    except = "hir_owner, hir_owner_nodes, generics_of, type_of, predicates_of, optimized_mir"
 )]
 #[rustc_clean(cfg = "cfail6")]
 pub fn lifetime_bound<'a, T: 'a>() {}
@@ -234,12 +234,12 @@ pub fn second_lifetime_bound<'a, 'b, T: 'a     >() {}
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(
     cfg = "cfail2",
-    except = "hir_owner, hir_owner_nodes, generics_of, type_of, predicates_of,fn_sig"
+    except = "hir_owner, hir_owner_nodes, generics_of, type_of, predicates_of"
 )]
 #[rustc_clean(cfg = "cfail3")]
 #[rustc_clean(
     cfg = "cfail5",
-    except = "hir_owner, hir_owner_nodes, generics_of, type_of, predicates_of,fn_sig"
+    except = "hir_owner, hir_owner_nodes, generics_of, type_of, predicates_of"
 )]
 #[rustc_clean(cfg = "cfail6")]
 pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}

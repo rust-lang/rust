@@ -369,9 +369,9 @@ trait TraitChangeModeSelfOwnToMut: Sized {
 
 #[cfg(any(cfail1,cfail4))]
 trait TraitChangeModeSelfOwnToRef {
-    // --------------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------
     // -------------------------
-    // --------------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------------
     // -------------------------
     fn method( self);
 }
@@ -382,9 +382,9 @@ trait TraitChangeModeSelfOwnToRef {
 #[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitChangeModeSelfOwnToRef {
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,generics_of", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,type_of,generics_of", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,generics_of", cfg="cfail5")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,type_of,generics_of", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     fn method(&self);
 }
@@ -498,9 +498,9 @@ trait TraitAddTypeParameterToMethod {
 // Add lifetime parameter to method
 #[cfg(any(cfail1,cfail4))]
 trait TraitAddLifetimeParameterToMethod {
-    // --------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------
     // -------------------------
-    // --------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------
     // -------------------------
     fn method    ();
 }
@@ -511,9 +511,9 @@ trait TraitAddLifetimeParameterToMethod {
 #[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddLifetimeParameterToMethod {
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,generics_of", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,type_of,generics_of", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,generics_of", cfg="cfail5")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,type_of,generics_of", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     fn method<'a>();
 }
@@ -578,12 +578,12 @@ trait TraitAddBuiltinBoundToMethodTypeParameter {
 #[cfg(any(cfail1,cfail4))]
 trait TraitAddLifetimeBoundToMethodLifetimeParameter {
     // -----------
-    // -----------------------------------------------------------------------------
+    // --------------------------------------------------------------
     // --------------
     //
     // -------------------------
     // -----------
-    // -----------------------------------------------------------------------------
+    // --------------------------------------------------------------
     // --------------
     //
     // -------------------------
@@ -597,12 +597,12 @@ trait TraitAddLifetimeBoundToMethodLifetimeParameter {
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddLifetimeBoundToMethodLifetimeParameter {
     #[rustc_clean(
-        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,fn_sig,type_of",
+        except="hir_owner,hir_owner_nodes,generics_of,predicates_of",
         cfg="cfail2",
     )]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(
-        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,fn_sig,type_of",
+        except="hir_owner,hir_owner_nodes,generics_of,predicates_of",
         cfg="cfail5",
     )]
     #[rustc_clean(cfg="cfail6")]
