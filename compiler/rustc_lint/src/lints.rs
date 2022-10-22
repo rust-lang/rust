@@ -49,6 +49,68 @@ pub struct EnumIntrinsicsMemVariant<'a> {
     pub ty_param: Ty<'a>,
 }
 
+// internal.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_default_hash_types)]
+#[note]
+pub struct DefaultHashTypesDiag<'a> {
+    pub preferred: &'a str,
+    pub used: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_query_instability)]
+#[note]
+pub struct QueryInstability {
+    pub query: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_tykind_kind)]
+pub struct TykindKind {
+    #[suggestion(code = "ty", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_tykind)]
+#[help]
+pub struct TykindDiag;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_ty_qualified)]
+pub struct TyQualified {
+    pub ty: String,
+    #[suggestion(code = "{ty}", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_lintpass_by_hand)]
+#[help]
+pub struct LintPassByHand;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_non_existant_doc_keyword)]
+#[help]
+pub struct NonExistantDocKeyword {
+    pub keyword: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_diag_out_of_impl)]
+pub struct DiagOutOfImpl;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_untranslatable_diag)]
+pub struct UntranslatableDiag;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_bad_opt_access)]
+pub struct BadOptAccessDiag<'a> {
+    pub msg: &'a str,
+}
+
 // let_underscore.rs
 #[derive(LintDiagnostic)]
 pub enum NonBindingLet {

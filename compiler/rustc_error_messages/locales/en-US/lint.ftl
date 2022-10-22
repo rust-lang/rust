@@ -83,6 +83,8 @@ lint_diag_out_of_impl =
 
 lint_untranslatable_diag = diagnostics should be created using translatable messages
 
+lint_bad_opt_access = {$msg}
+
 lint_cstring_ptr = getting the inner pointer of a temporary `CString`
     .as_ptr_label = this pointer will be invalid
     .unwrap_label = this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
