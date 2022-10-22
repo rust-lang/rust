@@ -117,6 +117,10 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "riscv32" => Architecture::Riscv32,
         "riscv64" => Architecture::Riscv64,
         "sparc64" => Architecture::Sparc64,
+        "avr" => Architecture::Avr,
+        "msp430" => Architecture::Msp430,
+        "hexagon" => Architecture::Hexagon,
+        "bpf" => Architecture::Bpf,
         // Unsupported architecture.
         _ => return None,
     };
