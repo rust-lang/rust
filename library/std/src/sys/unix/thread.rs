@@ -132,8 +132,11 @@ impl Thread {
 
     #[cfg(target_os = "linux")]
     pub fn set_name(name: &CStr) {
+        const TASK_COMM_LEN: usize = 16;
+
         unsafe {
             // Available since glibc 2.12, musl 1.1.16, and uClibc 1.0.20.
+            let name = truncate_cstr(name, TASK_COMM_LEN);
             libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
         }
     }
@@ -148,6 +151,7 @@ impl Thread {
     #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
     pub fn set_name(name: &CStr) {
         unsafe {
+            let name = truncate_cstr(name, libc::MAXTHREADNAMESIZE);
             libc::pthread_setname_np(name.as_ptr());
         }
     }
@@ -274,6 +278,20 @@ impl Drop for Thread {
     fn drop(&mut self) {
         let ret = unsafe { libc::pthread_detach(self.id) };
         debug_assert_eq!(ret, 0);
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios", target_os = "watchos"))]
+fn truncate_cstr(cstr: &CStr, max_with_nul: usize) -> crate::borrow::Cow<'_, CStr> {
+    use crate::{borrow::Cow, ffi::CString};
+
+    if cstr.to_bytes_with_nul().len() > max_with_nul {
+        let bytes = cstr.to_bytes()[..max_with_nul - 1].to_vec();
+        // SAFETY: the non-nul bytes came straight from a CStr.
+        // (CString will add the terminating nul.)
+        Cow::Owned(unsafe { CString::from_vec_unchecked(bytes) })
+    } else {
+        Cow::Borrowed(cstr)
     }
 }
 
@@ -892,4 +910,29 @@ fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
 #[cfg(target_os = "netbsd")]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     2048 // just a guess
+}
+
+#[test]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios", target_os = "watchos"))]
+fn test_named_thread_truncation() {
+    use crate::thread::{self, Builder};
+
+    let long_name = crate::iter::once("test_named_thread_truncation")
+        .chain(crate::iter::repeat(" yada").take(100))
+        .collect::<String>();
+
+    let result = Builder::new().name(long_name.clone()).spawn(move || {
+        // Rust remembers the full thread name itself.
+        assert_eq!(thread::current().name(), Some(long_name.as_str()));
+
+        // But the kernel is limited -- make sure we successfully set a truncation.
+        let mut buf = vec![0u8; long_name.len() + 1];
+        unsafe {
+            libc::pthread_getname_np(libc::pthread_self(), buf.as_mut_ptr().cast(), buf.len());
+        }
+        let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
+        assert!(cstr.to_bytes().len() > 0);
+        assert!(long_name.as_bytes().starts_with(cstr.to_bytes()));
+    });
+    result.unwrap().join().unwrap();
 }
