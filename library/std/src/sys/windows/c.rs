@@ -129,6 +129,8 @@ pub const FIONBIO: c_ulong = 0x8004667e;
 
 pub const MAX_PATH: usize = 260;
 
+pub const FILE_TYPE_PIPE: u32 = 3;
+
 #[repr(C)]
 #[derive(Copy)]
 pub struct WIN32_FIND_DATAW {
@@ -1114,6 +1116,7 @@ extern "system" {
         lpFileInformation: LPVOID,
         dwBufferSize: DWORD,
     ) -> BOOL;
+    pub fn GetFileType(hfile: HANDLE) -> DWORD;
     pub fn SleepConditionVariableSRW(
         ConditionVariable: PCONDITION_VARIABLE,
         SRWLock: PSRWLOCK,

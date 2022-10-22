@@ -116,8 +116,8 @@ impl TypeLimits {
     }
 }
 
-/// Attempts to special-case the overflowing literal lint when it occurs as a range endpoint.
-/// Returns `true` iff the lint was overridden.
+/// Attempts to special-case the overflowing literal lint when it occurs as a range endpoint (`expr..MAX+1`).
+/// Returns `true` iff the lint was emitted.
 fn lint_overflowing_range_endpoint<'tcx>(
     cx: &LateContext<'tcx>,
     lit: &hir::Lit,
@@ -140,44 +140,46 @@ fn lint_overflowing_range_endpoint<'tcx>(
         return false;
     }
 
-    let mut overwritten = false;
     // We can suggest using an inclusive range
     // (`..=`) instead only if it is the `end` that is
     // overflowing and only by 1.
-    if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max
-        && let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span)
-    {
-        cx.struct_span_lint(
-            OVERFLOWING_LITERALS,
-            struct_expr.span,
-            fluent::lint::range_endpoint_out_of_range,
-            |lint| {
-                use ast::{LitIntType, LitKind};
+    if !(eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max) {
+        return false;
+    };
+    let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) else { return false };
 
-                lint.set_arg("ty", ty);
+    cx.struct_span_lint(
+        OVERFLOWING_LITERALS,
+        struct_expr.span,
+        fluent::lint::range_endpoint_out_of_range,
+        |lint| {
+            use ast::{LitIntType, LitKind};
 
-                // We need to preserve the literal's suffix,
-                // as it may determine typing information.
-                let suffix = match lit.node {
-                    LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
-                    LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
-                    LitKind::Int(_, LitIntType::Unsuffixed) => "",
-                    _ => bug!(),
-                };
-                let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
-                lint.span_suggestion(
-                    struct_expr.span,
-                    fluent::lint::suggestion,
-                    suggestion,
-                    Applicability::MachineApplicable,
-                );
-                overwritten = true;
+            lint.set_arg("ty", ty);
 
-                lint
-            },
-        );
-    }
-    overwritten
+            // We need to preserve the literal's suffix,
+            // as it may determine typing information.
+            let suffix = match lit.node {
+                LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
+                LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
+                LitKind::Int(_, LitIntType::Unsuffixed) => "",
+                _ => bug!(),
+            };
+            let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
+            lint.span_suggestion(
+                struct_expr.span,
+                fluent::lint::suggestion,
+                suggestion,
+                Applicability::MachineApplicable,
+            );
+
+            lint
+        },
+    );
+
+    // We've just emitted a lint, special cased for `(...)..MAX+1` ranges,
+    // return `true` so the callers don't also emit a lint
+    true
 }
 
 // For `isize` & `usize`, be conservative with the warnings, so that the
@@ -358,7 +360,7 @@ fn lint_int_literal<'tcx>(
         }
 
         if lint_overflowing_range_endpoint(cx, lit, v, max, e, t.name_str()) {
-            // The overflowing literal lint was overridden.
+            // The overflowing literal lint was emited by `lint_overflowing_range_endpoint`.
             return;
         }
 
@@ -427,7 +429,7 @@ fn lint_uint_literal<'tcx>(
             }
         }
         if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, t.name_str()) {
-            // The overflowing literal lint was overridden.
+            // The overflowing literal lint was emited by `lint_overflowing_range_endpoint`.
             return;
         }
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {

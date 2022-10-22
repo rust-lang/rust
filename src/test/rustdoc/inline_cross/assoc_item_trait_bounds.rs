@@ -1,13 +1,10 @@
 // Regression test for issues #77763, #84579 and #102142.
 #![crate_name = "main"]
 
-// aux-build:assoc_item_trait_bounds_with_bindings.rs
+// aux-build:assoc_item_trait_bounds.rs
 // build-aux-docs
 // ignore-cross-compile
-extern crate assoc_item_trait_bounds_with_bindings as aux;
-
-// FIXME(fmease): Don't render an incorrect `T: ?Sized` where-clause for parameters
-//                of GATs like `Main::Out{2,4}`. Add a snapshot test once it's fixed.
+extern crate assoc_item_trait_bounds as aux;
 
 // @has main/trait.Main.html
 // @has - '//*[@id="associatedtype.Out0"]' 'type Out0: Support<Item = ()>'
@@ -24,11 +21,15 @@ extern crate assoc_item_trait_bounds_with_bindings as aux;
 // @has - '//*[@id="associatedtype.Out11"]' "type Out11: for<'r, 's> Helper<A<'s> = &'s (), B<'r> = ()>"
 // @has - '//*[@id="associatedtype.Out12"]' "type Out12: for<'w> Helper<B<'w> = Cow<'w, str>, A<'w> = bool>"
 // @has - '//*[@id="associatedtype.Out13"]' "type Out13: for<'fst, 'snd> Aid<'snd, Result<'fst> = &'fst mut str>"
+// @has - '//*[@id="associatedtype.Out14"]' "type Out14<P: Copy + Eq, Q: ?Sized>"
 //
-// Snapshots: Check that we do not render any where-clauses for those associated types since all of
-// the trait bounds contained within were moved to the bounds of the respective item.
+// Snapshots:
+// Check that we don't render any where-clauses for the following associated types since
+// all corresponding projection equality predicates should have already been re-sugared
+// to associated type bindings:
 //
 // @snapshot out0 - '//*[@id="associatedtype.Out0"]/*[@class="code-header"]'
+// @snapshot out2 - '//*[@id="associatedtype.Out2"]/*[@class="code-header"]'
 // @snapshot out9 - '//*[@id="associatedtype.Out9"]/*[@class="code-header"]'
 //
 // @has - '//*[@id="tymethod.make"]' \
