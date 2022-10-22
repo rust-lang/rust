@@ -179,6 +179,7 @@ docs! {
     "format_push_string",
     "from_iter_instead_of_collect",
     "from_over_into",
+    "from_raw_with_void_ptr",
     "from_str_radix_10",
     "future_not_send",
     "get_first",

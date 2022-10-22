@@ -230,6 +230,7 @@ mod format_impl;
 mod format_push_string;
 mod formatting;
 mod from_over_into;
+mod from_raw_with_void_ptr;
 mod from_str_radix_10;
 mod functions;
 mod future_not_send;
@@ -918,6 +919,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(implicit_saturating_add::ImplicitSaturatingAdd));
     store.register_early_pass(|| Box::new(partial_pub_fields::PartialPubFields));
     store.register_late_pass(|_| Box::new(missing_trait_methods::MissingTraitMethods));
+    store.register_late_pass(|_| Box::new(from_raw_with_void_ptr::FromRawWithVoidPtr));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

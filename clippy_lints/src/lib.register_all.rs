@@ -81,6 +81,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(formatting::SUSPICIOUS_ELSE_FORMATTING),
     LintId::of(formatting::SUSPICIOUS_UNARY_OP_FORMATTING),
     LintId::of(from_over_into::FROM_OVER_INTO),
+    LintId::of(from_raw_with_void_ptr::FROM_RAW_WITH_VOID_PTR),
     LintId::of(from_str_radix_10::FROM_STR_RADIX_10),
     LintId::of(functions::DOUBLE_MUST_USE),
     LintId::of(functions::MUST_USE_UNIT),

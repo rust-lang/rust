@@ -173,6 +173,7 @@ store.register_lints(&[
     formatting::SUSPICIOUS_ELSE_FORMATTING,
     formatting::SUSPICIOUS_UNARY_OP_FORMATTING,
     from_over_into::FROM_OVER_INTO,
+    from_raw_with_void_ptr::FROM_RAW_WITH_VOID_PTR,
     from_str_radix_10::FROM_STR_RADIX_10,
     functions::DOUBLE_MUST_USE,
     functions::MUST_USE_CANDIDATE,

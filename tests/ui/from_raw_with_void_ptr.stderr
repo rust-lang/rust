@@ -1,0 +1,15 @@
+error: creating a `Box` from a raw void pointer
+  --> $DIR/from_raw_with_void_ptr.rs:8:22
+   |
+LL |     let _ = unsafe { Box::from_raw(ptr) };
+   |                      ^^^^^^^^^^^^^^^^^^
+   |
+help: cast this to a pointer of the actual type
+  --> $DIR/from_raw_with_void_ptr.rs:8:36
+   |
+LL |     let _ = unsafe { Box::from_raw(ptr) };
+   |                                    ^^^
+   = note: `-D clippy::from-raw-with-void-ptr` implied by `-D warnings`
+
+error: aborting due to previous error
+
