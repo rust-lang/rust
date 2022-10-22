@@ -176,24 +176,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match *expected_ty.kind() {
             ty::Opaque(def_id, substs) => {
                 let bounds = self.tcx.bound_explicit_item_bounds(def_id);
-                let sig = bounds
-                    .transpose_iter()
-                    .map(|e| e.map_bound(|e| *e).transpose_tuple2())
-                    .find_map(|(pred, span)| match pred.0.kind().skip_binder() {
+                let sig =
+                    bounds.subst_iter_copied(self.tcx, substs).find_map(|(pred, span)| match pred
+                        .kind()
+                        .skip_binder()
+                    {
                         ty::PredicateKind::Projection(proj_predicate) => self
                             .deduce_sig_from_projection(
-                                Some(span.0),
-                                pred.0
-                                    .kind()
-                                    .rebind(pred.rebind(proj_predicate).subst(self.tcx, substs)),
+                                Some(span),
+                                pred.kind().rebind(proj_predicate),
                             ),
                         _ => None,
                     });
 
                 let kind = bounds
-                    .transpose_iter()
-                    .map(|e| e.map_bound(|e| *e).transpose_tuple2())
-                    .filter_map(|(pred, _)| match pred.0.kind().skip_binder() {
+                    .0
+                    .iter()
+                    .filter_map(|(pred, _)| match pred.kind().skip_binder() {
                         ty::PredicateKind::Trait(tp) => {
                             self.tcx.fn_trait_kind_from_lang_item(tp.def_id())
                         }
@@ -697,18 +696,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Opaque(def_id, substs) => self
                 .tcx
                 .bound_explicit_item_bounds(def_id)
-                .transpose_iter()
-                .map(|e| e.map_bound(|e| *e).transpose_tuple2())
-                .find_map(|(p, s)| get_future_output(p.subst(self.tcx, substs), s.0))?,
+                .subst_iter_copied(self.tcx, substs)
+                .find_map(|(p, s)| get_future_output(p, s))?,
             ty::Error(_) => return None,
             ty::Projection(proj)
                 if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
             {
                 self.tcx
                     .bound_explicit_item_bounds(proj.item_def_id)
-                    .transpose_iter()
-                    .map(|e| e.map_bound(|e| *e).transpose_tuple2())
-                    .find_map(|(p, s)| get_future_output(p.subst(self.tcx, proj.substs), s.0))?
+                    .subst_iter_copied(self.tcx, proj.substs)
+                    .find_map(|(p, s)| get_future_output(p, s))?
             }
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
