@@ -1511,9 +1511,8 @@ impl char {
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
         // Bitwise or converts A-Z to a-z, avoiding need for branches in compiled code.
-        const A: u32 = 'a' as u32;
-        const F: u32 = 'f' as u32;
-        matches!(*self, '0'..='9') || matches!(*self as u32 | 0x20, A..=F)
+        ((*self as u32).wrapping_sub('0' as u32) < 10)
+            | ((*self as u32 | 0x20).wrapping_sub('a' as u32) < 6)
     }
 
     /// Checks if the value is an ASCII punctuation character:

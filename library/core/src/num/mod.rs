@@ -689,7 +689,7 @@ impl u8 {
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
         // Bitwise or converts A-Z to a-z, avoiding need for branches in compiled code.
-        matches!(*self, b'0'..=b'9') || matches!(*self | 0x20, b'a'..=b'f')
+        (self.wrapping_sub(b'0') < 10) | ((*self | 0x20).wrapping_sub(b'a') < 6)
     }
 
     /// Checks if the value is an ASCII punctuation character:
