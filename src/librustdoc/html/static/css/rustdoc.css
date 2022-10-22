@@ -920,7 +920,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	flex-flow: row wrap;
 }
 
-.search-results .result-name, .search-results div.desc, .search-results .result-description {
+.search-results .result-name, .search-results div.desc {
 	width: 50%;
 }
 .search-results .result-name {
@@ -1899,10 +1899,10 @@ in storage.js
 		border-bottom: 1px solid #aaa9;
 		padding: 5px 0px;
 	}
-	.search-results .result-name, .search-results div.desc, .search-results .result-description {
+	.search-results .result-name, .search-results div.desc {
 		width: 100%;
 	}
-	.search-results div.desc, .search-results .result-description, .item-right {
+	.search-results div.desc, .item-right {
 		padding-left: 2em;
 	}
 
