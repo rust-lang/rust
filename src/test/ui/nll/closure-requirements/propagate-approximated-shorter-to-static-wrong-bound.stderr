@@ -6,7 +6,7 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<'a, 'b, 'c, 'd, 'e, 'f> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('a) }) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('b) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrNamed('c) }) std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrNamed('d) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrNamed('e) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('b) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 5, kind: BrNamed('f) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrNamed('d) }) u32>)),
+               for<'a^0, 'b^1, 'c^2, 'd^3, 'e^4, 'f^5> extern "rust-call" fn((&'a^0 std::cell::Cell<&'_#1r &'b^1 u32>, &'c^2 std::cell::Cell<&'_#2r &'d^3 u32>, &'e^4 std::cell::Cell<&'b^1 u32>, &'f^5 std::cell::Cell<&'d^3 u32>)),
                (),
            ]
    = note: late-bound region is '_#3r

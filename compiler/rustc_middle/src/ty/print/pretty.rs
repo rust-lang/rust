@@ -2218,32 +2218,27 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             let regions: Vec<_> = value
                 .bound_vars()
                 .into_iter()
-                .map(|var| {
+                .enumerate()
+                .map(|(index, var)| {
                     let ty::BoundVariableKind::Region(var) = var else {
-                    // This doesn't really matter because it doesn't get used,
-                    // it's just an empty value
-                    return ty::BrAnon(0);
-                };
-                    match var {
+                        // This doesn't really matter because it doesn't get used,
+                        // it's just an empty value
+                        return ty::BrAnon(0);
+                    };
+                    start_or_continue(&mut self, "for<", ", ");
+                    let (def_id, name) = match var {
                         ty::BrAnon(_) | ty::BrEnv => {
-                            start_or_continue(&mut self, "for<", ", ");
                             let name = next_name(&self);
-                            debug!(?name);
-                            do_continue(&mut self, name);
-                            ty::BrNamed(CRATE_DEF_ID.to_def_id(), name)
+                            (CRATE_DEF_ID.to_def_id(), name)
                         }
                         ty::BrNamed(def_id, kw::UnderscoreLifetime) => {
-                            start_or_continue(&mut self, "for<", ", ");
                             let name = next_name(&self);
-                            do_continue(&mut self, name);
-                            ty::BrNamed(def_id, name)
+                            (def_id, name)
                         }
-                        ty::BrNamed(def_id, name) => {
-                            start_or_continue(&mut self, "for<", ", ");
-                            do_continue(&mut self, name);
-                            ty::BrNamed(def_id, name)
-                        }
-                    }
+                        ty::BrNamed(def_id, name) => (def_id, name),
+                    };
+                    let _ = write!(&mut self, "{}^{}", name, index);
+                    ty::BrNamed(def_id, name)
                 })
                 .collect();
             start_or_continue(&mut self, "", "> ");

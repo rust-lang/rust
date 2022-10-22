@@ -11,6 +11,7 @@ use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_span::symbol::kw;
 
 use std::fmt;
 use std::mem::ManuallyDrop;
@@ -65,25 +66,47 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
     }
 }
 
+impl fmt::Debug for ty::EarlyBoundRegion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.name != kw::Empty && self.name != kw::UnderscoreLifetime {
+            write!(f, "{}/{}", self.name, self.index)
+        } else {
+            write!(f, "BrNamed({:?})/{}", self.def_id, self.index)
+        }
+    }
+}
+
+impl fmt::Debug for ty::BoundRegion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}^{:?}", self.kind, self.var)
+    }
+}
+
 impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::BrAnon(n) => write!(f, "BrAnon({:?})", n),
+            ty::BrAnon(n) => write!(f, "'{}", n),
             ty::BrNamed(did, name) => {
-                if did.is_crate_root() {
-                    write!(f, "BrNamed({})", name)
+                if name != kw::Empty && name != kw::UnderscoreLifetime {
+                    write!(f, "{}", name)
                 } else {
-                    write!(f, "BrNamed({:?}, {})", did, name)
+                    write!(f, "BrNamed({:?})", did)
                 }
             }
-            ty::BrEnv => write!(f, "BrEnv"),
+            ty::BrEnv => write!(f, "'env"),
         }
     }
 }
 
 impl fmt::Debug for ty::FreeRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ReFree({:?}, {:?})", self.scope, self.bound_region)
+        write!(f, "ReFree({:?}, {:?})", self.bound_region, self.scope)
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for ty::Placeholder<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Placeholder({:?}, {:?})", self.name, self.universe)
     }
 }
 

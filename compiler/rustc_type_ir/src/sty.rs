@@ -1217,21 +1217,19 @@ impl<I: Interner> hash::Hash for RegionKind<I> {
 impl<I: Interner> fmt::Debug for RegionKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ReEarlyBound(ref data) => write!(f, "ReEarlyBound({:?})", data),
-
-            ReLateBound(binder_id, ref bound_region) => {
-                write!(f, "ReLateBound({:?}, {:?})", binder_id, bound_region)
+            ReEarlyBound(ref data) => write!(f, "{:?}", data),
+            ReLateBound(debruijn, ref bound_region) => {
+                if *debruijn == super::INNERMOST {
+                    write!(f, "{:?}", bound_region)
+                } else {
+                    write!(f, "{:?}_{}", bound_region, debruijn.as_u32())
+                }
             }
-
             ReFree(ref fr) => fr.fmt(f),
-
-            ReStatic => write!(f, "ReStatic"),
-
             ReVar(ref vid) => vid.fmt(f),
-
-            RePlaceholder(placeholder) => write!(f, "RePlaceholder({:?})", placeholder),
-
-            ReErased => write!(f, "ReErased"),
+            RePlaceholder(placeholder) => write!(f, "Re{:?}", placeholder),
+            ReStatic => write!(f, "'static"),
+            ReErased => write!(f, "'erased"),
         }
     }
 }

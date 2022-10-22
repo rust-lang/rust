@@ -6,7 +6,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
    |
    = note: defining type: test::{closure#0} with closure substs [
                i16,
-               for<'a, 'b> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('a) }) mut &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('b) }) i32, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('b) }) i32)),
+               for<'a^0, 'b^1> extern "rust-call" fn((&'a^0 mut &'b^1 i32, &'b^1 i32)),
                (),
            ]
 

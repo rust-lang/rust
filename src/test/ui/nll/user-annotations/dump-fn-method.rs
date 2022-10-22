@@ -26,7 +26,7 @@ fn main() {
     let x = foo::<u32>;
     x(22);
 
-    let x = foo::<&'static u32>; //~ ERROR [&ReStatic u32]
+    let x = foo::<&'static u32>; //~ ERROR [&'static u32]
     x(&22);
 
     // Here: we only want the `T` to be given, the rest should be variables.
@@ -41,7 +41,7 @@ fn main() {
     x(&22, 44, 66);
 
     // Here: all are given and we have a lifetime.
-    let x = <u8 as Bazoom<&'static u16>>::method::<u32>; //~ ERROR [u8, &ReStatic u16, u32]
+    let x = <u8 as Bazoom<&'static u16>>::method::<u32>; //~ ERROR [u8, &'static u16, u32]
     x(&22, &44, 66);
 
     // Here: we want in particular that *only* the method `U`

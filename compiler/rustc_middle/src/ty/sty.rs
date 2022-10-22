@@ -71,7 +71,7 @@ pub enum BoundRegionKind {
     BrEnv,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
 #[derive(HashStable)]
 pub struct BoundRegion {
     pub var: BoundVar,
@@ -1327,12 +1327,6 @@ pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,
     pub name: Symbol,
-}
-
-impl fmt::Debug for EarlyBoundRegion {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}", self.index, self.name)
-    }
 }
 
 /// A **`const`** **v**ariable **ID**.

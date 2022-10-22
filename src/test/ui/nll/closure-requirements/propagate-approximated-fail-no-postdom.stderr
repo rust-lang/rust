@@ -6,7 +6,7 @@ LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<'a, 'b> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('a) }) u32>, std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('a) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('b) }) &'_#3r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('a) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('b) }) u32>)),
+               for<'a^0, 'b^1> extern "rust-call" fn((std::cell::Cell<&'_#1r &'a^0 u32>, std::cell::Cell<&'_#2r &'a^0 u32>, std::cell::Cell<&'b^1 &'_#3r u32>, std::cell::Cell<&'a^0 u32>, std::cell::Cell<&'b^1 u32>)),
                (),
            ]
    = note: late-bound region is '_#4r
