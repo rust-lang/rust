@@ -879,12 +879,6 @@ pub(crate) fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx> + std::fmt::Debug>(
     }
     debug!(?parameters);
 
-    (0..parameters.len()).for_each(|i| {
-        parameters
-            .get(&(i as u32))
-            .or_else(|| bug!("Skipped bound var index: parameters={:?}", parameters));
-    });
-
     let binders =
         chalk_ir::VariableKinds::from_iter(interner, parameters.into_iter().map(|(_, v)| v));
 
