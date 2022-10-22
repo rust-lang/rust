@@ -1591,21 +1591,6 @@ impl<T: ?Sized> *mut T {
     #[must_use]
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
-    #[cfg(not(bootstrap))]
-    pub const fn align_offset(self, align: usize) -> usize
-    where
-        T: Sized,
-    {
-        assert!(align.is_power_of_two(), "align_offset: align is not a power-of-two");
-
-        // SAFETY: `align` has been checked to be a power of 2 above
-        unsafe { align_offset(self, align) }
-    }
-
-    #[stable(feature = "align_offset", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
-    #[allow(missing_docs)]
-    #[cfg(bootstrap)]
     pub const fn align_offset(self, align: usize) -> usize
     where
         T: Sized,
@@ -1614,21 +1599,30 @@ impl<T: ?Sized> *mut T {
             panic!("align_offset: align is not a power-of-two");
         }
 
-        fn rt_impl<T>(p: *mut T, align: usize) -> usize {
+        #[cfg(bootstrap)]
+        {
+            fn rt_impl<T>(p: *mut T, align: usize) -> usize {
+                // SAFETY: `align` has been checked to be a power of 2 above
+                unsafe { align_offset(p, align) }
+            }
+
+            const fn ctfe_impl<T>(_: *mut T, _: usize) -> usize {
+                usize::MAX
+            }
+
+            // SAFETY:
+            // It is permissible for `align_offset` to always return `usize::MAX`,
+            // algorithm correctness can not depend on `align_offset` returning non-max values.
+            //
+            // As such the behaviour can't change after replacing `align_offset` with `usize::MAX`, only performance can.
+            unsafe { intrinsics::const_eval_select((self, align), ctfe_impl, rt_impl) }
+        }
+
+        #[cfg(not(bootstrap))]
+        {
             // SAFETY: `align` has been checked to be a power of 2 above
-            unsafe { align_offset(p, align) }
+            unsafe { align_offset(self, align) }
         }
-
-        const fn ctfe_impl<T>(_: *mut T, _: usize) -> usize {
-            usize::MAX
-        }
-
-        // SAFETY:
-        // It is permissible for `align_offset` to always return `usize::MAX`,
-        // algorithm correctness can not depend on `align_offset` returning non-max values.
-        //
-        // As such the behaviour can't change after replacing `align_offset` with `usize::MAX`, only performance can.
-        unsafe { intrinsics::const_eval_select((self, align), ctfe_impl, rt_impl) }
     }
 
     /// Returns whether the pointer is properly aligned for `T`.
@@ -1790,13 +1784,17 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "pointer_is_aligned", issue = "96284")]
     #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "none")]
     pub const fn is_aligned_to(self, align: usize) -> bool {
-        assert!(align.is_power_of_two(), "is_aligned_to: align is not a power-of-two");
+        if !align.is_power_of_two() {
+            panic!("is_aligned_to: align is not a power-of-two")
+        }
 
         #[inline]
         fn runtime(ptr: *mut u8, align: usize) -> bool {
             ptr.addr() & (align - 1) == 0
         }
 
+        // This optimizes to `(ptr + align - 1) & -align == ptr`, which is slightly
+        // slower than `ptr & (align - 1) == 0`
         const fn comptime(ptr: *mut u8, align: usize) -> bool {
             ptr.align_offset(align) == 0
         }
