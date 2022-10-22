@@ -75,7 +75,7 @@ impl flags::Scip {
         let mut symbols_emitted: HashSet<TokenId> = HashSet::default();
         let mut tokens_to_symbol: HashMap<TokenId, String> = HashMap::new();
 
-        for file in si.files {
+        for StaticIndexedFile { file_id, tokens, .. } in si.files {
             let mut local_count = 0;
             let mut new_local_symbol = || {
                 let new_symbol = scip::types::Symbol::new_local(local_count);
@@ -84,7 +84,6 @@ impl flags::Scip {
                 new_symbol
             };
 
-            let StaticIndexedFile { file_id, tokens, .. } = file;
             let relative_path = match get_relative_filepath(&vfs, &rootpath, file_id) {
                 Some(relative_path) => relative_path,
                 None => continue,
@@ -107,28 +106,23 @@ impl flags::Scip {
 
                 let mut occurrence = scip_types::Occurrence::default();
                 occurrence.range = text_range_to_scip_range(&line_index, range);
-                occurrence.symbol = match tokens_to_symbol.get(&id) {
-                    Some(symbol) => symbol.clone(),
-                    None => {
+                occurrence.symbol = tokens_to_symbol
+                    .entry(id)
+                    .or_insert_with(|| {
                         let symbol = match &token.moniker {
                             Some(moniker) => moniker_to_symbol(&moniker),
                             None => new_local_symbol(),
                         };
-
-                        let symbol = scip::symbol::format_symbol(symbol);
-                        tokens_to_symbol.insert(id, symbol.clone());
-                        symbol
-                    }
-                };
+                        scip::symbol::format_symbol(symbol)
+                    })
+                    .clone();
 
                 if let Some(def) = token.definition {
                     if def.range == range {
                         occurrence.symbol_roles |= scip_types::SymbolRole::Definition as i32;
                     }
 
-                    if !symbols_emitted.contains(&id) {
-                        symbols_emitted.insert(id);
-
+                    if symbols_emitted.insert(id) {
                         let mut symbol_info = scip_types::SymbolInformation::default();
                         symbol_info.symbol = occurrence.symbol.clone();
                         if let Some(hover) = &token.hover {
