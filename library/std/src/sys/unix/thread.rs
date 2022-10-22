@@ -920,28 +920,3 @@ fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     2048 // just a guess
 }
-
-#[test]
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios", target_os = "watchos"))]
-fn test_named_thread_truncation() {
-    use crate::thread::{self, Builder};
-
-    let long_name = crate::iter::once("test_named_thread_truncation")
-        .chain(crate::iter::repeat(" yada").take(100))
-        .collect::<String>();
-
-    let result = Builder::new().name(long_name.clone()).spawn(move || {
-        // Rust remembers the full thread name itself.
-        assert_eq!(thread::current().name(), Some(long_name.as_str()));
-
-        // But the kernel is limited -- make sure we successfully set a truncation.
-        let mut buf = vec![0u8; long_name.len() + 1];
-        unsafe {
-            libc::pthread_getname_np(libc::pthread_self(), buf.as_mut_ptr().cast(), buf.len());
-        }
-        let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
-        assert!(cstr.to_bytes().len() > 0);
-        assert!(long_name.as_bytes().starts_with(cstr.to_bytes()));
-    });
-    result.unwrap().join().unwrap();
-}
