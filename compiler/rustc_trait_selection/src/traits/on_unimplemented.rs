@@ -338,7 +338,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         trait_ref.substs[param.index as usize].to_string()
                     }
-                    GenericParamDefKind::Lifetime => return None,
+                    GenericParamDefKind::Lifetime { .. } => return None,
                 };
                 let name = param.name;
                 Some((name, value))

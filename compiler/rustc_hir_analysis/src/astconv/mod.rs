@@ -418,7 +418,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 };
 
                 match (&param.kind, arg) {
-                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                    (GenericParamDefKind::Lifetime { .. }, GenericArg::Lifetime(lt)) => {
                         self.astconv.ast_region_to_region(lt, Some(param)).into()
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
@@ -458,7 +458,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ) -> subst::GenericArg<'tcx> {
                 let tcx = self.astconv.tcx();
                 match param.kind {
-                    GenericParamDefKind::Lifetime => self
+                    GenericParamDefKind::Lifetime { .. } => self
                         .astconv
                         .re_infer(Some(param), self.span)
                         .unwrap_or_else(|| {
@@ -2720,7 +2720,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
             if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
                 // Our own parameters are the resolved lifetimes.
-                if let GenericParamDefKind::Lifetime = param.kind {
+                if let GenericParamDefKind::Lifetime { .. } = param.kind {
                     if let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] {
                         self.ast_region_to_region(lifetime, None).into()
                     } else {
@@ -2739,7 +2739,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     // For `impl Trait` in the types of statics, constants,
                     // locals and type aliases. These capture all parent
                     // lifetimes, so they can use their identity subst.
-                    GenericParamDefKind::Lifetime
+                    GenericParamDefKind::Lifetime { .. }
                         if matches!(
                             origin,
                             hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..)

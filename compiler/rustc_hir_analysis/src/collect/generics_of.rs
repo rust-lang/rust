@@ -243,7 +243,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         index: own_start + i as u32,
         def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
         pure_wrt_drop: param.pure_wrt_drop,
-        kind: ty::GenericParamDefKind::Lifetime,
+        kind: ty::GenericParamDefKind::Lifetime { late_bound: false },
     }));
 
     // Now create the real type and const parameters.

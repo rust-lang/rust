@@ -57,7 +57,7 @@ where
                 .params
                 .iter()
                 .filter_map(|param| match param.kind {
-                    ty::GenericParamDefKind::Lifetime => Some(param.name),
+                    ty::GenericParamDefKind::Lifetime { .. } => Some(param.name),
                     _ => None,
                 })
                 .map(|name| (name, Lifetime(name)))

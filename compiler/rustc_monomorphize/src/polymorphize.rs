@@ -178,7 +178,7 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Impl => {
             for param in &generics.params {
                 debug!(?param, "(other)");
-                if let ty::GenericParamDefKind::Lifetime = param.kind {
+                if let ty::GenericParamDefKind::Lifetime { .. } = param.kind {
                     unused_parameters.clear(param.index);
                 }
             }

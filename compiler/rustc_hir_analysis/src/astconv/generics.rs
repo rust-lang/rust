@@ -254,7 +254,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 match (args.peek(), params.peek()) {
                     (Some(&arg), Some(&param)) => {
                         match (arg, &param.kind, arg_count.explicit_late_bound) {
-                            (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
+                            (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime { .. }, _)
                             | (
                                 GenericArg::Type(_) | GenericArg::Infer(_),
                                 GenericParamDefKind::Type { .. },
@@ -271,7 +271,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             }
                             (
                                 GenericArg::Infer(_) | GenericArg::Type(_) | GenericArg::Const(_),
-                                GenericParamDefKind::Lifetime,
+                                GenericParamDefKind::Lifetime { .. },
                                 _,
                             ) => {
                                 // We expected a lifetime argument, but got a type or const

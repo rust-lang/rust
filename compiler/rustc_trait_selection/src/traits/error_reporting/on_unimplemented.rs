@@ -186,7 +186,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         substs[param.index as usize].to_string()
                     }
-                    GenericParamDefKind::Lifetime => continue,
+                    GenericParamDefKind::Lifetime { .. } => continue,
                 };
                 let name = param.name;
                 flags.push((name, Some(value)));

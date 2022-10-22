@@ -10,7 +10,7 @@ use super::{EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Predi
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
-    Lifetime,
+    Lifetime { late_bound: bool },
     Type { has_default: bool, synthetic: bool },
     Const { has_default: bool },
 }
@@ -18,14 +18,14 @@ pub enum GenericParamDefKind {
 impl GenericParamDefKind {
     pub fn descr(&self) -> &'static str {
         match self {
-            GenericParamDefKind::Lifetime => "lifetime",
+            GenericParamDefKind::Lifetime { .. } => "lifetime",
             GenericParamDefKind::Type { .. } => "type",
             GenericParamDefKind::Const { .. } => "constant",
         }
     }
     pub fn to_ord(&self) -> ast::ParamKindOrd {
         match self {
-            GenericParamDefKind::Lifetime => ast::ParamKindOrd::Lifetime,
+            GenericParamDefKind::Lifetime { .. } => ast::ParamKindOrd::Lifetime,
             GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                 ast::ParamKindOrd::TypeOrConst
             }
@@ -34,7 +34,7 @@ impl GenericParamDefKind {
 
     pub fn is_ty_or_const(&self) -> bool {
         match self {
-            GenericParamDefKind::Lifetime => false,
+            GenericParamDefKind::Lifetime { .. } => false,
             GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => true,
         }
     }
@@ -63,7 +63,7 @@ pub struct GenericParamDef {
 
 impl GenericParamDef {
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
-        if let GenericParamDefKind::Lifetime = self.kind {
+        if let GenericParamDefKind::Lifetime { .. } = self.kind {
             ty::EarlyBoundRegion { def_id: self.def_id, index: self.index, name: self.name }
         } else {
             bug!("cannot convert a non-lifetime parameter def to an early bound region")
@@ -74,7 +74,7 @@ impl GenericParamDef {
         match self.kind {
             GenericParamDefKind::Type { has_default, .. }
             | GenericParamDefKind::Const { has_default } => has_default,
-            GenericParamDefKind::Lifetime => false,
+            GenericParamDefKind::Lifetime { .. } => false,
         }
     }
 
@@ -97,6 +97,7 @@ impl GenericParamDef {
 #[derive(Default)]
 pub struct GenericParamCount {
     pub lifetimes: usize,
+    pub early_lifetimes: usize,
     pub types: usize,
     pub consts: usize,
 }
@@ -149,7 +150,10 @@ impl<'tcx> Generics {
 
         for param in &self.params {
             match param.kind {
-                GenericParamDefKind::Lifetime => own_counts.lifetimes += 1,
+                GenericParamDefKind::Lifetime { late_bound } => {
+                    own_counts.lifetimes += 1;
+                    own_counts.early_lifetimes += !late_bound as usize;
+                }
                 GenericParamDefKind::Type { .. } => own_counts.types += 1,
                 GenericParamDefKind::Const { .. } => own_counts.consts += 1,
             }
@@ -163,7 +167,7 @@ impl<'tcx> Generics {
 
         for param in &self.params {
             match param.kind {
-                GenericParamDefKind::Lifetime => (),
+                GenericParamDefKind::Lifetime { .. } => (),
                 GenericParamDefKind::Type { has_default, .. } => {
                     own_defaults.types += has_default as usize;
                 }
@@ -195,7 +199,7 @@ impl<'tcx> Generics {
                 GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                     return true;
                 }
-                GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Lifetime { .. } => {}
             }
         }
         false
@@ -219,7 +223,7 @@ impl<'tcx> Generics {
     ) -> &'tcx GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
-            GenericParamDefKind::Lifetime => param,
+            GenericParamDefKind::Lifetime { .. } => param,
             _ => bug!("expected lifetime parameter, but found another generic parameter"),
         }
     }

@@ -1787,7 +1787,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     substs[i]
                 } else {
                     match param.kind {
-                        GenericParamDefKind::Lifetime => {
+                        GenericParamDefKind::Lifetime { .. } => {
                             // In general, during probe we erase regions.
                             self.tcx.lifetimes.re_erased.into()
                         }
@@ -1813,7 +1813,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
         InternalSubsts::for_item(self.tcx, def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => self.tcx.lifetimes.re_erased.into(),
+            GenericParamDefKind::Lifetime { .. } => self.tcx.lifetimes.re_erased.into(),
             GenericParamDefKind::Type { .. } => self
                 .next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::SubstitutionPlaceholder,
