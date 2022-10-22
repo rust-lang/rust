@@ -4,7 +4,7 @@
 
 use itertools::Itertools;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, Applicability, MultiSpan};
+use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -18,7 +18,10 @@ use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
 use std::mem;
 
-use crate::errors::UselessAssignment;
+use crate::errors::{
+    ChangeFieldsToBeOfUnitType, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
+    UselessAssignment,
+};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live Node::Item that is a
@@ -693,99 +696,89 @@ impl<'tcx> DeadVisitor<'tcx> {
         parent_item: Option<LocalDefId>,
         is_positional: bool,
     ) {
-        if let Some(&first_id) = dead_codes.first() {
-            let tcx = self.tcx;
-            let names: Vec<_> = dead_codes
-                .iter()
-                .map(|&def_id| tcx.item_name(def_id.to_def_id()).to_string())
-                .collect();
-            let spans: Vec<_> = dead_codes
-                .iter()
-                .map(|&def_id| match tcx.def_ident_span(def_id) {
-                    Some(s) => s.with_ctxt(tcx.def_span(def_id).ctxt()),
-                    None => tcx.def_span(def_id),
+        let Some(&first_id) = dead_codes.first() else {
+            return;
+        };
+        let tcx = self.tcx;
+        let names: Vec<_> =
+            dead_codes.iter().map(|&def_id| tcx.item_name(def_id.to_def_id())).collect();
+        let spans: Vec<_> = dead_codes
+            .iter()
+            .map(|&def_id| match tcx.def_ident_span(def_id) {
+                Some(s) => s.with_ctxt(tcx.def_span(def_id).ctxt()),
+                None => tcx.def_span(def_id),
+            })
+            .collect();
+
+        let descr = tcx.def_kind(first_id).descr(first_id.to_def_id());
+        let num = dead_codes.len();
+        let multiple = num > 6;
+        let name_list = names.into();
+
+        let lint = if is_positional {
+            lint::builtin::UNUSED_TUPLE_STRUCT_FIELDS
+        } else {
+            lint::builtin::DEAD_CODE
+        };
+
+        let parent_info = if let Some(parent_item) = parent_item {
+            let parent_descr = tcx.def_kind(parent_item).descr(parent_item.to_def_id());
+            Some(ParentInfo {
+                num,
+                descr,
+                parent_descr,
+                span: tcx.def_ident_span(parent_item).unwrap(),
+            })
+        } else {
+            None
+        };
+
+        let encl_def_id = parent_item.unwrap_or(first_id);
+        let ignored_derived_impls =
+            if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id) {
+                let trait_list = ign_traits
+                    .iter()
+                    .map(|(trait_id, _)| self.tcx.item_name(*trait_id))
+                    .collect::<Vec<_>>();
+                let trait_list_len = trait_list.len();
+                Some(IgnoredDerivedImpls {
+                    name: self.tcx.item_name(encl_def_id.to_def_id()),
+                    trait_list: trait_list.into(),
+                    trait_list_len,
                 })
-                .collect();
-
-            let descr = tcx.def_kind(first_id).descr(first_id.to_def_id());
-            let span_len = dead_codes.len();
-            let names = match &names[..] {
-                _ if span_len > 6 => String::new(),
-                [name] => format!("`{name}` "),
-                [names @ .., last] => {
-                    format!(
-                        "{} and `{last}` ",
-                        names.iter().map(|name| format!("`{name}`")).join(", ")
-                    )
-                }
-                [] => unreachable!(),
+            } else {
+                None
             };
-            let msg = format!(
-                "{these}{descr}{s} {names}{are} never {participle}",
-                these = if span_len > 6 { "multiple " } else { "" },
-                s = pluralize!(span_len),
-                are = pluralize!("is", span_len),
-            );
 
-            tcx.struct_span_lint_hir(
-                if is_positional {
-                    lint::builtin::UNUSED_TUPLE_STRUCT_FIELDS
-                } else {
-                    lint::builtin::DEAD_CODE
-                },
-                tcx.hir().local_def_id_to_hir_id(first_id),
-                MultiSpan::from_spans(spans.clone()),
-                msg,
-                |err| {
-                    if is_positional {
-                        err.multipart_suggestion(
-                            &format!(
-                                "consider changing the field{s} to be of unit type to \
-                                      suppress this warning while preserving the field \
-                                      numbering, or remove the field{s}",
-                                s = pluralize!(span_len)
-                            ),
-                            spans.iter().map(|sp| (*sp, "()".to_string())).collect(),
-                            // "HasPlaceholders" because applying this fix by itself isn't
-                            // enough: All constructor calls have to be adjusted as well
-                            Applicability::HasPlaceholders,
-                        );
-                    }
+        let diag = if is_positional {
+            MultipleDeadCodes::UnusedTupleStructFields {
+                multiple,
+                num,
+                descr,
+                participle,
+                name_list,
+                change_fields_suggestion: ChangeFieldsToBeOfUnitType { num, spans: spans.clone() },
+                parent_info,
+                ignored_derived_impls,
+            }
+        } else {
+            MultipleDeadCodes::DeadCodes {
+                multiple,
+                num,
+                descr,
+                participle,
+                name_list,
+                parent_info,
+                ignored_derived_impls,
+            }
+        };
 
-                    if let Some(parent_item) = parent_item {
-                        let parent_descr = tcx.def_kind(parent_item).descr(parent_item.to_def_id());
-                        err.span_label(
-                            tcx.def_ident_span(parent_item).unwrap(),
-                            format!("{descr}{s} in this {parent_descr}", s = pluralize!(span_len)),
-                        );
-                    }
-
-                    let encl_def_id = parent_item.unwrap_or(first_id);
-                    if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id) {
-                        let traits_str = ign_traits
-                            .iter()
-                            .map(|(trait_id, _)| format!("`{}`", self.tcx.item_name(*trait_id)))
-                            .collect::<Vec<_>>()
-                            .join(" and ");
-                        let plural_s = pluralize!(ign_traits.len());
-                        let article = if ign_traits.len() > 1 { "" } else { "a " };
-                        let is_are = if ign_traits.len() > 1 { "these are" } else { "this is" };
-                        let msg = format!(
-                            "`{}` has {}derived impl{} for the trait{} {}, but {} \
-                            intentionally ignored during dead code analysis",
-                            self.tcx.item_name(encl_def_id.to_def_id()),
-                            article,
-                            plural_s,
-                            plural_s,
-                            traits_str,
-                            is_are
-                        );
-                        err.note(&msg);
-                    }
-                    err
-                },
-            );
-        }
+        self.tcx.emit_spanned_lint(
+            lint,
+            tcx.hir().local_def_id_to_hir_id(first_id),
+            MultiSpan::from_spans(spans.clone()),
+            diag,
+        );
     }
 
     fn warn_dead_fields_and_variants(

@@ -4,11 +4,15 @@ use std::{
 };
 
 use rustc_ast::Label;
-use rustc_errors::{error_code, Applicability, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
+use rustc_errors::{
+    error_code, Applicability, DiagnosticSymbolList, ErrorGuaranteed, IntoDiagnostic, MultiSpan,
+};
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{Span, Symbol, DUMMY_SP};
+
+use rustc_errors::{pluralize, AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
 
 use crate::lang_items::Duplicate;
 
@@ -1445,4 +1449,78 @@ pub struct MissingConstErr {
     pub fn_sig_span: Span,
     #[label]
     pub const_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+pub enum MultipleDeadCodes<'tcx> {
+    #[diag(passes_dead_codes)]
+    DeadCodes {
+        multiple: bool,
+        num: usize,
+        descr: &'tcx str,
+        participle: &'tcx str,
+        name_list: DiagnosticSymbolList,
+        #[subdiagnostic]
+        parent_info: Option<ParentInfo<'tcx>>,
+        #[subdiagnostic]
+        ignored_derived_impls: Option<IgnoredDerivedImpls>,
+    },
+    #[diag(passes_dead_codes)]
+    UnusedTupleStructFields {
+        multiple: bool,
+        num: usize,
+        descr: &'tcx str,
+        participle: &'tcx str,
+        name_list: DiagnosticSymbolList,
+        #[subdiagnostic]
+        change_fields_suggestion: ChangeFieldsToBeOfUnitType,
+        #[subdiagnostic]
+        parent_info: Option<ParentInfo<'tcx>>,
+        #[subdiagnostic]
+        ignored_derived_impls: Option<IgnoredDerivedImpls>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[label(passes_parent_info)]
+pub struct ParentInfo<'tcx> {
+    pub num: usize,
+    pub descr: &'tcx str,
+    pub parent_descr: &'tcx str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(passes_ignored_derived_impls)]
+pub struct IgnoredDerivedImpls {
+    pub name: Symbol,
+    pub trait_list: DiagnosticSymbolList,
+    pub trait_list_len: usize,
+}
+
+pub struct ChangeFieldsToBeOfUnitType {
+    pub num: usize,
+    pub spans: Vec<Span>,
+}
+
+// FIXME: Replace this impl with a derive.
+impl AddToDiagnostic for ChangeFieldsToBeOfUnitType {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        diag.multipart_suggestion(
+            &format!(
+                "consider changing the field{s} to be of unit type to \
+                          suppress this warning while preserving the field \
+                          numbering, or remove the field{s}",
+                s = pluralize!(self.num)
+            ),
+            self.spans.iter().map(|sp| (*sp, "()".to_string())).collect(),
+            // "HasPlaceholders" because applying this fix by itself isn't
+            // enough: All constructor calls have to be adjusted as well
+            Applicability::HasPlaceholders,
+        );
+    }
 }
