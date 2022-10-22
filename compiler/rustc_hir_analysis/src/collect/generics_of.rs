@@ -139,20 +139,16 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             Some(tcx.typeck_root_def_id(def_id))
         }
         Node::Item(item) => match item.kind {
-            ItemKind::OpaqueTy(hir::OpaqueTy {
-                origin:
-                    hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
-                in_trait,
-                ..
-            }) => {
-                if in_trait {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn))
-                } else {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn))
+            ItemKind::OpaqueTy(hir::OpaqueTy { origin, in_trait, .. }) => {
+                if let hir::OpaqueTyOrigin::FnReturn(fn_def_id)
+                | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
+                {
+                    if in_trait {
+                        assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn))
+                    } else {
+                        assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn))
+                    }
                 }
-                Some(fn_def_id.to_def_id())
-            }
-            ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
                 let parent_id = tcx.hir().get_parent_item(hir_id);
                 assert_ne!(parent_id, hir::CRATE_OWNER_ID);
                 debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent_id);

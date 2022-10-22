@@ -1338,8 +1338,8 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
             // HACK: The HIR lowering for async fn does not generate
             // any `+ Captures<'x>` bounds for the `impl Future<...>`, so all async fns with lifetimes
             // would now fail to compile. We should probably just make hir lowering fill this in properly.
-            OpaqueTyOrigin::AsyncFn(_) => map.collect(),
-            OpaqueTyOrigin::FnReturn(_) | OpaqueTyOrigin::TyAlias => {
+            OpaqueTyOrigin::FnReturn(_) | OpaqueTyOrigin::AsyncFn(_) => map.collect(),
+            OpaqueTyOrigin::TyAlias => {
                 // Opaque types may only use regions that are bound. So for
                 // ```rust
                 // type Foo<'a, 'b, 'c> = impl Trait<'a> + 'b;

@@ -366,6 +366,7 @@ fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> hir::ItemId {
     item
 }
 
+#[instrument(level = "trace", skip(tcx), ret)]
 fn late_region_as_bound_region<'tcx>(tcx: TyCtxt<'tcx>, region: &Region) -> ty::BoundVariableKind {
     match region {
         Region::LateBound(_, _, def_id) => {
@@ -1763,7 +1764,7 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
         constrained_by_input.visit_ty(arg_ty);
     }
 
-    let mut appears_in_output = AllCollector::default();
+    let mut appears_in_output = AllCollector::new(tcx);
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &decl.output);
 
     debug!(?constrained_by_input.regions);
@@ -1772,7 +1773,7 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
     //
     // Subtle point: because we disallow nested bindings, we can just
     // ignore binders here and scrape up all names we see.
-    let mut appears_in_where_clause = AllCollector::default();
+    let mut appears_in_where_clause = AllCollector::new(tcx);
     appears_in_where_clause.visit_generics(generics);
     debug!(?appears_in_where_clause.regions);
 
@@ -1851,12 +1852,26 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
         }
     }
 
-    #[derive(Default)]
-    struct AllCollector {
+    struct AllCollector<'tcx> {
+        tcx: TyCtxt<'tcx>,
         regions: FxHashSet<LocalDefId>,
     }
 
-    impl<'v> Visitor<'v> for AllCollector {
+    impl<'v> AllCollector<'v> {
+        fn new(tcx: TyCtxt<'v>) -> AllCollector<'v> {
+            AllCollector { tcx, regions: Default::default() }
+        }
+    }
+
+    impl<'v> Visitor<'v> for AllCollector<'v> {
+        fn visit_nested_item(&mut self, id: hir::ItemId) {
+            if let DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder = self.tcx.def_kind(id.def_id)
+            {
+                let item = self.tcx.hir().item(id);
+                self.visit_item(item);
+            }
+        }
+
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
             if let hir::LifetimeName::Param(def_id, _) = lifetime_ref.name {
                 self.regions.insert(def_id);
