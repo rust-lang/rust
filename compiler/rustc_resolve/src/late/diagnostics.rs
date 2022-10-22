@@ -422,7 +422,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn try_lookup_name_relaxed(
         &mut self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
@@ -482,7 +482,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         .contains(span)
                     {
                         // Already reported this issue on the lhs of the type ascription.
-                        err.delay_as_bug();
+                        err.downgrade_to_delayed_bug();
                         return (true, candidates);
                     }
                 }
@@ -594,7 +594,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn suggest_trait_and_bounds(
         &mut self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: PathSource<'_>,
         res: Option<Res>,
         span: Span,
@@ -669,7 +669,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn suggest_typo(
         &mut self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
@@ -715,7 +715,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn err_code_special_cases(
         &mut self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
@@ -1921,7 +1921,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     &msg,
-                    suggestable_variants.into_iter(),
+                    suggestable_variants,
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1975,7 +1975,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants.into_iter(),
+                    suggestable_variants,
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -2005,7 +2005,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants_with_placeholders.into_iter(),
+                    suggestable_variants_with_placeholders,
                     Applicability::HasPlaceholders,
                 );
             }
