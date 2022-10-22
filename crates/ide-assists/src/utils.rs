@@ -4,21 +4,27 @@ use std::ops;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{db::HirDatabase, HirDisplay, Semantics};
-use ide_db::{famous_defs::FamousDefs, path_transform::PathTransform, RootDatabase, SnippetCap};
+use ide_db::{
+    assists::{AssistId, AssistKind},
+    famous_defs::FamousDefs,
+    path_transform::PathTransform,
+    RootDatabase, SnippetCap,
+};
 use stdx::format_to;
 use syntax::{
     ast::{
         self,
         edit::{self, AstNodeEdit},
         edit_in_place::{AttrsOwnerEdit, Removable},
-        make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
+        make, ArithOp, BinExpr, BinaryOp, Expr, HasArgList, HasAttrs, HasGenericParams, HasName,
+        HasTypeBounds, Whitespace,
     },
-    ted, AstNode, AstToken, Direction, SourceFile,
+    ted, AstNode, AstToken, Direction, SmolStr, SourceFile,
     SyntaxKind::*,
     SyntaxNode, TextRange, TextSize, T,
 };
 
-use crate::assist_context::{AssistContext, SourceChangeBuilder};
+use crate::assist_context::{AssistContext, Assists, SourceChangeBuilder};
 
 pub(crate) mod suggest_name;
 mod gen_trait_fn_body;
@@ -704,4 +710,103 @@ pub(crate) fn convert_param_list_to_arg_list(list: ast::ParamList) -> ast::ArgLi
         }
     }
     make::arg_list(args)
+}
+
+pub(crate) enum ArithKind {
+    Saturating,
+    Wrapping,
+    Checked,
+}
+
+impl ArithKind {
+    fn assist_id(&self) -> AssistId {
+        let s = match self {
+            ArithKind::Saturating => "replace_arith_with_saturating",
+            ArithKind::Checked => "replace_arith_with_saturating",
+            ArithKind::Wrapping => "replace_arith_with_saturating",
+        };
+
+        AssistId(s, AssistKind::RefactorRewrite)
+    }
+
+    fn label(&self) -> &'static str {
+        match self {
+            ArithKind::Saturating => "Replace arithmetic with call to saturating_*",
+            ArithKind::Checked => "Replace arithmetic with call to checked_*",
+            ArithKind::Wrapping => "Replace arithmetic with call to wrapping_*",
+        }
+    }
+
+    fn method_name(&self, op: ArithOp) -> SmolStr {
+        // is this too much effort to avoid an allocation? is there a better way?
+        let mut bytes = [0u8; 14];
+        let prefix = match self {
+            ArithKind::Checked => "checked_",
+            ArithKind::Wrapping => "wrapping_",
+            ArithKind::Saturating => "saturating_",
+        };
+
+        bytes[0..(prefix.len())].copy_from_slice(prefix.as_bytes());
+
+        let suffix = match op {
+            ArithOp::Add => "add",
+            ArithOp::Sub => "sub",
+            ArithOp::Mul => "mul",
+            ArithOp::Div => "div",
+            _ => unreachable!("this function should only be called with +, -, / or *"),
+        };
+
+        bytes[(prefix.len())..(prefix.len() + suffix.len())].copy_from_slice(suffix.as_bytes());
+
+        let len = prefix.len() + suffix.len();
+        let s = core::str::from_utf8(&bytes[0..len]).unwrap();
+        SmolStr::from(s)
+    }
+}
+
+pub(crate) fn replace_arith(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+    kind: ArithKind,
+) -> Option<()> {
+    let (lhs, op, rhs) = parse_binary_op(ctx)?;
+
+    let start = lhs.syntax().text_range().start();
+    let end = rhs.syntax().text_range().end();
+    let range = TextRange::new(start, end);
+
+    acc.add(kind.assist_id(), kind.label(), range, |builder| {
+        let method_name = kind.method_name(op);
+
+        builder.replace(range, format!("{lhs}.{method_name}({rhs})"))
+    })
+}
+
+/// Extract the operands of an arithmetic expression (e.g. `1 + 2` or `1.checked_add(2)`)
+fn parse_binary_op(ctx: &AssistContext<'_>) -> Option<(Expr, ArithOp, Expr)> {
+    let expr = ctx.find_node_at_offset::<BinExpr>()?;
+
+    let op = match expr.op_kind() {
+        Some(BinaryOp::ArithOp(ArithOp::Add)) => ArithOp::Add,
+        Some(BinaryOp::ArithOp(ArithOp::Sub)) => ArithOp::Sub,
+        Some(BinaryOp::ArithOp(ArithOp::Mul)) => ArithOp::Mul,
+        Some(BinaryOp::ArithOp(ArithOp::Div)) => ArithOp::Div,
+        _ => return None,
+    };
+
+    let lhs = expr.lhs()?;
+    let rhs = expr.rhs()?;
+
+    Some((lhs, op, rhs))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn arith_kind_method_name() {
+        assert_eq!(ArithKind::Saturating.method_name(ArithOp::Add), "saturating_add");
+        assert_eq!(ArithKind::Checked.method_name(ArithOp::Sub), "checked_sub");
+    }
 }

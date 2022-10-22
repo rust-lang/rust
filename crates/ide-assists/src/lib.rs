@@ -183,6 +183,10 @@ mod handlers {
     mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
     mod replace_or_with_or_else;
+    mod replace_arith_with_saturating;
+    mod replace_arith_with_checked;
+    mod replace_arith_with_wrapping;
+    mod replace_arith_with_saturating;
     mod introduce_named_generic;
     mod replace_let_with_if_let;
     mod replace_qualified_name_with_use;
@@ -286,6 +290,9 @@ mod handlers {
             replace_or_with_or_else::replace_or_with_or_else,
             replace_turbofish_with_explicit_type::replace_turbofish_with_explicit_type,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
+            replace_arith_with_wrapping::replace_arith_with_wrapping,
+            replace_arith_with_checked::replace_arith_with_checked,
+            replace_arith_with_saturating::replace_arith_with_saturating,
             sort_items::sort_items,
             split_import::split_import,
             toggle_ignore::toggle_ignore,
