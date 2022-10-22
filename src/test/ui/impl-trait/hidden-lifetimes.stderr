@@ -1,4 +1,4 @@
-error[E0700]: hidden type for `impl Swap` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Swap + 'a` captures lifetime that does not appear in bounds
   --> $DIR/hidden-lifetimes.rs:29:5
    |
 LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
@@ -11,7 +11,7 @@ help: to declare that the `impl Trait` captures `'b`, you can add an explicit `'
 LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a + 'b {
    |                                                                     ++++
 
-error[E0700]: hidden type for `impl Swap` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Swap + 'a` captures lifetime that does not appear in bounds
   --> $DIR/hidden-lifetimes.rs:46:5
    |
 LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {

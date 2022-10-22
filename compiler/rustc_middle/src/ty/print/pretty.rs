@@ -16,6 +16,7 @@ use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
+use smallvec::SmallVec;
 
 use std::cell::Cell;
 use std::char;
@@ -794,6 +795,7 @@ pub trait PrettyPrinter<'tcx>:
         let mut traits = FxIndexMap::default();
         let mut fn_traits = FxIndexMap::default();
         let mut is_sized = false;
+        let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
 
         for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
             let predicate = predicate.subst(tcx, substs);
@@ -824,6 +826,9 @@ pub trait PrettyPrinter<'tcx>:
                         &mut traits,
                         &mut fn_traits,
                     );
+                }
+                ty::PredicateKind::TypeOutlives(outlives) => {
+                    lifetimes.push(outlives.1);
                 }
                 _ => {}
             }
@@ -976,6 +981,17 @@ pub trait PrettyPrinter<'tcx>:
             write!(self, "{}?Sized", if first { "" } else { " + " })?;
         } else if first {
             write!(self, "Sized")?;
+        }
+
+        if let [re] = lifetimes.as_slice()
+            && re.is_static()
+        {
+            // Don't print a single static lifetime
+        } else {
+            for re in lifetimes {
+                write!(self, " + ")?;
+                self = self.print_region(re)?;
+            }
         }
 
         Ok(self)
