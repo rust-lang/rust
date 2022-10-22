@@ -473,8 +473,10 @@ impl GlobalState {
         };
 
         let sender = self.flycheck_sender.clone();
-        let (FlycheckConfig::CargoCommand { invocation_strategy, .. }
-        | FlycheckConfig::CustomCommand { invocation_strategy, .. }) = config;
+        let invocation_strategy = match config {
+            FlycheckConfig::CargoCommand { .. } => flycheck::InvocationStrategy::PerWorkspace,
+            FlycheckConfig::CustomCommand { invocation_strategy, .. } => invocation_strategy,
+        };
 
         self.flycheck = match invocation_strategy {
             flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(

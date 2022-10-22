@@ -14,7 +14,7 @@ use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use serde_json::from_value;
 
-use crate::{utf8_stdout, ManifestPath};
+use crate::{utf8_stdout, InvocationLocation, ManifestPath};
 use crate::{CfgOverrides, InvocationStrategy};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
@@ -107,6 +107,7 @@ pub struct CargoConfig {
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, String>,
     pub invocation_strategy: InvocationStrategy,
+    pub invocation_location: InvocationLocation,
 }
 
 impl CargoConfig {

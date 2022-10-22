@@ -21,7 +21,8 @@ use semver::Version;
 use serde::Deserialize;
 
 use crate::{
-    cfg_flag::CfgFlag, CargoConfig, CargoFeatures, CargoWorkspace, InvocationStrategy, Package,
+    cfg_flag::CfgFlag, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
+    InvocationStrategy, Package,
 };
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -55,10 +56,7 @@ impl BuildScriptOutput {
 }
 
 impl WorkspaceBuildScripts {
-    fn build_command(
-        config: &CargoConfig,
-        workspace_root: Option<&path::Path>,
-    ) -> io::Result<Command> {
+    fn build_command(config: &CargoConfig, current_dir: &path::Path) -> io::Result<Command> {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
                 let mut cmd = Command::new(program);
@@ -94,14 +92,11 @@ impl WorkspaceBuildScripts {
                     }
                 }
 
-                if let Some(workspace_root) = workspace_root {
-                    cmd.current_dir(workspace_root);
-                }
-
                 cmd
             }
         };
 
+        cmd.current_dir(current_dir);
         cmd.envs(&config.extra_env);
         if config.wrap_rustc_in_build_scripts {
             // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
@@ -124,19 +119,21 @@ impl WorkspaceBuildScripts {
     ) -> io::Result<WorkspaceBuildScripts> {
         const RUST_1_62: Version = Version::new(1, 62, 0);
 
-        let workspace_root: &path::Path = &workspace.workspace_root().as_ref();
+        let current_dir = match &config.invocation_location {
+            InvocationLocation::Root(root) if config.run_build_script_command.is_some() => {
+                root.as_path()
+            }
+            _ => &workspace.workspace_root(),
+        }
+        .as_ref();
 
-        match Self::run_per_ws(
-            Self::build_command(config, Some(workspace_root))?,
-            workspace,
-            progress,
-        ) {
+        match Self::run_per_ws(Self::build_command(config, current_dir)?, workspace, progress) {
             Ok(WorkspaceBuildScripts { error: Some(error), .. })
                 if toolchain.as_ref().map_or(false, |it| *it >= RUST_1_62) =>
             {
                 // building build scripts failed, attempt to build with --keep-going so
                 // that we potentially get more build data
-                let mut cmd = Self::build_command(config, Some(workspace_root))?;
+                let mut cmd = Self::build_command(config, current_dir)?;
                 cmd.args(&["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
                 let mut res = Self::run_per_ws(cmd, workspace, progress)?;
                 res.error = Some(error);
@@ -154,7 +151,17 @@ impl WorkspaceBuildScripts {
         progress: &dyn Fn(String),
     ) -> io::Result<Vec<WorkspaceBuildScripts>> {
         assert_eq!(config.invocation_strategy, InvocationStrategy::Once);
-        let cmd = Self::build_command(config, None)?;
+
+        let current_dir = match &config.invocation_location {
+            InvocationLocation::Root(root) => root,
+            InvocationLocation::Workspace => {
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Cannot run build scripts from workspace with invocation strategy `once`",
+                ))
+            }
+        };
+        let cmd = Self::build_command(config, current_dir.as_path().as_ref())?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.
