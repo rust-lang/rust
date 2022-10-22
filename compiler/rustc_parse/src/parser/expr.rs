@@ -2051,6 +2051,10 @@ impl<'a> Parser<'a> {
 
         if self.token.kind == TokenKind::Semi
             && matches!(self.token_cursor.frame.delim_sp, Some((Delimiter::Parenthesis, _)))
+            // HACK: This is needed so we can detect whether we're inside a macro,
+            // where regular assumptions about what tokens can follow other tokens
+            // don't necessarily apply.
+            && self.subparser_name.is_none()
         {
             // It is likely that the closure body is a block but where the
             // braces have been removed. We will recover and eat the next
