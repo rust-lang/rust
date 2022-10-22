@@ -1670,6 +1670,27 @@ impl<T: ?Sized> *mut T {
     /// };
     /// ```
     ///
+    /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
+    /// pointer is aligned, even if the compiletime pointer wasn't aligned.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    ///
+    /// // At compiletime, neither `CONST_PTR` nor `CONST_PTR + 1` is aligned.
+    /// const CONST_PTR: *const i32 = &42;
+    /// const _: () = assert!(!CONST_PTR.cast::<i64>().is_aligned());
+    /// const _: () = assert!(!CONST_PTR.wrapping_add(1).cast::<i64>().is_aligned());
+    ///
+    /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
+    /// let runtime_ptr = CONST_PTR;
+    /// assert_ne!(
+    ///     runtime_ptr.cast::<i64>().is_aligned(),
+    ///     runtime_ptr.wrapping_add(1).cast::<i64>().is_aligned(),
+    /// );
+    /// ```
+    ///
     /// If a pointer is created from a fixed address, this function behaves the same during
     /// runtime and compiletime.
     ///
@@ -1758,6 +1779,27 @@ impl<T: ?Sized> *mut T {
     ///     assert!(!ptr.is_aligned_to(8));
     ///     assert!(!ptr.wrapping_add(1).is_aligned_to(8));
     /// };
+    /// ```
+    ///
+    /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
+    /// pointer is aligned, even if the compiletime pointer wasn't aligned.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    ///
+    /// // At compiletime, neither `CONST_PTR` nor `CONST_PTR + 1` is aligned.
+    /// const CONST_PTR: *const i32 = &42;
+    /// const _: () = assert!(!CONST_PTR.is_aligned_to(8));
+    /// const _: () = assert!(!CONST_PTR.wrapping_add(1).is_aligned_to(8));
+    ///
+    /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
+    /// let runtime_ptr = CONST_PTR;
+    /// assert_ne!(
+    ///     runtime_ptr.is_aligned_to(8),
+    ///     runtime_ptr.wrapping_add(1).is_aligned_to(8),
+    /// );
     /// ```
     ///
     /// If a pointer is created from a fixed address, this function behaves the same during
