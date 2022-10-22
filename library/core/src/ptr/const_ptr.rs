@@ -1364,8 +1364,72 @@ impl<T: ?Sized> *const T {
     }
 
     /// Returns whether the pointer is properly aligned for `T`.
-    // #[cfg(not(bootstrap))] -- Calling this function in a const context from the bootstrap
-    // compiler will always return false.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    /// ```
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_byte_offsets)]
+    ///
+    /// let data: i32 = 42;
+    /// let ptr: *const i32 = &data;
+    ///
+    /// assert!(ptr.is_aligned());
+    /// assert!(!ptr.wrapping_byte_add(1).is_aligned());
+    /// ```
+    ///
+    /// # At compiletime
+    /// **Note: Alignment at compiletime is experimental and subject to change. See the
+    /// [tracking issue] for details.**
+    ///
+    /// At compiletime, the compiler may not know where a value will end up in memory.
+    /// Calling this function on a pointer created from a reference at compiletime will only
+    /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
+    /// is never aligned if cast to a type with a stricter alignment than the reference's
+    /// underlying allocation.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    ///
+    /// const _: () = {
+    ///     let data: i32 = 42;
+    ///     let ptr: *const i32 = &data;
+    ///     assert!(ptr.is_aligned());
+    ///
+    ///     // At runtime either `ptr1` or `ptr2` would be aligned,
+    ///     // but at compiletime neither is aligned.
+    ///     let ptr1: *const i64 = ptr.cast();
+    ///     let ptr2: *const i64 = ptr.wrapping_add(1).cast();
+    ///     assert!(!ptr1.is_aligned());
+    ///     assert!(!ptr2.is_aligned());
+    /// };
+    /// ```
+    ///
+    /// If a pointer is created from a fixed address, this function behaves the same during
+    /// runtime and compiletime.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    ///
+    /// const _: () = {
+    ///     let ptr = 40 as *const i32;
+    ///     assert!(ptr.is_aligned());
+    ///
+    ///     // For pointers with a known address, runtime and
+    ///     // compiletime behavior are identical.
+    ///     let ptr1: *const i64 = ptr.cast();
+    ///     let ptr2: *const i64 = ptr.wrapping_add(1).cast();
+    ///     assert!(ptr1.is_aligned());
+    ///     assert!(!ptr2.is_aligned());
+    /// };
+    /// ```
+    ///
+    /// [tracking issue]: https://github.com/rust-lang/rust/issues/comming-soon
     #[must_use]
     #[inline]
     #[unstable(feature = "pointer_is_aligned", issue = "96284")]
@@ -1385,8 +1449,74 @@ impl<T: ?Sized> *const T {
     /// # Panics
     ///
     /// The function panics if `align` is not a power-of-two (this includes 0).
-    // #[cfg(not(bootstrap))] -- Calling this function in a const context from the bootstrap
-    // compiler will always return false.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    /// ```
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_byte_offsets)]
+    ///
+    /// let data: i32 = 42;
+    /// let ptr: *const i32 = &data;
+    ///
+    /// assert!(ptr.is_aligned_to(1));
+    /// assert!(ptr.is_aligned_to(2));
+    /// assert!(ptr.is_aligned_to(4));
+    ///
+    /// assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
+    /// assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
+    ///
+    /// assert_ne!(ptr.is_aligned_to(8), ptr.wrapping_add(1).is_aligned_to(8));
+    /// ```
+    ///
+    /// # At compiletime
+    /// **Note: Alignment at compiletime is experimental and subject to change. See the
+    /// [tracking issue] for details.**
+    ///
+    /// At compiletime, the compiler may not know where a value will end up in memory.
+    /// Calling this function on a pointer created from a reference at compiletime will only
+    /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
+    /// cannot be stricter aligned than the reference's underlying allocation.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    ///
+    /// const _: () = {
+    ///     let data: i32 = 42;
+    ///     let ptr: *const i32 = &data;
+    ///
+    ///     assert!(ptr.is_aligned_to(1));
+    ///     assert!(ptr.is_aligned_to(2));
+    ///     assert!(ptr.is_aligned_to(4));
+    ///
+    ///     // At compiletime, we know for sure that the pointer isn't aligned to 8.
+    ///     assert!(!ptr.is_aligned_to(8));
+    ///     assert!(!ptr.wrapping_add(1).is_aligned_to(8));
+    /// };
+    /// ```
+    ///
+    /// If a pointer is created from a fixed address, this function behaves the same during
+    /// runtime and compiletime.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    ///
+    /// const _: () = {
+    ///     let ptr = 40 as *const i32;
+    ///     assert!(ptr.is_aligned_to(1));
+    ///     assert!(ptr.is_aligned_to(2));
+    ///     assert!(ptr.is_aligned_to(4));
+    ///     assert!(ptr.is_aligned_to(8));
+    ///     assert!(!ptr.is_aligned_to(16));
+    /// };
+    /// ```
+    ///
+    /// [tracking issue]: https://github.com/rust-lang/rust/issues/comming-soon
     #[must_use]
     #[inline]
     #[unstable(feature = "pointer_is_aligned", issue = "96284")]
