@@ -1587,16 +1587,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query is_dllimport_foreign_item(def_id: DefId) -> bool {
-        desc { |tcx| "checking if `{}` is a a dylib", tcx.def_path_str(def_id) }
-    }
-    query is_statically_included_foreign_item(def_id: DefId) -> bool {
-        desc { |tcx| "checking if `{}` is a staticlib", tcx.def_path_str(def_id) }
-    }
-    query native_library_kind(def_id: DefId)
-        -> Option<NativeLibKind> {
-        desc { |tcx| "getting the native library kind of `{}`", tcx.def_path_str(def_id) }
-    }
     query native_library(def_id: DefId) -> Option<&'tcx NativeLib> {
         desc { |tcx| "getting the native library for `{}`", tcx.def_path_str(def_id) }
     }
@@ -2126,5 +2116,10 @@ rustc_queries! {
         key: (LocalDefId, DefId)
     ) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking assoc const `{}` has the same type as trait item", tcx.def_path_str(key.0.to_def_id()) }
+    }
+
+    query deduced_param_attrs(def_id: DefId) -> &'tcx [ty::DeducedParamAttrs] {
+        desc { |tcx| "deducing parameter attributes for {}", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 }

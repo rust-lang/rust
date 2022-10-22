@@ -190,6 +190,7 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         run_compiler(self.at_args, self.callbacks, self.file_loader, self.make_codegen_backend)
     }
 }
+
 fn run_compiler(
     at_args: &[String],
     callbacks: &mut (dyn Callbacks + Send),

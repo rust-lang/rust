@@ -5,12 +5,12 @@ wait-for: "#help"
 assert-css: ("#help", {"display": "block"})
 click: "#help-button > a"
 assert-css: ("#help", {"display": "block"})
-compare-elements-property: (".sub-container", "#help", ["offsetWidth"])
-compare-elements-position: (".sub-container", "#help", ("x"))
+compare-elements-property: (".sub", "#help", ["offsetWidth"])
+compare-elements-position: (".sub", "#help", ("x"))
 size: (500, 1000) // Try mobile next.
 assert-css: ("#help", {"display": "block"})
-compare-elements-property: (".sub-container", "#help", ["offsetWidth"])
-compare-elements-position: (".sub-container", "#help", ("x"))
+compare-elements-property: (".sub", "#help", ["offsetWidth"])
+compare-elements-position: (".sub", "#help", ("x"))
 
 // This test ensures that opening the help popover without switching pages works.
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
@@ -20,5 +20,5 @@ click: "#help-button > a"
 assert-css: ("#help", {"display": "block"})
 click: "#help-button > a"
 assert-css: ("#help", {"display": "none"})
-compare-elements-property-false: (".sub-container", "#help", ["offsetWidth"])
-compare-elements-position-false: (".sub-container", "#help", ("x"))
+compare-elements-property-false: (".sub", "#help", ["offsetWidth"])
+compare-elements-position-false: (".sub", "#help", ("x"))

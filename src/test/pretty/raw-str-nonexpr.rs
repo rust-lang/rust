@@ -1,3 +1,4 @@
+// needs-asm-support
 // pp-exact
 
 #[cfg(foo = r#"just parse this"#)]

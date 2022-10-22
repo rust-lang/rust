@@ -8,7 +8,7 @@ use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trai
 use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
-use rustc_hir_analysis::check::{FnCtxt, Inherited};
+use rustc_hir_typeck::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;

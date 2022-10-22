@@ -3569,6 +3569,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_hir_typeck"
+version = "0.1.0"
+dependencies = [
+ "rustc_ast",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_graphviz",
+ "rustc_hir",
+ "rustc_hir_analysis",
+ "rustc_hir_pretty",
+ "rustc_index",
+ "rustc_infer",
+ "rustc_lint",
+ "rustc_macros",
+ "rustc_middle",
+ "rustc_serialize",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
+ "rustc_trait_selection",
+ "rustc_type_ir",
+ "smallvec",
+ "tracing",
+]
+
+[[package]]
 name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
@@ -3637,6 +3663,7 @@ dependencies = [
  "rustc_expand",
  "rustc_hir",
  "rustc_hir_analysis",
+ "rustc_hir_typeck",
  "rustc_incremental",
  "rustc_lint",
  "rustc_macros",

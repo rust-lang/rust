@@ -32,6 +32,7 @@ extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_hir_analysis;
+extern crate rustc_hir_typeck;
 extern crate rustc_hir_pretty;
 extern crate rustc_index;
 extern crate rustc_infer;

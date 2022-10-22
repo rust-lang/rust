@@ -1374,9 +1374,17 @@ impl<'a> Parser<'a> {
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
     ) -> MultiSugg {
+        let mut patches = Vec::new();
+
+        if !pre_span.is_empty() {
+            patches.push((pre_span, String::new()));
+        }
+
+        patches.push((post_span, format!(" {}= 1", kind.op.chr())));
+
         MultiSugg {
             msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches: vec![(pre_span, String::new()), (post_span, format!(" {}= 1", kind.op.chr()))],
+            patches,
             applicability: Applicability::MachineApplicable,
         }
     }

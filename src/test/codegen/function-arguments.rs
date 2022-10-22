@@ -127,7 +127,7 @@ pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {
 pub fn notunpin_borrow(_: &NotUnpin) {
 }
 
-// CHECK: @indirect_struct({{%S\*|ptr}} noalias nocapture noundef dereferenceable(32) %_1)
+// CHECK: @indirect_struct({{%S\*|ptr}} noalias nocapture noundef readonly dereferenceable(32) %_1)
 #[no_mangle]
 pub fn indirect_struct(_: S) {
 }

@@ -2715,7 +2715,7 @@ fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     }
 }
 
-fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
+pub(crate) fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
     match sess.lto() {
         config::Lto::Fat => true,
         config::Lto::Thin => {

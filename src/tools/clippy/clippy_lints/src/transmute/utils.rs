@@ -1,5 +1,5 @@
 use rustc_hir::Expr;
-use rustc_hir_analysis::check::{cast, FnCtxt, Inherited};
+use rustc_hir_typeck::{cast, FnCtxt, Inherited};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{cast::CastKind, Ty};
 use rustc_span::DUMMY_SP;

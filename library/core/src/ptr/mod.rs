@@ -1862,9 +1862,16 @@ macro_rules! maybe_fnptr_doc {
 // Impls for function pointers
 macro_rules! fnptr_impls_safety_abi {
     ($FnTy: ty, $($Arg: ident),*) => {
+        fnptr_impls_safety_abi! { #[stable(feature = "fnptr_impls", since = "1.4.0")] $FnTy, $($Arg),* }
+    };
+    (@c_unwind $FnTy: ty, $($Arg: ident),*) => {
+        #[cfg(not(bootstrap))]
+        fnptr_impls_safety_abi! { #[unstable(feature = "c_unwind", issue = "74990")] $FnTy, $($Arg),* }
+    };
+    (#[$meta:meta] $FnTy: ty, $($Arg: ident),*) => {
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> PartialEq for $FnTy {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool {
@@ -1875,13 +1882,13 @@ macro_rules! fnptr_impls_safety_abi {
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> Eq for $FnTy {}
         }
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> PartialOrd for $FnTy {
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -1892,7 +1899,7 @@ macro_rules! fnptr_impls_safety_abi {
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> Ord for $FnTy {
                 #[inline]
                 fn cmp(&self, other: &Self) -> Ordering {
@@ -1903,7 +1910,7 @@ macro_rules! fnptr_impls_safety_abi {
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> hash::Hash for $FnTy {
                 fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
                     state.write_usize(*self as usize)
@@ -1913,7 +1920,7 @@ macro_rules! fnptr_impls_safety_abi {
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     fmt::pointer_fmt_inner(*self as usize, f)
@@ -1923,7 +1930,7 @@ macro_rules! fnptr_impls_safety_abi {
 
         maybe_fnptr_doc! {
             $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            #[$meta]
             impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     fmt::pointer_fmt_inner(*self as usize, f)
@@ -1938,16 +1945,22 @@ macro_rules! fnptr_impls_args {
         fnptr_impls_safety_abi! { extern "Rust" fn($($Arg),+) -> Ret, $($Arg),+ }
         fnptr_impls_safety_abi! { extern "C" fn($($Arg),+) -> Ret, $($Arg),+ }
         fnptr_impls_safety_abi! { extern "C" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
+        fnptr_impls_safety_abi! { @c_unwind extern "C-unwind" fn($($Arg),+) -> Ret, $($Arg),+ }
+        fnptr_impls_safety_abi! { @c_unwind extern "C-unwind" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
         fnptr_impls_safety_abi! { unsafe extern "Rust" fn($($Arg),+) -> Ret, $($Arg),+ }
         fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),+) -> Ret, $($Arg),+ }
         fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
+        fnptr_impls_safety_abi! { @c_unwind unsafe extern "C-unwind" fn($($Arg),+) -> Ret, $($Arg),+ }
+        fnptr_impls_safety_abi! { @c_unwind unsafe extern "C-unwind" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
     };
     () => {
         // No variadic functions with 0 parameters
         fnptr_impls_safety_abi! { extern "Rust" fn() -> Ret, }
         fnptr_impls_safety_abi! { extern "C" fn() -> Ret, }
+        fnptr_impls_safety_abi! { @c_unwind extern "C-unwind" fn() -> Ret, }
         fnptr_impls_safety_abi! { unsafe extern "Rust" fn() -> Ret, }
         fnptr_impls_safety_abi! { unsafe extern "C" fn() -> Ret, }
+        fnptr_impls_safety_abi! { @c_unwind unsafe extern "C-unwind" fn() -> Ret, }
     };
 }
 

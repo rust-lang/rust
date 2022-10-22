@@ -147,7 +147,7 @@ assert-css: (
 )
 
 assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
-compare-elements-position: (".sub-container", "#settings", ("x"))
+compare-elements-position: (".sub form", "#settings", ("x"))
 
 // We now check the display with JS disabled.
 assert-false: "noscript section"
