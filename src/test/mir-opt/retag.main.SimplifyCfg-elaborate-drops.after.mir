@@ -75,7 +75,7 @@ fn main() -> () {
         _3 = Test::foo(move _4, move _6) -> [return: bb1, unwind: bb8]; // scope 1 at $DIR/retag.rs:+3:17: +3:36
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:33:25: 33:28
-                                         // + literal: Const { ty: for<'a, 'x> fn(&'a Test, &'x mut i32) -> &'x mut i32 {Test::foo}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: fn(&Test, &mut i32) -> &mut i32 {Test::foo}, val: Value(<ZST>) }
     }
 
     bb1: {
@@ -154,7 +154,7 @@ fn main() -> () {
         _19 = Test::foo_shr(move _20, move _22) -> [return: bb4, unwind: bb7]; // scope 7 at $DIR/retag.rs:+18:5: +18:24
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:48:13: 48:20
-                                         // + literal: Const { ty: for<'a, 'x> fn(&'a Test, &'x i32) -> &'x i32 {Test::foo_shr}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: fn(&Test, &i32) -> &i32 {Test::foo_shr}, val: Value(<ZST>) }
     }
 
     bb4: {
