@@ -2857,6 +2857,13 @@ impl Type {
         matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Uint(UintTy::Usize)))
     }
 
+    pub fn is_int_or_uint(&self) -> bool {
+        match self.ty.kind(Interner) {
+            TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_)) => true,
+            _ => false,
+        }
+    }
+
     pub fn remove_ref(&self) -> Option<Type> {
         match &self.ty.kind(Interner) {
             TyKind::Ref(.., ty) => Some(self.derived(ty.clone())),

@@ -1979,6 +1979,57 @@ impl Foo for Bar {
 }
 
 #[test]
+fn doctest_replace_arith_with_checked() {
+    check_doc_test(
+        "replace_arith_with_checked",
+        r#####"
+fn main() {
+  let x = 1 $0+ 2;
+}
+"#####,
+        r#####"
+fn main() {
+  let x = 1.checked_add(2);
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_arith_with_saturating() {
+    check_doc_test(
+        "replace_arith_with_saturating",
+        r#####"
+fn main() {
+  let x = 1 $0+ 2;
+}
+"#####,
+        r#####"
+fn main() {
+  let x = 1.saturating_add(2);
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_arith_with_wrapping() {
+    check_doc_test(
+        "replace_arith_with_wrapping",
+        r#####"
+fn main() {
+  let x = 1 $0+ 2;
+}
+"#####,
+        r#####"
+fn main() {
+  let x = 1.wrapping_add(2);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_char_with_string() {
     check_doc_test(
         "replace_char_with_string",

@@ -722,8 +722,8 @@ impl ArithKind {
     fn assist_id(&self) -> AssistId {
         let s = match self {
             ArithKind::Saturating => "replace_arith_with_saturating",
-            ArithKind::Checked => "replace_arith_with_saturating",
-            ArithKind::Wrapping => "replace_arith_with_saturating",
+            ArithKind::Checked => "replace_arith_with_checked",
+            ArithKind::Wrapping => "replace_arith_with_wrapping",
         };
 
         AssistId(s, AssistKind::RefactorRewrite)
@@ -771,6 +771,10 @@ pub(crate) fn replace_arith(
 ) -> Option<()> {
     let (lhs, op, rhs) = parse_binary_op(ctx)?;
 
+    if !is_primitive_int(ctx, &lhs) || !is_primitive_int(ctx, &rhs) {
+        return None;
+    }
+
     let start = lhs.syntax().text_range().start();
     let end = rhs.syntax().text_range().end();
     let range = TextRange::new(start, end);
@@ -780,6 +784,13 @@ pub(crate) fn replace_arith(
 
         builder.replace(range, format!("{lhs}.{method_name}({rhs})"))
     })
+}
+
+fn is_primitive_int(ctx: &AssistContext<'_>, expr: &Expr) -> bool {
+    match ctx.sema.type_of_expr(expr) {
+        Some(ty) => ty.adjusted().is_int_or_uint(),
+        _ => false,
+    }
 }
 
 /// Extract the operands of an arithmetic expression (e.g. `1 + 2` or `1.checked_add(2)`)
