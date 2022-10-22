@@ -461,24 +461,30 @@ impl Step for RustDemangler {
 pub struct Miri {
     stage: u32,
     host: TargetSelection,
+    target: TargetSelection,
 }
 
 impl Step for Miri {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/miri")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Miri { stage: run.builder.top_stage, host: run.target });
+        run.builder.ensure(Miri {
+            stage: run.builder.top_stage,
+            host: run.build_triple(),
+            target: run.target,
+        });
     }
 
     /// Runs `cargo test` for miri.
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
+        let target = self.target;
         let compiler = builder.compiler(stage, host);
         // We need the stdlib for the *next* stage, as it was built with this compiler that also built Miri.
         // Except if we are at stage 2, the bootstrap loop is complete and we can stick with our current stage.
@@ -495,7 +501,7 @@ impl Step for Miri {
         builder.ensure(compile::Std::new(compiler_std, host));
         let sysroot = builder.sysroot(compiler_std);
 
-        // # Run `cargo miri setup`.
+        // # Run `cargo miri setup` for the given target.
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -508,6 +514,7 @@ impl Step for Miri {
         );
         cargo.add_rustc_lib_path(builder, compiler);
         cargo.arg("--").arg("miri").arg("setup");
+        cargo.arg("--target").arg(target.rustc_target_arg());
 
         // Tell `cargo miri setup` where to find the sources.
         cargo.env("MIRI_LIB_SRC", builder.src.join("library"));
@@ -565,6 +572,9 @@ impl Step for Miri {
             cargo.env("MIRI_BLESS", "Gesundheit");
         }
 
+        // Set the target.
+        cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
+        // Forward test filters.
         cargo.arg("--").args(builder.config.cmd.test_args());
 
         let mut cargo = Command::from(cargo);

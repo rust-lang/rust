@@ -25,3 +25,7 @@ python3 "$X_PY" test --stage 2 check-tools
 python3 "$X_PY" test --stage 2 src/tools/clippy
 python3 "$X_PY" test --stage 2 src/tools/rustfmt
 python3 "$X_PY" test --stage 2 src/tools/miri
+# We natively run this script on x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc.
+# Also cover some other targets (on both of these hosts) via cross-testing.
+python3 "$X_PY" test --stage 2 src/tools/miri --target i686-pc-windows-msvc
+python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin
