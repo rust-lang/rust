@@ -808,7 +808,23 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             TerminatorKind::Call { func, args, destination, target, cleanup, .. } => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
-                    ty::FnPtr(..) | ty::FnDef(..) => {}
+                    ty::FnPtr(..) => {}
+                    ty::FnDef(def_id, substs) => {
+                        if cfg!(debug_assertions) {
+                            debug!(?def_id, ?substs);
+                            let generics = self.tcx.generics_of(def_id);
+                            debug_assert_eq!(generics.count(), substs.len());
+                            let fn_sig = self.tcx.bound_fn_sig(*def_id);
+                            let _ = fn_sig.subst(self.tcx, *substs);
+                            for arg in substs.iter() {
+                                if let ty::GenericArgKind::Lifetime(lt) = arg.unpack()
+                                    && lt != self.tcx.lifetimes.re_erased
+                                {
+                                    panic!("{substs:?} contains non-erased lifetimes");
+                                }
+                            }
+                        }
+                    }
                     _ => self.fail(
                         location,
                         format!("encountered non-callable type {} in `Call` terminator", func_ty),
