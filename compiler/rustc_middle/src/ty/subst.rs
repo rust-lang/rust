@@ -188,6 +188,14 @@ impl<'tcx> GenericArg<'tcx> {
             _ => bug!("expected a const, but found another kind"),
         }
     }
+
+    pub fn is_non_region_infer(self) -> bool {
+        match self.unpack() {
+            GenericArgKind::Lifetime(_) => false,
+            GenericArgKind::Type(ty) => ty.is_ty_infer(),
+            GenericArgKind::Const(ct) => ct.is_ct_infer(),
+        }
+    }
 }
 
 impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {

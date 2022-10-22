@@ -4,7 +4,9 @@ use crate::mir;
 use crate::ty::subst::InternalSubsts;
 use crate::ty::visit::TypeVisitable;
 use crate::ty::{self, query::TyCtxtAt, query::TyCtxtEnsure, TyCtxt};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -83,7 +85,29 @@ impl<'tcx> TyCtxt<'tcx> {
         match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: None };
-                self.const_eval_global_id_for_typeck(param_env, cid, span)
+                self.const_eval_global_id_for_typeck(param_env, cid, span).inspect(|_| {
+                    // We are emitting the lint here instead of in `is_const_evaluatable`
+                    // as we normalize obligations before checking them, and normalization
+                    // uses this function to evaluate this constant.
+                    //
+                    // @lcnr believes that successfully evaluating even though there are
+                    // used generic parameters is a bug of evaluation, so checking for it
+                    // here does feel somewhat sensible.
+                    if !self.features().generic_const_exprs && ct.substs.has_non_region_param() {
+                        assert!(matches!(self.def_kind(ct.def.did), DefKind::AnonConst));
+                        let mir_body = self.mir_for_ctfe_opt_const_arg(ct.def);
+                        if mir_body.is_polymorphic {
+                            let Some(local_def_id) = ct.def.did.as_local() else { return };
+                            self.struct_span_lint_hir(
+                                lint::builtin::CONST_EVALUATABLE_UNCHECKED,
+                                self.hir().local_def_id_to_hir_id(local_def_id),
+                                self.def_span(ct.def.did),
+                                "cannot use constants which depend on generic parameters in types",
+                                |err| err,
+                            )
+                        }
+                    }
+                })
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),
             Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
