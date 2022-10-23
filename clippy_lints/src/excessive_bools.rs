@@ -86,7 +86,7 @@ pub struct ExcessiveBools {
     max_fn_params_bools: u64,
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 enum Kind {
     Struct,
     Fn,
@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
                     &format!("more than {} bools in a struct", self.max_struct_bools),
                     None,
                     "consider using a state machine or refactoring bools into two-variant enums",
-                )
+                );
             }
         }
     }
@@ -164,7 +164,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
         if let Some(fn_header) = fn_kind.header()
             && fn_header.abi == Abi::Rust
             && !span.from_expansion() {
-            self.check_fn_sig(cx, fn_decl, span)
+            self.check_fn_sig(cx, fn_decl, span);
         }
     }
 }
