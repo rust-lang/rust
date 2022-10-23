@@ -107,6 +107,50 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
+    // FIXME remove
+    // Forces the data value of a dyn* value to the stack and returns a pointer to it as well as the
+    // vtable pointer.
+    pub(crate) fn dyn_star_force_data_on_stack(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+    ) -> (Value, Value) {
+        assert!(self.1.ty.is_dyn_star());
+
+        match self.0 {
+            CValueInner::ByRef(ptr, None) => {
+                let (a_scalar, b_scalar) = match self.1.abi {
+                    Abi::ScalarPair(a, b) => (a, b),
+                    _ => unreachable!("dyn_star_force_data_on_stack({:?})", self),
+                };
+                let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar);
+                let mut flags = MemFlags::new();
+                flags.set_notrap();
+                let vtable = ptr.offset(fx, b_offset).load(fx, clif_ty2, flags);
+                (ptr.get_addr(fx), vtable)
+            }
+            CValueInner::ByValPair(data, vtable) => {
+                let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
+                    kind: StackSlotKind::ExplicitSlot,
+                    // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
+                    // specify stack slot alignment.
+                    size: (u32::try_from(fx.target_config.pointer_type().bytes()).unwrap() + 15)
+                        / 16
+                        * 16,
+                });
+                let data_ptr = Pointer::stack_slot(stack_slot);
+                let mut flags = MemFlags::new();
+                flags.set_notrap();
+                data_ptr.store(fx, data, flags);
+
+                (data_ptr.get_addr(fx), vtable)
+            }
+            CValueInner::ByRef(_, Some(_)) | CValueInner::ByVal(_) => {
+                unreachable!("dyn_star_force_data_on_stack({:?})", self)
+            }
+        }
+    }
+
     pub(crate) fn try_to_ptr(self) -> Option<(Pointer, Option<Value>)> {
         match self.0 {
             CValueInner::ByRef(ptr, meta) => Some((ptr, meta)),
@@ -234,6 +278,10 @@ impl<'tcx> CValue<'tcx> {
 
     pub(crate) fn unsize_value(self, fx: &mut FunctionCx<'_, '_, 'tcx>, dest: CPlace<'tcx>) {
         crate::unsize::coerce_unsized_into(fx, self, dest);
+    }
+
+    pub(crate) fn coerce_dyn_star(self, fx: &mut FunctionCx<'_, '_, 'tcx>, dest: CPlace<'tcx>) {
+        crate::unsize::coerce_dyn_star(fx, self, dest);
     }
 
     /// If `ty` is signed, `const_val` must already be sign extended.

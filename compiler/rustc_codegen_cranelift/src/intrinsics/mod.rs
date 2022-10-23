@@ -84,6 +84,30 @@ fn simd_for_each_lane<'tcx>(
     }
 }
 
+fn simd_pair_for_each_lane_typed<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    x: CValue<'tcx>,
+    y: CValue<'tcx>,
+    ret: CPlace<'tcx>,
+    f: &dyn Fn(&mut FunctionCx<'_, '_, 'tcx>, CValue<'tcx>, CValue<'tcx>) -> CValue<'tcx>,
+) {
+    assert_eq!(x.layout(), y.layout());
+    let layout = x.layout();
+
+    let (lane_count, _lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+    let (ret_lane_count, _ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+    assert_eq!(lane_count, ret_lane_count);
+
+    for lane_idx in 0..lane_count {
+        let x_lane = x.value_lane(fx, lane_idx);
+        let y_lane = y.value_lane(fx, lane_idx);
+
+        let res_lane = f(fx, x_lane, y_lane);
+
+        ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
+    }
+}
+
 fn simd_pair_for_each_lane<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     x: CValue<'tcx>,
@@ -504,37 +528,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 _ => unreachable!(),
             };
 
-            let signed = type_sign(lhs.layout().ty);
-
-            let checked_res = crate::num::codegen_checked_int_binop(fx, bin_op, lhs, rhs);
-
-            let (val, has_overflow) = checked_res.load_scalar_pair(fx);
-            let clif_ty = fx.clif_type(lhs.layout().ty).unwrap();
-
-            let (min, max) = type_min_max_value(&mut fx.bcx, clif_ty, signed);
-
-            let val = match (intrinsic, signed) {
-                (sym::saturating_add, false) => fx.bcx.ins().select(has_overflow, max, val),
-                (sym::saturating_sub, false) => fx.bcx.ins().select(has_overflow, min, val),
-                (sym::saturating_add, true) => {
-                    let rhs = rhs.load_scalar(fx);
-                    let rhs_ge_zero =
-                        fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
-                    let sat_val = fx.bcx.ins().select(rhs_ge_zero, max, min);
-                    fx.bcx.ins().select(has_overflow, sat_val, val)
-                }
-                (sym::saturating_sub, true) => {
-                    let rhs = rhs.load_scalar(fx);
-                    let rhs_ge_zero =
-                        fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
-                    let sat_val = fx.bcx.ins().select(rhs_ge_zero, min, max);
-                    fx.bcx.ins().select(has_overflow, sat_val, val)
-                }
-                _ => unreachable!(),
-            };
-
-            let res = CValue::by_val(val, lhs.layout());
-
+            let res = crate::num::codegen_saturating_int_binop(fx, bin_op, lhs, rhs);
             ret.write_cvalue(fx, res);
         }
         sym::rotate_left => {
@@ -819,8 +813,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::ptr_guaranteed_cmp => {
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
-            let val = crate::num::codegen_ptr_binop(fx, BinOp::Eq, a, b);
-            ret.write_cvalue(fx, val);
+            let val = crate::num::codegen_ptr_binop(fx, BinOp::Eq, a, b).load_scalar(fx);
+            ret.write_cvalue(fx, CValue::by_val(val, fx.layout_of(fx.tcx.types.u8)));
         }
 
         sym::caller_location => {
@@ -1206,7 +1200,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             // FIXME once unwinding is supported, change this to actually catch panics
             let f_sig = fx.bcx.func.import_signature(Signature {
                 call_conv: fx.target_config.default_call_conv,
-                params: vec![AbiParam::new(fx.bcx.func.dfg.value_type(data))],
+                params: vec![AbiParam::new(pointer_ty(fx.tcx))],
                 returns: vec![],
             });
 
