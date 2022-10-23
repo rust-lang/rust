@@ -261,6 +261,7 @@ fn label_msg_span(
     }
 }
 
+#[instrument(level = "trace", skip(tcx))]
 pub fn unexpected_hidden_region_diagnostic<'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
