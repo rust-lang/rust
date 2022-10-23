@@ -1589,6 +1589,7 @@ impl<T: ?Sized> *mut T {
     /// # }
     /// ```
     #[must_use]
+    #[inline]
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
     pub const fn align_offset(self, align: usize) -> usize
@@ -1830,19 +1831,11 @@ impl<T: ?Sized> *mut T {
             panic!("is_aligned_to: align is not a power-of-two")
         }
 
-        #[inline]
-        fn runtime(ptr: *mut u8, align: usize) -> bool {
-            ptr.addr() & (align - 1) == 0
-        }
-
-        // This optimizes to `(ptr + align - 1) & -align == ptr`, which is slightly
-        // slower than `ptr & (align - 1) == 0`
-        const fn comptime(ptr: *mut u8, align: usize) -> bool {
-            ptr.align_offset(align) == 0
-        }
-
-        // SAFETY: `ptr.align_offset(align)` returns 0 if and only if the pointer is already aligned.
-        unsafe { intrinsics::const_eval_select((self.cast::<u8>(), align), comptime, runtime) }
+        // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
+        // The cast to `()` is used to
+        //   1. deal with fat pointers; and
+        //   2. ensure that `align_offset` doesn't actually try to compute an offset.
+        self.cast::<()>().align_offset(align) == 0
     }
 }
 
