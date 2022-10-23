@@ -141,14 +141,13 @@ impl EarlyLintPass for ExcessiveBools {
                     return;
                 }
 
-                let struct_bools = variant_data
+                if let Ok(struct_bools) = variant_data
                     .fields()
                     .iter()
                     .filter(|field| is_bool_ty(&field.ty))
                     .count()
-                    .try_into()
-                    .unwrap();
-                if self.max_struct_bools < struct_bools {
+                    .try_into() && self.max_struct_bools < struct_bools
+                    {
                     span_lint_and_help(
                         cx,
                         STRUCT_EXCESSIVE_BOOLS,
@@ -156,8 +155,8 @@ impl EarlyLintPass for ExcessiveBools {
                         &format!("more than {} bools in a struct", self.max_struct_bools),
                         None,
                         "consider using a state machine or refactoring bools into two-variant enums",
-                    );
-                }
+                    )
+                    }
             },
             ItemKind::Impl(box Impl {
                 of_trait: None, items, ..
