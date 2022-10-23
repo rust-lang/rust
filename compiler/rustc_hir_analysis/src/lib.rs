@@ -122,7 +122,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
     const CONVENTIONS_UNSTABLE: &str = "`C`, `cdecl`, `win64`, `sysv64` or `efiapi`";
     const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
     const UNSTABLE_EXPLAIN: &str =
-        "using different calling convention than `C` or `cdecl` for varargs functions is unstable";
+        "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
 
     if !decl.c_variadic || matches!(abi, Abi::C { .. } | Abi::Cdecl { .. }) {
         return;
