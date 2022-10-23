@@ -170,7 +170,7 @@ impl<'a> AstValidator<'a> {
                 DEPRECATED_WHERE_CLAUSE_LOCATION,
                 id,
                 where_clauses.0.1,
-                fluent::ast_passes::deprecated_where_clause_location,
+                fluent::ast_passes_deprecated_where_clause_location,
                 BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(
                     where_clauses.1.1.shrink_to_hi(),
                     suggestion,
@@ -1765,12 +1765,12 @@ pub(crate) enum ForbiddenLetReason {
     /// `let` is not valid and the source environment is not important
     GenericForbidden,
     /// A let chain with the `||` operator
-    #[note(ast_passes::not_supported_or)]
+    #[note(not_supported_or)]
     NotSupportedOr(#[primary_span] Span),
     /// A let chain with invalid parentheses
     ///
     /// For example, `let 1 = 1 && (expr && expr)` is allowed
     /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
-    #[note(ast_passes::not_supported_parentheses)]
+    #[note(not_supported_parentheses)]
     NotSupportedParentheses(#[primary_span] Span),
 }

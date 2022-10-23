@@ -63,12 +63,12 @@ impl HiddenUnicodeCodepoints {
         cx.struct_span_lint(
             TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
             span,
-            fluent::lint::hidden_unicode_codepoints,
+            fluent::lint_hidden_unicode_codepoints,
             |lint| {
                 lint.set_arg("label", label);
                 lint.set_arg("count", spans.len());
-                lint.span_label(span, fluent::lint::label);
-                lint.note(fluent::lint::note);
+                lint.span_label(span, fluent::label);
+                lint.note(fluent::note);
                 if point_at_inner_spans {
                     for (c, span) in &spans {
                         lint.span_label(*span, format!("{:?}", c));
@@ -76,13 +76,13 @@ impl HiddenUnicodeCodepoints {
                 }
                 if point_at_inner_spans && !spans.is_empty() {
                     lint.multipart_suggestion_with_style(
-                        fluent::lint::suggestion_remove,
+                        fluent::suggestion_remove,
                         spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
                         Applicability::MachineApplicable,
                         SuggestionStyle::HideCodeAlways,
                     );
                     lint.multipart_suggestion(
-                        fluent::lint::suggestion_escape,
+                        fluent::suggestion_escape,
                         spans
                             .into_iter()
                             .map(|(c, span)| {
@@ -104,8 +104,8 @@ impl HiddenUnicodeCodepoints {
                             .collect::<Vec<String>>()
                             .join(", "),
                     );
-                    lint.note(fluent::lint::suggestion_remove);
-                    lint.note(fluent::lint::no_suggestion_note_escape);
+                    lint.note(fluent::suggestion_remove);
+                    lint.note(fluent::no_suggestion_note_escape);
                 }
                 lint
             },

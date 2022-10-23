@@ -19,26 +19,27 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 expected_found: self.values_str(trace.values),
             }
             .add_to_diagnostic(err),
-            infer::Reborrow(span) => RegionOriginNote::Plain { span, msg: fluent::infer::reborrow }
-                .add_to_diagnostic(err),
+            infer::Reborrow(span) => {
+                RegionOriginNote::Plain { span, msg: fluent::infer_reborrow }.add_to_diagnostic(err)
+            }
             infer::ReborrowUpvar(span, ref upvar_id) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 RegionOriginNote::WithName {
                     span,
-                    msg: fluent::infer::reborrow,
+                    msg: fluent::infer_reborrow,
                     name: &var_name.to_string(),
                     continues: false,
                 }
                 .add_to_diagnostic(err);
             }
             infer::RelateObjectBound(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::infer::relate_object_bound }
+                RegionOriginNote::Plain { span, msg: fluent::infer_relate_object_bound }
                     .add_to_diagnostic(err);
             }
             infer::DataBorrowed(ty, span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: fluent::infer::data_borrowed,
+                    msg: fluent::infer_data_borrowed,
                     name: &self.ty_to_string(ty),
                     continues: false,
                 }
@@ -47,7 +48,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::ReferenceOutlivesReferent(ty, span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: fluent::infer::reference_outlives_referent,
+                    msg: fluent::infer_reference_outlives_referent,
                     name: &self.ty_to_string(ty),
                     continues: false,
                 }
@@ -56,22 +57,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::RelateParamBound(span, ty, opt_span) => {
                 RegionOriginNote::WithName {
                     span,
-                    msg: fluent::infer::relate_param_bound,
+                    msg: fluent::infer_relate_param_bound,
                     name: &self.ty_to_string(ty),
                     continues: opt_span.is_some(),
                 }
                 .add_to_diagnostic(err);
                 if let Some(span) = opt_span {
-                    RegionOriginNote::Plain { span, msg: fluent::infer::relate_param_bound_2 }
+                    RegionOriginNote::Plain { span, msg: fluent::infer_relate_param_bound_2 }
                         .add_to_diagnostic(err);
                 }
             }
             infer::RelateRegionParamBound(span) => {
-                RegionOriginNote::Plain { span, msg: fluent::infer::relate_region_param_bound }
+                RegionOriginNote::Plain { span, msg: fluent::infer_relate_region_param_bound }
                     .add_to_diagnostic(err);
             }
             infer::CompareImplItemObligation { span, .. } => {
-                RegionOriginNote::Plain { span, msg: fluent::infer::compare_impl_item_obligation }
+                RegionOriginNote::Plain { span, msg: fluent::infer_compare_impl_item_obligation }
                     .add_to_diagnostic(err);
             }
             infer::CheckAssociatedTypeBounds { ref parent, .. } => {
@@ -80,7 +81,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::AscribeUserTypeProvePredicate(span) => {
                 RegionOriginNote::Plain {
                     span,
-                    msg: fluent::infer::ascribe_user_type_prove_predicate,
+                    msg: fluent::infer_ascribe_user_type_prove_predicate,
                 }
                 .add_to_diagnostic(err);
             }
