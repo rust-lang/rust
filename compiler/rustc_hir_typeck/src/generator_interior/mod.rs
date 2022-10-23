@@ -377,15 +377,6 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         debug!("is_borrowed_temporary: {:?}", self.drop_ranges.is_borrowed_temporary(expr));
 
         let ty = self.fcx.typeck_results.borrow().expr_ty_adjusted_opt(expr);
-        let may_need_drop = |ty: Ty<'tcx>| {
-            // Avoid ICEs in needs_drop.
-            let ty = self.fcx.resolve_vars_if_possible(ty);
-            let ty = self.fcx.tcx.erase_regions(ty);
-            if ty.needs_infer() {
-                return true;
-            }
-            ty.needs_drop(self.fcx.tcx, self.fcx.param_env)
-        };
 
         // Typically, the value produced by an expression is consumed by its parent in some way,
         // so we only have to check if the parent contains a yield (note that the parent may, for
@@ -403,9 +394,18 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // src/test/ui/generator/drop-tracking-parent-expression.rs.
         let scope = if self.drop_ranges.is_borrowed_temporary(expr)
             || ty.map_or(true, |ty| {
-                let needs_drop = may_need_drop(ty);
-                debug!(?needs_drop, ?ty);
-                needs_drop
+                // Avoid ICEs in needs_drop.
+                let ty = self.fcx.resolve_vars_if_possible(ty);
+                let ty = self.fcx.tcx.erase_regions(ty);
+                if ty.needs_infer() {
+                    self.fcx
+                        .tcx
+                        .sess
+                        .delay_span_bug(expr.span, &format!("inference variables in {ty}"));
+                    true
+                } else {
+                    ty.needs_drop(self.fcx.tcx, self.fcx.param_env)
+                }
             }) {
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
         } else {

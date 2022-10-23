@@ -37,7 +37,6 @@ pub(crate) fn early_resolve_intra_doc_links(
         markdown_links: Default::default(),
         doc_link_resolutions: Default::default(),
         traits_in_scope: Default::default(),
-        all_traits: Default::default(),
         all_trait_impls: Default::default(),
         all_macro_rules: Default::default(),
         document_private_items,
@@ -63,7 +62,6 @@ pub(crate) fn early_resolve_intra_doc_links(
         markdown_links: Some(link_resolver.markdown_links),
         doc_link_resolutions: link_resolver.doc_link_resolutions,
         traits_in_scope: link_resolver.traits_in_scope,
-        all_traits: Some(link_resolver.all_traits),
         all_trait_impls: Some(link_resolver.all_trait_impls),
         all_macro_rules: link_resolver.all_macro_rules,
     }
@@ -81,7 +79,6 @@ struct EarlyDocLinkResolver<'r, 'ra> {
     markdown_links: FxHashMap<String, Vec<PreprocessedMarkdownLink>>,
     doc_link_resolutions: FxHashMap<(Symbol, Namespace, DefId), Option<Res<ast::NodeId>>>,
     traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
-    all_traits: Vec<DefId>,
     all_trait_impls: Vec<DefId>,
     all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
     document_private_items: bool,
@@ -122,8 +119,6 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
         loop {
             let crates = Vec::from_iter(self.resolver.cstore().crates_untracked());
             for &cnum in &crates[start_cnum..] {
-                let all_traits =
-                    Vec::from_iter(self.resolver.cstore().traits_in_crate_untracked(cnum));
                 let all_trait_impls =
                     Vec::from_iter(self.resolver.cstore().trait_impls_in_crate_untracked(cnum));
                 let all_inherent_impls =
@@ -132,20 +127,18 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                     self.resolver.cstore().incoherent_impls_in_crate_untracked(cnum),
                 );
 
-                // Querying traits in scope is expensive so we try to prune the impl and traits lists
-                // using privacy, private traits and impls from other crates are never documented in
+                // Querying traits in scope is expensive so we try to prune the impl lists using
+                // privacy, private traits and impls from other crates are never documented in
                 // the current crate, and links in their doc comments are not resolved.
-                for &def_id in &all_traits {
-                    if self.resolver.cstore().visibility_untracked(def_id).is_public() {
-                        self.resolve_doc_links_extern_impl(def_id, false);
-                    }
-                }
                 for &(trait_def_id, impl_def_id, simplified_self_ty) in &all_trait_impls {
                     if self.resolver.cstore().visibility_untracked(trait_def_id).is_public()
                         && simplified_self_ty.and_then(|ty| ty.def()).map_or(true, |ty_def_id| {
                             self.resolver.cstore().visibility_untracked(ty_def_id).is_public()
                         })
                     {
+                        if self.visited_mods.insert(trait_def_id) {
+                            self.resolve_doc_links_extern_impl(trait_def_id, false);
+                        }
                         self.resolve_doc_links_extern_impl(impl_def_id, false);
                     }
                 }
@@ -158,7 +151,6 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
                     self.resolve_doc_links_extern_impl(impl_def_id, true);
                 }
 
-                self.all_traits.extend(all_traits);
                 self.all_trait_impls
                     .extend(all_trait_impls.into_iter().map(|(_, def_id, _)| def_id));
             }
@@ -307,15 +299,20 @@ impl<'ra> EarlyDocLinkResolver<'_, 'ra> {
             {
                 if let Some(def_id) = child.res.opt_def_id() && !def_id.is_local() {
                     let scope_id = match child.res {
-                        Res::Def(DefKind::Variant, ..) => self.resolver.parent(def_id),
+                        Res::Def(
+                            DefKind::Variant
+                            | DefKind::AssocTy
+                            | DefKind::AssocFn
+                            | DefKind::AssocConst,
+                            ..,
+                        ) => self.resolver.parent(def_id),
                         _ => def_id,
                     };
                     self.resolve_doc_links_extern_outer(def_id, scope_id); // Outer attribute scope
                     if let Res::Def(DefKind::Mod, ..) = child.res {
                         self.resolve_doc_links_extern_inner(def_id); // Inner attribute scope
                     }
-                    // `DefKind::Trait`s are processed in `process_extern_impls`.
-                    if let Res::Def(DefKind::Mod | DefKind::Enum, ..) = child.res {
+                    if let Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, ..) = child.res {
                         self.process_module_children_or_reexports(def_id);
                     }
                     if let Res::Def(DefKind::Struct | DefKind::Union | DefKind::Variant, _) =
@@ -357,9 +354,6 @@ impl Visitor<'_> for EarlyDocLinkResolver<'_, '_> {
             self.parent_scope.module = old_module;
         } else {
             match &item.kind {
-                ItemKind::Trait(..) => {
-                    self.all_traits.push(self.resolver.local_def_id(item.id).to_def_id());
-                }
                 ItemKind::Impl(box ast::Impl { of_trait: Some(..), .. }) => {
                     self.all_trait_impls.push(self.resolver.local_def_id(item.id).to_def_id());
                 }

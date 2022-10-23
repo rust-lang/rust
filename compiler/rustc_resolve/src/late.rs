@@ -524,6 +524,9 @@ struct DiagnosticMetadata<'ast> {
     /// Used to detect possible `if let` written without `let` and to provide structured suggestion.
     in_if_condition: Option<&'ast Expr>,
 
+    /// Used to detect possible new binding written without `let` and to provide structured suggestion.
+    in_assignment: Option<&'ast Expr>,
+
     /// If we are currently in a trait object definition. Used to point at the bounds when
     /// encountering a struct or enum.
     current_trait_object: Option<&'ast [ast::GenericBound]>,
@@ -3904,6 +3907,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::Index(ref elem, ref idx) => {
                 self.resolve_expr(elem, Some(expr));
                 self.visit_expr(idx);
+            }
+            ExprKind::Assign(..) => {
+                let old = self.diagnostic_metadata.in_assignment.replace(expr);
+                visit::walk_expr(self, expr);
+                self.diagnostic_metadata.in_assignment = old;
             }
             _ => {
                 visit::walk_expr(self, expr);

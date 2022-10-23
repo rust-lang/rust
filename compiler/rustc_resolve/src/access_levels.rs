@@ -1,5 +1,4 @@
-use crate::NameBindingKind;
-use crate::Resolver;
+use crate::{ImportKind, NameBindingKind, Resolver};
 use rustc_ast::ast;
 use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
@@ -45,14 +44,13 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
         let module = self.r.get_module(module_id.to_def_id()).unwrap();
         let resolutions = self.r.resolutions(module);
 
-        for (key, name_resolution) in resolutions.borrow().iter() {
+        for (_, name_resolution) in resolutions.borrow().iter() {
             if let Some(mut binding) = name_resolution.borrow().binding() && !binding.is_ambiguity() {
                 // Set the given binding access level to `AccessLevel::Public` and
                 // sets the rest of the `use` chain to `AccessLevel::Exported` until
                 // we hit the actual exported item.
 
-                // FIXME: tag and is_public() condition must be deleted,
-                // but assertion fail occurs in import_id_for_ns
+                // FIXME: tag and is_public() condition should be removed, but assertions occur.
                 let tag = if binding.is_import() { AccessLevel::Exported } else { AccessLevel::Public };
                 if binding.vis.is_public() {
                     let mut prev_parent_id = module_id;
@@ -60,16 +58,26 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
                     while let NameBindingKind::Import { binding: nested_binding, import, .. } =
                         binding.kind
                     {
-                        let id = self.r.local_def_id(self.r.import_id_for_ns(import, key.ns));
-                        self.update(
-                            id,
+                        let mut update = |node_id| self.update(
+                            self.r.local_def_id(node_id),
                             binding.vis.expect_local(),
                             prev_parent_id,
                             level,
                         );
+                        // In theory all the import IDs have individual visibilities and effective
+                        // visibilities, but in practice these IDs go straigth to HIR where all
+                        // their few uses assume that their (effective) visibility applies to the
+                        // whole syntactic `use` item. So we update them all to the maximum value
+                        // among the potential individual effective visibilities. Maybe HIR for
+                        // imports shouldn't use three IDs at all.
+                        update(import.id);
+                        if let ImportKind::Single { additional_ids, .. } = import.kind {
+                            update(additional_ids.0);
+                            update(additional_ids.1);
+                        }
 
                         level = AccessLevel::Exported;
-                        prev_parent_id = id;
+                        prev_parent_id = self.r.local_def_id(import.id);
                         binding = nested_binding;
                     }
                 }

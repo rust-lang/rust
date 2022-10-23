@@ -708,7 +708,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
             // If the trait has a single item (which wasn't matched by Levenshtein), suggest it
             let suggestion = self.get_single_associated_item(&path, &source, is_expected);
-            self.r.add_typo_suggestion(err, suggestion, ident_span);
+            if !self.r.add_typo_suggestion(err, suggestion, ident_span) {
+                fallback = !self.let_binding_suggestion(err, ident_span);
+            }
         }
         fallback
     }
@@ -1105,41 +1107,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         // where a brace being opened means a block is being started. Look
         // ahead for the next text to see if `span` is followed by a `{`.
         let sm = self.r.session.source_map();
-        let mut sp = span;
-        loop {
-            sp = sm.next_point(sp);
-            match sm.span_to_snippet(sp) {
-                Ok(ref snippet) => {
-                    if snippet.chars().any(|c| !c.is_whitespace()) {
-                        break;
-                    }
-                }
-                _ => break,
-            }
-        }
+        let sp = sm.span_look_ahead(span, None, Some(50));
         let followed_by_brace = matches!(sm.span_to_snippet(sp), Ok(ref snippet) if snippet == "{");
         // In case this could be a struct literal that needs to be surrounded
         // by parentheses, find the appropriate span.
-        let mut i = 0;
-        let mut closing_brace = None;
-        loop {
-            sp = sm.next_point(sp);
-            match sm.span_to_snippet(sp) {
-                Ok(ref snippet) => {
-                    if snippet == "}" {
-                        closing_brace = Some(span.to(sp));
-                        break;
-                    }
-                }
-                _ => break,
-            }
-            i += 1;
-            // The bigger the span, the more likely we're incorrect --
-            // bound it to 100 chars long.
-            if i > 100 {
-                break;
-            }
-        }
+        let closing_span = sm.span_look_ahead(span, Some("}"), Some(50));
+        let closing_brace: Option<Span> = sm
+            .span_to_snippet(closing_span)
+            .map_or(None, |s| if s == "}" { Some(span.to(closing_span)) } else { None });
         (followed_by_brace, closing_brace)
     }
 
@@ -1779,26 +1754,16 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             }
                         }
                         if let Ok(base_snippet) = base_snippet {
-                            let mut sp = after_colon_sp;
-                            for _ in 0..100 {
-                                // Try to find an assignment
-                                sp = sm.next_point(sp);
-                                let snippet = sm.span_to_snippet(sp);
-                                match snippet {
-                                    Ok(ref x) if x.as_str() == "=" => {
-                                        err.span_suggestion(
-                                            base_span,
-                                            "maybe you meant to write an assignment here",
-                                            format!("let {}", base_snippet),
-                                            Applicability::MaybeIncorrect,
-                                        );
-                                        show_label = false;
-                                        break;
-                                    }
-                                    Ok(ref x) if x.as_str() == "\n" => break,
-                                    Err(_) => break,
-                                    Ok(_) => {}
-                                }
+                            // Try to find an assignment
+                            let eq_span = sm.span_look_ahead(after_colon_sp, Some("="), Some(50));
+                            if let Ok(ref snippet) = sm.span_to_snippet(eq_span) && snippet == "=" {
+                                err.span_suggestion(
+                                    base_span,
+                                    "maybe you meant to write an assignment here",
+                                    format!("let {}", base_snippet),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                show_label = false;
                             }
                         }
                     }
@@ -1813,6 +1778,31 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
         }
         false
+    }
+
+    fn let_binding_suggestion(&self, err: &mut Diagnostic, ident_span: Span) -> bool {
+        // try to give a suggestion for this pattern: `name = 1`, which is common in other languages
+        let mut added_suggestion = false;
+        if let Some(Expr { kind: ExprKind::Assign(lhs, _rhs, _), .. }) = self.diagnostic_metadata.in_assignment &&
+            let ast::ExprKind::Path(None, _) = lhs.kind {
+                let sm = self.r.session.source_map();
+                let line_span = sm.span_extend_to_line(ident_span);
+                let ident_name = sm.span_to_snippet(ident_span).unwrap();
+                // HACK(chenyukang): make sure ident_name is at the starting of the line to protect against macros
+                if sm
+                    .span_to_snippet(line_span)
+                    .map_or(false, |s| s.trim().starts_with(&ident_name))
+                {
+                    err.span_suggestion_verbose(
+                        ident_span.shrink_to_lo(),
+                        "you might have meant to introduce a new binding",
+                        "let ".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                    added_suggestion = true;
+                }
+            }
+        added_suggestion
     }
 
     fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
