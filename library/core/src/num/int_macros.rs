@@ -1002,9 +1002,12 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(saturating_bit_shifts)]
+        #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".saturating_shl(0), 42);")]
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".saturating_shl(1), 0);")]
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS), 0);")]
         #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS - 2), 1_", stringify!($SelfT), " << ", stringify!($SelfT), "::BITS - 2);")]
         #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS - 1), ", stringify!($SelfT), "::MAX);")]
+        #[doc = concat!("assert_eq!(-42_", stringify!($SelfT), ".saturating_shl(0), -42);")]
         #[doc = concat!("assert_eq!(-1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS - 2), -1_", stringify!($SelfT), " << ", stringify!($SelfT), "::BITS - 2);")]
         #[doc = concat!("assert_eq!(-1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS - 1), ", stringify!($SelfT), "::MIN);")]
         #[doc = concat!("assert_eq!(-1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS), ", stringify!($SelfT), "::MIN, \"-1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS), ", stringify!($SelfT), "::MIN\");")]
@@ -1018,11 +1021,11 @@ macro_rules! int_impl {
             if rhs == 0 {
                 self
             } else {
-                // leading zeros ignoring first bit (which indicates negative values)
+                // leading zeros/ones but ignoring first bit (which indicates negative values)
                 let leading_zeros = (self << 1).leading_zeros();
                 let leading_ones = (self << 1).leading_ones();
 
-                // would overflow => MIN / MAX depending on whether the value is negative or not
+                // would overflow? => MIN / MAX depending on whether the value is negative or not
                 if self > 0 && leading_zeros <  rhs {
                     Self::MAX
                 } else if self < 0 && leading_ones < rhs {
