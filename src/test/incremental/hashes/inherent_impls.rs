@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 // This test case tests the incremental compilation hash (ICH) implementation
 // for let expressions.
 
