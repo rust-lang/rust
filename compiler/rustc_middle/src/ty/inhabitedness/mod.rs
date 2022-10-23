@@ -29,7 +29,7 @@
 //! }
 //! ```
 //! In this code, the type `Foo` will only be visibly uninhabited inside the
-//! modules `b`, `c` and `d`. Calling `uninhabited_predicate` on `Foo` will
+//! modules `b`, `c` and `d`. Calling `inhabited_predicate` on `Foo` will
 //! return `NotInModule(b) AND NotInModule(c)`.
 //!
 //! We need this information for pattern-matching on `Foo` or types that contain
