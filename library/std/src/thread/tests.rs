@@ -37,7 +37,13 @@ fn test_named_thread() {
         .unwrap();
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios", target_os = "watchos"))]
+#[cfg(any(
+    // Note: musl didn't add pthread_getname_np until 1.2.3
+    all(target_os = "linux", target_env = "gnu"),
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "watchos"
+))]
 #[test]
 fn test_named_thread_truncation() {
     use crate::ffi::CStr;
