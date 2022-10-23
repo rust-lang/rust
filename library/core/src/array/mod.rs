@@ -865,24 +865,6 @@ where
         return Ok(Try::from_output(unsafe { mem::zeroed() }));
     }
 
-    struct Guard<'a, T, const N: usize> {
-        array_mut: &'a mut [MaybeUninit<T>; N],
-        initialized: usize,
-    }
-
-    impl<T, const N: usize> Drop for Guard<'_, T, N> {
-        fn drop(&mut self) {
-            debug_assert!(self.initialized <= N);
-
-            // SAFETY: this slice will contain only initialized objects.
-            unsafe {
-                crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
-                    &mut self.array_mut.get_unchecked_mut(..self.initialized),
-                ));
-            }
-        }
-    }
-
     let mut array = MaybeUninit::uninit_array::<N>();
     let mut guard = Guard { array_mut: &mut array, initialized: 0 };
 
@@ -918,6 +900,24 @@ where
     // SAFETY: All elements of the array were populated in the loop above.
     let output = unsafe { array.transpose().assume_init() };
     Ok(Try::from_output(output))
+}
+
+pub(crate) struct Guard<'a, T, const N: usize> {
+    pub array_mut: &'a mut [MaybeUninit<T>; N],
+    pub initialized: usize,
+}
+
+impl<T, const N: usize> Drop for Guard<'_, T, N> {
+    fn drop(&mut self) {
+        debug_assert!(self.initialized <= N);
+
+        // SAFETY: this slice will contain only initialized objects.
+        unsafe {
+            crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
+                &mut self.array_mut.get_unchecked_mut(..self.initialized),
+            ));
+        }
+    }
 }
 
 /// Returns the next chunk of `N` items from the iterator or errors with an
