@@ -303,6 +303,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         // polymorphization is enabled) and this isn't an inherent impl.
         if impl_trait_ref.is_some() && substs.iter().any(|a| a.has_non_region_param()) {
             self = self.path_generic_args(
+                false,
                 |this| {
                     this.path_append_ns(
                         |cx| cx.print_def_path(parent_def_id, &[]),
@@ -808,6 +809,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
     fn path_generic_args(
         mut self,
+        _: bool,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {

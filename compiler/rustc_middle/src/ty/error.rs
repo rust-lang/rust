@@ -985,7 +985,7 @@ fn foo(&self) -> Self::T { String::new() }
 
     fn format_generic_args(self, args: &[ty::GenericArg<'tcx>]) -> String {
         FmtPrinter::new(self, hir::def::Namespace::TypeNS)
-            .path_generic_args(Ok, args)
+            .path_generic_args(true, Ok, args)
             .expect("could not write to `String`.")
             .into_buffer()
     }

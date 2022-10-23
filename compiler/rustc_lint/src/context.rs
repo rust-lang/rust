@@ -1232,6 +1232,7 @@ impl<'tcx> LateContext<'tcx> {
 
             fn path_generic_args(
                 self,
+                _: bool,
                 print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
                 _args: &[GenericArg<'tcx>],
             ) -> Result<Self::Path, Self::Error> {

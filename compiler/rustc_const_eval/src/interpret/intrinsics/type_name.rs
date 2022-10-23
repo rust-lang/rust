@@ -135,6 +135,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 
     fn path_generic_args(
         mut self,
+        _: bool,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {

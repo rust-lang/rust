@@ -3,6 +3,7 @@ use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 
@@ -92,6 +93,7 @@ pub trait Printer<'tcx>: Sized {
 
     fn path_generic_args(
         self,
+        forbid_lifetime_elision: bool,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error>;
@@ -150,7 +152,12 @@ pub trait Printer<'tcx>: Sized {
                         _ => {
                             if !generics.params.is_empty() && substs.len() >= generics.count() {
                                 let args = generics.own_substs_no_defaults(self.tcx(), substs);
+                                let forbid_elision = !matches!(
+                                    self.tcx().def_kind(def_id),
+                                    DefKind::Fn | DefKind::AssocFn
+                                );
                                 return self.path_generic_args(
+                                    forbid_elision,
                                     |cx| cx.print_def_path(def_id, parent_substs),
                                     args,
                                 );

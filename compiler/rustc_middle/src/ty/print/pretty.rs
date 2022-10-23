@@ -1845,12 +1845,18 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn path_generic_args(
         mut self,
+        forbid_lifetime_elision: bool,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         args: &[GenericArg<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
-        if args.first().is_some() {
+        let all_elided = args.iter().all(|arg| match arg.unpack() {
+            ty::GenericArgKind::Lifetime(lt) => !lt.has_name(),
+            _ => false,
+        });
+
+        if !args.is_empty() && (forbid_lifetime_elision || self.tcx.sess.verbose() || !all_elided) {
             if self.in_value {
                 write!(self, "::")?;
             }
