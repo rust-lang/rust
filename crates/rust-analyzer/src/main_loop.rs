@@ -543,7 +543,10 @@ impl GlobalState {
                             diag.fix,
                         ),
                         Err(err) => {
-                            tracing::error!("File with cargo diagnostic not found in VFS: {}", err);
+                            tracing::error!(
+                                "flycheck {id}: File with cargo diagnostic not found in VFS: {}",
+                                err
+                            );
                         }
                     };
                 }
