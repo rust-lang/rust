@@ -613,8 +613,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
                 //
                 // SO THEN WE CAN USE THE ABOVE CODE.
-                let dyn_star = drop_place.to_cvalue(fx);
-                let (data, vtable) = dyn_star.load_scalar_pair(fx);
+                let (data, vtable) = drop_place.to_cvalue(fx).dyn_star_force_data_on_stack(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable);
 
                 let virtual_drop = Instance {
