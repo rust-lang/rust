@@ -36,6 +36,7 @@
     -Z                       dump-mir-graphviz=val -- in addition to `.mir` files, create graphviz `.dot` files (and with `-Z instrument-coverage`, also create a `.dot` file for the MIR-derived coverage graph) (default: no)
     -Z                       dump-mir-spanview=val -- in addition to `.mir` files, create `.html` files to view spans for all `statement`s (including terminators), only `terminator` spans, or computed `block` spans (one span encompassing a block's terminator and all statements). If `-Z instrument-coverage` is also enabled, create an additional `.html` file showing the computed coverage spans.
     -Z                           dwarf-version=val -- version of DWARF debug information to emit (default: 2 or 4, depending on platform)
+    -Z                               dylib-lto=val -- enables LTO for dylib crate type
     -Z                        emit-stack-sizes=val -- emit a section containing stack size metadata (default: no)
     -Z                           emit-thin-lto=val -- emit the bc module with thin LTO info (default: yes)
     -Z               export-executable-symbols=val -- export symbols from executables, as if they were dynamic libraries
