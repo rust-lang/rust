@@ -217,11 +217,12 @@ impl<'tcx> std::fmt::Debug for ScalarTy<'tcx> {
 
 impl<'tcx> ConstAnalysis<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, map: Map) -> Self {
+        let param_env = tcx.param_env(body.source.def_id());
         Self {
             map,
             tcx,
-            ecx: InterpCx::new(tcx, DUMMY_SP, ty::ParamEnv::empty(), DummyMachine),
-            param_env: tcx.param_env(body.source.def_id()),
+            ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
+            param_env: param_env,
         }
     }
 
@@ -260,13 +261,11 @@ impl<'tcx> ConstAnalysis<'tcx> {
         };
         match value {
             FlatSet::Top => FlatSet::Top,
-            FlatSet::Elem(ScalarTy(scalar, ty)) => {
-                let layout = self
-                    .tcx
-                    .layout_of(ty::ParamEnv::empty().and(ty))
-                    .expect("this should not happen"); // FIXME
-                FlatSet::Elem(ImmTy::from_scalar(scalar, layout))
-            }
+            FlatSet::Elem(ScalarTy(scalar, ty)) => self
+                .tcx
+                .layout_of(self.param_env.and(ty))
+                .map(|layout| FlatSet::Elem(ImmTy::from_scalar(scalar, layout)))
+                .unwrap_or(FlatSet::Top),
             FlatSet::Bottom => FlatSet::Bottom,
         }
     }
