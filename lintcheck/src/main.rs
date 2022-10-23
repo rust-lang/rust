@@ -678,7 +678,7 @@ fn main() {
         .unwrap();
 
     let server = config.recursive.then(|| {
-        fs::remove_dir_all("target/lintcheck/shared_target_dir/recursive").unwrap_or_default();
+        let _ = fs::remove_dir_all("target/lintcheck/shared_target_dir/recursive");
 
         LintcheckServer::spawn(recursive_options)
     });
