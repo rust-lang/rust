@@ -587,11 +587,6 @@ impl CStore {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
     }
 
-    /// Decodes all traits in the crate (for rustdoc).
-    pub fn traits_in_crate_untracked(&self, cnum: CrateNum) -> impl Iterator<Item = DefId> + '_ {
-        self.get_crate_data(cnum).get_traits()
-    }
-
     /// Decodes all trait impls in the crate (for rustdoc).
     pub fn trait_impls_in_crate_untracked(
         &self,
