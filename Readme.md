@@ -22,17 +22,32 @@ To build it (most of these instructions come from [here](https://gcc.gnu.org/onl
 
 ```bash
 $ git clone https://github.com/antoyo/gcc
-$ cd gcc
 $ sudo apt install flex libmpfr-dev libgmp-dev libmpc3 libmpc-dev
-$ ./configure \
-   --enable-host-shared \
-   --enable-languages=jit \
-   --disable-bootstrap \
-   --enable-checking=release \
-   --prefix=$(pwd)/install \
-   --disable-multilib
+$ mkdir gcc-build gcc-install
+$ cd gcc-build
+$ ../gcc/configure \
+    --enable-host-shared \
+    --enable-languages=jit \
+    --enable-checking=release \ # it enables extra checks which allow to find bugs
+    --disable-bootstrap \
+    --disable-multilib \
+    --prefix=$(pwd)/../gcc-install
 $ make -j4 # You can replace `4` with another number depending on how many cores you have.
-$ cd ..
+```
+
+If you want to run libgccjit tests, you will need to also enable the C++ language in the `configure`:
+
+```bash
+--enable-languages=jit,c++
+```
+
+Then to run libgccjit tests:
+
+```bash
+$ cd gcc # from the `gcc-build` folder
+$ make check-jit
+# To run one specific test:
+$ make check-jit RUNTESTFLAGS="-v -v -v jit.exp=jit.dg/test-asm.cc"
 ```
 
 **Put the path to your custom build of libgccjit in the file `gcc_path`.**
