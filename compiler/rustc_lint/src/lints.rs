@@ -1,8 +1,10 @@
+use std::num::NonZeroU32;
+
 use rustc_errors::{fluent, AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{Predicate, Ty, TyCtxt};
-use rustc_span::{symbol::Ident, Span, Symbol};
+use rustc_span::{edition::Edition, symbol::Ident, Span, Symbol};
 
 use crate::{errors::OverruledAttributeSub, LateContext};
 
@@ -31,6 +33,259 @@ pub enum ArrayIntoIterDiagSub {
         #[suggestion_part(code = ")")]
         end_span: Span,
     },
+}
+
+// builtin.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_while_true)]
+pub struct BuiltinWhileTrue {
+    #[suggestion(style = "short", code = "{replace}", applicability = "machine-applicable")]
+    pub suggestion: Span,
+    pub replace: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_box_pointers)]
+pub struct BuiltinBoxPointers<'a> {
+    pub ty: Ty<'a>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_non_shorthand_field_patterns)]
+pub struct BuiltinNonShorthandFieldPatterns {
+    pub ident: Ident,
+    #[suggestion(code = "{prefix}{ident}", applicability = "machine-applicable")]
+    pub suggestion: Span,
+    pub prefix: &'static str,
+}
+
+// FIXME: add lint::unsafe_code
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_missing_doc)]
+pub struct BuiltinMissingDoc<'a> {
+    pub article: &'a str,
+    pub desc: &'a str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_missing_copy_impl)]
+pub struct BuiltinMissingCopyImpl;
+
+pub struct BuiltinMissingDebugImpl<'a> {
+    pub tcx: TyCtxt<'a>,
+    pub def_id: DefId,
+}
+
+impl<'a> DecorateLint<'a, ()> for BuiltinMissingDebugImpl<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        diag.set_arg("debug", self.tcx.def_path_str(self.def_id));
+        diag
+    }
+
+    fn msg(&self) -> DiagnosticMessage {
+        fluent::lint_builtin_missing_debug_impl
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_anonymous_params)]
+pub struct BuiltinAnonymousParams<'a> {
+    #[suggestion(code = "_: {ty_snip}")]
+    pub suggestion: (Span, Applicability),
+    pub ty_snip: &'a str,
+}
+
+// FIXME: add lint::builtin_deprecated_attr_link
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_deprecated_attr_used)]
+pub struct BuiltinDeprecatedAttrUsed {
+    pub name: String,
+    #[suggestion(
+        lint_builtin_deprecated_attr_default_suggestion,
+        style = "short",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_unused_doc_comment)]
+pub struct BuiltinUnusedDocComment<'a> {
+    pub kind: &'a str,
+    #[label]
+    pub label: Span,
+    #[subdiagnostic]
+    pub sub: BuiltinUnusedDocCommentSub,
+}
+
+#[derive(Subdiagnostic)]
+pub enum BuiltinUnusedDocCommentSub {
+    #[help(plain_help)]
+    PlainHelp,
+    #[help(block_help)]
+    BlockHelp,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_no_mangle_generic)]
+pub struct BuiltinNoMangleGeneric {
+    // Use of `#[no_mangle]` suggests FFI intent; correct
+    // fix may be to monomorphize source by hand
+    #[suggestion(style = "short", code = "", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_const_no_mangle)]
+pub struct BuiltinConstNoMangle {
+    #[suggestion(code = "pub static", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_mutable_transmutes)]
+pub struct BuiltinMutablesTransmutes;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_unstable_features)]
+pub struct BuiltinUnstableFeatures;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_unreachable_pub)]
+pub struct BuiltinUnreachablePub<'a> {
+    pub what: &'a str,
+    #[suggestion(code = "pub(crate)")]
+    pub suggestion: (Span, Applicability),
+    #[help]
+    pub help: Option<()>,
+}
+
+// FIXME: migrate builtin_type_alias_where_clause
+
+// FIXME: migrate builtin_type_alias_generic_bounds
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_trivial_bounds)]
+pub struct BuiltinTrivialBounds<'a> {
+    pub predicate_kind_name: &'a str,
+    pub predicate: Predicate<'a>,
+}
+
+#[derive(LintDiagnostic)]
+pub enum BuiltinEllipsisInclusiveRangePatternsLint {
+    #[diag(lint_builtin_ellipsis_inclusive_range_patterns)]
+    Parenthesise {
+        #[suggestion(code = "{replace}", applicability = "machine-applicable")]
+        suggestion: Span,
+        replace: String,
+    },
+    #[diag(lint_builtin_ellipsis_inclusive_range_patterns)]
+    NonParenthesise {
+        #[suggestion(style = "short", code = "..=", applicability = "machine-applicable")]
+        suggestion: Span,
+    },
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_unnameable_test_items)]
+pub struct BuiltinUnnameableTestItems;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_keyword_idents)]
+pub struct BuiltinKeywordIdents {
+    pub kw: Ident,
+    pub next: Edition,
+    #[suggestion(code = "r#{kw}", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_explicit_outlives)]
+pub struct BuiltinExplicitOutlives {
+    pub count: usize,
+    #[subdiagnostic]
+    pub suggestion: BuiltinExplicitOutlivesSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(suggestion)]
+pub struct BuiltinExplicitOutlivesSuggestion {
+    #[suggestion_part(code = "")]
+    pub spans: Vec<Span>,
+    #[applicability]
+    pub applicability: Applicability,
+}
+
+pub struct BuiltinIncompleteFeatures {
+    pub name: Symbol,
+    pub note: Option<NonZeroU32>,
+    pub help: Option<()>,
+}
+
+impl<'a> DecorateLint<'a, ()> for BuiltinIncompleteFeatures {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        diag.set_arg("name", self.name);
+        if let Some(n) = self.note {
+            diag.set_arg("n", n);
+            diag.note(fluent::note);
+        }
+        if let Some(_) = self.help {
+            diag.help(fluent::help);
+        }
+        diag
+    }
+
+    fn msg(&self) -> DiagnosticMessage {
+        fluent::lint_builtin_incomplete_features
+    }
+}
+
+// FIXME: migrate "the type `{}` does not permit {}"
+
+// FIXME: fluent::lint::builtin_clashing_extern_{same,diff}_name
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_deref_nullptr)]
+pub struct BuiltinDerefNullptr {
+    #[label]
+    pub label: Span,
+}
+
+// FIXME: migrate fluent::lint::builtin_asm_labels
+
+#[derive(LintDiagnostic)]
+pub enum BuiltinSpecialModuleNameUsed {
+    #[diag(lint_builtin_special_module_name_used_lib)]
+    #[note]
+    #[help]
+    Lib,
+    #[diag(lint_builtin_special_module_name_used_main)]
+    #[note]
+    Main,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_unexpected_cli_config_name)]
+#[help]
+pub struct BuiltinUnexpectedCliConfigName {
+    pub name: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_unexpected_cli_config_value)]
+#[help]
+pub struct BuiltinUnexpectedCliConfigValue {
+    pub name: Symbol,
+    pub value: Symbol,
 }
 
 // enum_intrinsics_non_enums.rs

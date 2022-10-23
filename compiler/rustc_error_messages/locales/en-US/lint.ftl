@@ -433,6 +433,13 @@ lint_builtin_deref_nullptr = dereferencing a null pointer
 
 lint_builtin_asm_labels = avoid using named labels in inline assembly
 
+lint_builtin_special_module_name_used_lib = found module declaration for lib.rs
+    .note = lib.rs is the root of this crate's library target
+    .help = to refer to it from other targets, use the library's name as the path
+
+lint_builtin_special_module_name_used_main = found module declaration for main.rs
+    .note = a binary crate cannot be used as library
+
 lint_overruled_attribute = {$lint_level}({$lint_source}) incompatible with previous forbid
     .label = overruled by previous forbid
 

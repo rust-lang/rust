@@ -22,6 +22,17 @@
 
 use crate::{
     errors::BuiltinEllpisisInclusiveRangePatterns,
+    lints::{
+        BuiltinAnonymousParams, BuiltinBoxPointers, BuiltinConstNoMangle,
+        BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr, BuiltinEllipsisInclusiveRangePatternsLint,
+        BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinIncompleteFeatures,
+        BuiltinKeywordIdents, BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
+        BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
+        BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinUnexpectedCliConfigName,
+        BuiltinUnexpectedCliConfigValue, BuiltinUnnameableTestItems, BuiltinUnreachablePub,
+        BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
+        BuiltinWhileTrue,
+    },
     types::{transparent_newtype_field, CItemKind},
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
 };
@@ -110,25 +121,17 @@ impl EarlyLintPass for WhileTrue {
             && !cond.span.from_expansion()
         {
             let condition_span = e.span.with_hi(cond.span.hi());
-            cx.struct_span_lint(
-                            WHILE_TRUE,
-                            condition_span,
-                fluent::lint_builtin_while_true,
-                            |lint| {
-                    lint.span_suggestion_short(
-                        condition_span,
-                        fluent::suggestion,
-                        format!(
+            let replace = format!(
                             "{}loop",
                             label.map_or_else(String::new, |label| format!(
                                 "{}: ",
                                 label.ident,
                             ))
-                        ),
-                        Applicability::MachineApplicable,
-                    )
-                },
-            )
+                        );
+            cx.emit_spanned_lint(WHILE_TRUE, condition_span, BuiltinWhileTrue {
+                suggestion: condition_span,
+                replace,
+            });
         }
     }
 }
@@ -164,12 +167,7 @@ impl BoxPointers {
         for leaf in ty.walk() {
             if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
                 if leaf_ty.is_box() {
-                    cx.struct_span_lint(
-                        BOX_POINTERS,
-                        span,
-                        fluent::lint_builtin_box_pointers,
-                        |lint| lint.set_arg("ty", ty),
-                    );
+                    cx.emit_spanned_lint(BOX_POINTERS, span, BuiltinBoxPointers { ty });
                 }
             }
         }
@@ -267,19 +265,13 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                     if cx.tcx.find_field_index(ident, &variant)
                         == Some(cx.typeck_results().field_index(fieldpat.hir_id))
                     {
-                        cx.struct_span_lint(
+                        cx.emit_spanned_lint(
                             NON_SHORTHAND_FIELD_PATTERNS,
                             fieldpat.span,
-                            fluent::lint_builtin_non_shorthand_field_patterns,
-                            |lint| {
-                                let suggested_ident =
-                                    format!("{}{}", binding_annot.prefix_str(), ident);
-                                lint.set_arg("ident", ident).span_suggestion(
-                                    fieldpat.span,
-                                    fluent::suggestion,
-                                    suggested_ident,
-                                    Applicability::MachineApplicable,
-                                )
+                            BuiltinNonShorthandFieldPatterns {
+                                ident,
+                                suggestion: fieldpat.span,
+                                prefix: binding_annot.prefix_str(),
                             },
                         );
                     }
@@ -578,11 +570,10 @@ impl MissingDoc {
         let attrs = cx.tcx.hir().attrs(cx.tcx.hir().local_def_id_to_hir_id(def_id));
         let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
-            cx.struct_span_lint(
+            cx.emit_spanned_lint(
                 MISSING_DOCS,
                 cx.tcx.def_span(def_id),
-                fluent::lint_builtin_missing_doc,
-                |lint| lint.set_arg("article", article).set_arg("desc", desc),
+                BuiltinMissingDoc { article, desc },
             );
         }
     }
@@ -799,12 +790,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         )
         .is_ok()
         {
-            cx.struct_span_lint(
-                MISSING_COPY_IMPLEMENTATIONS,
-                item.span,
-                fluent::lint_builtin_missing_copy_impl,
-                |lint| lint,
-            )
+            cx.emit_spanned_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, BuiltinMissingCopyImpl);
         }
     }
 }
@@ -878,11 +864,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
         }
 
         if !self.impling_types.as_ref().unwrap().contains(&item.owner_id.def_id) {
-            cx.struct_span_lint(
+            cx.emit_spanned_lint(
                 MISSING_DEBUG_IMPLEMENTATIONS,
                 item.span,
-                fluent::lint_builtin_missing_debug_impl,
-                |lint| lint.set_arg("debug", cx.tcx.def_path_str(debug)),
+                BuiltinMissingDebugImpl { tcx: cx.tcx, def_id: debug },
             );
         }
     }
@@ -958,19 +943,11 @@ impl EarlyLintPass for AnonymousParameters {
                         } else {
                             ("<type>", Applicability::HasPlaceholders)
                         };
-                        cx.struct_span_lint(
+                        cx.emit_spanned_lint(
                             ANONYMOUS_PARAMETERS,
                             arg.pat.span,
-                            fluent::lint_builtin_anonymous_params,
-                            |lint| {
-                                lint.span_suggestion(
-                                    arg.pat.span,
-                                    fluent::suggestion,
-                                    format!("_: {}", ty_snip),
-                                    appl,
-                                )
-                            },
-                        )
+                            BuiltinAnonymousParams { suggestion: (arg.pat.span, appl), ty_snip },
+                        );
                     }
                 }
             }
@@ -1029,18 +1006,12 @@ impl EarlyLintPass for DeprecatedAttr {
             }
         }
         if attr.has_name(sym::no_start) || attr.has_name(sym::crate_id) {
-            cx.struct_span_lint(
+            cx.emit_spanned_lint(
                 DEPRECATED,
                 attr.span,
-                fluent::lint_builtin_deprecated_attr_used,
-                |lint| {
-                    lint.set_arg("name", pprust::path_to_string(&attr.get_normal_item().path))
-                        .span_suggestion_short(
-                            attr.span,
-                            fluent::lint_builtin_deprecated_attr_default_suggestion,
-                            "",
-                            Applicability::MachineApplicable,
-                        )
+                BuiltinDeprecatedAttrUsed {
+                    name: pprust::path_to_string(&attr.get_normal_item().path),
+                    suggestion: attr.span,
                 },
             );
         }
@@ -1069,20 +1040,18 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
         let span = sugared_span.take().unwrap_or(attr.span);
 
         if is_doc_comment || attr.has_name(sym::doc) {
-            cx.struct_span_lint(
+            let sub = match attr.kind {
+                AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
+                    BuiltinUnusedDocCommentSub::PlainHelp
+                }
+                AttrKind::DocComment(CommentKind::Block, _) => {
+                    BuiltinUnusedDocCommentSub::BlockHelp
+                }
+            };
+            cx.emit_spanned_lint(
                 UNUSED_DOC_COMMENTS,
                 span,
-                fluent::lint_builtin_unused_doc_comment,
-                |lint| {
-                    lint.set_arg("kind", node_kind).span_label(node_span, fluent::label).help(
-                        match attr.kind {
-                            AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
-                                fluent::plain_help
-                            }
-                            AttrKind::DocComment(CommentKind::Block, _) => fluent::block_help,
-                        },
-                    )
-                },
+                BuiltinUnusedDocComment { kind: node_kind, label: node_span, sub },
             );
         }
     }
@@ -1197,20 +1166,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                 match param.kind {
                     GenericParamKind::Lifetime { .. } => {}
                     GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                        cx.struct_span_lint(
+                        cx.emit_spanned_lint(
                             NO_MANGLE_GENERIC_ITEMS,
                             span,
-                            fluent::lint_builtin_no_mangle_generic,
-                            |lint| {
-                                lint.span_suggestion_short(
-                                    no_mangle_attr.span,
-                                    fluent::suggestion,
-                                    "",
-                                    // Use of `#[no_mangle]` suggests FFI intent; correct
-                                    // fix may be to monomorphize source by hand
-                                    Applicability::MaybeIncorrect,
-                                )
-                            },
+                            BuiltinNoMangleGeneric { suggestion: no_mangle_attr.span },
                         );
                         break;
                     }
@@ -1225,30 +1184,23 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
             }
             hir::ItemKind::Const(..) => {
                 if cx.sess().contains_name(attrs, sym::no_mangle) {
+                    // account for "pub const" (#45562)
+                    let start = cx
+                        .tcx
+                        .sess
+                        .source_map()
+                        .span_to_snippet(it.span)
+                        .map(|snippet| snippet.find("const").unwrap_or(0))
+                        .unwrap_or(0) as u32;
+                    // `const` is 5 chars
+                    let suggestion = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
+
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
-                    cx.struct_span_lint(
+                    cx.emit_spanned_lint(
                         NO_MANGLE_CONST_ITEMS,
                         it.span,
-                        fluent::lint_builtin_const_no_mangle,
-                        |lint| {
-                            // account for "pub const" (#45562)
-                            let start = cx
-                                .tcx
-                                .sess
-                                .source_map()
-                                .span_to_snippet(it.span)
-                                .map(|snippet| snippet.find("const").unwrap_or(0))
-                                .unwrap_or(0) as u32;
-                            // `const` is 5 chars
-                            let const_span = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
-                            lint.span_suggestion(
-                                const_span,
-                                fluent::suggestion,
-                                "pub static",
-                                Applicability::MachineApplicable,
-                            )
-                        },
+                        BuiltinConstNoMangle { suggestion },
                     );
                 }
             }
@@ -1309,12 +1261,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
             if from_mutbl < to_mutbl {
-                cx.struct_span_lint(
-                    MUTABLE_TRANSMUTES,
-                    expr.span,
-                    fluent::lint_builtin_mutable_transmutes,
-                    |lint| lint,
-                );
+                cx.emit_spanned_lint(MUTABLE_TRANSMUTES, expr.span, BuiltinMutablesTransmutes);
             }
         }
 
@@ -1362,12 +1309,7 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
         if attr.has_name(sym::feature) {
             if let Some(items) = attr.meta_item_list() {
                 for item in items {
-                    cx.struct_span_lint(
-                        UNSTABLE_FEATURES,
-                        item.span(),
-                        fluent::lint_builtin_unstable_features,
-                        |lint| lint,
-                    );
+                    cx.emit_spanned_lint(UNSTABLE_FEATURES, item.span(), BuiltinUnstableFeatures);
                 }
             }
         }
@@ -1493,18 +1435,13 @@ impl UnreachablePub {
                 applicability = Applicability::MaybeIncorrect;
             }
             let def_span = cx.tcx.def_span(def_id);
-            cx.struct_span_lint(
+            cx.emit_spanned_lint(
                 UNREACHABLE_PUB,
                 def_span,
-                fluent::lint_builtin_unreachable_pub,
-                |lint| {
-                    lint.set_arg("what", what);
-
-                    lint.span_suggestion(vis_span, fluent::suggestion, "pub(crate)", applicability);
-                    if exportable {
-                        lint.help(fluent::help);
-                    }
-                    lint
+                BuiltinUnreachablePub {
+                    what,
+                    suggestion: (vis_span, applicability),
+                    help: exportable.then_some(()),
                 },
             );
         }
@@ -1767,14 +1704,10 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     TypeWellFormedFromEnv(..) => continue,
                 };
                 if predicate.is_global() {
-                    cx.struct_span_lint(
+                    cx.emit_spanned_lint(
                         TRIVIAL_BOUNDS,
                         span,
-                        fluent::lint_builtin_trivial_bounds,
-                        |lint| {
-                            lint.set_arg("predicate_kind_name", predicate_kind_name)
-                                .set_arg("predicate", predicate)
-                        },
+                        BuiltinTrivialBounds { predicate_kind_name, predicate },
                     );
                 }
             }
@@ -1875,8 +1808,6 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
         };
 
         if let Some((start, end, join)) = endpoints {
-            let msg = fluent::lint_builtin_ellipsis_inclusive_range_patterns;
-            let suggestion = fluent::suggestion;
             if parenthesise {
                 self.node_id = Some(pat.id);
                 let end = expr_to_string(&end);
@@ -1891,14 +1822,14 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                         replace,
                     });
                 } else {
-                    cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, msg, |lint| {
-                        lint.span_suggestion(
-                            pat.span,
-                            suggestion,
+                    cx.emit_spanned_lint(
+                        ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
+                        pat.span,
+                        BuiltinEllipsisInclusiveRangePatternsLint::Parenthesise {
+                            suggestion: pat.span,
                             replace,
-                            Applicability::MachineApplicable,
-                        )
-                    });
+                        },
+                    );
                 }
             } else {
                 let replace = "..=";
@@ -1909,14 +1840,13 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                         replace: replace.to_string(),
                     });
                 } else {
-                    cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, join, msg, |lint| {
-                        lint.span_suggestion_short(
-                            join,
-                            suggestion,
-                            replace,
-                            Applicability::MachineApplicable,
-                        )
-                    });
+                    cx.emit_spanned_lint(
+                        ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
+                        join,
+                        BuiltinEllipsisInclusiveRangePatternsLint::NonParenthesise {
+                            suggestion: join,
+                        },
+                    );
                 }
             };
         }
@@ -1996,12 +1926,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
 
         let attrs = cx.tcx.hir().attrs(it.hir_id());
         if let Some(attr) = cx.sess().find_by_name(attrs, sym::rustc_test_marker) {
-            cx.struct_span_lint(
-                UNNAMEABLE_TEST_ITEMS,
-                attr.span,
-                fluent::lint_builtin_unnameable_test_items,
-                |lint| lint,
-            );
+            cx.emit_spanned_lint(UNNAMEABLE_TEST_ITEMS, attr.span, BuiltinUnnameableTestItems);
         }
     }
 
@@ -2117,18 +2042,10 @@ impl KeywordIdents {
             return;
         }
 
-        cx.struct_span_lint(
+        cx.emit_spanned_lint(
             KEYWORD_IDENTS,
             ident.span,
-            fluent::lint_builtin_keyword_idents,
-            |lint| {
-                lint.set_arg("kw", ident).set_arg("next", next_edition).span_suggestion(
-                    ident.span,
-                    fluent::suggestion,
-                    format!("r#{}", ident),
-                    Applicability::MachineApplicable,
-                )
-            },
+            BuiltinKeywordIdents { kw: ident, next: next_edition, suggestion: ident.span },
         );
     }
 }
@@ -2405,16 +2322,15 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     Applicability::MaybeIncorrect
                 };
 
-                cx.struct_span_lint(
+                cx.emit_spanned_lint(
                     EXPLICIT_OUTLIVES_REQUIREMENTS,
                     lint_spans.clone(),
-                    fluent::lint_builtin_explicit_outlives,
-                    |lint| {
-                        lint.set_arg("count", bound_count).multipart_suggestion(
-                            fluent::suggestion,
-                            lint_spans.into_iter().map(|span| (span, String::new())).collect(),
+                    BuiltinExplicitOutlives {
+                        count: bound_count,
+                        suggestion: BuiltinExplicitOutlivesSuggestion {
+                            spans: lint_spans,
                             applicability,
-                        )
+                        },
                     },
                 );
             }
@@ -2463,24 +2379,15 @@ impl EarlyLintPass for IncompleteFeatures {
             .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
             .filter(|(&name, _)| features.incomplete(name))
             .for_each(|(&name, &span)| {
-                cx.struct_span_lint(
+                cx.emit_spanned_lint(
                     INCOMPLETE_FEATURES,
                     span,
-                    fluent::lint_builtin_incomplete_features,
-                    |lint| {
-                        lint.set_arg("name", name);
-                        if let Some(n) =
-                            rustc_feature::find_feature_issue(name, GateIssue::Language)
-                        {
-                            lint.set_arg("n", n);
-                            lint.note(fluent::note);
-                        }
-                        if HAS_MIN_FEATURES.contains(&name) {
-                            lint.help(fluent::help);
-                        }
-                        lint
+                    BuiltinIncompleteFeatures {
+                        name,
+                        note: rustc_feature::find_feature_issue(name, GateIssue::Language),
+                        help: HAS_MIN_FEATURES.contains(&name).then_some(()),
                     },
-                )
+                );
             });
     }
 }
@@ -3275,11 +3182,10 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
 
         if let rustc_hir::ExprKind::Unary(rustc_hir::UnOp::Deref, expr_deref) = expr.kind {
             if is_null_ptr(cx, expr_deref) {
-                cx.struct_span_lint(
+                cx.emit_spanned_lint(
                     DEREF_NULLPTR,
                     expr.span,
-                    fluent::lint_builtin_deref_nullptr,
-                    |lint| lint.span_label(expr.span, fluent::label),
+                    BuiltinDerefNullptr { label: expr.span },
                 );
             }
         }
@@ -3464,16 +3370,17 @@ impl EarlyLintPass for SpecialModuleName {
                 }
 
                 match item.ident.name.as_str() {
-                    "lib" => cx.struct_span_lint(SPECIAL_MODULE_NAME, item.span, "found module declaration for lib.rs", |lint| {
-                        lint
-                            .note("lib.rs is the root of this crate's library target")
-                            .help("to refer to it from other targets, use the library's name as the path")
-                    }),
-                    "main" => cx.struct_span_lint(SPECIAL_MODULE_NAME, item.span, "found module declaration for main.rs", |lint| {
-                        lint
-                            .note("a binary crate cannot be used as library")
-                    }),
-                    _ => continue
+                    "lib" => cx.emit_spanned_lint(
+                        SPECIAL_MODULE_NAME,
+                        item.span,
+                        BuiltinSpecialModuleNameUsed::Lib,
+                    ),
+                    "main" => cx.emit_spanned_lint(
+                        SPECIAL_MODULE_NAME,
+                        item.span,
+                        BuiltinSpecialModuleNameUsed::Main,
+                    ),
+                    _ => continue,
                 }
             }
         }
@@ -3489,31 +3396,16 @@ impl EarlyLintPass for UnexpectedCfgs {
         let cfg = &cx.sess().parse_sess.config;
         let check_cfg = &cx.sess().parse_sess.check_config;
         for &(name, value) in cfg {
-            if let Some(names_valid) = &check_cfg.names_valid {
-                if !names_valid.contains(&name) {
-                    cx.lookup(
-                        UNEXPECTED_CFGS,
-                        None::<MultiSpan>,
-                        fluent::lint_builtin_unexpected_cli_config_name,
-                        |diag| diag.help(fluent::help).set_arg("name", name),
-                    );
-                }
+            if let Some(names_valid) = &check_cfg.names_valid && !names_valid.contains(&name){
+                cx.emit_lint(UNEXPECTED_CFGS, BuiltinUnexpectedCliConfigName {
+                    name,
+                });
             }
-            if let Some(value) = value {
-                if let Some(values) = &check_cfg.values_valid.get(&name) {
-                    if !values.contains(&value) {
-                        cx.lookup(
-                            UNEXPECTED_CFGS,
-                            None::<MultiSpan>,
-                            fluent::lint_builtin_unexpected_cli_config_value,
-                            |diag| {
-                                diag.help(fluent::help)
-                                    .set_arg("name", name)
-                                    .set_arg("value", value)
-                            },
-                        );
-                    }
-                }
+            if let Some(value) = value && let Some(values) = check_cfg.values_valid.get(&name) && !values.contains(&value) {
+                cx.emit_lint(
+                    UNEXPECTED_CFGS,
+                    BuiltinUnexpectedCliConfigValue { name, value },
+                );
             }
         }
     }
