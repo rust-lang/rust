@@ -105,7 +105,7 @@ pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    CallId, EvalContextExt as _, Item, Permission, SbTag, Stack, Stacks,
+    CallId, EvalContextExt as _, Item, Permission, RetagFields, SbTag, Stack, Stacks,
 };
 pub use crate::tag_gc::{EvalContextExt as _, VisitTags};
 
