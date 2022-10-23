@@ -15,6 +15,7 @@ pub enum Arch {
     Arm64,
     Arm64_32,
     I386,
+    #[allow(dead_code)] // Some targets don't use this enum...
     X86_64,
     X86_64_sim,
     X86_64_macabi,
