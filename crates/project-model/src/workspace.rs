@@ -333,7 +333,7 @@ impl ProjectWorkspace {
         progress: &dyn Fn(String),
     ) -> Vec<Result<WorkspaceBuildScripts>> {
         if matches!(config.invocation_strategy, InvocationStrategy::PerWorkspace)
-            || config.run_build_script_command.is_some()
+            || config.run_build_script_command.is_none()
         {
             return workspaces.iter().map(|it| it.run_build_scripts(config, progress)).collect();
         }

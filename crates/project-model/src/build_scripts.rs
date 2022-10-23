@@ -56,7 +56,7 @@ impl BuildScriptOutput {
 }
 
 impl WorkspaceBuildScripts {
-    fn build_command(config: &CargoConfig, current_dir: &path::Path) -> io::Result<Command> {
+    fn build_command(config: &CargoConfig) -> io::Result<Command> {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
                 let mut cmd = Command::new(program);
@@ -96,7 +96,6 @@ impl WorkspaceBuildScripts {
             }
         };
 
-        cmd.current_dir(current_dir);
         cmd.envs(&config.extra_env);
         if config.wrap_rustc_in_build_scripts {
             // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
@@ -127,15 +126,15 @@ impl WorkspaceBuildScripts {
         }
         .as_ref();
 
-        match Self::run_per_ws(Self::build_command(config, current_dir)?, workspace, progress) {
+        match Self::run_per_ws(Self::build_command(config)?, workspace, current_dir, progress) {
             Ok(WorkspaceBuildScripts { error: Some(error), .. })
                 if toolchain.as_ref().map_or(false, |it| *it >= RUST_1_62) =>
             {
                 // building build scripts failed, attempt to build with --keep-going so
                 // that we potentially get more build data
-                let mut cmd = Self::build_command(config, current_dir)?;
+                let mut cmd = Self::build_command(config)?;
                 cmd.args(&["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
-                let mut res = Self::run_per_ws(cmd, workspace, progress)?;
+                let mut res = Self::run_per_ws(cmd, workspace, current_dir, progress)?;
                 res.error = Some(error);
                 Ok(res)
             }
@@ -161,11 +160,14 @@ impl WorkspaceBuildScripts {
                 ))
             }
         };
-        let cmd = Self::build_command(config, current_dir.as_path().as_ref())?;
+        let cmd = Self::build_command(config)?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.
         let mut by_id = FxHashMap::default();
+        // some workspaces might depend on the same crates, so we need to duplicate the outputs
+        // to those collisions
+        let mut collisions = Vec::new();
         let mut res: Vec<_> = workspaces
             .iter()
             .enumerate()
@@ -173,7 +175,11 @@ impl WorkspaceBuildScripts {
                 let mut res = WorkspaceBuildScripts::default();
                 for package in workspace.packages() {
                     res.outputs.insert(package, BuildScriptOutput::default());
-                    by_id.insert(workspace[package].id.clone(), (package, idx));
+                    if by_id.contains_key(&workspace[package].id) {
+                        collisions.push((&workspace[package].id, idx, package));
+                    } else {
+                        by_id.insert(workspace[package].id.clone(), (package, idx));
+                    }
                 }
                 res
             })
@@ -181,6 +187,7 @@ impl WorkspaceBuildScripts {
 
         let errors = Self::run_command(
             cmd,
+            current_dir.as_path().as_ref(),
             |package, cb| {
                 if let Some(&(package, workspace)) = by_id.get(package) {
                     cb(&workspaces[workspace][package].name, &mut res[workspace].outputs[package]);
@@ -189,6 +196,11 @@ impl WorkspaceBuildScripts {
             progress,
         )?;
         res.iter_mut().for_each(|it| it.error = errors.clone());
+        collisions.into_iter().for_each(|(id, workspace, package)| {
+            if let Some(&(p, w)) = by_id.get(id) {
+                res[workspace].outputs[package] = res[w].outputs[p].clone();
+            }
+        });
 
         if tracing::enabled!(tracing::Level::INFO) {
             for (idx, workspace) in workspaces.iter().enumerate() {
@@ -211,6 +223,7 @@ impl WorkspaceBuildScripts {
     fn run_per_ws(
         cmd: Command,
         workspace: &CargoWorkspace,
+        current_dir: &path::Path,
         progress: &dyn Fn(String),
     ) -> io::Result<WorkspaceBuildScripts> {
         let mut res = WorkspaceBuildScripts::default();
@@ -226,6 +239,7 @@ impl WorkspaceBuildScripts {
 
         res.error = Self::run_command(
             cmd,
+            current_dir,
             |package, cb| {
                 if let Some(&package) = by_id.get(package) {
                     cb(&workspace[package].name, &mut outputs[package]);
@@ -251,7 +265,8 @@ impl WorkspaceBuildScripts {
     }
 
     fn run_command(
-        cmd: Command,
+        mut cmd: Command,
+        current_dir: &path::Path,
         // ideally this would be something like:
         // with_output_for: impl FnMut(&str, dyn FnOnce(&mut BuildScriptOutput)),
         // but owned trait objects aren't a thing
@@ -265,7 +280,8 @@ impl WorkspaceBuildScripts {
             e.push('\n');
         };
 
-        tracing::info!("Running build scripts: {:?}", cmd);
+        tracing::info!("Running build scripts in {}: {:?}", current_dir.display(), cmd);
+        cmd.current_dir(current_dir);
         let output = stdx::process::spawn_with_streaming_output(
             cmd,
             &mut |line| {
