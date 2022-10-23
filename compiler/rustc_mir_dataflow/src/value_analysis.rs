@@ -260,8 +260,17 @@ pub trait ValueAnalysis<'tcx> {
                 // They would have an effect, but are not allowed in this phase.
                 bug!("encountered disallowed terminator");
             }
-            _ => {
-                // The other terminators can be ignored.
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Abort
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. } => {
+                // These terminators have no effect on the analysis.
             }
         }
     }
