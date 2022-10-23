@@ -236,14 +236,15 @@ fn typeck_with_fallback<'tcx>(
             let fn_sig = if rustc_hir_analysis::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
                 <dyn AstConv<'_>>::ty_of_fn(&fcx, id, header.unsafety, header.abi, decl, None, None)
+                    .no_bound_vars()
+                    .unwrap()
             } else {
                 tcx.fn_sig(def_id)
             };
 
-            check_abi(tcx, id, span, fn_sig.abi());
+            check_abi(tcx, id, span, fn_sig.abi);
 
             // Compute the function signature from point of view of inside the fn.
-            let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
             let fn_sig = inh.normalize_associated_types_in(
                 body.value.span,
                 body_id.hir_id,

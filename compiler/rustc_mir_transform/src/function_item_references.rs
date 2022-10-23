@@ -79,7 +79,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         for bound in bounds {
             if let Some(bound_ty) = self.is_pointer_trait(&bound.kind().skip_binder()) {
                 // Get the argument types as they appear in the function signature.
-                let arg_defs = self.tcx.fn_sig(def_id).skip_binder().inputs();
+                let arg_defs = self.tcx.fn_sig(def_id).inputs();
                 for (arg_num, arg_def) in arg_defs.iter().enumerate() {
                     // For all types reachable from the argument type in the fn sig
                     for generic_inner_ty in arg_def.walk() {
@@ -162,8 +162,8 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             .assert_crate_local()
             .lint_root;
         let fn_sig = self.tcx.fn_sig(fn_id);
-        let unsafety = fn_sig.unsafety().prefix_str();
-        let abi = match fn_sig.abi() {
+        let unsafety = fn_sig.unsafety.prefix_str();
+        let abi = match fn_sig.abi {
             Abi::Rust => String::from(""),
             other_abi => {
                 let mut s = String::from("extern \"");
@@ -176,9 +176,9 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let ty_params = fn_substs.types().map(|ty| format!("{}", ty));
         let const_params = fn_substs.consts().map(|c| format!("{}", c));
         let params = ty_params.chain(const_params).join(", ");
-        let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
-        let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
-        let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
+        let num_args = fn_sig.inputs().len();
+        let variadic = if fn_sig.c_variadic { ", ..." } else { "" };
+        let ret = if fn_sig.output().is_unit() { "" } else { " -> _" };
         self.tcx.struct_span_lint_hir(
             FUNCTION_ITEM_REFERENCES,
             lint_root,

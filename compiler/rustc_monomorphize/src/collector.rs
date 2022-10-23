@@ -1312,10 +1312,8 @@ impl<'v> RootCollector<'_, 'v> {
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = self.tcx.normalize_erasing_regions(
-            ty::ParamEnv::reveal_all(),
-            main_ret_ty.no_bound_vars().unwrap(),
-        );
+        let main_ret_ty =
+            self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), main_ret_ty);
 
         let start_instance = Instance::resolve(
             self.tcx,

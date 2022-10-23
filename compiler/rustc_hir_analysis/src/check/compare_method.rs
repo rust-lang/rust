@@ -804,7 +804,6 @@ fn compare_self_type<'tcx>(
         let param_env = ty::ParamEnv::reveal_all();
 
         let infcx = tcx.infer_ctxt().build();
-        let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
         let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty).is_ok();
         match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
             ExplicitSelf::ByValue => "self".to_owned(),
@@ -1034,8 +1033,8 @@ fn compare_number_of_method_arguments<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_m_fty = tcx.fn_sig(impl_m.def_id);
     let trait_m_fty = tcx.fn_sig(trait_m.def_id);
-    let trait_number_args = trait_m_fty.inputs().skip_binder().len();
-    let impl_number_args = impl_m_fty.inputs().skip_binder().len();
+    let trait_number_args = trait_m_fty.inputs().len();
+    let impl_number_args = impl_m_fty.inputs().len();
     if trait_number_args != impl_number_args {
         let trait_span = if let Some(def_id) = trait_m.def_id.as_local() {
             match tcx.hir().expect_trait_item(def_id).kind {

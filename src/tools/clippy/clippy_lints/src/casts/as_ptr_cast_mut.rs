@@ -18,7 +18,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         && method_name.ident.name == rustc_span::sym::as_ptr
         && let Some(as_ptr_did) = cx.typeck_results().type_dependent_def_id(cast_expr.peel_blocks().hir_id)
         && let as_ptr_sig = cx.tcx.fn_sig(as_ptr_did)
-        && let Some(first_param_ty) = as_ptr_sig.skip_binder().inputs().iter().next()
+        && let Some(first_param_ty) = as_ptr_sig.inputs().iter().next()
         && let ty::Ref(_, _, Mutability::Not) = first_param_ty.kind()
         && let Some(recv) = snippet_opt(cx, receiver.span)
     {

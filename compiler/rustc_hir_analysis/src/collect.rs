@@ -1122,7 +1122,7 @@ pub fn get_infer_ret_ty<'hir>(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir 
 }
 
 #[instrument(level = "debug", skip(tcx))]
-fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
+fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::FnSig<'_> {
     use rustc_hir::Node::*;
     use rustc_hir::*;
 
@@ -1131,7 +1131,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
-    let sig = match tcx.hir().get(hir_id) {
+    match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             generics,
@@ -1155,7 +1155,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     sig.decl,
                     Some(generics),
                     None,
-                )
+                ).no_bound_vars().unwrap()
             } else {
                 infer_return_ty_for_fn_sig(tcx, sig, generics, def_id, &icx)
             }
@@ -1173,7 +1173,9 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             decl,
             Some(generics),
             None,
-        ),
+        )
+        .no_bound_vars()
+        .unwrap(),
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
@@ -1184,13 +1186,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             let ty = tcx.type_of(tcx.hir().get_parent_item(hir_id));
             let inputs =
                 data.fields().iter().map(|f| tcx.type_of(tcx.hir().local_def_id(f.hir_id)));
-            ty::Binder::dummy(tcx.mk_fn_sig(
-                inputs,
-                ty,
-                false,
-                hir::Unsafety::Normal,
-                abi::Abi::Rust,
-            ))
+            tcx.mk_fn_sig(inputs, ty, false, hir::Unsafety::Normal, abi::Abi::Rust)
         }
 
         Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
@@ -1212,11 +1208,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         x => {
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
-    };
-
-    assert!(sig.no_bound_vars().is_some());
-
-    sig
+    }
 }
 
 fn infer_return_ty_for_fn_sig<'tcx>(
@@ -1225,7 +1217,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
     generics: &hir::Generics<'_>,
     def_id: LocalDefId,
     icx: &ItemCtxt<'tcx>,
-) -> ty::PolyFnSig<'tcx> {
+) -> ty::FnSig<'tcx> {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
     match get_infer_ret_ty(&sig.decl.output) {
@@ -1236,12 +1228,11 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 ty::ReErased => tcx.lifetimes.re_static,
                 _ => r,
             });
-            let fn_sig = ty::Binder::dummy(fn_sig);
 
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_ty(ty);
             let mut diag = bad_placeholder(tcx, visitor.0, "return type");
-            let ret_ty = fn_sig.skip_binder().output();
+            let ret_ty = fn_sig.output();
             if ret_ty.is_suggestable(tcx, false) {
                 diag.span_suggestion(
                     ty.span,
@@ -1283,7 +1274,9 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             sig.decl,
             Some(generics),
             None,
-        ),
+        )
+        .no_bound_vars()
+        .unwrap(),
     }
 }
 
@@ -1369,7 +1362,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     def_id: DefId,
     decl: &'tcx hir::FnDecl<'tcx>,
     abi: abi::Abi,
-) -> ty::PolyFnSig<'tcx> {
+) -> ty::FnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
         intrinsic_operation_unsafety(tcx, def_id)
     } else {
@@ -1384,7 +1377,9 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         decl,
         None,
         None,
-    );
+    )
+    .no_bound_vars()
+    .unwrap();
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw
@@ -1412,11 +1407,11 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .emit();
             }
         };
-        for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
+        for (input, ty) in iter::zip(decl.inputs, fty.inputs()) {
             check(input, *ty)
         }
         if let hir::FnRetTy::Return(ref ty) = decl.output {
-            check(ty, fty.output().skip_binder())
+            check(ty, fty.output())
         }
     }
 
@@ -1708,7 +1703,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 }
             }
         } else if attr.has_name(sym::cmse_nonsecure_entry) {
-            if !matches!(tcx.fn_sig(did).abi(), abi::Abi::C { .. }) {
+            if !matches!(tcx.fn_sig(did).abi, abi::Abi::C { .. }) {
                 struct_span_err!(
                     tcx.sess,
                     attr.span,
@@ -1725,7 +1720,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::thread_local) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if attr.has_name(sym::track_caller) {
-            if !tcx.is_closure(did.to_def_id()) && tcx.fn_sig(did).abi() != abi::Abi::Rust {
+            if !tcx.is_closure(did.to_def_id()) && tcx.fn_sig(did).abi != abi::Abi::Rust {
                 struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
                     .emit();
             }
@@ -1755,8 +1750,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.export_name = Some(s);
             }
         } else if attr.has_name(sym::target_feature) {
-            if !tcx.is_closure(did.to_def_id())
-                && tcx.fn_sig(did).unsafety() == hir::Unsafety::Normal
+            if !tcx.is_closure(did.to_def_id()) && tcx.fn_sig(did).unsafety == hir::Unsafety::Normal
             {
                 if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                     // The `#[target_feature]` attribute is allowed on

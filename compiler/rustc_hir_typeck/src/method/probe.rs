@@ -13,7 +13,7 @@ use rustc_hir::def::Namespace;
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
@@ -893,8 +893,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
                     let fty = fty.subst(self.tcx, substs);
-                    let fty =
-                        self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
 
                     if let Some(self_ty) = self_ty {
                         if self
@@ -1778,7 +1776,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let generics = self.tcx.generics_of(method);
         assert_eq!(substs.len(), generics.parent_count as usize);
 
-        let xform_fn_sig = if generics.params.is_empty() {
+        if generics.params.is_empty() {
             fn_sig.subst(self.tcx, substs)
         } else {
             let substs = InternalSubsts::for_item(self.tcx, method, |param, _| {
@@ -1798,9 +1796,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
             });
             fn_sig.subst(self.tcx, substs)
-        };
-
-        self.erase_late_bound_regions(xform_fn_sig)
+        }
     }
 
     /// Gets the type of an impl and generate substitutions with inference vars.

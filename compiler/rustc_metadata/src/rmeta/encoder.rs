@@ -1110,7 +1110,7 @@ fn should_encode_trait_impl_trait_tys<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) ->
     // of the trait fn to look for any RPITITs, but that's kinda doing a lot
     // of work. We can probably remove this when we refactor RPITITs to be
     // associated types.
-    tcx.fn_sig(trait_item_def_id).skip_binder().output().walk().any(|arg| {
+    tcx.fn_sig(trait_item_def_id).output().walk().any(|arg| {
         if let ty::GenericArgKind::Type(ty) = arg.unpack()
             && let ty::Projection(data) = ty.kind()
             && tcx.def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder

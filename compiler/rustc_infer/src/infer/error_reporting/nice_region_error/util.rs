@@ -65,9 +65,8 @@ pub fn find_param_with_region<'tcx>(
 
     let owner_id = hir.body_owner(body_id);
     let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
-    let poly_fn_sig = tcx.fn_sig(id);
+    let fn_sig = tcx.fn_sig(id);
 
-    let fn_sig = tcx.liberate_late_bound_regions(id, poly_fn_sig);
     let body = hir.body(body_id);
     body.params
         .iter()

@@ -556,8 +556,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn has_only_self_parameter(&self, method: &AssocItem) -> bool {
         match method.kind {
             ty::AssocKind::Fn => {
-                method.fn_has_self_parameter
-                    && self.tcx.fn_sig(method.def_id).inputs().skip_binder().len() == 1
+                method.fn_has_self_parameter && self.tcx.fn_sig(method.def_id).inputs().len() == 1
             }
             _ => false,
         }

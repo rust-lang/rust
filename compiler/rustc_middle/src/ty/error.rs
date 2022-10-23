@@ -813,7 +813,7 @@ fn foo(&self) -> Self::T { String::new() }
             })
             .filter_map(|(_, item)| {
                 let method = self.fn_sig(item.def_id);
-                match *method.output().skip_binder().kind() {
+                match *method.output().kind() {
                     ty::Projection(ty::ProjectionTy { item_def_id, .. })
                         if item_def_id == proj_ty_item_def_id =>
                     {

@@ -154,12 +154,7 @@ impl<'tcx> PassByRefOrValue {
             ControlFlow::Continue(())
         });
 
-        for (index, (input, ty)) in iter::zip(
-            decl.inputs,
-            fn_sig.skip_binder().inputs().iter().map(|&ty| fn_sig.rebind(ty)),
-        )
-        .enumerate()
-        {
+        for (index, (input, ty)) in iter::zip(decl.inputs, fn_sig.iter_inputs()).enumerate() {
             // All spans generated from a proc-macro invocation are the same...
             match span {
                 Some(s) if s == input.span => continue,

@@ -150,7 +150,6 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         InternalSubsts::identity_for_item(tcx, def_id)
     };
     let sig = tcx.bound_fn_sig(def_id).subst(tcx, substs);
-    let sig = tcx.erase_late_bound_regions(sig);
     let span = tcx.def_span(def_id);
 
     let source_info = SourceInfo::outermost(span);
@@ -349,7 +348,6 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             tcx.lifetimes.re_erased,
         );
         let sig = tcx.bound_fn_sig(def_id).subst(tcx, substs);
-        let sig = tcx.erase_late_bound_regions(sig);
         let span = tcx.def_span(def_id);
 
         CloneShimBuilder {
@@ -602,7 +600,6 @@ fn build_call_shim<'tcx>(
 
     let def_id = instance.def_id();
     let sig = tcx.bound_fn_sig(def_id);
-    let sig = sig.map_bound(|sig| tcx.erase_late_bound_regions(sig));
 
     assert_eq!(sig_substs.is_some(), !instance.has_polymorphic_mir_body());
     let mut sig =
@@ -794,7 +791,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     let param_env = tcx.param_env(ctor_id);
 
     // Normalize the sig.
-    let sig = tcx.fn_sig(ctor_id).no_bound_vars().expect("LBR in ADT constructor signature");
+    let sig = tcx.fn_sig(ctor_id);
     let sig = tcx.normalize_erasing_regions(param_env, sig);
 
     let ty::Adt(adt_def, substs) = sig.output().kind() else {

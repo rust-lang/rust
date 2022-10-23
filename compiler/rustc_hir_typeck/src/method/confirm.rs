@@ -469,9 +469,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let sig = sig.subst(self.tcx, all_substs);
         debug!("type scheme substituted, sig={:?}", sig);
 
-        let sig = self.replace_bound_vars_with_fresh_vars(sig);
-        debug!("late-bound lifetimes from method instantiated, sig={:?}", sig);
-
         (sig, method_predicates)
     }
 

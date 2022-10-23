@@ -246,7 +246,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             // instead of the type of the return place.
             self.span = body.local_decls[RETURN_PLACE].source_info.span;
             let return_ty = tcx.fn_sig(def_id).output();
-            self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
+            self.check_local_or_return_ty(return_ty, RETURN_PLACE);
         }
 
         if !tcx.has_attr(def_id.to_def_id(), sym::rustc_do_not_const_check) {

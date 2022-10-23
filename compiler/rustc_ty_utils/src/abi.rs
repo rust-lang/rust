@@ -28,7 +28,7 @@ fn fn_sig_for_fn_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> ty::PolyFnSig<'tcx> {
+) -> ty::FnSig<'tcx> {
     let ty = instance.ty(tcx, param_env);
     match *ty.kind() {
         ty::FnDef(..) => {
@@ -51,52 +51,29 @@ fn fn_sig_for_fn_abi<'tcx>(
 
             if let ty::InstanceDef::VTableShim(..) = instance.def {
                 // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
-                sig = sig.map_bound(|mut sig| {
-                    let mut inputs_and_output = sig.inputs_and_output.to_vec();
-                    inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
-                    sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
-                    sig
-                });
+                let mut inputs_and_output = sig.inputs_and_output.to_vec();
+                inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
+                sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
             }
             sig
         }
         ty::Closure(def_id, substs) => {
-            let sig = substs.as_closure().sig();
+            let sig = tcx.erase_late_bound_regions(substs.as_closure().sig());
+            let env_ty = tcx.closure_env_ty(def_id, substs, ty::ReErased).unwrap();
+            let env_ty = tcx.erase_regions(env_ty);
 
-            let bound_vars = tcx.mk_bound_variable_kinds(
-                sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
-            );
-            let br = ty::BoundRegion {
-                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::BrEnv,
-            };
-            let env_region = ty::ReLateBound(ty::INNERMOST, br);
-            let env_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
-
-            let sig = sig.skip_binder();
-            ty::Binder::bind_with_vars(
-                tcx.mk_fn_sig(
-                    iter::once(env_ty).chain(sig.inputs().iter().cloned()),
-                    sig.output(),
-                    sig.c_variadic,
-                    sig.unsafety,
-                    sig.abi,
-                ),
-                bound_vars,
+            tcx.mk_fn_sig(
+                iter::once(env_ty).chain(sig.inputs().iter().cloned()),
+                sig.output(),
+                sig.c_variadic,
+                sig.unsafety,
+                sig.abi,
             )
         }
         ty::Generator(_, substs, _) => {
             let sig = substs.as_generator().poly_sig();
 
-            let bound_vars = tcx.mk_bound_variable_kinds(
-                sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
-            );
-            let br = ty::BoundRegion {
-                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::BrEnv,
-            };
-            let env_region = ty::ReLateBound(ty::INNERMOST, br);
-            let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
+            let env_ty = tcx.mk_mut_ref(tcx.lifetimes.re_erased, ty);
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
@@ -108,15 +85,12 @@ fn fn_sig_for_fn_abi<'tcx>(
             let state_adt_ref = tcx.adt_def(state_did);
             let state_substs = tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
             let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
-            ty::Binder::bind_with_vars(
-                tcx.mk_fn_sig(
-                    [env_ty, sig.resume_ty].iter(),
-                    &ret_ty,
-                    false,
-                    hir::Unsafety::Normal,
-                    rustc_target::spec::abi::Abi::Rust,
-                ),
-                bound_vars,
+            tcx.mk_fn_sig(
+                [env_ty, sig.resume_ty].iter(),
+                &ret_ty,
+                false,
+                hir::Unsafety::Normal,
+                rustc_target::spec::abi::Abi::Rust,
             )
         }
         _ => bug!("unexpected type {:?} in Instance::fn_sig", ty),
@@ -164,7 +138,7 @@ fn fn_abi_of_fn_ptr<'tcx>(
     let (param_env, (sig, extra_args)) = query.into_parts();
 
     let cx = LayoutCx { tcx, param_env };
-    fn_abi_new_uncached(&cx, sig, extra_args, None, None, false)
+    fn_abi_new_uncached(&cx, tcx.erase_late_bound_regions(sig), extra_args, None, None, false)
 }
 
 fn fn_abi_of_instance<'tcx>(
@@ -284,14 +258,15 @@ fn adjust_for_rust_scalar<'tcx>(
 #[tracing::instrument(level = "debug", skip(cx), ret)]
 fn fn_abi_new_uncached<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
-    sig: ty::PolyFnSig<'tcx>,
+    sig: ty::FnSig<'tcx>,
     extra_args: &[Ty<'tcx>],
     caller_location: Option<Ty<'tcx>>,
     fn_def_id: Option<DefId>,
     // FIXME(eddyb) replace this with something typed, like an `enum`.
     force_thin_self_ptr: bool,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
-    let sig = cx.tcx.normalize_erasing_late_bound_regions(cx.param_env, sig);
+    let sig = cx.tcx.normalize_erasing_regions(cx.param_env, sig);
+    debug!(?sig);
 
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi);
 

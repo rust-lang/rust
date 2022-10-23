@@ -1909,7 +1909,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         receiver: Option<&'tcx hir::Expr<'tcx>>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
-        let sig = self.tcx.fn_sig(def_id).skip_binder();
+        let sig = self.tcx.fn_sig(def_id);
         let args_referencing_param: Vec<_> = sig
             .inputs()
             .iter()

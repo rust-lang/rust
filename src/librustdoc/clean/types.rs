@@ -675,11 +675,11 @@ impl Item {
                 } else {
                     hir::Constness::NotConst
                 };
-            hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
+            hir::FnHeader { unsafety: sig.unsafety, abi: sig.abi, constness, asyncness }
         }
         let header = match *self.kind {
             ItemKind::ForeignFunctionItem(_) => {
-                let abi = tcx.fn_sig(self.item_id.as_def_id().unwrap()).abi();
+                let abi = tcx.fn_sig(self.item_id.as_def_id().unwrap()).abi;
                 hir::FnHeader {
                     unsafety: if abi == Abi::RustIntrinsic {
                         intrinsic_operation_unsafety(tcx, self.item_id.as_def_id().unwrap())

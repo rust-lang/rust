@@ -356,7 +356,7 @@ define_tables! {
     super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     type_of: Table<DefIndex, LazyValue<Ty<'static>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
-    fn_sig: Table<DefIndex, LazyValue<ty::PolyFnSig<'static>>>,
+    fn_sig: Table<DefIndex, LazyValue<ty::FnSig<'static>>>,
     codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
     impl_trait_ref: Table<DefIndex, LazyValue<ty::TraitRef<'static>>>,
     const_param_default: Table<DefIndex, LazyValue<rustc_middle::ty::Const<'static>>>,

@@ -1150,14 +1150,15 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 tcx.explicit_predicates_of(assoc_item.def_id),
             );
             let sig = tcx.fn_sig(assoc_item.def_id);
-            let mut decl = clean_fn_decl_from_did_and_sig(cx, Some(assoc_item.def_id), sig);
+            let mut decl =
+                clean_fn_decl_from_did_and_sig(cx, Some(assoc_item.def_id), ty::Binder::dummy(sig));
 
             if assoc_item.fn_has_self_parameter {
                 let self_ty = match assoc_item.container {
                     ty::ImplContainer => tcx.type_of(assoc_item.container_id(tcx)),
                     ty::TraitContainer => tcx.types.self_param,
                 };
-                let self_arg_ty = sig.input(0).skip_binder();
+                let self_arg_ty = sig.input(0);
                 if self_arg_ty == self_ty {
                     decl.inputs.values[0].type_ = Generic(kw::SelfUpper);
                 } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {

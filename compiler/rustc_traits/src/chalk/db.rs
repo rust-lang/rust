@@ -272,7 +272,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let (inputs_and_output, iobinders, _) = crate::chalk::lowering::collect_bound_vars(
             self.interner,
             self.interner.tcx,
-            sig.map_bound(|s| s.inputs_and_output()).subst(self.interner.tcx, bound_vars),
+            sig.map_bound(|s| s.inputs_and_output).subst(self.interner.tcx, bound_vars),
         );
 
         let argument_types = inputs_and_output[..inputs_and_output.len() - 1]

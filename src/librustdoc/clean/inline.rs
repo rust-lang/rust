@@ -235,7 +235,7 @@ fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<c
     let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
         // NOTE: generics need to be cleaned before the decl!
         let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
-        let decl = clean_fn_decl_from_did_and_sig(cx, Some(did), sig);
+        let decl = clean_fn_decl_from_did_and_sig(cx, Some(did), ty::Binder::dummy(sig));
         (generics, decl)
     });
     Box::new(clean::Function { decl, generics })

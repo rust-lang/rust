@@ -2919,8 +2919,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         let ty = if let Some(arg_idx) = arg_idx { fn_sig.input(arg_idx) } else { fn_sig.output() };
-
-        Some(tcx.liberate_late_bound_regions(fn_hir_id.expect_owner().to_def_id(), ty))
+        Some(ty)
     }
 
     fn validate_late_bound_regions(

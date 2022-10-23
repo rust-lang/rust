@@ -8,17 +8,12 @@ pub fn provide(providers: &mut ty::query::Providers) {
 
 fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::List<Ty<'tcx>> {
     match tcx.def_kind(def_id) {
-        DefKind::Fn => {
-            let sig = tcx.fn_sig(def_id);
-            let liberated_sig = tcx.liberate_late_bound_regions(def_id, sig);
-            liberated_sig.inputs_and_output
-        }
+        DefKind::Fn => tcx.fn_sig(def_id).inputs_and_output,
         DefKind::AssocFn => {
             let sig = tcx.fn_sig(def_id);
-            let liberated_sig = tcx.liberate_late_bound_regions(def_id, sig);
             let mut assumed_wf_types: Vec<_> =
                 tcx.assumed_wf_types(tcx.parent(def_id)).as_slice().into();
-            assumed_wf_types.extend(liberated_sig.inputs_and_output);
+            assumed_wf_types.extend(sig.inputs_and_output);
             tcx.intern_type_list(&assumed_wf_types)
         }
         DefKind::Impl => match tcx.impl_trait_ref(def_id) {

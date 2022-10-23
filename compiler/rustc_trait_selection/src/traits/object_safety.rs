@@ -420,8 +420,8 @@ fn virtual_call_violation_for_method<'tcx>(
         return Some(MethodViolationCode::StaticMethod(sugg));
     }
 
-    for (i, &input_ty) in sig.skip_binder().inputs().iter().enumerate().skip(1) {
-        if contains_illegal_self_type_reference(tcx, trait_def_id, sig.rebind(input_ty)) {
+    for (i, &input_ty) in sig.inputs().iter().enumerate().skip(1) {
+        if contains_illegal_self_type_reference(tcx, trait_def_id, input_ty) {
             let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 ..
@@ -447,7 +447,7 @@ fn virtual_call_violation_for_method<'tcx>(
         return Some(MethodViolationCode::Generic);
     }
 
-    let receiver_ty = tcx.liberate_late_bound_regions(method.def_id, sig.input(0));
+    let receiver_ty = sig.input(0);
 
     // Until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
     // However, this is already considered object-safe. We allow it as a special case here.
@@ -863,12 +863,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
         .is_break()
 }
 
-pub fn contains_illegal_impl_trait_in_trait<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: ty::Binder<'tcx, Ty<'tcx>>,
-) -> bool {
+pub fn contains_illegal_impl_trait_in_trait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     // FIXME(RPITIT): Perhaps we should use a visitor here?
-    ty.skip_binder().walk().any(|arg| {
+    ty.walk().any(|arg| {
         if let ty::GenericArgKind::Type(ty) = arg.unpack()
             && let ty::Projection(proj) = ty.kind()
         {

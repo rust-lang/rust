@@ -31,23 +31,23 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
+impl<'tcx> Value<TyCtxt<'tcx>> for ty::FnSig<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo]) -> Self {
         let err = tcx.ty_error();
         // FIXME(compiler-errors): It would be nice if we could get the
         // query key, so we could at least generate a fn signature that
         // has the right arity.
-        let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+        let fn_sig = tcx.mk_fn_sig(
             [].into_iter(),
             err,
             false,
             rustc_hir::Unsafety::Normal,
             rustc_target::spec::abi::Abi::Rust,
-        ));
+        );
 
         // SAFETY: This is never called when `Self` is not `ty::Binder<'tcx, ty::FnSig<'tcx>>`.
         // FIXME: Represent the above fact in the trait system somehow.
-        unsafe { std::mem::transmute::<ty::PolyFnSig<'tcx>, ty::Binder<'_, ty::FnSig<'_>>>(fn_sig) }
+        unsafe { std::mem::transmute::<ty::FnSig<'tcx>, ty::FnSig<'_>>(fn_sig) }
     }
 }
 

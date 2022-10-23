@@ -84,7 +84,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
     ) -> chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'tcx>>> {
         let clauses = self.environment.into_iter().map(|predicate| {
             let (predicate, binders, _named_regions) =
-                collect_bound_vars(interner, interner.tcx, predicate.kind());
+                collect_bound_vars(interner, interner.tcx, predicate.kind().skip_binder());
             let consequence = match predicate {
                 ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                     chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Ty(ty.lower_into(interner)))
@@ -145,7 +145,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
 impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predicate<'tcx> {
     fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::GoalData<RustInterner<'tcx>> {
         let (predicate, binders, _named_regions) =
-            collect_bound_vars(interner, interner.tcx, self.kind());
+            collect_bound_vars(interner, interner.tcx, self.kind().skip_binder());
 
         let value = match predicate {
             ty::PredicateKind::Trait(predicate) => {
@@ -313,8 +313,11 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 chalk_ir::TyKind::FnDef(chalk_ir::FnDefId(def_id), substs.lower_into(interner))
             }
             ty::FnPtr(sig) => {
-                let (inputs_and_outputs, binders, _named_regions) =
-                    collect_bound_vars(interner, interner.tcx, sig.inputs_and_output());
+                let (inputs_and_outputs, binders, _named_regions) = collect_bound_vars(
+                    interner,
+                    interner.tcx,
+                    sig.inputs_and_output().skip_binder(),
+                );
                 chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                     num_binders: binders.len(interner),
                     sig: sig.lower_into(interner),
@@ -600,7 +603,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
         interner: RustInterner<'tcx>,
     ) -> Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>> {
         let (predicate, binders, _named_regions) =
-            collect_bound_vars(interner, interner.tcx, self.kind());
+            collect_bound_vars(interner, interner.tcx, self.kind().skip_binder());
         let value = match predicate {
             ty::PredicateKind::Trait(predicate) => {
                 Some(chalk_ir::WhereClause::Implemented(predicate.trait_ref.lower_into(interner)))
@@ -658,7 +661,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
         ));
         let where_clauses = predicates.into_iter().map(|predicate| {
             let (predicate, binders, _named_regions) =
-                collect_bound_vars(interner, interner.tcx, predicate);
+                collect_bound_vars(interner, interner.tcx, predicate.skip_binder());
             match predicate {
                 ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef { def_id, substs }) => {
                     chalk_ir::Binders::new(
@@ -709,18 +712,24 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
     }
 }
 
-impl<'tcx> LowerInto<'tcx, chalk_ir::FnSig<RustInterner<'tcx>>>
-    for ty::Binder<'tcx, ty::FnSig<'tcx>>
-{
-    fn lower_into(self, _interner: RustInterner<'_>) -> FnSig<RustInterner<'tcx>> {
+impl<'tcx> LowerInto<'tcx, chalk_ir::FnSig<RustInterner<'tcx>>> for ty::FnSig<'tcx> {
+    fn lower_into(self, _interner: RustInterner<'tcx>) -> FnSig<RustInterner<'tcx>> {
         chalk_ir::FnSig {
-            abi: self.abi(),
-            safety: match self.unsafety() {
+            abi: self.abi,
+            safety: match self.unsafety {
                 Unsafety::Normal => chalk_ir::Safety::Safe,
                 Unsafety::Unsafe => chalk_ir::Safety::Unsafe,
             },
-            variadic: self.c_variadic(),
+            variadic: self.c_variadic,
         }
+    }
+}
+
+impl<'tcx> LowerInto<'tcx, chalk_ir::FnSig<RustInterner<'tcx>>>
+    for ty::Binder<'tcx, ty::FnSig<'tcx>>
+{
+    fn lower_into(self, interner: RustInterner<'tcx>) -> FnSig<RustInterner<'tcx>> {
+        self.skip_binder().lower_into(interner)
     }
 }
 
@@ -735,7 +744,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
         interner: RustInterner<'tcx>,
     ) -> Option<chalk_solve::rust_ir::QuantifiedInlineBound<RustInterner<'tcx>>> {
         let (predicate, binders, _named_regions) =
-            collect_bound_vars(interner, interner.tcx, self.kind());
+            collect_bound_vars(interner, interner.tcx, self.kind().skip_binder());
         match predicate {
             ty::PredicateKind::Trait(predicate) => Some(chalk_ir::Binders::new(
                 binders,
@@ -843,27 +852,32 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>
 /// It's important to note that because of prior substitution, we may have
 /// late-bound regions, even outside of fn contexts, since this is the best way
 /// to prep types for chalk lowering.
-pub(crate) fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
+pub(crate) fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx> + std::fmt::Debug>(
     interner: RustInterner<'tcx>,
     tcx: TyCtxt<'tcx>,
-    ty: Binder<'tcx, T>,
+    ty: T,
 ) -> (T, chalk_ir::VariableKinds<RustInterner<'tcx>>, BTreeMap<DefId, u32>) {
+    debug!(?ty);
     let mut bound_vars_collector = BoundVarsCollector::new();
-    ty.as_ref().skip_binder().visit_with(&mut bound_vars_collector);
+    ty.visit_with(&mut bound_vars_collector);
     let mut parameters = bound_vars_collector.parameters;
+    debug!(?parameters);
     let named_parameters: BTreeMap<DefId, u32> = bound_vars_collector
         .named_parameters
         .into_iter()
         .enumerate()
         .map(|(i, def_id)| (def_id, (i + parameters.len()) as u32))
         .collect();
+    debug!(?named_parameters);
 
     let mut bound_var_substitutor = NamedBoundVarSubstitutor::new(tcx, &named_parameters);
-    let new_ty = ty.skip_binder().fold_with(&mut bound_var_substitutor);
+    let new_ty = ty.fold_with(&mut bound_var_substitutor);
+    debug!(?new_ty);
 
     for var in named_parameters.values() {
         parameters.insert(*var, chalk_ir::VariableKind::Lifetime);
     }
+    debug!(?parameters);
 
     (0..parameters.len()).for_each(|i| {
         parameters

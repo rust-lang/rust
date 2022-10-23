@@ -380,10 +380,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                         // For methods, we check the function signature's return type for any GATs
                         // to constrain. In the `into_iter` case, we see that the return type
                         // `Self::Iter<'a>` is a GAT we want to gather any potential missing bounds from.
-                        let sig: ty::FnSig<'_> = tcx.liberate_late_bound_regions(
-                            item_def_id.to_def_id(),
-                            tcx.fn_sig(item_def_id),
-                        );
+                        let sig = tcx.fn_sig(item_def_id);
                         gather_gat_bounds(
                             tcx,
                             param_env,
@@ -1477,12 +1474,11 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 fn check_fn_or_method<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
     span: Span,
-    sig: ty::PolyFnSig<'tcx>,
+    sig: ty::FnSig<'tcx>,
     hir_decl: &hir::FnDecl<'_>,
     def_id: LocalDefId,
 ) {
     let tcx = wfcx.tcx();
-    let sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
 
     // Normalize the input and output types one at a time, using a different
     // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
@@ -1596,7 +1592,6 @@ fn check_method_receiver<'tcx>(
     let span = fn_sig.decl.inputs[0].span;
 
     let sig = tcx.fn_sig(method.def_id);
-    let sig = tcx.liberate_late_bound_regions(method.def_id, sig);
     let sig = wfcx.normalize(span, None, sig);
 
     debug!("check_method_receiver: sig={:?}", sig);

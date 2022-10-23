@@ -620,7 +620,7 @@ fn construct_error<'tcx>(
 
     let ty = tcx.ty_error();
     let num_params = match body_owner_kind {
-        hir::BodyOwnerKind::Fn => tcx.fn_sig(def).inputs().skip_binder().len(),
+        hir::BodyOwnerKind::Fn => tcx.fn_sig(def).inputs().len(),
         hir::BodyOwnerKind::Closure => {
             let ty = tcx.type_of(def);
             match ty.kind() {

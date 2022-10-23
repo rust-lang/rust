@@ -2359,8 +2359,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 // If a closure captured our `target` and then assigned
                                 // into a place then we should annotate the closure in
                                 // case it ends up being assigned into the return place.
-                                annotated_closure =
-                                    self.annotate_fn_sig(def_id, substs.as_closure().sig());
+                                annotated_closure = self.annotate_fn_sig(
+                                    def_id,
+                                    substs.as_closure().sig().skip_binder(),
+                                );
                                 debug!(
                                     "annotate_argument_and_return_for_borrow: \
                                      annotated_closure={:?} assigned_from_local={:?} \
@@ -2483,7 +2485,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn annotate_fn_sig(
         &self,
         did: LocalDefId,
-        sig: ty::PolyFnSig<'tcx>,
+        sig: ty::FnSig<'tcx>,
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
         let is_closure = self.infcx.tcx.is_closure(did.to_def_id());
@@ -2513,12 +2515,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // 3. The return type is not a reference. In this case, we don't highlight
         //    anything.
         let return_ty = sig.output();
-        match return_ty.skip_binder().kind() {
+        match return_ty.kind() {
             ty::Ref(return_region, _, _) if return_region.has_name() && !is_closure => {
                 // This is case 1 from above, return type is a named reference so we need to
                 // search for relevant arguments.
                 let mut arguments = Vec::new();
-                for (index, argument) in sig.inputs().skip_binder().iter().enumerate() {
+                for (index, argument) in sig.inputs().iter().enumerate() {
                     if let ty::Ref(argument_region, _, _) = argument.kind() {
                         if argument_region == return_region {
                             // Need to use the `rustc_middle::ty` types to compare against the
@@ -2542,7 +2544,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 // We use a mix of the HIR and the Ty types to get information
                 // as the HIR doesn't have full types for closure arguments.
-                let return_ty = sig.output().skip_binder();
+                let return_ty = sig.output();
                 let mut return_span = fn_decl.output.span();
                 if let hir::FnRetTy::Return(ty) = &fn_decl.output {
                     if let hir::TyKind::Rptr(lifetime, _) = ty.kind {
@@ -2561,7 +2563,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // reference so we select
                 // the first argument.
                 let argument_span = fn_decl.inputs.first()?.span;
-                let argument_ty = sig.inputs().skip_binder().first()?;
+                let argument_ty = sig.inputs().first()?;
 
                 // Closure arguments are wrapped in a tuple, so we need to get the first
                 // from that.
@@ -2581,10 +2583,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // This is also case 2 from above but for functions, return type is still an
                 // anonymous reference so we select the first argument.
                 let argument_span = fn_decl.inputs.first()?.span;
-                let argument_ty = *sig.inputs().skip_binder().first()?;
+                let argument_ty = *sig.inputs().first()?;
 
                 let return_span = fn_decl.output.span();
-                let return_ty = sig.output().skip_binder();
+                let return_ty = sig.output();
 
                 // We expect the first argument to be a reference.
                 match argument_ty.kind() {

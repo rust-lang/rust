@@ -33,7 +33,7 @@ pub struct Inline;
 #[derive(Copy, Clone, Debug)]
 struct CallSite<'tcx> {
     callee: Instance<'tcx>,
-    fn_sig: ty::PolyFnSig<'tcx>,
+    fn_sig: ty::FnSig<'tcx>,
     block: BasicBlock,
     target: Option<BasicBlock>,
     source_info: SourceInfo,
@@ -184,7 +184,7 @@ impl<'tcx> Inliner<'tcx> {
             trace!(?output_type, ?destination_ty);
             return Err("failed to normalize return type");
         }
-        if callsite.fn_sig.abi() == Abi::RustCall {
+        if callsite.fn_sig.abi == Abi::RustCall {
             let (arg_tuple, skipped_args) = match &args[..] {
                 [arg_tuple] => (arg_tuple, 0),
                 [_, arg_tuple] => (arg_tuple, 1),
@@ -360,7 +360,7 @@ impl<'tcx> Inliner<'tcx> {
             }
         }
 
-        if callsite.fn_sig.c_variadic() {
+        if callsite.fn_sig.c_variadic {
             return Err("C variadic");
         }
 
@@ -648,7 +648,7 @@ impl<'tcx> Inliner<'tcx> {
         //     tmp2 = tuple_tmp.2
         //
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
-        if callsite.fn_sig.abi() == Abi::RustCall && callee_body.spread_arg.is_none() {
+        if callsite.fn_sig.abi == Abi::RustCall && callee_body.spread_arg.is_none() {
             let mut args = args.into_iter();
             let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);

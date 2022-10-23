@@ -125,7 +125,7 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
 
     // Get the real type of 'self'
     let self_type = cx.tcx.fn_sig(item.def_id).input(0);
-    let self_type = self_type.skip_binder().peel_refs();
+    let self_type = self_type.peel_refs();
 
     // Emit either a warning or an error
     if implements_trait(cx, self_type, display_trait_id, &[]) {

@@ -287,7 +287,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::FnPtr(sig) => {
-                self.add_constraints_from_sig(current, sig, variance);
+                self.add_constraints_from_sig(current, sig.skip_binder(), variance);
             }
 
             ty::Error(_) => {
@@ -381,14 +381,14 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn add_constraints_from_sig(
         &mut self,
         current: &CurrentItem,
-        sig: ty::PolyFnSig<'tcx>,
+        sig: ty::FnSig<'tcx>,
         variance: VarianceTermPtr<'a>,
     ) {
         let contra = self.contravariant(variance);
-        for &input in sig.skip_binder().inputs() {
+        for &input in sig.inputs() {
             self.add_constraints_from_ty(current, input, contra);
         }
-        self.add_constraints_from_ty(current, sig.skip_binder().output(), variance);
+        self.add_constraints_from_ty(current, sig.output(), variance);
     }
 
     /// Adds constraints appropriate for a region appearing in a

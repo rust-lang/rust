@@ -1934,7 +1934,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, substs) => {
-                let fn_sig = tcx.fn_sig(*def_id).no_bound_vars().unwrap();
+                let fn_sig = tcx.fn_sig(*def_id);
                 let generics = tcx.generics_of(*def_id);
                 let mut bound_vars = FxIndexSet::default();
                 let fn_sig = tcx.fold_regions(fn_sig, |region, debruijn| {

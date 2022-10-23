@@ -449,7 +449,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
             // regions just fine, showing `fn(&MyType)`.
             fn_sig_suggestion(
                 tcx,
-                tcx.fn_sig(assoc.def_id).skip_binder(),
+                tcx.fn_sig(assoc.def_id),
                 assoc.ident(tcx),
                 tcx.predicates_of(assoc.def_id),
                 assoc,
