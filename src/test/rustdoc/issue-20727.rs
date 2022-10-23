@@ -19,6 +19,6 @@ pub mod reexport {
     // @has - '//*[@class="rust trait"]' 'trait Deref {'
     // @has - '//*[@class="rust trait"]' 'type Target: ?Sized;'
     // @has - '//*[@class="rust trait"]' \
-    //      "fn deref(&'a self) -> &'a Self::Target;"
+    //      "fn deref<'a>(&'a self) -> &'a Self::Target;"
     pub use issue_20727::Deref;
 }
