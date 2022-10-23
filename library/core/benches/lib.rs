@@ -5,6 +5,7 @@
 #![feature(test)]
 #![feature(trusted_random_access)]
 #![feature(iter_array_chunks)]
+#![feature(iter_next_chunk)]
 
 extern crate test;
 
