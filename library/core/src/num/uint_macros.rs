@@ -1164,7 +1164,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Panic-free bitwise shift-left; yields `0` where the shift exceeds the bitwidth of the type.
+        /// Panic-free bitwise shift-left; saturates `MAX` instead of wrapping around.
         ///
         /// Note that this is *not* the same as a rotate-left; the RHS of a saturating shift-left is restricted to
         /// the range of the type, rather than the bits shifted out of the LHS being returned to the other end.
@@ -1177,8 +1177,8 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// #![feature(saturating_bit_shifts)]
-        #[doc = concat!("assert_eq!(0b0000_0001_u8.saturating_shl(u8::BITS - 1), 0b1000_0000_u8);")]
-        #[doc = concat!("assert_eq!(0b0000_0001_u8.saturating_shl(u8::BITS), 0b0000_0000_u8);")]
+        #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS - 1), 1_", stringify!($SelfT), " << ", stringify!($SelfT), "::BITS - 1);")]
+        #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS), ", stringify!($SelfT), "::MAX);")]
         /// ```
         #[unstable(feature = "saturating_bit_shifts", issue = "103440")]
         #[rustc_const_unstable(feature = "saturating_bit_shifts", issue = "103440")]
@@ -1186,8 +1186,8 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn saturating_shl(self, rhs: u32) -> Self {
-            if rhs >= <$SelfT>::BITS {
-                0
+            if rhs > self.leading_zeros() {
+                <$SelfT>::MAX
             } else {
                 self << rhs
             }
