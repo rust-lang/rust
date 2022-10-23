@@ -1,0 +1,10 @@
+error: expected identifier, found `<`
+  --> $DIR/existing_generics.rs:5:3
+   |
+LL | fn<'a, B: 'a + std::ops::Add<Output = u32>> f<T>(_x: B) { }
+   |   ^ expected identifier
+   |
+   = help: place the generic parameter name after the fn name
+
+error: aborting due to previous error
+
