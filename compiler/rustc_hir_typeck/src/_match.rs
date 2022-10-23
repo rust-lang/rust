@@ -514,8 +514,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 for ty in [first_ty, second_ty] {
-                    for pred in self.tcx.bound_explicit_item_bounds(rpit_def_id).transpose_iter() {
-                        let pred = pred.map_bound(|(pred, _)| *pred).subst(self.tcx, substs);
+                    for (pred, _) in self
+                        .tcx
+                        .bound_explicit_item_bounds(rpit_def_id)
+                        .subst_iter_copied(self.tcx, substs)
+                    {
                         let pred = match pred.kind().skip_binder() {
                             ty::PredicateKind::Trait(mut trait_pred) => {
                                 assert_eq!(trait_pred.trait_ref.self_ty(), opaque_ty);

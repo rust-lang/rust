@@ -338,8 +338,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
             let bounds = self.tcx.bound_explicit_item_bounds(*def_id);
 
-            for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
-                let predicate = predicate.subst(self.tcx, substs);
+            for (predicate, _) in bounds.subst_iter_copied(self.tcx, substs) {
                 let output = predicate
                     .kind()
                     .map_bound(|kind| match kind {
