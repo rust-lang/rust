@@ -3,7 +3,9 @@ use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_errors::{
+    error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult, StashKey,
+};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::Cursor;
 use rustc_lexer::{Base, DocStyle, RawStrError};
@@ -203,7 +205,10 @@ impl<'a> StringReader<'a> {
                     // this is necessary.
                     let lifetime_name = self.str_from(start);
                     if starts_with_number {
-                        self.err_span_(start, self.pos, "lifetimes cannot start with a number");
+                        let span = self.mk_sp(start, self.pos);
+                        let mut diag = self.sess.struct_err("lifetimes cannot start with a number");
+                        diag.set_span(span);
+                        diag.stash(span, StashKey::LifetimeIsChar);
                     }
                     let ident = Symbol::intern(lifetime_name);
                     token::Lifetime(ident)
