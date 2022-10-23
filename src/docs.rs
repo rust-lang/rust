@@ -247,7 +247,6 @@ docs! {
     "len_without_is_empty",
     "len_zero",
     "let_and_return",
-    "let_underscore_drop",
     "let_underscore_lock",
     "let_underscore_must_use",
     "let_unit_value",

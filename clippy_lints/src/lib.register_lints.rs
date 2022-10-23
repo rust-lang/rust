@@ -214,7 +214,6 @@ store.register_lints(&[
     len_zero::LEN_WITHOUT_IS_EMPTY,
     len_zero::LEN_ZERO,
     let_if_seq::USELESS_LET_IF_SEQ,
-    let_underscore::LET_UNDERSCORE_DROP,
     let_underscore::LET_UNDERSCORE_LOCK,
     let_underscore::LET_UNDERSCORE_MUST_USE,
     lifetimes::EXTRA_UNUSED_LIFETIMES,
