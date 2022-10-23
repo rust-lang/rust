@@ -486,7 +486,9 @@ fn is_to_string_on_string_like<'a>(
     }
 
     if let Some(substs) = cx.typeck_results().node_substs_opt(call_expr.hir_id)
-        && let [generic_arg] = substs.as_slice()
+        && let substs = substs.as_slice()
+        && let Some(generic_arg) = substs.get(0)
+        && substs.iter().skip(1).all(|arg| matches!(arg.unpack(), ty::GenericArgKind::Lifetime(_)))
         && let GenericArgKind::Type(ty) = generic_arg.unpack()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)

@@ -111,8 +111,6 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                 .map_or(callee_ty, |id| cx.tcx.type_of(id));
             if check_sig(cx, closure_ty, call_ty);
             let substs = cx.typeck_results().node_substs(callee.hir_id);
-            // This fixes some false positives that I don't entirely understand
-            if substs.is_empty() || !cx.typeck_results().expr_ty(expr).has_late_bound_regions();
             // A type param function ref like `T::f` is not 'static, however
             // it is if cast like `T::f as fn()`. This seems like a rustc bug.
             if !substs.types().any(|t| matches!(t.kind(), ty::Param(_)));
@@ -217,7 +215,7 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure_ty: Ty<'tcx>, call_ty: Ty<'tc
         return false;
     };
     let closure_sig = cx.tcx.signature_unclosure(substs.as_closure().sig(), Unsafety::Normal);
-    cx.tcx.erase_late_bound_regions(closure_sig) == cx.tcx.erase_late_bound_regions(call_sig)
+    cx.tcx.anonymize_late_bound_regions(closure_sig) == cx.tcx.anonymize_late_bound_regions(call_sig)
 }
 
 fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: DefId) -> String {

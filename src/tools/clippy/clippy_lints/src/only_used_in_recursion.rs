@@ -247,9 +247,12 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                     && let Some(trait_ref) = cx.tcx.impl_trait_ref(item.def_id)
                     && let Some(trait_item_id) = cx.tcx.associated_item(def_id).trait_item_def_id
                 {
+                    let substs = ty::InternalSubsts::identity_for_item(cx.tcx, trait_item_id)
+                        .rebase_onto(cx.tcx, trait_ref.def_id, trait_ref.substs);
+                    let substs = cx.tcx.erase_regions(substs);
                     (
                         trait_item_id,
-                        FnKind::ImplTraitFn(cx.tcx.erase_regions(trait_ref.substs) as *const _ as usize),
+                        FnKind::ImplTraitFn(substs as *const _ as usize),
                         usize::from(sig.decl.implicit_self.has_implicit_self()),
                     )
                 } else {
