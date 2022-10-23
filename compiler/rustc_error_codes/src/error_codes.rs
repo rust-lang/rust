@@ -161,6 +161,7 @@ E0309: include_str!("./error_codes/E0309.md"),
 E0310: include_str!("./error_codes/E0310.md"),
 E0311: include_str!("./error_codes/E0311.md"),
 E0312: include_str!("./error_codes/E0312.md"),
+E0313: include_str!("./error_codes/E0313.md"),
 E0316: include_str!("./error_codes/E0316.md"),
 E0317: include_str!("./error_codes/E0317.md"),
 E0321: include_str!("./error_codes/E0321.md"),
@@ -569,8 +570,6 @@ E0790: include_str!("./error_codes/E0790.md"),
 //  E0300, // unexpanded macro
 //  E0304, // expected signed integer constant
 //  E0305, // expected constant
-    E0313, // lifetime of borrowed pointer outlives lifetime of captured
-           // variable
 //  E0314, // closure outlives stack frame
 //  E0315, // cannot invoke closure outside of its lifetime
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
