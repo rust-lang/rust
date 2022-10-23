@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
+use clippy_utils::mir::{enclosing_mir, expr_local, local_assignments, used_exactly_once, PossibleBorrowerMap};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{expr_sig, is_copy, peel_mid_ty_refs, ty_sig, variant_of_res};
@@ -11,13 +12,16 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    self as hir, def_id::DefId, BindingAnnotation, Body, BodyId, BorrowKind, Closure, Expr, ExprKind, FnRetTy,
-    GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind,
-    Path, QPath, TraitItem, TraitItemKind, TyKind, UnOp,
+    self as hir,
+    def_id::{DefId, LocalDefId},
+    BindingAnnotation, Body, BodyId, BorrowKind, Closure, Expr, ExprKind, FnRetTy, GenericArg, HirId, ImplItem,
+    ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
+    TraitItemKind, TyKind, UnOp,
 };
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
     self, Binder, BoundVariableKind, EarlyBinder, FnSig, GenericArgKind, List, ParamTy, PredicateKind,
@@ -141,7 +145,7 @@ declare_clippy_lint! {
     "dereferencing when the compiler would automatically dereference"
 }
 
-impl_lint_pass!(Dereferencing => [
+impl_lint_pass!(Dereferencing<'_> => [
     EXPLICIT_DEREF_METHODS,
     NEEDLESS_BORROW,
     REF_BINDING_TO_REFERENCE,
@@ -149,7 +153,7 @@ impl_lint_pass!(Dereferencing => [
 ]);
 
 #[derive(Default)]
-pub struct Dereferencing {
+pub struct Dereferencing<'tcx> {
     state: Option<(State, StateData)>,
 
     // While parsing a `deref` method call in ufcs form, the path to the function is itself an
@@ -170,11 +174,16 @@ pub struct Dereferencing {
     /// e.g. `m!(x) | Foo::Bar(ref x)`
     ref_locals: FxIndexMap<HirId, Option<RefPat>>,
 
+    /// Stack of (body owner, `PossibleBorrowerMap`) pairs. Used by
+    /// `needless_borrow_impl_arg_position` to determine when a borrowed expression can instead
+    /// be moved.
+    possible_borrowers: Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
+
     // `IntoIterator` for arrays requires Rust 1.53.
     msrv: Option<RustcVersion>,
 }
 
-impl Dereferencing {
+impl<'tcx> Dereferencing<'tcx> {
     #[must_use]
     pub fn new(msrv: Option<RustcVersion>) -> Self {
         Self {
@@ -244,7 +253,7 @@ struct RefPat {
     hir_id: HirId,
 }
 
-impl<'tcx> LateLintPass<'tcx> for Dereferencing {
+impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Skip path expressions from deref calls. e.g. `Deref::deref(e)`
@@ -278,7 +287,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
         match (self.state.take(), kind) {
             (None, kind) => {
                 let expr_ty = typeck.expr_ty(expr);
-                let (position, adjustments) = walk_parents(cx, expr, self.msrv);
+                let (position, adjustments) = walk_parents(cx, &mut self.possible_borrowers, expr, self.msrv);
                 match kind {
                     RefOp::Deref => {
                         if let Position::FieldAccess {
@@ -550,6 +559,12 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
     }
 
     fn check_body_post(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
+        if self.possible_borrowers.last().map_or(false, |&(local_def_id, _)| {
+            local_def_id == cx.tcx.hir().body_owner_def_id(body.id())
+        }) {
+            self.possible_borrowers.pop();
+        }
+
         if Some(body.id()) == self.current_body {
             for pat in self.ref_locals.drain(..).filter_map(|(_, x)| x) {
                 let replacements = pat.replacements;
@@ -682,6 +697,7 @@ impl Position {
 #[expect(clippy::too_many_lines)]
 fn walk_parents<'tcx>(
     cx: &LateContext<'tcx>,
+    possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     e: &'tcx Expr<'_>,
     msrv: Option<RustcVersion>,
 ) -> (Position, &'tcx [Adjustment<'tcx>]) {
@@ -796,7 +812,16 @@ fn walk_parents<'tcx>(
                             Some(hir_ty) => binding_ty_auto_deref_stability(cx, hir_ty, precedence, ty.bound_vars()),
                             None => {
                                 if let ty::Param(param_ty) = ty.skip_binder().kind() {
-                                    needless_borrow_impl_arg_position(cx, parent, i, *param_ty, e, precedence, msrv)
+                                    needless_borrow_impl_arg_position(
+                                        cx,
+                                        possible_borrowers,
+                                        parent,
+                                        i,
+                                        *param_ty,
+                                        e,
+                                        precedence,
+                                        msrv,
+                                    )
                                 } else {
                                     ty_auto_deref_stability(cx, cx.tcx.erase_late_bound_regions(ty), precedence)
                                         .position_for_arg()
@@ -843,7 +868,16 @@ fn walk_parents<'tcx>(
                     args.iter().position(|arg| arg.hir_id == child_id).map(|i| {
                         let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i + 1];
                         if let ty::Param(param_ty) = ty.kind() {
-                            needless_borrow_impl_arg_position(cx, parent, i + 1, *param_ty, e, precedence, msrv)
+                            needless_borrow_impl_arg_position(
+                                cx,
+                                possible_borrowers,
+                                parent,
+                                i + 1,
+                                *param_ty,
+                                e,
+                                precedence,
+                                msrv,
+                            )
                         } else {
                             ty_auto_deref_stability(
                                 cx,
@@ -1017,8 +1051,10 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
 // If the conditions are met, returns `Some(Position::ImplArg(..))`; otherwise, returns `None`.
 //   The "is copyable" condition is to avoid the case where removing the `&` means `e` would have to
 // be moved, but it cannot be.
+#[expect(clippy::too_many_arguments)]
 fn needless_borrow_impl_arg_position<'tcx>(
     cx: &LateContext<'tcx>,
+    possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     parent: &Expr<'tcx>,
     arg_index: usize,
     param_ty: ParamTy,
@@ -1081,10 +1117,13 @@ fn needless_borrow_impl_arg_position<'tcx>(
     // elements are modified each time `check_referent` is called.
     let mut substs_with_referent_ty = substs_with_expr_ty.to_vec();
 
-    let mut check_referent = |referent| {
+    let mut check_reference_and_referent = |reference, referent| {
         let referent_ty = cx.typeck_results().expr_ty(referent);
 
-        if !is_copy(cx, referent_ty) {
+        if !is_copy(cx, referent_ty)
+            && (referent_ty.has_significant_drop(cx.tcx, cx.param_env)
+                || !referent_used_exactly_once(cx, possible_borrowers, reference))
+        {
             return false;
         }
 
@@ -1125,7 +1164,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
 
     let mut needless_borrow = false;
     while let ExprKind::AddrOf(_, _, referent) = expr.kind {
-        if !check_referent(referent) {
+        if !check_reference_and_referent(expr, referent) {
             break;
         }
         expr = referent;
@@ -1151,6 +1190,36 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
                 false
             }
         })
+}
+
+fn referent_used_exactly_once<'tcx>(
+    cx: &LateContext<'tcx>,
+    possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
+    reference: &Expr<'tcx>,
+) -> bool {
+    let mir = enclosing_mir(cx.tcx, reference.hir_id);
+    if let Some(local) = expr_local(cx.tcx, reference)
+        && let [location] = *local_assignments(mir, local).as_slice()
+        && let Some(statement) = mir.basic_blocks[location.block].statements.get(location.statement_index)
+        && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
+        && !place.has_deref()
+    {
+        let body_owner_local_def_id = cx.tcx.hir().enclosing_body_owner(reference.hir_id);
+        if possible_borrowers
+            .last()
+            .map_or(true, |&(local_def_id, _)| local_def_id != body_owner_local_def_id)
+        {
+            possible_borrowers.push((body_owner_local_def_id, PossibleBorrowerMap::new(cx, mir)));
+        }
+        let possible_borrower = &mut possible_borrowers.last_mut().unwrap().1;
+        // If `only_borrowers` were used here, the `copyable_iterator::warn` test would fail. The reason is
+        // that `PossibleBorrowerVisitor::visit_terminator` considers `place.local` a possible borrower of
+        // itself. See the comment in that method for an explanation as to why.
+        possible_borrower.bounded_borrowers(&[local], &[local, place.local], place.local, location)
+            && used_exactly_once(mir, place.local).unwrap_or(false)
+    } else {
+        false
+    }
 }
 
 // Iteratively replaces `param_ty` with `new_ty` in `substs`, and similarly for each resulting
@@ -1437,8 +1506,8 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
     }
 }
 
-impl Dereferencing {
-    fn check_local_usage<'tcx>(&mut self, cx: &LateContext<'tcx>, e: &Expr<'tcx>, local: HirId) {
+impl<'tcx> Dereferencing<'tcx> {
+    fn check_local_usage(&mut self, cx: &LateContext<'tcx>, e: &Expr<'tcx>, local: HirId) {
         if let Some(outer_pat) = self.ref_locals.get_mut(&local) {
             if let Some(pat) = outer_pat {
                 // Check for auto-deref

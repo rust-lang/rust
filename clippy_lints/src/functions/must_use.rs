@@ -7,14 +7,14 @@ use rustc_middle::{
     lint::in_external_macro,
     ty::{self, Ty},
 };
-use rustc_span::{sym, Span};
+use rustc_span::{sym, Span, Symbol};
 
 use clippy_utils::attrs::is_proc_macro;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{match_def_path, return_ty, trait_ref_of_method};
+use clippy_utils::{return_ty, trait_ref_of_method};
 
 use core::ops::ControlFlow;
 
@@ -181,7 +181,7 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) 
     }
 }
 
-static KNOWN_WRAPPER_TYS: &[&[&str]] = &[&["alloc", "rc", "Rc"], &["std", "sync", "Arc"]];
+static KNOWN_WRAPPER_TYS: &[Symbol] = &[sym::Rc, sym::Arc];
 
 fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut DefIdSet) -> bool {
     match *ty.kind() {
@@ -189,7 +189,9 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &m
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
         ty::Adt(adt, substs) => {
             tys.insert(adt.did()) && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
-                || KNOWN_WRAPPER_TYS.iter().any(|path| match_def_path(cx, adt.did(), path))
+                || KNOWN_WRAPPER_TYS
+                    .iter()
+                    .any(|&sym| cx.tcx.is_diagnostic_item(sym, adt.did()))
                     && substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys))
         },
         ty::Tuple(substs) => substs.iter().any(|ty| is_mutable_ty(cx, ty, span, tys)),

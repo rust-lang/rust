@@ -70,9 +70,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
 
                 // find the type that the Impl is for
                 // only lint on struct/enum/union for now
-                let defid = match path.res {
-                    Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, defid) => defid,
-                    _ => return,
+                let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, defid) = path.res else {
+                    return
                 };
 
                 // get the names of the generic parameters in the type
