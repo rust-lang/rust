@@ -1462,17 +1462,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Contains the new lifetime definitions created for the TAIT (if any).
         let mut collected_lifetimes = Vec::new();
 
-        // If this came from a TAIT (as opposed to a function that returns an RPIT), we only want
-        // to capture the lifetimes that appear in the bounds. So visit the bounds to find out
-        // exactly which ones those are.
-        let lifetimes_to_remap = if origin == hir::OpaqueTyOrigin::TyAlias {
-            // in a TAIT like `type Foo<'a> = impl Foo<'a>`, we don't keep all the lifetime parameters
-            Vec::new()
-        } else {
-            // in fn return position, like the `fn test<'a>() -> impl Debug + 'a` example,
-            // we only keep the lifetimes that appear in the `impl Debug` itself:
-            lifetime_collector::lifetimes_in_bounds(&self.resolver, bounds)
-        };
+        // Contraty to the async case where only capture early-bound lifetimes, an trait bound in
+        // RPIT or TAIT may introduce late-bound lifetimes through HRTB.
+        // ```rust,ignore
+        // trait Foo<T> {};
+        // trait Bar<'a, 'b> {}
+        // fn baz<'a>() -> &'a dyn for<'b> Foo<impl Bar<'a, 'b>> {}
+        // ```
+        //
+        // In that case, we desugar lifetimes as:
+        // ```rust,ignore
+        // fn baz<'a>() -> &'a dyn for<'b> Foo<baz::<'a>::opaque::<'b>> {}
+        // opaque baz::<'a>::opaque<'b>: Bar<'a, 'b>;
+        // ```
+        //
+        // In that case, the lifetime `'a` is bound to an item, so `generics_of` will handle it.
+        // However, the lifetime `'b` is not bound to any item, so we need to create a special
+        // parameter on the opaque for it.
+        let lifetimes_to_remap = lifetime_collector::lifetimes_in_bounds(&self.resolver, bounds);
         debug!(?lifetimes_to_remap);
 
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
