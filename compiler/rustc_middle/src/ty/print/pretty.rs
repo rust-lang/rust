@@ -983,15 +983,9 @@ pub trait PrettyPrinter<'tcx>:
             write!(self, "Sized")?;
         }
 
-        if let [re] = lifetimes.as_slice()
-            && re.is_static()
-        {
-            // Don't print a single static lifetime
-        } else {
-            for re in lifetimes {
-                write!(self, " + ")?;
-                self = self.print_region(re)?;
-            }
+        for re in lifetimes {
+            write!(self, " + ")?;
+            self = self.print_region(re)?;
         }
 
         Ok(self)
