@@ -42,4 +42,7 @@ fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &isize {
     panic!()
 }
 
+fn l<'a>(_: &'a str, _: &'a str) -> &str { "" }
+//~^ ERROR missing lifetime specifier
+
 fn main() {}
