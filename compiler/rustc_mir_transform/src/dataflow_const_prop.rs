@@ -11,7 +11,7 @@ use rustc_mir_dataflow::value_analysis::{
     HasTop, Map, State, TrackElem, ValueAnalysis, ValueOrPlace, ValueOrPlaceOrRef,
 };
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, ResultsVisitor, SwitchIntEdgeEffects};
-use rustc_span::{sym, DUMMY_SP};
+use rustc_span::DUMMY_SP;
 
 use crate::MirPass;
 
@@ -42,7 +42,6 @@ struct ConstAnalysis<'tcx> {
     tcx: TyCtxt<'tcx>,
     ecx: InterpCx<'tcx, 'tcx, DummyMachine>,
     param_env: ty::ParamEnv<'tcx>,
-    propagate_overflow: bool,
 }
 
 impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
@@ -84,13 +83,11 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                         let overflow = match overflow {
                             FlatSet::Top => FlatSet::Top,
                             FlatSet::Elem(overflow) => {
-                                if overflow && !self.propagate_overflow {
+                                if overflow {
+                                    // Overflow cannot be reliable propagated. See: https://github.com/rust-lang/rust/pull/101168#issuecomment-1288091446
                                     FlatSet::Top
                                 } else {
-                                    self.wrap_scalar(
-                                        Scalar::from_bool(overflow),
-                                        self.tcx.types.bool,
-                                    )
+                                    self.wrap_scalar(Scalar::from_bool(false), self.tcx.types.bool)
                                 }
                             }
                             FlatSet::Bottom => FlatSet::Bottom,
@@ -220,20 +217,11 @@ impl<'tcx> std::fmt::Debug for ScalarTy<'tcx> {
 
 impl<'tcx> ConstAnalysis<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, map: Map) -> Self {
-        // It can happen that overflow will be detected even though overflow checks are disabled.
-        // This is caused by inlining functions that have #[rustc_inherit_overflow_checks]. Such
-        // overflows must not be propagated if `-C overflow-checks=off`. Also, if the function we
-        // are optimizing here has #[rustc_inherit_overflow_checks], the overflow checks may
-        // actually not be triggered by the consuming crate, so we have to ignore them too.
-        // Related to https://github.com/rust-lang/rust/issues/35310.
-        let propagate_overflow = tcx.sess.overflow_checks()
-            && !tcx.has_attr(body.source.def_id(), sym::rustc_inherit_overflow_checks);
         Self {
             map,
             tcx,
             ecx: InterpCx::new(tcx, DUMMY_SP, ty::ParamEnv::empty(), DummyMachine),
             param_env: tcx.param_env(body.source.def_id()),
-            propagate_overflow,
         }
     }
 
