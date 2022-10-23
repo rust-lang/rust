@@ -1164,6 +1164,63 @@ macro_rules! uint_impl {
             }
         }
 
+        /// Panic-free bitwise shift-left; yields `0` where the shift exceeds the bitwidth of the type.
+        ///
+        /// Note that this is *not* the same as a rotate-left; the RHS of a saturating shift-left is restricted to
+        /// the range of the type, rather than the bits shifted out of the LHS being returned to the other end.
+        /// The primitive integer types all implement a [`rotate_left`](Self::rotate_left) function,
+        /// which may be what you want instead.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(saturating_bit_shifts)]
+        #[doc = concat!("assert_eq!(0b0000_0001_u8.saturating_shl(u8::BITS - 1), 0b1000_0000_u8);")]
+        #[doc = concat!("assert_eq!(0b0000_0001_u8.saturating_shl(u8::BITS), 0b0000_0000_u8);")]
+        /// ```
+        #[unstable(feature = "saturating_bit_shifts", issue = "103440")]
+        #[rustc_const_unstable(feature = "saturating_bit_shifts", issue = "103440")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn saturating_shl(self, rhs: u32) -> Self {
+            if rhs >= <$SelfT>::BITS {
+                0
+            } else {
+                self << rhs
+            }
+        }
+
+        /// Panic-free bitwise shift-right; yields `0` where the shift exceeds the bitwidth of the type.
+        ///
+        /// Note that this is *not* the same as a rotate-right; the RHS of a saturating shift-right is restricted
+        /// to the range of the type, rather than the bits shifted out of the LHS being returned to the other
+        /// end. The primitive integer types all implement a [`rotate_right`](Self::rotate_right) function,
+        /// which may be what you want instead.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(saturating_bit_shifts)]
+        #[doc = concat!("assert_eq!(0b1000_0000_u8.saturating_shr(u8::BITS), 0b0000_0000_u8);")]
+        /// ```
+        #[unstable(feature = "saturating_bit_shifts", issue = "103440")]
+        #[rustc_const_unstable(feature = "saturating_bit_shifts", issue = "103440")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn saturating_shr(self, rhs: u32) -> Self {
+            if rhs >= <$SelfT>::BITS {
+                0
+            } else {
+                self >> rhs
+            }
+        }
+
         /// Wrapping (modular) addition. Computes `self + rhs`,
         /// wrapping around at the boundary of the type.
         ///
