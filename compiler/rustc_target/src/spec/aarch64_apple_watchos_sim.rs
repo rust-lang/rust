@@ -1,15 +1,15 @@
-use super::apple_sdk_base::{opts, Arch};
+use super::apple_base::{opts, watchos_sim_llvm_target, Arch};
 use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts("watchos", Arch::Arm64_sim);
+    let arch = Arch::Arm64_sim;
+    let base = opts("watchos", arch);
 
     // Clang automatically chooses a more specific target based on
     // WATCHOS_DEPLOYMENT_TARGET.
     // This is required for the simulator target to pick the right
     // MACH-O commands, so we do too.
-    let arch = "arm64";
-    let llvm_target = super::apple_base::watchos_sim_llvm_target(arch);
+    let llvm_target = watchos_sim_llvm_target(arch);
 
     Target {
         llvm_target: llvm_target.into(),

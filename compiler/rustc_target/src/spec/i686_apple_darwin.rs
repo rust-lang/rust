@@ -1,12 +1,13 @@
+use super::apple_base::{macos_link_env_remove, macos_llvm_target, opts, Arch};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     // ld64 only understand i386 and not i686
-    let mut base = super::apple_base::opts("macos", "i386", "");
+    let mut base = opts("macos", Arch::I386);
     base.cpu = "yonah".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
-    base.link_env_remove.to_mut().extend(super::apple_base::macos_link_env_remove());
+    base.link_env_remove.to_mut().extend(macos_link_env_remove());
     base.stack_probes = StackProbeType::X86;
     base.frame_pointer = FramePointer::Always;
 
@@ -14,7 +15,7 @@ pub fn target() -> Target {
     // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work
     // correctly, we do too.
     let arch = "i686";
-    let llvm_target = super::apple_base::macos_llvm_target(&arch);
+    let llvm_target = macos_llvm_target(arch);
 
     Target {
         llvm_target: llvm_target.into(),

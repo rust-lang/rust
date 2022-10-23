@@ -3,6 +3,75 @@ use std::{borrow::Cow, env};
 use crate::spec::{cvs, Cc, DebuginfoKind, FramePointer, LinkArgs};
 use crate::spec::{LinkerFlavor, Lld, SplitDebuginfo, StaticCow, TargetOptions};
 
+#[cfg(test)]
+#[path = "apple/tests.rs"]
+mod tests;
+
+use Arch::*;
+#[allow(non_camel_case_types)]
+#[derive(Copy, Clone)]
+pub enum Arch {
+    Armv7,
+    Armv7k,
+    Armv7s,
+    Arm64,
+    Arm64_32,
+    I386,
+    X86_64,
+    X86_64_sim,
+    X86_64_macabi,
+    Arm64_macabi,
+    Arm64_sim,
+}
+
+impl Arch {
+    pub fn target_name(self) -> &'static str {
+        match self {
+            Armv7 => "armv7",
+            Armv7k => "armv7k",
+            Armv7s => "armv7s",
+            Arm64 | Arm64_macabi | Arm64_sim => "arm64",
+            Arm64_32 => "arm64_32",
+            I386 => "i386",
+            X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
+        }
+    }
+
+    fn target_abi(self) -> &'static str {
+        match self {
+            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | X86_64 => "",
+            X86_64_macabi | Arm64_macabi => "macabi",
+            // x86_64-apple-ios is a simulator target, even though it isn't
+            // declared that way in the target like the other ones...
+            Arm64_sim | X86_64_sim => "sim",
+        }
+    }
+
+    fn target_cpu(self) -> &'static str {
+        match self {
+            Armv7 => "cortex-a8", // iOS7 is supported on iPhone 4 and higher
+            Armv7k => "cortex-a8",
+            Armv7s => "cortex-a9",
+            Arm64 => "apple-a7",
+            Arm64_32 => "apple-s4",
+            I386 => "yonah",
+            X86_64 | X86_64_sim => "core2",
+            X86_64_macabi => "core2",
+            Arm64_macabi => "apple-a12",
+            Arm64_sim => "apple-a12",
+        }
+    }
+
+    fn link_env_remove(self) -> StaticCow<[StaticCow<str>]> {
+        match self {
+            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | X86_64 | X86_64_sim | Arm64_sim => {
+                cvs!["MACOSX_DEPLOYMENT_TARGET"]
+            }
+            X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
+        }
+    }
+}
+
 fn pre_link_args(os: &'static str, arch: &'static str, abi: &'static str) -> LinkArgs {
     let platform_name: StaticCow<str> = match abi {
         "sim" => format!("{}-simulator", os).into(),
@@ -35,30 +104,35 @@ fn pre_link_args(os: &'static str, arch: &'static str, abi: &'static str) -> Lin
     args
 }
 
-pub fn opts(os: &'static str, arch: &'static str, abi: &'static str) -> TargetOptions {
-    // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6
+pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
+    // Static TLS is only available in macOS 10.7+. If you try to compile for 10.6
     // either the linker will complain if it is used or the binary will end up
     // segfaulting at runtime when run on 10.6. Rust by default supports macOS
     // 10.7+, but there is a standard environment variable,
     // MACOSX_DEPLOYMENT_TARGET, which is used to signal targeting older
     // versions of macOS. For example compiling on 10.10 with
     // MACOSX_DEPLOYMENT_TARGET set to 10.6 will cause the linker to generate
-    // warnings about the usage of ELF TLS.
+    // warnings about the usage of static TLS.
     //
-    // Here we detect what version is being requested, defaulting to 10.7. ELF
+    // Here we detect what version is being requested, defaulting to 10.7. Static
     // TLS is flagged as enabled if it looks to be supported. The architecture
     // only matters for default deployment target which is 11.0 for ARM64 and
     // 10.7 for everything else.
-    let has_thread_local = macos_deployment_target("x86_64") >= (10, 7);
+    let has_thread_local = os == "macos" && macos_deployment_target("x86_64") >= (10, 7);
+
+    let abi = arch.target_abi();
 
     TargetOptions {
+        abi: abi.into(),
         os: os.into(),
+        cpu: arch.target_cpu().into(),
+        link_env_remove: arch.link_env_remove(),
         vendor: "apple".into(),
         linker_flavor: LinkerFlavor::Darwin(Cc::Yes, Lld::No),
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
-        pre_link_args: pre_link_args(os, arch, abi),
+        pre_link_args: pre_link_args(os, arch.target_name(), abi),
         families: cvs!["unix"],
         is_like_osx: true,
         default_dwarf_version: 2,
@@ -142,7 +216,7 @@ fn ios_deployment_target() -> (u32, u32) {
     deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
 }
 
-pub fn ios_llvm_target(arch: &str) -> String {
+pub fn ios_llvm_target(arch: Arch) -> String {
     // Modern iOS tooling extracts information about deployment target
     // from LC_BUILD_VERSION. This load command will only be emitted when
     // we build with a version specific `llvm_target`, with the version
@@ -150,7 +224,7 @@ pub fn ios_llvm_target(arch: &str) -> String {
     // to pick it up (since std and core are still built with the fallback
     // of version 7.0 and hence emit the old LC_IPHONE_MIN_VERSION).
     let (major, minor) = ios_deployment_target();
-    format!("{}-apple-ios{}.{}.0", arch, major, minor)
+    format!("{}-apple-ios{}.{}.0", arch.target_name(), major, minor)
 }
 
 fn ios_lld_platform_version() -> String {
@@ -158,9 +232,9 @@ fn ios_lld_platform_version() -> String {
     format!("{}.{}", major, minor)
 }
 
-pub fn ios_sim_llvm_target(arch: &str) -> String {
+pub fn ios_sim_llvm_target(arch: Arch) -> String {
     let (major, minor) = ios_deployment_target();
-    format!("{}-apple-ios{}.{}.0-simulator", arch, major, minor)
+    format!("{}-apple-ios{}.{}.0-simulator", arch.target_name(), major, minor)
 }
 
 fn tvos_deployment_target() -> (u32, u32) {
@@ -181,7 +255,7 @@ fn watchos_lld_platform_version() -> String {
     format!("{}.{}", major, minor)
 }
 
-pub fn watchos_sim_llvm_target(arch: &str) -> String {
+pub fn watchos_sim_llvm_target(arch: Arch) -> String {
     let (major, minor) = watchos_deployment_target();
-    format!("{}-apple-watchos{}.{}.0-simulator", arch, major, minor)
+    format!("{}-apple-watchos{}.{}.0-simulator", arch.target_name(), major, minor)
 }

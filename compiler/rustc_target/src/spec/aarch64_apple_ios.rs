@@ -1,4 +1,4 @@
-use super::apple_sdk_base::{opts, Arch};
+use super::apple_base::{ios_llvm_target, opts, Arch};
 use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -6,8 +6,8 @@ pub fn target() -> Target {
     // IPHONEOS_DEPLOYMENT_TARGET.
     // This is required for the target to pick the right
     // MACH-O commands, so we do too.
-    let arch = "arm64";
-    let llvm_target = super::apple_base::ios_llvm_target(arch);
+    let arch = Arch::Arm64;
+    let llvm_target = ios_llvm_target(arch);
 
     Target {
         llvm_target: llvm_target.into(),
@@ -30,7 +30,7 @@ pub fn target() -> Target {
                 darwinpcs\0\
                 -Os\0"
                 .into(),
-            ..opts("ios", Arch::Arm64)
+            ..opts("ios", arch)
         },
     }
 }
