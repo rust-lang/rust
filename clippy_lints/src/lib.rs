@@ -46,122 +46,21 @@ extern crate rustc_trait_selection;
 
 #[macro_use]
 extern crate clippy_utils;
+#[macro_use]
+extern crate declare_clippy_lint;
 
 use clippy_utils::parse_msrv;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::LintId;
+use rustc_lint::{Lint, LintId};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
-
-/// Macro used to declare a Clippy lint.
-///
-/// Every lint declaration consists of 4 parts:
-///
-/// 1. The documentation, which is used for the website
-/// 2. The `LINT_NAME`. See [lint naming][lint_naming] on lint naming conventions.
-/// 3. The `lint_level`, which is a mapping from *one* of our lint groups to `Allow`, `Warn` or
-///    `Deny`. The lint level here has nothing to do with what lint groups the lint is a part of.
-/// 4. The `description` that contains a short explanation on what's wrong with code where the
-///    lint is triggered.
-///
-/// Currently the categories `style`, `correctness`, `suspicious`, `complexity` and `perf` are
-/// enabled by default. As said in the README.md of this repository, if the lint level mapping
-/// changes, please update README.md.
-///
-/// # Example
-///
-/// ```
-/// #![feature(rustc_private)]
-/// extern crate rustc_session;
-/// use rustc_session::declare_tool_lint;
-/// use clippy_lints::declare_clippy_lint;
-///
-/// declare_clippy_lint! {
-///     /// ### What it does
-///     /// Checks for ... (describe what the lint matches).
-///     ///
-///     /// ### Why is this bad?
-///     /// Supply the reason for linting the code.
-///     ///
-///     /// ### Example
-///     /// ```rust
-///     /// Insert a short example of code that triggers the lint
-///     /// ```
-///     ///
-///     /// Use instead:
-///     /// ```rust
-///     /// Insert a short example of improved code that doesn't trigger the lint
-///     /// ```
-///     pub LINT_NAME,
-///     pedantic,
-///     "description"
-/// }
-/// ```
-/// [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
-#[macro_export]
-macro_rules! declare_clippy_lint {
-    { $(#[$attr:meta])* pub $name:tt, style, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, correctness, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Deny, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, suspicious, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, complexity, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, perf, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, pedantic, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, restriction, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, cargo, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, nursery, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, internal, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, internal_warn, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
-        }
-    };
-}
 
 #[cfg(feature = "internal")]
 pub mod deprecated_lints;
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
+mod declared_lints;
 mod renamed_lints;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
@@ -495,30 +394,120 @@ pub fn read_conf(sess: &Session) -> Conf {
     conf
 }
 
+#[derive(Default)]
+struct RegistrationGroups {
+    all: Vec<LintId>,
+    cargo: Vec<LintId>,
+    complexity: Vec<LintId>,
+    correctness: Vec<LintId>,
+    nursery: Vec<LintId>,
+    pedantic: Vec<LintId>,
+    perf: Vec<LintId>,
+    restriction: Vec<LintId>,
+    style: Vec<LintId>,
+    suspicious: Vec<LintId>,
+    #[cfg(feature = "internal")]
+    internal: Vec<LintId>,
+}
+
+impl RegistrationGroups {
+    #[rustfmt::skip]
+    fn register(self, store: &mut rustc_lint::LintStore) {
+        store.register_group(true, "clippy::all", Some("clippy_all"), self.all);
+        store.register_group(true, "clippy::cargo", Some("clippy_cargo"), self.cargo);
+        store.register_group(true, "clippy::complexity", Some("clippy_complexity"), self.complexity);
+        store.register_group(true, "clippy::correctness", Some("clippy_correctness"), self.correctness);
+        store.register_group(true, "clippy::nursery", Some("clippy_nursery"), self.nursery);
+        store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), self.pedantic);
+        store.register_group(true, "clippy::perf", Some("clippy_perf"), self.perf);
+        store.register_group(true, "clippy::restriction", Some("clippy_restriction"), self.restriction);
+        store.register_group(true, "clippy::style", Some("clippy_style"), self.style);
+        store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), self.suspicious);
+        #[cfg(feature = "internal")]
+        store.register_group(true, "clippy::internal", Some("clippy_internal"), self.internal);
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum LintCategory {
+    Cargo,
+    Complexity,
+    Correctness,
+    Nursery,
+    Pedantic,
+    Perf,
+    Restriction,
+    Style,
+    Suspicious,
+    #[cfg(feature = "internal")]
+    Internal,
+}
+#[allow(clippy::enum_glob_use)]
+use LintCategory::*;
+
+impl LintCategory {
+    fn is_all(self) -> bool {
+        matches!(self, Correctness | Suspicious | Style | Complexity | Perf)
+    }
+
+    fn group(self, groups: &mut RegistrationGroups) -> &mut Vec<LintId> {
+        match self {
+            Cargo => &mut groups.cargo,
+            Complexity => &mut groups.complexity,
+            Correctness => &mut groups.correctness,
+            Nursery => &mut groups.nursery,
+            Pedantic => &mut groups.pedantic,
+            Perf => &mut groups.perf,
+            Restriction => &mut groups.restriction,
+            Style => &mut groups.style,
+            Suspicious => &mut groups.suspicious,
+            #[cfg(feature = "internal")]
+            Internal => &mut groups.internal,
+        }
+    }
+}
+
+pub(crate) struct LintInfo {
+    /// Double reference to maintain pointer equality
+    lint: &'static &'static Lint,
+    category: LintCategory,
+    explanation: &'static str,
+}
+
+pub fn explain(name: &str) {
+    let target = format!("clippy::{}", name.to_ascii_uppercase());
+    match declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
+        Some(info) => print!("{}", info.explanation),
+        None => println!("unknown lint: {name}"),
+    }
+}
+
+fn register_categories(store: &mut rustc_lint::LintStore) {
+    let mut groups = RegistrationGroups::default();
+
+    for LintInfo { lint, category, .. } in declared_lints::LINTS {
+        if category.is_all() {
+            groups.all.push(LintId::of(lint));
+        }
+
+        category.group(&mut groups).push(LintId::of(lint));
+    }
+
+    let lints: Vec<&'static Lint> = declared_lints::LINTS.iter().map(|info| *info.lint).collect();
+
+    store.register_lints(&lints);
+    groups.register(store);
+}
+
 /// Register all lints and lint groups with the rustc plugin registry
 ///
 /// Used in `./src/driver.rs`.
 #[expect(clippy::too_many_lines)]
 pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf: &Conf) {
     register_removed_non_tool_lints(store);
+    register_categories(store);
 
     include!("lib.deprecated.rs");
-
-    include!("lib.register_lints.rs");
-    include!("lib.register_restriction.rs");
-    include!("lib.register_pedantic.rs");
-
-    #[cfg(feature = "internal")]
-    include!("lib.register_internal.rs");
-
-    include!("lib.register_all.rs");
-    include!("lib.register_style.rs");
-    include!("lib.register_complexity.rs");
-    include!("lib.register_correctness.rs");
-    include!("lib.register_suspicious.rs");
-    include!("lib.register_perf.rs");
-    include!("lib.register_cargo.rs");
-    include!("lib.register_nursery.rs");
 
     #[cfg(feature = "internal")]
     {

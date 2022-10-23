@@ -6,7 +6,7 @@ use rustc_tools_util::VersionInfo;
 use std::fs;
 
 #[test]
-fn check_that_clippy_lints_and_clippy_utils_have_the_same_version_as_clippy() {
+fn consistent_clippy_crate_versions() {
     fn read_version(path: &str) -> String {
         let contents = fs::read_to_string(path).unwrap_or_else(|e| panic!("error reading `{path}`: {e:?}"));
         contents
@@ -24,11 +24,16 @@ fn check_that_clippy_lints_and_clippy_utils_have_the_same_version_as_clippy() {
     }
 
     let clippy_version = read_version("Cargo.toml");
-    let clippy_lints_version = read_version("clippy_lints/Cargo.toml");
-    let clippy_utils_version = read_version("clippy_utils/Cargo.toml");
 
-    assert_eq!(clippy_version, clippy_lints_version);
-    assert_eq!(clippy_version, clippy_utils_version);
+    let paths = [
+        "declare_clippy_lint/Cargo.toml",
+        "clippy_lints/Cargo.toml",
+        "clippy_utils/Cargo.toml",
+    ];
+
+    for path in paths {
+        assert_eq!(clippy_version, read_version(path), "{path} version differs");
+    }
 }
 
 #[test]
