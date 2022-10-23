@@ -1,6 +1,6 @@
 //! Defines hir-level representation of structs, enums and unions
 
-use std::{num::NonZeroU32, sync::Arc};
+use std::sync::Arc;
 
 use base_db::CrateId;
 use either::Either;
@@ -18,6 +18,7 @@ use crate::{
     db::DefDatabase,
     intern::Interned,
     item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
+    layout::{Align, ReprFlags, ReprOptions},
     nameres::diagnostics::DefDiagnostic,
     src::HasChildSource,
     src::HasSource,
@@ -34,7 +35,7 @@ use cfg::CfgOptions;
 pub struct StructData {
     pub name: Name,
     pub variant_data: Arc<VariantData>,
-    pub repr: Option<ReprData>,
+    pub repr: Option<ReprOptions>,
     pub visibility: RawVisibility,
 }
 
@@ -42,7 +43,7 @@ pub struct StructData {
 pub struct EnumData {
     pub name: Name,
     pub variants: Arena<EnumVariantData>,
-    pub repr: Option<ReprData>,
+    pub repr: Option<ReprOptions>,
     pub visibility: RawVisibility,
 }
 
@@ -67,80 +68,74 @@ pub struct FieldData {
     pub visibility: RawVisibility,
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq)]
-pub enum ReprKind {
-    C,
-    BuiltinInt { builtin: Either<BuiltinInt, BuiltinUint>, is_c: bool },
-    Transparent,
-    Default,
-}
-
-#[derive(Copy, Debug, Clone, PartialEq, Eq)]
-pub struct ReprData {
-    pub kind: ReprKind,
-    pub packed: bool,
-    pub align: Option<NonZeroU32>,
-}
-
 fn repr_from_value(
     db: &dyn DefDatabase,
     krate: CrateId,
     item_tree: &ItemTree,
     of: AttrOwner,
-) -> Option<ReprData> {
+) -> Option<ReprOptions> {
     item_tree.attrs(db, krate, of).by_key("repr").tt_values().find_map(parse_repr_tt)
 }
 
-fn parse_repr_tt(tt: &Subtree) -> Option<ReprData> {
+fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
     match tt.delimiter {
         Some(Delimiter { kind: DelimiterKind::Parenthesis, .. }) => {}
         _ => return None,
     }
 
-    let mut data = ReprData { kind: ReprKind::Default, packed: false, align: None };
+    let mut flags = ReprFlags::empty();
+    let mut int = None;
+    let mut max_align: Option<Align> = None;
+    let mut min_pack: Option<Align> = None;
 
     let mut tts = tt.token_trees.iter().peekable();
     while let Some(tt) = tts.next() {
         if let TokenTree::Leaf(Leaf::Ident(ident)) = tt {
-            match &*ident.text {
+            flags.insert(match &*ident.text {
                 "packed" => {
-                    data.packed = true;
-                    if let Some(TokenTree::Subtree(_)) = tts.peek() {
+                    let pack = if let Some(TokenTree::Subtree(tt)) = tts.peek() {
                         tts.next();
-                    }
+                        if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
+                            lit.text.parse().unwrap_or_default()
+                        } else {
+                            0
+                        }
+                    } else {
+                        0
+                    };
+                    let pack = Align::from_bytes(pack).unwrap();
+                    min_pack =
+                        Some(if let Some(min_pack) = min_pack { min_pack.min(pack) } else { pack });
+                    ReprFlags::empty()
                 }
                 "align" => {
                     if let Some(TokenTree::Subtree(tt)) = tts.peek() {
                         tts.next();
                         if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
                             if let Ok(align) = lit.text.parse() {
-                                data.align = Some(align);
+                                let align = Align::from_bytes(align).ok();
+                                max_align = max_align.max(align);
                             }
                         }
                     }
+                    ReprFlags::empty()
                 }
-                "C" => {
-                    if let ReprKind::BuiltinInt { is_c, .. } = &mut data.kind {
-                        *is_c = true;
-                    } else {
-                        data.kind = ReprKind::C;
-                    }
-                }
-                "transparent" => data.kind = ReprKind::Transparent,
+                "C" => ReprFlags::IS_C,
+                "transparent" => ReprFlags::IS_TRANSPARENT,
                 repr => {
-                    let is_c = matches!(data.kind, ReprKind::C);
                     if let Some(builtin) = BuiltinInt::from_suffix(repr)
                         .map(Either::Left)
                         .or_else(|| BuiltinUint::from_suffix(repr).map(Either::Right))
                     {
-                        data.kind = ReprKind::BuiltinInt { builtin, is_c };
+                        int = Some(builtin);
                     }
+                    ReprFlags::empty()
                 }
-            }
+            })
         }
     }
 
-    Some(data)
+    Some(ReprOptions { int, align: max_align, pack: min_pack, flags })
 }
 
 impl StructData {
@@ -283,7 +278,7 @@ impl EnumData {
 
     pub fn variant_body_type(&self) -> Either<BuiltinInt, BuiltinUint> {
         match self.repr {
-            Some(ReprData { kind: ReprKind::BuiltinInt { builtin, .. }, .. }) => builtin,
+            Some(ReprOptions { int: Some(builtin), .. }) => builtin,
             _ => Either::Left(BuiltinInt::Isize),
         }
     }

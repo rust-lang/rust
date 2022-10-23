@@ -523,6 +523,27 @@ fn main() { }
 }
 
 #[test]
+fn hover_field_offset() {
+    // Hovering over the field when instantiating
+    check(
+        r#"
+struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
+"#,
+        expect![[r#"
+            *field_a*
+
+            ```rust
+            test::Foo
+            ```
+
+            ```rust
+            field_a: u8 // size = 1, align = 1, offset = 6
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_shows_struct_field_info() {
     // Hovering over the field when instantiating
     check(
@@ -534,16 +555,16 @@ fn main() {
 }
 "#,
         expect![[r#"
-                *field_a*
+            *field_a*
 
-                ```rust
-                test::Foo
-                ```
+            ```rust
+            test::Foo
+            ```
 
-                ```rust
-                field_a: u32
-                ```
-            "#]],
+            ```rust
+            field_a: u32 // size = 4, align = 4, offset = 0
+            ```
+        "#]],
     );
 
     // Hovering over the field in the definition
@@ -556,16 +577,16 @@ fn main() {
 }
 "#,
         expect![[r#"
-                *field_a*
+            *field_a*
 
-                ```rust
-                test::Foo
-                ```
+            ```rust
+            test::Foo
+            ```
 
-                ```rust
-                field_a: u32
-                ```
-            "#]],
+            ```rust
+            field_a: u32 // size = 4, align = 4, offset = 0
+            ```
+        "#]],
     );
 }
 
@@ -1508,30 +1529,30 @@ struct Bar;
 
 fn foo() { let bar = Ba$0r; }
 "#,
-        expect![[r##"
-                *Bar*
+        expect![[r#"
+            *Bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                struct Bar
-                ```
+            ```rust
+            struct Bar // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                This is an example
-                multiline doc
+            This is an example
+            multiline doc
 
-                # Example
+            # Example
 
-                ```
-                let five = 5;
+            ```
+            let five = 5;
 
-                assert_eq!(6, my_crate::add_one(5));
-                ```
-            "##]],
+            assert_eq!(6, my_crate::add_one(5));
+            ```
+        "#]],
     );
 }
 
@@ -1545,20 +1566,20 @@ struct Bar;
 fn foo() { let bar = Ba$0r; }
 "#,
         expect![[r#"
-                *Bar*
+            *Bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                struct Bar
-                ```
+            ```rust
+            struct Bar // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                bar docs
-            "#]],
+            bar docs
+        "#]],
     );
 }
 
@@ -1574,22 +1595,22 @@ struct Bar;
 fn foo() { let bar = Ba$0r; }
 "#,
         expect![[r#"
-                *Bar*
+            *Bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                struct Bar
-                ```
+            ```rust
+            struct Bar // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                bar docs 0
-                bar docs 1
-                bar docs 2
-            "#]],
+            bar docs 0
+            bar docs 1
+            bar docs 2
+        "#]],
     );
 }
 
@@ -1602,20 +1623,20 @@ pub struct Foo;
 pub struct B$0ar
 "#,
         expect![[r#"
-                *Bar*
+            *Bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub struct Bar
-                ```
+            ```rust
+            pub struct Bar // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                [external](https://www.google.com)
-            "#]],
+            [external](https://www.google.com)
+        "#]],
     );
 }
 
@@ -1629,20 +1650,20 @@ pub struct Foo;
 pub struct B$0ar
 "#,
         expect![[r#"
-                *Bar*
+            *Bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub struct Bar
-                ```
+            ```rust
+            pub struct Bar // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                [baz](Baz)
-            "#]],
+            [baz](Baz)
+        "#]],
     );
 }
 
@@ -2960,7 +2981,7 @@ fn main() {
             ```
 
             ```rust
-            f: i32
+            f: i32 // size = 4, align = 4, offset = 0
             ```
         "#]],
     );
@@ -4203,20 +4224,20 @@ pub fn gimme() -> theitem::TheItem {
 }
 "#,
         expect![[r#"
-                *[`TheItem`]*
+            *[`TheItem`]*
 
-                ```rust
-                test::theitem
-                ```
+            ```rust
+            test::theitem
+            ```
 
-                ```rust
-                pub struct TheItem
-                ```
+            ```rust
+            pub struct TheItem // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                This is the item. Cool!
-            "#]],
+            This is the item. Cool!
+        "#]],
     );
 }
 
@@ -4351,20 +4372,20 @@ mod string {
 }
 "#,
         expect![[r#"
-                *String*
+            *String*
 
-                ```rust
-                main
-                ```
+            ```rust
+            main
+            ```
 
-                ```rust
-                struct String
-                ```
+            ```rust
+            struct String // size = 0, align = 1
+            ```
 
-                ---
+            ---
 
-                Custom `String` type.
-            "#]],
+            Custom `String` type.
+        "#]],
     )
 }
 
@@ -5025,7 +5046,7 @@ foo_macro!(
             ```
 
             ```rust
-            pub struct Foo
+            pub struct Foo // size = 0, align = 1
             ```
 
             ---
@@ -5040,7 +5061,7 @@ fn hover_intra_in_attr() {
     check(
         r#"
 #[doc = "Doc comment for [`Foo$0`]"]
-pub struct Foo;
+pub struct Foo(i32);
 "#,
         expect![[r#"
             *[`Foo`]*
@@ -5050,7 +5071,7 @@ pub struct Foo;
             ```
 
             ```rust
-            pub struct Foo
+            pub struct Foo // size = 4, align = 4
             ```
 
             ---

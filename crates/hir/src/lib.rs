@@ -39,12 +39,13 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
 use either::Either;
 use hir_def::{
-    adt::{ReprData, VariantData},
+    adt::VariantData,
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     generics::{TypeOrConstParamData, TypeParamProvenance},
     item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
+    layout::{Layout, LayoutError, ReprOptions},
     nameres::{self, diagnostics::DefDiagnostic},
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
@@ -59,6 +60,7 @@ use hir_ty::{
     all_super_traits, autoderef,
     consteval::{unknown_const_as_generic, ComputedExpr, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
+    layout::layout_of_ty,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
     traits::FnTrait,
@@ -844,6 +846,10 @@ impl Field {
         self.parent.variant_data(db).fields()[self.id].name.clone()
     }
 
+    pub fn index(&self) -> usize {
+        u32::from(self.id.into_raw()) as usize
+    }
+
     /// Returns the type as in the signature of the struct (i.e., with
     /// placeholder types for type parameters). Only use this in the context of
     /// the field definition.
@@ -857,6 +863,10 @@ impl Field {
         let substs = TyBuilder::placeholder_subst(db, generic_def_id);
         let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
         Type::new(db, var_id, ty)
+    }
+
+    pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
+        layout_of_ty(db, &self.ty(db).ty)
     }
 
     pub fn parent_def(&self, _db: &dyn HirDatabase) -> VariantDef {
@@ -900,7 +910,7 @@ impl Struct {
         Type::from_def(db, self.id)
     }
 
-    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprData> {
+    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
         db.struct_data(self.id).repr.clone()
     }
 
@@ -1074,6 +1084,13 @@ impl Adt {
             GenericArgData::Ty(x) => x.is_unknown(),
             _ => false,
         })
+    }
+
+    pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
+        if db.generic_params(self.into()).iter().count() != 0 {
+            return Err(LayoutError::HasPlaceholder);
+        }
+        db.layout_of_adt(self.into(), Substitution::empty(Interner))
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be
@@ -3031,7 +3048,7 @@ impl Type {
 
         let adt = adt_id.into();
         match adt {
-            Adt::Struct(s) => matches!(s.repr(db), Some(ReprData { packed: true, .. })),
+            Adt::Struct(s) => s.repr(db).unwrap_or_default().pack.is_some(),
             _ => false,
         }
     }
