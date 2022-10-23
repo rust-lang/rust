@@ -2828,8 +2828,11 @@ void createTerminator(DiffeGradientUtils *gutils, BasicBlock *oBB,
     } else if (!gutils->isConstantValue(ret)) {
       toret = gutils->diffe(ret, nBuilder);
     } else {
+      IRBuilder<> eB(gutils->inversionAllocs);
       Type *retTy = gutils->getShadowType(ret->getType());
-      toret = Constant::getNullValue(retTy);
+      auto al = eB.CreateAlloca(retTy);
+      ZeroMemory(eB, retTy, al, /*isTape*/ false);
+      toret = nBuilder.CreateLoad(al);
     }
 
     break;

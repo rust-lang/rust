@@ -1054,7 +1054,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
 
   // This value is certainly an integer (and only and integer, not a pointer or
   // float). Therefore its value is constant
-  if (TR.intType(1, Val, /*errIfNotFound*/ false).isIntegral()) {
+  if (TR.query(Val)[{-1}] == BaseType::Integer) {
     if (EnzymePrintActivity)
       llvm::errs() << " Value const as integral " << (int)directions << " "
                    << *Val << " "
