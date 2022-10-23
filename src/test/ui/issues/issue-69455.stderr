@@ -7,8 +7,8 @@ LL |     println!("{}", 23u64.test(xs.iter().sum()));
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider specifying the generic argument
    |
-LL |     println!("{}", 23u64.test(xs.iter().sum())::<T>);
-   |                                               +++++
+LL |     println!("{}", 23u64.test(xs.iter().sum())::<'_>);
+   |                                               ++++++
 
 error[E0283]: type annotations needed
   --> $DIR/issue-69455.rs:29:41

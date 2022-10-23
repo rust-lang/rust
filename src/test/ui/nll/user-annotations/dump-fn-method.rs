@@ -23,25 +23,25 @@ fn main() {
 
     // Here: `u32` is given, which doesn't contain any lifetimes, so we don't
     // have any annotation.
-    let x = foo::<u32>;
+    let x = foo::<u32>; //~ ERROR [u32, '0^0]
     x(22);
 
-    let x = foo::<&'static u32>; //~ ERROR [&'static u32]
+    let x = foo::<&'static u32>; //~ ERROR [&'static u32, '0^0]
     x(&22);
 
     // Here: we only want the `T` to be given, the rest should be variables.
     //
     // (`T` refers to the declaration of `Bazoom`)
-    let x = <_ as Bazoom<u32>>::method::<_>; //~ ERROR [^0, u32, ^1]
+    let x = <_ as Bazoom<u32>>::method::<_>; //~ ERROR [^0, u32, ^1, '2^2]
     x(&22, 44, 66);
 
     // Here: all are given and definitely contain no lifetimes, so we
     // don't have any annotation.
-    let x = <u8 as Bazoom<u16>>::method::<u32>;
+    let x = <u8 as Bazoom<u16>>::method::<u32>; //~ ERROR [u8, u16, u32, '0^0]
     x(&22, 44, 66);
 
     // Here: all are given and we have a lifetime.
-    let x = <u8 as Bazoom<&'static u16>>::method::<u32>; //~ ERROR [u8, &'static u16, u32]
+    let x = <u8 as Bazoom<&'static u16>>::method::<u32>; //~ ERROR [u8, &'static u16, u32, '0^0]
     x(&22, &44, 66);
 
     // Here: we want in particular that *only* the method `U`
@@ -49,7 +49,7 @@ fn main() {
     //
     // (`U` refers to the declaration of `Bazoom`)
     let y = 22_u32;
-    y.method::<u32>(44, 66); //~ ERROR [^0, ^1, u32]
+    y.method::<u32>(44, 66); //~ ERROR [^0, ^1, u32, '2^2]
 
     // Here: nothing is given, so we don't have any annotation.
     let y = 22_u32;

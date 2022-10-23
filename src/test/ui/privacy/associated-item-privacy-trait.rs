@@ -13,11 +13,11 @@ mod priv_trait {
 
     pub macro mac() {
         let value = <Pub as PrivTr>::method;
-        //~^ ERROR type `for<'a> fn(&'a priv_trait::Pub) {<priv_trait::Pub as PrivTr>::method}` is private
+        //~^ ERROR type `fn(&priv_trait::Pub) {<priv_trait::Pub as PrivTr>::method}` is private
         value;
-        //~^ ERROR type `for<'a> fn(&'a priv_trait::Pub) {<priv_trait::Pub as PrivTr>::method}` is private
+        //~^ ERROR type `fn(&priv_trait::Pub) {<priv_trait::Pub as PrivTr>::method}` is private
         Pub.method();
-        //~^ ERROR type `for<'a> fn(&'a Self) {<Self as PrivTr>::method}` is private
+        //~^ ERROR type `fn(&Self) {<Self as PrivTr>::method}` is private
         <Pub as PrivTr>::CONST;
         //~^ ERROR associated constant `<Pub as PrivTr>::CONST` is private
         let _: <Pub as PrivTr>::AssocTy;

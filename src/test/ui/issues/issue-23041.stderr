@@ -6,8 +6,8 @@ LL |     b.downcast_ref::<fn(_)->_>();
    |
 help: consider specifying the generic argument
    |
-LL |     b.downcast_ref::<fn(_) -> _>();
-   |                   ~~~~~~~~~~~~~~
+LL |     b.downcast_ref::<'_>();
+   |                   ~~~~~~
 
 error: aborting due to previous error
 

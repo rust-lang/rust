@@ -4,14 +4,14 @@ note: external requirements
 LL |     with_signature(a, b, |x, y| {
    |                          ^^^^^^
    |
-   = note: defining type: no_region::<T>::{closure#0} with closure substs [
+   = note: defining type: no_region::<T, '_#1r>::{closure#0} with closure substs [
                i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#1r ()>, T)),
+               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
                (),
            ]
-   = note: late-bound region is '_#2r
-   = note: number of external vids: 3
-   = note: where T: '_#1r
+   = note: late-bound region is '_#3r
+   = note: number of external vids: 4
+   = note: where T: '_#2r
 
 note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:26:1
@@ -19,7 +19,7 @@ note: no external requirements
 LL | fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: no_region::<T>
+   = note: defining type: no_region::<T, '_#1r>
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
@@ -69,14 +69,14 @@ note: external requirements
 LL |     with_signature(a, b, |x, y| {
    |                          ^^^^^^
    |
-   = note: defining type: wrong_region::<'_#1r, T>::{closure#0} with closure substs [
+   = note: defining type: wrong_region::<'_#1r, T, '_#2r>::{closure#0} with closure substs [
                i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
+               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
                (),
            ]
-   = note: late-bound region is '_#3r
-   = note: number of external vids: 4
-   = note: where T: '_#2r
+   = note: late-bound region is '_#4r
+   = note: number of external vids: 5
+   = note: where T: '_#3r
 
 note: no external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:60:1
@@ -86,7 +86,7 @@ LL | | where
 LL | |     T: 'b,
    | |__________^
    |
-   = note: defining type: wrong_region::<'_#1r, T>
+   = note: defining type: wrong_region::<'_#1r, T, '_#2r>
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:64:26

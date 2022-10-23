@@ -4,11 +4,11 @@ error[E0311]: the parameter type `T` may not live long enough
 LL |     with_restriction::<T>(x)
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: the parameter type `T` must be valid for the anonymous lifetime defined here...
+note: the parameter type `T` must be valid for the anonymous lifetime as defined here...
   --> $DIR/E0311.rs:1:25
    |
 LL | fn no_restriction<T>(x: &()) -> &() {
-   |                         ^^^
+   |                         ^
 note: ...so that the type `T` will meet its required lifetime bounds
   --> $DIR/E0311.rs:2:5
    |

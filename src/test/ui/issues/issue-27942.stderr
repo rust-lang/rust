@@ -6,11 +6,11 @@ LL |     fn select(&self) -> BufferViewHandle<R>;
    |
    = note: expected trait `Resources<'_>`
               found trait `Resources<'a>`
-note: the anonymous lifetime defined here...
+note: the anonymous lifetime as defined here...
   --> $DIR/issue-27942.rs:5:15
    |
 LL |     fn select(&self) -> BufferViewHandle<R>;
-   |               ^^^^^
+   |               ^
 note: ...does not necessarily outlive the lifetime `'a` as defined here
   --> $DIR/issue-27942.rs:3:18
    |
@@ -30,11 +30,11 @@ note: the lifetime `'a` as defined here...
    |
 LL | pub trait Buffer<'a, R: Resources<'a>> {
    |                  ^^
-note: ...does not necessarily outlive the anonymous lifetime defined here
+note: ...does not necessarily outlive the anonymous lifetime as defined here
   --> $DIR/issue-27942.rs:5:15
    |
 LL |     fn select(&self) -> BufferViewHandle<R>;
-   |               ^^^^^
+   |               ^
 
 error: aborting due to 2 previous errors
 

@@ -17,8 +17,8 @@ LL |         K: Borrow<Q>,
    |            ^^^^^^^^^ required by this bound in `HashMap::<K, V, S>::get`
 help: consider specifying the generic argument
    |
-LL |         .get::<Q>(&"key".into())
-   |             +++++
+LL |         .get::<'_>(&"key".into())
+   |             ++++++
 
 error: aborting due to previous error
 

@@ -4,21 +4,21 @@ note: no external requirements
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |                                               ^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: supply::{closure#0} with closure substs [
+   = note: defining type: supply::<'_#1r, '_#2r>::{closure#0} with closure substs [
                i16,
-               for<'a^0, 'b^1, 'c^2, 'd^3, 'e^4> extern "rust-call" fn((&'a^0 std::cell::Cell<&'b^1 &'_#1r u32>, &'c^2 std::cell::Cell<&'d^3 u32>, &'e^4 std::cell::Cell<&'b^1 u32>)),
+               for<'a^0, 'b^1, 'c^2, 'd^3, 'e^4> extern "rust-call" fn((&'a^0 std::cell::Cell<&'b^1 &'_#3r u32>, &'c^2 std::cell::Cell<&'d^3 u32>, &'e^4 std::cell::Cell<&'b^1 u32>)),
                (),
            ]
-   = note: late-bound region is '_#2r
-   = note: late-bound region is '_#3r
+   = note: late-bound region is '_#4r
+   = note: late-bound region is '_#5r
 
 error: lifetime may not live long enough
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:37:9
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-   |                                                ---------  - has type `&'_#7r Cell<&'1 u32>`
+   |                                                ---------  - has type `&'_#9r Cell<&'1 u32>`
    |                                                |
-   |                                                has type `&'_#5r Cell<&'2 &'_#1r u32>`
+   |                                                has type `&'_#7r Cell<&'2 &'_#3r u32>`
 LL |         // Only works if 'x: 'y:
 LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
@@ -29,7 +29,7 @@ note: no external requirements
 LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: supply
+   = note: defining type: supply::<'_#1r, '_#2r>
 
 error: aborting due to previous error
 

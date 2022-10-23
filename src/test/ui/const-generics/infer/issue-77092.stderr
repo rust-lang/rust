@@ -6,8 +6,8 @@ LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
    |
 help: consider specifying the generic arguments
    |
-LL |         println!("{:?}", take_array_from_mut::<i32, N>(&mut arr, i));
-   |                                             ++++++++++
+LL |         println!("{:?}", take_array_from_mut::<N, '_>(&mut arr, i));
+   |                                             +++++++++
 
 error: aborting due to previous error
 

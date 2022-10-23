@@ -1,5 +1,4 @@
-// check-fail
-// known-bug: #47511
+// check-pass
 
 // Regression test for #47511: anonymous lifetimes can appear
 // unconstrained in a return type, but only if they appear just once

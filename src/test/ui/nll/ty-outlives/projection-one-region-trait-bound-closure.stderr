@@ -4,14 +4,14 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: no_relationships_late::<'_#1r, T>::{closure#0} with closure substs [
+   = note: defining type: no_relationships_late::<'_#1r, T, '_#2r>::{closure#0} with closure substs [
                i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
+               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
                (),
            ]
-   = note: late-bound region is '_#3r
-   = note: number of external vids: 4
-   = note: where '_#1r: '_#2r
+   = note: late-bound region is '_#4r
+   = note: number of external vids: 5
+   = note: where '_#1r: '_#3r
 
 note: no external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:33:1
@@ -21,7 +21,7 @@ LL | | where
 LL | |     T: Anything<'b>,
    | |____________________^
    |
-   = note: defining type: no_relationships_late::<'_#1r, T>
+   = note: defining type: no_relationships_late::<'_#1r, T, '_#2r>
 
 error: lifetime may not live long enough
   --> $DIR/projection-one-region-trait-bound-closure.rs:37:39

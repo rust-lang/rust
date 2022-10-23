@@ -20,11 +20,11 @@ LL |     10.blah::<i32, i32>();
    |        |
    |        expected 1 generic argument
    |
-note: associated function defined here, with 1 generic parameter: `X`
+note: associated function defined here, with 1 generic parameter: `'_`
   --> $DIR/test-2.rs:4:39
    |
 LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
-   |                                       ^^^^ -
+   |                                       ^^^^    -
 
 error[E0038]: the trait `bar` cannot be made into an object
   --> $DIR/test-2.rs:13:22

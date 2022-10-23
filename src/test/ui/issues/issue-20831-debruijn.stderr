@@ -10,16 +10,16 @@ LL | |         self.sub = t;
 LL | |     }
    | |_____^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime defined here...
-  --> $DIR/issue-20831-debruijn.rs:28:58
-   |
-LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
-   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...but the lifetime must also be valid for the lifetime `'a` as defined here...
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
   --> $DIR/issue-20831-debruijn.rs:26:6
    |
 LL | impl<'a> Publisher<'a> for MyStruct<'a> {
    |      ^^
+note: ...but the lifetime must also be valid for the anonymous lifetime as defined here...
+  --> $DIR/issue-20831-debruijn.rs:28:18
+   |
+LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
+   |                  ^
 note: ...so that the types are compatible
   --> $DIR/issue-20831-debruijn.rs:28:5
    |

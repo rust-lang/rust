@@ -4,14 +4,14 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: no_relationships_late::<'_#1r, '_#2r, T>::{closure#0} with closure substs [
+   = note: defining type: no_relationships_late::<'_#1r, '_#2r, T, '_#3r>::{closure#0} with closure substs [
                i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
+               extern "rust-call" fn((std::cell::Cell<&'_#4r ()>, T)),
                (),
            ]
-   = note: late-bound region is '_#4r
-   = note: number of external vids: 5
-   = note: where <T as Anything<'b/0, 'c/1>>::AssocType: '_#3r
+   = note: late-bound region is '_#5r
+   = note: number of external vids: 6
+   = note: where <T as Anything<'b/0, 'c/1>>::AssocType: '_#4r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:34:1
@@ -21,7 +21,7 @@ LL | | where
 LL | |     T: Anything<'b, 'c>,
    | |________________________^
    |
-   = note: defining type: no_relationships_late::<'_#1r, '_#2r, T>
+   = note: defining type: no_relationships_late::<'_#1r, '_#2r, T, '_#3r>
 
 error[E0309]: the associated type `<T as Anything<'b/0, 'c/1>>::AssocType` may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:38:29
@@ -147,14 +147,14 @@ note: external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^
    |
-   = note: defining type: two_regions::<'_#1r, T>::{closure#0} with closure substs [
+   = note: defining type: two_regions::<'_#1r, T, '_#2r>::{closure#0} with closure substs [
                i32,
-               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
+               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
                (),
            ]
-   = note: late-bound region is '_#3r
-   = note: number of external vids: 4
-   = note: where <T as Anything<'b/0, 'b/0>>::AssocType: '_#2r
+   = note: late-bound region is '_#4r
+   = note: number of external vids: 5
+   = note: where <T as Anything<'b/0, 'b/0>>::AssocType: '_#3r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:83:1
@@ -164,7 +164,7 @@ LL | | where
 LL | |     T: Anything<'b, 'b>,
    | |________________________^
    |
-   = note: defining type: two_regions::<'_#1r, T>
+   = note: defining type: two_regions::<'_#1r, T, '_#2r>
 
 error: lifetime may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:87:29

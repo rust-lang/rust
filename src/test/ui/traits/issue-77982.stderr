@@ -17,8 +17,8 @@ LL |         K: Borrow<Q>,
    |            ^^^^^^^^^ required by this bound in `HashMap::<K, V, S>::get`
 help: consider specifying the generic argument
    |
-LL |     opts.get::<Q>(opt.as_ref());
-   |             +++++
+LL |     opts.get::<'_>(opt.as_ref());
+   |             ++++++
 
 error[E0283]: type annotations needed
   --> $DIR/issue-77982.rs:8:10
@@ -35,8 +35,8 @@ LL |     opts.get(opt.as_ref());
            - impl AsRef<str> for String;
 help: consider specifying the generic argument
    |
-LL |     opts.get::<Q>(opt.as_ref());
-   |             +++++
+LL |     opts.get::<'_>(opt.as_ref());
+   |             ++++++
 
 error[E0283]: type annotations needed
   --> $DIR/issue-77982.rs:13:59

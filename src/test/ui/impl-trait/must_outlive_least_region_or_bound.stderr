@@ -2,9 +2,9 @@ error[E0700]: hidden type for `impl Copy` captures lifetime that does not appear
   --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
-   |              ----                 ^
+   |              -                    ^
    |              |
-   |              hidden type `&i32` captures the anonymous lifetime defined here
+   |              hidden type `&i32` captures the anonymous lifetime as defined here
    |
 help: to declare that `impl Copy` captures `'_`, you can add an explicit `'_` lifetime bound
    |
