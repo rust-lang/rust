@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
+use clippy_utils::source::snippet;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
     is_res_lang_ctor, is_unit_expr, path_to_local, peel_blocks_with_stmt, peel_ref_operators, SpanlessEq,
@@ -63,7 +64,8 @@ fn check_arm<'tcx>(
         if !pat_contains_or(inner_then_pat);
         // the binding must come from the pattern of the containing match arm
         // ..<local>.. => match <local> { .. }
-        if let Some(binding_span) = find_pat_binding(outer_pat, binding_id);
+        if let (Some(binding_span), is_innermost_parent_pat_struct)
+            = find_pat_binding_and_is_innermost_parent_pat_struct(outer_pat, binding_id);
         // the "else" branches must be equal
         if match (outer_else_body, inner_else_body) {
             (None, None) => true,
@@ -88,6 +90,13 @@ fn check_arm<'tcx>(
                 if matches!(inner, IfLetOrMatch::Match(..)) { "match" } else { "if let" },
                 if outer_is_match { "match" } else { "if let" },
             );
+            // collapsing patterns need an explicit field name in struct pattern matching
+            // ex: Struct {x: Some(1)}
+            let replace_msg = if is_innermost_parent_pat_struct {
+                format!(", prefixed by {}:", snippet(cx, binding_span, "their field name"))
+            } else {
+                String::new()
+            };
             span_lint_and_then(
                 cx,
                 COLLAPSIBLE_MATCH,
@@ -96,7 +105,7 @@ fn check_arm<'tcx>(
                 |diag| {
                     let mut help_span = MultiSpan::from_spans(vec![binding_span, inner_then_pat.span]);
                     help_span.push_span_label(binding_span, "replace this binding");
-                    help_span.push_span_label(inner_then_pat.span, "with this pattern");
+                    help_span.push_span_label(inner_then_pat.span, format!("with this pattern{replace_msg}"));
                     diag.span_help(help_span, "the outer pattern can be modified to include the inner pattern");
                 },
             );
@@ -117,8 +126,9 @@ fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     }
 }
 
-fn find_pat_binding(pat: &Pat<'_>, hir_id: HirId) -> Option<Span> {
+fn find_pat_binding_and_is_innermost_parent_pat_struct(pat: &Pat<'_>, hir_id: HirId) -> (Option<Span>, bool) {
     let mut span = None;
+    let mut is_innermost_parent_pat_struct = false;
     pat.walk_short(|p| match &p.kind {
         // ignore OR patterns
         PatKind::Or(_) => false,
@@ -129,9 +139,12 @@ fn find_pat_binding(pat: &Pat<'_>, hir_id: HirId) -> Option<Span> {
             }
             !found
         },
-        _ => true,
+        _ => {
+            is_innermost_parent_pat_struct = matches!(p.kind, PatKind::Struct(..));
+            true
+        },
     });
-    span
+    (span, is_innermost_parent_pat_struct)
 }
 
 fn pat_contains_or(pat: &Pat<'_>) -> bool {
