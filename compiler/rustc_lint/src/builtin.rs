@@ -2467,42 +2467,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             None
         }
 
-        /// Determines whether the given type is inhabited. `None` means that we don't know.
-        fn ty_inhabited<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<bool> {
-            use rustc_type_ir::sty::TyKind::*;
-            if !cx.tcx.type_uninhabited_from(cx.param_env.and(ty)).is_empty() {
-                // This is definitely uninhabited from some module.
-                return Some(false);
-            }
-            match ty.kind() {
-                Never => Some(false),
-                Int(_) | Uint(_) | Float(_) | Bool | Char | RawPtr(_) => Some(true),
-                // Fallback for more complicated types. (Note that `&!` might be considered
-                // uninhabited so references are "complicated", too.)
-                _ => None,
-            }
-        }
-        /// Determines whether a product type formed from a list of types is inhabited.
-        fn tys_inhabited<'tcx>(
-            cx: &LateContext<'tcx>,
-            tys: impl Iterator<Item = Ty<'tcx>>,
-        ) -> Option<bool> {
-            let mut definitely_inhabited = true; // with no fields, we are definitely inhabited.
-            for ty in tys {
-                match ty_inhabited(cx, ty) {
-                    // If any type is uninhabited, the product is uninhabited.
-                    Some(false) => return Some(false),
-                    // Otherwise go searching for a `None`.
-                    None => {
-                        // We don't know.
-                        definitely_inhabited = false;
-                    }
-                    Some(true) => {}
-                }
-            }
-            if definitely_inhabited { Some(true) } else { None }
-        }
-
         fn variant_find_init_error<'tcx>(
             cx: &LateContext<'tcx>,
             variant: &VariantDef,
@@ -2599,11 +2563,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     // And now, enums.
                     let span = cx.tcx.def_span(adt_def.did());
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
-                        let inhabited = tys_inhabited(
-                            cx,
-                            variant.fields.iter().map(|field| field.ty(cx.tcx, substs)),
-                        );
-                        let definitely_inhabited = match inhabited {
+                        let definitely_inhabited = match variant
+                            .inhabited_predicate(cx.tcx, *adt_def)
+                            .subst(cx.tcx, substs)
+                            .apply_any_module(cx.tcx, cx.param_env)
+                        {
                             // Entirely skip uninhbaited variants.
                             Some(false) => return None,
                             // Forward the others, but remember which ones are definitely inhabited.

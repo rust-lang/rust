@@ -1643,14 +1643,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Computes the set of modules from which this type is visibly uninhabited.
-    /// To check whether a type is uninhabited at all (not just from a given module), you could
-    /// check whether the forest is empty.
-    query type_uninhabited_from(
-        key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
-    ) -> ty::inhabitedness::DefIdForest<'tcx> {
-        desc { "computing the inhabitedness of `{}`", key.value }
-        remap_env_constness
+    query inhabited_predicate_adt(key: DefId) -> ty::inhabitedness::InhabitedPredicate<'tcx> {
+        desc { "computing the uninhabited predicate of `{:?}`", key }
+    }
+
+    /// Do not call this query directly: invoke `Ty::inhabited_predicate` instead.
+    query inhabited_predicate_type(key: Ty<'tcx>) -> ty::inhabitedness::InhabitedPredicate<'tcx> {
+        desc { "computing the uninhabited predicate of `{}`", key }
     }
 
     query dep_kind(_: CrateNum) -> CrateDepKind {
