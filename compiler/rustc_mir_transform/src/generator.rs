@@ -1015,7 +1015,7 @@ fn insert_panic_block<'tcx>(
 
 fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
     // Returning from a function with an uninhabited return type is undefined behavior.
-    if tcx.conservative_is_privately_uninhabited(param_env.and(body.return_ty())) {
+    if body.return_ty().is_privately_uninhabited(tcx, param_env) {
         return false;
     }
 

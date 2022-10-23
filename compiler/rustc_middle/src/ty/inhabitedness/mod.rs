@@ -169,6 +169,15 @@ impl<'tcx> Ty<'tcx> {
     ) -> bool {
         self.inhabited_predicate(tcx).apply(tcx, param_env, module)
     }
+
+    /// Returns true if the type is uninhabited without regard to visibility
+    pub fn is_privately_uninhabited(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
+        !self.inhabited_predicate(tcx).apply_ignore_module(tcx, param_env)
+    }
 }
 
 /// N.B. this query should only be called through `Ty::inhabited_predicate`

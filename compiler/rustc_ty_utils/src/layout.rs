@@ -442,8 +442,7 @@ fn layout_of_uncached<'tcx>(
             let element = cx.layout_of(element)?;
             let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
 
-            let abi = if count != 0 && tcx.conservative_is_privately_uninhabited(param_env.and(ty))
-            {
+            let abi = if count != 0 && ty.is_privately_uninhabited(tcx, param_env) {
                 Abi::Uninhabited
             } else {
                 Abi::Aggregate { sized: true }
