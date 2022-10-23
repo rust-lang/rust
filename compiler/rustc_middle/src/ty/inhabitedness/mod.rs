@@ -57,57 +57,6 @@ pub(crate) fn provide(providers: &mut ty::query::Providers) {
         ty::query::Providers { inhabited_predicate_adt, inhabited_predicate_type, ..*providers };
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    /// Checks whether a type is visibly uninhabited from a particular module.
-    ///
-    /// # Example
-    /// ```
-    /// #![feature(never_type)]
-    /// # fn main() {}
-    /// enum Void {}
-    /// mod a {
-    ///     pub mod b {
-    ///         pub struct SecretlyUninhabited {
-    ///             _priv: !,
-    ///         }
-    ///     }
-    /// }
-    ///
-    /// mod c {
-    ///     use super::Void;
-    ///     pub struct AlsoSecretlyUninhabited {
-    ///         _priv: Void,
-    ///     }
-    ///     mod d {
-    ///     }
-    /// }
-    ///
-    /// struct Foo {
-    ///     x: a::b::SecretlyUninhabited,
-    ///     y: c::AlsoSecretlyUninhabited,
-    /// }
-    /// ```
-    /// In this code, the type `Foo` will only be visibly uninhabited inside the
-    /// modules b, c and d. This effects pattern-matching on `Foo` or types that
-    /// contain `Foo`.
-    ///
-    /// # Example
-    /// ```ignore (illustrative)
-    /// let foo_result: Result<T, Foo> = ... ;
-    /// let Ok(t) = foo_result;
-    /// ```
-    /// This code should only compile in modules where the uninhabitedness of Foo is
-    /// visible.
-    pub fn is_ty_uninhabited_from(
-        self,
-        module: DefId,
-        ty: Ty<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> bool {
-        !ty.inhabited_predicate(self).apply(self, param_env, module)
-    }
-}
-
 /// Returns an `InhabitedPredicate` that is generic over type parameters and
 /// requires calling [`InhabitedPredicate::subst`]
 fn inhabited_predicate_adt(tcx: TyCtxt<'_>, def_id: DefId) -> InhabitedPredicate<'_> {
@@ -170,6 +119,55 @@ impl<'tcx> Ty<'tcx> {
             // references and other types are inhabited
             _ => InhabitedPredicate::True,
         }
+    }
+
+    /// Checks whether a type is visibly uninhabited from a particular module.
+    ///
+    /// # Example
+    /// ```
+    /// #![feature(never_type)]
+    /// # fn main() {}
+    /// enum Void {}
+    /// mod a {
+    ///     pub mod b {
+    ///         pub struct SecretlyUninhabited {
+    ///             _priv: !,
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// mod c {
+    ///     use super::Void;
+    ///     pub struct AlsoSecretlyUninhabited {
+    ///         _priv: Void,
+    ///     }
+    ///     mod d {
+    ///     }
+    /// }
+    ///
+    /// struct Foo {
+    ///     x: a::b::SecretlyUninhabited,
+    ///     y: c::AlsoSecretlyUninhabited,
+    /// }
+    /// ```
+    /// In this code, the type `Foo` will only be visibly uninhabited inside the
+    /// modules b, c and d. This effects pattern-matching on `Foo` or types that
+    /// contain `Foo`.
+    ///
+    /// # Example
+    /// ```ignore (illustrative)
+    /// let foo_result: Result<T, Foo> = ... ;
+    /// let Ok(t) = foo_result;
+    /// ```
+    /// This code should only compile in modules where the uninhabitedness of Foo is
+    /// visible.
+    pub fn is_inhabited_from(
+        self,
+        tcx: TyCtxt<'tcx>,
+        module: DefId,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
+        self.inhabited_predicate(tcx).apply(tcx, param_env, module)
     }
 }
 

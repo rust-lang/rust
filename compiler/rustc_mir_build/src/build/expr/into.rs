@@ -271,15 +271,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // MIR checks and ultimately whether code is accepted or not. We can only
                         // omit the return edge if a return type is visibly uninhabited to a module
                         // that makes the call.
-                        target: if this.tcx.is_ty_uninhabited_from(
-                            this.parent_module,
-                            expr.ty,
-                            this.param_env,
-                        ) {
-                            None
-                        } else {
-                            Some(success)
-                        },
+                        target: expr
+                            .ty
+                            .is_inhabited_from(this.tcx, this.parent_module, this.param_env)
+                            .then_some(success),
                         from_hir_call,
                         fn_span,
                     },
