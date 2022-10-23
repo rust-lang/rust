@@ -17,6 +17,7 @@ pub enum Arch {
     Arm64,
     Arm64_32,
     I386,
+    I686,
     X86_64,
     X86_64_sim,
     X86_64_macabi,
@@ -33,13 +34,23 @@ impl Arch {
             Arm64 | Arm64_macabi | Arm64_sim => "arm64",
             Arm64_32 => "arm64_32",
             I386 => "i386",
+            I686 => "i686",
             X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
         }
     }
 
+    pub fn target_arch(self) -> Cow<'static, str> {
+        Cow::Borrowed(match self {
+            Armv7 | Armv7k | Armv7s => "arm",
+            Arm64 | Arm64_32 | Arm64_macabi | Arm64_sim => "aarch64",
+            I386 | I686 => "x86",
+            X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
+        })
+    }
+
     fn target_abi(self) -> &'static str {
         match self {
-            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | X86_64 => "",
+            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 => "",
             X86_64_macabi | Arm64_macabi => "macabi",
             // x86_64-apple-ios is a simulator target, even though it isn't
             // declared that way in the target like the other ones...
@@ -54,7 +65,7 @@ impl Arch {
             Armv7s => "cortex-a9",
             Arm64 => "apple-a7",
             Arm64_32 => "apple-s4",
-            I386 => "yonah",
+            I386 | I686 => "yonah",
             X86_64 | X86_64_sim => "core2",
             X86_64_macabi => "core2",
             Arm64_macabi => "apple-a12",
@@ -64,7 +75,8 @@ impl Arch {
 
     fn link_env_remove(self) -> StaticCow<[StaticCow<str>]> {
         match self {
-            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | X86_64 | X86_64_sim | Arm64_sim => {
+            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim
+            | Arm64_sim => {
                 cvs!["MACOSX_DEPLOYMENT_TARGET"]
             }
             X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
@@ -72,7 +84,7 @@ impl Arch {
     }
 }
 
-fn pre_link_args(os: &'static str, arch: &'static str, abi: &'static str) -> LinkArgs {
+fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
     let platform_name: StaticCow<str> = match abi {
         "sim" => format!("{}-simulator", os).into(),
         "macabi" => "mac-catalyst".into(),
@@ -87,6 +99,8 @@ fn pre_link_args(os: &'static str, arch: &'static str, abi: &'static str) -> Lin
         _ => unreachable!(),
     }
     .into();
+
+    let arch = arch.target_name();
 
     let mut args = TargetOptions::link_args(
         LinkerFlavor::Darwin(Cc::No, Lld::No),
@@ -118,7 +132,7 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
     // TLS is flagged as enabled if it looks to be supported. The architecture
     // only matters for default deployment target which is 11.0 for ARM64 and
     // 10.7 for everything else.
-    let has_thread_local = os == "macos" && macos_deployment_target("x86_64") >= (10, 7);
+    let has_thread_local = os == "macos" && macos_deployment_target(Arch::X86_64) >= (10, 7);
 
     let abi = arch.target_abi();
 
@@ -132,7 +146,7 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
-        pre_link_args: pre_link_args(os, arch.target_name(), abi),
+        pre_link_args: pre_link_args(os, arch, abi),
         families: cvs!["unix"],
         is_like_osx: true,
         default_dwarf_version: 2,
@@ -177,23 +191,24 @@ fn deployment_target(var_name: &str) -> Option<(u32, u32)> {
         .and_then(|(a, b)| a.parse::<u32>().and_then(|a| b.parse::<u32>().map(|b| (a, b))).ok())
 }
 
-fn macos_default_deployment_target(arch: &str) -> (u32, u32) {
-    if arch == "arm64" { (11, 0) } else { (10, 7) }
+fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
+    // Note: Arm64_sim is not included since macOS has no simulator.
+    if matches!(arch, Arm64 | Arm64_macabi) { (11, 0) } else { (10, 7) }
 }
 
-fn macos_deployment_target(arch: &str) -> (u32, u32) {
+fn macos_deployment_target(arch: Arch) -> (u32, u32) {
     deployment_target("MACOSX_DEPLOYMENT_TARGET")
         .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
 
-fn macos_lld_platform_version(arch: &str) -> String {
+fn macos_lld_platform_version(arch: Arch) -> String {
     let (major, minor) = macos_deployment_target(arch);
     format!("{}.{}", major, minor)
 }
 
-pub fn macos_llvm_target(arch: &str) -> String {
+pub fn macos_llvm_target(arch: Arch) -> String {
     let (major, minor) = macos_deployment_target(arch);
-    format!("{}-apple-macosx{}.{}.0", arch, major, minor)
+    format!("{}-apple-macosx{}.{}.0", arch.target_name(), major, minor)
 }
 
 pub fn macos_link_env_remove() -> Vec<StaticCow<str>> {
