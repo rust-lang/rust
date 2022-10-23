@@ -2526,7 +2526,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         // return `Bound::Excluded`.  (And we have tests checking that we
                         // handle the attribute correctly.)
                         // We don't add a span since users cannot declare such types anyway.
-                        (Bound::Included(lo), _) if lo > 0 => {
+                        (Bound::Included(lo), Bound::Included(hi)) if 0 < lo && lo < hi => {
+                            return Some((format!("`{}` must be non-null", ty), None));
+                        }
+                        (Bound::Included(lo), Bound::Unbounded) if 0 < lo => {
                             return Some((format!("`{}` must be non-null", ty), None));
                         }
                         (Bound::Included(_), _) | (_, Bound::Included(_))
