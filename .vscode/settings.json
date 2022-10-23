@@ -7,7 +7,7 @@
     "rust-analyzer.cargo.features": ["unstable-features"],
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",
-        //"./build_sysroot/sysroot_src/src/libstd/Cargo.toml",
+        //"./build_sysroot/sysroot_src/library/std/Cargo.toml",
         {
             "roots": [
                 "./example/mini_core.rs",
@@ -36,10 +36,10 @@
             ]
         },
         {
-            "roots": ["./scripts/filter_profile.rs"],
+            "roots": ["./example/std_example.rs"],
             "crates": [
                 {
-                    "root_module": "./scripts/filter_profile.rs",
+                    "root_module": "./example/std_example.rs",
                     "edition": "2018",
                     "deps": [{ "crate": 1, "name": "std" }],
                     "cfg": [],
