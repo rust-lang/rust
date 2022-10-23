@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{is_must_use_ty, is_type_diagnostic_item, match_type};
+use clippy_utils::ty::{is_must_use_ty, match_type};
 use clippy_utils::{is_must_use_func_call, paths};
 use rustc_hir::{Local, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -34,8 +33,9 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `let _ = sync_lock`.
-    /// This supports `mutex` and `rwlock` in `std::sync` and `parking_lot`.
+    /// Checks for `let _ = sync_lock`. This supports `mutex` and `rwlock` in
+    /// `parking_lot`. For `std` locks see the `rustc` lint
+    /// [`let_underscore_lock`](https://doc.rust-lang.org/nightly/rustc/lints/listing/deny-by-default.html#let-underscore-lock)
     ///
     /// ### Why is this bad?
     /// This statement immediately drops the lock instead of
@@ -61,8 +61,6 @@ declare_clippy_lint! {
 
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK]);
 
-const SYNC_GUARD_SYMS: [Symbol; 3] = [sym::MutexGuard, sym::RwLockReadGuard, sym::RwLockWriteGuard];
-
 const SYNC_GUARD_PATHS: [&[&str]; 3] = [
     &paths::PARKING_LOT_MUTEX_GUARD,
     &paths::PARKING_LOT_RWLOCK_READ_GUARD,
@@ -77,13 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
         {
             let init_ty = cx.typeck_results().expr_ty(init);
             let contains_sync_guard = init_ty.walk().any(|inner| match inner.unpack() {
-                GenericArgKind::Type(inner_ty) => {
-                    SYNC_GUARD_SYMS
-                        .iter()
-                        .any(|&sym| is_type_diagnostic_item(cx, inner_ty, sym))
-                        || SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path))
-                },
-
+                GenericArgKind::Type(inner_ty) => SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path)),
                 GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
             });
             if contains_sync_guard {

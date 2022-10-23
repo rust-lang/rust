@@ -1,6 +1,7 @@
 ### What it does
-Checks for `let _ = sync_lock`.
-This supports `mutex` and `rwlock` in `std::sync` and `parking_lot`.
+Checks for `let _ = sync_lock`. This supports `mutex` and `rwlock` in
+`parking_lot`. For `std` locks see the `rustc` lint
+[`let_underscore_lock`](https://doc.rust-lang.org/nightly/rustc/lints/listing/deny-by-default.html#let-underscore-lock)
 
 ### Why is this bad?
 This statement immediately drops the lock instead of
