@@ -112,6 +112,12 @@ error: Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
 LL | pub use half_public_import::HalfPublicImport;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+  --> $DIR/access_levels.rs:72:9
+   |
+LL | pub use half_public_import::HalfPublicImport;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
   --> $DIR/access_levels.rs:14:13
    |
@@ -124,5 +130,5 @@ error: Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait
 LL |             type B;
    |             ^^^^^^
 
-error: aborting due to 21 previous errors
+error: aborting due to 22 previous errors
 
