@@ -25,7 +25,12 @@ pub(crate) fn unsized_info<'tcx>(
             .bcx
             .ins()
             .iconst(fx.pointer_type, len.eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64),
-        (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+        (
+            &ty::Dynamic(ref data_a, _, src_dyn_kind),
+            &ty::Dynamic(ref data_b, _, target_dyn_kind),
+        ) => {
+            assert_eq!(src_dyn_kind, target_dyn_kind);
+
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
@@ -101,6 +106,21 @@ fn unsize_ptr<'tcx>(
     }
 }
 
+/// Coerces `src` to `dst_ty` which is guaranteed to be a `dyn*` type.
+pub(crate) fn cast_to_dyn_star<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    src: Value,
+    src_ty_and_layout: TyAndLayout<'tcx>,
+    dst_ty: Ty<'tcx>,
+    old_info: Option<Value>,
+) -> (Value, Value) {
+    assert!(
+        matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
+        "destination type must be a dyn*"
+    );
+    (src, unsized_info(fx, src_ty_and_layout.ty, dst_ty, old_info))
+}
+
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub(crate) fn coerce_unsized_into<'tcx>(
@@ -152,13 +172,15 @@ pub(crate) fn coerce_dyn_star<'tcx>(
     src: CValue<'tcx>,
     dst: CPlace<'tcx>,
 ) {
-    let data = src.load_scalar(fx);
-
-    let vtable = if let ty::Dynamic(data, _, ty::DynStar) = dst.layout().ty.kind() {
-        crate::vtable::get_vtable(fx, src.layout().ty, data.principal())
+    let (data, extra) = if let ty::Dynamic(_, _, ty::DynStar) = src.layout().ty.kind() {
+        let (data, vtable) = src.load_scalar_pair(fx);
+        (data, Some(vtable))
     } else {
-        bug!("Only valid to do a DynStar cast into a DynStar type")
+        let data = src.load_scalar(fx);
+        (data, None)
     };
+
+    let (data, vtable) = cast_to_dyn_star(fx, data, src.layout(), dst.layout().ty, extra);
 
     dst.write_cvalue(fx, CValue::by_val_pair(data, vtable, dst.layout()));
 }
