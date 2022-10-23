@@ -29,7 +29,6 @@ rm src/test/incremental/change_crate_dep_kind.rs
 rm src/test/incremental/issue-80691-bad-eval-cache.rs # -Cpanic=abort causes abort instead of exit(101)
 
 # requires compiling with -Cpanic=unwind
-rm src/test/ui/test-attrs/test-fn-signature-verification-for-explicit-return-type.rs # "Cannot run dynamic test fn out-of-process"
 rm -r src/test/ui/macros/rfc-2011-nicer-assert-messages/
 
 # vendor intrinsics
@@ -108,7 +107,6 @@ rm src/test/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unorde
 # bugs in the test suite
 # ======================
 rm src/test/ui/backtrace.rs # TODO warning
-rm src/test/ui/empty_global_asm.rs # TODO add needs-asm-support
 rm src/test/ui/simple_global_asm.rs # TODO add needs-asm-support
 rm src/test/ui/test-attrs/test-type.rs # TODO panic message on stderr. correct stdout
 # not sure if this is actually a bug in the test suite, but the symbol list shows the function without leading _ for some reason
