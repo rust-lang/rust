@@ -1,0 +1,22 @@
+### What it does
+Checks if we're passing a `c_void` raw pointer to `Box::from_raw(_)`
+
+### Why is this bad?
+However, it is easy to run into the pitfall of calling from_raw with the c_void pointer.
+Note that the definition of, say, Box::from_raw is:
+
+`pub unsafe fn from_raw(raw: *mut T) -> Box<T>`
+
+meaning that if you pass a *mut c_void you will get a Box<c_void>.
+Per the safety requirements in the documentation, for this to be safe,
+c_void would need to have the same memory layout as the original type, which is often not the case.
+
+### Example
+```
+let ptr = Box::into_raw(Box::new(42usize)) as *mut c_void;
+let _ = unsafe { Box::from_raw(ptr) };
+```
+Use instead:
+```
+let _ = unsafe { Box::from_raw(ptr as *mut usize) };
+```
