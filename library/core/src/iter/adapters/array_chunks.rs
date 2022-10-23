@@ -209,10 +209,6 @@ where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        if self.remainder.is_some() {
-            return init;
-        }
-
         let mut accum = init;
         let inner_len = self.iter.size();
         let mut i = 0;
@@ -233,20 +229,8 @@ where
             i += N;
         }
 
-        let remainder = inner_len % N;
-
-        let mut tail = MaybeUninit::uninit_array();
-        let mut guard = array::Guard { array_mut: &mut tail, initialized: 0 };
-        for i in 0..remainder {
-            // SAFETY: the remainder was not visited by the previous loop, so we're still only
-            // accessing each element once
-            let val = unsafe { self.iter.__iterator_get_unchecked(inner_len - remainder + i) };
-            guard.array_mut[i].write(val);
-            guard.initialized = i + 1;
-        }
-        mem::forget(guard);
-        // SAFETY: the loop above initialized elements up to the `remainder` index
-        self.remainder = Some(unsafe { array::IntoIter::new_unchecked(tail, 0..remainder) });
+        // unlike try_fold this method does not need to take care of the remainder
+        // since `self` will be dropped
 
         accum
     }
