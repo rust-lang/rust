@@ -413,18 +413,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // FIXME(#18741): it seems likely that we can consolidate some of this
     // code with the other method-lookup code. In particular, the second half
     // of this method is basically the same as confirmation.
+    #[instrument(level = "trace", skip(self), ret)]
     fn construct_obligation_for_trait(
         &self,
         span: Span,
         m_name: Ident,
         trait_def_id: DefId,
         obligation: traits::PredicateObligation<'tcx>,
-        substs: &'tcx ty::List<ty::subst::GenericArg<'tcx>>,
+        trait_substs: &'tcx ty::List<ty::subst::GenericArg<'tcx>>,
         opt_input_expr: Option<&'tcx hir::Expr<'tcx>>,
         is_op: bool,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        debug!(?obligation);
-
         // Now we want to know if this can be matched
         if !self.predicate_may_hold(&obligation) {
             debug!("--> Cannot match obligation");
@@ -442,11 +441,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             return None;
         };
-        let def_id = method_item.def_id;
-        let generics = tcx.generics_of(def_id);
-        assert_eq!(generics.params.len(), 0);
+        debug!(?method_item);
 
-        debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
+        let def_id = method_item.def_id;
+        #[cfg(debug_assertions)]
+        {
+            let generics = tcx.generics_of(def_id).own_counts();
+            assert_eq!(generics.types, 0);
+            assert_eq!(generics.consts, 0);
+        }
+        let method_substs = trait_substs.extend_to(self.tcx, def_id, |param, _| match param.kind {
+            GenericParamDefKind::Lifetime { .. } => self.var_for_def(span, param).into(),
+            GenericParamDefKind::Const { .. } | GenericParamDefKind::Type { .. } => {
+                bug!()
+            }
+        });
+
         let mut obligations = vec![];
 
         // Instantiate late-bound regions and substitute the trait
@@ -455,8 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // N.B., instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let fn_sig = tcx.bound_fn_sig(def_id);
-        let fn_sig = fn_sig.subst(self.tcx, substs);
+        let fn_sig = tcx.mk_fn_def(def_id, method_substs).fn_sig(self.tcx);
         let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, fn_sig);
 
         let InferOk { value, obligations: o } = if is_op {
@@ -477,7 +486,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // Note that as the method comes from a trait, it should not have
         // any late-bound regions appearing in its bounds.
-        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
+        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, method_substs);
 
         let InferOk { value, obligations: o } = if is_op {
             self.normalize_op_associated_types_in_as_infer_ok(span, bounds, opt_input_expr)
@@ -524,7 +533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Binder::dummy(ty::PredicateKind::WellFormed(method_ty.into())).to_predicate(tcx),
         ));
 
-        let callee = MethodCallee { def_id, substs, sig: fn_sig };
+        let callee = MethodCallee { def_id, substs: method_substs, sig: fn_sig };
 
         debug!("callee = {:?}", callee);
 

@@ -1711,9 +1711,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.generator_diagnostic_data[def_id.to_def_id()]  <- generator_diagnostic_data);
             }
 
-            ty::Closure(_, substs) => {
-                record!(self.tables.fn_sig[def_id.to_def_id()] <- substs.as_closure().sig());
-            }
+            ty::Closure(..) => {}
 
             _ => bug!("closure that is neither generator nor closure"),
         }

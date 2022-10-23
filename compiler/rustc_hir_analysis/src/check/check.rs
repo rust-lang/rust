@@ -290,7 +290,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
         type BreakTy = Ty<'tcx>;
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
+            debug!("(visit_ty) t={:?}", t);
             if t == self.opaque_identity_ty {
                 ControlFlow::CONTINUE
             } else {
@@ -328,14 +328,18 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
 
     if let ItemKind::OpaqueTy(hir::OpaqueTy {
         origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
+        in_trait,
         ..
     }) = item.kind
     {
+        let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+        let opaque_identity_ty = if in_trait {
+            tcx.mk_projection(def_id.to_def_id(), substs)
+        } else {
+            tcx.mk_opaque(def_id.to_def_id(), substs)
+        };
         let mut visitor = ProhibitOpaqueVisitor {
-            opaque_identity_ty: tcx.mk_opaque(
-                def_id.to_def_id(),
-                InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
-            ),
+            opaque_identity_ty,
             generics: tcx.generics_of(def_id),
             tcx,
             selftys: vec![],
@@ -344,10 +348,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
             .explicit_item_bounds(def_id)
             .iter()
             .try_for_each(|(predicate, _)| predicate.visit_with(&mut visitor));
-        debug!(
-            "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor.opaque_identity_ty={:?}, visitor.generics={:?}",
-            prohibit_opaque, visitor.opaque_identity_ty, visitor.generics
-        );
+        debug!(?prohibit_opaque);
 
         if let Some(ty) = prohibit_opaque.break_value() {
             visitor.visit_item(&item);

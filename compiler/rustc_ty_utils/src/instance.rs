@@ -36,6 +36,7 @@ fn resolve_instance_of_const_arg<'tcx>(
     )
 }
 
+#[instrument(level = "trace", skip(tcx), ret)]
 fn inner_resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)>,
@@ -179,6 +180,8 @@ fn resolve_associated_item<'tcx>(
             }
 
             let substs = tcx.erase_regions(substs);
+            let substs =
+                substs.extend_with_region(tcx, leaf_def.item.def_id, tcx.lifetimes.re_erased);
 
             // Check if we just resolved an associated `const` declaration from
             // a `trait` to an associated `const` definition in an `impl`, where

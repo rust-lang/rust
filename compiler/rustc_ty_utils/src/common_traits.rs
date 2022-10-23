@@ -22,6 +22,7 @@ fn is_unpin_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
     is_item_raw(tcx, query, LangItem::Unpin)
 }
 
+#[instrument(level = "trace", skip(tcx), ret)]
 fn is_item_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,

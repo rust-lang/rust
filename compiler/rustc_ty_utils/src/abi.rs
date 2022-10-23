@@ -192,6 +192,7 @@ fn fn_abi_of_instance<'tcx>(
 }
 
 // Handle safe Rust thin and fat pointers.
+#[instrument(level = "trace", skip(cx))]
 fn adjust_for_rust_scalar<'tcx>(
     cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
     attrs: &mut ArgAttributes,
@@ -280,7 +281,7 @@ fn adjust_for_rust_scalar<'tcx>(
 
 // FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
 // arguments of this method, into a separate `struct`.
-#[tracing::instrument(level = "debug", skip(cx, caller_location, fn_def_id, force_thin_self_ptr))]
+#[tracing::instrument(level = "debug", skip(cx), ret)]
 fn fn_abi_new_uncached<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     sig: ty::PolyFnSig<'tcx>,
@@ -334,6 +335,9 @@ fn fn_abi_new_uncached<'tcx>(
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
         let _entered = span.enter();
+        debug!(?ty);
+        debug!(?arg_idx);
+
         let is_return = arg_idx.is_none();
 
         let layout = cx.layout_of(ty)?;
@@ -386,8 +390,7 @@ fn fn_abi_new_uncached<'tcx>(
         can_unwind: fn_can_unwind(cx.tcx(), fn_def_id, sig.abi),
     };
     fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id)?;
-    debug!("fn_abi_new_uncached = {:?}", fn_abi);
-    Ok(cx.tcx.arena.alloc(fn_abi))
+    Ok(&*cx.tcx.arena.alloc(fn_abi))
 }
 
 #[tracing::instrument(level = "trace", skip(cx))]

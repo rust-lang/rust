@@ -818,6 +818,9 @@ impl<'tcx> Cx<'tcx> {
                 (def_id, self.typeck_results().node_substs(expr.hir_id), user_ty)
             }
         };
+        debug!(?overloaded_callee);
+        debug!(?def_id);
+        debug!(?substs);
         let ty = self.tcx().mk_fn_def(def_id, substs);
         Expr { temp_lifetime, ty, span, kind: ExprKind::ZstLiteral { user_ty } }
     }

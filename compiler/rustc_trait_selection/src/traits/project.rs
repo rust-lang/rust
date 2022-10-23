@@ -2253,25 +2253,35 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         };
     }
 
+    debug!(?trait_fn_def_id, generics=?tcx.generics_of(trait_fn_def_id));
+    debug!(?obligation.predicate.substs);
+    debug!(?data.substs);
+
     let impl_fn_def_id = leaf_def.item.def_id;
     // Rebase from {trait}::{fn}::{opaque} to {impl}::{fn}::{opaque},
     // since `data.substs` are the impl substs.
     let impl_fn_substs =
         obligation.predicate.substs.rebase_onto(tcx, tcx.parent(trait_fn_def_id), data.substs);
+    debug!(?impl_fn_substs);
 
     let cause = ObligationCause::new(
         obligation.cause.span,
         obligation.cause.body_id,
         super::ItemObligation(impl_fn_def_id),
     );
+    let predicates = tcx.predicates_of(impl_fn_def_id);
+    debug!(?predicates);
+    let predicates = predicates.instantiate(tcx, impl_fn_substs);
+    debug!(?predicates);
     let predicates = normalize_with_depth_to(
         selcx,
         obligation.param_env,
         cause.clone(),
         obligation.recursion_depth + 1,
-        tcx.predicates_of(impl_fn_def_id).instantiate(tcx, impl_fn_substs),
+        predicates,
         &mut obligations,
     );
+    debug!(?predicates);
     obligations.extend(std::iter::zip(predicates.predicates, predicates.spans).map(
         |(pred, span)| {
             Obligation::with_depth(
@@ -2291,17 +2301,16 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         },
     ));
 
-    let ty = super::normalize_to(
-        selcx,
-        obligation.param_env,
-        cause.clone(),
-        tcx.bound_trait_impl_trait_tys(impl_fn_def_id)
-            .map_bound(|tys| {
-                tys.map_or_else(|_| tcx.ty_error(), |tys| tys[&obligation.predicate.item_def_id])
-            })
-            .subst(tcx, impl_fn_substs),
-        &mut obligations,
-    );
+    let tys = tcx.bound_trait_impl_trait_tys(impl_fn_def_id);
+    debug!(?tys);
+    let ty = tys.map_bound(|tys| {
+        tys.map_or_else(|_| tcx.ty_error(), |tys| tys[&obligation.predicate.item_def_id])
+    });
+    debug!(?ty);
+    let ty = ty.subst(tcx, impl_fn_substs);
+    debug!(?ty);
+    let ty = super::normalize_to(selcx, obligation.param_env, cause.clone(), ty, &mut obligations);
+    debug!(?ty);
 
     Progress { term: ty.into(), obligations }
 }

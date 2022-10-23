@@ -616,7 +616,8 @@ where
         let drop_trait = tcx.require_lang_item(LangItem::Drop, None);
         let drop_fn = tcx.associated_item_def_ids(drop_trait)[0];
         let ty = self.place_ty(self.place);
-        let substs = tcx.mk_substs_trait(ty, &[]);
+        let substs =
+            tcx.mk_substs_trait(ty, &[]).extend_with_region(tcx, drop_fn, tcx.lifetimes.re_erased);
 
         let ref_ty =
             tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut });

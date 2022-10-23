@@ -1241,38 +1241,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     ) where
         F: for<'b, 'c> FnOnce(&'b mut LifetimeContext<'c, 'tcx>),
     {
-        let mut named_late_bound_vars = 0;
         let lifetimes: FxIndexMap<LocalDefId, Region> = generics
             .params
             .iter()
             .filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => {
-                    if self.tcx.is_late_bound(param.hir_id) {
-                        let late_bound_idx = named_late_bound_vars;
-                        named_late_bound_vars += 1;
-                        Some(Region::late(late_bound_idx, self.tcx.hir(), param))
-                    } else {
-                        Some(Region::early(self.tcx.hir(), param))
-                    }
-                }
+                GenericParamKind::Lifetime { .. } => Some(Region::early(self.tcx.hir(), param)),
                 GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => None,
             })
             .collect();
 
-        let binders: Vec<_> = generics
-            .params
-            .iter()
-            .filter(|param| {
-                matches!(param.kind, GenericParamKind::Lifetime { .. })
-                    && self.tcx.is_late_bound(param.hir_id)
-            })
-            .enumerate()
-            .map(|(late_bound_idx, param)| {
-                let pair = Region::late(late_bound_idx as u32, self.tcx.hir(), param);
-                late_region_as_bound_region(self.tcx, &pair.1)
-            })
-            .collect();
-        self.record_late_bound_vars(hir_id, binders);
+        self.record_late_bound_vars(hir_id, vec![]);
         let scope = Scope::Binder {
             hir_id,
             lifetimes,

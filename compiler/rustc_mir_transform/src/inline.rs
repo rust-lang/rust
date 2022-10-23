@@ -305,7 +305,9 @@ impl<'tcx> Inliner<'tcx> {
             let func_ty = func.ty(caller_body, self.tcx);
             if let ty::FnDef(def_id, substs) = *func_ty.kind() {
                 // To resolve an instance its substs have to be fully normalized.
+                debug!(?def_id, ?substs);
                 let substs = self.tcx.try_normalize_erasing_regions(self.param_env, substs).ok()?;
+                debug!(?def_id, ?substs);
                 let callee =
                     Instance::resolve(self.tcx, self.param_env, def_id, substs).ok().flatten()?;
 
@@ -318,7 +320,6 @@ impl<'tcx> Inliner<'tcx> {
                 }
 
                 let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, substs);
-
                 return Some(CallSite {
                     callee,
                     fn_sig,

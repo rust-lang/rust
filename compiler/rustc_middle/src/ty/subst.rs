@@ -314,6 +314,18 @@ impl<'tcx> InternalSubsts<'tcx> {
         })
     }
 
+    pub fn extend_with_region(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        region: ty::Region<'tcx>,
+    ) -> SubstsRef<'tcx> {
+        self.extend_to(tcx, def_id, |param, _| match param.kind {
+            ty::GenericParamDefKind::Lifetime { .. } => region.into(),
+            _ => bug!("unexpected parameter {:?}", param),
+        })
+    }
+
     pub fn fill_item<F>(
         substs: &mut SmallVec<[GenericArg<'tcx>; 8]>,
         tcx: TyCtxt<'tcx>,
@@ -599,7 +611,8 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> ty::EarlyBinder<T> {
+impl<'tcx, T: TypeFoldable<'tcx> + fmt::Debug> ty::EarlyBinder<T> {
+    #[instrument(level = "trace", skip(tcx))]
     pub fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> T {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
         self.0.fold_with(&mut folder)

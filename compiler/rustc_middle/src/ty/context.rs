@@ -2532,6 +2532,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_fn_def(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        debug_assert_eq!(self.generics_of(def_id).count(), substs.len());
         self.mk_ty(FnDef(def_id, substs))
     }
 

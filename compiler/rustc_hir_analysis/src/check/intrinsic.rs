@@ -17,6 +17,7 @@ use rustc_target::spec::abi::Abi;
 
 use std::iter;
 
+#[instrument(level = "trace", skip(tcx))]
 fn equate_intrinsic_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     it: &hir::ForeignItem<'_>,
@@ -24,18 +25,15 @@ fn equate_intrinsic_type<'tcx>(
     n_lts: usize,
     sig: ty::PolyFnSig<'tcx>,
 ) {
-    let (own_counts, span) = match &it.kind {
-        hir::ForeignItemKind::Fn(.., generics) => {
-            let own_counts = tcx.generics_of(it.def_id.to_def_id()).own_counts();
-            (own_counts, generics.span)
-        }
-        _ => {
-            struct_span_err!(tcx.sess, it.span, E0622, "intrinsic must be a function")
-                .span_label(it.span, "expected a function")
-                .emit();
-            return;
-        }
+    let hir::ForeignItemKind::Fn(.., generics) = &it.kind else {
+        struct_span_err!(tcx.sess, it.span, E0622, "intrinsic must be a function")
+            .span_label(it.span, "expected a function")
+            .emit();
+        return;
     };
+    let span = generics.span;
+    let generics = tcx.generics_of(it.def_id.to_def_id());
+    let own_counts = generics.own_counts();
 
     let gen_count_ok = |found: usize, expected: usize, descr: &str| -> bool {
         if found != expected {
@@ -51,13 +49,15 @@ fn equate_intrinsic_type<'tcx>(
         }
     };
 
-    if gen_count_ok(own_counts.lifetimes, n_lts, "lifetime")
+    if gen_count_ok(own_counts.early_lifetimes, n_lts, "lifetime")
         && gen_count_ok(own_counts.types, n_tps, "type")
         && gen_count_ok(own_counts.consts, 0, "const")
     {
         let fty = tcx.mk_fn_ptr(sig);
         let cause = ObligationCause::new(it.span, it.hir_id(), ObligationCauseCode::IntrinsicType);
-        require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.def_id)), fty);
+        let fn_def = tcx.type_of(it.def_id).fn_sig(tcx);
+        debug!(?fn_def);
+        require_same_types(tcx, &cause, tcx.mk_fn_ptr(fn_def), fty);
     }
 }
 

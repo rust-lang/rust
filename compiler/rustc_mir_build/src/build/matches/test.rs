@@ -818,6 +818,13 @@ fn trait_method<'tcx>(
         .expect("trait method not found");
 
     let method_ty = tcx.bound_type_of(item.def_id);
+    let substs = substs.extend_to(tcx, item.def_id, |param, _| {
+        if let ty::GenericParamDefKind::Lifetime { .. } = param.kind {
+            tcx.lifetimes.re_erased.into()
+        } else {
+            tcx.mk_param_from_def(param)
+        }
+    });
     let method_ty = method_ty.subst(tcx, substs);
 
     ConstantKind::zero_sized(method_ty)

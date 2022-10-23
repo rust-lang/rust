@@ -149,8 +149,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     };
 
     let generics = tcx.generics_of(def_id);
-    let parent_count = generics.parent_count as u32;
-    let has_own_self = generics.has_self && parent_count == 0;
 
     // Below we'll consider the bounds on the type parameters (including `Self`)
     // and the explicit where-clauses, but to get the full set of predicates
@@ -172,13 +170,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         predicates.insert((trait_ref.without_const().to_predicate(tcx), tcx.def_span(def_id)));
     }
 
-    // Collect the region predicates that were declared inline as
-    // well. In the case of parameters declared on a fn or method, we
-    // have to be careful to only iterate over early-bound regions.
-    let mut index = parent_count
-        + has_own_self as u32
-        + super::early_bound_lifetimes_from_generics(tcx, ast_generics).count() as u32;
-
     trace!(?predicates);
     trace!(?ast_generics);
 
@@ -186,12 +177,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // type parameter (e.g., `<T: Foo>`).
     for param in ast_generics.params {
         match param.kind {
-            // We already dealt with early bound lifetimes above.
-            GenericParamKind::Lifetime { .. } => (),
             GenericParamKind::Type { .. } => {
+                let def_id = tcx.hir().local_def_id(param.hir_id);
+                let index = generics.param_def_id_to_index[&def_id.to_def_id()];
                 let name = param.name.ident().name;
+
                 let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
-                index += 1;
 
                 let mut bounds = Bounds::default();
                 // Params are implicitly sized unless a `?Sized` bound is found
@@ -206,10 +197,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 predicates.extend(bounds.predicates(tcx, param_ty));
                 trace!(?predicates);
             }
-            GenericParamKind::Const { .. } => {
-                // Bounds on const parameters are currently not possible.
-                index += 1;
-            }
+            GenericParamKind::Lifetime { .. } => {}
+            // Bounds on const parameters are currently not possible.
+            GenericParamKind::Const { .. } => {}
         }
     }
 

@@ -27,9 +27,8 @@ pub fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
+#[instrument(level = "debug", skip(tcx), ret)]
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'tcx> {
-    debug!("make_shim({:?})", instance);
-
     let mut result = match instance {
         ty::InstanceDef::Item(..) => bug!("item {:?} passed to make_shim", instance),
         ty::InstanceDef::VTableShim(def_id) => {
@@ -71,7 +70,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(Ty::kind) {
                 let body = tcx.optimized_mir(*gen_def_id).generator_drop().unwrap();
                 let body = EarlyBinder(body.clone()).subst(tcx, substs);
-                debug!("make_shim({:?}) = {:?}", instance, body);
+                debug!(?body);
                 return body;
             }
 
@@ -85,7 +84,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             bug!("creating shims from intrinsics ({:?}) is unsupported", instance)
         }
     };
-    debug!("make_shim({:?}) = untransformed {:?}", instance, result);
+    debug!(untransformed = ?result);
 
     pm::run_passes(
         tcx,
@@ -100,8 +99,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ],
         Some(MirPhase::Runtime(RuntimePhase::Optimized)),
     );
-
-    debug!("make_shim({:?}) = {:?}", instance, result);
 
     result
 }
@@ -346,7 +343,11 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         // we must subst the self_ty because it's
         // otherwise going to be TySelf and we can't index
         // or access fields of a Place of type TySelf.
-        let substs = tcx.mk_substs_trait(self_ty, &[]);
+        let substs = tcx.mk_substs_trait(self_ty, &[]).extend_with_region(
+            tcx,
+            def_id,
+            tcx.lifetimes.re_erased,
+        );
         let sig = tcx.bound_fn_sig(def_id).subst(tcx, substs);
         let sig = tcx.erase_late_bound_regions(sig);
         let span = tcx.def_span(def_id);
@@ -427,7 +428,11 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let substs = tcx.mk_substs_trait(ty, &[]);
+        let substs = tcx.mk_substs_trait(ty, &[]).extend_with_region(
+            tcx,
+            self.def_id,
+            tcx.lifetimes.re_erased,
+        );
 
         // `func == Clone::clone(&ty) -> ty`
         let func_ty = tcx.mk_fn_def(self.def_id, substs);
@@ -569,17 +574,13 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
 /// Builds a "call" shim for `instance`. The shim calls the function specified by `call_kind`,
 /// first adjusting its first argument according to `rcvr_adjustment`.
+#[instrument(level = "trace", skip(tcx), ret)]
 fn build_call_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
     rcvr_adjustment: Option<Adjustment>,
     call_kind: CallKind<'tcx>,
 ) -> Body<'tcx> {
-    debug!(
-        "build_call_shim(instance={:?}, rcvr_adjustment={:?}, call_kind={:?})",
-        instance, rcvr_adjustment, call_kind
-    );
-
     // `FnPtrShim` contains the fn pointer type that a call shim is being built for - this is used
     // to substitute into the signature of the shim. It is not necessary for users of this
     // MIR body to perform further substitutions (see `InstanceDef::has_polymorphic_mir_body`).
@@ -591,6 +592,8 @@ fn build_call_shim<'tcx>(
         // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
         let arg_tup = tcx.mk_tup(untuple_args.iter());
         let sig_substs = tcx.mk_substs_trait(ty, &[ty::subst::GenericArg::from(arg_tup)]);
+        let sig_substs =
+            sig_substs.extend_with_region(tcx, instance.def_id(), tcx.lifetimes.re_erased);
 
         (Some(sig_substs), Some(untuple_args))
     } else {
@@ -641,7 +644,7 @@ fn build_call_shim<'tcx>(
 
     let span = tcx.def_span(def_id);
 
-    debug!("build_call_shim: sig={:?}", sig);
+    debug!(?sig);
 
     let mut local_decls = local_decls_for_sig(&sig, span);
     let source_info = SourceInfo::outermost(span);
@@ -686,6 +689,7 @@ fn build_call_shim<'tcx>(
         // `FnDef` call with optional receiver.
         CallKind::Direct(def_id) => {
             let ty = tcx.type_of(def_id);
+            let ty = tcx.erase_regions(ty);
             (
                 Operand::Constant(Box::new(Constant {
                     span,

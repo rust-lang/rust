@@ -134,6 +134,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
     }
 }
 
+#[instrument(level = "trace", skip(tcx), ret)]
 fn require_same_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     cause: &ObligationCause<'tcx>,
@@ -160,7 +161,7 @@ fn require_same_types<'tcx>(
 }
 
 fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
-    let main_fnsig = tcx.fn_sig(main_def_id);
+    let main_fnsig = tcx.type_of(main_def_id).fn_sig(tcx);
     let main_span = tcx.def_span(main_def_id);
 
     fn main_fn_diagnostics_hir_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> hir::HirId {
@@ -294,15 +295,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
 
     let expected_return_type;
     if let Some(term_did) = tcx.lang_items().termination() {
-        let return_ty = main_fnsig.output();
+        let return_ty = main_fnsig.output().skip_binder();
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
-        if !return_ty.bound_vars().is_empty() {
-            let msg = "`main` function return type is not allowed to have generic \
-                    parameters";
-            struct_span_err!(tcx.sess, return_ty_span, E0131, "{}", msg).emit();
-            error = true;
-        }
-        let return_ty = return_ty.skip_binder();
         let infcx = tcx.infer_ctxt().build();
         // Main should have no WC, so empty param env is OK here.
         let param_env = ty::ParamEnv::empty();
@@ -320,19 +314,23 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             error = true;
         }
         // now we can take the return type of the given main function
-        expected_return_type = main_fnsig.output();
+        expected_return_type = return_ty;
     } else {
         // standard () main return type
-        expected_return_type = ty::Binder::dummy(tcx.mk_unit());
+        expected_return_type = tcx.mk_unit();
     }
 
     if error {
         return;
     }
 
-    let se_ty = tcx.mk_fn_ptr(expected_return_type.map_bound(|expected_return_type| {
-        tcx.mk_fn_sig(iter::empty(), expected_return_type, false, hir::Unsafety::Normal, Abi::Rust)
-    }));
+    let se_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
+        iter::empty(),
+        expected_return_type,
+        false,
+        hir::Unsafety::Normal,
+        Abi::Rust,
+    )));
 
     require_same_types(
         tcx,
@@ -428,7 +426,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 tcx,
                 &ObligationCause::new(start_span, start_id, ObligationCauseCode::StartFunctionType),
                 se_ty,
-                tcx.mk_fn_ptr(tcx.fn_sig(start_def_id)),
+                tcx.mk_fn_ptr(tcx.type_of(start_def_id).fn_sig(tcx)),
             );
         }
         _ => {

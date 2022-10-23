@@ -805,6 +805,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         })
     }
 
+    #[instrument(level = "trace", skip(self, to_unsafe, normal))]
     fn coerce_from_safe_fn<F, G>(
         &self,
         a: Ty<'tcx>,
@@ -874,6 +875,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match b.kind() {
             ty::FnPtr(b_sig) => {
                 let a_sig = a.fn_sig(self.tcx);
+                debug!(?a_sig);
                 if let ty::FnDef(def_id, _) = *a.kind() {
                     // Intrinsics are not coercible to function pointers
                     if self.tcx.is_intrinsic(def_id) {
@@ -891,6 +893,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 let InferOk { value: a_sig, obligations: o1 } =
                     self.normalize_associated_types_in_as_infer_ok(self.cause.span, a_sig);
+                debug!(?a_sig);
+                debug!(?o1);
                 obligations.extend(o1);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);

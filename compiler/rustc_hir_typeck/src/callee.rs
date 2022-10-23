@@ -371,7 +371,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, subst) => {
-                let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, subst);
+                let fn_sig = callee_ty.fn_sig(self.tcx);
 
                 // Unit testing: function items annotated with
                 // `#[rustc_evaluate_where_clauses]` trigger special output

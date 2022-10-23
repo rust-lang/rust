@@ -1,15 +1,11 @@
-use crate::middle::resolve_lifetime as rl;
-use hir::{
-    intravisit::{self, Visitor},
-    GenericParamKind, HirId, Node,
-};
+use hir::intravisit::{self, Visitor};
+use hir::{GenericParamKind, HirId};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::Span;
 
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     use rustc_hir::*;
@@ -237,77 +233,105 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         params.push(opt_self);
     }
 
-    let early_lifetimes = super::early_bound_lifetimes_from_generics(tcx, ast_generics);
-    params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
-        name: param.name.ident().name,
-        index: own_start + i as u32,
-        def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
-        pure_wrt_drop: param.pure_wrt_drop,
-        kind: ty::GenericParamDefKind::Lifetime { late_bound: false },
-    }));
-
-    // Now create the real type and const parameters.
-    let type_start = own_start - has_self as u32 + params.len() as u32;
-    let mut i = 0;
-
+    // Now create the real lifetime, type and const parameters.
     const TYPE_DEFAULT_NOT_ALLOWED: &'static str = "defaults for type parameters are only allowed in \
     `struct`, `enum`, `type`, or `trait` definitions";
 
-    params.extend(ast_generics.params.iter().filter_map(|param| match param.kind {
-        GenericParamKind::Lifetime { .. } => None,
-        GenericParamKind::Type { ref default, synthetic, .. } => {
-            if default.is_some() {
-                match allow_defaults {
-                    Defaults::Allowed => {}
-                    Defaults::FutureCompatDisallowed
-                        if tcx.features().default_type_parameter_fallback => {}
-                    Defaults::FutureCompatDisallowed => {
-                        tcx.struct_span_lint_hir(
-                            lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
-                            param.hir_id,
-                            param.span,
-                            TYPE_DEFAULT_NOT_ALLOWED,
-                            |lint| lint,
-                        );
+    // When late-bound lifetimes did not appear in generics, the user was allowed to introduce as
+    // many late-bound lifetimes as they wanted, and they were not counted in the substs.
+    // In order to keep this possibility while having substs behaving reasonably, we push
+    // late-bound lifetimes to the end of the generics.  That way, we can keep the behaviour of
+    // trait to impl substitution rebase with hopefully minimal breakage.
+    params.extend(
+        ast_generics
+            .params
+            .iter()
+            .filter(|param| match param.kind {
+                GenericParamKind::Lifetime { .. } => !tcx.is_late_bound(param.hir_id),
+                GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => true,
+            })
+            .enumerate()
+            .map(|(i, param)| {
+                let kind = match param.kind {
+                    GenericParamKind::Lifetime { .. } => {
+                        ty::GenericParamDefKind::Lifetime { late_bound: false }
                     }
-                    Defaults::Deny => {
-                        tcx.sess.span_err(param.span, TYPE_DEFAULT_NOT_ALLOWED);
+                    GenericParamKind::Type { ref default, synthetic, .. } => {
+                        if default.is_some() {
+                            match allow_defaults {
+                                Defaults::Allowed => {}
+                                Defaults::FutureCompatDisallowed
+                                    if tcx.features().default_type_parameter_fallback => {}
+                                Defaults::FutureCompatDisallowed => {
+                                    tcx.struct_span_lint_hir(
+                                        lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                                        param.hir_id,
+                                        param.span,
+                                        TYPE_DEFAULT_NOT_ALLOWED,
+                                        |lint| lint,
+                                    );
+                                }
+                                Defaults::Deny => {
+                                    tcx.sess.span_err(param.span, TYPE_DEFAULT_NOT_ALLOWED);
+                                }
+                            }
+                        }
+
+                        ty::GenericParamDefKind::Type { has_default: default.is_some(), synthetic }
                     }
-                }
-            }
-
-            let kind = ty::GenericParamDefKind::Type { has_default: default.is_some(), synthetic };
-
-            let param_def = ty::GenericParamDef {
-                index: type_start + i as u32,
-                name: param.name.ident().name,
-                def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
-                pure_wrt_drop: param.pure_wrt_drop,
-                kind,
-            };
-            i += 1;
-            Some(param_def)
-        }
-        GenericParamKind::Const { default, .. } => {
-            if !matches!(allow_defaults, Defaults::Allowed) && default.is_some() {
-                tcx.sess.span_err(
-                    param.span,
-                    "defaults for const parameters are only allowed in \
+                    GenericParamKind::Const { default, .. } => {
+                        if !matches!(allow_defaults, Defaults::Allowed) && default.is_some() {
+                            tcx.sess.span_err(
+                                param.span,
+                                "defaults for const parameters are only allowed in \
                     `struct`, `enum`, `type`, or `trait` definitions",
-                );
-            }
+                            );
+                        }
 
-            let param_def = ty::GenericParamDef {
-                index: type_start + i as u32,
-                name: param.name.ident().name,
-                def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
-                pure_wrt_drop: param.pure_wrt_drop,
-                kind: ty::GenericParamDefKind::Const { has_default: default.is_some() },
-            };
-            i += 1;
-            Some(param_def)
-        }
-    }));
+                        ty::GenericParamDefKind::Const { has_default: default.is_some() }
+                    }
+                };
+
+                ty::GenericParamDef {
+                    name: param.name.ident().name,
+                    index: own_start + i as u32,
+                    def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
+                    pure_wrt_drop: param.pure_wrt_drop,
+                    kind,
+                }
+            }),
+    );
+
+    let own_start = (parent_count + params.len()) as u32;
+
+    params.extend(
+        ast_generics
+            .params
+            .iter()
+            .filter(|param| match param.kind {
+                GenericParamKind::Lifetime { .. } => tcx.is_late_bound(param.hir_id),
+                GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => false,
+            })
+            .enumerate()
+            .map(|(i, param)| {
+                let kind = match param.kind {
+                    GenericParamKind::Lifetime { .. } => {
+                        ty::GenericParamDefKind::Lifetime { late_bound: true }
+                    }
+                    GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => bug!(),
+                };
+
+                ty::GenericParamDef {
+                    name: param.name.ident().name,
+                    index: own_start + i as u32,
+                    def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
+                    pure_wrt_drop: param.pure_wrt_drop,
+                    kind,
+                }
+            }),
+    );
+
+    let type_start = (parent_count + params.len()) as u32;
 
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
@@ -347,6 +371,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     }
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
+    let has_late_bound_regions = params
+        .iter()
+        .find(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime { late_bound: true }))
+        .map(|param| tcx.def_span(param.def_id));
 
     ty::Generics {
         parent: parent_def_id,
@@ -354,103 +382,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         params,
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
-        has_late_bound_regions: has_late_bound_regions(tcx, node),
-    }
-}
-
-fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<Span> {
-    struct LateBoundRegionsDetector<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        outer_index: ty::DebruijnIndex,
-        has_late_bound_regions: Option<Span>,
-    }
-
-    impl<'tcx> Visitor<'tcx> for LateBoundRegionsDetector<'tcx> {
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-            if self.has_late_bound_regions.is_some() {
-                return;
-            }
-            match ty.kind {
-                hir::TyKind::BareFn(..) => {
-                    self.outer_index.shift_in(1);
-                    intravisit::walk_ty(self, ty);
-                    self.outer_index.shift_out(1);
-                }
-                _ => intravisit::walk_ty(self, ty),
-            }
-        }
-
-        fn visit_poly_trait_ref(&mut self, tr: &'tcx hir::PolyTraitRef<'tcx>) {
-            if self.has_late_bound_regions.is_some() {
-                return;
-            }
-            self.outer_index.shift_in(1);
-            intravisit::walk_poly_trait_ref(self, tr);
-            self.outer_index.shift_out(1);
-        }
-
-        fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
-            if self.has_late_bound_regions.is_some() {
-                return;
-            }
-
-            match self.tcx.named_region(lt.hir_id) {
-                Some(rl::Region::Static | rl::Region::EarlyBound(..)) => {}
-                Some(rl::Region::LateBound(debruijn, _, _)) if debruijn < self.outer_index => {}
-                Some(rl::Region::LateBound(..) | rl::Region::Free(..)) | None => {
-                    self.has_late_bound_regions = Some(lt.span);
-                }
-            }
-        }
-    }
-
-    fn has_late_bound_regions<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        generics: &'tcx hir::Generics<'tcx>,
-        decl: &'tcx hir::FnDecl<'tcx>,
-    ) -> Option<Span> {
-        let mut visitor = LateBoundRegionsDetector {
-            tcx,
-            outer_index: ty::INNERMOST,
-            has_late_bound_regions: None,
-        };
-        for param in generics.params {
-            if let GenericParamKind::Lifetime { .. } = param.kind {
-                if tcx.is_late_bound(param.hir_id) {
-                    return Some(param.span);
-                }
-            }
-        }
-        visitor.visit_fn_decl(decl);
-        visitor.has_late_bound_regions
-    }
-
-    match node {
-        Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Fn(ref sig, _) => {
-                has_late_bound_regions(tcx, &item.generics, sig.decl)
-            }
-            _ => None,
-        },
-        Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Fn(ref sig, _) => {
-                has_late_bound_regions(tcx, &item.generics, sig.decl)
-            }
-            _ => None,
-        },
-        Node::ForeignItem(item) => match item.kind {
-            hir::ForeignItemKind::Fn(fn_decl, _, ref generics) => {
-                has_late_bound_regions(tcx, generics, fn_decl)
-            }
-            _ => None,
-        },
-        Node::Item(item) => match item.kind {
-            hir::ItemKind::Fn(ref sig, .., ref generics, _) => {
-                has_late_bound_regions(tcx, generics, sig.decl)
-            }
-            _ => None,
-        },
-        _ => None,
+        has_late_bound_regions,
     }
 }
 

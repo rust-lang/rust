@@ -1026,9 +1026,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
     ) {
         let (sig, did, substs) = match (&expected.kind(), &found.kind()) {
-            (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
-                let sig1 = self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1);
-                let sig2 = self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2);
+            (ty::FnDef(did1, substs1), ty::FnDef(..)) => {
+                let sig1 = expected.fn_sig(self.tcx);
+                let sig2 = found.fn_sig(self.tcx);
                 if sig1 != sig2 {
                     return;
                 }
@@ -1039,7 +1039,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (sig1, *did1, substs1)
             }
             (ty::FnDef(did, substs), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.bound_fn_sig(*did).subst(self.tcx, substs);
+                let sig1 = expected.fn_sig(self.tcx);
                 if sig1 != *sig2 {
                     return;
                 }

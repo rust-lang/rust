@@ -149,6 +149,7 @@ fn compare_predicate_entailment<'tcx>(
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let trait_to_impl_substs = impl_trait_ref.substs;
+    debug!(?trait_to_impl_substs);
 
     // This node-id should be used for the `body_id` field on each
     // `ObligationCause` (and the `FnCtxt`).
@@ -173,7 +174,7 @@ fn compare_predicate_entailment<'tcx>(
     // Create mapping from trait to placeholder.
     let trait_to_placeholder_substs =
         impl_to_placeholder_substs.rebase_onto(tcx, impl_m.container_id(tcx), trait_to_impl_substs);
-    debug!("compare_impl_method: trait_to_placeholder_substs={:?}", trait_to_placeholder_substs);
+    debug!(?trait_to_placeholder_substs);
 
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
@@ -191,7 +192,7 @@ fn compare_predicate_entailment<'tcx>(
     let impl_predicates = tcx.predicates_of(impl_m_predicates.parent.unwrap());
     let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
 
-    debug!("compare_impl_method: impl_bounds={:?}", hybrid_preds);
+    debug!("impl_bounds={:?}", hybrid_preds);
 
     // This is the only tricky bit of the new way we check implementation methods
     // We need to build a set of predicates where only the method-level bounds
@@ -218,7 +219,7 @@ fn compare_predicate_entailment<'tcx>(
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
 
-    debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds());
+    debug!("caller_bounds={:?}", param_env.caller_bounds());
 
     let mut selcx = traits::SelectionContext::new(&infcx);
     let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_substs);
@@ -258,18 +259,17 @@ fn compare_predicate_entailment<'tcx>(
 
     let mut wf_tys = FxHashSet::default();
 
-    let impl_sig = infcx.replace_bound_vars_with_fresh_vars(
-        impl_m_span,
-        infer::HigherRankedType,
-        tcx.fn_sig(impl_m.def_id),
-    );
+    let impl_sig = tcx.mk_fn_def(impl_m.def_id, impl_to_placeholder_substs).fn_sig(tcx);
+    let impl_sig =
+        infcx.replace_bound_vars_with_fresh_vars(impl_m_span, infer::HigherRankedType, impl_sig);
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_hir_id);
     let impl_sig = ocx.normalize(norm_cause.clone(), param_env, impl_sig);
     let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
-    debug!("compare_impl_method: impl_fty={:?}", impl_fty);
+    debug!(?impl_fty);
 
-    let trait_sig = tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
+    let trait_sig = tcx.type_of(trait_m.def_id).fn_sig(tcx);
+    let trait_sig = ty::EarlyBinder(trait_sig).subst(tcx, trait_to_placeholder_substs);
     let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
 
     // Next, add all inputs and output as well-formed tys. Importantly,
@@ -281,8 +281,7 @@ fn compare_predicate_entailment<'tcx>(
     // as we don't normalize during implied bounds computation.
     wf_tys.extend(trait_sig.inputs_and_output.iter());
     let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
-
-    debug!("compare_impl_method: trait_fty={:?}", trait_fty);
+    debug!(?trait_fty);
 
     // FIXME: We'd want to keep more accurate spans than "the method signature" when
     // processing the comparison between the trait and impl fn, but we sadly lose them
@@ -431,6 +430,7 @@ fn compare_predicate_entailment<'tcx>(
     Ok(())
 }
 
+#[instrument(level = "debug", skip(tcx), ret)]
 pub fn collect_trait_impl_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -464,25 +464,23 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
 
+    let impl_sig = tcx.mk_fn_def(impl_m.def_id, impl_to_placeholder_substs).fn_sig(tcx);
+    let impl_sig =
+        infcx.replace_bound_vars_with_fresh_vars(return_span, infer::HigherRankedType, impl_sig);
+
     let norm_cause = ObligationCause::misc(return_span, impl_m_hir_id);
-    let impl_sig = ocx.normalize(
-        norm_cause.clone(),
-        param_env,
-        infcx.replace_bound_vars_with_fresh_vars(
-            return_span,
-            infer::HigherRankedType,
-            tcx.fn_sig(impl_m.def_id),
-        ),
-    );
+    let impl_sig = ocx.normalize(norm_cause.clone(), param_env, impl_sig);
     let impl_return_ty = impl_sig.output();
 
+    let unnormalized_trait_sig = tcx.type_of(trait_m.def_id).fn_sig(tcx);
+    let unnormalized_trait_sig =
+        ty::EarlyBinder(unnormalized_trait_sig).subst(tcx, trait_to_placeholder_substs);
+    let unnormalized_trait_sig =
+        tcx.liberate_late_bound_regions(impl_m.def_id, unnormalized_trait_sig);
+
     let mut collector = ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_hir_id);
-    let unnormalized_trait_sig = tcx
-        .liberate_late_bound_regions(
-            impl_m.def_id,
-            tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
-        )
-        .fold_with(&mut collector);
+    let unnormalized_trait_sig = unnormalized_trait_sig.fold_with(&mut collector);
+
     let trait_sig = ocx.normalize(norm_cause.clone(), param_env, unnormalized_trait_sig);
     let trait_return_ty = trait_sig.output();
 
@@ -704,15 +702,11 @@ fn check_region_bounds_on_impl_item<'tcx>(
     trait_generics: &ty::Generics,
     impl_generics: &ty::Generics,
 ) -> Result<(), ErrorGuaranteed> {
-    let trait_params = trait_generics.own_counts().lifetimes;
-    let impl_params = impl_generics.own_counts().lifetimes;
-
-    debug!(
-        "check_region_bounds_on_impl_item: \
-            trait_generics={:?} \
-            impl_generics={:?}",
-        trait_generics, impl_generics
-    );
+    // For backwards compatibility reasons, we can only check that we have the correct amount
+    // of early-bound lifetimes.  The user is allowed to introduce as many late-bound lifetime
+    // as they want.
+    let trait_params = trait_generics.own_counts().early_lifetimes;
+    let impl_params = impl_generics.own_counts().early_lifetimes;
 
     // Must have same number of early-bound lifetime parameters.
     // Unfortunately, if the user screws up the bounds, then this

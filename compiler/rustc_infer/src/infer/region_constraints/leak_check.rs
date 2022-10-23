@@ -61,6 +61,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ///
     /// * R: P1, even if R cannot name P1, because R = 'static is a valid sol'n
     /// * R: P1, R: P2, as above
+    #[instrument(level = "debug", skip(self, tcx, snapshot))]
     pub fn leak_check(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -68,10 +69,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         max_universe: ty::UniverseIndex,
         snapshot: &CombinedSnapshot<'tcx>,
     ) -> RelateResult<'tcx, ()> {
-        debug!(
-            "leak_check(max_universe={:?}, snapshot.universe={:?}, overly_polymorphic={:?})",
-            max_universe, snapshot.universe, overly_polymorphic
-        );
+        debug!("snapshot.universe={:?}", snapshot.universe,);
 
         assert!(UndoLogs::<super::UndoLog<'_>>::in_snapshot(&self.undo_log));
 

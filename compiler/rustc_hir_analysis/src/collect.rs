@@ -20,7 +20,6 @@ use crate::errors;
 use rustc_ast as ast;
 use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
@@ -28,7 +27,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::weak_lang_items;
-use rustc_hir::{GenericParamKind, Node};
+use rustc_hir::Node;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::Linkage;
@@ -1132,7 +1131,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
-    match tcx.hir().get(hir_id) {
+    let sig = match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             generics,
@@ -1213,7 +1212,11 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         x => {
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
-    }
+    };
+
+    assert!(sig.no_bound_vars().is_some());
+
+    sig
 }
 
 fn infer_return_ty_for_fn_sig<'tcx>(
@@ -1333,21 +1336,6 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
         }
         item => bug!("impl_polarity: {:?} not an impl", item),
     }
-}
-
-/// Returns the early-bound lifetimes declared in this generics
-/// listing. For anything other than fns/methods, this is just all
-/// the lifetimes that are declared. For fns or methods, we have to
-/// screen out those that do not appear in any where-clauses etc using
-/// `resolve_lifetime::early_bound_lifetimes`.
-fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx>,
-    generics: &'a hir::Generics<'a>,
-) -> impl Iterator<Item = &'a hir::GenericParam<'a>> + Captures<'tcx> {
-    generics.params.iter().filter(move |param| match param.kind {
-        GenericParamKind::Lifetime { .. } => !tcx.is_late_bound(param.hir_id),
-        _ => false,
-    })
 }
 
 /// Returns a list of type predicates for the definition with ID `def_id`, including inferred

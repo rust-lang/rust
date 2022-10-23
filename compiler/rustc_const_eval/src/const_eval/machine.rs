@@ -58,7 +58,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
                         *self.tcx,
                         ty::ParamEnv::reveal_all(),
                         const_panic_fmt,
-                        self.tcx.intern_substs(&[]),
+                        self.tcx.intern_substs(&[self.tcx.lifetimes.re_erased.into()]),
                     )
                     .unwrap()
                     .unwrap(),

@@ -14,6 +14,7 @@ use crate::ty::{List, ParamEnv};
 use hir::def::DefKind;
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -1215,6 +1216,11 @@ impl<'tcx> FnSig<'tcx> {
         &self.inputs_and_output[..self.inputs_and_output.len() - 1]
     }
 
+    #[inline]
+    pub fn input(&self, index: usize) -> Ty<'tcx> {
+        self.inputs()[index]
+    }
+
     pub fn output(&self) -> Ty<'tcx> {
         self.inputs_and_output[self.inputs_and_output.len() - 1]
     }
@@ -1237,6 +1243,10 @@ impl<'tcx> PolyFnSig<'tcx> {
     #[inline]
     pub fn inputs(&self) -> Binder<'tcx, &'tcx [Ty<'tcx>]> {
         self.map_bound_ref_unchecked(|fn_sig| fn_sig.inputs())
+    }
+    #[inline]
+    pub fn iter_inputs(&self) -> impl Iterator<Item = Binder<'tcx, Ty<'tcx>>> + '_ {
+        self.skip_binder().inputs().iter().map(|&ty| self.rebind(ty))
     }
     #[inline]
     pub fn input(&self, index: usize) -> ty::Binder<'tcx, Ty<'tcx>> {
@@ -1923,7 +1933,31 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
-            FnDef(def_id, substs) => tcx.bound_fn_sig(*def_id).subst(tcx, substs),
+            FnDef(def_id, substs) => {
+                let fn_sig = tcx.fn_sig(*def_id).no_bound_vars().unwrap();
+                let generics = tcx.generics_of(*def_id);
+                let mut bound_vars = FxIndexSet::default();
+                let fn_sig = tcx.fold_regions(fn_sig, |region, debruijn| {
+                    if let ty::ReEarlyBound(ebr) = region.kind()
+                        && let def = generics.region_param(&ebr, tcx)
+                        && let ty::GenericParamDefKind::Lifetime { late_bound } = def.kind
+                        && late_bound
+                    {
+                        let kind = BoundRegionKind::BrNamed(ebr.def_id, ebr.name);
+                        let (index, _) =
+                            bound_vars.insert_full(ty::BoundVariableKind::Region(kind));
+                        tcx.mk_region(ty::ReLateBound(
+                            debruijn,
+                            BoundRegion { var: BoundVar::from_usize(index), kind },
+                        ))
+                    } else {
+                        region
+                    }
+                });
+                let fn_sig = ty::EarlyBinder(fn_sig).subst(tcx, substs);
+                let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+                ty::Binder::bind_with_vars(fn_sig, bound_vars)
+            }
             FnPtr(f) => *f,
             Error(_) => {
                 // ignore errors (#54954)
