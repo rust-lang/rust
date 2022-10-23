@@ -88,7 +88,7 @@ struct InferVisitor(bool);
 
 impl<'tcx> Visitor<'tcx> for InferVisitor {
     fn visit_ty(&mut self, t: &rustc_hir::Ty<'_>) {
-        self.0 |= matches!(t.kind, TyKind::Infer);
+        self.0 |= matches!(t.kind, TyKind::Infer | TyKind::OpaqueDef(..) | TyKind::TraitObject(..));
         if !self.0 {
             walk_ty(self, t);
         }
