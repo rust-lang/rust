@@ -1002,11 +1002,12 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(saturating_bit_shifts)]
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS), 0);")]
         #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS - 2), 1_", stringify!($SelfT), " << ", stringify!($SelfT), "::BITS - 2);")]
         #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS - 1), ", stringify!($SelfT), "::MAX);")]
         #[doc = concat!("assert_eq!(-1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS - 2), -1_", stringify!($SelfT), " << ", stringify!($SelfT), "::BITS - 2);")]
         #[doc = concat!("assert_eq!(-1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS - 1), ", stringify!($SelfT), "::MIN);")]
-        #[doc = concat!("assert_eq!(-1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS), ", stringify!($SelfT), "::MIN);")]
+        #[doc = concat!("assert_eq!(-1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS), ", stringify!($SelfT), "::MIN, \"-1_", stringify!($SelfT), ".saturating_shl(", stringify!($SelfT), "::BITS), ", stringify!($SelfT), "::MIN\");")]
         /// ```
         #[unstable(feature = "saturating_bit_shifts", issue = "103440")]
         #[rustc_const_unstable(feature = "saturating_bit_shifts", issue = "103440")]
@@ -1022,10 +1023,10 @@ macro_rules! int_impl {
                 let leading_ones = (self << 1).leading_ones();
 
                 // would overflow => MIN / MAX depending on whether the value is negative or not
-                if self >= 0 && leading_zeros <  rhs {
-                    <$SelfT>::MAX
+                if self > 0 && leading_zeros <  rhs {
+                    Self::MAX
                 } else if self < 0 && leading_ones < rhs {
-                    <$SelfT>::MIN
+                    Self::MIN
                 } else {
                     // normal shift left
                     self << rhs
@@ -1046,7 +1047,7 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(saturating_bit_shifts)]
-        #[doc = concat!("assert_eq!(0b1000_0000_u8.saturating_shr(u8::BITS), 0b0000_0000_u8);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.saturating_shr(", stringify!($SelfT), "::BITS - 1), 0);")]
         /// ```
         #[unstable(feature = "saturating_bit_shifts", issue = "103440")]
         #[rustc_const_unstable(feature = "saturating_bit_shifts", issue = "103440")]
