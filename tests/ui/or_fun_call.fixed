@@ -236,4 +236,20 @@ mod issue9608 {
     }
 }
 
+mod issue8993 {
+    fn g() -> i32 {
+        3
+    }
+
+    fn f(n: i32) -> i32 {
+        n
+    }
+
+    fn test_map_or() {
+        let _ = Some(4).map_or_else(g, |v| v);
+        let _ = Some(4).map_or_else(g, f);
+        let _ = Some(4).map_or(0, f);
+    }
+}
+
 fn main() {}
