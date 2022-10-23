@@ -1,8 +1,9 @@
-use super::apple_sdk_base::{opts, Arch};
+use super::apple_base::{opts, Arch};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
-    let llvm_target = super::apple_base::ios_llvm_target("armv7");
+    let arch = Arch::Armv7;
+    let llvm_target = super::apple_base::ios_llvm_target(arch);
 
     Target {
         llvm_target: llvm_target.into(),
@@ -12,7 +13,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v7,+vfp3,+neon".into(),
             max_atomic_width: Some(64),
-            ..opts("ios", Arch::Armv7)
+            ..opts("ios", arch)
         },
     }
 }

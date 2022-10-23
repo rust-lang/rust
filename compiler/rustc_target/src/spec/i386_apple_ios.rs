@@ -1,9 +1,10 @@
-use super::apple_sdk_base::{opts, Arch};
+use super::apple_base::{opts, Arch};
 use crate::spec::{StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts("ios", Arch::I386);
-    let llvm_target = super::apple_base::ios_sim_llvm_target("i386");
+    let arch = Arch::I386;
+    let base = opts("ios", arch);
+    let llvm_target = super::apple_base::ios_sim_llvm_target(arch);
 
     Target {
         llvm_target: llvm_target.into(),

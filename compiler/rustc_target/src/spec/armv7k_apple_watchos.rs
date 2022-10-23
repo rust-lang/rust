@@ -1,4 +1,4 @@
-use super::apple_sdk_base::{opts, Arch};
+use super::apple_base::{opts, Arch};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
