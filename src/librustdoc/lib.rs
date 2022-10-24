@@ -154,7 +154,6 @@ pub fn main() {
         }
     }
 
-    rustc_driver::set_sigpipe_handler();
     rustc_driver::install_ice_hook();
 
     // When using CI artifacts (with `download_stage1 = true`), tracing is unconditionally built
