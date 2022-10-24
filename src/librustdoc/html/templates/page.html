@@ -89,6 +89,7 @@
     </nav> {#- -#}
     {%- endif -%}
     <nav class="sidebar"> {#- -#}
+        {%- if page.css_class != "source" -%}
         <a class="sidebar-logo" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {#- -#}
             <div class="logo-container"> {#- -#}
                 {%- if !layout.logo.is_empty()  %}
@@ -98,6 +99,7 @@
                 {%- endif -%}
             </div> {#- -#}
         </a> {#- -#}
+        {%- endif -%}
         {{- sidebar|safe -}}
     </nav> {#- -#}
     <main> {#- -#}
