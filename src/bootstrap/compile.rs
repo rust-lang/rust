@@ -21,7 +21,7 @@ use serde::Deserialize;
 use crate::builder::Cargo;
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
-use crate::config::{LlvmLibunwind, RustcLto, TargetSelection};
+use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
@@ -702,7 +702,7 @@ impl Step for Rustc {
         }
 
         // cfg(bootstrap): remove if condition once the bootstrap compiler supports dylib LTO
-        if compiler.stage != 0 {
+        /*if compiler.stage != 0 {
             match builder.config.rust_lto {
                 RustcLto::Thin | RustcLto::Fat => {
                     // Since using LTO for optimizing dylibs is currently experimental,
@@ -721,6 +721,22 @@ impl Step for Rustc {
                 }
                 RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
             }
+        }*/
+
+        if compiler.stage == 1 {
+            // let build_bin = builder.llvm_out(builder.config.build).join("build").join("bin");
+            // let clang = build_bin.join("clang");
+            // let clang = PathBuf::from("/projects/personal/llvm-project/build/install/bin/clang");
+            cargo.rustflag("-Clinker-plugin-lto");
+            // cargo.rustflag(&format!("-Clinker={}", clang.display()));
+            // cargo.rustflag("-Clink-arg=-fuse-ld=lld");
+
+            // let path = builder.ensure(CrtBeginEnd {
+            //     target
+            // });
+            // cargo.rustflag(&format!("-Clink-args=-L{}", path.display()));
+            // cargo.rustflag(&format!("-Clink-args=-B{}", path.display()));
+            // cargo.rustflag(&format!("-Clink-args=--gcc-toolchain={}", path.display()));
         }
 
         builder.info(&format!(

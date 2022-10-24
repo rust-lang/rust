@@ -63,6 +63,8 @@ RUN curl -LS -o perf.zip https://github.com/rust-lang/rustc-perf/archive/$PERF_C
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+RUN yum install -y libgcc.x86_64 libgcc.i686
+
 ENV PGO_HOST=x86_64-unknown-linux-gnu
 
 ENV HOSTS=x86_64-unknown-linux-gnu
@@ -77,6 +79,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
+      --set llvm.clang=true \
       --set rust.jemalloc \
       --set rust.use-lld=true \
       --set rust.lto=thin
