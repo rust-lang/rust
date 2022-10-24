@@ -1,0 +1,70 @@
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:8:13
+   |
+LL |     assert!(matches!('x', 'a'..='z'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_lowercase()`
+   |
+   = note: `-D clippy::manual-is-ascii-check` implied by `-D warnings`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:9:13
+   |
+LL |     assert!(matches!('X', 'A'..='Z'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'X'.is_ascii_uppercase()`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:10:13
+   |
+LL |     assert!(matches!(b'x', b'a'..=b'z'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'x'.is_ascii_lowercase()`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:11:13
+   |
+LL |     assert!(matches!(b'X', b'A'..=b'Z'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'X'.is_ascii_uppercase()`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:14:13
+   |
+LL |     assert!(matches!(num, '0'..='9'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `num.is_ascii_digit()`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:15:13
+   |
+LL |     assert!(matches!(b'1', b'0'..=b'9'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'1'.is_ascii_digit()`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:16:13
+   |
+LL |     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_alphabetic()`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:32:13
+   |
+LL |     assert!(matches!(b'1', b'0'..=b'9'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'1'.is_ascii_digit()`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:33:13
+   |
+LL |     assert!(matches!('X', 'A'..='Z'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'X'.is_ascii_uppercase()`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:34:13
+   |
+LL |     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_alphabetic()`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:44:23
+   |
+LL |     const FOO: bool = matches!('x', '0'..='9');
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_digit()`
+
+error: aborting due to 11 previous errors
+
