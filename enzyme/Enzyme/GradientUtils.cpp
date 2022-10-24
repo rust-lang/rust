@@ -7197,25 +7197,6 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
         break;
       case Intrinsic::memset: {
         bool first = true;
-#if LLVM_VERSION_MAJOR >= 14
-        for (auto &arg : II->args())
-#else
-        for (auto &arg : II->arg_operands())
-#endif
-        {
-          if (first) {
-            first = false;
-            break;
-          }
-          if (arg == prev) {
-            promotable = false;
-            shadowpromotable = false;
-            EmitWarning("NotPromotable", *cur, " Could not promote allocation ",
-                        *V, " due to memset use ", *cur);
-            break;
-          }
-          break;
-        }
         stores.insert(II);
         storingOps.insert(II);
         break;

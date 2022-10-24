@@ -99,7 +99,8 @@ Function *getOrInsertExponentialAllocator(Module &M, Function *newFunc,
     IRBuilder<> B(BB);
     auto P = B.CreatePHI(i64, 1);
     CallInst *malloccall;
-    CreateAllocation(B, RT, P, "tapemem", &malloccall, nullptr)->getType();
+    Instruction *SubZero = nullptr;
+    CreateAllocation(B, RT, P, "tapemem", &malloccall, &SubZero)->getType();
     if (auto F = getFunctionFromCall(malloccall)) {
       custom = F->getName() != "malloc";
     }
