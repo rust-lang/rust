@@ -10739,6 +10739,93 @@ public:
         }
       }
 
+      std::function<void(MDNode *)> restoreFromStack = [&](MDNode *MD) {
+        IRBuilder<> B(newCall);
+        Value *Size;
+        if (funcName == "malloc")
+          Size = orig->getArgOperand(0);
+        else if (funcName == "julia.gc_alloc_obj" ||
+                 funcName == "jl_gc_alloc_typed" ||
+                 funcName == "ijl_gc_alloc_typed")
+          Size = orig->getArgOperand(1);
+        else
+          llvm_unreachable("Unknown allocation to upgrade");
+        Size = gutils->getNewFromOriginal(Size);
+
+        if (auto CI = dyn_cast<ConstantInt>(Size)) {
+          B.SetInsertPoint(gutils->inversionAllocs);
+        }
+        Type *elTy = Type::getInt8Ty(orig->getContext());
+        Instruction *I = nullptr;
+#if LLVM_VERSION_MAJOR >= 15
+        if (orig->getContext().supportsTypedPointers()) {
+#endif
+          for (auto U : orig->users()) {
+            if (hasMetadata(cast<Instruction>(U), "enzyme_caststack")) {
+              elTy = U->getType()->getPointerElementType();
+              Value *tsize = ConstantInt::get(
+                  Size->getType(), (gutils->newFunc->getParent()
+                                        ->getDataLayout()
+                                        .getTypeAllocSizeInBits(elTy) +
+                                    7) /
+                                       8);
+              Size = B.CreateUDiv(Size, tsize, "", /*exact*/ true);
+              I = gutils->getNewFromOriginal(cast<Instruction>(U));
+              break;
+            }
+          }
+#if LLVM_VERSION_MAJOR >= 15
+        }
+#endif
+        Value *replacement = B.CreateAlloca(elTy, Size);
+        if (I)
+          replacement->takeName(I);
+        else
+          replacement->takeName(newCall);
+        auto Alignment =
+            cast<ConstantInt>(
+                cast<ConstantAsMetadata>(MD->getOperand(0))->getValue())
+                ->getLimitedValue();
+        // Don't set zero alignment
+        if (Alignment) {
+#if LLVM_VERSION_MAJOR >= 10
+          cast<AllocaInst>(replacement)->setAlignment(Align(Alignment));
+#else
+          cast<AllocaInst>(replacement)->setAlignment(Alignment);
+#endif
+        }
+#if LLVM_VERSION_MAJOR >= 15
+        if (orig->getContext().supportsTypedPointers()) {
+#endif
+          if (orig->getType()->getPointerElementType() != elTy)
+            replacement = B.CreatePointerCast(
+                replacement, PointerType::getUnqual(
+                                 orig->getType()->getPointerElementType()));
+
+#if LLVM_VERSION_MAJOR >= 15
+        }
+#endif
+        if (int AS = cast<PointerType>(orig->getType())->getAddressSpace()) {
+
+          llvm::PointerType *PT;
+#if LLVM_VERSION_MAJOR >= 15
+          if (orig->getContext().supportsTypedPointers()) {
+#endif
+            PT = PointerType::get(orig->getType()->getPointerElementType(), AS);
+#if LLVM_VERSION_MAJOR >= 15
+          } else {
+            PT = PointerType::get(orig->getContext(), AS);
+          }
+#endif
+          replacement = B.CreateAddrSpaceCast(replacement, PT);
+          cast<Instruction>(replacement)
+              ->setMetadata("enzyme_backstack",
+                            MDNode::get(replacement->getContext(), {}));
+        }
+        gutils->replaceAWithB(newCall, replacement);
+        gutils->erase(newCall);
+      };
+
       // Don't erase any store that needs to be preserved for a
       // rematerialization
       {
@@ -10755,99 +10842,7 @@ public:
                 gutils->rematerializedPrimalOrShadowAllocations.push_back(
                     newCall);
               } else {
-                IRBuilder<> B(newCall);
-
-                Value *Size;
-                if (funcName == "malloc")
-                  Size = orig->getArgOperand(0);
-                else if (funcName == "julia.gc_alloc_obj" ||
-                         funcName == "jl_gc_alloc_typed" ||
-                         funcName == "ijl_gc_alloc_typed")
-                  Size = orig->getArgOperand(1);
-                else
-                  llvm_unreachable("Unknown allocation to upgrade");
-                Size = gutils->getNewFromOriginal(Size);
-
-                if (auto CI = dyn_cast<ConstantInt>(Size)) {
-                  B.SetInsertPoint(gutils->inversionAllocs);
-                }
-
-                Type *elTy = Type::getInt8Ty(orig->getContext());
-                Instruction *I = nullptr;
-#if LLVM_VERSION_MAJOR >= 15
-                if (orig->getContext().supportsTypedPointers()) {
-#endif
-                  for (auto U : orig->users()) {
-                    if (hasMetadata(cast<Instruction>(U), "enzyme_caststack")) {
-                      elTy = U->getType()->getPointerElementType();
-                      Value *tsize = ConstantInt::get(
-                          Size->getType(), (gutils->newFunc->getParent()
-                                                ->getDataLayout()
-                                                .getTypeAllocSizeInBits(elTy) +
-                                            7) /
-                                               8);
-                      Size = B.CreateUDiv(Size, tsize, "", /*exact*/ true);
-                      I = gutils->getNewFromOriginal(cast<Instruction>(U));
-                      break;
-                    }
-                  }
-#if LLVM_VERSION_MAJOR >= 15
-                }
-#endif
-
-                Value *replacement = B.CreateAlloca(elTy, Size);
-                if (I)
-                  replacement->takeName(I);
-                else
-                  replacement->takeName(newCall);
-
-                auto Alignment =
-                    cast<ConstantInt>(
-                        cast<ConstantAsMetadata>(MD->getOperand(0))->getValue())
-                        ->getLimitedValue();
-                // Don't set zero alignment
-                if (Alignment) {
-#if LLVM_VERSION_MAJOR >= 10
-                  cast<AllocaInst>(replacement)->setAlignment(Align(Alignment));
-#else
-                  cast<AllocaInst>(replacement)->setAlignment(Alignment);
-#endif
-                }
-#if LLVM_VERSION_MAJOR >= 15
-                if (orig->getContext().supportsTypedPointers()) {
-#endif
-                  if (orig->getType()->getPointerElementType() != elTy)
-                    replacement = B.CreatePointerCast(
-                        replacement,
-                        PointerType::getUnqual(
-                            orig->getType()->getPointerElementType()));
-
-#if LLVM_VERSION_MAJOR >= 15
-                }
-#endif
-
-                if (int AS =
-                        cast<PointerType>(orig->getType())->getAddressSpace()) {
-
-                  llvm::PointerType *PT;
-#if LLVM_VERSION_MAJOR >= 15
-                  if (orig->getContext().supportsTypedPointers()) {
-#endif
-                    PT = PointerType::get(
-                        orig->getType()->getPointerElementType(), AS);
-#if LLVM_VERSION_MAJOR >= 15
-                  } else {
-                    PT = PointerType::get(orig->getContext(), AS);
-                  }
-#endif
-                  replacement = B.CreateAddrSpaceCast(replacement, PT);
-                  cast<Instruction>(replacement)
-                      ->setMetadata("enzyme_backstack",
-                                    MDNode::get(replacement->getContext(), {}));
-                }
-
-                gutils->replaceAWithB(newCall, replacement);
-                gutils->erase(newCall);
+                restoreFromStack(MD);
               }
               return;
             }
@@ -10896,97 +10891,7 @@ public:
             if (Mode == DerivativeMode::ReverseModeGradient)
               eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
             else if (auto MD = hasMetadata(orig, "enzyme_fromstack")) {
-              IRBuilder<> B(newCall);
-
-              Value *Size;
-              if (funcName == "malloc")
-                Size = orig->getArgOperand(0);
-              else if (funcName == "julia.gc_alloc_obj" ||
-                       funcName == "jl_gc_alloc_typed" ||
-                       funcName == "ijl_gc_alloc_typed")
-                Size = orig->getArgOperand(1);
-              else
-                llvm_unreachable("Unknown allocation to upgrade");
-              Size = gutils->getNewFromOriginal(Size);
-
-              if (auto CI = dyn_cast<ConstantInt>(Size)) {
-                B.SetInsertPoint(gutils->inversionAllocs);
-              }
-
-              Type *elTy = Type::getInt8Ty(orig->getContext());
-              Instruction *I = nullptr;
-#if LLVM_VERSION_MAJOR >= 15
-              if (orig->getContext().supportsTypedPointers()) {
-#endif
-                for (auto U : orig->users()) {
-                  if (hasMetadata(cast<Instruction>(U), "enzyme_caststack")) {
-                    elTy = U->getType()->getPointerElementType();
-                    Value *tsize = ConstantInt::get(
-                        Size->getType(), (gutils->newFunc->getParent()
-                                              ->getDataLayout()
-                                              .getTypeAllocSizeInBits(elTy) +
-                                          7) /
-                                             8);
-                    Size = B.CreateUDiv(Size, tsize, "", /*exact*/ true);
-                    I = gutils->getNewFromOriginal(cast<Instruction>(U));
-                    break;
-                  }
-                }
-#if LLVM_VERSION_MAJOR >= 15
-              }
-#endif
-
-              Value *replacement = B.CreateAlloca(elTy, Size);
-              if (I)
-                replacement->takeName(I);
-              else
-                replacement->takeName(newCall);
-              auto Alignment =
-                  cast<ConstantInt>(
-                      cast<ConstantAsMetadata>(MD->getOperand(0))->getValue())
-                      ->getLimitedValue();
-              // Don't set zero alignment
-              if (Alignment) {
-#if LLVM_VERSION_MAJOR >= 10
-                cast<AllocaInst>(replacement)->setAlignment(Align(Alignment));
-#else
-                cast<AllocaInst>(replacement)->setAlignment(Alignment);
-#endif
-              }
-
-#if LLVM_VERSION_MAJOR >= 15
-              if (orig->getContext().supportsTypedPointers()) {
-#endif
-                if (orig->getType()->getPointerElementType() != elTy)
-                  replacement = B.CreatePointerCast(
-                      replacement,
-                      PointerType::getUnqual(
-                          orig->getType()->getPointerElementType()));
-
-#if LLVM_VERSION_MAJOR >= 15
-              }
-#endif
-              if (int AS =
-                      cast<PointerType>(orig->getType())->getAddressSpace()) {
-                llvm::PointerType *PT;
-#if LLVM_VERSION_MAJOR >= 15
-                if (orig->getContext().supportsTypedPointers()) {
-#endif
-                  PT = PointerType::get(
-                      orig->getType()->getPointerElementType(), AS);
-#if LLVM_VERSION_MAJOR >= 15
-                } else {
-                  PT = PointerType::get(orig->getContext(), AS);
-                }
-#endif
-                replacement = B.CreateAddrSpaceCast(replacement, PT);
-                cast<Instruction>(replacement)
-                    ->setMetadata("enzyme_backstack",
-                                  MDNode::get(replacement->getContext(), {}));
-              }
-
-              gutils->replaceAWithB(newCall, replacement);
-              gutils->erase(newCall);
+              restoreFromStack(MD);
             }
             return;
           }
@@ -11004,92 +10909,7 @@ public:
           eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
         } else {
           if (auto MD = hasMetadata(orig, "enzyme_fromstack")) {
-            IRBuilder<> B(newCall);
-            Value *Size;
-            if (funcName == "malloc")
-              Size = orig->getArgOperand(0);
-            else if (funcName == "julia.gc_alloc_obj" ||
-                     funcName == "jl_gc_alloc_typed" ||
-                     funcName == "ijl_gc_alloc_typed")
-              Size = orig->getArgOperand(1);
-            else
-              llvm_unreachable("Unknown allocation to upgrade");
-            Size = gutils->getNewFromOriginal(Size);
-
-            if (auto CI = dyn_cast<ConstantInt>(Size)) {
-              B.SetInsertPoint(gutils->inversionAllocs);
-            }
-            Type *elTy = Type::getInt8Ty(orig->getContext());
-            Instruction *I = nullptr;
-#if LLVM_VERSION_MAJOR >= 15
-            if (orig->getContext().supportsTypedPointers()) {
-#endif
-              for (auto U : orig->users()) {
-                if (hasMetadata(cast<Instruction>(U), "enzyme_caststack")) {
-                  elTy = U->getType()->getPointerElementType();
-                  Value *tsize = ConstantInt::get(
-                      Size->getType(), (gutils->newFunc->getParent()
-                                            ->getDataLayout()
-                                            .getTypeAllocSizeInBits(elTy) +
-                                        7) /
-                                           8);
-                  Size = B.CreateUDiv(Size, tsize, "", /*exact*/ true);
-                  I = gutils->getNewFromOriginal(cast<Instruction>(U));
-                  break;
-                }
-              }
-#if LLVM_VERSION_MAJOR >= 15
-            }
-#endif
-            Value *replacement = B.CreateAlloca(elTy, Size);
-            if (I)
-              replacement->takeName(I);
-            else
-              replacement->takeName(newCall);
-            auto Alignment =
-                cast<ConstantInt>(
-                    cast<ConstantAsMetadata>(MD->getOperand(0))->getValue())
-                    ->getLimitedValue();
-            // Don't set zero alignment
-            if (Alignment) {
-#if LLVM_VERSION_MAJOR >= 10
-              cast<AllocaInst>(replacement)->setAlignment(Align(Alignment));
-#else
-              cast<AllocaInst>(replacement)->setAlignment(Alignment);
-#endif
-            }
-#if LLVM_VERSION_MAJOR >= 15
-            if (orig->getContext().supportsTypedPointers()) {
-#endif
-              if (orig->getType()->getPointerElementType() != elTy)
-                replacement = B.CreatePointerCast(
-                    replacement, PointerType::getUnqual(
-                                     orig->getType()->getPointerElementType()));
-
-#if LLVM_VERSION_MAJOR >= 15
-            }
-#endif
-            if (int AS =
-                    cast<PointerType>(orig->getType())->getAddressSpace()) {
-
-              llvm::PointerType *PT;
-#if LLVM_VERSION_MAJOR >= 15
-              if (orig->getContext().supportsTypedPointers()) {
-#endif
-                PT = PointerType::get(orig->getType()->getPointerElementType(),
-                                      AS);
-#if LLVM_VERSION_MAJOR >= 15
-              } else {
-                PT = PointerType::get(orig->getContext(), AS);
-              }
-#endif
-              replacement = B.CreateAddrSpaceCast(replacement, PT);
-              cast<Instruction>(replacement)
-                  ->setMetadata("enzyme_backstack",
-                                MDNode::get(replacement->getContext(), {}));
-            }
-            gutils->replaceAWithB(newCall, replacement);
-            gutils->erase(newCall);
+            restoreFromStack(MD);
           }
         }
         return;
