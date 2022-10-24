@@ -161,27 +161,21 @@ fn generate_enum_projection_method(
 
             let field_type_syntax = field_type.syntax();
 
-            let method = if ctx.config.assist_emit_must_use
-            {
-                format!(
-                    "    #[must_use]
-    {vis}fn {fn_name}({self_param}) -> {return_prefix}{field_type_syntax}{return_suffix} {{
-        if let Self::{variant_name}{pattern_suffix} = self {{
-            {happy_case}({bound_name})
-        }} else {{
-            {sad_case}
-        }}
-    }}")
+            let must_use = if ctx.config.assist_emit_must_use {
+                "#[must_use]\n"
             } else {
-                format!(
-                    "    {vis}fn {fn_name}({self_param}) -> {return_prefix}{field_type_syntax}{return_suffix} {{
+                ""
+            };
+
+            let method = format!(
+                "    {must_use}{vis}fn {fn_name}({self_param}) -> {return_prefix}{field_type_syntax}{return_suffix} {{
         if let Self::{variant_name}{pattern_suffix} = self {{
             {happy_case}({bound_name})
         }} else {{
             {sad_case}
         }}
-    }}")
-            };
+    }}"
+            );
 
             add_method_to_adt(builder, &parent_enum, impl_def, &method);
         },

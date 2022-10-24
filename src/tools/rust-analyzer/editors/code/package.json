@@ -398,7 +398,7 @@
                 },
                 "$generated-start": {},
                 "rust-analyzer.assist.emitMustUse": {
-                    "markdownDescription": "Whether to insert must_use derive macro while generating `as_` methods\nfor enum variants.",
+                    "markdownDescription": "Whether to insert #[must_use] when generating `as_` methods\nfor enum variants.",
                     "default": false,
                     "type": "boolean"
                 },
