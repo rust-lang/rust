@@ -583,7 +583,7 @@ pub trait Read {
     /// `n > buf.len()`.
     ///
     /// No guarantees are provided about the contents of `buf` when this
-    /// function is called, implementations cannot rely on any property of the
+    /// function is called, so implementations cannot rely on any property of the
     /// contents of `buf` being true. It is recommended that *implementations*
     /// only write data to `buf` instead of reading its contents.
     ///
@@ -759,7 +759,7 @@ pub trait Read {
     /// specified buffer `buf`.
     ///
     /// No guarantees are provided about the contents of `buf` when this
-    /// function is called, implementations cannot rely on any property of the
+    /// function is called, so implementations cannot rely on any property of the
     /// contents of `buf` being true. It is recommended that implementations
     /// only write data to `buf` instead of reading its contents. The
     /// documentation on [`read`] has a more detailed explanation on this
