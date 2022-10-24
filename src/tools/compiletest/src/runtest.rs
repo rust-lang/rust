@@ -1184,7 +1184,7 @@ impl<'test> TestCx<'test> {
         // Remove options that are either unwanted (-O) or may lead to duplicates due to RUSTFLAGS.
         let options_to_remove = ["-O".to_owned(), "-g".to_owned(), "--debuginfo".to_owned()];
 
-        options.to_vec().into_iter().filter(|x| !options_to_remove.contains(x)).collect()
+        options.iter().filter(|x| !options_to_remove.contains(x)).map(|x| x.clone()).collect()
     }
 
     fn maybe_add_external_args(&self, cmd: &mut Command, args: &Vec<String>) {
