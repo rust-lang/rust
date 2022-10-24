@@ -48,13 +48,13 @@ impl<T> SomeGenericTrait<T> for f32 {
 //~ MONO_ITEM fn start
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-   //~ MONO_ITEM fn <i32 as SomeTrait>::bar::<char>
+   //~ MONO_ITEM fn <i32 as SomeTrait>::bar::<char, '_>
    0i32.bar('x');
 
-   //~ MONO_ITEM fn <f64 as SomeGenericTrait<u32>>::bar::<&str>
+   //~ MONO_ITEM fn <f64 as SomeGenericTrait<u32>>::bar::<&str, '_>
    0f64.bar(0u32, "&str");
 
-   //~ MONO_ITEM fn <f64 as SomeGenericTrait<u32>>::bar::<()>
+   //~ MONO_ITEM fn <f64 as SomeGenericTrait<u32>>::bar::<(), '_>
    0f64.bar(0u32, ());
 
    //~ MONO_ITEM fn <f32 as SomeGenericTrait<char>>::foo
@@ -63,10 +63,10 @@ fn start(_: isize, _: *const *const u8) -> isize {
    //~ MONO_ITEM fn <f32 as SomeGenericTrait<i64>>::foo
    0f32.foo(-1i64);
 
-   //~ MONO_ITEM fn <f32 as SomeGenericTrait<u32>>::bar::<()>
+   //~ MONO_ITEM fn <f32 as SomeGenericTrait<u32>>::bar::<(), '_>
    0f32.bar(0u32, ());
 
-   //~ MONO_ITEM fn <f32 as SomeGenericTrait<&str>>::bar::<&str>
+   //~ MONO_ITEM fn <f32 as SomeGenericTrait<&str>>::bar::<&str, '_>
    0f32.bar("&str", "&str");
 
    0
