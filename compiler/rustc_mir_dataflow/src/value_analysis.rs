@@ -56,9 +56,10 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::VariantIdx;
 
+use crate::lattice::{HasBottom, HasTop};
 use crate::{
-    fmt::DebugWithContext, lattice::FlatSet, Analysis, AnalysisDomain, CallReturnPlaces,
-    JoinSemiLattice, SwitchIntEdgeEffects,
+    fmt::DebugWithContext, Analysis, AnalysisDomain, CallReturnPlaces, JoinSemiLattice,
+    SwitchIntEdgeEffects,
 };
 
 pub trait ValueAnalysis<'tcx> {
@@ -846,8 +847,8 @@ pub enum ValueOrPlace<V> {
     Place(PlaceIndex),
 }
 
-impl<V: HasTop> HasTop for ValueOrPlace<V> {
-    fn top() -> Self {
+impl<V: HasTop> ValueOrPlace<V> {
+    pub fn top() -> Self {
         ValueOrPlace::Value(V::top())
     }
 }
@@ -859,8 +860,8 @@ pub enum ValueOrPlaceOrRef<V> {
     Ref(PlaceIndex),
 }
 
-impl<V: HasTop> HasTop for ValueOrPlaceOrRef<V> {
-    fn top() -> Self {
+impl<V: HasTop> ValueOrPlaceOrRef<V> {
+    pub fn top() -> Self {
         ValueOrPlaceOrRef::Value(V::top())
     }
 }
@@ -871,26 +872,6 @@ impl<V> From<ValueOrPlace<V>> for ValueOrPlaceOrRef<V> {
             ValueOrPlace::Value(value) => ValueOrPlaceOrRef::Value(value),
             ValueOrPlace::Place(place) => ValueOrPlaceOrRef::Place(place),
         }
-    }
-}
-
-pub trait HasBottom {
-    fn bottom() -> Self;
-}
-
-pub trait HasTop {
-    fn top() -> Self;
-}
-
-impl<V> HasBottom for FlatSet<V> {
-    fn bottom() -> Self {
-        Self::Bottom
-    }
-}
-
-impl<V> HasTop for FlatSet<V> {
-    fn top() -> Self {
-        Self::Top
     }
 }
 

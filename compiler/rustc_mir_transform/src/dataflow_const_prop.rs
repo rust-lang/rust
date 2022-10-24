@@ -8,7 +8,7 @@ use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
-    HasTop, Map, State, TrackElem, ValueAnalysis, ValueOrPlace, ValueOrPlaceOrRef,
+    Map, State, TrackElem, ValueAnalysis, ValueOrPlace, ValueOrPlaceOrRef,
 };
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, ResultsVisitor, SwitchIntEdgeEffects};
 use rustc_span::DUMMY_SP;
