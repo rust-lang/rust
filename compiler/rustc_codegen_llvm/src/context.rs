@@ -301,11 +301,19 @@ pub unsafe fn create_module<'ll>(
         }
     }
 
+    let ll_cf_protection_mod_flag_behavior = if llvm_version > (15, 0, 0) {
+        // LTO objects might compiled with different `cf-protection` flags which will cause an error in the linker.
+        // This reduces protection silently, but that happens also with the normal linker too by default.
+        // See also: https://reviews.llvm.org/D123493 and https://reviews.llvm.org/D130065
+        llvm::LLVMModFlagBehavior::Min
+    } else {
+        llvm::LLVMModFlagBehavior::Override
+    };
     // Pass on the control-flow protection flags to LLVM (equivalent to `-fcf-protection` in Clang).
     if let CFProtection::Branch | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::LLVMRustAddModuleFlag(
             llmod,
-            llvm::LLVMModFlagBehavior::Override,
+            ll_cf_protection_mod_flag_behavior,
             "cf-protection-branch\0".as_ptr().cast(),
             1,
         )
@@ -313,7 +321,7 @@ pub unsafe fn create_module<'ll>(
     if let CFProtection::Return | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::LLVMRustAddModuleFlag(
             llmod,
-            llvm::LLVMModFlagBehavior::Override,
+            ll_cf_protection_mod_flag_behavior,
             "cf-protection-return\0".as_ptr().cast(),
             1,
         )

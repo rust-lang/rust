@@ -1,6 +1,7 @@
 // Test that the correct module flags are emitted with different control-flow protection flags.
 
 // revisions: undefined none branch return full
+// min-llvm-version: 15.0
 // needs-llvm-components: x86
 // [undefined] compile-flags:
 // [none] compile-flags: -Z cf-protection=none

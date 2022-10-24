@@ -1,4 +1,5 @@
 // compile-flags: -C no-prepopulate-passes -Zcf-protection=full
+// min-llvm-version: 15.0
 // assembly-output: emit-asm
 // needs-asm-support
 // only-x86_64
