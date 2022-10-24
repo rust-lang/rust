@@ -1214,7 +1214,7 @@ fn is_valid_fn_candidate(
             let expected_receiver =
                 sig.map(|s| s.params()[0].clone()).substitute(Interner, &fn_subst);
 
-            check_that!(table.unify(&receiver_ty, &expected_receiver));
+            check_that!(table.unify(receiver_ty, &expected_receiver));
         }
 
         if let ItemContainerId::ImplId(impl_id) = container {
