@@ -1827,8 +1827,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// order to avoid its interior mutability property from spreading from `T` into the `Outer` type,
 /// thus this can cause distortions in the type size in these cases.
 ///
-/// Note that it is still only valid to obtain a `*mut T` pointer to the contents of a
-/// _shared_ `UnsafeCell<T>` through [`.get()`]  or [`.raw_get()`]. A `&mut T` reference
+/// Note that the only valid way to obtain a `*mut T` pointer to the contents of a
+/// _shared_ `UnsafeCell<T>` is through [`.get()`]  or [`.raw_get()`]. A `&mut T` reference
 /// can be obtained by either dereferencing this pointer or by calling [`.get_mut()`]
 /// on an _exclusive_ `UnsafeCell<T>`. Even though `T` and `UnsafeCell<T>` have the
 /// same memory layout, the following is not allowed and undefined behavior:
