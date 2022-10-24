@@ -56,7 +56,7 @@ mod patch_old_style;
 // parsing the old name.
 config_data! {
     struct ConfigData {
-        /// Whether to insert must_use derive macro while generating `as_` methods
+        /// Whether to insert #[must_use] when generating `as_` methods
         /// for enum variants.
         assist_emitMustUse: bool               = "false",
         /// Placeholder expression to use for missing expressions in assists.
