@@ -4,8 +4,10 @@
 // Normalize the emitted location so this doesn't need
 // updating everytime someone adds or removes a line.
 // normalize-stderr-test ".rs:\d+:\d+" -> ".rs:$$LINE::$$COL"
-// normalize-stderr-test "note: rustc .+ running on .+" -> "note: rustc $$VERSION running on $$TARGET"
 
-fn main() {
-    break rust
+pub onion {
+    Owo(u8),
+    Uwu(i8),
 }
+
+fn main() {}

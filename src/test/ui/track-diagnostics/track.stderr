@@ -1,16 +1,16 @@
 error[E0425]: cannot find value `rust` in this scope
-  --> $DIR/track.rs:5:11
+  --> $DIR/track.rs:$LINE::$COL
    |
 LL |     break rust
    |           ^^^^ not found in this scope
--Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:289:28
+-Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:$LINE::$COL
 
 error[E0268]: `break` outside of a loop
-  --> $DIR/track.rs:5:5
+  --> $DIR/track.rs:$LINE::$COL
    |
 LL |     break rust
    |     ^^^^^^^^^^ cannot `break` outside of a loop
--Ztrack-diagnostics: created at compiler/rustc_passes/src/errors.rs:957:10
+-Ztrack-diagnostics: created at compiler/rustc_passes/src/errors.rs:$LINE::$COL
 
 error: internal compiler error: It looks like you're trying to break rust; would you like some ICE?
 
@@ -18,7 +18,7 @@ note: the compiler expectedly panicked. this is a feature.
 
 note: we would appreciate a joke overview: https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675
 
-note: rustc 1.66.0-dev running on x86_64-pc-windows-msvc
+note: rustc $VERSION running on $TARGET
 
 error: aborting due to 3 previous errors
 
