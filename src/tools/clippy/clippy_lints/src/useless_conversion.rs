@@ -55,9 +55,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
         match e.kind {
             ExprKind::Match(_, arms, MatchSource::TryDesugar) => {
-                let e = match arms[0].body.kind {
-                    ExprKind::Ret(Some(e)) | ExprKind::Break(_, Some(e)) => e,
-                    _ => return,
+                let (ExprKind::Ret(Some(e)) | ExprKind::Break(_, Some(e))) = arms[0].body.kind else {
+                     return
                 };
                 if let ExprKind::Call(_, [arg, ..]) = e.kind {
                     self.try_desugar_arm.push(arg.hir_id);

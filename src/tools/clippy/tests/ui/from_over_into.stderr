@@ -1,11 +1,75 @@
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into.rs:6:1
+  --> $DIR/from_over_into.rs:10:1
    |
 LL | impl Into<StringWrapper> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider to implement `From<std::string::String>` instead
    = note: `-D clippy::from-over-into` implied by `-D warnings`
+help: replace the `Into` implentation with `From<std::string::String>`
+   |
+LL ~ impl From<String> for StringWrapper {
+LL ~     fn from(val: String) -> Self {
+LL ~         StringWrapper(val)
+   |
 
-error: aborting due to previous error
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> $DIR/from_over_into.rs:18:1
+   |
+LL | impl Into<SelfType> for String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace the `Into` implentation with `From<std::string::String>`
+   |
+LL ~ impl From<String> for SelfType {
+LL ~     fn from(val: String) -> Self {
+LL ~         SelfType(String::new())
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> $DIR/from_over_into.rs:33:1
+   |
+LL | impl Into<SelfKeywords> for X {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace the `Into` implentation with `From<X>`
+   |
+LL ~ impl From<X> for SelfKeywords {
+LL ~     fn from(val: X) -> Self {
+LL ~         let _ = X::default();
+LL ~         let _ = X::FOO;
+LL ~         let _: X = val;
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> $DIR/from_over_into.rs:45:1
+   |
+LL | impl core::convert::Into<bool> for crate::ExplicitPaths {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
+           https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
+help: replace the `Into` implentation with `From<ExplicitPaths>`
+   |
+LL ~ impl core::convert::From<crate::ExplicitPaths> for bool {
+LL ~     fn from(mut val: crate::ExplicitPaths) -> Self {
+LL ~         let in_closure = || val.0;
+LL | 
+LL ~         val.0 = false;
+LL ~         val.0
+   |
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> $DIR/from_over_into.rs:80:5
+   |
+LL |     impl<T> Into<FromOverInto<T>> for Vec<T> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace the `Into` implentation with `From<std::vec::Vec<T>>`
+   |
+LL ~     impl<T> From<Vec<T>> for FromOverInto<T> {
+LL ~         fn from(val: Vec<T>) -> Self {
+LL ~             FromOverInto(val)
+   |
+
+error: aborting due to 5 previous errors
 

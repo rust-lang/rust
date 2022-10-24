@@ -1,7 +1,9 @@
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite};
+use crate::source::{
+    snippet, snippet_opt, snippet_with_applicability, snippet_with_context, snippet_with_macro_callsite,
+};
 use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
@@ -110,7 +112,7 @@ impl<'a> Sugg<'a> {
         if expr.span.ctxt() == ctxt {
             Self::hir_from_snippet(expr, |span| snippet(cx, span, default))
         } else {
-            let snip = snippet_with_applicability(cx, expr.span, default, applicability);
+            let (snip, _) = snippet_with_context(cx, expr.span, ctxt, default, applicability);
             Sugg::NonParen(snip)
         }
     }
@@ -1052,12 +1054,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
     fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn fake_read(
-        &mut self,
-        _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>,
-        _: FakeReadCause,
-        _: HirId,
-    ) {}
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 #[cfg(test)]

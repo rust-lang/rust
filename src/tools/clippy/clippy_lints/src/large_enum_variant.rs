@@ -124,9 +124,8 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
             let ty = cx.tcx.type_of(item.def_id);
-            let (adt, subst) = match ty.kind() {
-                Adt(adt, subst) => (adt, subst),
-                _ => panic!("already checked whether this is an enum"),
+            let Adt(adt, subst) = ty.kind() else {
+                panic!("already checked whether this is an enum")
             };
             if adt.variants().len() <= 1 {
                 return;

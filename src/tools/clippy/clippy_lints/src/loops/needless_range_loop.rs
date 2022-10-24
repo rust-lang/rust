@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::has_iter_method;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{contains_name, higher, is_integer_const, match_trait_method, paths, sugg, SpanlessEq};
+use clippy_utils::{contains_name, higher, is_integer_const, sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -263,7 +263,8 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                 match res {
                     Res::Local(hir_id) => {
                         let parent_def_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
-                        let extent = self.cx
+                        let extent = self
+                            .cx
                             .tcx
                             .region_scope_tree(parent_def_id)
                             .var_scope(hir_id.local_id)
@@ -274,11 +275,12 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                                 (Some(extent), self.cx.typeck_results().node_type(seqexpr.hir_id)),
                             );
                         } else {
-                            self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));
+                            self.indexed_indirectly
+                                .insert(seqvar.segments[0].ident.name, Some(extent));
                         }
-                        return false;  // no need to walk further *on the variable*
-                    }
-                    Res::Def(DefKind::Static (_)| DefKind::Const, ..) => {
+                        return false; // no need to walk further *on the variable*
+                    },
+                    Res::Def(DefKind::Static(_) | DefKind::Const, ..) => {
                         if index_used_directly {
                             self.indexed_directly.insert(
                                 seqvar.segments[0].ident.name,
@@ -287,8 +289,8 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                         } else {
                             self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
                         }
-                        return false;  // no need to walk further *on the variable*
-                    }
+                        return false; // no need to walk further *on the variable*
+                    },
                     _ => (),
                 }
             }
@@ -302,17 +304,26 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         if_chain! {
             // a range index op
             if let ExprKind::MethodCall(meth, args_0, [args_1, ..], _) = &expr.kind;
-            if (meth.ident.name == sym::index && match_trait_method(self.cx, expr, &paths::INDEX))
-                || (meth.ident.name == sym::index_mut && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
+            if let Some(trait_id) = self
+                .cx
+                .typeck_results()
+                .type_dependent_def_id(expr.hir_id)
+                .and_then(|def_id| self.cx.tcx.trait_of_item(def_id));
+            if (meth.ident.name == sym::index && self.cx.tcx.lang_items().index_trait() == Some(trait_id))
+                || (meth.ident.name == sym::index_mut && self.cx.tcx.lang_items().index_mut_trait() == Some(trait_id));
             if !self.check(args_1, args_0, expr);
-            then { return }
+            then {
+                return;
+            }
         }
 
         if_chain! {
             // an index op
             if let ExprKind::Index(seqexpr, idx) = expr.kind;
             if !self.check(idx, seqexpr, expr);
-            then { return }
+            then {
+                return;
+            }
         }
 
         if_chain! {
