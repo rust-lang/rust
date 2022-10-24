@@ -2,12 +2,13 @@ use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use crate::error::Error;
 use crate::externalfiles::ExternalHtml;
 use crate::html::format::{Buffer, Print};
 use crate::html::render::{ensure_trailing_slash, StylePath};
 
 use askama::Template;
+
+use super::static_files::{StaticFiles, STATIC_FILES};
 
 #[derive(Clone)]
 pub(crate) struct Layout {
@@ -45,6 +46,9 @@ struct PageLayout<'a> {
     static_root_path: &'a str,
     page: &'a Page<'a>,
     layout: &'a Layout,
+
+    files: &'static StaticFiles,
+
     themes: Vec<String>,
     sidebar: String,
     content: String,
@@ -61,12 +65,9 @@ pub(crate) fn render<T: Print, S: Print>(
 ) -> String {
     let static_root_path = page.get_static_root_path();
     let krate_with_trailing_slash = ensure_trailing_slash(&layout.krate).to_string();
-    let mut themes: Vec<String> = style_files
-        .iter()
-        .map(StylePath::basename)
-        .collect::<Result<_, Error>>()
-        .unwrap_or_default();
+    let mut themes: Vec<String> = style_files.iter().map(|s| s.basename().unwrap()).collect();
     themes.sort();
+
     let rustdoc_version = rustc_interface::util::version_str().unwrap_or("unknown version");
     let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
     let sidebar = Buffer::html().to_display(sidebar);
@@ -74,6 +75,7 @@ pub(crate) fn render<T: Print, S: Print>(
         static_root_path,
         page,
         layout,
+        files: &STATIC_FILES,
         themes,
         sidebar,
         content,
