@@ -382,16 +382,12 @@ cfg_if::cfg_if! {
         extern "C" {}
     } else if #[cfg(target_os = "macos")] {
         #[link(name = "System")]
-        // res_init and friends require -lresolv on macOS/iOS.
-        // See #41582 and https://blog.achernya.com/2013/03/os-x-has-silly-libsystem.html
-        #[link(name = "resolv")]
         extern "C" {}
     } else if #[cfg(any(target_os = "ios", target_os = "watchos"))] {
         #[link(name = "System")]
         #[link(name = "objc")]
         #[link(name = "Security", kind = "framework")]
         #[link(name = "Foundation", kind = "framework")]
-        #[link(name = "resolv")]
         extern "C" {}
     } else if #[cfg(target_os = "fuchsia")] {
         #[link(name = "zircon")]
