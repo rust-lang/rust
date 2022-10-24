@@ -231,7 +231,9 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     let substs = InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id());
     let span = tcx.def_span(item.owner_id.def_id);
 
-    check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
+    if !tcx.features().impl_trait_projections {
+        check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
+    }
     if tcx.type_of(item.owner_id.def_id).references_error() {
         return;
     }
@@ -424,15 +426,16 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
                 _ => unreachable!(),
             };
 
-            let mut err = struct_span_err!(
-                tcx.sess,
+            let mut err = feature_err(
+                &tcx.sess.parse_sess,
+                sym::impl_trait_projections,
                 span,
-                E0760,
-                "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
-                 a parent scope",
-                if is_async { "async fn" } else { "impl Trait" },
+                &format!(
+                    "`{}` return type cannot contain a projection or `Self` that references \
+                    lifetimes from a parent scope",
+                    if is_async { "async fn" } else { "impl Trait" },
+                ),
             );
-
             for (span, name) in visitor.selftys {
                 err.span_suggestion(
                     span,
