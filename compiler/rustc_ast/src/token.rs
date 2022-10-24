@@ -721,7 +721,6 @@ impl Token {
 }
 
 impl PartialEq<TokenKind> for Token {
-    #[inline]
     fn eq(&self, rhs: &TokenKind) -> bool {
         self.kind == *rhs
     }
