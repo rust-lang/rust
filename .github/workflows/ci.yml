@@ -25,7 +25,8 @@ jobs:
         commands: [
           "--mini-tests",
           "--std-tests",
-          "--asm-tests",
+          # FIXME: re-enable asm tests when GCC can emit in the right syntax.
+          # "--asm-tests",
           "--test-libcore",
           "--extended-rand-tests",
           "--extended-regex-example-tests",
