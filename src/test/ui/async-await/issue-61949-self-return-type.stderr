@@ -4,6 +4,19 @@ error[E0760]: `async fn` return type cannot contain a projection or `Self` that 
 LL |     pub async fn new(_bar: &'a i32) -> Self {
    |                                        ^^^^ help: consider spelling out the type instead: `Foo<'a>`
 
-error: aborting due to previous error
+error[E0597]: `bar` does not live long enough
+  --> $DIR/issue-61949-self-return-type.rs:21:18
+   |
+LL |     let x = {
+   |         - borrow later stored here
+LL |         let bar = 22;
+LL |         Foo::new(&bar).await
+   |                  ^^^^ borrowed value does not live long enough
+LL |
+LL |     };
+   |     - `bar` dropped here while still borrowed
 
-For more information about this error, try `rustc --explain E0760`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0597, E0760.
+For more information about an error, try `rustc --explain E0597`.

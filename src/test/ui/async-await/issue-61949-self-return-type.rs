@@ -19,6 +19,7 @@ async fn foo() {
     let x = {
         let bar = 22;
         Foo::new(&bar).await
+        //~^ ERROR `bar` does not live long enough
     };
     drop(x);
 }
