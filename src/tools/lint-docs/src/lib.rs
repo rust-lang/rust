@@ -37,10 +37,8 @@ impl Lint {
     }
 
     fn is_ignored(&self) -> bool {
-        self.doc
-            .iter()
-            .filter(|line| line.starts_with("```rust"))
-            .all(|line| line.contains(",ignore"))
+        let blocks: Vec<_> = self.doc.iter().filter(|line| line.starts_with("```rust")).collect();
+        !blocks.is_empty() && blocks.iter().all(|line| line.contains(",ignore"))
     }
 
     /// Checks the doc style of the lint.
