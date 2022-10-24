@@ -1177,6 +1177,20 @@ impl Step for Sysroot {
                 );
             }
         }
+        // Same for the rustc-src component.
+        let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
+        t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
+        let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
+        if let Err(e) =
+            symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
+        {
+            eprintln!(
+                "warning: creating symbolic link `{}` to `{}` failed with {}",
+                sysroot_lib_rustlib_rustcsrc_rust.display(),
+                builder.src.display(),
+                e,
+            );
+        }
 
         INTERNER.intern_path(sysroot)
     }
