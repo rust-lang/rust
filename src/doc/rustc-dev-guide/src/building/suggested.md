@@ -39,6 +39,8 @@ you can write: <!-- date-check: apr 2022 --><!-- the date comment is for the edi
     "rust-analyzer.procMacro.server": "./build/$TARGET_TRIPLE/stage0/libexec/rust-analyzer-proc-macro-srv",
     "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.cargo.buildScripts.enable": true,
+    "rust-analyzer.cargo.buildScripts.invocationLocation": "root",
+    "rust-analyzer.cargo.buildScripts.invocationStrategy": "once",
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
         "python3",
         "x.py",
