@@ -559,7 +559,7 @@ impl Emitter for EmitterWriter {
             &primary_span,
             &children,
             &suggestions,
-            Some(&diag.emitted_at),
+            self.track_diagnostics.then_some(&diag.emitted_at),
         );
     }
 
@@ -1661,7 +1661,7 @@ impl EmitterWriter {
             }
         }
 
-        if self.track_diagnostics && let Some(tracked) = emitted_at {
+        if let Some(tracked) = emitted_at {
             let track = format!("-Ztrack-diagnostics: created at {tracked}");
             let len = buffer.num_lines();
             buffer.append(len, &track, Style::NoStyle);

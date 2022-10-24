@@ -172,7 +172,7 @@ pub(crate) fn new_handler(
                     unstable_opts.teach,
                     diagnostic_width,
                     false,
-                    false,
+                    unstable_opts.track_diagnostics,
                 )
                 .ui_testing(unstable_opts.ui_testing),
             )
@@ -191,7 +191,7 @@ pub(crate) fn new_handler(
                     json_rendered,
                     diagnostic_width,
                     false,
-                    false,
+                    unstable_opts.track_diagnostics,
                 )
                 .ui_testing(unstable_opts.ui_testing),
             )
