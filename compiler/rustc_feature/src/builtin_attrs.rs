@@ -746,7 +746,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
          for reserving for `for<T> From<!> for T` impl"
     ),
     rustc_attr!(
-        rustc_test_marker, Normal, template!(Word), WarnFollowing,
+        rustc_test_marker, Normal, template!(NameValueStr: "name"), WarnFollowing,
         "the `#[rustc_test_marker]` attribute is used internally to track tests",
     ),
     rustc_attr!(

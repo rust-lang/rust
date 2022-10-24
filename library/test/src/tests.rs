@@ -611,33 +611,6 @@ fn sample_tests() -> Vec<TestDescAndFn> {
 }
 
 #[test]
-pub fn sort_tests() {
-    let mut opts = TestOpts::new();
-    opts.run_tests = true;
-
-    let tests = sample_tests();
-    let filtered = filter_tests(&opts, tests);
-
-    let expected = vec![
-        "isize::test_pow".to_string(),
-        "isize::test_to_str".to_string(),
-        "sha1::test".to_string(),
-        "test::do_not_run_ignored_tests".to_string(),
-        "test::filter_for_ignored_option".to_string(),
-        "test::first_free_arg_should_be_a_filter".to_string(),
-        "test::ignored_tests_result_in_ignored".to_string(),
-        "test::parse_ignored_flag".to_string(),
-        "test::parse_include_ignored_flag".to_string(),
-        "test::run_include_ignored_option".to_string(),
-        "test::sort_tests".to_string(),
-    ];
-
-    for (a, b) in expected.iter().zip(filtered) {
-        assert_eq!(*a, b.desc.name.to_string());
-    }
-}
-
-#[test]
 pub fn shuffle_tests() {
     let mut opts = TestOpts::new();
     opts.shuffle = true;

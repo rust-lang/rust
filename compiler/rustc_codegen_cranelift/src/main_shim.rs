@@ -75,7 +75,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         let main_func_id = m.declare_function(main_name, Linkage::Import, &main_sig).unwrap();
 
         let mut ctx = Context::new();
-        ctx.func = Function::with_name_signature(ExternalName::user(0, 0), cmain_sig);
+        ctx.func.signature = cmain_sig;
         {
             let mut func_ctx = FunctionBuilderContext::new();
             let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
