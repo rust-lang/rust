@@ -2828,11 +2828,7 @@ void createTerminator(DiffeGradientUtils *gutils, BasicBlock *oBB,
     } else if (!gutils->isConstantValue(ret)) {
       toret = gutils->diffe(ret, nBuilder);
     } else {
-      IRBuilder<> eB(gutils->inversionAllocs);
-      Type *retTy = gutils->getShadowType(ret->getType());
-      auto al = eB.CreateAlloca(retTy);
-      ZeroMemory(eB, retTy, al, /*isTape*/ false);
-      toret = nBuilder.CreateLoad(al);
+      toret = gutils->invertPointerM(ret, nBuilder, /*nullInit*/ true);
     }
 
     break;
@@ -2853,9 +2849,8 @@ void createTerminator(DiffeGradientUtils *gutils, BasicBlock *oBB,
       toret =
           nBuilder.CreateInsertValue(toret, gutils->diffe(ret, nBuilder), 1);
     } else {
-      Type *retTy = gutils->getShadowType(ret->getType());
-      toret =
-          nBuilder.CreateInsertValue(toret, Constant::getNullValue(retTy), 1);
+      toret = nBuilder.CreateInsertValue(
+          toret, gutils->invertPointerM(ret, nBuilder, /*nullInit*/ true), 1);
     }
     break;
   }

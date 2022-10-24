@@ -1132,6 +1132,52 @@ public:
     bool constantval = gutils->isConstantValue(orig_val) ||
                        parseTBAA(I, DL).Inner0().isIntegral();
 
+    // TODO allow recognition of other types that could contain pointers [e.g.
+    // {void*, void*} or <2 x i64> ]
+    auto storeSize = DL.getTypeSizeInBits(valType) / 8;
+
+    auto vd = TR.query(orig_ptr).Lookup(storeSize, DL);
+
+    if (!vd.isKnown()) {
+      if (looseTypeAnalysis || true) {
+        vd = defaultTypeTreeForLLVM(valType, &I);
+        EmitWarning("CannotDeduceType", I, "failed to deduce type of xtore ",
+                    I);
+        goto known;
+      }
+      if (CustomErrorHandler) {
+        std::string str;
+        raw_string_ostream ss(str);
+        ss << "Cannot deduce type of store " << I;
+        CustomErrorHandler(str.c_str(), wrap(&I), ErrorType::NoType,
+                           &TR.analyzer);
+      }
+      EmitFailure("CannotDeduceType", I.getDebugLoc(), &I,
+                  "failed to deduce type of store ", I);
+
+      TR.intType(storeSize, orig_ptr, /*errifnotfound*/ true,
+                 /*pointerIntSame*/ true);
+      llvm_unreachable("bad mti");
+    known:;
+    }
+
+    auto dt = vd[{-1}];
+    for (size_t i = 0; i < storeSize; ++i) {
+      bool Legal = true;
+      dt.checkedOrIn(vd[{(int)i}], /*PointerIntSame*/ true, Legal);
+      if (!Legal) {
+        if (CustomErrorHandler) {
+          std::string str;
+          raw_string_ostream ss(str);
+          ss << "Cannot deduce single type of store " << I;
+          CustomErrorHandler(str.c_str(), wrap(&I), ErrorType::NoType,
+                             &TR.analyzer);
+        }
+        EmitFailure("CannotDeduceType", I.getDebugLoc(), &I,
+                    "failed to deduce single type of store ", I);
+      }
+    }
+
     if (Mode == DerivativeMode::ForwardMode) {
       IRBuilder<> Builder2(&I);
       getForwardBuilder(Builder2);
@@ -1140,7 +1186,8 @@ public:
       // TODO type analyze
       if (!constantval)
         diff = gutils->invertPointerM(orig_val, Builder2, /*nullShadow*/ true);
-      else if (orig_val->getType()->isPointerTy())
+      else if (orig_val->getType()->isPointerTy() || dt == BaseType::Pointer ||
+               dt == BaseType::Integer)
         diff = gutils->invertPointerM(orig_val, Builder2, /*nullShadow*/ false);
       else
         diff = gutils->invertPointerM(orig_val, Builder2, /*nullShadow*/ true);
@@ -1150,41 +1197,8 @@ public:
       return;
     }
 
-    // TODO allow recognition of other types that could contain pointers [e.g.
-    // {void*, void*} or <2 x i64> ]
-    auto storeSize = DL.getTypeSizeInBits(valType) / 8;
-
     //! Storing a floating point value
-    Type *FT = nullptr;
-    if (valType->isFPOrFPVectorTy()) {
-      FT = valType->getScalarType();
-    } else if (!valType->isPointerTy()) {
-      auto fp =
-          TR.firstPointer(storeSize, orig_ptr, &I, /*errifnotfound*/ false,
-                          /*pointerIntSame*/ true);
-      if (fp.isKnown()) {
-        FT = fp.isFloat();
-      } else if (looseTypeAnalysis && (isa<ConstantInt>(orig_val) ||
-                                       valType->isIntOrIntVectorTy())) {
-        llvm::errs() << "assuming type as integral for store: " << I << "\n";
-        FT = nullptr;
-      } else {
-
-        if (CustomErrorHandler) {
-          std::string str;
-          raw_string_ostream ss(str);
-          ss << "Cannot deduce type of store " << I;
-          CustomErrorHandler(str.c_str(), wrap(&I), ErrorType::NoType,
-                             &TR.analyzer);
-        }
-        EmitFailure("CannotDeduceType", I.getDebugLoc(), &I,
-                    "failed to deduce type of store ", I);
-        TR.firstPointer(storeSize, orig_ptr, &I, /*errifnotfound*/ true,
-                        /*pointerIntSame*/ true);
-      }
-    }
-
-    if (FT) {
+    if (Type *FT = dt.isFloat()) {
       //! Only need to update the reverse function
       switch (Mode) {
       case DerivativeMode::ReverseModePrimal:

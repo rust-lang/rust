@@ -4060,7 +4060,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     return applyChainRule(oval->getType(), BuilderM, rule);
   }
 
-  if (isConstantValue(oval)) {
+  if (isConstantValue(oval) && !isa<InsertValueInst>(oval) &&
+      !isa<ExtractValueInst>(oval)) {
     // NOTE, this is legal and the correct resolution, however, our activity
     // analysis honeypot no longer exists
 
@@ -4084,7 +4085,6 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 
     return applyChainRule(oval->getType(), BuilderM, rule);
   }
-  assert(!isConstantValue(oval));
 
   auto M = oldFunc->getParent();
   assert(oval);
@@ -4477,7 +4477,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     goto end;
   } else if (auto arg = dyn_cast<ExtractValueInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
-    auto ip = invertPointerM(arg->getOperand(0), bb);
+    auto ip = invertPointerM(arg->getOperand(0), bb, nullShadow);
 
     auto rule = [&bb, &arg](Value *ip) {
       return bb.CreateExtractValue(ip, arg->getIndices(),
