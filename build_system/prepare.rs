@@ -7,12 +7,8 @@ use std::process::Command;
 use super::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
 use super::utils::{cargo_command, copy_dir_recursively, spawn_and_wait};
 
-pub(crate) const ABI_CAFE: GitRepo = GitRepo::github(
-    "Gankra",
-    "abi-cafe",
-    "4c6dc8c9c687e2b3a760ff2176ce236872b37212",
-    "abi-cafe",
-);
+pub(crate) const ABI_CAFE: GitRepo =
+    GitRepo::github("Gankra", "abi-cafe", "4c6dc8c9c687e2b3a760ff2176ce236872b37212", "abi-cafe");
 
 pub(crate) const RAND: GitRepo =
     GitRepo::github("rust-random", "rand", "0f933f9c7176e53b2a3c7952ded484e1783f0bf1", "rand");
