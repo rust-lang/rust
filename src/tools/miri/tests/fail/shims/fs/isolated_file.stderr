@@ -11,11 +11,11 @@ LL |         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode a
    = note: inside `std::sys::PLATFORM::cvt_r::<i32, [closure@std::sys::PLATFORM::fs::File::open_c::{closure#0}]>` at RUSTLIB/std/src/sys/PLATFORM/mod.rs:LL:CC
    = note: inside `std::sys::PLATFORM::fs::File::open_c` at RUSTLIB/std/src/sys/PLATFORM/fs.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/sys/PLATFORM/fs.rs:LL:CC
-   = note: inside `std::sys::PLATFORM::small_c_string::run_with_cstr::<std::sys::PLATFORM::fs::File, [closure@std::sys::PLATFORM::fs::File::open::{closure#0}]>` at RUSTLIB/std/src/sys/PLATFORM/small_c_string.rs:LL:CC
-   = note: inside `std::sys::PLATFORM::small_c_string::run_path_with_cstr::<std::sys::PLATFORM::fs::File, [closure@std::sys::PLATFORM::fs::File::open::{closure#0}]>` at RUSTLIB/std/src/sys/PLATFORM/small_c_string.rs:LL:CC
+   = note: inside `std::sys::PLATFORM::small_c_string::run_with_cstr::<std::sys::PLATFORM::fs::File, [closure@std::sys::PLATFORM::fs::File::open::{closure#0}], '_>` at RUSTLIB/std/src/sys/PLATFORM/small_c_string.rs:LL:CC
+   = note: inside `std::sys::PLATFORM::small_c_string::run_path_with_cstr::<std::sys::PLATFORM::fs::File, [closure@std::sys::PLATFORM::fs::File::open::{closure#0}], '_>` at RUSTLIB/std/src/sys/PLATFORM/small_c_string.rs:LL:CC
    = note: inside `std::sys::PLATFORM::fs::File::open` at RUSTLIB/std/src/sys/PLATFORM/fs.rs:LL:CC
    = note: inside `std::fs::OpenOptions::_open` at RUSTLIB/std/src/fs.rs:LL:CC
-   = note: inside `std::fs::OpenOptions::open::<&std::path::Path>` at RUSTLIB/std/src/fs.rs:LL:CC
+   = note: inside `std::fs::OpenOptions::open::<&std::path::Path, '_>` at RUSTLIB/std/src/fs.rs:LL:CC
    = note: inside `std::fs::File::open::<&str>` at RUSTLIB/std/src/fs.rs:LL:CC
 note: inside `main` at $DIR/isolated_file.rs:LL:CC
   --> $DIR/isolated_file.rs:LL:CC
