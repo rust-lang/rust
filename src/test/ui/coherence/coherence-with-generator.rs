@@ -12,7 +12,6 @@ fn defining_use() -> OpaqueGenerator {
 struct Wrapper<T>(T);
 trait Trait {}
 impl Trait for Wrapper<OpaqueGenerator> {}
-//~^ ERROR cannot implement trait on type alias impl trait
 impl<T: Sync> Trait for Wrapper<T> {}
 //~^ ERROR conflicting implementations of trait `Trait` for type `Wrapper<OpaqueGenerator>`
 
