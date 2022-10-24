@@ -1,7 +1,7 @@
 // run-rustfix
 #![allow(unused)]
 #![feature(custom_inner_attributes)]
-#![warn(clippy::rewind_instead_of_seek_to_start)]
+#![warn(clippy::seek_to_start_instead_of_rewind)]
 
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -51,12 +51,12 @@ fn seek_to_start_false_trait_bound<T: MySeekTrait>(t: &mut T) {
 
 // This should trigger clippy warning
 fn seek_to_start<T: Seek>(t: &mut T) {
-    t.rewind();
+    t.seek(SeekFrom::Start(0));
 }
 
 // This should trigger clippy warning
 fn owned_seek_to_start<T: Seek>(mut t: T) {
-    t.rewind();
+    t.seek(SeekFrom::Start(0));
 }
 
 // This should NOT trigger clippy warning because
@@ -128,7 +128,7 @@ fn msrv_1_55() {
     let hello = "Hello!\n";
     write!(f, "{hello}").unwrap();
 
-    f.rewind();
+    f.seek(SeekFrom::Start(0));
 
     let mut buf = String::new();
     f.read_to_string(&mut buf).unwrap();

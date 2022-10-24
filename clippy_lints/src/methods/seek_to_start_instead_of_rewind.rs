@@ -7,7 +7,7 @@ use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
-use super::REWIND_INSTEAD_OF_SEEK_TO_START;
+use super::SEEK_TO_START_INSTEAD_OF_REWIND;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -32,7 +32,7 @@ pub(super) fn check<'tcx>(
         let method_call_span = expr.span.with_lo(name_span.lo());
         span_lint_and_then(
             cx,
-            REWIND_INSTEAD_OF_SEEK_TO_START,
+            SEEK_TO_START_INSTEAD_OF_REWIND,
             method_call_span,
             "used `seek` to go to the start of the stream",
             |diag| {

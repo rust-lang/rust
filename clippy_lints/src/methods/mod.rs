@@ -68,8 +68,8 @@ mod or_then_unwrap;
 mod path_buf_push_overwrite;
 mod range_zip_with_len;
 mod repeat_once;
-mod rewind_instead_of_seek_to_start;
 mod search_is_some;
+mod seek_to_start_instead_of_rewind;
 mod single_char_add_str;
 mod single_char_insert_string;
 mod single_char_pattern;
@@ -3093,7 +3093,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.66.0"]
-    pub REWIND_INSTEAD_OF_SEEK_TO_START,
+    pub SEEK_TO_START_INSTEAD_OF_REWIND,
     complexity,
     "jumping to the start of stream using `seek` method"
 }
@@ -3222,7 +3222,7 @@ impl_lint_pass!(Methods => [
     VEC_RESIZE_TO_ZERO,
     VERBOSE_FILE_READS,
     ITER_KV_MAP,
-    REWIND_INSTEAD_OF_SEEK_TO_START,
+    SEEK_TO_START_INSTEAD_OF_REWIND,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3639,7 +3639,7 @@ impl Methods {
                 },
                 ("seek", [arg]) => {
                     if meets_msrv(self.msrv, msrvs::SEEK_REWIND) {
-                        rewind_instead_of_seek_to_start::check(cx, expr, recv, arg, span);
+                        seek_to_start_instead_of_rewind::check(cx, expr, recv, arg, span);
                     }
                 },
                 ("sort", []) => {
