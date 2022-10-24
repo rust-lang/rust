@@ -208,12 +208,13 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 pub(crate) fn run_tests(
     mut test_args: Vec<String>,
     nocapture: bool,
-    tests: Vec<test::TestDescAndFn>,
+    mut tests: Vec<test::TestDescAndFn>,
 ) {
     test_args.insert(0, "rustdoctest".to_string());
     if nocapture {
         test_args.push("--nocapture".to_string());
     }
+    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
     test::test_main(&test_args, tests, None);
 }
 
