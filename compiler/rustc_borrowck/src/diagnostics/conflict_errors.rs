@@ -2249,7 +2249,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// Describe the reason for the fake borrow that was assigned to `place`.
-    fn classify_immutable_section(&self, place: Place<'tcx>) -> Option<&'static str> {
+    fn classify_immutable_section(&self, place: Place<'tcx>) -> Option<u8> {
         use rustc_middle::mir::visit::Visitor;
         struct FakeReadCauseFinder<'tcx> {
             place: Place<'tcx>,
@@ -2270,8 +2270,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut visitor = FakeReadCauseFinder { place, cause: None };
         visitor.visit_body(&self.body);
         match visitor.cause {
-            Some(FakeReadCause::ForMatchGuard) => Some("match guard"),
-            Some(FakeReadCause::ForIndex) => Some("indexing expression"),
+            Some(FakeReadCause::ForMatchGuard) => Some(0),
+            Some(FakeReadCause::ForIndex) => Some(4),
             _ => None,
         }
     }

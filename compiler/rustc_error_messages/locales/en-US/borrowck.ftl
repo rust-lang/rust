@@ -58,3 +58,26 @@ borrowck_returned_lifetime_short =
 
 borrowck_used_impl_require_static =
     the used `impl` has a `'static` requirement
+
+borrowck_cannot_mutate_in_immutable_section =
+    cannot {-action} {-place_descr} in {-section_descr}
+    .label = cannot {-action}
+    .immu_label = value is immutable in {-section_descr}
+
+-action = {$action ->
+        [assign] assign
+        *[other] mutably borrow
+    }
+
+-place_descr =
+    {$place_desc ->
+        [value] value
+        *[other] {$place_desc}
+    }
+
+-section_descr =
+    {$fake_read_cause ->
+        [0] match guard
+        [4] indexing expression
+        *[other] {""}
+    }

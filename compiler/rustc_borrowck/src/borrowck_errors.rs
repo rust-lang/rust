@@ -4,6 +4,8 @@ use rustc_errors::{
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
+use crate::session_diagnostics::ImmutSectionMutErr;
+
 impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     pub(crate) fn cannot_move_when_borrowed(
         &self,
@@ -348,21 +350,16 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         mutate_span: Span,
         immutable_span: Span,
         immutable_place: &str,
-        immutable_section: &str,
+        fake_read_cause: u8,
         action: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
+        self.infcx.tcx.sess.create_err(ImmutSectionMutErr {
+            immutable_span,
             mutate_span,
-            E0510,
-            "cannot {} {} in {}",
             action,
-            immutable_place,
-            immutable_section,
-        );
-        err.span_label(mutate_span, format!("cannot {}", action));
-        err.span_label(immutable_span, format!("value is immutable in {}", immutable_section));
-        err
+            place_desc: immutable_place,
+            fake_read_cause,
+        })
     }
 
     pub(crate) fn cannot_borrow_across_generator_yield(

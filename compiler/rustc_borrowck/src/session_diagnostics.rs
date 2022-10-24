@@ -148,3 +148,16 @@ pub(crate) enum RequireStaticErr {
         multi_span: MultiSpan,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag(borrowck_cannot_mutate_in_immutable_section, code = "E0510")]
+pub(crate) struct ImmutSectionMutErr<'a> {
+    #[primary_span]
+    #[label]
+    pub mutate_span: Span,
+    #[label(immu_label)]
+    pub immutable_span: Span,
+    pub action: &'a str,
+    pub place_desc: &'a str,
+    pub fake_read_cause: u8,
+}

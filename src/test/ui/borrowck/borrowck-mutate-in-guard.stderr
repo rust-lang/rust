@@ -1,16 +1,16 @@
-error[E0510]: cannot assign `x` in match guard
+error[E0510]: cannot mutably borrow {$place_desc} in 
   --> $DIR/borrowck-mutate-in-guard.rs:10:25
    |
 LL |     match x {
-   |           - value is immutable in match guard
+   |           - value is immutable in 
 LL |         Enum::A(_) if { x = Enum::B(false); false } => 1,
-   |                         ^^^^^^^^^^^^^^^^^^ cannot assign
+   |                         ^^^^^^^^^^^^^^^^^^ cannot mutably borrow
 
-error[E0510]: cannot mutably borrow `x` in match guard
+error[E0510]: cannot mutably borrow {$place_desc} in 
   --> $DIR/borrowck-mutate-in-guard.rs:12:33
    |
 LL |     match x {
-   |           - value is immutable in match guard
+   |           - value is immutable in 
 ...
 LL |         Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
    |                                 ^^^^^^ cannot mutably borrow
