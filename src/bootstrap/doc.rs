@@ -457,7 +457,8 @@ impl Step for Std {
         let target = self.target;
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
+
+        builder.ensure(SharedAssets { target: self.target });
 
         let index_page = builder.src.join("src/doc/index.md").into_os_string();
         let mut extra_args = vec![
