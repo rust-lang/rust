@@ -79,6 +79,7 @@ pub enum ForceCollect {
 pub enum TrailingToken {
     None,
     Semi,
+    Gt,
     /// If the trailing token is a comma, then capture it
     /// Otherwise, ignore the trailing token
     MaybeComma,
