@@ -4,9 +4,23 @@ allow-unauthenticated = [
     "good-first-issue"
 ]
 
-[assign]
-
 # Allows shortcuts like `@rustbot ready`
 #
 # See https://github.com/rust-lang/triagebot/wiki/Shortcuts
 [shortcut]
+
+[assign]
+contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
+
+[assign.owners]
+"/.github" = ["@flip1995"]
+"*" = [
+    "@flip1995",
+    "@Manishearth",
+    "@llogiq",
+    "@giraffate",
+    "@xFrednet",
+    "@Alexendoo",
+    "@dswij",
+    "@Jarcho",
+]
