@@ -249,7 +249,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if matches!(
                     self.diverges.get(),
                     Diverges::Always(DivergeReason::Uninhabited, _)
-                ) && self.tcx.is_ty_uninhabited_from(self.parent_module, ty, self.param_env) => {}
+                ) && self.tcx.is_ty_uninhabited_from(
+                    self.parent_module,
+                    self.freshen(ty),
+                    self.param_env,
+                ) => {}
             _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression"),
         }
 
@@ -258,7 +262,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if ty.is_never() {
                 self.diverges.set(Diverges::Always(DivergeReason::Other, expr));
             } else if expr_may_be_uninhabited(expr)
-                && self.tcx.is_ty_uninhabited_from(self.parent_module, ty, self.param_env)
+                && self.tcx.is_ty_uninhabited_from(
+                    self.parent_module,
+                    self.freshen(ty),
+                    self.param_env,
+                )
             {
                 self.diverges.set(Diverges::Always(DivergeReason::Uninhabited, expr));
             }
