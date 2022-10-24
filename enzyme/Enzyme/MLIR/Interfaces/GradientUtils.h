@@ -77,6 +77,8 @@ public:
   void setDiffe(mlir::Value val, mlir::Value toset, OpBuilder &BuilderM);
   void forceAugmentedReturns();
 
+  Operation *cloneWithNewOperands(OpBuilder &B, Operation *op);
+
   LogicalResult visitChild(Operation *op);
 };
 

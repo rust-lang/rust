@@ -126,6 +126,14 @@ mlir::enzyme::MGradientUtils::getNewFromOriginal(Operation *originst) const {
   return found->second;
 }
 
+Operation *mlir::enzyme::MGradientUtils::cloneWithNewOperands(OpBuilder &B,
+                                                              Operation *op) {
+  BlockAndValueMapping map;
+  for (auto operand : op->getOperands())
+    map.map(operand, getNewFromOriginal(operand));
+  return B.clone(*op, map);
+}
+
 bool mlir::enzyme::MGradientUtils::isConstantValue(Value v) const {
   if (isa<mlir::IntegerType>(v.getType()))
     return true;
