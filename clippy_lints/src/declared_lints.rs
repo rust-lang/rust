@@ -251,6 +251,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::manual_bits::MANUAL_BITS_INFO,
     crate::manual_clamp::MANUAL_CLAMP_INFO,
     crate::manual_instant_elapsed::MANUAL_INSTANT_ELAPSED_INFO,
+    crate::manual_let_else::MANUAL_LET_ELSE_INFO,
     crate::manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE_INFO,
     crate::manual_rem_euclid::MANUAL_REM_EUCLID_INFO,
     crate::manual_retain::MANUAL_RETAIN_INFO,

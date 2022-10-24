@@ -1,0 +1,20 @@
+### What it does
+
+Warn of cases where `let...else` could be used
+
+### Why is this bad?
+
+`let...else` provides a standard construct for this pattern
+that people can easily recognize. It's also more compact.
+
+### Example
+
+```
+let v = if let Some(v) = w { v } else { return };
+```
+
+Could be written:
+
+```
+let Some(v) = w else { return };
+```

@@ -147,9 +147,8 @@ impl Constant {
                 _ => None,
             },
             (&Self::Vec(ref l), &Self::Vec(ref r)) => {
-                let cmp_type = match *cmp_type.kind() {
-                    ty::Array(ty, _) | ty::Slice(ty) => ty,
-                    _ => return None,
+                let (ty::Array(cmp_type, _) | ty::Slice(cmp_type)) = *cmp_type.kind() else {
+                    return None
                 };
                 iter::zip(l, r)
                     .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
@@ -401,10 +400,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         use self::Constant::{Int, F32, F64};
         match *o {
             Int(value) => {
-                let ity = match *ty.kind() {
-                    ty::Int(ity) => ity,
-                    _ => return None,
-                };
+                let ty::Int(ity) = *ty.kind() else { return None };
                 // sign extend
                 let value = sext(self.lcx.tcx, value, ity);
                 let value = value.checked_neg()?;

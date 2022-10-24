@@ -274,9 +274,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
         }
 
         let typeck = cx.typeck_results();
-        let (kind, sub_expr) = if let Some(x) = try_parse_ref_op(cx.tcx, typeck, expr) {
-            x
-        } else {
+        let Some((kind, sub_expr)) = try_parse_ref_op(cx.tcx, typeck, expr) else {
             // The whole chain of reference operations has been seen
             if let Some((state, data)) = self.state.take() {
                 report(cx, expr, state, data);
