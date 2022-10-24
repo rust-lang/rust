@@ -11,7 +11,7 @@ declare_lint! {
     /// scope.
     ///
     /// ### Example
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// struct SomeStruct;
     /// impl Drop for SomeStruct {
     ///     fn drop(&mut self) {
