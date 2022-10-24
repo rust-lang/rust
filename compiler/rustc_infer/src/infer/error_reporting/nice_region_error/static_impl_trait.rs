@@ -286,8 +286,8 @@ pub fn suggest_new_region_bound(
 ) {
     debug!("try_report_static_impl_trait: fn_return={:?}", fn_returns);
     // FIXME: account for the need of parens in `&(dyn Trait + '_)`
-    let consider = "consider changing the";
-    let declare = "to declare that the";
+    let consider = "consider changing";
+    let declare = "to declare that";
     let explicit = format!("you can add an explicit `{}` lifetime bound", lifetime_name);
     let explicit_static =
         arg.map(|arg| format!("explicit `'static` bound to the lifetime of {}", arg));
@@ -305,6 +305,10 @@ pub fn suggest_new_region_bound(
                     return;
                 };
 
+                // Get the identity type for this RPIT
+                let did = item_id.def_id.to_def_id();
+                let ty = tcx.mk_opaque(did, ty::InternalSubsts::identity_for_item(tcx, did));
+
                 if let Some(span) = opaque
                     .bounds
                     .iter()
@@ -321,7 +325,7 @@ pub fn suggest_new_region_bound(
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
                             span,
-                            &format!("{} `impl Trait`'s {}", consider, explicit_static),
+                            &format!("{consider} `{ty}`'s {explicit_static}"),
                             &lifetime_name,
                             Applicability::MaybeIncorrect,
                         );
@@ -351,12 +355,7 @@ pub fn suggest_new_region_bound(
                 } else {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
-                        &format!(
-                            "{declare} `impl Trait` {captures}, {explicit}",
-                            declare = declare,
-                            captures = captures,
-                            explicit = explicit,
-                        ),
+                        &format!("{declare} `{ty}` {captures}, {explicit}",),
                         &plus_lt,
                         Applicability::MaybeIncorrect,
                     );
@@ -367,7 +366,7 @@ pub fn suggest_new_region_bound(
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
                         &format!(
-                            "{declare} trait object {captures}, {explicit}",
+                            "{declare} the trait object {captures}, {explicit}",
                             declare = declare,
                             captures = captures,
                             explicit = explicit,
@@ -384,7 +383,7 @@ pub fn suggest_new_region_bound(
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
                             lt.span,
-                            &format!("{} trait object's {}", consider, explicit_static),
+                            &format!("{} the trait object's {}", consider, explicit_static),
                             &lifetime_name,
                             Applicability::MaybeIncorrect,
                         );
