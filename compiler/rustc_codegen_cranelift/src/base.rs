@@ -6,6 +6,8 @@ use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
+use cranelift_codegen::ir::UserFuncName;
+
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
@@ -64,7 +66,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let mut func_ctx = FunctionBuilderContext::new();
     let mut func = cached_func;
     func.clear();
-    func.name = ExternalName::user(0, func_id.as_u32());
+    func.name = UserFuncName::user(0, func_id.as_u32());
     func.signature = sig;
     func.collect_debug_info();
 
@@ -706,9 +708,9 @@ fn codegen_stmt<'tcx>(
                     let operand = codegen_operand(fx, operand);
                     operand.unsize_value(fx, lval);
                 }
-                Rvalue::Cast(CastKind::DynStar, _, _) => {
-                    // FIXME(dyn-star)
-                    unimplemented!()
+                Rvalue::Cast(CastKind::DynStar, ref operand, _) => {
+                    let operand = codegen_operand(fx, operand);
+                    operand.coerce_dyn_star(fx, lval);
                 }
                 Rvalue::Discriminant(place) => {
                     let place = codegen_place(fx, place);
@@ -922,7 +924,7 @@ pub(crate) fn codegen_operand<'tcx>(
             let cplace = codegen_place(fx, *place);
             cplace.to_cvalue(fx)
         }
-        Operand::Constant(const_) => crate::constant::codegen_constant(fx, const_),
+        Operand::Constant(const_) => crate::constant::codegen_constant_operand(fx, const_),
     }
 }
 
