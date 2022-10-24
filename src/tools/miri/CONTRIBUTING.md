@@ -279,13 +279,12 @@ With this, you should now have a working development setup! See
 ## Advanced topic: Syncing with the rustc repo
 
 We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit
-changes between the rustc and Miri repositories. For now, josh needs to be built
+changes between the rustc and Miri repositories. For now, a fork of josh needs to be built
 from source. This downloads and runs josh:
 
 ```sh
-git clone https://github.com/josh-project/josh
+git clone https://github.com/RalfJung/josh
 cd josh
-git checkout @changes/master/christian.schilling.de@gmail.com/start-filter
 cargo run --release -p josh-proxy -- --local=$(pwd)/local --remote=https://github.com --no-background
 ```
 
