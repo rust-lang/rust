@@ -1233,9 +1233,6 @@ a.test-arrow {
 .example-wrap:hover .test-arrow {
 	visibility: visible;
 }
-a.test-arrow:hover {
-	text-decoration: none;
-}
 
 .code-attribute {
 	font-weight: 300;
