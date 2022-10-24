@@ -1,6 +1,6 @@
 //! A constant propagation optimization pass based on dataflow analysis.
 //!
-//! Tracks places that have a scalar type.
+//! Currently, this pass only propagates scalar values.
 
 use rustc_const_eval::interpret::{ConstValue, ImmTy, Immediate, InterpCx, Scalar};
 use rustc_data_structures::fx::FxHashMap;
@@ -289,7 +289,13 @@ impl<'tcx> ConstAnalysis<'tcx> {
 struct CollectAndPatch<'tcx, 'map> {
     tcx: TyCtxt<'tcx>,
     map: &'map Map,
+
+    /// For a given MIR location, this stores the values of the operands used by that location. In
+    /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
+    /// properly captured.
     before_effect: FxHashMap<(Location, Place<'tcx>), ScalarTy<'tcx>>,
+
+    /// Stores the assigned values for assignments where the Rvalue is constant.
     assignments: FxHashMap<Location, ScalarTy<'tcx>>,
 }
 
