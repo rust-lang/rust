@@ -523,7 +523,7 @@ pub struct MismatchedStaticLifetime<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer::explicit_lifetime_required, code = "E0621")]
+#[diag(infer_explicit_lifetime_required, code = "E0621")]
 pub struct ExplicitLifetimeRequired<'a> {
     #[primary_span]
     #[label]
@@ -533,7 +533,7 @@ pub struct ExplicitLifetimeRequired<'a> {
     pub named: String,
 
     #[suggestion(
-        infer::explicit_lifetime_required_sugg,
+        infer_explicit_lifetime_required_sugg,
         code = "{new_ty}",
         applicability = "unspecified"
     )]
@@ -544,7 +544,7 @@ pub struct ExplicitLifetimeRequired<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum ActualImplExplNotes {
-    #[note(infer::actual_impl_expl_expected_signature_two)]
+    #[note(infer_actual_impl_expl_expected_signature_two)]
     ExpectedSignatureTwo {
         leading_ellipsis: bool,
         ty_or_sig: String,
@@ -552,23 +552,23 @@ pub enum ActualImplExplNotes {
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note(infer::actual_impl_expl_expected_signature_any)]
+    #[note(infer_actual_impl_expl_expected_signature_any)]
     ExpectedSignatureAny {
         leading_ellipsis: bool,
         ty_or_sig: String,
         trait_path: String,
         lifetime_1: usize,
     },
-    #[note(infer::actual_impl_expl_expected_signature_some)]
+    #[note(infer_actual_impl_expl_expected_signature_some)]
     ExpectedSignatureSome {
         leading_ellipsis: bool,
         ty_or_sig: String,
         trait_path: String,
         lifetime_1: usize,
     },
-    #[note(infer::actual_impl_expl_expected_signature_nothing)]
+    #[note(infer_actual_impl_expl_expected_signature_nothing)]
     ExpectedSignatureNothing { leading_ellipsis: bool, ty_or_sig: String, trait_path: String },
-    #[note(infer::actual_impl_expl_expected_passive_two)]
+    #[note(infer_actual_impl_expl_expected_passive_two)]
     ExpectedPassiveTwo {
         leading_ellipsis: bool,
         ty_or_sig: String,
@@ -576,23 +576,23 @@ pub enum ActualImplExplNotes {
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note(infer::actual_impl_expl_expected_passive_any)]
+    #[note(infer_actual_impl_expl_expected_passive_any)]
     ExpectedPassiveAny {
         leading_ellipsis: bool,
         ty_or_sig: String,
         trait_path: String,
         lifetime_1: usize,
     },
-    #[note(infer::actual_impl_expl_expected_passive_some)]
+    #[note(infer_actual_impl_expl_expected_passive_some)]
     ExpectedPassiveSome {
         leading_ellipsis: bool,
         ty_or_sig: String,
         trait_path: String,
         lifetime_1: usize,
     },
-    #[note(infer::actual_impl_expl_expected_passive_nothing)]
+    #[note(infer_actual_impl_expl_expected_passive_nothing)]
     ExpectedPassiveNothing { leading_ellipsis: bool, ty_or_sig: String, trait_path: String },
-    #[note(infer::actual_impl_expl_expected_other_two)]
+    #[note(infer_actual_impl_expl_expected_other_two)]
     ExpectedOtherTwo {
         leading_ellipsis: bool,
         ty_or_sig: String,
@@ -600,32 +600,32 @@ pub enum ActualImplExplNotes {
         lifetime_1: usize,
         lifetime_2: usize,
     },
-    #[note(infer::actual_impl_expl_expected_other_any)]
+    #[note(infer_actual_impl_expl_expected_other_any)]
     ExpectedOtherAny {
         leading_ellipsis: bool,
         ty_or_sig: String,
         trait_path: String,
         lifetime_1: usize,
     },
-    #[note(infer::actual_impl_expl_expected_other_some)]
+    #[note(infer_actual_impl_expl_expected_other_some)]
     ExpectedOtherSome {
         leading_ellipsis: bool,
         ty_or_sig: String,
         trait_path: String,
         lifetime_1: usize,
     },
-    #[note(infer::actual_impl_expl_expected_other_nothing)]
+    #[note(infer_actual_impl_expl_expected_other_nothing)]
     ExpectedOtherNothing { leading_ellipsis: bool, ty_or_sig: String, trait_path: String },
-    #[note(infer::actual_impl_expl_but_actually_implements_trait)]
+    #[note(infer_actual_impl_expl_but_actually_implements_trait)]
     ButActuallyImplementsTrait { trait_path: String, has_lifetime: bool, lifetime: usize },
-    #[note(infer::actual_impl_expl_but_actually_implemented_for_ty)]
+    #[note(infer_actual_impl_expl_but_actually_implemented_for_ty)]
     ButActuallyImplementedForTy {
         trait_path: String,
         has_lifetime: bool,
         lifetime: usize,
         ty: String,
     },
-    #[note(infer::actual_impl_expl_but_actually_ty_implements)]
+    #[note(infer_actual_impl_expl_but_actually_ty_implements)]
     ButActuallyTyImplements { trait_path: String, has_lifetime: bool, lifetime: usize, ty: String },
 }
 
@@ -712,15 +712,15 @@ impl ActualImplExplNotes {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer::trait_placeholder_mismatch)]
+#[diag(infer_trait_placeholder_mismatch)]
 pub struct TraitPlaceholderMismatch {
     #[primary_span]
     pub span: Span,
-    #[label(infer::label_satisfy)]
+    #[label(label_satisfy)]
     pub satisfy_span: Option<Span>,
-    #[label(infer::label_where)]
+    #[label(label_where)]
     pub where_span: Option<Span>,
-    #[label(infer::label_dup)]
+    #[label(label_dup)]
     pub dup_span: Option<Span>,
     pub def_id: String,
     pub trait_def_id: String,
@@ -741,26 +741,26 @@ impl AddToDiagnostic for ConsiderBorrowingParamHelp {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
             // Seems like we can't call f() here as Into<DiagnosticMessage> is required
-            type_param_span.push_span_label(span, fluent::infer::tid_consider_borrowing);
+            type_param_span.push_span_label(span, fluent::infer_tid_consider_borrowing);
         }
-        let msg = f(diag, fluent::infer::tid_param_help.into());
+        let msg = f(diag, fluent::infer_tid_param_help.into());
         diag.span_help(type_param_span, msg);
     }
 }
 
 #[derive(Subdiagnostic)]
-#[help(infer::tid_rel_help)]
+#[help(infer_tid_rel_help)]
 pub struct RelationshipHelp;
 
 #[derive(Diagnostic)]
-#[diag(infer::trait_impl_diff)]
+#[diag(infer_trait_impl_diff)]
 pub struct TraitImplDiff {
     #[primary_span]
-    #[label(infer::found)]
+    #[label(found)]
     pub sp: Span,
-    #[label(infer::expected)]
+    #[label(expected)]
     pub trait_sp: Span,
-    #[note(infer::expected_found)]
+    #[note(expected_found)]
     pub note: (),
     #[subdiagnostic]
     pub param_help: ConsiderBorrowingParamHelp,
@@ -783,11 +783,11 @@ impl AddToDiagnostic for DynTraitConstraintSuggestion {
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
         let mut multi_span: MultiSpan = vec![self.span].into();
-        multi_span.push_span_label(self.span, fluent::infer::dtcs_has_lifetime_req_label);
-        multi_span.push_span_label(self.ident.span, fluent::infer::dtcs_introduces_requirement);
-        let msg = f(diag, fluent::infer::dtcs_has_req_note.into());
+        multi_span.push_span_label(self.span, fluent::infer_dtcs_has_lifetime_req_label);
+        multi_span.push_span_label(self.ident.span, fluent::infer_dtcs_introduces_requirement);
+        let msg = f(diag, fluent::infer_dtcs_has_req_note.into());
         diag.span_note(multi_span, msg);
-        let msg = f(diag, fluent::infer::dtcs_suggestion.into());
+        let msg = f(diag, fluent::infer_dtcs_suggestion.into());
         diag.span_suggestion_verbose(
             self.span.shrink_to_hi(),
             msg,
@@ -798,12 +798,12 @@ impl AddToDiagnostic for DynTraitConstraintSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer::but_calling_introduces, code = "E0772")]
+#[diag(infer_but_calling_introduces, code = "E0772")]
 pub struct ButCallingIntroduces {
-    #[label(infer::label1)]
+    #[label(label1)]
     pub param_ty_span: Span,
     #[primary_span]
-    #[label(infer::label2)]
+    #[label(label2)]
     pub cause_span: Span,
 
     pub has_param_name: bool,
@@ -829,14 +829,14 @@ impl AddToDiagnostic for ReqIntroducedLocations {
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
         for sp in self.spans {
-            self.span.push_span_label(sp, fluent::infer::ril_introduced_here);
+            self.span.push_span_label(sp, fluent::infer_ril_introduced_here);
         }
 
         if self.add_label {
-            self.span.push_span_label(self.fn_decl_span, fluent::infer::ril_introduced_by);
+            self.span.push_span_label(self.fn_decl_span, fluent::infer_ril_introduced_by);
         }
-        self.span.push_span_label(self.cause_span, fluent::infer::ril_because_of);
-        let msg = f(diag, fluent::infer::ril_static_introduced_by.into());
+        self.span.push_span_label(self.cause_span, fluent::infer_ril_because_of);
+        let msg = f(diag, fluent::infer_ril_static_introduced_by.into());
         diag.span_note(self.span, msg);
     }
 }
@@ -851,25 +851,25 @@ impl AddToDiagnostic for MoreTargeted {
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
         diag.code(rustc_errors::error_code!(E0772));
-        diag.set_primary_message(fluent::infer::more_targeted);
+        diag.set_primary_message(fluent::infer_more_targeted);
         diag.set_arg("ident", self.ident);
     }
 }
 
 #[derive(Diagnostic)]
-#[diag(infer::but_needs_to_satisfy, code = "E0759")]
+#[diag(infer_but_needs_to_satisfy, code = "E0759")]
 pub struct ButNeedsToSatisfy {
     #[primary_span]
     pub sp: Span,
-    #[label(infer::influencer)]
+    #[label(influencer)]
     pub influencer_point: Span,
-    #[label(infer::used_here)]
+    #[label(used_here)]
     pub spans: Vec<Span>,
-    #[label(infer::require)]
+    #[label(require)]
     pub require_span_as_label: Option<Span>,
-    #[note(infer::require)]
+    #[note(require)]
     pub require_span_as_note: Option<Span>,
-    #[note(infer::introduced_by_bound)]
+    #[note(introduced_by_bound)]
     pub bound: Option<Span>,
 
     #[subdiagnostic]
