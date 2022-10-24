@@ -4,7 +4,7 @@
 // immediately, so that we get more errors listed at a time.
 
 #![feature(trace_macros, concat_idents)]
-#![feature(stmt_expr_attributes, arbitrary_enum_discriminant)]
+#![feature(stmt_expr_attributes)]
 
 use std::arch::asm;
 
