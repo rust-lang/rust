@@ -598,8 +598,16 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                 let num_impl_substs = tcx.generics_of(impl_m.container_id(tcx)).params.len();
                 let ty = tcx.fold_regions(ty, |region, _| {
                     let ty::ReFree(_) = region.kind() else { return region; };
-                    let ty::ReEarlyBound(e) = map[&region.into()].expect_region().kind()
-                        else { bug!("expected ReFree to map to ReEarlyBound"); };
+                    let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
+                    else {
+                        tcx
+                            .sess
+                            .delay_span_bug(
+                                return_span,
+                                "expected ReFree to map to ReEarlyBound"
+                            );
+                        return tcx.lifetimes.re_static;
+                    };
                     tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                         def_id: e.def_id,
                         name: e.name,
