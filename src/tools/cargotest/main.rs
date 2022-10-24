@@ -206,6 +206,10 @@ fn run_cargo_test(
         .env("CFG_DISABLE_CROSS_TESTS", "1")
         // Relax #![deny(warnings)] in some crates
         .env("RUSTFLAGS", "--cap-lints warn")
+        // servo tries to use 'lld-link.exe' on windows, but we don't
+        // have lld on our PATH in CI. Override it to use 'link.exe'
+        .env("CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER", "link.exe")
+        .env("CARGO_TARGET_I686_PC_WINDOWS_MSVC_LINKER", "link.exe")
         .current_dir(crate_path)
         .status()
         .unwrap();
