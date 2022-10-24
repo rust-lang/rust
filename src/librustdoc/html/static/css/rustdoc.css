@@ -538,7 +538,6 @@ ul.block, .block li {
 }
 
 .source .content pre.rust {
-	white-space: pre;
 	overflow: auto;
 	padding-left: 0;
 }
