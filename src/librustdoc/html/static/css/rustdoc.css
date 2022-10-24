@@ -402,10 +402,6 @@ img {
 	overflow-y: hidden;
 }
 
-.rustdoc.source .sidebar .sidebar-logo {
-	display: none;
-}
-
 .source .sidebar, #sidebar-toggle, #source-sidebar {
 	background-color: var(--sidebar-background-color);
 }
