@@ -1332,6 +1332,10 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         let id_substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
         debug!(?id_substs);
 
+        // This zip may have several times the same lifetime in `substs` paired with a different
+        // lifetime from `id_substs`.  In that case, we actually want to pick the last one, as it
+        // is the one we introduced in the impl-trait desugaring to be meaningful.  The other ones
+        // are redundant.
         let map = substs.iter().zip(id_substs);
 
         let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> = match origin {
