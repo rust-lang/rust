@@ -80,10 +80,7 @@ jobs:
         - s390x-unknown-linux-gnu
         - wasm32-wasi
         - i586-unknown-linux-gnu
-        - x86_64-linux-android
-        - arm-linux-androideabi
         - mipsel-unknown-linux-musl
-        - aarch64-linux-android
         - nvptx64-nvidia-cuda
         - thumbv6m-none-eabi
         - thumbv7m-none-eabi
@@ -146,18 +143,9 @@ jobs:
           os: windows-latest
         - target: i586-unknown-linux-gnu
           os: ubuntu-latest
-        - target: x86_64-linux-android
-          os: ubuntu-latest
-          disable_assert_instr: 1
-        - target: arm-linux-androideabi
-          os: ubuntu-latest
-          disable_assert_instr: 1
         - target: mipsel-unknown-linux-musl
           os: ubuntu-latest
           norun: 1
-        - target: aarch64-linux-android
-          os: ubuntu-latest
-          disable_assert_instr: 1
         - target: nvptx64-nvidia-cuda
           os: ubuntu-latest
         - target: thumbv6m-none-eabi
