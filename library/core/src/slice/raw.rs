@@ -1,7 +1,9 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
 use crate::array;
-use crate::intrinsics::{assert_unsafe_precondition, is_aligned_and_not_null};
+use crate::intrinsics::{
+    assert_unsafe_precondition, is_aligned_and_not_null, is_valid_allocation_size,
+};
 use crate::ops::Range;
 use crate::ptr;
 
@@ -91,8 +93,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
     unsafe {
         assert_unsafe_precondition!([T](data: *const T, len: usize) =>
-            is_aligned_and_not_null(data)
-                && crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize
+            is_aligned_and_not_null(data) && is_valid_allocation_size::<T>(len)
         );
         &*ptr::slice_from_raw_parts(data, len)
     }
@@ -135,8 +136,7 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
     unsafe {
         assert_unsafe_precondition!([T](data: *mut T, len: usize) =>
-            is_aligned_and_not_null(data)
-                && crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize
+            is_aligned_and_not_null(data) && is_valid_allocation_size::<T>(len)
         );
         &mut *ptr::slice_from_raw_parts_mut(data, len)
     }
