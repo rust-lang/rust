@@ -691,8 +691,21 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let is_expected = &|res| source.is_expected(res);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let typo_sugg = self.lookup_typo_candidate(path, source.namespace(), is_expected);
-        let is_local = &|res: Res| res.opt_def_id().map_or(false, |id| id.is_local());
-        if let TypoCandidate::Shadowed(res, Some(sugg_span)) = typo_sugg && is_local(res) {
+        let is_in_same_file = &|sp1, sp2| {
+            let source_map = self.r.session.source_map();
+            let file1 = source_map.span_to_filename(sp1);
+            let file2 = source_map.span_to_filename(sp2);
+            file1 == file2
+        };
+        // print 'you might have meant' if the candidate is (1) is a shadowed name with
+        // accessible definition and (2) either defined in the same crate as the typo
+        // (could be in a different file) or introduced in the same file as the typo
+        // (could belong to a different crate)
+        if let TypoCandidate::Shadowed(res, Some(sugg_span)) = typo_sugg
+            && res
+                .opt_def_id()
+                .map_or(false, |id| id.is_local() || is_in_same_file(span, sugg_span))
+        {
             err.span_label(
                 sugg_span,
                 format!("you might have meant to refer to this {}", res.descr()),
