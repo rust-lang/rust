@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
 
 /// If `expr` is an (e).await, return the inner expression "e" that's being
 /// waited on.  Otherwise return None.
-fn try_remove_await<'a>(expr: &'a hir::Expr<'a>) -> Option<&hir::Expr<'a>> {
+fn try_remove_await<'a>(expr: &'a hir::Expr<'a>) -> Option<&'a hir::Expr<'a>> {
     if let hir::ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind {
         if let hir::ExprKind::Call(func, [ref arg_0, ..]) = expr.kind {
             if matches!(
