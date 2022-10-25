@@ -65,14 +65,14 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                         _ => return,
                     };
                     if arm.guard.is_none() {
-                        missing_variants.retain(|e| e.ctor_def_id != Some(id));
+                        missing_variants.retain(|e| e.ctor_def_id() != Some(id));
                     }
                     path
                 },
                 PatKind::TupleStruct(path, patterns, ..) => {
                     if let Some(id) = cx.qpath_res(path, pat.hir_id).opt_def_id() {
                         if arm.guard.is_none() && patterns.iter().all(|p| !is_refutable(cx, p)) {
-                            missing_variants.retain(|e| e.ctor_def_id != Some(id));
+                            missing_variants.retain(|e| e.ctor_def_id() != Some(id));
                         }
                     }
                     path
@@ -122,11 +122,11 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                 s
             },
             variant.name,
-            match variant.ctor_kind {
-                CtorKind::Fn if variant.fields.len() == 1 => "(_)",
-                CtorKind::Fn => "(..)",
-                CtorKind::Const => "",
-                CtorKind::Fictive => "{ .. }",
+            match variant.ctor_kind() {
+                Some(CtorKind::Fn) if variant.fields.len() == 1 => "(_)",
+                Some(CtorKind::Fn) => "(..)",
+                Some(CtorKind::Const) => "",
+                None => "{ .. }",
             }
         )
     };
