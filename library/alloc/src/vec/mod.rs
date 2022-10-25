@@ -868,13 +868,14 @@ impl<T, A: Allocator> Vec<T, A> {
         (ptr, len, capacity, alloc)
     }
 
-    /// Returns the number of elements the vector can hold without
+    /// Returns the total number of elements the vector can hold without
     /// reallocating.
     ///
     /// # Examples
     ///
     /// ```
-    /// let vec: Vec<i32> = Vec::with_capacity(10);
+    /// let mut vec: Vec<i32> = Vec::with_capacity(10);
+    /// vec.push(42);
     /// assert_eq!(vec.capacity(), 10);
     /// ```
     #[inline]
