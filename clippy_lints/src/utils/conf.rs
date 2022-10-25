@@ -389,10 +389,15 @@ define_Conf! {
     ///
     /// Whether `dbg!` should be allowed in test functions
     (allow_dbg_in_tests: bool = false),
-    /// Lint: RESULT_LARGE_ERR
+    /// Lint: RESULT_LARGE_ERR.
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     (large_error_threshold: u64 = 128),
+    /// Lint: MUTABLE_KEY.
+    ///
+    /// A list of paths to types that should be treated like `Arc`, i.e. ignored but
+    /// for the generic parameters for determining interior mutability
+    (ignore_interior_mutability: Vec<String> = Vec::from(["bytes::Bytes".into()])),
 }
 
 /// Search for the configuration file.

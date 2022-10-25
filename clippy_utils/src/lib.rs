@@ -598,7 +598,13 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str], namespace_hint: Option<
         [primitive] => {
             return PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy);
         },
-        [base, ref path @ ..] => (base, path),
+        [base, ref path @ ..] => {
+            let crate_name = cx.sess().opts.crate_name.as_deref();
+            if Some(base) == crate_name {
+                return def_path_res_local(cx, path);
+            }
+            (base, path)
+        },
         _ => return Res::Err,
     };
     let tcx = cx.tcx;
@@ -642,7 +648,41 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str], namespace_hint: Option<
             return last;
         }
     }
+    Res::Err
+}
 
+fn def_path_res_local(cx: &LateContext<'_>, mut path: &[&str]) -> Res {
+    let map = cx.tcx.hir();
+    let mut ids = map.root_module().item_ids;
+    while let Some(&segment) = path.first() {
+        let mut next_ids = None;
+        for i in ids {
+            if let Some(Node::Item(hir::Item {
+                ident,
+                kind,
+                def_id: item_def_id,
+                ..
+            })) = map.find(i.hir_id())
+            {
+                if ident.name.as_str() == segment {
+                    path = &path[1..];
+                    if path.is_empty() {
+                        let def_id = item_def_id.to_def_id();
+                        return Res::Def(cx.tcx.def_kind(def_id), def_id);
+                    }
+                    if let ItemKind::Mod(m) = kind {
+                        next_ids = Some(m.item_ids);
+                    };
+                    break;
+                }
+            }
+        }
+        if let Some(next_ids) = next_ids {
+            ids = next_ids;
+        } else {
+            break;
+        }
+    }
     Res::Err
 }
 
