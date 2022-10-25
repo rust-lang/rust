@@ -2440,8 +2440,8 @@ fn gen_arm(
             }
         };
         let stable_aarch64 = match target {
-            Default | ArmV7 | Vfp4 | FPArmV8 | AES => String::from("\n#[cfg_attr(target_arch = \"aarch64\", stable(feature = \"neon_intrinsics\", since = \"1.59.0\"))]"),
-            RDM => String::from("\n#[cfg_attr(target_arch = \"aarch64\", stable(feature = \"rdm_intrinsics\", since = \"1.62.0\"))]"),
+            Default | ArmV7 | Vfp4 | FPArmV8 | AES => String::from("\n#[cfg_attr(not(target_arch = \"arm\"), stable(feature = \"neon_intrinsics\", since = \"1.59.0\"))]"),
+            RDM => String::from("\n#[cfg_attr(not(target_arch = \"arm\"), stable(feature = \"rdm_intrinsics\", since = \"1.62.0\"))]"),
             _ => String::new(),
         };
         let function_doc = create_doc_string(current_comment, &name);
