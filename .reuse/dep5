@@ -38,6 +38,10 @@ Files: compiler/*
 Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT or Apache-2.0
 
+Files: library/core/src/unicode/unicode_data.rs
+Copyright: 1991-2022 Unicode, Inc. All rights reserved.
+License: Unicode-DFS-2016
+
 Files: src/librustdoc/html/static/fonts/FiraSans*
 Copyright: 2014, Mozilla Foundation, 2014, Telefonica S.A.
 License: OFL-1.1
