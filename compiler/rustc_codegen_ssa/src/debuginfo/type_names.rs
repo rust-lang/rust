@@ -59,7 +59,13 @@ fn push_debuginfo_type_name<'tcx>(
     match *t.kind() {
         ty::Bool => output.push_str("bool"),
         ty::Char => output.push_str("char"),
-        ty::Str => output.push_str("str"),
+        ty::Str => {
+            if cpp_like_debuginfo {
+                output.push_str("str$")
+            } else {
+                output.push_str("str")
+            }
+        }
         ty::Never => {
             if cpp_like_debuginfo {
                 output.push_str("never$");
@@ -152,25 +158,19 @@ fn push_debuginfo_type_name<'tcx>(
             }
         }
         ty::Ref(_, inner_type, mutbl) => {
-            // Slices and `&str` are treated like C++ pointers when computing debug
-            // info for MSVC debugger. However, wrapping these types' names in a synthetic type
-            // causes the .natvis engine for WinDbg to fail to display their data, so we opt these
-            // types out to aid debugging in MSVC.
-            let is_slice_or_str = matches!(*inner_type.kind(), ty::Slice(_) | ty::Str);
-
-            if !cpp_like_debuginfo {
-                output.push('&');
-                output.push_str(mutbl.prefix_str());
-            } else if !is_slice_or_str {
+            if cpp_like_debuginfo {
                 match mutbl {
                     Mutability::Not => output.push_str("ref$<"),
                     Mutability::Mut => output.push_str("ref_mut$<"),
                 }
+            } else {
+                output.push('&');
+                output.push_str(mutbl.prefix_str());
             }
 
             push_debuginfo_type_name(tcx, inner_type, qualified, output, visited);
 
-            if cpp_like_debuginfo && !is_slice_or_str {
+            if cpp_like_debuginfo {
                 push_close_angle_bracket(cpp_like_debuginfo, output);
             }
         }
@@ -195,7 +195,7 @@ fn push_debuginfo_type_name<'tcx>(
         }
         ty::Slice(inner_type) => {
             if cpp_like_debuginfo {
-                output.push_str("slice$<");
+                output.push_str("slice2$<");
             } else {
                 output.push('[');
             }
