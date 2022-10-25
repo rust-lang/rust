@@ -1,25 +1,22 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::path_def_id;
 use clippy_utils::ty::is_c_void;
+use clippy_utils::{match_def_path, path_def_id, paths};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::RawPtr;
 use rustc_middle::ty::TypeAndMut;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks if we're passing a `c_void` raw pointer to `Box::from_raw(_)`
+    /// Checks if we're passing a `c_void` raw pointer to `{Box,Rc,Arc,Weak}::from_raw(_)`
     ///
     /// ### Why is this bad?
-    /// However, it is easy to run into the pitfall of calling from_raw with the c_void pointer.
-    /// Note that the definition of, say, Box::from_raw is:
-    ///
-    /// `pub unsafe fn from_raw(raw: *mut T) -> Box<T>`
-    ///
-    /// meaning that if you pass a *mut c_void you will get a Box<c_void>.
-    /// Per the safety requirements in the documentation, for this to be safe,
-    /// c_void would need to have the same memory layout as the original type, which is often not the case.
+    /// When dealing with `c_void` raw pointers in FFI, it is easy to run into the pitfall of calling `from_raw` with the `c_void` pointer.
+    /// The type signature of `Box::from_raw` is `fn from_raw(raw: *mut T) -> Box<T>`, so if you pass a `*mut c_void` you will get a `Box<c_void>` (and similarly for `Rc`, `Arc` and `Weak`).
+    /// For this to be safe, `c_void` would need to have the same memory layout as the original type, which is often not the case.
     ///
     /// ### Example
     /// ```rust
@@ -37,7 +34,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.66.0"]
     pub FROM_RAW_WITH_VOID_PTR,
     suspicious,
-    "creating a `Box` from a raw void pointer"
+    "creating a `Box` from a void raw pointer"
 }
 declare_lint_pass!(FromRawWithVoidPtr => [FROM_RAW_WITH_VOID_PTR]);
 
@@ -46,12 +43,35 @@ impl LateLintPass<'_> for FromRawWithVoidPtr {
         if let ExprKind::Call(box_from_raw, [arg]) = expr.kind
         && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = box_from_raw.kind
         && seg.ident.name == sym!(from_raw)
-        // FIXME: This lint is also applicable to other types, like `Rc`, `Arc` and `Weak`.
-        && path_def_id(cx, ty).map_or(false, |id| Some(id) == cx.tcx.lang_items().owned_box())
+        && let Some(type_str) = path_def_id(cx, ty).and_then(|id| def_id_matches_type(cx, id))
         && let arg_kind = cx.typeck_results().expr_ty(arg).kind()
         && let RawPtr(TypeAndMut { ty, .. }) = arg_kind
         && is_c_void(cx, *ty) {
-            span_lint_and_help(cx, FROM_RAW_WITH_VOID_PTR, expr.span, "creating a `Box` from a raw void pointer", Some(arg.span), "cast this to a pointer of the actual type");
+            let msg = format!("creating a `{type_str}` from a void raw pointer");
+            span_lint_and_help(cx, FROM_RAW_WITH_VOID_PTR, expr.span, &msg, Some(arg.span), "cast this to a pointer of the appropriate type");
         }
+    }
+}
+
+/// Checks whether a `DefId` matches `Box`, `Rc`, `Arc`, or one of the `Weak` types.
+/// Returns a static string slice with the name of the type, if one was found.
+fn def_id_matches_type(cx: &LateContext<'_>, def_id: DefId) -> Option<&'static str> {
+    // Box
+    if Some(def_id) == cx.tcx.lang_items().owned_box() {
+        return Some("Box");
+    }
+
+    if let Some(symbol) = cx.tcx.get_diagnostic_name(def_id) {
+        if symbol == sym::Arc {
+            return Some("Arc");
+        } else if symbol == sym::Rc {
+            return Some("Rc");
+        }
+    }
+
+    if match_def_path(cx, def_id, &paths::WEAK_RC) || match_def_path(cx, def_id, &paths::WEAK_ARC) {
+        Some("Weak")
+    } else {
+        None
     }
 }
