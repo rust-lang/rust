@@ -48,7 +48,11 @@ unsafe impl Sync for Thread {}
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        p: Box<dyn FnOnce()>,
+        #[allow(unused)] native_options: BuilderOptions,
+    ) -> io::Result<Thread> {
         let p = Box::into_raw(box p);
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: libc::pthread_attr_t = mem::zeroed();
@@ -82,6 +86,23 @@ impl Thread {
                     assert_eq!(libc::pthread_attr_setstacksize(&mut attr, stack_size), 0);
                 }
             };
+        }
+
+        #[cfg(target_os = "horizon")]
+        {
+            // If no priority value is specified, spawn with the same priority
+            // as the parent thread.
+            let priority = native_options
+                .priority
+                .unwrap_or_else(crate::os::horizon::thread::current_priority);
+            let sched_param = libc::sched_param { sched_priority: priority };
+
+            // If no processor is specified, spawn on the default core.
+            // (determined by the application's Exheader)
+            let processor_id = native_options.processor_id.unwrap_or(-2);
+
+            assert_eq!(libc::pthread_attr_setschedparam(&mut attr, &sched_param), 0);
+            assert_eq!(libc::pthread_attr_setprocessorid_np(&mut attr, processor_id), 0);
         }
 
         let ret = libc::pthread_create(&mut native, &attr, thread_start, p as *mut _);
@@ -205,7 +226,8 @@ impl Thread {
         target_os = "l4re",
         target_os = "emscripten",
         target_os = "redox",
-        target_os = "vxworks"
+        target_os = "vxworks",
+        target_os = "horizon"
     ))]
     pub fn set_name(_name: &CStr) {
         // Newlib, Emscripten, and VxWorks have no way to set a thread name.
@@ -273,6 +295,27 @@ impl Drop for Thread {
     fn drop(&mut self) {
         let ret = unsafe { libc::pthread_detach(self.id) };
         debug_assert_eq!(ret, 0);
+    }
+}
+
+#[derive(Debug)]
+pub struct BuilderOptions {
+    /// The spawned thread's priority value
+    #[cfg(target_os = "horizon")]
+    pub(crate) priority: Option<i32>,
+    /// The processor to spawn the thread on. See [`os::horizon::thread::BuilderExt`].
+    #[cfg(target_os = "horizon")]
+    pub(crate) processor_id: Option<i32>,
+}
+
+impl Default for BuilderOptions {
+    fn default() -> Self {
+        BuilderOptions {
+            #[cfg(target_os = "horizon")]
+            priority: None,
+            #[cfg(target_os = "horizon")]
+            processor_id: None,
+        }
     }
 }
 

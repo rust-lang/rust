@@ -287,7 +287,14 @@ pub struct Builder {
     name: Option<String>,
     // The size of the stack for the spawned thread in bytes
     stack_size: Option<usize>,
+    // Other OS-specific fields. These can be set via extension traits, usually
+    // found in std::os.
+    pub(crate) native_options: imp::BuilderOptions,
 }
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for Builder {}
 
 impl Builder {
     /// Generates the base configuration for spawning a thread, from which
@@ -310,7 +317,7 @@ impl Builder {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
-        Builder { name: None, stack_size: None }
+        Builder { name: None, stack_size: None, native_options: imp::BuilderOptions::default() }
     }
 
     /// Names the thread-to-be. Currently the name is used for identification
@@ -490,11 +497,9 @@ impl Builder {
         T: Send + 'a,
         'scope: 'a,
     {
-        let Builder { name, stack_size } = self;
+        let stack_size = self.stack_size.unwrap_or_else(thread::min_stack);
 
-        let stack_size = stack_size.unwrap_or_else(thread::min_stack);
-
-        let my_thread = Thread::new(name.map(|name| {
+        let my_thread = Thread::new(self.name.map(|name| {
             CString::new(name).expect("thread name may not contain interior null bytes")
         }));
         let their_thread = my_thread.clone();
@@ -587,6 +592,7 @@ impl Builder {
                     mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(
                         Box::new(main),
                     ),
+                    self.native_options,
                 )?
             },
             thread: my_thread,
