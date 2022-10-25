@@ -1,0 +1,22 @@
+### What it does
+
+Checks for jumps to the start of a stream that implements `Seek`
+and uses the `seek` method providing `Start` as parameter.
+
+### Why is this bad?
+
+Readability. There is a specific method that was implemented for
+this exact scenario.
+
+### Example
+```
+fn foo<T: io::Seek>(t: &mut T) {
+    t.seek(io::SeekFrom::Start(0));
+}
+```
+Use instead:
+```
+fn foo<T: io::Seek>(t: &mut T) {
+    t.rewind();
+}
+```
