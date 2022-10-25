@@ -3142,6 +3142,8 @@ impl<'a> Parser<'a> {
                 && this.token.kind == token::Semi
             {
                 TrailingToken::Semi
+            } else if this.token.kind == token::Gt {
+                TrailingToken::Gt
             } else {
                 // FIXME - pass this through from the place where we know
                 // we need a comma, rather than assuming that `#[attr] expr,`

@@ -402,10 +402,6 @@ img {
 	overflow-y: hidden;
 }
 
-.rustdoc.source .sidebar .sidebar-logo {
-	display: none;
-}
-
 .source .sidebar, #sidebar-toggle, #source-sidebar {
 	background-color: var(--sidebar-background-color);
 }
@@ -538,7 +534,6 @@ ul.block, .block li {
 }
 
 .source .content pre.rust {
-	white-space: pre;
 	overflow: auto;
 	padding-left: 0;
 }
@@ -1232,9 +1227,6 @@ a.test-arrow {
 }
 .example-wrap:hover .test-arrow {
 	visibility: visible;
-}
-a.test-arrow:hover {
-	text-decoration: none;
 }
 
 .code-attribute {

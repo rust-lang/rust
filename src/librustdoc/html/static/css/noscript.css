@@ -18,3 +18,7 @@ nav.sub {
 	/* The search bar and related controls don't work without JS */
 	display: none;
 }
+
+.source .sidebar {
+	display: none;
+}

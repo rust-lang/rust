@@ -38,8 +38,8 @@ type Res = def::Res<ast::NodeId>;
 /// A field or associated item from self type suggested in case of resolution failure.
 enum AssocSuggestion {
     Field,
-    MethodWithSelf,
-    AssocFn,
+    MethodWithSelf { called: bool },
+    AssocFn { called: bool },
     AssocType,
     AssocConst,
 }
@@ -48,8 +48,14 @@ impl AssocSuggestion {
     fn action(&self) -> &'static str {
         match self {
             AssocSuggestion::Field => "use the available field",
-            AssocSuggestion::MethodWithSelf => "call the method with the fully-qualified path",
-            AssocSuggestion::AssocFn => "call the associated function",
+            AssocSuggestion::MethodWithSelf { called: true } => {
+                "call the method with the fully-qualified path"
+            }
+            AssocSuggestion::MethodWithSelf { called: false } => {
+                "refer to the method with the fully-qualified path"
+            }
+            AssocSuggestion::AssocFn { called: true } => "call the associated function",
+            AssocSuggestion::AssocFn { called: false } => "refer to the associated function",
             AssocSuggestion::AssocConst => "use the associated `const`",
             AssocSuggestion::AssocType => "use the associated type",
         }
@@ -516,7 +522,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let typo_sugg =
             self.lookup_typo_candidate(path, source.namespace(), is_expected).to_opt_suggestion();
         if path.len() == 1 && self.self_type_is_available() {
-            if let Some(candidate) = self.lookup_assoc_candidate(ident, ns, is_expected) {
+            if let Some(candidate) =
+                self.lookup_assoc_candidate(ident, ns, is_expected, source.is_call())
+            {
                 let self_is_available = self.self_value_is_available(path[0].ident.span);
                 match candidate {
                     AssocSuggestion::Field => {
@@ -531,16 +539,21 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             err.span_label(span, "a field by this name exists in `Self`");
                         }
                     }
-                    AssocSuggestion::MethodWithSelf if self_is_available => {
+                    AssocSuggestion::MethodWithSelf { called } if self_is_available => {
+                        let msg = if called {
+                            "you might have meant to call the method"
+                        } else {
+                            "you might have meant to refer to the method"
+                        };
                         err.span_suggestion(
                             span,
-                            "you might have meant to call the method",
+                            msg,
                             format!("self.{path_str}"),
                             Applicability::MachineApplicable,
                         );
                     }
-                    AssocSuggestion::MethodWithSelf
-                    | AssocSuggestion::AssocFn
+                    AssocSuggestion::MethodWithSelf { .. }
+                    | AssocSuggestion::AssocFn { .. }
                     | AssocSuggestion::AssocConst
                     | AssocSuggestion::AssocType => {
                         err.span_suggestion(
@@ -1498,6 +1511,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         ident: Ident,
         ns: Namespace,
         filter_fn: FilterFn,
+        called: bool,
     ) -> Option<AssocSuggestion>
     where
         FilterFn: Fn(Res) -> bool,
@@ -1539,9 +1553,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     return Some(match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
                         ast::AssocItemKind::Fn(box ast::Fn { sig, .. }) if sig.decl.has_self() => {
-                            AssocSuggestion::MethodWithSelf
+                            AssocSuggestion::MethodWithSelf { called }
                         }
-                        ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn,
+                        ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn { called },
                         ast::AssocItemKind::Type(..) => AssocSuggestion::AssocType,
                         ast::AssocItemKind::MacCall(_) => continue,
                     });
@@ -1560,10 +1574,12 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 let res = binding.res();
                 if filter_fn(res) {
                     if self.r.has_self.contains(&res.def_id()) {
-                        return Some(AssocSuggestion::MethodWithSelf);
+                        return Some(AssocSuggestion::MethodWithSelf { called });
                     } else {
                         match res {
-                            Res::Def(DefKind::AssocFn, _) => return Some(AssocSuggestion::AssocFn),
+                            Res::Def(DefKind::AssocFn, _) => {
+                                return Some(AssocSuggestion::AssocFn { called });
+                            }
                             Res::Def(DefKind::AssocConst, _) => {
                                 return Some(AssocSuggestion::AssocConst);
                             }
