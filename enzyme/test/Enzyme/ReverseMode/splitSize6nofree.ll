@@ -49,3 +49,4 @@ declare void @__enzyme_reverse(void (double*, double*)*, ...)
 
 ; CHECK: define internal void @diffetester(double* noalias %in, double* %"in'", double* noalias %out, double* %"out'", double* %tapeArg)
 ; CHECK-NOT: free
+; CHECK: }

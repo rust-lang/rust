@@ -795,9 +795,10 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
       auto P = B.CreatePHI(i64, 1);
 
       CallInst *malloccall;
+      Instruction *Zero;
       allocType = cast<PointerType>(CreateAllocation(B, types.back(), P,
                                                      "tmpfortypecalc",
-                                                     &malloccall, nullptr)
+                                                     &malloccall, &Zero)
                                         ->getType());
       malloctypes.push_back(cast<PointerType>(malloccall->getType()));
       SmallVector<Instruction *, 2> toErase;
