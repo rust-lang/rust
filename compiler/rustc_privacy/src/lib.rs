@@ -287,12 +287,8 @@ where
         self.visit_ty(c.ty())?;
         let tcx = self.def_id_visitor.tcx();
         if let ty::ConstKind::Unevaluated(uv) = c.kind() &&
-           let Ok(Some(ct)) = tcx.expand_bound_abstract_const(tcx.bound_abstract_const(uv.def),
-           uv.substs) {
-            ct.visit_with(self)?;
-        }
-        if let ty::ConstKind::Expr(e) = c.kind() {
-            e.visit_with(self)?;
+           let Ok(Some(ct)) = tcx.expand_unevaluated_abstract_const(uv.def, uv.substs) {
+            ct.super_visit_with(self)?;
         }
         ControlFlow::CONTINUE
     }

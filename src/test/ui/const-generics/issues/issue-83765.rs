@@ -120,8 +120,6 @@ fn main() {
     let v = vec![1, 2, 3];
     let bv = v.lazy_updim([3, 4]);
     let bbv = bv.bmap(|x| x * x);
-    //~^ ERROR mismatched types
 
     println!("The size of v is {:?}", bbv.bget([0, 2]).expect("Out of bounds."));
-    //~^ ERROR mismatched types
 }

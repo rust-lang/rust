@@ -849,11 +849,8 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
             //
             // This shouldn't really matter though as we can't really use any
             // constants which are not considered const evaluatable.
-            if let ty::ConstKind::Unevaluated(uv) = ct.kind() &&
-                let Ok(Some(ct)) = self
-                .tcx
-                .expand_bound_abstract_const(self.tcx.bound_abstract_const(uv.def), uv.substs)
-            {
+            if let ty::ConstKind::Unevaluated(_uv) = ct.kind() &&
+                let Ok(Some(ct)) = self.tcx.expand_abstract_consts(ct){
                 self.visit_const(ct)
             } else {
                 ct.super_visit_with(self)

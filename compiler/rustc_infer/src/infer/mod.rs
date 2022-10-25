@@ -1621,15 +1621,11 @@ impl<'tcx> InferCtxt<'tcx> {
         // variables
         let tcx = self.tcx;
         if substs.has_non_region_infer() {
-            let substs_erased = tcx.erase_regions(unevaluated.substs);
-            let ac = tcx.expand_bound_abstract_const(
-                tcx.bound_abstract_const(unevaluated.def),
-                substs_erased,
-            );
+            let ac = tcx.expand_unevaluated_abstract_const(unevaluated.def, unevaluated.substs);
             match ac {
                 Ok(None) => {
                     substs = InternalSubsts::identity_for_item(tcx, unevaluated.def.did);
-                    param_env = self.tcx.param_env(unevaluated.def.did);
+                    param_env = tcx.param_env(unevaluated.def.did);
                 }
                 Ok(Some(ct)) => {
                     if ct.has_non_region_infer() || ct.has_non_region_param() {
