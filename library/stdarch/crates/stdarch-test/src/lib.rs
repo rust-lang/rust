@@ -64,10 +64,10 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
     // Make sure that the shim is not removed
     black_box(shim_addr);
 
-    //eprintln!("shim name: {}", fnname);
+    //eprintln!("shim name: {fnname}");
     let function = &DISASSEMBLY
         .get(&Function::new(fnname))
-        .unwrap_or_else(|| panic!("function \"{}\" not found in the disassembly", fnname));
+        .unwrap_or_else(|| panic!("function \"{fnname}\" not found in the disassembly"));
     //eprintln!("  function: {:?}", function);
 
     let mut instrs = &function.instrs[..];
@@ -165,9 +165,9 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
 
     // Help debug by printing out the found disassembly, and then panic as we
     // didn't find the instruction.
-    println!("disassembly for {}: ", fnname,);
+    println!("disassembly for {fnname}: ",);
     for (i, instr) in instrs.iter().enumerate() {
-        println!("\t{:2}: {}", i, instr);
+        println!("\t{i:2}: {instr}");
     }
 
     if !found {
@@ -194,7 +194,7 @@ pub fn assert_skip_test_ok(name: &str) {
     if env::var("STDARCH_TEST_EVERYTHING").is_err() {
         return;
     }
-    panic!("skipped test `{}` when it shouldn't be skipped", name);
+    panic!("skipped test `{name}` when it shouldn't be skipped");
 }
 
 // See comment in `assert-instr-macro` crate for why this exists

@@ -25,7 +25,7 @@ impl FromStr for TypeKind {
             "poly" => Ok(Self::Poly),
             "uint" | "unsigned" => Ok(Self::UInt),
             "void" => Ok(Self::Void),
-            _ => Err(format!("Impossible to parse argument kind {}", s)),
+            _ => Err(format!("Impossible to parse argument kind {s}")),
         }
     }
 }
@@ -199,14 +199,14 @@ impl IntrinsicType {
                 simd_len: Some(simd_len),
                 vec_len: None,
                 ..
-            } => format!("{}{}x{}_t", kind.c_prefix(), bit_len, simd_len),
+            } => format!("{}{bit_len}x{simd_len}_t", kind.c_prefix()),
             IntrinsicType::Type {
                 kind,
                 bit_len: Some(bit_len),
                 simd_len: Some(simd_len),
                 vec_len: Some(vec_len),
                 ..
-            } => format!("{}{}x{}x{}_t", kind.c_prefix(), bit_len, simd_len, vec_len),
+            } => format!("{}{bit_len}x{simd_len}x{vec_len}_t", kind.c_prefix()),
             _ => todo!("{:#?}", self),
         }
     }
@@ -220,7 +220,7 @@ impl IntrinsicType {
                 simd_len: Some(simd_len),
                 vec_len: Some(_),
                 ..
-            } => format!("{}{}x{}_t", kind.c_prefix(), bit_len, simd_len),
+            } => format!("{}{bit_len}x{simd_len}_t", kind.c_prefix()),
             _ => unreachable!("Shouldn't be called on this type"),
         }
     }
@@ -234,21 +234,21 @@ impl IntrinsicType {
                 simd_len: None,
                 vec_len: None,
                 ..
-            } => format!("{}{}", kind.rust_prefix(), bit_len),
+            } => format!("{}{bit_len}", kind.rust_prefix()),
             IntrinsicType::Type {
                 kind,
                 bit_len: Some(bit_len),
                 simd_len: Some(simd_len),
                 vec_len: None,
                 ..
-            } => format!("{}{}x{}_t", kind.c_prefix(), bit_len, simd_len),
+            } => format!("{}{bit_len}x{simd_len}_t", kind.c_prefix()),
             IntrinsicType::Type {
                 kind,
                 bit_len: Some(bit_len),
                 simd_len: Some(simd_len),
                 vec_len: Some(vec_len),
                 ..
-            } => format!("{}{}x{}x{}_t", kind.c_prefix(), bit_len, simd_len, vec_len),
+            } => format!("{}{bit_len}x{simd_len}x{vec_len}_t", kind.c_prefix()),
             _ => todo!("{:#?}", self),
         }
     }

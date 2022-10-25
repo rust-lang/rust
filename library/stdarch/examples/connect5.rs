@@ -1256,7 +1256,7 @@ fn main() {
             pos_disp(&test1);
 
             if pos_is_end(&test1) {
-                println!("Game over!!!!!! at Move {}", i);
+                println!("Game over!!!!!! at Move {i}");
                 count = i + 1;
                 break;
             }

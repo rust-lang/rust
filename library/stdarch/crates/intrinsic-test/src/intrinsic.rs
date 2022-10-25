@@ -109,7 +109,7 @@ impl Intrinsic {
     pub fn generate_loop_rust(&self, additional: &str, passes: u32) -> String {
         let constraints = self.arguments.as_constraint_parameters_rust();
         let constraints = if !constraints.is_empty() {
-            format!("::<{}>", constraints)
+            format!("::<{constraints}>")
         } else {
             constraints
         };

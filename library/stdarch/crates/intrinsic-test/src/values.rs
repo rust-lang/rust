@@ -13,7 +13,7 @@ pub fn value_for_array(bits: u32, index: u32) -> String {
     } else if bits == 64 {
         format!("{:#X}", VALUES_64[index % VALUES_64.len()])
     } else {
-        panic!("Unknown size: {}", bits);
+        panic!("Unknown size: {bits}");
     }
 }
 

@@ -125,7 +125,7 @@ impl<'a> From<&'a str> for MsaTy {
             "u64" => MsaTy::u64,
             "void" => MsaTy::Void,
             "void *" => MsaTy::MutVoidPtr,
-            v => panic!("unknown ty: \"{}\"", v),
+            v => panic!("unknown ty: \"{v}\""),
         }
     }
 }
@@ -198,8 +198,8 @@ fn verify_all_signatures() {
         }
 
         use std::convert::TryFrom;
-        let intrinsic: MsaIntrinsic = TryFrom::try_from(line)
-            .unwrap_or_else(|_| panic!("failed to parse line: \"{}\"", line));
+        let intrinsic: MsaIntrinsic =
+            TryFrom::try_from(line).unwrap_or_else(|_| panic!("failed to parse line: \"{line}\""));
         assert!(!intrinsics.contains_key(&intrinsic.id));
         intrinsics.insert(intrinsic.id.clone(), intrinsic);
     }
@@ -253,7 +253,7 @@ fn verify_all_signatures() {
 
         if let Err(e) = matches(rust, mips) {
             println!("failed to verify `{}`", rust.name);
-            println!("  * {}", e);
+            println!("  * {e}");
             all_valid = false;
         }
     }

@@ -81,7 +81,7 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
             .args(add_args)
             .arg(&me)
             .output()
-            .unwrap_or_else(|_| panic!("failed to execute objdump. OBJDUMP={}", objdump));
+            .unwrap_or_else(|_| panic!("failed to execute objdump. OBJDUMP={objdump}"));
         println!(
             "{}\n{}",
             output.status,
@@ -103,7 +103,7 @@ fn parse(output: &str) -> HashSet<Function> {
         lines.clone().count()
     );
     for line in output.lines().take(100) {
-        println!("{}", line);
+        println!("{line}");
     }
 
     let mut functions = HashSet::new();
@@ -112,9 +112,9 @@ fn parse(output: &str) -> HashSet<Function> {
         if !header.ends_with(':') || !header.contains("stdarch_test_shim") {
             continue;
         }
-        eprintln!("header: {}", header);
+        eprintln!("header: {header}");
         let symbol = normalize(header);
-        eprintln!("normalized symbol: {}", symbol);
+        eprintln!("normalized symbol: {symbol}");
         let mut instructions = Vec::new();
         while let Some(instruction) = lines.next() {
             if instruction.ends_with(':') {

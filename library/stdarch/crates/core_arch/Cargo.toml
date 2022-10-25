@@ -13,7 +13,7 @@ readme = "README.md"
 keywords = ["core", "simd", "arch", "intrinsics"]
 categories = ["hardware-support", "no-std"]
 license = "MIT OR Apache-2.0"
-edition = "2018"
+edition = "2021"
 
 [badges]
 is-it-maintained-issue-resolution = { repository = "rust-lang/stdarch" }

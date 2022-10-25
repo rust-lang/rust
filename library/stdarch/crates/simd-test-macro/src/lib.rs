@@ -59,7 +59,7 @@ pub fn simd_test(
     let macro_test = match target
         .split('-')
         .next()
-        .unwrap_or_else(|| panic!("target triple contained no \"-\": {}", target))
+        .unwrap_or_else(|| panic!("target triple contained no \"-\": {target}"))
     {
         "i686" | "x86_64" | "i586" => "is_x86_feature_detected",
         "arm" | "armv7" => "is_arm_feature_detected",
@@ -82,7 +82,7 @@ pub fn simd_test(
             force_test = true;
             "is_mips64_feature_detected"
         }
-        t => panic!("unknown target: {}", t),
+        t => panic!("unknown target: {t}"),
     };
     let macro_test = Ident::new(macro_test, Span::call_site());
 

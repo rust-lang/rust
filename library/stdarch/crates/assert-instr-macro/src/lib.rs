@@ -56,14 +56,14 @@ pub fn assert_instr(
         .replace('/', "_")
         .replace(':', "_")
         .replace(char::is_whitespace, "");
-    let assert_name = syn::Ident::new(&format!("assert_{}_{}", name, instr_str), name.span());
+    let assert_name = syn::Ident::new(&format!("assert_{name}_{instr_str}"), name.span());
     // These name has to be unique enough for us to find it in the disassembly later on:
     let shim_name = syn::Ident::new(
-        &format!("stdarch_test_shim_{}_{}", name, instr_str),
+        &format!("stdarch_test_shim_{name}_{instr_str}"),
         name.span(),
     );
     let shim_name_ptr = syn::Ident::new(
-        &format!("stdarch_test_shim_{}_{}_ptr", name, instr_str).to_ascii_uppercase(),
+        &format!("stdarch_test_shim_{name}_{instr_str}_ptr").to_ascii_uppercase(),
         name.span(),
     );
     let mut inputs = Vec::new();
@@ -131,7 +131,7 @@ pub fn assert_instr(
     } else {
         syn::LitStr::new("C", proc_macro2::Span::call_site())
     };
-    let shim_name_str = format!("{}{}", shim_name, assert_name);
+    let shim_name_str = format!("{shim_name}{assert_name}");
     let to_test = if disable_dedup_guard {
         quote! {
             #attrs

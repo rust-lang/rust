@@ -59,8 +59,8 @@ impl Into<Intrinsic> for ACLEIntrinsicLine {
         let signature = self.intrinsic;
         let (ret_ty, remaining) = signature.split_once(' ').unwrap();
 
-        let results = type_from_c(ret_ty)
-            .unwrap_or_else(|_| panic!("Failed to parse return type: {}", ret_ty));
+        let results =
+            type_from_c(ret_ty).unwrap_or_else(|_| panic!("Failed to parse return type: {ret_ty}"));
 
         let (name, args) = remaining.split_once('(').unwrap();
         let args = args.trim_end_matches(')');
@@ -177,7 +177,7 @@ fn from_c(pos: usize, s: &str) -> Argument {
     Argument {
         pos,
         name,
-        ty: type_from_c(s).unwrap_or_else(|_| panic!("Failed to parse type: {}", s)),
+        ty: type_from_c(s).unwrap_or_else(|_| panic!("Failed to parse type: {s}")),
         constraints: vec![],
     }
 }

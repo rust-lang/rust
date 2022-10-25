@@ -58,7 +58,7 @@ fn gen_code_c(
                     pass = gen_code_c(
                         intrinsic,
                         constraints,
-                        format!("{}-{}", name, i),
+                        format!("{name}-{i}"),
                         p64_armv7_workaround
                     )
                 )
@@ -117,7 +117,7 @@ int main(int argc, char **argv) {{
 }}"#,
         header_files = header_files
             .iter()
-            .map(|header| format!("#include <{}>", header))
+            .map(|header| format!("#include <{header}>"))
             .collect::<Vec<_>>()
             .join("\n"),
         arglists = intrinsic.arguments.gen_arglists_c(PASSES),
@@ -148,7 +148,7 @@ fn gen_code_rust(intrinsic: &Intrinsic, constraints: &[&Argument], name: String)
                     name = current.name,
                     ty = current.ty.rust_type(),
                     val = i,
-                    pass = gen_code_rust(intrinsic, constraints, format!("{}-{}", name, i))
+                    pass = gen_code_rust(intrinsic, constraints, format!("{name}-{i}"))
                 )
             })
             .collect()
@@ -237,7 +237,7 @@ fn build_rust(intrinsics: &Vec<Intrinsic>, toolchain: &str, a32: bool) -> bool {
     intrinsics.iter().for_each(|i| {
         let rust_dir = format!(r#"rust_programs/{}"#, i.name);
         let _ = std::fs::create_dir_all(&rust_dir);
-        let rust_filename = format!(r#"{}/main.rs"#, rust_dir);
+        let rust_filename = format!(r#"{rust_dir}/main.rs"#);
         let mut file = File::create(&rust_filename).unwrap();
 
         let c_code = generate_rust_program(&i, a32);
@@ -355,7 +355,7 @@ fn main() {
     let filename = matches.value_of("INPUT").unwrap();
     let toolchain = matches
         .value_of("TOOLCHAIN")
-        .map_or("".into(), |t| format!("+{}", t));
+        .map_or("".into(), |t| format!("+{t}"));
 
     let cpp_compiler = matches.value_of("CPPCOMPILER").unwrap();
     let c_runner = matches.value_of("RUNNER").unwrap_or("");
@@ -443,7 +443,7 @@ fn compare_outputs(intrinsics: &Vec<Intrinsic>, toolchain: &str, runner: &str, a
 
             let (c, rust) = match (c, rust) {
                 (Ok(c), Ok(rust)) => (c, rust),
-                a => panic!("{:#?}", a),
+                a => panic!("{a:#?}"),
             };
 
             if !c.status.success() {
@@ -480,20 +480,20 @@ fn compare_outputs(intrinsics: &Vec<Intrinsic>, toolchain: &str, runner: &str, a
 
     intrinsics.iter().for_each(|reason| match reason {
         FailureReason::Difference(intrinsic, c, rust) => {
-            println!("Difference for intrinsic: {}", intrinsic);
+            println!("Difference for intrinsic: {intrinsic}");
             let diff = diff::lines(c, rust);
             diff.iter().for_each(|diff| match diff {
-                diff::Result::Left(c) => println!("C: {}", c),
-                diff::Result::Right(rust) => println!("Rust: {}", rust),
+                diff::Result::Left(c) => println!("C: {c}"),
+                diff::Result::Right(rust) => println!("Rust: {rust}"),
                 diff::Result::Both(_, _) => (),
             });
             println!("****************************************************************");
         }
         FailureReason::RunC(intrinsic) => {
-            println!("Failed to run C program for intrinsic {}", intrinsic)
+            println!("Failed to run C program for intrinsic {intrinsic}")
         }
         FailureReason::RunRust(intrinsic) => {
-            println!("Failed to run rust program for intrinsic {}", intrinsic)
+            println!("Failed to run rust program for intrinsic {intrinsic}")
         }
     });
     println!("{} differences found", intrinsics.len());

@@ -329,7 +329,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "/src/detect/test_data/linux-empty-hwcap2-aarch64.auxv"
             );
-            println!("file: {}", file);
+            println!("file: {file}");
             let v = auxv_from_file(file).unwrap();
             println!("HWCAP : 0x{:0x}", v.hwcap);
             println!("HWCAP2: 0x{:0x}", v.hwcap2);
@@ -341,7 +341,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "/src/detect/test_data/linux-no-hwcap2-aarch64.auxv"
             );
-            println!("file: {}", file);
+            println!("file: {file}");
             let v = auxv_from_file(file).unwrap();
             println!("HWCAP : 0x{:0x}", v.hwcap);
             println!("HWCAP2: 0x{:0x}", v.hwcap2);
@@ -353,7 +353,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "/src/detect/test_data/linux-hwcap2-aarch64.auxv"
             );
-            println!("file: {}", file);
+            println!("file: {file}");
             let v = auxv_from_file(file).unwrap();
             println!("HWCAP : 0x{:0x}", v.hwcap);
             println!("HWCAP2: 0x{:0x}", v.hwcap2);

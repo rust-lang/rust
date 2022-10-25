@@ -15,7 +15,7 @@ extern crate std_detect;
 #[test]
 fn all() {
     for (f, e) in std_detect::detect::features() {
-        println!("{}: {}", f, e);
+        println!("{f}: {e}");
     }
 }
 

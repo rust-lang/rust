@@ -2,7 +2,7 @@
 name = "intrinsic-test"
 version = "0.1.0"
 authors = ["Jamie Cunliffe <Jamie.Cunliffe@arm.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 lazy_static = "1.4.0"

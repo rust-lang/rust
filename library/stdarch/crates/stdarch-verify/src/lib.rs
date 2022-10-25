@@ -85,20 +85,20 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
         .iter()
         .map(|&(ref f, path)| {
             let name = &f.sig.ident;
-            // println!("{}", name);
+            // println!("{name}");
             let mut arguments = Vec::new();
             let mut const_arguments = Vec::new();
             for input in f.sig.inputs.iter() {
                 let ty = match *input {
                     syn::FnArg::Typed(ref c) => &c.ty,
-                    _ => panic!("invalid argument on {}", name),
+                    _ => panic!("invalid argument on {name}"),
                 };
                 arguments.push(to_type(ty));
             }
             for generic in f.sig.generics.params.iter() {
                 let ty = match *generic {
                     syn::GenericParam::Const(ref c) => &c.ty,
-                    _ => panic!("invalid generic argument on {}", name),
+                    _ => panic!("invalid generic argument on {name}"),
                 };
                 const_arguments.push(to_type(ty));
             }
@@ -144,12 +144,12 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
 
             // strip leading underscore from fn name when building a test
             // _mm_foo -> mm_foo such that the test name is test_mm_foo.
-            let test_name_string = format!("{}", name);
+            let test_name_string = format!("{name}");
             let mut test_name_id = test_name_string.as_str();
             while test_name_id.starts_with('_') {
                 test_name_id = &test_name_id[1..];
             }
-            let has_test = tests.contains(&format!("test_{}", test_name_id));
+            let has_test = tests.contains(&format!("test_{test_name_id}"));
 
             quote! {
                 Function {
@@ -167,7 +167,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
         .collect::<Vec<_>>();
 
     let ret = quote! { #input: &[Function] = &[#(#functions),*]; };
-    // println!("{}", ret);
+    // println!("{ret}");
     ret.into()
 }
 
@@ -336,7 +336,7 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "v4f32" => quote! { &v4f32 },
             "v2f64" => quote! { &v2f64 },
 
-            s => panic!("unsupported type: \"{}\"", s),
+            s => panic!("unsupported type: \"{s}\""),
         },
         syn::Type::Ptr(syn::TypePtr {
             ref elem,

@@ -628,7 +628,7 @@ fn verify_all_signatures() {
 
         if let Err(e) = matches(rust, arm) {
             println!("failed to verify `{}`", rust.name);
-            println!("  * {}", e);
+            println!("  * {e}");
             all_valid = false;
         }
     }
@@ -801,7 +801,7 @@ fn parse_intrinsic(node: &Rc<Node>) -> Intrinsic {
 
     let instruction = match instruction {
         Some(s) => s.trim().to_lowercase(),
-        None => panic!("can't find instruction for `{}`", name),
+        None => panic!("can't find instruction for `{name}`"),
     };
 
     Intrinsic {
@@ -973,7 +973,7 @@ fn parse_ty_base(s: &str) -> &'static Type {
         "uint8x8x3_t" => &U8X8X3,
         "uint8x8x4_t" => &U8X8X4,
 
-        _ => panic!("failed to parse html type {:?}", s),
+        _ => panic!("failed to parse html type {s:?}"),
     }
 }
 

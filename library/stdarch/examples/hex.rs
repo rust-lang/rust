@@ -40,7 +40,7 @@ fn main() {
     io::stdin().read_to_end(&mut input).unwrap();
     let mut dst = vec![0; 2 * input.len()];
     let s = hex_encode(&input, &mut dst).unwrap();
-    println!("{}", s);
+    println!("{s}");
 }
 
 fn hex_encode<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {

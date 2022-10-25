@@ -7,7 +7,7 @@ authors = [
     "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
 ]
 description = "Examples of the stdarch crate."
-edition = "2018"
+edition = "2021"
 default-run = "hex"
 
 [dependencies]
