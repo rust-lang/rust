@@ -452,7 +452,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     intravisit::walk_item(this, item)
                 });
             }
-            hir::ItemKind::OpaqueTy(hir::OpaqueTy { .. }) => {
+            hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                origin: hir::OpaqueTyOrigin::TyAlias, ..
+            }) => {
                 // Opaque types are visited when we visit the
                 // `TyKind::OpaqueDef`, so that they have the lifetimes from
                 // their parent opaque_ty in scope.
@@ -477,6 +479,37 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         );
                     });
                 }
+            }
+            hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                origin: hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_),
+                generics,
+                ..
+            }) => {
+                // We want to start our early-bound indices at the end of the parent scope,
+                // not including any parent `impl Trait`s.
+                let mut lifetimes = FxIndexMap::default();
+                debug!(?generics.params);
+                for param in generics.params {
+                    match param.kind {
+                        GenericParamKind::Lifetime { .. } => {
+                            let (def_id, reg) = Region::early(self.tcx.hir(), &param);
+                            lifetimes.insert(def_id, reg);
+                        }
+                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {}
+                    }
+                }
+
+                let scope = Scope::Binder {
+                    hir_id: item.hir_id(),
+                    lifetimes,
+                    s: self.scope,
+                    scope_type: BinderScopeType::Normal,
+                    where_bound_origin: None,
+                };
+                self.with(scope, |this| {
+                    let scope = Scope::TraitRefBoundary { s: this.scope };
+                    this.with(scope, |this| intravisit::walk_item(this, item))
+                });
             }
             hir::ItemKind::TyAlias(_, ref generics)
             | hir::ItemKind::Enum(_, ref generics)
@@ -604,7 +637,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 //                 ^                  ^ this gets resolved in the scope of
                 //                                      the opaque_ty generics
                 let opaque_ty = self.tcx.hir().item(item_id);
-                let (generics, bounds) = match opaque_ty.kind {
+                match opaque_ty.kind {
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                         origin: hir::OpaqueTyOrigin::TyAlias,
                         ..
@@ -625,10 +658,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     }
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                         origin: hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..),
-                        ref generics,
-                        bounds,
                         ..
-                    }) => (generics, bounds),
+                    }) => {}
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 };
 
@@ -681,38 +712,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         self.uninsert_lifetime_on_error(lifetime, def.unwrap());
                     }
                 }
-
-                // We want to start our early-bound indices at the end of the parent scope,
-                // not including any parent `impl Trait`s.
-                let mut lifetimes = FxIndexMap::default();
-                debug!(?generics.params);
-                for param in generics.params {
-                    match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
-                            let (def_id, reg) = Region::early(self.tcx.hir(), &param);
-                            lifetimes.insert(def_id, reg);
-                        }
-                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {}
-                    }
-                }
-                self.record_late_bound_vars(ty.hir_id, vec![]);
-
-                let scope = Scope::Binder {
-                    hir_id: ty.hir_id,
-                    lifetimes,
-                    s: self.scope,
-                    scope_type: BinderScopeType::Normal,
-                    where_bound_origin: None,
-                };
-                self.with(scope, |this| {
-                    let scope = Scope::TraitRefBoundary { s: this.scope };
-                    this.with(scope, |this| {
-                        this.visit_generics(generics);
-                        for bound in bounds {
-                            this.visit_param_bound(bound);
-                        }
-                    })
-                });
             }
             _ => intravisit::walk_ty(self, ty),
         }
