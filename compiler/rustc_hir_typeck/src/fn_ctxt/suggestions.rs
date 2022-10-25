@@ -327,7 +327,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
         let expr = expr.peel_blocks();
-        if let Some((sp, msg, suggestion, applicability, verbose)) =
+        if let Some((sp, msg, suggestion, applicability, verbose, annotation)) =
             self.check_ref(expr, found, expected)
         {
             if verbose {
@@ -335,9 +335,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 err.span_suggestion(sp, &msg, suggestion, applicability);
             }
+            if annotation {
+                let suggest_annotation = match expr.peel_drop_temps().kind {
+                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, _) => "&",
+                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) => "&mut ",
+                    _ => return true,
+                };
+                let mut tuple_indexes = Vec::new();
+                let mut expr_id = expr.hir_id;
+                for (parent_id, node) in self.tcx.hir().parent_iter(expr.hir_id) {
+                    match node {
+                        Node::Expr(&Expr { kind: ExprKind::Tup(subs), .. }) => {
+                            tuple_indexes.push(
+                                subs.iter()
+                                    .enumerate()
+                                    .find(|(_, sub_expr)| sub_expr.hir_id == expr_id)
+                                    .unwrap()
+                                    .0,
+                            );
+                            expr_id = parent_id;
+                        }
+                        Node::Local(local) => {
+                            if let Some(mut ty) = local.ty {
+                                while let Some(index) = tuple_indexes.pop() {
+                                    match ty.kind {
+                                        TyKind::Tup(tys) => ty = &tys[index],
+                                        _ => return true,
+                                    }
+                                }
+                                let annotation_span = ty.span;
+                                err.span_suggestion(
+                                    annotation_span.with_hi(annotation_span.lo()),
+                                    format!("alternatively, consider changing the type annotation"),
+                                    suggest_annotation,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            break;
+                        }
+                        _ => break,
+                    }
+                }
+            }
             return true;
-        } else if self.suggest_else_fn_with_closure(err, expr, found, expected)
-        {
+        } else if self.suggest_else_fn_with_closure(err, expr, found, expected) {
             return true;
         } else if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
             && let ty::FnDef(def_id, ..) = &found.kind()
