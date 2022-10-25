@@ -15,6 +15,8 @@ use rustc_span::DUMMY_SP;
 
 use crate::MirPass;
 
+const TRACKING_LIMIT: usize = 1000;
+
 pub struct DataflowConstProp;
 
 impl<'tcx> MirPass<'tcx> for DataflowConstProp {
@@ -22,18 +24,33 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
         sess.mir_opt_level() >= 1
     }
 
+    #[instrument(skip_all level = "debug")]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Decide which places to track during the analysis.
         let map = Map::from_filter(tcx, body, Ty::is_scalar);
 
+        // We want to have a somewhat linear runtime w.r.t. the number of statements/terminators.
+        // Let's call this number `n`. Dataflow analysis has `O(h*n)` transfer function
+        // applications, where `h` is the height of the lattice. Because the height of our lattice
+        // is linear w.r.t. the number of tracked places, this is `O(tracked_places * n)`. However,
+        // because every transfer function application could traverse the whole map, this becomes
+        // `O(num_nodes * tracked_places * n)` in terms of time complexity. Since the number of
+        // map nodes is strongly correlated to the number of tracked places, this becomes more or
+        // less `O(n)` if we place a constant limit on the number of tracked places.
+        if map.tracked_places() > TRACKING_LIMIT {
+            debug!("aborted dataflow const prop due to too many tracked places");
+            return;
+        }
+
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);
-        let results = analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint();
+        let results = debug_span!("analyze")
+            .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
 
         // Collect results and patch the body afterwards.
         let mut visitor = CollectAndPatch::new(tcx, &results.analysis.0.map);
-        results.visit_reachable_with(body, &mut visitor);
-        visitor.visit_body(body);
+        debug_span!("collect").in_scope(|| results.visit_reachable_with(body, &mut visitor));
+        debug_span!("patch").in_scope(|| visitor.visit_body(body));
     }
 }
 
