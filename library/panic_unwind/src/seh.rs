@@ -49,9 +49,15 @@
 use alloc::boxed::Box;
 use core::any::Any;
 use core::mem::{self, ManuallyDrop};
+use core::ptr;
 use libc::{c_int, c_uint, c_void};
 
+// NOTE(nbdd0121): The `canary` field will be part of stable ABI after `c_unwind` stabilization.
+#[repr(C)]
 struct Exception {
+    // See `gcc.rs` on why this is present. We already have a static here so just use it.
+    canary: *const _TypeDescriptor,
+
     // This needs to be an Option because we catch the exception by reference
     // and its destructor is executed by the C++ runtime. When we take the Box
     // out of the exception, we need to leave the exception in a valid state
@@ -235,7 +241,7 @@ static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
 macro_rules! define_cleanup {
     ($abi:tt $abi2:tt) => {
         unsafe extern $abi fn exception_cleanup(e: *mut Exception) {
-            if let Exception { data: Some(b) } = e.read() {
+            if let Exception { data: Some(b), .. } = e.read() {
                 drop(b);
                 super::__rust_drop_panic();
             }
@@ -265,7 +271,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // The ManuallyDrop is needed here since we don't want Exception to be
     // dropped when unwinding. Instead it will be dropped by exception_cleanup
     // which is invoked by the C++ runtime.
-    let mut exception = ManuallyDrop::new(Exception { data: Some(data) });
+    let mut exception = ManuallyDrop::new(Exception { canary: &TYPE_DESCRIPTOR, data: Some(data) });
     let throw_ptr = &mut exception as *mut _ as *mut _;
 
     // This... may seems surprising, and justifiably so. On 32-bit MSVC the
@@ -321,8 +327,12 @@ pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
     // __rust_try. This happens when a non-Rust foreign exception is caught.
     if payload.is_null() {
         super::__rust_foreign_exception();
-    } else {
-        let exception = &mut *(payload as *mut Exception);
-        exception.data.take().unwrap()
     }
+    let exception = payload as *mut Exception;
+    let canary = ptr::addr_of!((*exception).canary).read();
+    if !ptr::eq(canary, &TYPE_DESCRIPTOR) {
+        // A foreign Rust exception.
+        super::__rust_foreign_exception();
+    }
+    (*exception).data.take().unwrap()
 }
