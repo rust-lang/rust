@@ -270,6 +270,28 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start }
                 if is_niche_after_nonniche(tag_scalar, niche_start, niche_variants, bx.cx()) =>
             {
+                if untagged_variant >= *niche_variants.start() {
+                    // This assumption helps LLVM to compile `get_discr() == untagged_variant`
+                    // to a single cmp.
+                    if untagged_variant <= *niche_variants.end() {
+                        let unused_tag = bx.cx().const_uint_big(
+                            niche_llty,
+                            niche_start + untagged_variant.as_u32() as u128,
+                        );
+                        let assumption = bx.icmp(IntPredicate::IntNE, tag, unused_tag);
+                        bx.assume(assumption);
+                    } else {
+                        // This assumption is in theory implied by tag range, but doing it
+                        // explicitly helps.
+                        let last_tag = bx.cx().const_uint_big(
+                            niche_llty,
+                            niche_start + niche_variants.end().as_u32() as u128,
+                        );
+                        let assumption = bx.icmp(IntPredicate::IntULE, tag, last_tag);
+                        bx.assume(assumption);
+                    }
+                }
+
                 let (niche_llty, tag) = match tag_scalar.primitive() {
                     // Operations on u8/u16 directly result in some additional movzxs, pretend the tag
                     // is cast_to type (usize) instead.
@@ -302,11 +324,6 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 };
                 let untagged_discr =
                     bx.cx().const_uint(niche_llty, untagged_variant.as_u32() as u64);
-                if untagged_variant >= *niche_variants.start() {
-                    let tagged_never_untagged =
-                        bx.icmp(IntPredicate::IntNE, untagged_discr, niche_discr);
-                    bx.assume(tagged_never_untagged);
-                }
                 let discr = bx.select(is_untagged, untagged_discr, niche_discr);
 
                 bx.intcast(discr, cast_to, false)
