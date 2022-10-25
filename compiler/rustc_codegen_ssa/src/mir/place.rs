@@ -293,14 +293,17 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 }
 
                 let (niche_llty, tag) = match tag_scalar.primitive() {
-                    // Operations on u8/u16 directly result in some additional movzxs, pretend the tag
-                    // is cast_to type (usize) instead.
-                    // FIXUP this is very x86 specific assumption
+                    // Operations on u8/u16 directly result in some additional movzxs
+                    // (https://github.com/llvm/llvm-project/issues/58338), pretend the tag is
+                    // cast_to type (usize) instead.
+                    // FIXUP this is very x86-specific assumption
                     Int(Integer::I8 | Integer::I16, _) => {
                         (cast_to, bx.intcast(tag, cast_to, false))
                     }
                     _ => (niche_llty, tag),
                 };
+                // Thanks to the cast above, we can guarantee that all variant indexes fit in
+                // niche_llty (as they're u32s).
 
                 let is_untagged = bx.icmp(
                     IntPredicate::IntULT,
