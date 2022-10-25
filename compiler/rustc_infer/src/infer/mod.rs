@@ -1469,7 +1469,12 @@ impl<'tcx> InferCtxt<'tcx> {
          * except during the writeback phase.
          */
 
-        resolve::fully_resolve(self, value)
+        let value = resolve::fully_resolve(self, value);
+        assert!(
+            value.as_ref().map_or(true, |value| !value.needs_infer()),
+            "`{value:?}` is not fully resolved"
+        );
+        value
     }
 
     pub fn replace_bound_vars_with_fresh_vars<T>(
