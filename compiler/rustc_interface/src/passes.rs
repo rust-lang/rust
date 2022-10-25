@@ -16,7 +16,6 @@ use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::StableCrateId;
-use rustc_hir::definitions::Definitions;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -30,7 +29,7 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn};
+use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -135,10 +134,7 @@ mod boxed_resolver {
             f((&mut *resolver).as_mut().unwrap())
         }
 
-        pub fn to_resolver_outputs(
-            resolver: Rc<RefCell<BoxedResolver>>,
-        ) -> (Definitions, Box<CrateStoreDyn>, ty::ResolverOutputs, ty::ResolverAstLowering)
-        {
+        pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ty::ResolverOutputs {
             match Rc::try_unwrap(resolver) {
                 Ok(resolver) => {
                     let mut resolver = resolver.into_inner();
@@ -788,8 +784,7 @@ pub fn create_global_ctxt<'tcx>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let (definitions, cstore, resolver_outputs, resolver_for_lowering) =
-        BoxedResolver::to_resolver_outputs(resolver);
+    let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
 
     let sess = &compiler.session();
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
@@ -816,10 +811,7 @@ pub fn create_global_ctxt<'tcx>(
                 lint_store,
                 arena,
                 hir_arena,
-                definitions,
-                cstore,
                 resolver_outputs,
-                resolver_for_lowering,
                 krate,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
