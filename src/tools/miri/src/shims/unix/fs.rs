@@ -621,7 +621,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(-1);
         }
 
-        let fd = options.open(&path).map(|file| {
+        let fd = options.open(path).map(|file| {
             let fh = &mut this.machine.file_handler;
             fh.insert_fd(Box::new(FileHandle { file, writable }))
         });
@@ -1862,7 +1862,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             let possibly_unique = std::env::temp_dir().join::<PathBuf>(p.into());
 
-            let file = fopts.open(&possibly_unique);
+            let file = fopts.open(possibly_unique);
 
             match file {
                 Ok(f) => {

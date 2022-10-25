@@ -191,12 +191,12 @@ impl interpret::Provenance for Provenance {
             Provenance::Concrete { alloc_id, sb } => {
                 // Forward `alternate` flag to `alloc_id` printing.
                 if f.alternate() {
-                    write!(f, "[{:#?}]", alloc_id)?;
+                    write!(f, "[{alloc_id:#?}]")?;
                 } else {
-                    write!(f, "[{:?}]", alloc_id)?;
+                    write!(f, "[{alloc_id:?}]")?;
                 }
                 // Print Stacked Borrows tag.
-                write!(f, "{:?}", sb)?;
+                write!(f, "{sb:?}")?;
             }
             Provenance::Wildcard => {
                 write!(f, "[wildcard]")?;

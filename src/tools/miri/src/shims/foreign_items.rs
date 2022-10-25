@@ -321,7 +321,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     return Ok(Some(body));
                 }
 
-                this.handle_unsupported(format!("can't call foreign function: {}", link_name))?;
+                this.handle_unsupported(format!("can't call foreign function: {link_name}"))?;
                 return Ok(None);
             }
         }

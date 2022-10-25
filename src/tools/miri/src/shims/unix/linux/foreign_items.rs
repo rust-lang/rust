@@ -126,7 +126,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         futex(this, &args[1..], dest)?;
                     }
                     id => {
-                        this.handle_unsupported(format!("can't execute syscall with ID {}", id))?;
+                        this.handle_unsupported(format!("can't execute syscall with ID {id}"))?;
                         return Ok(EmulateByNameResult::AlreadyJumped);
                     }
                 }
