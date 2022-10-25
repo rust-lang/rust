@@ -337,40 +337,26 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    op: hir::BinOpKind,
-    lhs: Bx::Value,
-    rhs: Bx::Value,
-) -> Bx::Value {
-    cast_shift_rhs(bx, op, lhs, rhs)
-}
-
-fn cast_shift_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    op: hir::BinOpKind,
     lhs: Bx::Value,
     rhs: Bx::Value,
 ) -> Bx::Value {
     // Shifts may have any size int on the rhs
-    if op.is_shift() {
-        let mut rhs_llty = bx.cx().val_ty(rhs);
-        let mut lhs_llty = bx.cx().val_ty(lhs);
-        if bx.cx().type_kind(rhs_llty) == TypeKind::Vector {
-            rhs_llty = bx.cx().element_type(rhs_llty)
-        }
-        if bx.cx().type_kind(lhs_llty) == TypeKind::Vector {
-            lhs_llty = bx.cx().element_type(lhs_llty)
-        }
-        let rhs_sz = bx.cx().int_width(rhs_llty);
-        let lhs_sz = bx.cx().int_width(lhs_llty);
-        if lhs_sz < rhs_sz {
-            bx.trunc(rhs, lhs_llty)
-        } else if lhs_sz > rhs_sz {
-            // FIXME (#1877: If in the future shifting by negative
-            // values is no longer undefined then this is wrong.
-            bx.zext(rhs, lhs_llty)
-        } else {
-            rhs
-        }
+    let mut rhs_llty = bx.cx().val_ty(rhs);
+    let mut lhs_llty = bx.cx().val_ty(lhs);
+    if bx.cx().type_kind(rhs_llty) == TypeKind::Vector {
+        rhs_llty = bx.cx().element_type(rhs_llty)
+    }
+    if bx.cx().type_kind(lhs_llty) == TypeKind::Vector {
+        lhs_llty = bx.cx().element_type(lhs_llty)
+    }
+    let rhs_sz = bx.cx().int_width(rhs_llty);
+    let lhs_sz = bx.cx().int_width(lhs_llty);
+    if lhs_sz < rhs_sz {
+        bx.trunc(rhs, lhs_llty)
+    } else if lhs_sz > rhs_sz {
+        // FIXME (#1877: If in the future shifting by negative
+        // values is no longer undefined then this is wrong.
+        bx.zext(rhs, lhs_llty)
     } else {
         rhs
     }
