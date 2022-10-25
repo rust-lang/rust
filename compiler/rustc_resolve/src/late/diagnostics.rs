@@ -150,7 +150,7 @@ struct BaseError {
 #[derive(Debug)]
 enum TypoCandidate {
     Typo(TypoSuggestion),
-    Shadowed(Res),
+    Shadowed(Res, Option<Span>),
     None,
 }
 
@@ -158,7 +158,7 @@ impl TypoCandidate {
     fn to_opt_suggestion(self) -> Option<TypoSuggestion> {
         match self {
             TypoCandidate::Typo(sugg) => Some(sugg),
-            TypoCandidate::Shadowed(_) | TypoCandidate::None => None,
+            TypoCandidate::Shadowed(_, _) | TypoCandidate::None => None,
         }
     }
 }
@@ -691,10 +691,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let is_expected = &|res| source.is_expected(res);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let typo_sugg = self.lookup_typo_candidate(path, source.namespace(), is_expected);
-        if let TypoCandidate::Shadowed(res) = typo_sugg
-            && let Some(id) = res.opt_def_id()
-            && let Some(sugg_span) = self.r.opt_span(id)
-        {
+        if let TypoCandidate::Shadowed(res, Some(sugg_span)) = typo_sugg {
             err.span_label(
                 sugg_span,
                 format!("you might have meant to refer to this {}", res.descr()),
@@ -973,10 +970,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         .collect();
                 if targets.len() == 1 {
                     let target = targets[0];
-                    return Some(TypoSuggestion::single_item_from_res(
-                        target.0.ident.name,
-                        target.1,
-                    ));
+                    return Some(TypoSuggestion::single_item_from_ident(target.0.ident, target.1));
                 }
             }
         }
@@ -1618,7 +1612,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 // Locals and type parameters
                 for (ident, &res) in &rib.bindings {
                     if filter_fn(res) && ident.span.ctxt() == rib_ctxt {
-                        names.push(TypoSuggestion::typo_from_res(ident.name, res));
+                        names.push(TypoSuggestion::typo_from_ident(*ident, res));
                     }
                 }
 
@@ -1647,9 +1641,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                             Res::Def(DefKind::Mod, crate_id.as_def_id());
 
                                         if filter_fn(crate_mod) {
-                                            Some(TypoSuggestion::typo_from_res(
-                                                ident.name, crate_mod,
-                                            ))
+                                            Some(TypoSuggestion::typo_from_ident(*ident, crate_mod))
                                         } else {
                                             None
                                         }
@@ -1668,7 +1660,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             // Add primitive types to the mix
             if filter_fn(Res::PrimTy(PrimTy::Bool)) {
                 names.extend(PrimTy::ALL.iter().map(|prim_ty| {
-                    TypoSuggestion::typo_from_res(prim_ty.name(), Res::PrimTy(*prim_ty))
+                    TypoSuggestion::typo_from_name(prim_ty.name(), Res::PrimTy(*prim_ty))
                 }))
             }
         } else {
@@ -1695,7 +1687,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     return TypoCandidate::None;
                 };
                 if found == name {
-                    TypoCandidate::Shadowed(sugg.res)
+                    TypoCandidate::Shadowed(sugg.res, sugg.span)
                 } else {
                     TypoCandidate::Typo(sugg)
                 }

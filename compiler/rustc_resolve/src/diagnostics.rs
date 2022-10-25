@@ -58,16 +58,32 @@ pub(crate) enum SuggestionTarget {
 #[derive(Debug)]
 pub(crate) struct TypoSuggestion {
     pub candidate: Symbol,
+    /// The source location where the name is defined; None if the name is not defined
+    /// in source e.g. primitives
+    pub span: Option<Span>,
     pub res: Res,
     pub target: SuggestionTarget,
 }
 
 impl TypoSuggestion {
-    pub(crate) fn typo_from_res(candidate: Symbol, res: Res) -> TypoSuggestion {
-        Self { candidate, res, target: SuggestionTarget::SimilarlyNamed }
+    pub(crate) fn typo_from_ident(ident: Ident, res: Res) -> TypoSuggestion {
+        Self {
+            candidate: ident.name,
+            span: Some(ident.span),
+            res,
+            target: SuggestionTarget::SimilarlyNamed,
+        }
     }
-    pub(crate) fn single_item_from_res(candidate: Symbol, res: Res) -> TypoSuggestion {
-        Self { candidate, res, target: SuggestionTarget::SingleItem }
+    pub(crate) fn typo_from_name(candidate: Symbol, res: Res) -> TypoSuggestion {
+        Self { candidate, span: None, res, target: SuggestionTarget::SimilarlyNamed }
+    }
+    pub(crate) fn single_item_from_ident(ident: Ident, res: Res) -> TypoSuggestion {
+        Self {
+            candidate: ident.name,
+            span: Some(ident.span),
+            res,
+            target: SuggestionTarget::SingleItem,
+        }
     }
 }
 
@@ -490,7 +506,7 @@ impl<'a> Resolver<'a> {
             if let Some(binding) = resolution.borrow().binding {
                 let res = binding.res();
                 if filter_fn(res) && ctxt.map_or(true, |ctxt| ctxt == key.ident.span.ctxt()) {
-                    names.push(TypoSuggestion::typo_from_res(key.ident.name, res));
+                    names.push(TypoSuggestion::typo_from_ident(key.ident, res));
                 }
             }
         }
@@ -1145,7 +1161,7 @@ impl<'a> Resolver<'a> {
                                 .get(&expn_id)
                                 .into_iter()
                                 .flatten()
-                                .map(|ident| TypoSuggestion::typo_from_res(ident.name, res)),
+                                .map(|ident| TypoSuggestion::typo_from_ident(*ident, res)),
                         );
                     }
                 }
@@ -1164,7 +1180,7 @@ impl<'a> Resolver<'a> {
                                 suggestions.extend(
                                     ext.helper_attrs
                                         .iter()
-                                        .map(|name| TypoSuggestion::typo_from_res(*name, res)),
+                                        .map(|name| TypoSuggestion::typo_from_name(*name, res)),
                                 );
                             }
                         }
@@ -1174,8 +1190,8 @@ impl<'a> Resolver<'a> {
                     if let MacroRulesScope::Binding(macro_rules_binding) = macro_rules_scope.get() {
                         let res = macro_rules_binding.binding.res();
                         if filter_fn(res) {
-                            suggestions.push(TypoSuggestion::typo_from_res(
-                                macro_rules_binding.ident.name,
+                            suggestions.push(TypoSuggestion::typo_from_ident(
+                                macro_rules_binding.ident,
                                 res,
                             ))
                         }
@@ -1193,7 +1209,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {
                             let res = binding.res();
-                            filter_fn(res).then_some(TypoSuggestion::typo_from_res(*name, res))
+                            filter_fn(res).then_some(TypoSuggestion::typo_from_name(*name, res))
                         },
                     ));
                 }
@@ -1203,14 +1219,14 @@ impl<'a> Resolver<'a> {
                         suggestions.extend(
                             BUILTIN_ATTRIBUTES
                                 .iter()
-                                .map(|attr| TypoSuggestion::typo_from_res(attr.name, res)),
+                                .map(|attr| TypoSuggestion::typo_from_name(attr.name, res)),
                         );
                     }
                 }
                 Scope::ExternPrelude => {
                     suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
                         let res = Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id());
-                        filter_fn(res).then_some(TypoSuggestion::typo_from_res(ident.name, res))
+                        filter_fn(res).then_some(TypoSuggestion::typo_from_ident(*ident, res))
                     }));
                 }
                 Scope::ToolPrelude => {
@@ -1218,7 +1234,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(
                         this.registered_tools
                             .iter()
-                            .map(|ident| TypoSuggestion::typo_from_res(ident.name, res)),
+                            .map(|ident| TypoSuggestion::typo_from_ident(*ident, res)),
                     );
                 }
                 Scope::StdLibPrelude => {
@@ -1235,7 +1251,8 @@ impl<'a> Resolver<'a> {
                 Scope::BuiltinTypes => {
                     suggestions.extend(PrimTy::ALL.iter().filter_map(|prim_ty| {
                         let res = Res::PrimTy(*prim_ty);
-                        filter_fn(res).then_some(TypoSuggestion::typo_from_res(prim_ty.name(), res))
+                        filter_fn(res)
+                            .then_some(TypoSuggestion::typo_from_name(prim_ty.name(), res))
                     }))
                 }
             }
