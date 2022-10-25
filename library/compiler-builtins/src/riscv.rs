@@ -1,5 +1,18 @@
 intrinsics! {
-    // Implementation from gcc
+    // Ancient Egyptian/Ethiopian/Russian multiplication method
+    // see https://en.wikipedia.org/wiki/Ancient_Egyptian_multiplication
+    //
+    // This is a long-available stock algorithm; e.g. it is documented in
+    // Knuth's "The Art of Computer Programming" volume 2 (under the section
+    // "Evaluation of Powers") since at least the 2nd edition (1981).
+    //
+    // The main attraction of this method is that it implements (software)
+    // multiplication atop four simple operations: doubling, halving, checking
+    // if a value is even/odd, and addition. This is *not* considered to be the
+    // fastest multiplication method, but it may be amongst the simplest (and
+    // smallest with respect to code size).
+    //
+    // for reference, see also implementation from gcc
     // https://raw.githubusercontent.com/gcc-mirror/gcc/master/libgcc/config/epiphany/mulsi3.c
     pub extern "C" fn __mulsi3(a: u32, b: u32) -> u32 {
         let (mut a, mut b) = (a, b);
