@@ -80,7 +80,7 @@ pub unsafe fn _mm256_cvtne2ps_pbh(a: __m256, b: __m256) -> __m256bh {
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in two vectors a and b
-/// to packed BF16 (16-bit) floating-point elements and and store the results in single vector
+/// to packed BF16 (16-bit) floating-point elements and store the results in single vector
 /// dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769,1651,1654&avx512techs=AVX512_BF16&text=_mm256_mask_cvtne2ps_pbh)
 #[inline]

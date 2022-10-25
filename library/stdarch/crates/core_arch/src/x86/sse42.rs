@@ -614,7 +614,7 @@ mod tests {
     use crate::core_arch::x86::*;
     use std::ptr;
 
-    // Currently one cannot `load` a &[u8] that is is less than 16
+    // Currently one cannot `load` a &[u8] that is less than 16
     // in length. This makes loading strings less than 16 in length
     // a bit difficult. Rather than `load` and mutate the __m128i,
     // it is easier to memcpy the given string to a local slice with

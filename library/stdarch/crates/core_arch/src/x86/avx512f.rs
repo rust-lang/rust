@@ -26268,7 +26268,7 @@ pub unsafe fn _mm512_set1_epi8(a: i8) -> __m512i {
     transmute(i8x64::splat(a))
 }
 
-/// Broadcast the low packed 16-bit integer from a to all all elements of dst.
+/// Broadcast the low packed 16-bit integer from a to all elements of dst.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_set1_epi16&expand=4944)
 #[inline]

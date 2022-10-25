@@ -179,7 +179,7 @@ fn detect_and_initialize() -> Initializer {
 /// the bit is set, the feature is enabled, and otherwise it is disabled.
 ///
 /// If the feature `std_detect_env_override` is enabled looks for the env
-/// variable `RUST_STD_DETECT_UNSTABLE` and uses its its content to disable
+/// variable `RUST_STD_DETECT_UNSTABLE` and uses its content to disable
 /// Features that would had been otherwise detected.
 #[inline]
 pub(crate) fn test(bit: u32) -> bool {

@@ -155,7 +155,7 @@ pub mod arch {
     /// which support SIMD, or it will not have SIMD at all. For compatibility
     /// the standard library itself does not use any SIMD internally.
     /// Determining how best to ship your WebAssembly binary with SIMD is
-    /// largely left up to you as it can can be pretty nuanced depending on
+    /// largely left up to you as it can be pretty nuanced depending on
     /// your situation.
     ///
     /// [condsections]: https://github.com/webassembly/conditional-sections

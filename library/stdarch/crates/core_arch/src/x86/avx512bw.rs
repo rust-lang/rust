@@ -7450,7 +7450,7 @@ pub unsafe fn _mm_maskz_set1_epi8(k: __mmask16, a: i8) -> __m128i {
     transmute(simd_select_bitmask(k, r, zero))
 }
 
-/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from from a to dst.
+/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from a to dst.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shufflelo_epi16&expand=5221)
 #[inline]
@@ -7501,7 +7501,7 @@ pub unsafe fn _mm512_shufflelo_epi16<const IMM8: i32>(a: __m512i) -> __m512i {
     transmute(r)
 }
 
-/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shufflelo_epi16&expand=5219)
 #[inline]
@@ -7518,7 +7518,7 @@ pub unsafe fn _mm512_mask_shufflelo_epi16<const IMM8: i32>(
     transmute(simd_select_bitmask(k, r.as_i16x32(), src.as_i16x32()))
 }
 
-/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from from a to dst, using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from a to dst, using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shufflelo_epi16&expand=5220)
 #[inline]
@@ -7532,7 +7532,7 @@ pub unsafe fn _mm512_maskz_shufflelo_epi16<const IMM8: i32>(k: __mmask32, a: __m
     transmute(simd_select_bitmask(k, r.as_i16x32(), zero))
 }
 
-/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shufflelo_epi16&expand=5216)
 #[inline]
@@ -7549,7 +7549,7 @@ pub unsafe fn _mm256_mask_shufflelo_epi16<const IMM8: i32>(
     transmute(simd_select_bitmask(k, shuffle.as_i16x16(), src.as_i16x16()))
 }
 
-/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shufflelo_epi16&expand=5217)
 #[inline]
@@ -7563,7 +7563,7 @@ pub unsafe fn _mm256_maskz_shufflelo_epi16<const IMM8: i32>(k: __mmask16, a: __m
     transmute(simd_select_bitmask(k, shuffle.as_i16x16(), zero))
 }
 
-/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shufflelo_epi16&expand=5213)
 #[inline]
@@ -7580,7 +7580,7 @@ pub unsafe fn _mm_mask_shufflelo_epi16<const IMM8: i32>(
     transmute(simd_select_bitmask(k, shuffle.as_i16x8(), src.as_i16x8()))
 }
 
-/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the low 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the low 64 bits of 128-bit lanes of dst, with the high 64 bits of 128-bit lanes being copied from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shufflelo_epi16&expand=5214)
 #[inline]
@@ -7594,7 +7594,7 @@ pub unsafe fn _mm_maskz_shufflelo_epi16<const IMM8: i32>(k: __mmask8, a: __m128i
     transmute(simd_select_bitmask(k, shuffle.as_i16x8(), zero))
 }
 
-/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from from a to dst.
+/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from a to dst.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shufflehi_epi16&expand=5212)
 #[inline]
@@ -7645,7 +7645,7 @@ pub unsafe fn _mm512_shufflehi_epi16<const IMM8: i32>(a: __m512i) -> __m512i {
     transmute(r)
 }
 
-/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shufflehi_epi16&expand=5210)
 #[inline]
@@ -7662,7 +7662,7 @@ pub unsafe fn _mm512_mask_shufflehi_epi16<const IMM8: i32>(
     transmute(simd_select_bitmask(k, r.as_i16x32(), src.as_i16x32()))
 }
 
-/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from from a to dst, using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from a to dst, using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shufflehi_epi16&expand=5211)
 #[inline]
@@ -7676,7 +7676,7 @@ pub unsafe fn _mm512_maskz_shufflehi_epi16<const IMM8: i32>(k: __mmask32, a: __m
     transmute(simd_select_bitmask(k, r.as_i16x32(), zero))
 }
 
-/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shufflehi_epi16&expand=5207)
 #[inline]
@@ -7693,7 +7693,7 @@ pub unsafe fn _mm256_mask_shufflehi_epi16<const IMM8: i32>(
     transmute(simd_select_bitmask(k, shuffle.as_i16x16(), src.as_i16x16()))
 }
 
-/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from from a to dst, using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from a to dst, using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shufflehi_epi16&expand=5208)
 #[inline]
@@ -7707,7 +7707,7 @@ pub unsafe fn _mm256_maskz_shufflehi_epi16<const IMM8: i32>(k: __mmask16, a: __m
     transmute(simd_select_bitmask(k, shuffle.as_i16x16(), zero))
 }
 
-/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from a to dst, using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shufflehi_epi16&expand=5204)
 #[inline]
@@ -7724,7 +7724,7 @@ pub unsafe fn _mm_mask_shufflehi_epi16<const IMM8: i32>(
     transmute(simd_select_bitmask(k, shuffle.as_i16x8(), src.as_i16x8()))
 }
 
-/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from from a to dst, using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Shuffle 16-bit integers in the high 64 bits of 128-bit lanes of a using the control in imm8. Store the results in the high 64 bits of 128-bit lanes of dst, with the low 64 bits of 128-bit lanes being copied from a to dst, using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shufflehi_epi16&expand=5205)
 #[inline]

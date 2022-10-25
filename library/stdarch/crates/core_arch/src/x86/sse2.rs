@@ -1409,7 +1409,7 @@ pub unsafe fn _mm_shuffle_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
 /// `IMM8`.
 ///
 /// Put the results in the high 64 bits of the returned vector, with the low 64
-/// bits being copied from from `a`.
+/// bits being copied from `a`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shufflehi_epi16)
 #[inline]
@@ -1441,7 +1441,7 @@ pub unsafe fn _mm_shufflehi_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
 /// `IMM8`.
 ///
 /// Put the results in the low 64 bits of the returned vector, with the high 64
-/// bits being copied from from `a`.
+/// bits being copied from `a`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shufflelo_epi16)
 #[inline]

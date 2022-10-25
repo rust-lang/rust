@@ -2208,7 +2208,7 @@ pub unsafe fn __msa_bmnz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 /// Immediate Bit Move If Not Zero
 ///
 /// Copy to destination vector `a` (sixteen unsigned 8-bit integer numbers) all bits from source vector
-/// `b` (sixteen unsigned 8-bit integer numbers) for which the corresponding bits from from immediate `imm8`
+/// `b` (sixteen unsigned 8-bit integer numbers) for which the corresponding bits from immediate `imm8`
 /// are 1 and leaves unchanged all destination bits for which the corresponding target bits are 0.
 ///
 #[inline]
@@ -2237,7 +2237,7 @@ pub unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 /// Immediate Bit Move If Zero
 ///
 /// Copy to destination vector `a` (sixteen unsigned 8-bit integer numbers) all bits from source vector
-/// `b` (sixteen unsigned 8-bit integer numbers) for which the corresponding bits from from immediate `imm8`
+/// `b` (sixteen unsigned 8-bit integer numbers) for which the corresponding bits from immediate `imm8`
 /// are 0 and leaves unchanged all destination bits for which the corresponding immediate bits are 1.
 ///
 #[inline]

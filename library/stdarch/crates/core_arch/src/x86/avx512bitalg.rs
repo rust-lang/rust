@@ -303,7 +303,7 @@ pub unsafe fn _mm_mask_popcnt_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
-/// Then groups 8 8-bit values from `c`as indices into the the bits of the corresponding 64-bit integer.
+/// Then groups 8 8-bit values from `c`as indices into the bits of the corresponding 64-bit integer.
 /// It then selects these bits and packs them into the output.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_bitshuffle_epi64_mask)
@@ -315,7 +315,7 @@ pub unsafe fn _mm512_bitshuffle_epi64_mask(b: __m512i, c: __m512i) -> __mmask64 
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
-/// Then groups 8 8-bit values from `c`as indices into the the bits of the corresponding 64-bit integer.
+/// Then groups 8 8-bit values from `c`as indices into the bits of the corresponding 64-bit integer.
 /// It then selects these bits and packs them into the output.
 ///
 /// Uses the writemask in k - elements are zeroed in the result if the corresponding mask bit is not set.
@@ -330,7 +330,7 @@ pub unsafe fn _mm512_mask_bitshuffle_epi64_mask(k: __mmask64, b: __m512i, c: __m
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
-/// Then groups 8 8-bit values from `c`as indices into the the bits of the corresponding 64-bit integer.
+/// Then groups 8 8-bit values from `c`as indices into the bits of the corresponding 64-bit integer.
 /// It then selects these bits and packs them into the output.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bitshuffle_epi64_mask)
@@ -342,7 +342,7 @@ pub unsafe fn _mm256_bitshuffle_epi64_mask(b: __m256i, c: __m256i) -> __mmask32 
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
-/// Then groups 8 8-bit values from `c`as indices into the the bits of the corresponding 64-bit integer.
+/// Then groups 8 8-bit values from `c`as indices into the bits of the corresponding 64-bit integer.
 /// It then selects these bits and packs them into the output.
 ///
 /// Uses the writemask in k - elements are zeroed in the result if the corresponding mask bit is not set.
@@ -357,7 +357,7 @@ pub unsafe fn _mm256_mask_bitshuffle_epi64_mask(k: __mmask32, b: __m256i, c: __m
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
-/// Then groups 8 8-bit values from `c`as indices into the the bits of the corresponding 64-bit integer.
+/// Then groups 8 8-bit values from `c`as indices into the bits of the corresponding 64-bit integer.
 /// It then selects these bits and packs them into the output.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_bitshuffle_epi64_mask)
@@ -369,7 +369,7 @@ pub unsafe fn _mm_bitshuffle_epi64_mask(b: __m128i, c: __m128i) -> __mmask16 {
 }
 
 /// Considers the input `b` as packed 64-bit integers and `c` as packed 8-bit integers.
-/// Then groups 8 8-bit values from `c`as indices into the the bits of the corresponding 64-bit integer.
+/// Then groups 8 8-bit values from `c`as indices into the bits of the corresponding 64-bit integer.
 /// It then selects these bits and packs them into the output.
 ///
 /// Uses the writemask in k - elements are zeroed in the result if the corresponding mask bit is not set.

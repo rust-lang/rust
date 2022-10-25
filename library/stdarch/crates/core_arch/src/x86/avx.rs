@@ -2450,7 +2450,7 @@ pub unsafe fn _mm256_set1_epi8(a: i8) -> __m256i {
     )
 }
 
-/// Broadcasts 16-bit integer `a` to all all elements of returned vector.
+/// Broadcasts 16-bit integer `a` to all elements of returned vector.
 /// This intrinsic may generate the `vpbroadcastw`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_set1_epi16)
