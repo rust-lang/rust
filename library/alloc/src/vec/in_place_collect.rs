@@ -137,9 +137,11 @@
 //! }
 //! vec.truncate(write_idx);
 //! ```
+use core::alloc::{Allocator, Layout};
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
-use core::ptr::{self};
+use core::ptr::{self, NonNull};
+use crate::alloc::Global;
 
 use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
@@ -161,13 +163,13 @@ where
             || mem::size_of::<T>()
                 != mem::size_of::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>()
             || mem::align_of::<T>()
-                != mem::align_of::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>()
+                > mem::align_of::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>()
         {
             // fallback to more generic implementations
             return SpecFromIterNested::from_iter(iterator);
         }
 
-        let (src_buf, src_ptr, dst_buf, dst_end, cap) = unsafe {
+        let (src_buf, src_ptr, mut dst_buf, dst_end, cap) = unsafe {
             let inner = iterator.as_inner().as_into_iter();
             (
                 inner.buf.as_ptr(),
@@ -201,9 +203,24 @@ where
         //
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
-        // module documenttation why this is ok anyway.
+        // module documentation why this is ok anyway.
         let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap };
         src.forget_allocation_drop_remaining();
+
+        // launder the pointer through the allocator if the alignedment changed
+        // ideally this does not cause any data movement
+        if mem::align_of::<T>() != mem::align_of::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>() {
+            let alloc = Global;
+            unsafe {
+                let reallocated = alloc.shrink(
+                    NonNull::new_unchecked(dst_buf as *mut u8),
+                    Layout::array::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>(cap).unwrap(),
+                    Layout::array::<T>(cap).unwrap()
+                ).expect("failed to realloc vec");
+                dst_buf = reallocated.as_ptr() as *mut T;
+            }
+        }
+
         mem::forget(dst_guard);
 
         let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
