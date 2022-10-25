@@ -55,7 +55,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 // FIXME(eddyb) ignoring `obligations` might cause false positives.
                 drop(obligations);
 
-                trace!(
+                tracing::trace!(
                     "invoking predicate_may_hold: param_env={:?}, impl_trait_ref={:?}, impl_ty={:?}",
                     param_env,
                     impl_trait_ref,
@@ -87,9 +87,10 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         _ => continue 'blanket_impls,
                     }
                 }
-                debug!(
+                tracing::debug!(
                     "get_blanket_impls: found applicable impl for trait_ref={:?}, ty={:?}",
-                    trait_ref, ty
+                    trait_ref,
+                    ty
                 );
 
                 cx.generated_synthetics.insert((ty.0, trait_def_id));

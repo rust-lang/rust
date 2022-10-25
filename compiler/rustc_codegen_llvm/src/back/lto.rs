@@ -132,7 +132,10 @@ fn prepare_lto(
                         let module = SerializedModule::FromRlib(data.to_vec());
                         upstream_modules.push((module, CString::new(name).unwrap()));
                     }
-                    Err(msg) => return Err(diag_handler.fatal(&msg)),
+                    Err(msg) => {
+                        eprintln!("Couldn't add bitcode from {name}");
+                        return Err(diag_handler.fatal(&msg));
+                    }
                 }
             }
         }
