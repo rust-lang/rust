@@ -573,6 +573,24 @@ LL |     #[subdiagnostic(eager)]
    |
    = help: eager subdiagnostics are not supported on lints
 
+error: expected at least one string literal for `code(...)`
+  --> $DIR/diagnostic-derive.rs:779:18
+   |
+LL |     #[suggestion(code())]
+   |                  ^^^^^^
+
+error: `code(...)` must contain only string literals
+  --> $DIR/diagnostic-derive.rs:787:23
+   |
+LL |     #[suggestion(code(foo))]
+   |                       ^^^
+
+error: `code = "..."`/`code(...)` must contain only string literals
+  --> $DIR/diagnostic-derive.rs:795:18
+   |
+LL |     #[suggestion(code = 3)]
+   |                  ^^^^^^^^
+
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive.rs:55:3
    |
@@ -647,7 +665,7 @@ LL |         arg: impl IntoDiagnosticArg,
    |                   ^^^^^^^^^^^^^^^^^ required by this bound in `DiagnosticBuilder::<'a, G>::set_arg`
    = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 80 previous errors
+error: aborting due to 83 previous errors
 
 Some errors have detailed explanations: E0277, E0425.
 For more information about an error, try `rustc --explain E0277`.
