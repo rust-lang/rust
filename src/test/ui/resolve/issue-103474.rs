@@ -13,4 +13,16 @@ impl S {
     }
 }
 
+// https://github.com/rust-lang/rust/pull/103531#discussion_r1004728080
+struct Foo {
+    i: i32,
+}
+
+impl Foo {
+    fn needs_self() {
+        this.i
+        //~^ ERROR cannot find value `this` in this scope
+    }
+}
+
 fn main() {}
