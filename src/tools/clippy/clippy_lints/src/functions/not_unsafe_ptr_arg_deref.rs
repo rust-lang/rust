@@ -42,7 +42,7 @@ fn check_raw_ptr<'tcx>(
     body: &'tcx hir::Body<'tcx>,
     def_id: LocalDefId,
 ) {
-    if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(def_id) {
+    if unsafety == hir::Unsafety::Normal && cx.effective_visibilities.is_exported(def_id) {
         let raw_ptrs = iter_input_pats(decl, body)
             .filter_map(|arg| raw_ptr_arg(cx, arg))
             .collect::<HirIdSet>();

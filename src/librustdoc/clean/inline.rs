@@ -347,7 +347,7 @@ pub(crate) fn build_impl(
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
             let did = traitref.def_id;
-            if !cx.cache.access_levels.is_public(did) {
+            if !cx.cache.effective_visibilities.is_directly_public(did) {
                 return;
             }
 
@@ -376,7 +376,7 @@ pub(crate) fn build_impl(
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(did) = for_.def_id(&cx.cache) {
-            if !cx.cache.access_levels.is_public(did) {
+            if !cx.cache.effective_visibilities.is_directly_public(did) {
                 return;
             }
 

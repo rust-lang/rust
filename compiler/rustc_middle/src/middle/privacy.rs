@@ -9,71 +9,66 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::{DefId, LocalDefId};
 use std::hash::Hash;
 
-/// Represents the levels of accessibility an item can have.
+/// Represents the levels of effective visibility an item can have.
 ///
-/// The variants are sorted in ascending order of accessibility.
+/// The variants are sorted in ascending order of directness.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable)]
-pub enum AccessLevel {
-    /// Superset of `AccessLevel::Reachable` used to mark impl Trait items.
-    ReachableFromImplTrait,
-    /// Exported items + items participating in various kinds of public interfaces,
-    /// but not directly nameable. For example, if function `fn f() -> T {...}` is
-    /// public, then type `T` is reachable. Its values can be obtained by other crates
-    /// even if the type itself is not nameable.
+pub enum Level {
+    /// Superset of `Reachable` including items leaked through return position `impl Trait`.
+    ReachableThroughImplTrait,
+    /// Item is either reexported, or leaked through any kind of interface.
+    /// For example, if function `fn f() -> T {...}` is directly public, then type `T` is publicly
+    /// reachable and its values can be obtained by other crates even if the type itself is not
+    /// nameable.
     Reachable,
-    /// Public items + items accessible to other crates with the help of `pub use` re-exports.
-    Exported,
-    /// Items accessible to other crates directly, without the help of re-exports.
-    Public,
+    /// Item is accessible either directly, or with help of `use` reexports.
+    Reexported,
+    /// Item is directly accessible, without help of reexports.
+    Direct,
 }
 
-impl AccessLevel {
-    pub fn all_levels() -> [AccessLevel; 4] {
-        [
-            AccessLevel::Public,
-            AccessLevel::Exported,
-            AccessLevel::Reachable,
-            AccessLevel::ReachableFromImplTrait,
-        ]
+impl Level {
+    pub fn all_levels() -> [Level; 4] {
+        [Level::Direct, Level::Reexported, Level::Reachable, Level::ReachableThroughImplTrait]
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
 pub struct EffectiveVisibility {
-    public: Visibility,
-    exported: Visibility,
+    direct: Visibility,
+    reexported: Visibility,
     reachable: Visibility,
-    reachable_from_impl_trait: Visibility,
+    reachable_through_impl_trait: Visibility,
 }
 
 impl EffectiveVisibility {
-    pub fn get(&self, tag: AccessLevel) -> &Visibility {
-        match tag {
-            AccessLevel::Public => &self.public,
-            AccessLevel::Exported => &self.exported,
-            AccessLevel::Reachable => &self.reachable,
-            AccessLevel::ReachableFromImplTrait => &self.reachable_from_impl_trait,
+    pub fn at_level(&self, level: Level) -> &Visibility {
+        match level {
+            Level::Direct => &self.direct,
+            Level::Reexported => &self.reexported,
+            Level::Reachable => &self.reachable,
+            Level::ReachableThroughImplTrait => &self.reachable_through_impl_trait,
         }
     }
 
-    fn get_mut(&mut self, tag: AccessLevel) -> &mut Visibility {
-        match tag {
-            AccessLevel::Public => &mut self.public,
-            AccessLevel::Exported => &mut self.exported,
-            AccessLevel::Reachable => &mut self.reachable,
-            AccessLevel::ReachableFromImplTrait => &mut self.reachable_from_impl_trait,
+    fn at_level_mut(&mut self, level: Level) -> &mut Visibility {
+        match level {
+            Level::Direct => &mut self.direct,
+            Level::Reexported => &mut self.reexported,
+            Level::Reachable => &mut self.reachable,
+            Level::ReachableThroughImplTrait => &mut self.reachable_through_impl_trait,
         }
     }
 
-    pub fn is_public_at_level(&self, tag: AccessLevel) -> bool {
-        self.get(tag).is_public()
+    pub fn is_public_at_level(&self, level: Level) -> bool {
+        self.at_level(level).is_public()
     }
 
-    fn update(&mut self, vis: Visibility, tag: AccessLevel, tree: impl DefIdTree) -> bool {
+    fn update(&mut self, vis: Visibility, level: Level, tree: impl DefIdTree) -> bool {
         let mut changed = false;
-        for level in AccessLevel::all_levels() {
-            if level <= tag {
-                let current_effective_vis = self.get_mut(level);
+        for l in Level::all_levels() {
+            if l <= level {
+                let current_effective_vis = self.at_level_mut(l);
                 if *current_effective_vis != vis && vis.is_at_least(*current_effective_vis, tree) {
                     changed = true;
                     *current_effective_vis = vis;
@@ -85,44 +80,44 @@ impl EffectiveVisibility {
 
     fn from_vis(vis: Visibility) -> EffectiveVisibility {
         EffectiveVisibility {
-            public: vis,
-            exported: vis,
+            direct: vis,
+            reexported: vis,
             reachable: vis,
-            reachable_from_impl_trait: vis,
+            reachable_through_impl_trait: vis,
         }
     }
 }
 
-/// Holds a map of accessibility levels for reachable HIR nodes.
+/// Holds a map of effective visibilities for reachable HIR nodes.
 #[derive(Debug, Clone)]
-pub struct AccessLevels<Id = LocalDefId> {
+pub struct EffectiveVisibilities<Id = LocalDefId> {
     map: FxHashMap<Id, EffectiveVisibility>,
 }
 
-impl<Id: Hash + Eq + Copy> AccessLevels<Id> {
-    pub fn is_public_at_level(&self, id: Id, tag: AccessLevel) -> bool {
-        self.get_effective_vis(id)
-            .map_or(false, |effective_vis| effective_vis.is_public_at_level(tag))
+impl<Id: Hash + Eq + Copy> EffectiveVisibilities<Id> {
+    pub fn is_public_at_level(&self, id: Id, level: Level) -> bool {
+        self.effective_vis(id)
+            .map_or(false, |effective_vis| effective_vis.is_public_at_level(level))
     }
 
-    /// See `AccessLevel::Reachable`.
+    /// See `Level::Reachable`.
     pub fn is_reachable(&self, id: Id) -> bool {
-        self.is_public_at_level(id, AccessLevel::Reachable)
+        self.is_public_at_level(id, Level::Reachable)
     }
 
-    /// See `AccessLevel::Exported`.
+    /// See `Level::Reexported`.
     pub fn is_exported(&self, id: Id) -> bool {
-        self.is_public_at_level(id, AccessLevel::Exported)
+        self.is_public_at_level(id, Level::Reexported)
     }
 
-    /// See `AccessLevel::Public`.
-    pub fn is_public(&self, id: Id) -> bool {
-        self.is_public_at_level(id, AccessLevel::Public)
+    /// See `Level::Direct`.
+    pub fn is_directly_public(&self, id: Id) -> bool {
+        self.is_public_at_level(id, Level::Direct)
     }
 
-    pub fn get_access_level(&self, id: Id) -> Option<AccessLevel> {
-        self.get_effective_vis(id).and_then(|effective_vis| {
-            for level in AccessLevel::all_levels() {
+    pub fn public_at_level(&self, id: Id) -> Option<Level> {
+        self.effective_vis(id).and_then(|effective_vis| {
+            for level in Level::all_levels() {
                 if effective_vis.is_public_at_level(level) {
                     return Some(level);
                 }
@@ -131,7 +126,7 @@ impl<Id: Hash + Eq + Copy> AccessLevels<Id> {
         })
     }
 
-    pub fn get_effective_vis(&self, id: Id) -> Option<&EffectiveVisibility> {
+    pub fn effective_vis(&self, id: Id) -> Option<&EffectiveVisibility> {
         self.map.get(&id)
     }
 
@@ -139,30 +134,33 @@ impl<Id: Hash + Eq + Copy> AccessLevels<Id> {
         self.map.iter()
     }
 
-    pub fn map_id<OutId: Hash + Eq + Copy>(&self, f: impl Fn(Id) -> OutId) -> AccessLevels<OutId> {
-        AccessLevels { map: self.map.iter().map(|(k, v)| (f(*k), *v)).collect() }
+    pub fn map_id<OutId: Hash + Eq + Copy>(
+        &self,
+        f: impl Fn(Id) -> OutId,
+    ) -> EffectiveVisibilities<OutId> {
+        EffectiveVisibilities { map: self.map.iter().map(|(k, v)| (f(*k), *v)).collect() }
     }
 
-    pub fn set_access_level(
+    pub fn set_public_at_level(
         &mut self,
         id: Id,
         default_vis: impl FnOnce() -> Visibility,
-        tag: AccessLevel,
+        level: Level,
     ) {
         let mut effective_vis = self
-            .get_effective_vis(id)
+            .effective_vis(id)
             .copied()
             .unwrap_or_else(|| EffectiveVisibility::from_vis(default_vis()));
-        for level in AccessLevel::all_levels() {
-            if level <= tag {
-                *effective_vis.get_mut(level) = Visibility::Public;
+        for l in Level::all_levels() {
+            if l <= level {
+                *effective_vis.at_level_mut(l) = Visibility::Public;
             }
         }
         self.map.insert(id, effective_vis);
     }
 }
 
-impl<Id: Hash + Eq + Copy + Into<DefId>> AccessLevels<Id> {
+impl<Id: Hash + Eq + Copy + Into<DefId>> EffectiveVisibilities<Id> {
     // `parent_id` is not necessarily a parent in source code tree,
     // it is the node from which the maximum effective visibility is inherited.
     pub fn update(
@@ -171,47 +169,47 @@ impl<Id: Hash + Eq + Copy + Into<DefId>> AccessLevels<Id> {
         nominal_vis: Visibility,
         default_vis: impl FnOnce() -> Visibility,
         parent_id: Id,
-        tag: AccessLevel,
+        level: Level,
         tree: impl DefIdTree,
     ) -> Result<bool, ()> {
         let mut changed = false;
         let mut current_effective_vis = self
-            .get_effective_vis(id)
+            .effective_vis(id)
             .copied()
             .unwrap_or_else(|| EffectiveVisibility::from_vis(default_vis()));
-        if let Some(inherited_effective_vis) = self.get_effective_vis(parent_id) {
-            for level in AccessLevel::all_levels() {
-                if tag >= level {
-                    let inherited_effective_vis_at_level = *inherited_effective_vis.get(level);
+        if let Some(inherited_effective_vis) = self.effective_vis(parent_id) {
+            for l in Level::all_levels() {
+                if level >= l {
+                    let inherited_effective_vis_at_level = *inherited_effective_vis.at_level(l);
                     let calculated_effective_vis =
                         if nominal_vis.is_at_least(inherited_effective_vis_at_level, tree) {
                             inherited_effective_vis_at_level
                         } else {
                             nominal_vis
                         };
-                    changed |= current_effective_vis.update(calculated_effective_vis, level, tree);
+                    changed |= current_effective_vis.update(calculated_effective_vis, l, tree);
                 }
             }
         } else {
             if !id.into().is_crate_root() {
                 return Err(());
             }
-            changed |= current_effective_vis.update(Visibility::Public, AccessLevel::Public, tree);
+            changed |= current_effective_vis.update(Visibility::Public, Level::Direct, tree);
         }
         self.map.insert(id, current_effective_vis);
         Ok(changed)
     }
 }
 
-impl<Id> Default for AccessLevels<Id> {
+impl<Id> Default for EffectiveVisibilities<Id> {
     fn default() -> Self {
-        AccessLevels { map: Default::default() }
+        EffectiveVisibilities { map: Default::default() }
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for AccessLevels {
+impl<'a> HashStable<StableHashingContext<'a>> for EffectiveVisibilities {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let AccessLevels { ref map } = *self;
+        let EffectiveVisibilities { ref map } = *self;
         map.hash_stable(hcx, hasher);
     }
 }

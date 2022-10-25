@@ -345,7 +345,7 @@ fn lint_for_missing_headers<'tcx>(
     body_id: Option<hir::BodyId>,
     panic_span: Option<Span>,
 ) {
-    if !cx.access_levels.is_exported(def_id) {
+    if !cx.effective_visibilities.is_exported(def_id) {
         return; // Private functions do not require doc comments
     }
 
