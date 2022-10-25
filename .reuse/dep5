@@ -4,7 +4,37 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Files-Excluded:
  src/llvm-project
 
-Files: *
+# Note that we're explicitly listing the individual files at the root of the
+# repository rather than just having `Files: *`. This is explicitly done to
+# help downstream forks of the Rust compiler: this way, the files they add
+# won't be automatically marked as authored by the Rust project.
+Files: compiler/*
+       library/*
+       tests/*
+       src/*
+       .github/*
+       Cargo.lock
+       Cargo.toml
+       CODE_OF_CONDUCT.md
+       config.toml.example
+       configure
+       CONTRIBUTING.md
+       COPYRIGHT
+       LICENSE-APACHE
+       LICENSE-MIT
+       README.md
+       RELEASES.md
+       rustfmt.toml
+       triagebot.toml
+       x
+       x.ps1
+       x.py
+       .editorconfig
+       .git-blame-ignore-revs
+       .gitattributes
+       .gitignore
+       .gitmodules
+       .mailmap
 Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT or Apache-2.0
 
