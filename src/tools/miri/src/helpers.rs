@@ -107,7 +107,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Gets an instance for a path.
     fn resolve_path(&self, path: &[&str]) -> ty::Instance<'tcx> {
         self.try_resolve_path(path)
-            .unwrap_or_else(|| panic!("failed to find required Rust item: {:?}", path))
+            .unwrap_or_else(|| panic!("failed to find required Rust item: {path:?}"))
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
@@ -505,7 +505,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             RejectOpWith::WarningWithoutBacktrace => {
                 this.tcx
                     .sess
-                    .warn(&format!("{} was made to return an error due to isolation", op_name));
+                    .warn(format!("{op_name} was made to return an error due to isolation"));
                 Ok(())
             }
             RejectOpWith::Warning => {

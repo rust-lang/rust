@@ -23,10 +23,6 @@ note: the trait `IndexMut<usize>` is implemented for `Vec<usize>`, but that impl
    |
 LL |         self.bar[0] = baz.len();
    |         ^^^^^^^^^^^
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | impl<'a> Foo<'a> where Vec<usize>: ~const IndexMut<usize> {
-   |                  ++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

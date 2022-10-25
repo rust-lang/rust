@@ -4,7 +4,7 @@ use rustc_span::Span;
 use crate::ty::Ty;
 
 #[derive(Diagnostic)]
-#[diag(middle::drop_check_overflow, code = "E0320")]
+#[diag(middle_drop_check_overflow, code = "E0320")]
 #[note]
 pub struct DropCheckOverflow<'tcx> {
     #[primary_span]
@@ -14,7 +14,7 @@ pub struct DropCheckOverflow<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle::opaque_hidden_type_mismatch)]
+#[diag(middle_opaque_hidden_type_mismatch)]
 pub struct OpaqueHiddenTypeMismatch<'tcx> {
     pub self_ty: Ty<'tcx>,
     pub other_ty: Ty<'tcx>,
@@ -27,12 +27,12 @@ pub struct OpaqueHiddenTypeMismatch<'tcx> {
 
 #[derive(Subdiagnostic)]
 pub enum TypeMismatchReason {
-    #[label(middle::conflict_types)]
+    #[label(middle_conflict_types)]
     ConflictType {
         #[primary_span]
         span: Span,
     },
-    #[note(middle::previous_use_here)]
+    #[note(middle_previous_use_here)]
     PreviousUse {
         #[primary_span]
         span: Span,
@@ -40,7 +40,7 @@ pub enum TypeMismatchReason {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle::limit_invalid)]
+#[diag(middle_limit_invalid)]
 pub struct LimitInvalid<'a> {
     #[primary_span]
     pub span: Span,
@@ -50,7 +50,7 @@ pub struct LimitInvalid<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle::const_eval_non_int)]
+#[diag(middle_const_eval_non_int)]
 pub struct ConstEvalNonIntError {
     #[primary_span]
     pub span: Span,

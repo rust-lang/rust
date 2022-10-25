@@ -822,8 +822,8 @@ impl CheckAttrVisitor<'_> {
             if let Some((prev_inline, prev_span)) = *specified_inline {
                 if do_inline != prev_inline {
                     let mut spans = MultiSpan::from_spans(vec![prev_span, meta.span()]);
-                    spans.push_span_label(prev_span, fluent::passes::doc_inline_conflict_first);
-                    spans.push_span_label(meta.span(), fluent::passes::doc_inline_conflict_second);
+                    spans.push_span_label(prev_span, fluent::passes_doc_inline_conflict_first);
+                    spans.push_span_label(meta.span(), fluent::passes_doc_inline_conflict_second);
                     self.tcx.sess.emit_err(errors::DocKeywordConflict { spans });
                     return false;
                 }
@@ -873,7 +873,7 @@ impl CheckAttrVisitor<'_> {
                 INVALID_DOC_ATTRIBUTES,
                 hir_id,
                 meta.span(),
-                fluent::passes::attr_crate_level,
+                fluent::passes_attr_crate_level,
                 |err| {
                     if attr.style == AttrStyle::Outer
                         && self.tcx.hir().get_parent_item(hir_id) == CRATE_OWNER_ID
@@ -882,15 +882,15 @@ impl CheckAttrVisitor<'_> {
                             src.insert(1, '!');
                             err.span_suggestion_verbose(
                                 attr.span,
-                                fluent::passes::suggestion,
+                                fluent::suggestion,
                                 src,
                                 Applicability::MaybeIncorrect,
                             );
                         } else {
-                            err.span_help(attr.span, fluent::passes::help);
+                            err.span_help(attr.span, fluent::help);
                         }
                     }
-                    err.note(fluent::passes::note);
+                    err.note(fluent::note);
                     err
                 },
             );

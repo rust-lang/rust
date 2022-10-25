@@ -1,5 +1,4 @@
 #![feature(exclusive_range_pattern)]
-
 #![warn(clippy::match_overlapping_arm)]
 #![allow(clippy::redundant_pattern_matching)]
 #![allow(clippy::if_same_then_else, clippy::equatable_if_let)]

@@ -10,6 +10,7 @@ use rustc_span::symbol::sym;
 use super::{utils, REDUNDANT_ALLOCATION};
 
 pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
+    let mut applicability = Applicability::MaybeIncorrect;
     let outer_sym = if Some(def_id) == cx.tcx.lang_items().owned_box() {
         "Box"
     } else if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
@@ -21,7 +22,6 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
     };
 
     if let Some(span) = utils::match_borrows_parameter(cx, qpath) {
-        let mut applicability = Applicability::MaybeIncorrect;
         let generic_snippet = snippet_with_applicability(cx, span, "..", &mut applicability);
         span_lint_and_then(
             cx,
@@ -47,9 +47,8 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         _ => return false,
     };
 
-    let inner_qpath = match &ty.kind {
-        TyKind::Path(inner_qpath) => inner_qpath,
-        _ => return false,
+    let TyKind::Path(inner_qpath) = &ty.kind else {
+        return false
     };
     let inner_span = match qpath_generic_tys(inner_qpath).next() {
         Some(ty) => {
@@ -64,7 +63,6 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         None => return false,
     };
     if inner_sym == outer_sym {
-        let mut applicability = Applicability::MaybeIncorrect;
         let generic_snippet = snippet_with_applicability(cx, inner_span, "..", &mut applicability);
         span_lint_and_then(
             cx,

@@ -263,6 +263,10 @@ impl<'tcx> Const<'tcx> {
         self.try_eval_usize(tcx, param_env)
             .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
     }
+
+    pub fn is_ct_infer(self) -> bool {
+        matches!(self.kind(), ty::ConstKind::Infer(_))
+    }
 }
 
 pub fn const_param_default<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Const<'tcx> {

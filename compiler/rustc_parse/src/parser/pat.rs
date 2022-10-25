@@ -402,6 +402,25 @@ impl<'a> Parser<'a> {
             } else {
                 PatKind::Path(qself, path)
             }
+        } else if matches!(self.token.kind, token::Lifetime(_))
+            // In pattern position, we're totally fine with using "next token isn't colon"
+            // as a heuristic. We could probably just always try to recover if it's a lifetime,
+            // because we never have `'a: label {}` in a pattern position anyways, but it does
+            // keep us from suggesting something like `let 'a: Ty = ..` => `let 'a': Ty = ..`
+            && !self.look_ahead(1, |token| matches!(token.kind, token::Colon))
+        {
+            // Recover a `'a` as a `'a'` literal
+            let lt = self.expect_lifetime();
+            let lit = self.recover_unclosed_char(lt.ident, |self_| {
+                let expected = expected.unwrap_or("pattern");
+                let msg =
+                    format!("expected {}, found {}", expected, super::token_descr(&self_.token));
+
+                let mut err = self_.struct_span_err(self_.token.span, &msg);
+                err.span_label(self_.token.span, format!("expected {}", expected));
+                err
+            });
+            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
@@ -799,6 +818,7 @@ impl<'a> Parser<'a> {
                 || t.kind == token::Dot // e.g. `.5` for recovery;
                 || t.can_begin_literal_maybe_minus() // e.g. `42`.
                 || t.is_whole_expr()
+                || t.is_lifetime() // recover `'a` instead of `'a'`
             })
     }
 

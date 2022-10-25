@@ -100,13 +100,12 @@ pub fn provide(providers: &mut Providers) {
 /// It's also used for the bodies of items like structs where the body (the fields)
 /// are just signatures.
 ///
-/// This is in contrast to [`FnCtxt`], which is used to type-check bodies of
+/// This is in contrast to `FnCtxt`, which is used to type-check bodies of
 /// functions, closures, and `const`s -- anywhere that expressions and statements show up.
 ///
 /// An important thing to note is that `ItemCtxt` does no inference -- it has no [`InferCtxt`] --
 /// while `FnCtxt` does do inference.
 ///
-/// [`FnCtxt`]: crate::check::FnCtxt
 /// [`InferCtxt`]: rustc_infer::infer::InferCtxt
 ///
 /// # Trait predicates

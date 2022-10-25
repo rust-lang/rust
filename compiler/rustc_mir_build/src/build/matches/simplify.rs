@@ -264,14 +264,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
                         self.tcx.features().exhaustive_patterns
-                            && !v
-                                .uninhabited_from(
-                                    self.tcx,
-                                    substs,
-                                    adt_def.adt_kind(),
-                                    self.param_env,
-                                )
-                                .is_empty()
+                            && v.inhabited_predicate(self.tcx, adt_def)
+                                .subst(self.tcx, substs)
+                                .apply_any_module(self.tcx, self.param_env)
+                                != Some(true)
                     }
                 }) && (adt_def.did().is_local()
                     || !adt_def.is_variant_list_non_exhaustive());

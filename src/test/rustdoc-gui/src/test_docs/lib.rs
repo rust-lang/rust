@@ -317,6 +317,18 @@ pub mod details {
     /// <div>I'm the content of the details!</div>
     /// </details>
     pub struct Details;
+
+    impl Details {
+        /// We check the appearance of the `<details>`/`<summary>` in here.
+        ///
+        /// ## Hello
+        ///
+        /// <details>
+        /// <summary><h4>I'm a summary</h4></summary>
+        /// <div>I'm the content of the details!</div>
+        /// </details>
+        pub fn method() {}
+    }
 }
 
 pub mod doc_block_table {

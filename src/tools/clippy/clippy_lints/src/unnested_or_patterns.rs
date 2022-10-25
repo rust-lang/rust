@@ -163,9 +163,8 @@ fn unnest_or_patterns(pat: &mut P<Pat>) -> bool {
             noop_visit_pat(p, self);
 
             // Don't have an or-pattern? Just quit early on.
-            let alternatives = match &mut p.kind {
-                Or(ps) => ps,
-                _ => return,
+            let Or(alternatives) = &mut p.kind else {
+                return
             };
 
             // Collapse or-patterns directly nested in or-patterns.

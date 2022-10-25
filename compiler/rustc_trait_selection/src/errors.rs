@@ -5,7 +5,7 @@ use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
-#[diag(trait_selection::dump_vtable_entries)]
+#[diag(trait_selection_dump_vtable_entries)]
 pub struct DumpVTableEntries<'a> {
     #[primary_span]
     pub span: Span,
@@ -14,7 +14,7 @@ pub struct DumpVTableEntries<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection::unable_to_construct_constant_value)]
+#[diag(trait_selection_unable_to_construct_constant_value)]
 pub struct UnableToConstructConstantValue<'a> {
     #[primary_span]
     pub span: Span,
@@ -23,7 +23,7 @@ pub struct UnableToConstructConstantValue<'a> {
 
 #[derive(Diagnostic)]
 #[help]
-#[diag(trait_selection::auto_deref_reached_recursion_limit, code = "E0055")]
+#[diag(trait_selection_auto_deref_reached_recursion_limit, code = "E0055")]
 pub struct AutoDerefReachedRecursionLimit<'a> {
     #[primary_span]
     #[label]
@@ -34,7 +34,7 @@ pub struct AutoDerefReachedRecursionLimit<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection::empty_on_clause_in_rustc_on_unimplemented, code = "E0232")]
+#[diag(trait_selection_empty_on_clause_in_rustc_on_unimplemented, code = "E0232")]
 pub struct EmptyOnClauseInOnUnimplemented {
     #[primary_span]
     #[label]
@@ -42,7 +42,7 @@ pub struct EmptyOnClauseInOnUnimplemented {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection::invalid_on_clause_in_rustc_on_unimplemented, code = "E0232")]
+#[diag(trait_selection_invalid_on_clause_in_rustc_on_unimplemented, code = "E0232")]
 pub struct InvalidOnClauseInOnUnimplemented {
     #[primary_span]
     #[label]
@@ -50,7 +50,7 @@ pub struct InvalidOnClauseInOnUnimplemented {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection::no_value_in_rustc_on_unimplemented, code = "E0232")]
+#[diag(trait_selection_no_value_in_rustc_on_unimplemented, code = "E0232")]
 #[note]
 pub struct NoValueInOnUnimplemented {
     #[primary_span]
@@ -71,7 +71,7 @@ impl IntoDiagnostic<'_> for NegativePositiveConflict<'_> {
         self,
         handler: &Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::trait_selection::negative_positive_conflict);
+        let mut diag = handler.struct_err(fluent::trait_selection_negative_positive_conflict);
         diag.set_arg("trait_desc", self.trait_desc);
         diag.set_arg(
             "self_desc",
@@ -81,19 +81,19 @@ impl IntoDiagnostic<'_> for NegativePositiveConflict<'_> {
         diag.code(rustc_errors::error_code!(E0751));
         match self.negative_impl_span {
             Ok(span) => {
-                diag.span_label(span, fluent::trait_selection::negative_implementation_here);
+                diag.span_label(span, fluent::negative_implementation_here);
             }
             Err(cname) => {
-                diag.note(fluent::trait_selection::negative_implementation_in_crate);
+                diag.note(fluent::negative_implementation_in_crate);
                 diag.set_arg("negative_impl_cname", cname.to_string());
             }
         }
         match self.positive_impl_span {
             Ok(span) => {
-                diag.span_label(span, fluent::trait_selection::positive_implementation_here);
+                diag.span_label(span, fluent::positive_implementation_here);
             }
             Err(cname) => {
-                diag.note(fluent::trait_selection::positive_implementation_in_crate);
+                diag.note(fluent::positive_implementation_in_crate);
                 diag.set_arg("positive_impl_cname", cname.to_string());
             }
         }

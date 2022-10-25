@@ -16,6 +16,7 @@ use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
+use smallvec::SmallVec;
 
 use std::cell::Cell;
 use std::char;
@@ -794,9 +795,9 @@ pub trait PrettyPrinter<'tcx>:
         let mut traits = FxIndexMap::default();
         let mut fn_traits = FxIndexMap::default();
         let mut is_sized = false;
+        let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
 
-        for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
-            let predicate = predicate.subst(tcx, substs);
+        for (predicate, _) in bounds.subst_iter_copied(tcx, substs) {
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {
@@ -824,6 +825,9 @@ pub trait PrettyPrinter<'tcx>:
                         &mut traits,
                         &mut fn_traits,
                     );
+                }
+                ty::PredicateKind::TypeOutlives(outlives) => {
+                    lifetimes.push(outlives.1);
                 }
                 _ => {}
             }
@@ -976,6 +980,11 @@ pub trait PrettyPrinter<'tcx>:
             write!(self, "{}?Sized", if first { "" } else { " + " })?;
         } else if first {
             write!(self, "Sized")?;
+        }
+
+        for re in lifetimes {
+            write!(self, " + ")?;
+            self = self.print_region(re)?;
         }
 
         Ok(self)
@@ -2702,8 +2711,8 @@ define_print_and_forward_display! {
                 print_value_path(closure_def_id, &[]),
                 write("` implements the trait `{}`", kind))
             }
-            ty::PredicateKind::ConstEvaluatable(uv) => {
-                p!("the constant `", print_value_path(uv.def.did, uv.substs), "` can be evaluated")
+            ty::PredicateKind::ConstEvaluatable(ct) => {
+                p!("the constant `", print(ct), "` can be evaluated")
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 p!("the constant `", print(c1), "` equals `", print(c2), "`")

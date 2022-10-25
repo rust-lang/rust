@@ -34,12 +34,6 @@ impl FlagComputation {
         result.flags
     }
 
-    pub fn for_unevaluated_const(uv: ty::UnevaluatedConst<'_>) -> TypeFlags {
-        let mut result = FlagComputation::new();
-        result.add_unevaluated_const(uv);
-        result.flags
-    }
-
     fn add_flags(&mut self, flags: TypeFlags) {
         self.flags = self.flags | flags;
     }
@@ -256,7 +250,7 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
             ty::PredicateKind::ConstEvaluatable(uv) => {
-                self.add_unevaluated_const(uv);
+                self.add_const(uv);
             }
             ty::PredicateKind::ConstEquate(expected, found) => {
                 self.add_const(expected);
@@ -289,7 +283,10 @@ impl FlagComputation {
     fn add_const(&mut self, c: ty::Const<'_>) {
         self.add_ty(c.ty());
         match c.kind() {
-            ty::ConstKind::Unevaluated(unevaluated) => self.add_unevaluated_const(unevaluated),
+            ty::ConstKind::Unevaluated(uv) => {
+                self.add_substs(uv.substs);
+                self.add_flags(TypeFlags::HAS_CT_PROJECTION);
+            }
             ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
@@ -311,11 +308,6 @@ impl FlagComputation {
             ty::ConstKind::Value(_) => {}
             ty::ConstKind::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }
-    }
-
-    fn add_unevaluated_const(&mut self, ct: ty::UnevaluatedConst<'_>) {
-        self.add_substs(ct.substs);
-        self.add_flags(TypeFlags::HAS_CT_PROJECTION);
     }
 
     fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection<'_>) {

@@ -1225,7 +1225,6 @@ impl fmt::Debug for Duration {
 /// # Example
 ///
 /// ```
-/// #![feature(duration_checked_float)]
 /// use std::time::Duration;
 ///
 /// if let Err(e) = Duration::try_from_secs_f32(-1.0) {
@@ -1233,33 +1232,33 @@ impl fmt::Debug for Duration {
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[unstable(feature = "duration_checked_float", issue = "83400")]
-pub struct FromFloatSecsError {
-    kind: FromFloatSecsErrorKind,
+#[stable(feature = "duration_checked_float", since = "CURRENT_RUSTC_VERSION")]
+pub struct TryFromFloatSecsError {
+    kind: TryFromFloatSecsErrorKind,
 }
 
-impl FromFloatSecsError {
+impl TryFromFloatSecsError {
     const fn description(&self) -> &'static str {
         match self.kind {
-            FromFloatSecsErrorKind::Negative => {
+            TryFromFloatSecsErrorKind::Negative => {
                 "can not convert float seconds to Duration: value is negative"
             }
-            FromFloatSecsErrorKind::OverflowOrNan => {
+            TryFromFloatSecsErrorKind::OverflowOrNan => {
                 "can not convert float seconds to Duration: value is either too big or NaN"
             }
         }
     }
 }
 
-#[unstable(feature = "duration_checked_float", issue = "83400")]
-impl fmt::Display for FromFloatSecsError {
+#[stable(feature = "duration_checked_float", since = "CURRENT_RUSTC_VERSION")]
+impl fmt::Display for TryFromFloatSecsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.description().fmt(f)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum FromFloatSecsErrorKind {
+enum TryFromFloatSecsErrorKind {
     // Value is negative.
     Negative,
     // Value is either too big to be represented as `Duration` or `NaN`.
@@ -1280,7 +1279,7 @@ macro_rules! try_from_secs {
         const EXP_MASK: $bits_ty = (1 << $exp_bits) - 1;
 
         if $secs < 0.0 {
-            return Err(FromFloatSecsError { kind: FromFloatSecsErrorKind::Negative });
+            return Err(TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::Negative });
         }
 
         let bits = $secs.to_bits();
@@ -1339,7 +1338,7 @@ macro_rules! try_from_secs {
             let secs = u64::from(mant) << (exp - $mant_bits);
             (secs, 0)
         } else {
-            return Err(FromFloatSecsError { kind: FromFloatSecsErrorKind::OverflowOrNan });
+            return Err(TryFromFloatSecsError { kind: TryFromFloatSecsErrorKind::OverflowOrNan });
         };
 
         Ok(Duration::new(secs, nanos))
@@ -1355,8 +1354,6 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_checked_float)]
-    ///
     /// use std::time::Duration;
     ///
     /// let res = Duration::try_from_secs_f32(0.0);
@@ -1404,9 +1401,10 @@ impl Duration {
     /// let res = Duration::try_from_secs_f32(val);
     /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
     /// ```
-    #[unstable(feature = "duration_checked_float", issue = "83400")]
+    #[stable(feature = "duration_checked_float", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     #[inline]
-    pub const fn try_from_secs_f32(secs: f32) -> Result<Duration, FromFloatSecsError> {
+    pub const fn try_from_secs_f32(secs: f32) -> Result<Duration, TryFromFloatSecsError> {
         try_from_secs!(
             secs = secs,
             mantissa_bits = 23,
@@ -1425,8 +1423,6 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_checked_float)]
-    ///
     /// use std::time::Duration;
     ///
     /// let res = Duration::try_from_secs_f64(0.0);
@@ -1482,9 +1478,10 @@ impl Duration {
     /// let res = Duration::try_from_secs_f64(val);
     /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
     /// ```
-    #[unstable(feature = "duration_checked_float", issue = "83400")]
+    #[stable(feature = "duration_checked_float", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     #[inline]
-    pub const fn try_from_secs_f64(secs: f64) -> Result<Duration, FromFloatSecsError> {
+    pub const fn try_from_secs_f64(secs: f64) -> Result<Duration, TryFromFloatSecsError> {
         try_from_secs!(
             secs = secs,
             mantissa_bits = 52,

@@ -1,5 +1,6 @@
 // run-rustfix
 
+#![feature(custom_inner_attributes)]
 #![warn(clippy::match_like_matches_macro)]
 #![allow(unreachable_patterns, dead_code, clippy::equatable_if_let)]
 
@@ -231,6 +232,24 @@ fn main() {
         /* as are dots
          */
         '.' => true,
+        _ => false,
+    };
+}
+
+fn msrv_1_41() {
+    #![clippy::msrv = "1.41"]
+
+    let _y = match Some(5) {
+        Some(0) => true,
+        _ => false,
+    };
+}
+
+fn msrv_1_42() {
+    #![clippy::msrv = "1.42"]
+
+    let _y = match Some(5) {
+        Some(0) => true,
         _ => false,
     };
 }

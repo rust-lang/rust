@@ -11,7 +11,7 @@ use rustc_metadata::find_native_static_library;
 use rustc_metadata::fs::{emit_metadata, METADATA_FILENAME};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
+use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Lto, Strip};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SplitDwarfKind};
 use rustc_session::cstore::DllImport;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
@@ -39,6 +39,7 @@ use cc::windows_registry;
 use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
+use itertools::Itertools;
 use std::borrow::Borrow;
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
@@ -208,17 +209,39 @@ pub fn link_binary<'a>(
 }
 
 pub fn each_linked_rlib(
+    sess: &Session,
     info: &CrateInfo,
     f: &mut dyn FnMut(CrateNum, &Path),
 ) -> Result<(), errors::LinkRlibError> {
     let crates = info.used_crates.iter();
     let mut fmts = None;
+
+    let lto_active = matches!(sess.lto(), Lto::Fat | Lto::Thin);
+    if lto_active {
+        for combination in info.dependency_formats.iter().combinations(2) {
+            let (ty1, list1) = &combination[0];
+            let (ty2, list2) = &combination[1];
+            if list1 != list2 {
+                return Err(errors::LinkRlibError::IncompatibleDependencyFormats {
+                    ty1: format!("{ty1:?}"),
+                    ty2: format!("{ty2:?}"),
+                    list1: format!("{list1:?}"),
+                    list2: format!("{list2:?}"),
+                });
+            }
+        }
+    }
+
     for (ty, list) in info.dependency_formats.iter() {
         match ty {
             CrateType::Executable
             | CrateType::Staticlib
             | CrateType::Cdylib
             | CrateType::ProcMacro => {
+                fmts = Some(list);
+                break;
+            }
+            CrateType::Dylib if lto_active => {
                 fmts = Some(list);
                 break;
             }
@@ -368,13 +391,14 @@ fn link_rlib<'a>(
     }
 
     for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
+        collate_raw_dylibs(sess, codegen_results.crate_info.used_libraries.iter())?
     {
         let output_path = archive_builder_builder.create_dll_import_lib(
             sess,
             &raw_dylib_name,
             &raw_dylib_imports,
             tmpdir.as_ref(),
+            true,
         );
 
         ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|error| {
@@ -426,9 +450,9 @@ fn link_rlib<'a>(
 /// then the CodegenResults value contains one NativeLib instance for each block.  However, the
 /// linker appears to expect only a single import library for each library used, so we need to
 /// collate the symbols together by library name before generating the import libraries.
-fn collate_raw_dylibs(
-    sess: &Session,
-    used_libraries: &[NativeLib],
+fn collate_raw_dylibs<'a, 'b>(
+    sess: &'a Session,
+    used_libraries: impl IntoIterator<Item = &'b NativeLib>,
 ) -> Result<Vec<(String, Vec<DllImport>)>, ErrorGuaranteed> {
     // Use index maps to preserve original order of imports and libraries.
     let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
@@ -490,7 +514,7 @@ fn link_staticlib<'a>(
     )?;
     let mut all_native_libs = vec![];
 
-    let res = each_linked_rlib(&codegen_results.crate_info, &mut |cnum, path| {
+    let res = each_linked_rlib(sess, &codegen_results.crate_info, &mut |cnum, path| {
         let name = codegen_results.crate_info.crate_name[&cnum];
         let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
 
@@ -2045,13 +2069,43 @@ fn linker_with_args<'a>(
 
     // Link with the import library generated for any raw-dylib functions.
     for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
+        collate_raw_dylibs(sess, codegen_results.crate_info.used_libraries.iter())?
     {
         cmd.add_object(&archive_builder_builder.create_dll_import_lib(
             sess,
             &raw_dylib_name,
             &raw_dylib_imports,
             tmpdir,
+            true,
+        ));
+    }
+    // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
+    // they are used within inlined functions or instantiated generic functions. We do this *after*
+    // handling the raw-dylib symbols in the current crate to make sure that those are chosen first
+    // by the linker.
+    let (_, dependency_linkage) = codegen_results
+        .crate_info
+        .dependency_formats
+        .iter()
+        .find(|(ty, _)| *ty == crate_type)
+        .expect("failed to find crate type in dependency format list");
+    let native_libraries_from_nonstatics = codegen_results
+        .crate_info
+        .native_libraries
+        .iter()
+        .filter_map(|(cnum, libraries)| {
+            (dependency_linkage[cnum.as_usize() - 1] != Linkage::Static).then(|| libraries)
+        })
+        .flatten();
+    for (raw_dylib_name, raw_dylib_imports) in
+        collate_raw_dylibs(sess, native_libraries_from_nonstatics)?
+    {
+        cmd.add_object(&archive_builder_builder.create_dll_import_lib(
+            sess,
+            &raw_dylib_name,
+            &raw_dylib_imports,
+            tmpdir,
+            false,
         ));
     }
 

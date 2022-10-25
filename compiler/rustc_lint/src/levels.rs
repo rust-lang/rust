@@ -960,7 +960,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                         sp,
                                         "did you mean",
                                         suggestion,
-                                        Applicability::MachineApplicable,
+                                        Applicability::MaybeIncorrect,
                                     );
                                 }
                                 lint

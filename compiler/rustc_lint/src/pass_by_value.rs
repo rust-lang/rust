@@ -32,11 +32,11 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
                     cx.struct_span_lint(
                         PASS_BY_VALUE,
                         ty.span,
-                        fluent::lint::pass_by_value,
+                        fluent::lint_pass_by_value,
                         |lint| {
                             lint.set_arg("ty", t.clone()).span_suggestion(
                                 ty.span,
-                                fluent::lint::suggestion,
+                                fluent::suggestion,
                                 t,
                                 // Changing type of function argument
                                 Applicability::MaybeIncorrect,

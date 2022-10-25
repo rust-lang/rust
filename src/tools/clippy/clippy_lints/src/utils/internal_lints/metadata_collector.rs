@@ -8,7 +8,7 @@
 //! a simple mistake)
 
 use crate::renamed_lints::RENAMED_LINTS;
-use crate::utils::internal_lints::{extract_clippy_version_value, is_lint_ref_type};
+use crate::utils::internal_lints::lint_without_lint_pass::{extract_clippy_version_value, is_lint_ref_type};
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{match_type, walk_ptrs_ty_depth};
@@ -532,7 +532,11 @@ fn parse_config_field_doc(doc_comment: &str) -> Option<(Vec<String>, String)> {
 
             // Extract lints
             doc_comment.make_ascii_lowercase();
-            let lints: Vec<String> = doc_comment.split_off(DOC_START.len()).split(", ").map(str::to_string).collect();
+            let lints: Vec<String> = doc_comment
+                .split_off(DOC_START.len())
+                .split(", ")
+                .map(str::to_string)
+                .collect();
 
             // Format documentation correctly
             // split off leading `.` from lint name list and indent for correct formatting

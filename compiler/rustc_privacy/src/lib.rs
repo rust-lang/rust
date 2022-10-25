@@ -159,32 +159,10 @@ where
                 ty.visit_with(self)
             }
             ty::PredicateKind::RegionOutlives(..) => ControlFlow::CONTINUE,
-            ty::PredicateKind::ConstEvaluatable(uv)
-                if self.def_id_visitor.tcx().features().generic_const_exprs =>
-            {
-                let tcx = self.def_id_visitor.tcx();
-                if let Ok(Some(ct)) = AbstractConst::new(tcx, uv) {
-                    self.visit_abstract_const_expr(tcx, ct)?;
-                }
-                ControlFlow::CONTINUE
-            }
+            ty::PredicateKind::ConstEvaluatable(ct) => ct.visit_with(self),
             ty::PredicateKind::WellFormed(arg) => arg.visit_with(self),
             _ => bug!("unexpected predicate: {:?}", predicate),
         }
-    }
-
-    fn visit_abstract_const_expr(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        ct: AbstractConst<'tcx>,
-    ) -> ControlFlow<V::BreakTy> {
-        walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
-            ACNode::Leaf(leaf) => self.visit_const(leaf),
-            ACNode::Cast(_, _, ty) => self.visit_ty(ty),
-            ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
-                ControlFlow::CONTINUE
-            }
-        })
     }
 
     fn visit_predicates(
@@ -309,9 +287,16 @@ where
         self.visit_ty(c.ty())?;
         let tcx = self.def_id_visitor.tcx();
         if let Ok(Some(ct)) = AbstractConst::from_const(tcx, c) {
-            self.visit_abstract_const_expr(tcx, ct)?;
+            walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
+                ACNode::Leaf(leaf) => self.visit_const(leaf),
+                ACNode::Cast(_, _, ty) => self.visit_ty(ty),
+                ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
+                    ControlFlow::CONTINUE
+                }
+            })
+        } else {
+            ControlFlow::CONTINUE
         }
-        ControlFlow::CONTINUE
     }
 }
 

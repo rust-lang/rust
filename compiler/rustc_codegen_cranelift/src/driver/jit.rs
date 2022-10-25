@@ -67,13 +67,12 @@ fn create_jit_module(
     hotswap: bool,
 ) -> (JITModule, CodegenCx) {
     let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
-    let imported_symbols = load_imported_symbols_for_jit(tcx.sess, crate_info);
 
     let isa = crate::build_isa(tcx.sess, backend_config);
     let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
     jit_builder.hotswap(hotswap);
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
-    jit_builder.symbols(imported_symbols);
+    jit_builder.symbol_lookup_fn(dep_symbol_lookup_fn(tcx.sess, crate_info));
     jit_builder.symbol("__clif_jit_fn", clif_jit_fn as *const u8);
     let mut jit_module = JITModule::new(jit_builder);
 
@@ -286,10 +285,10 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
     })
 }
 
-fn load_imported_symbols_for_jit(
+fn dep_symbol_lookup_fn(
     sess: &Session,
     crate_info: CrateInfo,
-) -> Vec<(String, *const u8)> {
+) -> Box<dyn Fn(&str) -> Option<*const u8>> {
     use rustc_middle::middle::dependency_format::Linkage;
 
     let mut dylib_paths = Vec::new();
@@ -316,39 +315,23 @@ fn load_imported_symbols_for_jit(
         }
     }
 
-    let mut imported_symbols = Vec::new();
-    for path in dylib_paths {
-        use object::{Object, ObjectSymbol};
-        let lib = libloading::Library::new(&path).unwrap();
-        let obj = std::fs::read(path).unwrap();
-        let obj = object::File::parse(&*obj).unwrap();
-        imported_symbols.extend(obj.dynamic_symbols().filter_map(|symbol| {
-            let name = symbol.name().unwrap().to_string();
-            if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {
-                return None;
-            }
-            if name.starts_with("rust_metadata_") {
-                // The metadata is part of a section that is not loaded by the dynamic linker in
-                // case of cg_llvm.
-                return None;
-            }
-            let dlsym_name = if cfg!(target_os = "macos") {
-                // On macOS `dlsym` expects the name without leading `_`.
-                assert!(name.starts_with('_'), "{:?}", name);
-                &name[1..]
-            } else {
-                &name
-            };
-            let symbol: libloading::Symbol<'_, *const u8> =
-                unsafe { lib.get(dlsym_name.as_bytes()) }.unwrap();
-            Some((name, *symbol))
-        }));
-        std::mem::forget(lib)
-    }
+    let imported_dylibs = Box::leak(
+        dylib_paths
+            .into_iter()
+            .map(|path| unsafe { libloading::Library::new(&path).unwrap() })
+            .collect::<Box<[_]>>(),
+    );
 
     sess.abort_if_errors();
 
-    imported_symbols
+    Box::new(move |sym_name| {
+        for dylib in &*imported_dylibs {
+            if let Ok(sym) = unsafe { dylib.get::<*const u8>(sym_name.as_bytes()) } {
+                return Some(*sym);
+            }
+        }
+        None
+    })
 }
 
 fn codegen_shim<'tcx>(

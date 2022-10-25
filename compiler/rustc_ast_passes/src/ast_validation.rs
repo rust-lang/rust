@@ -14,6 +14,7 @@ use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, fluent, pluralize, struct_span_err, Applicability};
+use rustc_macros::Subdiagnostic;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -169,7 +170,7 @@ impl<'a> AstValidator<'a> {
                 DEPRECATED_WHERE_CLAUSE_LOCATION,
                 id,
                 where_clauses.0.1,
-                fluent::ast_passes::deprecated_where_clause_location,
+                fluent::ast_passes_deprecated_where_clause_location,
                 BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(
                     where_clauses.1.1.shrink_to_hi(),
                     suggestion,
@@ -249,20 +250,6 @@ impl<'a> AstValidator<'a> {
             }
             _ => visit::walk_ty(self, t),
         }
-    }
-
-    fn visit_struct_field_def(&mut self, field: &'a FieldDef) {
-        if let Some(ident) = field.ident {
-            if ident.name == kw::Underscore {
-                self.visit_vis(&field.vis);
-                self.visit_ident(ident);
-                self.visit_ty_common(&field.ty);
-                self.walk_ty(&field.ty);
-                walk_list!(self, visit_attribute, &field.attrs);
-                return;
-            }
-        }
-        self.visit_field_def(field);
     }
 
     fn err_handler(&self) -> &rustc_errors::Handler {
@@ -1005,8 +992,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_lifetime(self, lifetime);
     }
 
-    fn visit_field_def(&mut self, s: &'a FieldDef) {
-        visit::walk_field_def(self, s)
+    fn visit_field_def(&mut self, field: &'a FieldDef) {
+        visit::walk_field_def(self, field)
     }
 
     fn visit_item(&mut self, item: &'a Item) {
@@ -1194,41 +1181,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.check_mod_file_item_asciionly(item.ident);
                 }
             }
-            ItemKind::Struct(ref vdata, ref generics) => match vdata {
-                // Duplicating the `Visitor` logic allows catching all cases
-                // of `Anonymous(Struct, Union)` outside of a field struct or union.
-                //
-                // Inside `visit_ty` the validator catches every `Anonymous(Struct, Union)` it
-                // encounters, and only on `ItemKind::Struct` and `ItemKind::Union`
-                // it uses `visit_ty_common`, which doesn't contain that specific check.
-                VariantData::Struct(ref fields, ..) => {
-                    self.visit_vis(&item.vis);
-                    self.visit_ident(item.ident);
-                    self.visit_generics(generics);
-                    self.with_banned_assoc_ty_bound(|this| {
-                        walk_list!(this, visit_struct_field_def, fields);
-                    });
-                    walk_list!(self, visit_attribute, &item.attrs);
-                    return;
-                }
-                _ => {}
-            },
-            ItemKind::Union(ref vdata, ref generics) => {
+            ItemKind::Union(ref vdata, ..) => {
                 if vdata.fields().is_empty() {
                     self.err_handler().span_err(item.span, "unions cannot have zero fields");
-                }
-                match vdata {
-                    VariantData::Struct(ref fields, ..) => {
-                        self.visit_vis(&item.vis);
-                        self.visit_ident(item.ident);
-                        self.visit_generics(generics);
-                        self.with_banned_assoc_ty_bound(|this| {
-                            walk_list!(this, visit_struct_field_def, fields);
-                        });
-                        walk_list!(self, visit_attribute, &item.attrs);
-                        return;
-                    }
-                    _ => {}
                 }
             }
             ItemKind::Const(def, .., None) => {
@@ -1805,15 +1760,17 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> 
 }
 
 /// Used to forbid `let` expressions in certain syntactic locations.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Subdiagnostic)]
 pub(crate) enum ForbiddenLetReason {
     /// `let` is not valid and the source environment is not important
     GenericForbidden,
     /// A let chain with the `||` operator
-    NotSupportedOr(Span),
+    #[note(not_supported_or)]
+    NotSupportedOr(#[primary_span] Span),
     /// A let chain with invalid parentheses
     ///
     /// For example, `let 1 = 1 && (expr && expr)` is allowed
     /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
-    NotSupportedParentheses(Span),
+    #[note(not_supported_parentheses)]
+    NotSupportedParentheses(#[primary_span] Span),
 }

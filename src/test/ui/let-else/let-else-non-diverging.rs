@@ -11,7 +11,7 @@ fn main() {
 
     // Ensure that uninhabited types do not "diverge".
     // This might be relaxed in the future, but when it is,
-    // it should be an explicitly wanted descision.
+    // it should be an explicitly wanted decision.
     let Some(x) = Some(1) else { foo::<Uninhabited>() }; //~ ERROR does not diverge
 }
 

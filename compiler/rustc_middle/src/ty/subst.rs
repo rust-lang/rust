@@ -6,6 +6,7 @@ use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
@@ -186,6 +187,14 @@ impl<'tcx> GenericArg<'tcx> {
         match self.unpack() {
             GenericArgKind::Const(c) => c,
             _ => bug!("expected a const, but found another kind"),
+        }
+    }
+
+    pub fn is_non_region_infer(self) -> bool {
+        match self.unpack() {
+            GenericArgKind::Lifetime(_) => false,
+            GenericArgKind::Type(ty) => ty.is_ty_infer(),
+            GenericArgKind::Const(ct) => ct.is_ct_infer(),
         }
     }
 }
@@ -547,6 +556,28 @@ impl<T> EarlyBinder<Option<T>> {
 impl<T, U> EarlyBinder<(T, U)> {
     pub fn transpose_tuple2(self) -> (EarlyBinder<T>, EarlyBinder<U>) {
         (EarlyBinder(self.0.0), EarlyBinder(self.0.1))
+    }
+}
+
+impl<'tcx, 's, T: IntoIterator<Item = I>, I: TypeFoldable<'tcx>> EarlyBinder<T> {
+    pub fn subst_iter(
+        self,
+        tcx: TyCtxt<'tcx>,
+        substs: &'s [GenericArg<'tcx>],
+    ) -> impl Iterator<Item = I> + Captures<'s> + Captures<'tcx> {
+        self.0.into_iter().map(move |t| EarlyBinder(t).subst(tcx, substs))
+    }
+}
+
+impl<'tcx, 's, 'a, T: IntoIterator<Item = &'a I>, I: Copy + TypeFoldable<'tcx> + 'a>
+    EarlyBinder<T>
+{
+    pub fn subst_iter_copied(
+        self,
+        tcx: TyCtxt<'tcx>,
+        substs: &'s [GenericArg<'tcx>],
+    ) -> impl Iterator<Item = I> + Captures<'s> + Captures<'tcx> + Captures<'a> {
+        self.0.into_iter().map(move |t| EarlyBinder(*t).subst(tcx, substs))
     }
 }
 

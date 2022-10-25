@@ -19,7 +19,7 @@ LL |         diag.note("untranslatable diagnostic");
 error: diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
   --> $DIR/diagnostics.rs:76:25
    |
-LL |     let _diag = handler.struct_err(fluent::compiletest::example);
+LL |     let _diag = handler.struct_err(fluent::compiletest_example);
    |                         ^^^^^^^^^^
    |
 note: the lint level is defined here

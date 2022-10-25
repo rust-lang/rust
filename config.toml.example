@@ -638,6 +638,11 @@ changelog-seen = 2
 # If an explicit setting is given, it will be used for all parts of the codebase.
 #new-symbol-mangling = true|false (see comment)
 
+# Select LTO mode that will be used for compiling rustc. By default, thin local LTO
+# (LTO within a single crate) is used (like for any Rust crate). You can also select
+# "thin" or "fat" to apply Thin/Fat LTO to the `rustc_driver` dylib.
+#lto = "thin-local"
+
 # =============================================================================
 # Options for specific targets
 #
