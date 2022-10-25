@@ -38,6 +38,11 @@ Files: compiler/*
 Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT or Apache-2.0
 
+Files: compiler/rustc_apfloat/*
+Copyright: LLVM APFloat authors
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: NCSA AND (MIT OR Apache-2.0)
+
 Files: library/core/src/unicode/unicode_data.rs
 Copyright: 1991-2022 Unicode, Inc. All rights reserved.
 License: Unicode-DFS-2016
