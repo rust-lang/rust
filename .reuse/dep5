@@ -61,3 +61,7 @@ License: OFL-1.1
 Files: src/librustdoc/html/static/css/normalize.css
 Copyright: Nicolas Gallagher and Jonathan Neal
 License: MIT
+
+Files: src/doc/rustc-dev-guide/mermaid.min.js
+Copyright: Knut Sveidqvist
+License: MIT
