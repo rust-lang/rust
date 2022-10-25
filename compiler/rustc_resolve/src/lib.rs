@@ -37,7 +37,7 @@ use rustc_hir::def::{self, CtorOf, DefKind, LifetimeRes, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, Definitions};
-use rustc_hir::TraitCandidate;
+use rustc_hir::{LangItem, TraitCandidate};
 use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
@@ -73,8 +73,10 @@ mod check_unused;
 mod def_collector;
 mod diagnostics;
 mod effective_visibilities;
+mod errors;
 mod ident;
 mod imports;
+mod lang_items;
 mod late;
 mod macros;
 
@@ -955,6 +957,8 @@ pub struct Resolver<'a> {
     /// the surface (`macro` items in libcore), but are actually attributes or derives.
     builtin_macro_kinds: FxHashMap<LocalDefId, MacroKind>,
     registered_tools: RegisteredTools,
+    lang_items: Vec<(LocalDefId, LangItem)>,
+    missing_lang_items: Vec<LangItem>,
     macro_use_prelude: FxHashMap<Symbol, &'a NameBinding<'a>>,
     macro_map: FxHashMap<DefId, MacroData>,
     dummy_ext_bang: Lrc<SyntaxExtension>,
@@ -1295,6 +1299,8 @@ impl<'a> Resolver<'a> {
             builtin_macros: Default::default(),
             builtin_macro_kinds: Default::default(),
             registered_tools,
+            lang_items: Vec::new(),
+            missing_lang_items: Vec::new(),
             macro_use_prelude: FxHashMap::default(),
             macro_map: FxHashMap::default(),
             dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(session.edition())),
@@ -1416,6 +1422,8 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module,
             registered_tools: self.registered_tools,
+            lang_items: self.lang_items,
+            missing_lang_items: self.missing_lang_items,
         };
         let ast_lowering = ty::ResolverAstLowering {
             legacy_const_generic_args: self.legacy_const_generic_args,
@@ -1458,6 +1466,8 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module: self.confused_type_with_std_module.clone(),
             registered_tools: self.registered_tools.clone(),
+            lang_items: self.lang_items.clone(),
+            missing_lang_items: self.missing_lang_items.clone(),
             effective_visibilities: self.effective_visibilities.clone(),
         };
         let ast_lowering = ty::ResolverAstLowering {
@@ -1527,6 +1537,7 @@ impl<'a> Resolver<'a> {
             self.session.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
             self.session.time("late_resolve_crate", || self.late_resolve_crate(krate));
             self.session.time("resolve_main", || self.resolve_main());
+            self.session.time("resolve_lang_items", || self.resolve_lang_items(krate));
             self.session.time("resolve_check_unused", || self.check_unused(krate));
             self.session.time("resolve_report_errors", || self.report_errors(krate));
             self.session.time("resolve_postprocess", || self.crate_loader.postprocess(krate));

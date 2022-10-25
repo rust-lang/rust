@@ -1,3 +1,9 @@
+error[E0522]: definition of an unknown language item: `foo`
+  --> $DIR/feature-gate-lang-items.rs:1:1
+   |
+LL | #[lang = "foo"]
+   | ^^^^^^^^^^^^^^^ definition of unknown language item `foo`
+
 error[E0658]: language items are subject to change
   --> $DIR/feature-gate-lang-items.rs:1:1
    |
@@ -5,12 +11,6 @@ LL | #[lang = "foo"]
    | ^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(lang_items)]` to the crate attributes to enable
-
-error[E0522]: definition of an unknown language item: `foo`
-  --> $DIR/feature-gate-lang-items.rs:1:1
-   |
-LL | #[lang = "foo"]
-   | ^^^^^^^^^^^^^^^ definition of unknown language item `foo`
 
 error: aborting due to 2 previous errors
 

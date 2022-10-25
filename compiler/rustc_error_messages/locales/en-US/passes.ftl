@@ -361,9 +361,6 @@ passes_deprecated_annotation_has_no_effect =
     this `#[deprecated]` annotation has no effect
     .suggestion = remove the unnecessary deprecation attribute
 
-passes_unknown_external_lang_item =
-    unknown external lang item: `{$lang_item}`
-
 passes_missing_panic_handler =
     `#[panic_handler]` function required, but not found
 
@@ -371,14 +368,6 @@ passes_missing_lang_item =
     language item required, but not found: `{$name}`
     .note = this can occur when a binary crate with `#![no_std]` is compiled for a target where `{$name}` is defined in the standard library
     .help = you may be able to compile for a target that doesn't need `{$name}`, specify a target with `--target` or in `.cargo/config`
-
-passes_lang_item_on_incorrect_target =
-    `{$name}` language item must be applied to a {$expected_target}
-    .label = attribute should be applied to a {$expected_target}, not a {$actual_target}
-
-passes_unknown_lang_item =
-    definition of an unknown language item: `{$name}`
-    .label = definition of unknown language item `{$name}`
 
 passes_invalid_attr_at_crate_level =
     `{$name}` attribute cannot be used at crate level
@@ -558,19 +547,6 @@ passes_duplicate_lang_item_crate_depends =
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
-
-passes_incorrect_target =
-    `{$name}` language item must be applied to a {$kind} with {$at_least ->
-        [true] at least {$num}
-        *[false] {$num}
-    } generic {$num ->
-        [one] argument
-        *[other] arguments
-    }
-    .label = this {$kind} has {$actual_num} generic {$actual_num ->
-        [one] argument
-        *[other] arguments
-    }
 
 passes_useless_assignment =
     useless assignment of {$is_field_assign ->

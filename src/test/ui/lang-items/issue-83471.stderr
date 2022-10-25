@@ -1,3 +1,12 @@
+error[E0718]: `fn` language item must be applied to a trait with 1 generic argument
+  --> $DIR/issue-83471.rs:11:1
+   |
+LL | #[lang = "fn"]
+   | ^^^^^^^^^^^^^^
+...
+LL | trait Fn {
+   |         - this trait has 0 generic arguments
+
 error[E0573]: expected type, found built-in attribute `export_name`
   --> $DIR/issue-83471.rs:15:13
    |
@@ -29,15 +38,6 @@ LL |     fn call(export_name);
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #41686 <https://github.com/rust-lang/rust/issues/41686>
    = note: `#[warn(anonymous_parameters)]` on by default
-
-error[E0718]: `fn` language item must be applied to a trait with 1 generic argument
-  --> $DIR/issue-83471.rs:11:1
-   |
-LL | #[lang = "fn"]
-   | ^^^^^^^^^^^^^^
-...
-LL | trait Fn {
-   |         - this trait has 0 generic arguments
 
 error[E0425]: cannot find function `a` in this scope
   --> $DIR/issue-83471.rs:21:5

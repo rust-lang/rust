@@ -39,7 +39,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::Definitions;
-use rustc_hir::Node;
+use rustc_hir::{LangItem, Node};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
@@ -178,6 +178,8 @@ pub struct ResolverGlobalCtxt {
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: FxHashMap<Span, Span>,
     pub registered_tools: RegisteredTools,
+    pub lang_items: Vec<(LocalDefId, LangItem)>,
+    pub missing_lang_items: Vec<LangItem>,
 }
 
 /// Resolutions that should only be used for lowering.

@@ -1908,10 +1908,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_lang_items(&mut self) -> LazyArray<(DefIndex, LangItem)> {
         empty_proc_macro!(self);
-        let lang_items = self.tcx.lang_items().iter();
-        self.lazy_array(lang_items.filter_map(|(lang_item, def_id)| {
-            def_id.as_local().map(|id| (id.local_def_index, lang_item))
-        }))
+        let lang_items = self.tcx.resolutions(()).lang_items.iter();
+        self.lazy_array(lang_items.map(|&(def_id, lang_item)| (def_id.local_def_index, lang_item)))
     }
 
     fn encode_lang_items_missing(&mut self) -> LazyArray<LangItem> {

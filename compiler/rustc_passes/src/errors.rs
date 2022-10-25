@@ -5,7 +5,7 @@ use std::{
 
 use rustc_ast::Label;
 use rustc_errors::{error_code, Applicability, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
-use rustc_hir::{self as hir, ExprKind, Target};
+use rustc_hir::{self as hir, ExprKind};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{Span, Symbol, DUMMY_SP};
@@ -690,14 +690,6 @@ pub struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_unknown_external_lang_item, code = "E0264")]
-pub struct UnknownExternLangItem {
-    #[primary_span]
-    pub span: Span,
-    pub lang_item: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_missing_panic_handler)]
 pub struct MissingPanicHandler;
 
@@ -706,26 +698,6 @@ pub struct MissingPanicHandler;
 #[note]
 #[help]
 pub struct MissingLangItem {
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_lang_item_on_incorrect_target, code = "E0718")]
-pub struct LangItemOnIncorrectTarget {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub name: Symbol,
-    pub expected_target: Target,
-    pub actual_target: Target,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_unknown_lang_item, code = "E0522")]
-pub struct UnknownLangItem {
-    #[primary_span]
-    #[label]
-    pub span: Span,
     pub name: Symbol,
 }
 
@@ -1236,20 +1208,6 @@ impl IntoDiagnostic<'_> for DuplicateLangItem {
         }
         diag
     }
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_incorrect_target, code = "E0718")]
-pub struct IncorrectTarget<'a> {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub generics_span: Span,
-    pub name: &'a str, // cannot be symbol because it renders e.g. `r#fn` instead of `fn`
-    pub kind: &'static str,
-    pub num: usize,
-    pub actual_num: usize,
-    pub at_least: bool,
 }
 
 #[derive(LintDiagnostic)]

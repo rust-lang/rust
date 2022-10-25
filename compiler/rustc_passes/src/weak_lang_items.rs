@@ -7,7 +7,7 @@ use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::errors::{MissingLangItem, MissingPanicHandler, UnknownExternLangItem};
+use crate::errors::{MissingLangItem, MissingPanicHandler};
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
 /// language items required by this crate, but not defined yet.
@@ -22,18 +22,9 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
         items.missing.push(LangItem::EhCatchTypeinfo);
     }
 
-    let crate_items = tcx.hir_crate_items(());
-    for id in crate_items.foreign_items() {
-        let attrs = tcx.hir().attrs(id.hir_id());
-        if let Some((lang_item, _)) = lang_items::extract(attrs) {
-            if let Some(item) = LangItem::from_name(lang_item) && item.is_weak() {
-                if items.get(item).is_none() {
-                    items.missing.push(item);
-                }
-            } else {
-                let span = tcx.def_span(id.owner_id);
-                tcx.sess.emit_err(UnknownExternLangItem { span, lang_item });
-            }
+    for &item in &tcx.resolutions(()).missing_lang_items {
+        if items.get(item).is_none() {
+            items.missing.push(item);
         }
     }
 

@@ -2882,7 +2882,7 @@ impl ItemKind {
         }
     }
 
-    pub fn descr(&self) -> &str {
+    pub fn descr(&self) -> &'static str {
         match self {
             ItemKind::ExternCrate(..) => "extern crate",
             ItemKind::Use(..) => "`use` import",
@@ -2950,6 +2950,15 @@ impl AssocItemKind {
             | Self::Fn(box Fn { defaultness, .. })
             | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) => Defaultness::Final,
+        }
+    }
+
+    pub fn generics(&self) -> Option<&Generics> {
+        match self {
+            Self::Const(..) => None,
+            Self::Fn(f) => Some(&f.generics),
+            Self::Type(t) => Some(&t.generics),
+            Self::MacCall(_) => None,
         }
     }
 }

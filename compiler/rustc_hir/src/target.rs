@@ -4,6 +4,9 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
+use rustc_ast as ast;
+use rustc_ast::visit as ast_visit;
+
 use crate::hir;
 use crate::{Item, ItemKind, TraitItem, TraitItemKind};
 
@@ -196,6 +199,43 @@ impl Target {
             Target::Param => "function param",
             Target::PatField => "pattern field",
             Target::ExprField => "struct field",
+        }
+    }
+
+    pub fn from_ast_item(item: &ast::Item) -> Target {
+        match item.kind {
+            ast::ItemKind::ExternCrate(_) => Target::ExternCrate,
+            ast::ItemKind::Use(_) => Target::Use,
+            ast::ItemKind::Static(..) => Target::Static,
+            ast::ItemKind::Const(..) => Target::Const,
+            ast::ItemKind::Fn(_) => Target::Fn,
+            ast::ItemKind::Mod(..) => Target::Mod,
+            ast::ItemKind::ForeignMod(_) => Target::ForeignMod,
+            ast::ItemKind::GlobalAsm(_) => Target::GlobalAsm,
+            ast::ItemKind::TyAlias(_) => Target::TyAlias,
+            ast::ItemKind::Enum(..) => Target::Enum,
+            ast::ItemKind::Struct(..) => Target::Struct,
+            ast::ItemKind::Union(..) => Target::Union,
+            ast::ItemKind::Trait(_) => Target::Trait,
+            ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
+            ast::ItemKind::Impl(_) => Target::Impl,
+            ast::ItemKind::MacroDef(_) => Target::MacroDef,
+            ast::ItemKind::MacCall(_) => panic!("unexpected MacCall"),
+        }
+    }
+
+    pub fn from_ast_assoc_item(kind: &ast::AssocItemKind, ctxt: ast_visit::AssocCtxt) -> Target {
+        match kind {
+            ast::AssocItemKind::Const(..) => Target::AssocConst,
+            ast::AssocItemKind::Fn(f) => {
+                let kind = match ctxt {
+                    ast_visit::AssocCtxt::Impl => MethodKind::Inherent,
+                    ast_visit::AssocCtxt::Trait => MethodKind::Trait { body: f.body.is_some() },
+                };
+                Target::Method(kind)
+            }
+            ast::AssocItemKind::Type(_) => Target::AssocTy,
+            ast::AssocItemKind::MacCall(_) => panic!("unexpected MacCall"),
         }
     }
 }
