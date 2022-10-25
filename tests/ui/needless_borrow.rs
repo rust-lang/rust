@@ -408,3 +408,15 @@ mod issue_9111 {
         a.extend(&[]); // vs a.extend([]);
     }
 }
+
+#[allow(dead_code)]
+mod issue_9710 {
+    fn main() {
+        let string = String::new();
+        for _i in 0..10 {
+            f(&string);
+        }
+    }
+
+    fn f<T: AsRef<str>>(_: T) {}
+}
