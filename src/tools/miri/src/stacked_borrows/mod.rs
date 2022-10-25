@@ -17,6 +17,7 @@ use rustc_middle::ty::{
     Ty,
 };
 use rustc_span::DUMMY_SP;
+use rustc_target::abi::Abi;
 use rustc_target::abi::Size;
 use smallvec::SmallVec;
 
@@ -45,6 +46,7 @@ impl SbTag {
     }
 
     // The default to be used when SB is disabled
+    #[allow(clippy::should_implement_trait)]
     pub fn default() -> Self {
         Self::new(1).unwrap()
     }
@@ -113,7 +115,18 @@ pub struct GlobalStateInner {
     /// The call ids to trace
     tracked_call_ids: FxHashSet<CallId>,
     /// Whether to recurse into datatypes when searching for pointers to retag.
-    retag_fields: bool,
+    retag_fields: RetagFields,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum RetagFields {
+    /// Don't retag any fields.
+    No,
+    /// Retag all fields.
+    Yes,
+    /// Only retag fields of types with Scalar and ScalarPair layout,
+    /// to match the LLVM `noalias` we generate.
+    OnlyScalar,
 }
 
 impl VisitTags for GlobalStateInner {
@@ -172,7 +185,7 @@ impl GlobalStateInner {
     pub fn new(
         tracked_pointer_tags: FxHashSet<SbTag>,
         tracked_call_ids: FxHashSet<CallId>,
-        retag_fields: bool,
+        retag_fields: RetagFields,
     ) -> Self {
         GlobalStateInner {
             next_ptr_tag: SbTag(NonZeroU64::new(1).unwrap()),
@@ -998,7 +1011,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             ecx: &'ecx mut MiriInterpCx<'mir, 'tcx>,
             kind: RetagKind,
             retag_cause: RetagCause,
-            retag_fields: bool,
+            retag_fields: RetagFields,
         }
         impl<'ecx, 'mir, 'tcx> RetagVisitor<'ecx, 'mir, 'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
@@ -1045,6 +1058,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     return Ok(());
                 }
 
+                let recurse_for_fields = || {
+                    match self.retag_fields {
+                        RetagFields::No => false,
+                        RetagFields::Yes => true,
+                        RetagFields::OnlyScalar => {
+                            // Matching `ArgAbi::new` at the time of writing, only fields of
+                            // `Scalar` and `ScalarPair` ABI are considered.
+                            matches!(place.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..))
+                        }
+                    }
+                };
+
                 if let Some((ref_kind, protector)) = qualify(place.layout.ty, self.kind) {
                     self.retag_place(place, ref_kind, self.retag_cause, protector)?;
                 } else if matches!(place.layout.ty.kind(), ty::RawPtr(..)) {
@@ -1053,7 +1078,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     // Do *not* recurse into them.
                     // (No need to worry about wide references, those always "qualify". And Boxes
                     // are handles specially by the visitor anyway.)
-                } else if self.retag_fields
+                } else if recurse_for_fields()
                     || place.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_box())
                 {
                     // Recurse deeper. Need to always recurse for `Box` to even hit `visit_box`.
@@ -1119,6 +1144,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             AllocKind::Function | AllocKind::VTable | AllocKind::Dead => {
                 // No stacked borrows on these allocations.
             }
+        }
+        Ok(())
+    }
+
+    fn print_stacks(&mut self, alloc_id: AllocId) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let alloc_extra = this.get_alloc_extra(alloc_id)?;
+        let stacks = alloc_extra.stacked_borrows.as_ref().unwrap().borrow();
+        for (range, stack) in stacks.stacks.iter_all() {
+            print!("{:?}: [", range);
+            for i in 0..stack.len() {
+                let item = stack.get(i).unwrap();
+                print!(" {:?}{:?}", item.perm(), item.tag());
+            }
+            println!(" ]");
         }
         Ok(())
     }

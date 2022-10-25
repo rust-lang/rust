@@ -1,0 +1,19 @@
+panicked at 'blarg I am dead', $DIR/no_std.rs:LL:CC
+error: abnormal termination: the program aborted execution
+  --> $DIR/no_std.rs:LL:CC
+   |
+LL |     core::intrinsics::abort();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the program aborted execution
+   |
+   = note: inside `panic_handler` at $DIR/no_std.rs:LL:CC
+note: inside `start` at RUSTLIB/core/src/panic.rs:LL:CC
+  --> $DIR/no_std.rs:LL:CC
+   |
+LL |     panic!("blarg I am dead")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

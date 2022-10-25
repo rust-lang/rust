@@ -43,10 +43,14 @@ impl Stack {
     pub fn retain(&mut self, tags: &FxHashSet<SbTag>) {
         let mut first_removed = None;
 
-        // For stacks with a known bottom, we never consider removing the bottom-most tag, because
-        // that is the base tag which exists whether or not there are any pointers to the
-        // allocation.
-        let mut read_idx = if self.unknown_bottom.is_some() { 0 } else { 1 };
+        // We never consider removing the bottom-most tag. For stacks without an unknown
+        // bottom this preserves the base tag.
+        // Note that the algorithm below is based on considering the tag at read_idx - 1,
+        // so precisely considering the tag at index 0 for removal when we have an unknown
+        // bottom would complicate the implementation. The simplification of not considering
+        // it does not have a significant impact on the degree to which the GC mititages
+        // memory growth.
+        let mut read_idx = 1;
         let mut write_idx = read_idx;
         while read_idx < self.borrows.len() {
             let left = self.borrows[read_idx - 1];
