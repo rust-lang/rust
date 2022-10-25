@@ -10,7 +10,6 @@ indoc = "1.0"
 itertools = "0.10.1"
 opener = "0.5"
 shell-escape = "0.1"
-tempfile = "3.2"
 walkdir = "2.3"
 
 [features]

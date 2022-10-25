@@ -49,6 +49,9 @@ extern crate clippy_utils;
 #[macro_use]
 extern crate declare_clippy_lint;
 
+use std::io;
+use std::path::PathBuf;
+
 use clippy_utils::parse_msrv;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
@@ -304,8 +307,8 @@ mod zero_div_zero;
 mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
-pub use crate::utils::conf::Conf;
 use crate::utils::conf::{format_error, TryConf};
+pub use crate::utils::conf::{lookup_conf_file, Conf};
 
 /// Register all pre expansion lints
 ///
@@ -362,8 +365,8 @@ fn read_msrv(conf: &Conf, sess: &Session) -> Option<RustcVersion> {
 }
 
 #[doc(hidden)]
-pub fn read_conf(sess: &Session) -> Conf {
-    let file_name = match utils::conf::lookup_conf_file() {
+pub fn read_conf(sess: &Session, path: &io::Result<Option<PathBuf>>) -> Conf {
+    let file_name = match path {
         Ok(Some(path)) => path,
         Ok(None) => return Conf::default(),
         Err(error) => {
@@ -373,7 +376,7 @@ pub fn read_conf(sess: &Session) -> Conf {
         },
     };
 
-    let TryConf { conf, errors, warnings } = utils::conf::read(&file_name);
+    let TryConf { conf, errors, warnings } = utils::conf::read(file_name);
     // all conf errors are non-fatal, we just use the default conf in case of error
     for error in errors {
         sess.err(format!(
