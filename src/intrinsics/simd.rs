@@ -112,10 +112,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     _ => unreachable!(),
                 };
 
-                let ty = fx.clif_type(res_lane_ty).unwrap();
-
-                let res_lane = fx.bcx.ins().bint(ty, res_lane);
-                fx.bcx.ins().ineg(res_lane)
+                bool_to_zero_or_max_uint(fx, res_lane_ty, res_lane)
             });
         }
 

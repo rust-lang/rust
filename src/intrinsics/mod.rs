@@ -197,7 +197,9 @@ fn bool_to_zero_or_max_uint<'tcx>(
         ty => ty,
     };
 
-    let val = fx.bcx.ins().bint(int_ty, val);
+    let val = if int_ty == types::I8 { val } else { fx.bcx.ins().uextend(int_ty, val) };
+
+    // FIXME use bmask instead
     let mut res = fx.bcx.ins().ineg(val);
 
     if ty.is_float() {
@@ -938,8 +940,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = fx.bcx.ins().atomic_cas(MemFlags::trusted(), ptr, test_old, new);
             let is_eq = fx.bcx.ins().icmp(IntCC::Equal, old, test_old);
 
-            let ret_val =
-                CValue::by_val_pair(old, fx.bcx.ins().bint(types::I8, is_eq), ret.layout());
+            let ret_val = CValue::by_val_pair(old, is_eq, ret.layout());
             ret.write_cvalue(fx, ret_val)
         }
 
@@ -1261,8 +1262,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 flags.set_notrap();
                 let lhs_val = fx.bcx.ins().load(clty, flags, lhs_ref, 0);
                 let rhs_val = fx.bcx.ins().load(clty, flags, rhs_ref, 0);
-                let eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_val, rhs_val);
-                fx.bcx.ins().bint(types::I8, eq)
+                fx.bcx.ins().icmp(IntCC::Equal, lhs_val, rhs_val)
             } else {
                 // Just call `memcmp` (like slices do in core) when the
                 // size is too large or it's not a power-of-two.
@@ -1272,8 +1272,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 let returns = vec![AbiParam::new(types::I32)];
                 let args = &[lhs_ref, rhs_ref, bytes_val];
                 let cmp = fx.lib_call("memcmp", params, returns, args)[0];
-                let eq = fx.bcx.ins().icmp_imm(IntCC::Equal, cmp, 0);
-                fx.bcx.ins().bint(types::I8, eq)
+                fx.bcx.ins().icmp_imm(IntCC::Equal, cmp, 0)
             };
             ret.write_cvalue(fx, CValue::by_val(is_eq_value, ret.layout()));
         }
