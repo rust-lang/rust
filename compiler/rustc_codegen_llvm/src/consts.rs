@@ -241,7 +241,14 @@ impl<'ll> CodegenCx<'ll, '_> {
             };
             llvm::LLVMSetInitializer(gv, cv);
             set_global_alignment(self, gv, align);
-            llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
+
+            // Experiment: What's the impact of making vtables unmergable?
+            if kind == Some("vtable") {
+                llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::No);
+            } else {
+                llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
+            }
+
             gv
         }
     }
