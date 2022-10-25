@@ -5,10 +5,11 @@ use crate::{mir, ty};
 
 use std::fmt::Write;
 
-use hir::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, LangItem};
+use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
 use super::{Ty, TyCtxt};
@@ -129,6 +130,9 @@ impl<'tcx> ClosureKind {
 #[derive(PartialEq, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct CapturedPlace<'tcx> {
+    /// Name and span where the binding happens.
+    pub var_ident: Ident,
+
     /// The `Place` that is captured.
     pub place: HirPlace<'tcx>,
 
@@ -148,12 +152,8 @@ impl<'tcx> CapturedPlace<'tcx> {
     }
 
     /// Returns a symbol of the captured upvar, which looks like `name__field1__field2`.
-    fn to_symbol(&self, tcx: TyCtxt<'tcx>) -> Symbol {
-        let hir_id = match self.place.base {
-            HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
-            base => bug!("Expected an upvar, found {:?}", base),
-        };
-        let mut symbol = tcx.hir().name(hir_id).as_str().to_string();
+    pub fn to_symbol(&self) -> Symbol {
+        let mut symbol = self.var_ident.to_string();
 
         let mut ty = self.place.base_ty;
         for proj in self.place.projections.iter() {
@@ -169,11 +169,7 @@ impl<'tcx> CapturedPlace<'tcx> {
                         .unwrap();
                     }
                     ty => {
-                        span_bug!(
-                            self.get_capture_kind_span(tcx),
-                            "Unexpected type {:?} for `Field` projection",
-                            ty
-                        )
+                        bug!("Unexpected type {:?} for `Field` projection", ty)
                     }
                 },
 
@@ -238,10 +234,14 @@ impl<'tcx> CapturedPlace<'tcx> {
     }
 }
 
-fn symbols_for_closure_captures(tcx: TyCtxt<'_>, def_id: (LocalDefId, LocalDefId)) -> Vec<Symbol> {
-    let typeck_results = tcx.typeck(def_id.0);
-    let captures = typeck_results.closure_min_captures_flattened(def_id.1);
-    captures.into_iter().map(|captured_place| captured_place.to_symbol(tcx)).collect()
+fn closure_captures<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: LocalDefId,
+) -> &'tcx [&'tcx ty::CapturedPlace<'tcx>] {
+    let (DefKind::Closure | DefKind::Generator) = tcx.def_kind(def) else { return &[] };
+    let typeck_results = tcx.typeck(def);
+    let captures = typeck_results.closure_min_captures_flattened(def);
+    tcx.arena.alloc_from_iter(captures)
 }
 
 /// Return true if the `proj_possible_ancestor` represents an ancestor path
@@ -434,5 +434,5 @@ impl BorrowKind {
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { symbols_for_closure_captures, ..*providers }
+    *providers = ty::query::Providers { closure_captures, ..*providers }
 }

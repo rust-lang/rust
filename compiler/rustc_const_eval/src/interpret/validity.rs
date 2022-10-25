@@ -240,10 +240,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // FIXME this should be more descriptive i.e. CapturePlace instead of CapturedVar
                 // https://github.com/rust-lang/project-rfc-2229/issues/46
                 if let Some(local_def_id) = def_id.as_local() {
-                    let tables = self.ecx.tcx.typeck(local_def_id);
-                    if let Some(captured_place) =
-                        tables.closure_min_captures_flattened(local_def_id).nth(field)
-                    {
+                    let captures = self.ecx.tcx.closure_captures(local_def_id);
+                    if let Some(captured_place) = captures.get(field) {
                         // Sometimes the index is beyond the number of upvars (seen
                         // for a generator).
                         let var_hir_id = captured_place.get_root_variable();

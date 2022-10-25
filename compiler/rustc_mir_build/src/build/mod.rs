@@ -20,7 +20,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{
     self, BindingMode, Expr, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_span::Symbol;
@@ -155,13 +155,13 @@ struct BlockContext(Vec<BlockFrame>);
 struct Builder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: InferCtxt<'tcx>,
-    typeck_results: &'tcx TypeckResults<'tcx>,
     region_scope_tree: &'tcx region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
 
     thir: &'a Thir<'tcx>,
     cfg: CFG<'tcx>,
 
+    def: ty::WithOptConstParam<LocalDefId>,
     def_id: DefId,
     hir_id: hir::HirId,
     parent_module: DefId,
@@ -522,13 +522,7 @@ fn construct_fn<'tcx>(
         let return_block =
             unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
-                    builder.args_and_body(
-                        START_BLOCK,
-                        fn_def.did,
-                        arguments,
-                        arg_scope,
-                        &thir[expr],
-                    )
+                    builder.args_and_body(START_BLOCK, arguments, arg_scope, &thir[expr])
                 }))
             }));
         let source_info = builder.source_info(fn_end);
@@ -704,9 +698,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             thir,
             tcx,
             infcx,
-            typeck_results: tcx.typeck_opt_const_arg(def),
             region_scope_tree: tcx.region_scope_tree(def.did),
             param_env,
+            def,
             def_id: def.did.to_def_id(),
             hir_id,
             parent_module: tcx.parent_module(hir_id).to_def_id(),
@@ -756,14 +750,78 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.var_debug_info,
             self.fn_span,
             self.generator_kind,
-            self.typeck_results.tainted_by_errors,
+            None,
         )
+    }
+
+    fn insert_upvar_arg(&mut self) {
+        let Some(closure_arg) = self.local_decls.get(ty::CAPTURE_STRUCT_LOCAL) else { return };
+
+        let mut closure_ty = closure_arg.ty;
+        let mut closure_env_projs = vec![];
+        if let ty::Ref(_, ty, _) = closure_ty.kind() {
+            closure_env_projs.push(ProjectionElem::Deref);
+            closure_ty = *ty;
+        }
+
+        let upvar_substs = match closure_ty.kind() {
+            ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
+            ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
+            _ => return,
+        };
+
+        // In analyze_closure() in upvar.rs we gathered a list of upvars used by an
+        // indexed closure and we stored in a map called closure_min_captures in TypeckResults
+        // with the closure's DefId. Here, we run through that vec of UpvarIds for
+        // the given closure and use the necessary information to create upvar
+        // debuginfo and to fill `self.upvars`.
+        let capture_tys = upvar_substs.upvar_tys();
+
+        let tcx = self.tcx;
+        self.upvars = tcx
+            .closure_captures(self.def.did)
+            .iter()
+            .zip(capture_tys)
+            .enumerate()
+            .map(|(i, (captured_place, ty))| {
+                let name = captured_place.to_symbol();
+
+                let capture = captured_place.info.capture_kind;
+                let var_id = match captured_place.place.base {
+                    HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+                    _ => bug!("Expected an upvar"),
+                };
+
+                let mutability = captured_place.mutability;
+
+                let mut projs = closure_env_projs.clone();
+                projs.push(ProjectionElem::Field(Field::new(i), ty));
+                match capture {
+                    ty::UpvarCapture::ByValue => {}
+                    ty::UpvarCapture::ByRef(..) => {
+                        projs.push(ProjectionElem::Deref);
+                    }
+                };
+
+                let use_place = Place {
+                    local: ty::CAPTURE_STRUCT_LOCAL,
+                    projection: tcx.mk_place_elems(&projs),
+                };
+                self.var_debug_info.push(VarDebugInfo {
+                    name,
+                    source_info: SourceInfo::outermost(captured_place.var_ident.span),
+                    value: VarDebugInfoContents::Place(use_place),
+                });
+
+                let capture = Capture { captured_place, use_place, mutability };
+                (var_id, capture)
+            })
+            .collect();
     }
 
     fn args_and_body(
         &mut self,
         mut block: BasicBlock,
-        fn_def_id: LocalDefId,
         arguments: &IndexVec<ParamId, Param<'tcx>>,
         argument_scope: region::Scope,
         expr: &Expr<'tcx>,
@@ -785,69 +843,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let tcx = self.tcx;
-        let tcx_hir = tcx.hir();
-        let hir_typeck_results = self.typeck_results;
-
-        // In analyze_closure() in upvar.rs we gathered a list of upvars used by an
-        // indexed closure and we stored in a map called closure_min_captures in TypeckResults
-        // with the closure's DefId. Here, we run through that vec of UpvarIds for
-        // the given closure and use the necessary information to create upvar
-        // debuginfo and to fill `self.upvars`.
-        if hir_typeck_results.closure_min_captures.get(&fn_def_id).is_some() {
-            let mut closure_env_projs = vec![];
-            let mut closure_ty = self.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
-            if let ty::Ref(_, ty, _) = closure_ty.kind() {
-                closure_env_projs.push(ProjectionElem::Deref);
-                closure_ty = *ty;
-            }
-            let upvar_substs = match closure_ty.kind() {
-                ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
-                ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
-                _ => span_bug!(self.fn_span, "upvars with non-closure env ty {:?}", closure_ty),
-            };
-            let def_id = self.def_id.as_local().unwrap();
-            let capture_syms = tcx.symbols_for_closure_captures((def_id, fn_def_id));
-            let capture_tys = upvar_substs.upvar_tys();
-            let captures_with_tys = hir_typeck_results
-                .closure_min_captures_flattened(fn_def_id)
-                .zip(capture_tys.zip(capture_syms));
-
-            self.upvars = captures_with_tys
-                .enumerate()
-                .map(|(i, (captured_place, (ty, sym)))| {
-                    let capture = captured_place.info.capture_kind;
-                    let var_id = match captured_place.place.base {
-                        HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
-                        _ => bug!("Expected an upvar"),
-                    };
-
-                    let mutability = captured_place.mutability;
-
-                    let mut projs = closure_env_projs.clone();
-                    projs.push(ProjectionElem::Field(Field::new(i), ty));
-                    match capture {
-                        ty::UpvarCapture::ByValue => {}
-                        ty::UpvarCapture::ByRef(..) => {
-                            projs.push(ProjectionElem::Deref);
-                        }
-                    };
-
-                    let use_place = Place {
-                        local: ty::CAPTURE_STRUCT_LOCAL,
-                        projection: tcx.mk_place_elems(&projs),
-                    };
-                    self.var_debug_info.push(VarDebugInfo {
-                        name: *sym,
-                        source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
-                        value: VarDebugInfoContents::Place(use_place),
-                    });
-
-                    let capture = Capture { captured_place, use_place, mutability };
-                    (var_id, capture)
-                })
-                .collect();
-        }
+        self.insert_upvar_arg();
 
         let mut scope = None;
         // Bind the argument patterns

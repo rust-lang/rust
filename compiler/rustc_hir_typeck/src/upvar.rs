@@ -526,10 +526,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
                 base => bug!("Expected upvar, found={:?}", base),
             };
+            let var_ident = self.tcx.hir().ident(var_hir_id);
 
             let Some(min_cap_list) = root_var_min_capture_list.get_mut(&var_hir_id) else {
                 let mutability = self.determine_capture_mutability(&typeck_results, &place);
                 let min_cap_list = vec![ty::CapturedPlace {
+                    var_ident,
                     place,
                     info: capture_info,
                     mutability,
@@ -628,6 +630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if !ancestor_found {
                 let mutability = self.determine_capture_mutability(&typeck_results, &place);
                 let captured_place = ty::CapturedPlace {
+                    var_ident,
                     place,
                     info: updated_capture_info,
                     mutability,

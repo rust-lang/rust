@@ -903,6 +903,11 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
+    pub fn ident(self, id: HirId) -> Ident {
+        self.opt_ident(id).unwrap()
+    }
+
+    #[inline]
     pub fn opt_name(self, id: HirId) -> Option<Symbol> {
         self.opt_ident(id).map(|ident| ident.name)
     }
