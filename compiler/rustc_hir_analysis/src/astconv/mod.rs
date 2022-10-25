@@ -539,10 +539,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let Some(ty::BoundConstness::ConstIfConst) = constness
             && generics.has_self && !tcx.has_attr(def_id, sym::const_trait)
         {
-            tcx.sess.span_err(
-                span,
-                "~const can only be applied to `#[const_trait]` traits",
-            );
+            tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span } );
         }
 
         (substs, arg_count)

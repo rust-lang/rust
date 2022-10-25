@@ -137,3 +137,12 @@ hir_analysis_expected_used_symbol = expected `used`, `used(compiler)` or `used(l
 hir_analysis_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
 
 hir_analysis_add_missing_parentheses_in_range = you must surround the range in parentheses to call its `{$func_name}` function
+
+hir_analysis_const_impl_for_non_const_trait =
+    const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
+    .suggestion = mark `{$trait_name}` as const
+    .note = marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+    .adding = adding a non-const method body in the future would be a breaking change
+
+hir_analysis_const_bound_for_non_const_trait =
+    ~const can only be applied to `#[const_trait]` traits

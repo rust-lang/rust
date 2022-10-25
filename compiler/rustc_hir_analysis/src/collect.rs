@@ -1294,31 +1294,35 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
                 &icx,
                 ast_trait_ref,
                 selfty,
-                match impl_.constness {
-                    hir::Constness::Const => {
-                        if let Some(trait_def_id) = ast_trait_ref.trait_def_id() && !tcx.has_attr(trait_def_id, sym::const_trait) {
-                            let trait_name = tcx.item_name(trait_def_id);
-                            let mut err = tcx.sess.struct_span_err(
-                                ast_trait_ref.path.span,
-                                &format!("const `impl` for trait `{trait_name}` which is not marked with `#[const_trait]`"),
-                            );
-                            if trait_def_id.is_local() {
-                                let sp = tcx.def_span(trait_def_id).shrink_to_lo();
-                                err.span_suggestion(sp, &format!("mark `{trait_name}` as const"), "#[const_trait]", rustc_errors::Applicability::MachineApplicable);
-                            }
-                            err.note("marking a trait with `#[const_trait]` ensures all default method bodies are `const`");
-                            err.note("adding a non-const method body in the future would be a breaking change");
-                            err.emit();
-                            ty::BoundConstness::NotConst
-                        } else {
-                            ty::BoundConstness::ConstIfConst
-                        }
-                    },
-                    hir::Constness::NotConst => ty::BoundConstness::NotConst,
-                },
+                check_impl_constness(tcx, impl_.constness, ast_trait_ref),
             )
         }),
         _ => bug!(),
+    }
+}
+
+fn check_impl_constness(
+    tcx: TyCtxt<'_>,
+    constness: hir::Constness,
+    ast_trait_ref: &hir::TraitRef<'_>,
+) -> ty::BoundConstness {
+    match constness {
+        hir::Constness::Const => {
+            if let Some(trait_def_id) = ast_trait_ref.trait_def_id() && !tcx.has_attr(trait_def_id, sym::const_trait) {
+                let trait_name = tcx.item_name(trait_def_id).to_string();
+                tcx.sess.emit_err(errors::ConstImplForNonConstTrait {
+                    trait_ref_span: ast_trait_ref.path.span,
+                    trait_name,
+                    local_trait_span: trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
+                    marking: (),
+                    adding: (),
+                });
+                ty::BoundConstness::NotConst
+            } else {
+                ty::BoundConstness::ConstIfConst
+            }
+        },
+        hir::Constness::NotConst => ty::BoundConstness::NotConst,
     }
 }
 
