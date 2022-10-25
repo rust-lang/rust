@@ -92,7 +92,6 @@
 #![feature(allocator_api)]
 #![feature(array_chunks)]
 #![feature(array_into_iter_constructors)]
-#![feature(array_methods)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(async_iterator)]
