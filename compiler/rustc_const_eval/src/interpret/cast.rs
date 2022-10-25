@@ -42,10 +42,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let res = self.pointer_from_exposed_address_cast(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
-            // FIXME: We shouldn't use `misc_cast` for these but handle them separately.
-            IntToInt | FloatToInt | FloatToFloat | IntToFloat | FnPtrToPtr | PtrToPtr => {
+
+            IntToInt | IntToFloat => {
                 let src = self.read_immediate(src)?;
-                let res = self.misc_cast(&src, cast_ty)?;
+                let res = self.int_to_int_or_float(&src, cast_ty)?;
+                self.write_immediate(res, dest)?;
+            }
+
+            FloatToFloat | FloatToInt => {
+                let src = self.read_immediate(src)?;
+                let res = self.float_to_float_or_int(&src, cast_ty)?;
+                self.write_immediate(res, dest)?;
+            }
+
+            FnPtrToPtr | PtrToPtr => {
+                let src = self.read_immediate(&src)?;
+                let res = self.ptr_to_ptr(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
 
@@ -126,13 +138,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn misc_cast(
+    pub fn int_to_int_or_float(
+        &mut self,
+        src: &ImmTy<'tcx, M::Provenance>,
+        cast_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
+        if (src.layout.ty.is_integral() || src.layout.ty.is_char() || src.layout.ty.is_bool())
+            && (cast_ty.is_floating_point() || cast_ty.is_integral() || cast_ty.is_char())
+        {
+            let scalar = src.to_scalar();
+            Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
+        } else {
+            bug!("Unexpected cast from type {:?}", src.layout.ty)
+        }
+    }
+
+    pub fn float_to_float_or_int(
         &mut self,
         src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
         use rustc_type_ir::sty::TyKind::*;
-        trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, cast_ty);
 
         match src.layout.ty.kind() {
             // Floating point
@@ -142,19 +168,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Float(FloatTy::F64) => {
                 return Ok(self.cast_from_float(src.to_scalar().to_f64()?, cast_ty).into());
             }
-            // The rest is integer/pointer-"like", including fn ptr casts
-            _ => assert!(
-                src.layout.ty.is_bool()
-                    || src.layout.ty.is_char()
-                    || src.layout.ty.is_integral()
-                    || src.layout.ty.is_any_ptr(),
-                "Unexpected cast from type {:?}",
-                src.layout.ty
-            ),
+            _ => {
+                bug!("Can't cast 'Float' type into {:?}", cast_ty);
+            }
         }
+    }
 
-        // # First handle non-scalar source values.
-
+    /// Handles 'FnPtrToPtr' and 'PtrToPtr' casts.
+    pub fn ptr_to_ptr(
+        &mut self,
+        src: &ImmTy<'tcx, M::Provenance>,
+        cast_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
         // Handle casting any ptr to raw ptr (might be a fat ptr).
         if src.layout.ty.is_any_ptr() && cast_ty.is_unsafe_ptr() {
             let dest_layout = self.layout_of(cast_ty)?;
@@ -178,11 +203,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
                 };
             }
+        } else {
+            bug!("Can't cast 'Ptr' or 'FnPtr' into {:?}", cast_ty);
         }
-
-        // # The remaining source values are scalar and "int-like".
-        let scalar = src.to_scalar();
-        Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
     }
 
     pub fn pointer_expose_address_cast(

@@ -44,6 +44,10 @@ enum TwoUninhabited {
     B(Void),
 }
 
+#[rustc_layout_scalar_valid_range_start(254)]
+#[rustc_layout_scalar_valid_range_end(1)]
+pub(crate) struct WrapAroundRange(u8);
+
 #[allow(unused)]
 fn generic<T: 'static>() {
     unsafe {
@@ -130,6 +134,9 @@ fn main() {
 
         let _val: *const [()] = mem::zeroed();
         let _val: *const [()] = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
+        let _val: WrapAroundRange = mem::zeroed();
+        let _val: WrapAroundRange = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
         // Things where 0 is okay due to rustc implementation details,
         // but that are not guaranteed to keep working.

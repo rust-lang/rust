@@ -9,14 +9,12 @@
 //! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def::DefKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::{
     walk_abstract_const, AbstractConst, FailureKind, Node, NotConstEvaluatable,
 };
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
-use rustc_session::lint;
 use rustc_span::Span;
 
 use std::iter;
@@ -161,11 +159,20 @@ pub fn try_unify_abstract_consts<'tcx>(
 #[instrument(skip(infcx), level = "debug")]
 pub fn is_const_evaluatable<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    uv: ty::UnevaluatedConst<'tcx>,
+    ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
     let tcx = infcx.tcx;
+    let uv = match ct.kind() {
+        ty::ConstKind::Unevaluated(uv) => uv,
+        ty::ConstKind::Param(_)
+        | ty::ConstKind::Bound(_, _)
+        | ty::ConstKind::Placeholder(_)
+        | ty::ConstKind::Value(_)
+        | ty::ConstKind::Error(_) => return Ok(()),
+        ty::ConstKind::Infer(_) => return Err(NotConstEvaluatable::MentionsInfer),
+    };
 
     if tcx.features().generic_const_exprs {
         if let Some(ct) = AbstractConst::new(tcx, uv)? {
@@ -253,25 +260,7 @@ pub fn is_const_evaluatable<'tcx>(
                 Err(NotConstEvaluatable::Error(reported))
             }
             Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
-            Ok(_) => {
-                if uv.substs.has_non_region_param() {
-                    assert!(matches!(infcx.tcx.def_kind(uv.def.did), DefKind::AnonConst));
-                    let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(uv.def);
-
-                    if mir_body.is_polymorphic {
-                        let Some(local_def_id) = uv.def.did.as_local() else { return Ok(()) };
-                        tcx.struct_span_lint_hir(
-                            lint::builtin::CONST_EVALUATABLE_UNCHECKED,
-                            tcx.hir().local_def_id_to_hir_id(local_def_id),
-                            span,
-                            "cannot use constants which depend on generic parameters in types",
-                            |err| err
-                        )
-                    }
-                }
-
-                Ok(())
-            },
+            Ok(_) => Ok(()),
         }
     }
 }
@@ -285,7 +274,7 @@ fn satisfied_from_param_env<'tcx>(
     for pred in param_env.caller_bounds() {
         match pred.kind().skip_binder() {
             ty::PredicateKind::ConstEvaluatable(uv) => {
-                if let Some(b_ct) = AbstractConst::new(tcx, uv)? {
+                if let Some(b_ct) = AbstractConst::from_const(tcx, uv)? {
                     let const_unify_ctxt = ConstUnifyCtxt { tcx, param_env };
 
                     // Try to unify with each subtree in the AbstractConst to allow for

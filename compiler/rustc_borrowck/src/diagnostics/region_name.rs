@@ -251,7 +251,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             .or_else(|| self.give_name_if_anonymous_region_appears_in_upvars(fr))
             .or_else(|| self.give_name_if_anonymous_region_appears_in_output(fr))
             .or_else(|| self.give_name_if_anonymous_region_appears_in_yield_ty(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_impl_signature(fr));
+            .or_else(|| self.give_name_if_anonymous_region_appears_in_impl_signature(fr))
+            .or_else(|| self.give_name_if_anonymous_region_appears_in_arg_position_impl_trait(fr));
 
         if let Some(ref value) = value {
             self.region_names.try_borrow_mut().unwrap().insert(fr, value.clone());
@@ -869,13 +870,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             return None;
         }
 
-        let mut found = false;
-        tcx.fold_regions(tcx.type_of(region_parent), |r: ty::Region<'tcx>, _| {
-            if *r == ty::ReEarlyBound(region) {
-                found = true;
-            }
-            r
-        });
+        let found = tcx
+            .any_free_region_meets(&tcx.type_of(region_parent), |r| *r == ty::ReEarlyBound(region));
 
         Some(RegionName {
             name: self.synthesize_region_name(),
@@ -886,6 +882,94 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 // example of a `'_` in the impl's trait being referenceable.
                 if found { "self type" } else { "header" },
             ),
+        })
+    }
+
+    fn give_name_if_anonymous_region_appears_in_arg_position_impl_trait(
+        &self,
+        fr: RegionVid,
+    ) -> Option<RegionName> {
+        let ty::ReEarlyBound(region) = *self.to_error_region(fr)? else {
+            return None;
+        };
+        if region.has_name() {
+            return None;
+        };
+
+        let predicates = self
+            .infcx
+            .tcx
+            .predicates_of(self.body.source.def_id())
+            .instantiate_identity(self.infcx.tcx)
+            .predicates;
+
+        if let Some(upvar_index) = self
+            .regioncx
+            .universal_regions()
+            .defining_ty
+            .upvar_tys()
+            .position(|ty| self.any_param_predicate_mentions(&predicates, ty, region))
+        {
+            let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
+                self.infcx.tcx,
+                &self.upvars,
+                upvar_index,
+            );
+            let region_name = self.synthesize_region_name();
+
+            Some(RegionName {
+                name: region_name,
+                source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name),
+            })
+        } else if let Some(arg_index) = self
+            .regioncx
+            .universal_regions()
+            .unnormalized_input_tys
+            .iter()
+            .position(|ty| self.any_param_predicate_mentions(&predicates, *ty, region))
+        {
+            let (arg_name, arg_span) = self.regioncx.get_argument_name_and_span_for_region(
+                self.body,
+                &self.local_names,
+                arg_index,
+            );
+            let region_name = self.synthesize_region_name();
+
+            Some(RegionName {
+                name: region_name,
+                source: RegionNameSource::AnonRegionFromArgument(
+                    RegionNameHighlight::CannotMatchHirTy(arg_span, arg_name?.to_string()),
+                ),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn any_param_predicate_mentions(
+        &self,
+        predicates: &[ty::Predicate<'tcx>],
+        ty: Ty<'tcx>,
+        region: ty::EarlyBoundRegion,
+    ) -> bool {
+        let tcx = self.infcx.tcx;
+        ty.walk().any(|arg| {
+            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                && let ty::Param(_) = ty.kind()
+            {
+                predicates.iter().any(|pred| {
+                    match pred.kind().skip_binder() {
+                        ty::PredicateKind::Trait(data) if data.self_ty() == ty => {}
+                        ty::PredicateKind::Projection(data) if data.projection_ty.self_ty() == ty => {}
+                        _ => return false,
+                    }
+                    tcx.any_free_region_meets(pred, |r| {
+                        *r == ty::ReEarlyBound(region)
+                    })
+                })
+            } else {
+                false
+            }
         })
     }
 }

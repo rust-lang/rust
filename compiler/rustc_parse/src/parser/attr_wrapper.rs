@@ -273,16 +273,23 @@ impl<'a> Parser<'a> {
         let cursor_snapshot_next_calls = cursor_snapshot.num_next_calls;
         let mut end_pos = self.token_cursor.num_next_calls;
 
+        let mut captured_trailing = false;
+
         // Capture a trailing token if requested by the callback 'f'
         match trailing {
             TrailingToken::None => {}
+            TrailingToken::Gt => {
+                assert_eq!(self.token.kind, token::Gt);
+            }
             TrailingToken::Semi => {
                 assert_eq!(self.token.kind, token::Semi);
                 end_pos += 1;
+                captured_trailing = true;
             }
             TrailingToken::MaybeComma => {
                 if self.token.kind == token::Comma {
                     end_pos += 1;
+                    captured_trailing = true;
                 }
             }
         }
@@ -292,11 +299,7 @@ impl<'a> Parser<'a> {
         // was not actually bumped past it. When the `LazyAttrTokenStream` gets converted
         // into an `AttrTokenStream`, we will create the proper token.
         if self.token_cursor.break_last_token {
-            assert_eq!(
-                trailing,
-                TrailingToken::None,
-                "Cannot set `break_last_token` and have trailing token"
-            );
+            assert!(!captured_trailing, "Cannot set break_last_token and have trailing token");
             end_pos += 1;
         }
 

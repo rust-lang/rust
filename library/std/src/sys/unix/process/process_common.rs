@@ -39,10 +39,12 @@ cfg_if::cfg_if! {
 // https://github.com/aosp-mirror/platform_bionic/blob/ad8dcd6023294b646e5a8288c0ed431b0845da49/libc/include/android/legacy_signal_inlines.h
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
+        #[allow(dead_code)]
         pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
             set.write_bytes(0u8, 1);
             return 0;
         }
+
         #[allow(dead_code)]
         pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
             use crate::{

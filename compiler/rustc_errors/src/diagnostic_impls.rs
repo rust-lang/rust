@@ -1,14 +1,14 @@
 use crate::{
     fluent, DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg,
 };
-use rustc_target::abi::TargetDataLayoutErrors;
-use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
-
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_hir as hir;
+use rustc_lint_defs::Level;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
+use rustc_target::abi::TargetDataLayoutErrors;
+use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use std::borrow::Cow;
 use std::fmt;
 use std::num::ParseIntError;
@@ -155,19 +155,34 @@ impl IntoDiagnosticArg for ast::token::TokenKind {
     }
 }
 
+impl IntoDiagnosticArg for Level {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Borrowed(match self {
+            Level::Allow => "-A",
+            Level::Warn => "-W",
+            Level::ForceWarn(_) => "--force-warn",
+            Level::Deny => "-D",
+            Level::Forbid => "-F",
+            Level::Expect(_) => {
+                unreachable!("lints with the level of `expect` should not run this code");
+            }
+        }))
+    }
+}
+
 impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
     fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         let mut diag;
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
-                diag = handler.struct_fatal(fluent::errors::target_invalid_address_space);
+                diag = handler.struct_fatal(fluent::errors_target_invalid_address_space);
                 diag.set_arg("addr_space", addr_space);
                 diag.set_arg("cause", cause);
                 diag.set_arg("err", err);
                 diag
             }
             TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
-                diag = handler.struct_fatal(fluent::errors::target_invalid_bits);
+                diag = handler.struct_fatal(fluent::errors_target_invalid_bits);
                 diag.set_arg("kind", kind);
                 diag.set_arg("bit", bit);
                 diag.set_arg("cause", cause);
@@ -175,30 +190,30 @@ impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
                 diag
             }
             TargetDataLayoutErrors::MissingAlignment { cause } => {
-                diag = handler.struct_fatal(fluent::errors::target_missing_alignment);
+                diag = handler.struct_fatal(fluent::errors_target_missing_alignment);
                 diag.set_arg("cause", cause);
                 diag
             }
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                diag = handler.struct_fatal(fluent::errors::target_invalid_alignment);
+                diag = handler.struct_fatal(fluent::errors_target_invalid_alignment);
                 diag.set_arg("cause", cause);
                 diag.set_arg("err", err);
                 diag
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
-                diag = handler.struct_fatal(fluent::errors::target_inconsistent_architecture);
+                diag = handler.struct_fatal(fluent::errors_target_inconsistent_architecture);
                 diag.set_arg("dl", dl);
                 diag.set_arg("target", target);
                 diag
             }
             TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
-                diag = handler.struct_fatal(fluent::errors::target_inconsistent_pointer_width);
+                diag = handler.struct_fatal(fluent::errors_target_inconsistent_pointer_width);
                 diag.set_arg("pointer_size", pointer_size);
                 diag.set_arg("target", target);
                 diag
             }
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
-                diag = handler.struct_fatal(fluent::errors::target_invalid_bits_size);
+                diag = handler.struct_fatal(fluent::errors_target_invalid_bits_size);
                 diag.set_arg("err", err);
                 diag
             }

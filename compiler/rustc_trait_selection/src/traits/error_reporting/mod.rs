@@ -764,6 +764,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             self.suggest_borrowing_for_object_cast(&mut err, &root_obligation, *concrete_ty, *obj_ty);
                         }
 
+                        let mut unsatisfied_const = false;
                         if trait_predicate.is_const_if_const() && obligation.param_env.is_const() {
                             let non_const_predicate = trait_ref.without_const();
                             let non_const_obligation = Obligation {
@@ -773,6 +774,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 recursion_depth: obligation.recursion_depth,
                             };
                             if self.predicate_may_hold(&non_const_obligation) {
+                                unsatisfied_const = true;
                                 err.span_note(
                                     span,
                                     &format!(
@@ -924,7 +926,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 }
                             }
                         } else if !trait_ref.has_non_region_infer()
-                            && self.predicate_can_apply(obligation.param_env, trait_ref)
+                            && self.predicate_can_apply(obligation.param_env, trait_predicate)
                         {
                             // If a where-clause may be useful, remind the
                             // user that they can add it.
@@ -939,7 +941,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 None,
                                 obligation.cause.body_id,
                             );
-                        } else if !suggested {
+                        } else if !suggested && !unsatisfied_const {
                             // Can't show anything else useful, try to find similar impls.
                             let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
                             if !self.report_similar_impl_candidates(
@@ -1304,7 +1306,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
 
                 match obligation.predicate.kind().skip_binder() {
-                    ty::PredicateKind::ConstEvaluatable(uv) => {
+                    ty::PredicateKind::ConstEvaluatable(ct) => {
+                        let ty::ConstKind::Unevaluated(uv) = ct.kind() else {
+                            bug!("const evaluatable failed for non-unevaluated const `{ct:?}`");
+                        };
                         let mut err =
                             self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
                         let const_span = self.tcx.def_span(uv.def.did);
@@ -1433,7 +1438,7 @@ trait InferCtxtPrivExt<'tcx> {
     fn predicate_can_apply(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        pred: ty::PolyTraitRef<'tcx>,
+        pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool;
 
     fn note_obligation_cause(&self, err: &mut Diagnostic, obligation: &PredicateObligation<'tcx>);
@@ -2368,7 +2373,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if predicate.references_error() || self.is_tainted_by_errors() {
                     return;
                 }
-                let subst = data.substs.iter().find(|g| g.has_non_region_infer());
+                let subst = data.walk().find(|g| g.is_non_region_infer());
                 if let Some(subst) = subst {
                     let err = self.emit_inference_failure_err(
                         body_id,
@@ -2508,7 +2513,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn predicate_can_apply(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        pred: ty::PolyTraitRef<'tcx>,
+        pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         struct ParamToVarFolder<'a, 'tcx> {
             infcx: &'a InferCtxt<'tcx>,
@@ -2552,7 +2557,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let obligation = Obligation::new(
                 ObligationCause::dummy(),
                 param_env,
-                cleaned_pred.without_const().to_predicate(selcx.tcx()),
+                cleaned_pred.to_predicate(selcx.tcx()),
             );
 
             self.predicate_may_hold(&obligation)

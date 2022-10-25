@@ -1101,8 +1101,6 @@ fn check_type_defn<'tcx, F>(
 
             // Explicit `enum` discriminant values must const-evaluate successfully.
             if let Some(discr_def_id) = variant.explicit_discr {
-                let discr_substs = InternalSubsts::identity_for_item(tcx, discr_def_id.to_def_id());
-
                 let cause = traits::ObligationCause::new(
                     tcx.def_span(discr_def_id),
                     wfcx.body_id,
@@ -1112,10 +1110,7 @@ fn check_type_defn<'tcx, F>(
                     cause,
                     wfcx.param_env,
                     ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(
-                        ty::UnevaluatedConst::new(
-                            ty::WithOptConstParam::unknown(discr_def_id.to_def_id()),
-                            discr_substs,
-                        ),
+                        ty::Const::from_anon_const(tcx, discr_def_id),
                     ))
                     .to_predicate(tcx),
                 ));

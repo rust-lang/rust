@@ -55,7 +55,7 @@ impl<'a> Parser<'a> {
                     let span = self.token.span;
                     let mut err = self.sess.span_diagnostic.struct_span_err_with_code(
                         span,
-                        fluent::parser::inner_doc_comment_not_permitted,
+                        fluent::parser_inner_doc_comment_not_permitted,
                         error_code!(E0753),
                     );
                     if let Some(replacement_span) = self.annotate_following_item_if_applicable(
@@ -66,10 +66,10 @@ impl<'a> Parser<'a> {
                             token::CommentKind::Block => OuterAttributeType::DocBlockComment,
                         },
                     ) {
-                        err.note(fluent::parser::note);
+                        err.note(fluent::note);
                         err.span_suggestion_verbose(
                             replacement_span,
-                            fluent::parser::suggestion,
+                            fluent::suggestion,
                             "",
                             rustc_errors::Applicability::MachineApplicable,
                         );
@@ -173,10 +173,10 @@ impl<'a> Parser<'a> {
             Ok(Some(item)) => {
                 // FIXME(#100717)
                 err.set_arg("item", item.kind.descr());
-                err.span_label(item.span, fluent::parser::label_does_not_annotate_this);
+                err.span_label(item.span, fluent::label_does_not_annotate_this);
                 err.span_suggestion_verbose(
                     replacement_span,
-                    fluent::parser::sugg_change_inner_to_outer,
+                    fluent::sugg_change_inner_to_outer,
                     match attr_type {
                         OuterAttributeType::Attribute => "",
                         OuterAttributeType::DocBlockComment => "*",
@@ -200,27 +200,27 @@ impl<'a> Parser<'a> {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
                     let mut diag = self.struct_span_err(
                         attr_sp,
-                        fluent::parser::inner_attr_not_permitted_after_outer_doc_comment,
+                        fluent::parser_inner_attr_not_permitted_after_outer_doc_comment,
                     );
-                    diag.span_label(attr_sp, fluent::parser::label_attr)
-                        .span_label(prev_doc_comment_span, fluent::parser::label_prev_doc_comment);
+                    diag.span_label(attr_sp, fluent::label_attr)
+                        .span_label(prev_doc_comment_span, fluent::label_prev_doc_comment);
                     diag
                 }
                 Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => {
                     let mut diag = self.struct_span_err(
                         attr_sp,
-                        fluent::parser::inner_attr_not_permitted_after_outer_attr,
+                        fluent::parser_inner_attr_not_permitted_after_outer_attr,
                     );
-                    diag.span_label(attr_sp, fluent::parser::label_attr)
-                        .span_label(prev_outer_attr_sp, fluent::parser::label_prev_attr);
+                    diag.span_label(attr_sp, fluent::label_attr)
+                        .span_label(prev_outer_attr_sp, fluent::label_prev_attr);
                     diag
                 }
                 Some(InnerAttrForbiddenReason::InCodeBlock) | None => {
-                    self.struct_span_err(attr_sp, fluent::parser::inner_attr_not_permitted)
+                    self.struct_span_err(attr_sp, fluent::parser_inner_attr_not_permitted)
                 }
             };
 
-            diag.note(fluent::parser::inner_attr_explanation);
+            diag.note(fluent::parser_inner_attr_explanation);
             if self
                 .annotate_following_item_if_applicable(
                     &mut diag,
@@ -229,7 +229,7 @@ impl<'a> Parser<'a> {
                 )
                 .is_some()
             {
-                diag.note(fluent::parser::outer_attr_explanation);
+                diag.note(fluent::parser_outer_attr_explanation);
             };
             diag.emit();
         }

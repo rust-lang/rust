@@ -58,6 +58,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         &snippet_body,
                         &mut applicability,
                         Some(span),
+                        true,
                     );
 
                     span_lint_and_sugg(
@@ -90,6 +91,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         &snippet_body,
                         &mut applicability,
                         None,
+                        true,
                     );
                     (expr.span, sugg)
                 },
@@ -107,10 +109,14 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
         },
         PatKind::Wild => {
             if ex.can_have_side_effects() {
-                let indent = " ".repeat(indent_of(cx, expr.span).unwrap_or(0));
-                let sugg = format!(
-                    "{};\n{indent}{snippet_body}",
-                    snippet_with_applicability(cx, ex.span, "..", &mut applicability)
+                let sugg = sugg_with_curlies(
+                    cx,
+                    (ex, expr),
+                    (bind_names, matched_vars),
+                    &snippet_body,
+                    &mut applicability,
+                    None,
+                    false,
                 );
 
                 span_lint_and_sugg(
@@ -169,6 +175,7 @@ fn sugg_with_curlies<'a>(
     snippet_body: &str,
     applicability: &mut Applicability,
     assignment: Option<Span>,
+    needs_var_binding: bool,
 ) -> String {
     let mut indent = " ".repeat(indent_of(cx, ex.span).unwrap_or(0));
 
@@ -200,9 +207,15 @@ fn sugg_with_curlies<'a>(
         s
     });
 
-    format!(
-        "{cbrace_start}let {} = {};\n{indent}{assignment_str}{snippet_body}{cbrace_end}",
-        snippet_with_applicability(cx, bind_names, "..", applicability),
-        snippet_with_applicability(cx, matched_vars, "..", applicability)
-    )
+    let scrutinee = if needs_var_binding {
+        format!(
+            "let {} = {}",
+            snippet_with_applicability(cx, bind_names, "..", applicability),
+            snippet_with_applicability(cx, matched_vars, "..", applicability)
+        )
+    } else {
+        snippet_with_applicability(cx, matched_vars, "..", applicability).to_string()
+    };
+
+    format!("{cbrace_start}{scrutinee};\n{indent}{assignment_str}{snippet_body}{cbrace_end}")
 }

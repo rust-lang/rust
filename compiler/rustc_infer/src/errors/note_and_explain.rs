@@ -166,9 +166,9 @@ impl AddToDiagnostic for RegionExplanation<'_> {
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
         if let Some(span) = self.desc.span {
-            diag.span_note(span, fluent::infer::region_explanation);
+            diag.span_note(span, fluent::infer_region_explanation);
         } else {
-            diag.note(fluent::infer::region_explanation);
+            diag.note(fluent::infer_region_explanation);
         }
         self.desc.add_to(diag);
         diag.set_arg("pref_kind", self.prefix);

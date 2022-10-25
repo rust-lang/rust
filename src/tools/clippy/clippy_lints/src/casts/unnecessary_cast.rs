@@ -59,9 +59,6 @@ pub(super) fn check<'tcx>(
                 lint_unnecessary_cast(cx, expr, literal_str, cast_from, cast_to);
                 return false;
             },
-            LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {
-                return false;
-            },
             LitKind::Int(_, LitIntType::Signed(_) | LitIntType::Unsigned(_))
             | LitKind::Float(_, LitFloatType::Suffixed(_))
                 if cast_from.kind() == cast_to.kind() =>

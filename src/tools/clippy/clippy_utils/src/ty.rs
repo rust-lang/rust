@@ -657,21 +657,18 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
-    for pred in cx
+    for (pred, _) in cx
         .tcx
         .bound_explicit_item_bounds(ty.item_def_id)
-        .transpose_iter()
-        .map(|x| x.map_bound(|(p, _)| p))
+        .subst_iter_copied(cx.tcx, ty.substs)
     {
-        match pred.0.kind().skip_binder() {
+        match pred.kind().skip_binder() {
             PredicateKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id())) =>
             {
-                let i = pred
-                    .map_bound(|pred| pred.kind().rebind(p.trait_ref.substs.type_at(1)))
-                    .subst(cx.tcx, ty.substs);
+                let i = pred.kind().rebind(p.trait_ref.substs.type_at(1));
 
                 if inputs.map_or(false, |inputs| inputs != i) {
                     // Multiple different fn trait impls. Is this even allowed?
@@ -684,10 +681,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = Some(
-                    pred.map_bound(|pred| pred.kind().rebind(p.term.ty().unwrap()))
-                        .subst(cx.tcx, ty.substs),
-                );
+                output = pred.kind().rebind(p.term.ty()).transpose();
             },
             _ => (),
         }

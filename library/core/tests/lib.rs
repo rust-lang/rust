@@ -95,7 +95,6 @@
 #![feature(strict_provenance_atomic_ptr)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]
-#![feature(unzip_option)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
 #![feature(waker_getters)]
@@ -103,7 +102,6 @@
 #![feature(provide_any)]
 #![feature(utf8_chunks)]
 #![feature(is_ascii_octdigit)]
-#![feature(duration_checked_float)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

@@ -23,14 +23,14 @@ use synstructure::Structure;
 /// # extern crate rust_middle;
 /// # use rustc_middle::ty::Ty;
 /// #[derive(Diagnostic)]
-/// #[diag(borrowck::move_out_of_borrow, code = "E0505")]
+/// #[diag(borrowck_move_out_of_borrow, code = "E0505")]
 /// pub struct MoveOutOfBorrowError<'tcx> {
 ///     pub name: Ident,
 ///     pub ty: Ty<'tcx>,
 ///     #[primary_span]
 ///     #[label]
 ///     pub span: Span,
-///     #[label(borrowck::first_borrow_label)]
+///     #[label(first_borrow_label)]
 ///     pub first_borrow_span: Span,
 ///     #[suggestion(code = "{name}.clone()")]
 ///     pub clone_sugg: Option<(Span, Applicability)>
@@ -67,14 +67,14 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 ///
 /// ```ignore (rust)
 /// #[derive(LintDiagnostic)]
-/// #[diag(lint::atomic_ordering_invalid_fail_success)]
+/// #[diag(lint_atomic_ordering_invalid_fail_success)]
 /// pub struct AtomicOrderingInvalidLint {
 ///     method: Symbol,
 ///     success_ordering: Symbol,
 ///     fail_ordering: Symbol,
-///     #[label(lint::fail_label)]
+///     #[label(fail_label)]
 ///     fail_order_arg_span: Span,
-///     #[label(lint::success_label)]
+///     #[label(success_label)]
 ///     #[suggestion(
 ///         code = "std::sync::atomic::Ordering::{success_suggestion}",
 ///         applicability = "maybe-incorrect"
@@ -115,12 +115,12 @@ pub fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// ```ignore (rust)
 /// #[derive(Subdiagnostic)]
 /// pub enum ExpectedIdentifierLabel<'tcx> {
-///     #[label(parser::expected_identifier)]
+///     #[label(expected_identifier)]
 ///     WithoutFound {
 ///         #[primary_span]
 ///         span: Span,
 ///     }
-///     #[label(parser::expected_identifier_found)]
+///     #[label(expected_identifier_found)]
 ///     WithFound {
 ///         #[primary_span]
 ///         span: Span,

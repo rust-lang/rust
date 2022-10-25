@@ -493,8 +493,8 @@ impl Error for crate::char::ParseCharError {
     }
 }
 
-#[unstable(feature = "duration_checked_float", issue = "83400")]
-impl Error for crate::time::FromFloatSecsError {}
+#[stable(feature = "duration_checked_float", since = "CURRENT_RUSTC_VERSION")]
+impl Error for crate::time::TryFromFloatSecsError {}
 
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
 impl Error for crate::ffi::FromBytesWithNulError {

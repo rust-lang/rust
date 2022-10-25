@@ -2,56 +2,93 @@
 goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 show-text: true
 
-local-storage: {"rustdoc-theme": "ayu", "rustdoc-use-system-theme": "false"}
-reload:
+define-function: (
+    "check-colors",
+    (
+        theme,
+        kw,
+        kw2,
+        prelude_ty,
+        prelude_val,
+        lifetime,
+        number,
+        string,
+        bool_val,
+        self,
+        attribute,
+        macro,
+        question_mark,
+        comment,
+        doc_comment,
+    ),
+    [
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        ("reload"),
+        ("assert-css", ("pre.rust .kw", {"color": |kw|}, ALL)),
+        ("assert-css", ("pre.rust .kw-2", {"color": |kw2|}, ALL)),
+        ("assert-css", ("pre.rust .prelude-ty", {"color": |prelude_ty|}, ALL)),
+        ("assert-css", ("pre.rust .prelude-val", {"color": |prelude_val|}, ALL)),
+        ("assert-css", ("pre.rust .lifetime", {"color": |lifetime|}, ALL)),
+        ("assert-css", ("pre.rust .number", {"color": |number|}, ALL)),
+        ("assert-css", ("pre.rust .string", {"color": |string|}, ALL)),
+        ("assert-css", ("pre.rust .bool-val", {"color": |bool_val|}, ALL)),
+        ("assert-css", ("pre.rust .self", {"color": |self|}, ALL)),
+        ("assert-css", ("pre.rust .attribute", {"color": |attribute|}, ALL)),
+        ("assert-css", ("pre.rust .macro", {"color": |macro|}, ALL)),
+        ("assert-css", ("pre.rust .question-mark", {"color": |question_mark|}, ALL)),
+        ("assert-css", ("pre.rust .comment", {"color": |comment|}, ALL)),
+        ("assert-css", ("pre.rust .doccomment", {"color": |doc_comment|}, ALL)),
+    ],
+)
 
-assert-css: ("pre.rust .kw", {"color": "rgb(255, 119, 51)"}, ALL)
-assert-css: ("pre.rust .kw-2", {"color": "rgb(255, 119, 51)"}, ALL)
-assert-css: ("pre.rust .prelude-ty", {"color": "rgb(105, 242, 223)"}, ALL)
-assert-css: ("pre.rust .prelude-val", {"color": "rgb(255, 119, 51)"}, ALL)
-assert-css: ("pre.rust .lifetime", {"color": "rgb(255, 119, 51)"}, ALL)
-assert-css: ("pre.rust .number", {"color": "rgb(184, 204, 82)"}, ALL)
-assert-css: ("pre.rust .string", {"color": "rgb(184, 204, 82)"}, ALL)
-assert-css: ("pre.rust .bool-val", {"color": "rgb(255, 119, 51)"}, ALL)
-assert-css: ("pre.rust .self", {"color": "rgb(54, 163, 217)"}, ALL)
-assert-css: ("pre.rust .attribute", {"color": "rgb(230, 225, 207)"}, ALL)
-assert-css: ("pre.rust .macro", {"color": "rgb(163, 122, 204)"}, ALL)
-assert-css: ("pre.rust .question-mark", {"color": "rgb(255, 144, 17)"}, ALL)
-assert-css: ("pre.rust .comment", {"color": "rgb(120, 135, 151)"}, ALL)
-assert-css: ("pre.rust .doccomment", {"color": "rgb(161, 172, 136)"}, ALL)
-
-local-storage: {"rustdoc-theme": "dark"}
-reload:
-
-assert-css: ("pre.rust .kw", {"color": "rgb(171, 138, 193)"}, ALL)
-assert-css: ("pre.rust .kw-2", {"color": "rgb(118, 154, 203)"}, ALL)
-assert-css: ("pre.rust .prelude-ty", {"color": "rgb(118, 154, 203)"}, ALL)
-assert-css: ("pre.rust .prelude-val", {"color": "rgb(238, 104, 104)"}, ALL)
-assert-css: ("pre.rust .lifetime", {"color": "rgb(217, 127, 38)"}, ALL)
-assert-css: ("pre.rust .number", {"color": "rgb(131, 163, 0)"}, ALL)
-assert-css: ("pre.rust .string", {"color": "rgb(131, 163, 0)"}, ALL)
-assert-css: ("pre.rust .bool-val", {"color": "rgb(238, 104, 104)"}, ALL)
-assert-css: ("pre.rust .self", {"color": "rgb(238, 104, 104)"}, ALL)
-assert-css: ("pre.rust .attribute", {"color": "rgb(238, 104, 104)"}, ALL)
-assert-css: ("pre.rust .macro", {"color": "rgb(62, 153, 159)"}, ALL)
-assert-css: ("pre.rust .question-mark", {"color": "rgb(255, 144, 17)"}, ALL)
-assert-css: ("pre.rust .comment", {"color": "rgb(141, 141, 139)"}, ALL)
-assert-css: ("pre.rust .doccomment", {"color": "rgb(140, 163, 117)"}, ALL)
-
-local-storage: {"rustdoc-theme": "light"}
-reload:
-
-assert-css: ("pre.rust .kw", {"color": "rgb(137, 89, 168)"}, ALL)
-assert-css: ("pre.rust .kw-2", {"color": "rgb(66, 113, 174)"}, ALL)
-assert-css: ("pre.rust .prelude-ty", {"color": "rgb(66, 113, 174)"}, ALL)
-assert-css: ("pre.rust .prelude-val", {"color": "rgb(200, 40, 41)"}, ALL)
-assert-css: ("pre.rust .lifetime", {"color": "rgb(183, 101, 20)"}, ALL)
-assert-css: ("pre.rust .number", {"color": "rgb(113, 140, 0)"}, ALL)
-assert-css: ("pre.rust .string", {"color": "rgb(113, 140, 0)"}, ALL)
-assert-css: ("pre.rust .bool-val", {"color": "rgb(200, 40, 41)"}, ALL)
-assert-css: ("pre.rust .self", {"color": "rgb(200, 40, 41)"}, ALL)
-assert-css: ("pre.rust .attribute", {"color": "rgb(200, 40, 41)"}, ALL)
-assert-css: ("pre.rust .macro", {"color": "rgb(62, 153, 159)"}, ALL)
-assert-css: ("pre.rust .question-mark", {"color": "rgb(255, 144, 17)"}, ALL)
-assert-css: ("pre.rust .comment", {"color": "rgb(142, 144, 140)"}, ALL)
-assert-css: ("pre.rust .doccomment", {"color": "rgb(77, 77, 76)"}, ALL)
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "kw": "rgb(255, 119, 51)",
+    "kw2": "rgb(255, 119, 51)",
+    "prelude_ty": "rgb(105, 242, 223)",
+    "prelude_val": "rgb(255, 119, 51)",
+    "lifetime": "rgb(255, 119, 51)",
+    "number": "rgb(184, 204, 82)",
+    "string": "rgb(184, 204, 82)",
+    "bool_val": "rgb(255, 119, 51)",
+    "self": "rgb(54, 163, 217)",
+    "attribute": "rgb(230, 225, 207)",
+    "macro": "rgb(163, 122, 204)",
+    "question_mark": "rgb(255, 144, 17)",
+    "comment": "rgb(120, 135, 151)",
+    "doc_comment": "rgb(161, 172, 136)",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "kw": "rgb(171, 138, 193)",
+    "kw2": "rgb(118, 154, 203)",
+    "prelude_ty": "rgb(118, 154, 203)",
+    "prelude_val": "rgb(238, 104, 104)",
+    "lifetime": "rgb(217, 127, 38)",
+    "number": "rgb(131, 163, 0)",
+    "string": "rgb(131, 163, 0)",
+    "bool_val": "rgb(238, 104, 104)",
+    "self": "rgb(238, 104, 104)",
+    "attribute": "rgb(238, 104, 104)",
+    "macro": "rgb(62, 153, 159)",
+    "question_mark": "rgb(255, 144, 17)",
+    "comment": "rgb(141, 141, 139)",
+    "doc_comment": "rgb(140, 163, 117)",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "kw": "rgb(137, 89, 168)",
+    "kw2": "rgb(66, 113, 174)",
+    "prelude_ty": "rgb(66, 113, 174)",
+    "prelude_val": "rgb(200, 40, 41)",
+    "lifetime": "rgb(183, 101, 20)",
+    "number": "rgb(113, 140, 0)",
+    "string": "rgb(113, 140, 0)",
+    "bool_val": "rgb(200, 40, 41)",
+    "self": "rgb(200, 40, 41)",
+    "attribute": "rgb(200, 40, 41)",
+    "macro": "rgb(62, 153, 159)",
+    "question_mark": "rgb(255, 144, 17)",
+    "comment": "rgb(142, 144, 140)",
+    "doc_comment": "rgb(77, 77, 76)",
+})

@@ -29,10 +29,6 @@ rm src/test/incremental/change_crate_dep_kind.rs
 rm src/test/incremental/issue-80691-bad-eval-cache.rs # -Cpanic=abort causes abort instead of exit(101)
 
 # requires compiling with -Cpanic=unwind
-rm src/test/ui/test-attrs/test-fn-signature-verification-for-explicit-return-type.rs # "Cannot run dynamic test fn out-of-process"
-rm src/test/ui/async-await/async-fn-size-moved-locals.rs # -Cpanic=abort shrinks some generator by one byte
-rm src/test/ui/async-await/async-fn-size-uninit-locals.rs # same
-rm src/test/ui/generator/size-moved-locals.rs # same
 rm -r src/test/ui/macros/rfc-2011-nicer-assert-messages/
 
 # vendor intrinsics
@@ -67,6 +63,7 @@ rm src/test/ui/target-feature/missing-plusminus.rs # error not implemented
 rm src/test/ui/fn/dyn-fn-alignment.rs # wants a 256 byte alignment
 rm -r src/test/run-make/emit-named-files # requires full --emit support
 rm src/test/ui/abi/stack-probes.rs # stack probes not yet implemented
+rm src/test/ui/simd/intrinsic/ptr-cast.rs # simd_expose_addr intrinsic unimplemented
 
 # optimization tests
 # ==================
@@ -110,11 +107,12 @@ rm src/test/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unorde
 # bugs in the test suite
 # ======================
 rm src/test/ui/backtrace.rs # TODO warning
-rm src/test/ui/empty_global_asm.rs # TODO add needs-asm-support
 rm src/test/ui/simple_global_asm.rs # TODO add needs-asm-support
 rm src/test/ui/test-attrs/test-type.rs # TODO panic message on stderr. correct stdout
 # not sure if this is actually a bug in the test suite, but the symbol list shows the function without leading _ for some reason
 rm -r src/test/run-make/native-link-modifier-bundle
+
+rm src/test/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
 echo "[TEST] rustc test suite"
 RUST_TEST_NOCAPTURE=1 COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 src/test/{codegen-units,run-make,run-pass-valgrind,ui,incremental}

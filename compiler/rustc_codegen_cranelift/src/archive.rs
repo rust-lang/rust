@@ -38,6 +38,7 @@ impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
         _lib_name: &str,
         _dll_imports: &[rustc_session::cstore::DllImport],
         _tmpdir: &Path,
+        _is_direct_dependency: bool,
     ) -> PathBuf {
         bug!("creating dll imports is not supported");
     }
@@ -159,6 +160,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                         let err = err.to_string();
                         if err == "Unknown file magic" {
                             // Not an object file; skip it.
+                        } else if object::read::archive::ArchiveFile::parse(&*data).is_ok() {
+                            // Nested archive file; skip it.
                         } else {
                             sess.fatal(&format!(
                                 "error parsing `{}` during archive creation: {}",

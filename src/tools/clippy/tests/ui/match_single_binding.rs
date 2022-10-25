@@ -140,3 +140,11 @@ fn issue_8723() {
 
     let _ = val;
 }
+
+#[allow(dead_code)]
+fn issue_9575() {
+    fn side_effects() {}
+    let _ = || match side_effects() {
+        _ => println!("Needs curlies"),
+    };
+}

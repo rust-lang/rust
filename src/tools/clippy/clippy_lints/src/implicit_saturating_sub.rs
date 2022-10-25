@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.44.0"]
     pub IMPLICIT_SATURATING_SUB,
-    pedantic,
+    style,
     "Perform saturating subtraction instead of implicitly checking lower bound of data type"
 }
 

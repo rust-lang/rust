@@ -8,7 +8,7 @@ use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trai
 use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
-use rustc_hir_analysis::check::{FnCtxt, Inherited};
+use rustc_hir_typeck::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
@@ -363,7 +363,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                 && let output_ty = return_ty(cx, item.hir_id())
                 && let local_def_id = cx.tcx.hir().local_def_id(item.hir_id())
                 && Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
-                    let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, item.hir_id());
+                    let fn_ctxt = FnCtxt::new(inherited, cx.param_env, item.hir_id());
                     fn_ctxt.can_coerce(ty, output_ty)
                 }) {
                     if has_lifetime(output_ty) && has_lifetime(ty) {

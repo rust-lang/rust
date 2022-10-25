@@ -52,7 +52,6 @@ use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolMangli
 use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
 use rustc_session::lint::LintExpectationId;
-use rustc_session::utils::NativeLibKind;
 use rustc_session::Limits;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
