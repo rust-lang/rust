@@ -623,11 +623,7 @@ mod tests {
     unsafe fn str_to_m128i(s: &[u8]) -> __m128i {
         assert!(s.len() <= 16);
         let slice = &mut [0u8; 16];
-        ptr::copy_nonoverlapping(
-            s.get_unchecked(0) as *const u8 as *const u8,
-            slice.get_unchecked_mut(0) as *mut u8 as *mut u8,
-            s.len(),
-        );
+        ptr::copy_nonoverlapping(s.as_ptr(), slice.as_mut_ptr(), s.len());
         _mm_loadu_si128(slice.as_ptr() as *const _)
     }
 
