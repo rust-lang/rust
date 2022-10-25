@@ -103,6 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if parameters.as_ref().map_or(true, |params| {
                 !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
             });
+            if !item.span.from_expansion();
             if !is_from_proc_macro(cx, item); // expensive, should be last check
             then {
                 StackItem::Check {

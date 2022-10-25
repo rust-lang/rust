@@ -112,4 +112,30 @@ impl NameTrait for u8 {
     }
 }
 
+mod impl_in_macro {
+    macro_rules! parse_ip_impl {
+        // minimized from serde=1.0.118
+        ($ty:ty) => {
+            impl FooTrait for $ty {
+                fn new() -> Self {
+                    <$ty>::bar()
+                }
+            }
+        };
+    }
+
+    struct Foo;
+
+    trait FooTrait {
+        fn new() -> Self;
+    }
+
+    impl Foo {
+        fn bar() -> Self {
+            Self
+        }
+    }
+    parse_ip_impl!(Foo); // Should not lint
+}
+
 fn main() {}
