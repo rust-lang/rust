@@ -66,10 +66,6 @@ where
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         self.1.run_pass(tcx, body)
     }
-
-    fn phase_change(&self) -> Option<MirPhase> {
-        self.1.phase_change()
-    }
 }
 
 /// Run the sequence of passes without validating the MIR after each pass. The MIR is still
@@ -78,23 +74,28 @@ pub fn run_passes_no_validate<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     passes: &[&dyn MirPass<'tcx>],
+    phase_change: Option<MirPhase>,
 ) {
-    run_passes_inner(tcx, body, passes, false);
+    run_passes_inner(tcx, body, passes, phase_change, false);
 }
 
-pub fn run_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, passes: &[&dyn MirPass<'tcx>]) {
-    run_passes_inner(tcx, body, passes, true);
+/// The optional `phase_change` is applied after executing all the passes, if present
+pub fn run_passes<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    passes: &[&dyn MirPass<'tcx>],
+    phase_change: Option<MirPhase>,
+) {
+    run_passes_inner(tcx, body, passes, phase_change, true);
 }
 
 fn run_passes_inner<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     passes: &[&dyn MirPass<'tcx>],
+    phase_change: Option<MirPhase>,
     validate_each: bool,
 ) {
-    let start_phase = body.phase;
-    let mut cnt = 0;
-
     let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir;
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
@@ -102,7 +103,6 @@ fn run_passes_inner<'tcx>(
     for pass in passes {
         let name = pass.name();
 
-        // Gather information about what we should be doing for this pass
         let overridden =
             overridden_passes.iter().rev().find(|(s, _)| s == &*name).map(|(_name, polarity)| {
                 trace!(
@@ -112,32 +112,44 @@ fn run_passes_inner<'tcx>(
                 );
                 *polarity
             });
-        let is_enabled = overridden.unwrap_or_else(|| pass.is_enabled(&tcx.sess));
-        let new_phase = pass.phase_change();
-        let dump_enabled = (is_enabled && pass.is_mir_dump_enabled()) || new_phase.is_some();
-        let validate = (validate && is_enabled)
-            || new_phase == Some(MirPhase::Runtime(RuntimePhase::Optimized));
+        if !overridden.unwrap_or_else(|| pass.is_enabled(&tcx.sess)) {
+            continue;
+        }
+
+        let dump_enabled = pass.is_mir_dump_enabled();
 
         if dump_enabled {
-            dump_mir(tcx, body, start_phase, &name, cnt, false);
+            dump_mir_for_pass(tcx, body, &name, false);
         }
-        if is_enabled {
-            pass.run_pass(tcx, body);
+        if validate {
+            validate_body(tcx, body, format!("before pass {}", name));
         }
-        if dump_enabled {
-            dump_mir(tcx, body, start_phase, &name, cnt, true);
-            cnt += 1;
-        }
-        if let Some(new_phase) = pass.phase_change() {
-            if body.phase >= new_phase {
-                panic!("Invalid MIR phase transition from {:?} to {:?}", body.phase, new_phase);
-            }
 
-            body.phase = new_phase;
+        pass.run_pass(tcx, body);
+
+        if dump_enabled {
+            dump_mir_for_pass(tcx, body, &name, true);
         }
         if validate {
             validate_body(tcx, body, format!("after pass {}", name));
         }
+
+        body.pass_count += 1;
+    }
+
+    if let Some(new_phase) = phase_change {
+        if body.phase >= new_phase {
+            panic!("Invalid MIR phase transition from {:?} to {:?}", body.phase, new_phase);
+        }
+
+        body.phase = new_phase;
+
+        dump_mir_for_phase_change(tcx, body);
+        if validate || new_phase == MirPhase::Runtime(RuntimePhase::Optimized) {
+            validate_body(tcx, body, format!("after phase change to {}", new_phase));
+        }
+
+        body.pass_count = 1;
     }
 }
 
@@ -145,22 +157,33 @@ pub fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: Strin
     validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
 }
 
-pub fn dump_mir<'tcx>(
+pub fn dump_mir_for_pass<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    phase: MirPhase,
     pass_name: &str,
-    cnt: usize,
     is_after: bool,
 ) {
-    let phase_index = phase.phase_index();
+    let phase_index = body.phase.phase_index();
 
     mir::dump_mir(
         tcx,
-        Some(&format_args!("{:03}-{:03}", phase_index, cnt)),
+        Some(&format_args!("{:03}-{:03}", phase_index, body.pass_count)),
         pass_name,
         if is_after { &"after" } else { &"before" },
         body,
         |_, _| Ok(()),
     );
+}
+
+pub fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+    let phase_index = body.phase.phase_index();
+
+    mir::dump_mir(
+        tcx,
+        Some(&format_args!("{:03}-000", phase_index)),
+        &format!("{}", body.phase),
+        &"after",
+        body,
+        |_, _| Ok(()),
+    )
 }
