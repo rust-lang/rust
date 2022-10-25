@@ -4,6 +4,7 @@ use rustc_middle::ty::layout::{
     fn_can_unwind, FnAbiError, HasParamEnv, HasTyCtxt, LayoutCx, LayoutOf, TyAndLayout,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
@@ -384,7 +385,7 @@ fn fn_abi_new_uncached<'tcx>(
         conv,
         can_unwind: fn_can_unwind(cx.tcx(), fn_def_id, sig.abi),
     };
-    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi)?;
+    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id)?;
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     Ok(cx.tcx.arena.alloc(fn_abi))
 }
@@ -394,6 +395,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: SpecAbi,
+    fn_def_id: Option<DefId>,
 ) -> Result<(), FnAbiError<'tcx>> {
     if abi == SpecAbi::Unadjusted {
         return Ok(());
@@ -404,7 +406,18 @@ fn fn_abi_adjust_for_abi<'tcx>(
         || abi == SpecAbi::RustIntrinsic
         || abi == SpecAbi::PlatformIntrinsic
     {
-        let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>| {
+        // Look up the deduced parameter attributes for this function, if we have its def ID and
+        // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
+        // as appropriate.
+        let deduced_param_attrs = if cx.tcx.sess.opts.optimize != OptLevel::No
+            && cx.tcx.sess.opts.incremental.is_none()
+        {
+            fn_def_id.map(|fn_def_id| cx.tcx.deduced_param_attrs(fn_def_id)).unwrap_or_default()
+        } else {
+            &[]
+        };
+
+        let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>, arg_idx: Option<usize>| {
             if arg.is_ignore() {
                 return;
             }
@@ -451,10 +464,30 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // so we pick an appropriately sized integer type instead.
                 arg.cast_to(Reg { kind: RegKind::Integer, size });
             }
+
+            // If we deduced that this parameter was read-only, add that to the attribute list now.
+            //
+            // The `readonly` parameter only applies to pointers, so we can only do this if the
+            // argument was passed indirectly. (If the argument is passed directly, it's an SSA
+            // value, so it's implicitly immutable.)
+            if let (Some(arg_idx), &mut PassMode::Indirect { ref mut attrs, .. }) =
+                (arg_idx, &mut arg.mode)
+            {
+                // The `deduced_param_attrs` list could be empty if this is a type of function
+                // we can't deduce any parameters for, so make sure the argument index is in
+                // bounds.
+                if let Some(deduced_param_attrs) = deduced_param_attrs.get(arg_idx) {
+                    if deduced_param_attrs.read_only {
+                        attrs.regular.insert(ArgAttribute::ReadOnly);
+                        debug!("added deduced read-only attribute");
+                    }
+                }
+            }
         };
-        fixup(&mut fn_abi.ret);
-        for arg in fn_abi.args.iter_mut() {
-            fixup(arg);
+
+        fixup(&mut fn_abi.ret, None);
+        for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
+            fixup(arg, Some(arg_idx));
         }
     } else {
         fn_abi.adjust_for_foreign_abi(cx, abi)?;

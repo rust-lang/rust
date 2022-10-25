@@ -666,10 +666,8 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                     hcx.while_hashing_spans(false, |hcx| {
                         ct.to_valtree().hash_stable(hcx, &mut hasher)
                     });
-                    // Note: Don't use `StableHashResult` impl of `u64` here directly, since that
-                    // would lead to endianness problems.
-                    let hash: u128 = hasher.finish();
-                    (hash.to_le() as u64).to_le()
+                    let hash: u64 = hasher.finish();
+                    hash
                 });
 
                 if cpp_like_debuginfo(tcx) {

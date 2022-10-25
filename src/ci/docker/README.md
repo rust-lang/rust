@@ -250,6 +250,92 @@ For targets: `i586-unknown-linux-gnu`
 (\*) Compressed debug is enabled by default for gas (assembly) on Linux/x86 targets,
      but that makes our `compiler_builtins` incompatible with binutils < 2.32.
 
+### `mips-linux-gnu.config`
+
+For targets: `mips-unknown-linux-gnu`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Patches origin = Bundled, then local
+- Path and misc options > Local patch directory = /tmp/patches
+- Target options > Target Architecture = mips
+- Target options > ABI = o32
+- Target options > Endianness = Big endian
+- Target options > Bitness = 32-bit
+- Target options > Architecture level = mips32r2
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.4.174
+- Binary utilities > Version of binutils = 2.32
+- C-library > glibc version = 2.23
+- C compiler > gcc version = 8.3.0
+- C compiler > gcc extra config = --with-fp-32=xx --with-odd-spreg-32=no
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
+### `mipsel-linux-gnu.config`
+
+For targets: `mipsel-unknown-linux-gnu`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Patches origin = Bundled, then local
+- Path and misc options > Local patch directory = /tmp/patches
+- Target options > Target Architecture = mips
+- Target options > ABI = o32
+- Target options > Endianness = Little endian
+- Target options > Bitness = 32-bit
+- Target options > Architecture level = mips32r2
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.4.174
+- Binary utilities > Version of binutils = 2.32
+- C-library > glibc version = 2.23
+- C compiler > gcc version = 8.3.0
+- C compiler > gcc extra config = --with-fp-32=xx --with-odd-spreg-32=no
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
+### `mips64-linux-gnu.config`
+
+For targets: `mips64-unknown-linux-gnuabi64`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Patches origin = Bundled, then local
+- Path and misc options > Local patch directory = /tmp/patches
+- Target options > Target Architecture = mips
+- Target options > ABI = n64
+- Target options > Endianness = Big endian
+- Target options > Bitness = 64-bit
+- Target options > Architecture level = mips64r2
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.4.174
+- Binary utilities > Version of binutils = 2.32
+- C-library > glibc version = 2.23
+- C compiler > gcc version = 8.3.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
+### `mips64el-linux-gnu.config`
+
+For targets: `mips64el-unknown-linux-gnuabi64`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Path and misc options > Patches origin = Bundled, then local
+- Path and misc options > Local patch directory = /tmp/patches
+- Target options > Target Architecture = mips
+- Target options > ABI = n64
+- Target options > Endianness = Little endian
+- Target options > Bitness = 64-bit
+- Target options > Architecture level = mips64r2
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.4.174
+- Binary utilities > Version of binutils = 2.32
+- C-library > glibc version = 2.23
+- C compiler > gcc version = 8.3.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
 ### `powerpc-linux-gnu.config`
 
 For targets: `powerpc-unknown-linux-gnu`

@@ -56,6 +56,7 @@ mod const_prop_lint;
 mod coverage;
 mod dead_store_elimination;
 mod deaggregator;
+mod deduce_param_attrs;
 mod deduplicate_blocks;
 mod deref_separator;
 mod dest_prop;
@@ -139,6 +140,7 @@ pub fn provide(providers: &mut Providers) {
         promoted_mir_of_const_arg: |tcx, (did, param_did)| {
             promoted_mir(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
         },
+        deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         ..*providers
     };
 }

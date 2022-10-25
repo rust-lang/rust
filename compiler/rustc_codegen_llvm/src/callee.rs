@@ -179,7 +179,8 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
             // MinGW: For backward compatibility we rely on the linker to decide whether it
             // should use dllimport for functions.
             if cx.use_dll_storage_attrs
-                && tcx.is_dllimport_foreign_item(instance_def_id)
+                && let Some(library) = tcx.native_library(instance_def_id)
+                && library.kind.is_dllimport()
                 && !matches!(tcx.sess.target.env.as_ref(), "gnu" | "uclibc")
             {
                 llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);

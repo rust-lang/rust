@@ -988,10 +988,12 @@ impl<'tcx> SplitWildcard<'tcx> {
                     .filter(|(_, v)| {
                         // If `exhaustive_patterns` is enabled, we exclude variants known to be
                         // uninhabited.
-                        let is_uninhabited = is_exhaustive_pat_feature
-                            && v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
-                                .contains(cx.tcx, cx.module);
-                        !is_uninhabited
+                        !is_exhaustive_pat_feature
+                            || v.inhabited_predicate(cx.tcx, *def).subst(cx.tcx, substs).apply(
+                                cx.tcx,
+                                cx.param_env,
+                                cx.module,
+                            )
                     })
                     .map(|(idx, _)| Variant(idx))
                     .collect();

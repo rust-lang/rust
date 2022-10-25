@@ -32,6 +32,10 @@ pub use iter::IntoIter;
 /// # Example
 ///
 /// ```rust
+/// // type inference is helping us here, the way `from_fn` knows how many
+/// // elements to produce is the length of array down there: only arrays of
+/// // equal lengths can be compared, so the const generic parameter `N` is
+/// // inferred to be 5, thus creating array of 5 elements.
 /// let array = core::array::from_fn(|i| i);
 /// assert_eq!(array, [0, 1, 2, 3, 4]);
 /// ```

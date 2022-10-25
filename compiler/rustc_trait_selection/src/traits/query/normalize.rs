@@ -14,6 +14,7 @@ use rustc_infer::traits::Normalized;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
+use rustc_span::DUMMY_SP;
 
 use std::ops::ControlFlow;
 
@@ -253,7 +254,15 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let result = tcx.normalize_projection_ty(c_data)?;
                 // We don't expect ambiguity.
                 if result.is_ambiguous() {
-                    bug!("unexpected ambiguity: {:?} {:?}", c_data, result);
+                    // Rustdoc normalizes possibly not well-formed types, so only
+                    // treat this as a bug if we're not in rustdoc.
+                    if !tcx.sess.opts.actually_rustdoc {
+                        tcx.sess.delay_span_bug(
+                            DUMMY_SP,
+                            format!("unexpected ambiguity: {:?} {:?}", c_data, result),
+                        );
+                    }
+                    return Err(NoSolution);
                 }
                 let InferOk { value: result, obligations } =
                     self.infcx.instantiate_query_response_and_region_obligations(
@@ -296,7 +305,15 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let result = tcx.normalize_projection_ty(c_data)?;
                 // We don't expect ambiguity.
                 if result.is_ambiguous() {
-                    bug!("unexpected ambiguity: {:?} {:?}", c_data, result);
+                    // Rustdoc normalizes possibly not well-formed types, so only
+                    // treat this as a bug if we're not in rustdoc.
+                    if !tcx.sess.opts.actually_rustdoc {
+                        tcx.sess.delay_span_bug(
+                            DUMMY_SP,
+                            format!("unexpected ambiguity: {:?} {:?}", c_data, result),
+                        );
+                    }
+                    return Err(NoSolution);
                 }
                 let InferOk { value: result, obligations } =
                     self.infcx.instantiate_query_response_and_region_obligations(

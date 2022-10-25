@@ -37,11 +37,11 @@ impl LateLintPass<'_> for DefaultHashTypes {
         cx.struct_span_lint(
             DEFAULT_HASH_TYPES,
             path.span,
-            fluent::lint::default_hash_types,
+            fluent::lint_default_hash_types,
             |lint| {
                 lint.set_arg("preferred", replace)
                     .set_arg("used", cx.tcx.item_name(def_id))
-                    .note(fluent::lint::note)
+                    .note(fluent::note)
             },
         );
     }
@@ -86,8 +86,8 @@ impl LateLintPass<'_> for QueryStability {
                 cx.struct_span_lint(
                     POTENTIAL_QUERY_INSTABILITY,
                     span,
-                    fluent::lint::query_instability,
-                    |lint| lint.set_arg("query", cx.tcx.item_name(def_id)).note(fluent::lint::note),
+                    fluent::lint_query_instability,
+                    |lint| lint.set_arg("query", cx.tcx.item_name(def_id)).note(fluent::note),
                 )
             }
         }
@@ -126,11 +126,11 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
             let span = path.span.with_hi(
                 segment.args.map_or(segment.ident.span, |a| a.span_ext).hi()
             );
-            cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, fluent::lint::tykind_kind, |lint| {
+            cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, fluent::lint_tykind_kind, |lint| {
                 lint
                     .span_suggestion(
                         span,
-                        fluent::lint::suggestion,
+                        fluent::suggestion,
                         "ty",
                         Applicability::MaybeIncorrect, // ty maybe needs an import
                     )
@@ -193,10 +193,10 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                             cx.struct_span_lint(
                                 USAGE_OF_TY_TYKIND,
                                 path.span,
-                                fluent::lint::tykind_kind,
+                                fluent::lint_tykind_kind,
                                 |lint| lint.span_suggestion(
                                     span,
-                                    fluent::lint::suggestion,
+                                    fluent::suggestion,
                                     "ty",
                                     Applicability::MaybeIncorrect, // ty maybe needs an import
                                 )
@@ -205,18 +205,18 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                         None => cx.struct_span_lint(
                             USAGE_OF_TY_TYKIND,
                             path.span,
-                            fluent::lint::tykind,
-                            |lint| lint.help(fluent::lint::help)
+                            fluent::lint_tykind,
+                            |lint| lint.help(fluent::help)
                         )
                     }
                 } else if !ty.span.from_expansion() && let Some(t) = is_ty_or_ty_ctxt(cx, &path) {
                     if path.segments.len() > 1 {
-                        cx.struct_span_lint(USAGE_OF_QUALIFIED_TY, path.span, fluent::lint::ty_qualified, |lint| {
+                        cx.struct_span_lint(USAGE_OF_QUALIFIED_TY, path.span, fluent::lint_ty_qualified, |lint| {
                             lint
                                 .set_arg("ty", t.clone())
                                 .span_suggestion(
                                     path.span,
-                                    fluent::lint::suggestion,
+                                    fluent::suggestion,
                                     t,
                                     // The import probably needs to be changed
                                     Applicability::MaybeIncorrect,
@@ -310,8 +310,8 @@ impl EarlyLintPass for LintPassImpl {
                         cx.struct_span_lint(
                             LINT_PASS_IMPL_WITHOUT_MACRO,
                             lint_pass.path.span,
-                            fluent::lint::lintpass_by_hand,
-                            |lint| lint.help(fluent::lint::help),
+                            fluent::lint_lintpass_by_hand,
+                            |lint| lint.help(fluent::help),
                         )
                     }
                 }
@@ -351,8 +351,8 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
                         cx.struct_span_lint(
                             EXISTING_DOC_KEYWORD,
                             attr.span,
-                            fluent::lint::non_existant_doc_keyword,
-                            |lint| lint.set_arg("keyword", v).help(fluent::lint::help),
+                            fluent::lint_non_existant_doc_keyword,
+                            |lint| lint.set_arg("keyword", v).help(fluent::help),
                         );
                     }
                 }
@@ -414,7 +414,7 @@ impl LateLintPass<'_> for Diagnostics {
             cx.struct_span_lint(
                 DIAGNOSTIC_OUTSIDE_OF_IMPL,
                 span,
-                fluent::lint::diag_out_of_impl,
+                fluent::lint_diag_out_of_impl,
                 |lint| lint,
             )
         }
@@ -435,7 +435,7 @@ impl LateLintPass<'_> for Diagnostics {
             cx.struct_span_lint(
                 UNTRANSLATABLE_DIAGNOSTIC,
                 span,
-                fluent::lint::untranslatable_diag,
+                fluent::lint_untranslatable_diag,
                 |lint| lint,
             )
         }

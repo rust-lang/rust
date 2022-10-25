@@ -23,11 +23,13 @@ fn main() {
     //~^ ERROR expected one of
     //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
     //~| ERROR expected
+    //~| HELP add `'` to close the char literal
 
     f<'_>();
     //~^ comparison operators cannot be chained
     //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
     //~| ERROR expected
+    //~| HELP add `'` to close the char literal
 
     let _ = f<u8>;
     //~^ ERROR comparison operators cannot be chained

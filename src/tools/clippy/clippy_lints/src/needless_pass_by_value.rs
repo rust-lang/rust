@@ -12,7 +12,7 @@ use rustc_hir::{
     BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Mutability, Node, PatKind, QPath, TyKind,
 };
 use rustc_hir::{HirIdMap, HirIdSet};
-use rustc_hir_analysis::expr_use_visitor as euv;
+use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
@@ -342,7 +342,7 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
 
     fn fake_read(
         &mut self,
-        _: &rustc_hir_analysis::expr_use_visitor::PlaceWithHirId<'tcx>,
+        _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>,
         _: FakeReadCause,
         _: HirId,
     ) {

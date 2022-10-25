@@ -183,7 +183,7 @@ impl EarlyLintPass for NonAsciiIdents {
             cx.struct_span_lint(
                 NON_ASCII_IDENTS,
                 sp,
-                fluent::lint::identifier_non_ascii_char,
+                fluent::lint_identifier_non_ascii_char,
                 |lint| lint,
             );
             if check_uncommon_codepoints
@@ -192,7 +192,7 @@ impl EarlyLintPass for NonAsciiIdents {
                 cx.struct_span_lint(
                     UNCOMMON_CODEPOINTS,
                     sp,
-                    fluent::lint::identifier_uncommon_codepoints,
+                    fluent::lint_identifier_uncommon_codepoints,
                     |lint| lint,
                 )
             }
@@ -225,11 +225,11 @@ impl EarlyLintPass for NonAsciiIdents {
                             cx.struct_span_lint(
                                 CONFUSABLE_IDENTS,
                                 sp,
-                                fluent::lint::confusable_identifier_pair,
+                                fluent::lint_confusable_identifier_pair,
                                 |lint| {
                                     lint.set_arg("existing_sym", *existing_symbol)
                                         .set_arg("sym", symbol)
-                                        .span_label(*existing_span, fluent::lint::label)
+                                        .span_label(*existing_span, fluent::label)
                                 },
                             );
                         }
@@ -334,7 +334,7 @@ impl EarlyLintPass for NonAsciiIdents {
                     cx.struct_span_lint(
                         MIXED_SCRIPT_CONFUSABLES,
                         sp,
-                        fluent::lint::mixed_script_confusables,
+                        fluent::lint_mixed_script_confusables,
                         |lint| {
                             let mut includes = String::new();
                             for (idx, ch) in ch_list.into_iter().enumerate() {
@@ -346,8 +346,8 @@ impl EarlyLintPass for NonAsciiIdents {
                             }
                             lint.set_arg("set", script_set.to_string())
                                 .set_arg("includes", includes)
-                                .note(fluent::lint::includes_note)
-                                .note(fluent::lint::note)
+                                .note(fluent::includes_note)
+                                .note(fluent::note)
                         },
                     );
                 }

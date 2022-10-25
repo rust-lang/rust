@@ -36,13 +36,22 @@ pub fn expand_test_case(
     let sp = ecx.with_def_site_ctxt(attr_sp);
     let mut item = anno_item.expect_item();
     item = item.map(|mut item| {
+        let test_path_symbol = Symbol::intern(&item_path(
+            // skip the name of the root module
+            &ecx.current_expansion.module.mod_path[1..],
+            &item.ident,
+        ));
         item.vis = ast::Visibility {
             span: item.vis.span,
             kind: ast::VisibilityKind::Public,
             tokens: None,
         };
         item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
-        item.attrs.push(ecx.attribute(ecx.meta_word(sp, sym::rustc_test_marker)));
+        item.attrs.push(ecx.attribute(attr::mk_name_value_item_str(
+            Ident::new(sym::rustc_test_marker, sp),
+            test_path_symbol,
+            sp,
+        )));
         item
     });
 
@@ -215,6 +224,12 @@ pub fn expand_test_or_bench(
         )
     };
 
+    let test_path_symbol = Symbol::intern(&item_path(
+        // skip the name of the root module
+        &cx.current_expansion.module.mod_path[1..],
+        &item.ident,
+    ));
+
     let mut test_const = cx.item(
         sp,
         Ident::new(item.ident.name, sp),
@@ -224,9 +239,14 @@ pub fn expand_test_or_bench(
                 Ident::new(sym::cfg, attr_sp),
                 vec![attr::mk_nested_word_item(Ident::new(sym::test, attr_sp))],
             )),
-            // #[rustc_test_marker]
-            cx.attribute(cx.meta_word(attr_sp, sym::rustc_test_marker)),
-        ],
+            // #[rustc_test_marker = "test_case_sort_key"]
+            cx.attribute(attr::mk_name_value_item_str(
+                Ident::new(sym::rustc_test_marker, attr_sp),
+                test_path_symbol,
+                attr_sp,
+            )),
+        ]
+        .into(),
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(
             ast::Defaultness::Final,
@@ -250,14 +270,7 @@ pub fn expand_test_or_bench(
                                         cx.expr_call(
                                             sp,
                                             cx.expr_path(test_path("StaticTestName")),
-                                            vec![cx.expr_str(
-                                                sp,
-                                                Symbol::intern(&item_path(
-                                                    // skip the name of the root module
-                                                    &cx.current_expansion.module.mod_path[1..],
-                                                    &item.ident,
-                                                )),
-                                            )],
+                                            vec![cx.expr_str(sp, test_path_symbol)],
                                         ),
                                     ),
                                     // ignore: true | false

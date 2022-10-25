@@ -145,9 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidUpcastComparisons {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref cmp, lhs, rhs) = expr.kind {
             let normalized = comparisons::normalize_comparison(cmp.node, lhs, rhs);
-            let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
-                val
-            } else {
+            let Some((rel, normalized_lhs, normalized_rhs)) = normalized else {
                 return;
             };
 

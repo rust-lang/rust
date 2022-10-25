@@ -247,7 +247,7 @@ where
     let event = TestEvent::TeFiltered(filtered_descs, shuffle_seed);
     notify_about_test_event(event)?;
 
-    let (filtered_tests, filtered_benchs): (Vec<_>, _) = filtered_tests
+    let (mut filtered_tests, filtered_benchs): (Vec<_>, _) = filtered_tests
         .into_iter()
         .enumerate()
         .map(|(i, e)| (TestId(i), e))
@@ -255,12 +255,12 @@ where
 
     let concurrency = opts.test_threads.unwrap_or_else(get_concurrency);
 
-    let mut remaining = filtered_tests;
     if let Some(shuffle_seed) = shuffle_seed {
-        shuffle_tests(shuffle_seed, &mut remaining);
-    } else {
-        remaining.reverse();
+        shuffle_tests(shuffle_seed, &mut filtered_tests);
     }
+    // Store the tests in a VecDeque so we can efficiently remove the first element to run the
+    // tests in the order they were passed (unless shuffled).
+    let mut remaining = VecDeque::from(filtered_tests);
     let mut pending = 0;
 
     let (tx, rx) = channel::<CompletedTest>();
@@ -300,7 +300,7 @@ where
 
     if concurrency == 1 {
         while !remaining.is_empty() {
-            let (id, test) = remaining.pop().unwrap();
+            let (id, test) = remaining.pop_front().unwrap();
             let event = TestEvent::TeWait(test.desc.clone());
             notify_about_test_event(event)?;
             let join_handle =
@@ -314,7 +314,7 @@ where
     } else {
         while pending > 0 || !remaining.is_empty() {
             while pending < concurrency && !remaining.is_empty() {
-                let (id, test) = remaining.pop().unwrap();
+                let (id, test) = remaining.pop_front().unwrap();
                 let timeout = time::get_default_test_timeout();
                 let desc = test.desc.clone();
 
@@ -425,9 +425,6 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
         }
         RunIgnored::No => {}
     }
-
-    // Sort the tests alphabetically
-    filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(t2.desc.name.as_slice()));
 
     filtered
 }

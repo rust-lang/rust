@@ -465,7 +465,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
-            (CallTarget::Indirect(sig, method), Some(ptr))
+            (CallTarget::Indirect(sig, method), Some(ptr.get_addr(fx)))
         }
 
         // Normal call
@@ -560,7 +560,19 @@ pub(crate) fn codegen_drop<'tcx>(
         // we don't actually need to drop anything
     } else {
         match ty.kind() {
-            ty::Dynamic(..) => {
+            ty::Dynamic(_, _, ty::Dyn) => {
+                // IN THIS ARM, WE HAVE:
+                // ty = *mut (dyn Trait)
+                // which is: exists<T> ( *mut T,    Vtable<T: Trait> )
+                //                       args[0]    args[1]
+                //
+                // args = ( Data, Vtable )
+                //                  |
+                //                  v
+                //                /-------\
+                //                | ...   |
+                //                \-------/
+                //
                 let (ptr, vtable) = drop_place.to_ptr_maybe_unsized();
                 let ptr = ptr.get_addr(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
@@ -577,6 +589,43 @@ pub(crate) fn codegen_drop<'tcx>(
                 let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
                 let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
+            }
+            ty::Dynamic(_, _, ty::DynStar) => {
+                // IN THIS ARM, WE HAVE:
+                // ty = *mut (dyn* Trait)
+                // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)
+                //
+                // args = [ * ]
+                //          |
+                //          v
+                //      ( Data, Vtable )
+                //                |
+                //                v
+                //              /-------\
+                //              | ...   |
+                //              \-------/
+                //
+                //
+                // WE CAN CONVERT THIS INTO THE ABOVE LOGIC BY DOING
+                //
+                // data = &(*args[0]).0    // gives a pointer to Data above (really the same pointer)
+                // vtable = (*args[0]).1   // loads the vtable out
+                // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
+                //
+                // SO THEN WE CAN USE THE ABOVE CODE.
+                let (data, vtable) = drop_place.to_cvalue(fx).dyn_star_force_data_on_stack(fx);
+                let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable);
+
+                let virtual_drop = Instance {
+                    def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
+                    substs: drop_instance.substs,
+                };
+                let fn_abi =
+                    RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(virtual_drop, ty::List::empty());
+
+                let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
+                let sig = fx.bcx.import_signature(sig);
+                fx.bcx.ins().call_indirect(sig, drop_fn, &[data]);
             }
             _ => {
                 assert!(!matches!(drop_instance.def, InstanceDef::Virtual(_, _)));

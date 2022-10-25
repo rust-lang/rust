@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::{get_trait_def_id, paths};
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
@@ -7,7 +6,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::{GenericPredicates, PredicateKind, ProjectionPredicate, TraitPredicate};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{BytePos, Span};
+use rustc_span::{sym, BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -80,7 +79,7 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
         let fn_sig = cx.tcx.fn_sig(def_id);
         let generics = cx.tcx.predicates_of(def_id);
         let fn_mut_preds = get_trait_predicates_for_trait_id(cx, generics, cx.tcx.lang_items().fn_mut_trait());
-        let ord_preds = get_trait_predicates_for_trait_id(cx, generics, get_trait_def_id(cx, &paths::ORD));
+        let ord_preds = get_trait_predicates_for_trait_id(cx, generics, cx.tcx.get_diagnostic_item(sym::Ord));
         let partial_ord_preds =
             get_trait_predicates_for_trait_id(cx, generics, cx.tcx.lang_items().partial_ord_trait());
         // Trying to call erase_late_bound_regions on fn_sig.inputs() gives the following error
@@ -99,11 +98,15 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
                         if trait_pred.self_ty() == inp;
                         if let Some(return_ty_pred) = get_projection_pred(cx, generics, *trait_pred);
                         then {
-                            if ord_preds.iter().any(|ord| Some(ord.self_ty()) == return_ty_pred.term.ty()) {
+                            if ord_preds
+                                .iter()
+                                .any(|ord| Some(ord.self_ty()) == return_ty_pred.term.ty())
+                            {
                                 args_to_check.push((i, "Ord".to_string()));
-                            } else if partial_ord_preds.iter().any(|pord| {
-                                pord.self_ty() == return_ty_pred.term.ty().unwrap()
-                            }) {
+                            } else if partial_ord_preds
+                                .iter()
+                                .any(|pord| pord.self_ty() == return_ty_pred.term.ty().unwrap())
+                            {
                                 args_to_check.push((i, "PartialOrd".to_string()));
                             }
                         }

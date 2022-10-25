@@ -29,7 +29,7 @@ All contributors are expected to follow the [Rust Code of Conduct].
 
 ## The Clippy book
 
-If you're new to Clippy and don't know where to start the [Clippy book] includes
+If you're new to Clippy and don't know where to start, the [Clippy book] includes
 a [developer guide] and is a good place to start your journey.
 
 [Clippy book]: https://doc.rust-lang.org/nightly/clippy/index.html

@@ -139,7 +139,7 @@ impl NonCamelCaseTypes {
             cx.struct_span_lint(
                 NON_CAMEL_CASE_TYPES,
                 ident.span,
-                fluent::lint::non_camel_case_type,
+                fluent::lint_non_camel_case_type,
                 |lint| {
                     let cc = to_camel_case(name);
                     // We cannot provide meaningful suggestions
@@ -147,12 +147,12 @@ impl NonCamelCaseTypes {
                     if *name != cc {
                         lint.span_suggestion(
                             ident.span,
-                            fluent::lint::suggestion,
+                            fluent::suggestion,
                             to_camel_case(name),
                             Applicability::MaybeIncorrect,
                         );
                     } else {
-                        lint.span_label(ident.span, fluent::lint::label);
+                        lint.span_label(ident.span, fluent::label);
                     }
 
                     lint.set_arg("sort", sort);
@@ -284,7 +284,7 @@ impl NonSnakeCase {
         let name = ident.name.as_str();
 
         if !is_snake_case(name) {
-            cx.struct_span_lint(NON_SNAKE_CASE, ident.span, fluent::lint::non_snake_case, |lint| {
+            cx.struct_span_lint(NON_SNAKE_CASE, ident.span, fluent::lint_non_snake_case, |lint| {
                 let sc = NonSnakeCase::to_snake_case(name);
                 // We cannot provide meaningful suggestions
                 // if the characters are in the category of "Uppercase Letter".
@@ -298,13 +298,13 @@ impl NonSnakeCase {
                             // Instead, recommend renaming the identifier entirely or, if permitted,
                             // escaping it to create a raw identifier.
                             if sc_ident.name.can_be_raw() {
-                                (fluent::lint::rename_or_convert_suggestion, sc_ident.to_string())
+                                (fluent::rename_or_convert_suggestion, sc_ident.to_string())
                             } else {
-                                lint.note(fluent::lint::cannot_convert_note);
-                                (fluent::lint::rename_suggestion, String::new())
+                                lint.note(fluent::cannot_convert_note);
+                                (fluent::rename_suggestion, String::new())
                             }
                         } else {
-                            (fluent::lint::convert_suggestion, sc.clone())
+                            (fluent::convert_suggestion, sc.clone())
                         };
 
                         lint.span_suggestion(
@@ -314,10 +314,10 @@ impl NonSnakeCase {
                             Applicability::MaybeIncorrect,
                         );
                     } else {
-                        lint.help(fluent::lint::help);
+                        lint.help(fluent::help);
                     }
                 } else {
-                    lint.span_label(ident.span, fluent::lint::label);
+                    lint.span_label(ident.span, fluent::label);
                 }
 
                 lint.set_arg("sort", sort);
@@ -484,7 +484,7 @@ impl NonUpperCaseGlobals {
             cx.struct_span_lint(
                 NON_UPPER_CASE_GLOBALS,
                 ident.span,
-                fluent::lint::non_upper_case_global,
+                fluent::lint_non_upper_case_global,
                 |lint| {
                     let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
                     // We cannot provide meaningful suggestions
@@ -492,12 +492,12 @@ impl NonUpperCaseGlobals {
                     if *name != uc {
                         lint.span_suggestion(
                             ident.span,
-                            fluent::lint::suggestion,
+                            fluent::suggestion,
                             uc,
                             Applicability::MaybeIncorrect,
                         );
                     } else {
-                        lint.span_label(ident.span, fluent::lint::label);
+                        lint.span_label(ident.span, fluent::label);
                     }
 
                     lint.set_arg("sort", sort);

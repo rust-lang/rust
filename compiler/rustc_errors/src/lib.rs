@@ -463,6 +463,9 @@ pub enum StashKey {
     UnderscoreForArrayLengths,
     EarlySyntaxWarning,
     CallIntoMethod,
+    /// When an invalid lifetime e.g. `'2` should be reinterpreted
+    /// as a char literal in the parser
+    LifetimeIsChar,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}

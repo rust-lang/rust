@@ -868,13 +868,14 @@ impl<T, A: Allocator> Vec<T, A> {
         (ptr, len, capacity, alloc)
     }
 
-    /// Returns the number of elements the vector can hold without
+    /// Returns the total number of elements the vector can hold without
     /// reallocating.
     ///
     /// # Examples
     ///
     /// ```
-    /// let vec: Vec<i32> = Vec::with_capacity(10);
+    /// let mut vec: Vec<i32> = Vec::with_capacity(10);
+    /// vec.push(42);
     /// assert_eq!(vec.capacity(), 10);
     /// ```
     #[inline]
@@ -1999,9 +2000,7 @@ impl<T, A: Allocator> Vec<T, A> {
         unsafe {
             // set self.vec length's to start, to be safe in case Drain is leaked
             self.set_len(start);
-            // Use the borrow in the IterMut to indicate borrowing behavior of the
-            // whole Drain iterator (like &mut T).
-            let range_slice = slice::from_raw_parts_mut(self.as_mut_ptr().add(start), end - start);
+            let range_slice = slice::from_raw_parts(self.as_ptr().add(start), end - start);
             Drain {
                 tail_start: end,
                 tail_len: len - end,

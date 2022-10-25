@@ -77,5 +77,17 @@ mod const_fn_stabilized_before_msrv {
     }
 }
 
+fn msrv_1_45() -> i32 {
+    #![clippy::msrv = "1.45"]
+
+    45
+}
+
+fn msrv_1_46() -> i32 {
+    #![clippy::msrv = "1.46"]
+
+    46
+}
+
 // Should not be const
 fn main() {}

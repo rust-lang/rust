@@ -69,12 +69,13 @@ impl<'a> NumericLiteral<'a> {
 
     #[must_use]
     pub fn new(lit: &'a str, suffix: Option<&'a str>, float: bool) -> Self {
+        let unsigned_lit = lit.trim_start_matches('-');
         // Determine delimiter for radix prefix, if present, and radix.
-        let radix = if lit.starts_with("0x") {
+        let radix = if unsigned_lit.starts_with("0x") {
             Radix::Hexadecimal
-        } else if lit.starts_with("0b") {
+        } else if unsigned_lit.starts_with("0b") {
             Radix::Binary
-        } else if lit.starts_with("0o") {
+        } else if unsigned_lit.starts_with("0o") {
             Radix::Octal
         } else {
             Radix::Decimal

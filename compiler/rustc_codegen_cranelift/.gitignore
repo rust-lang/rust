@@ -15,8 +15,4 @@ perf.data.old
 /build_sysroot/compiler-builtins
 /build_sysroot/rustc_version
 /rust
-/rand
-/regex
-/simple-raytracer
-/portable-simd
-/abi-checker
+/download

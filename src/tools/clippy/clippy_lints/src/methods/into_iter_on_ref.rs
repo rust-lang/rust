@@ -42,9 +42,8 @@ pub(super) fn check(
 
 fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(Symbol, &'static str)> {
     has_iter_method(cx, self_ref_ty).map(|ty_name| {
-        let mutbl = match self_ref_ty.kind() {
-            ty::Ref(_, _, mutbl) => mutbl,
-            _ => unreachable!(),
+        let ty::Ref(_, _, mutbl) = self_ref_ty.kind() else {
+            unreachable!()
         };
         let method_name = match mutbl {
             hir::Mutability::Not => "iter",

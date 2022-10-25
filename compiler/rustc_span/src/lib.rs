@@ -1631,10 +1631,7 @@ impl SourceFile {
     /// number. If the source_file is empty or the position is located before the
     /// first line, `None` is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
-        self.lines(|lines| match lines.partition_point(|x| x <= &pos) {
-            0 => None,
-            i => Some(i - 1),
-        })
+        self.lines(|lines| lines.partition_point(|x| x <= &pos).checked_sub(1))
     }
 
     pub fn line_bounds(&self, line_index: usize) -> Range<BytePos> {

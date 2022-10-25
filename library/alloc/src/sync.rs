@@ -1204,7 +1204,7 @@ impl<T: ?Sized> Arc<T> {
             Self::allocate_for_layout(
                 Layout::for_value(&*ptr),
                 |layout| Global.allocate(layout),
-                |mem| mem.with_metadata_of(ptr as *mut ArcInner<T>),
+                |mem| mem.with_metadata_of(ptr as *const ArcInner<T>),
             )
         }
     }

@@ -397,6 +397,8 @@ pub fn run_tests(config: Config) {
         make_tests(c, &mut tests);
     }
 
+    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
+
     let res = test::run_tests_console(&opts, tests);
     match res {
         Ok(true) => {}

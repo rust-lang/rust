@@ -45,14 +45,14 @@ fn emit_unfulfilled_expectation_lint(
         builtin::UNFULFILLED_LINT_EXPECTATIONS,
         hir_id,
         expectation.emission_span,
-        fluent::lint::expectation,
+        fluent::lint_expectation,
         |lint| {
             if let Some(rationale) = expectation.reason {
                 lint.note(rationale.as_str());
             }
 
             if expectation.is_unfulfilled_lint_expectations {
-                lint.note(fluent::lint::note);
+                lint.note(fluent::note);
             }
 
             lint

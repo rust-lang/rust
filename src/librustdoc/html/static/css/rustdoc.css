@@ -184,7 +184,6 @@ h4.code-header {
 }
 .code-header {
 	font-weight: 600;
-	border-bottom-style: none;
 	margin: 0;
 	padding: 0;
 }
@@ -365,15 +364,8 @@ img {
 	overflow: visible;
 }
 
-.sub-container {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
-}
-
 .sub-logo-container {
-	display: block;
-	margin-right: 20px;
+	line-height: 0;
 }
 
 .sub-logo-container > img {
@@ -408,10 +400,6 @@ img {
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
 	overflow-y: hidden;
-}
-
-.rustdoc.source .sidebar .sidebar-logo {
-	display: none;
 }
 
 .source .sidebar, #sidebar-toggle, #source-sidebar {
@@ -546,7 +534,6 @@ ul.block, .block li {
 }
 
 .source .content pre.rust {
-	white-space: pre;
 	overflow: auto;
 	padding-left: 0;
 }
@@ -641,7 +628,6 @@ pre.example-line-numbers {
 .out-of-band {
 	flex-grow: 0;
 	font-size: 1.125rem;
-	font-weight: normal;
 }
 
 .docblock code, .docblock-short code,
@@ -696,14 +682,21 @@ pre, .rustdoc.source .example-wrap {
 }
 
 nav.sub {
-	position: relative;
 	flex-grow: 1;
-	margin-bottom: 25px;
+	flex-flow: row nowrap;
+	margin: 4px 0 25px 0;
+	display: flex;
+	align-items: center;
+}
+nav.sub form {
+	flex-grow: 1;
 }
 .source nav.sub {
+	margin: 0 0 15px 0;
+}
+.source nav.sub form {
 	margin-left: 32px;
 }
-nav.sub form { display: inline; }
 
 a {
 	text-decoration: none;
@@ -796,7 +789,6 @@ table,
 	position: relative;
 	display: flex;
 	height: 34px;
-	margin-top: 4px;
 }
 .search-results-title {
 	margin-top: 0;
@@ -922,7 +914,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	flex-flow: row wrap;
 }
 
-.search-results .result-name, .search-results div.desc, .search-results .result-description {
+.search-results .result-name, .search-results div.desc {
 	width: 50%;
 }
 .search-results .result-name {
@@ -1236,9 +1228,6 @@ a.test-arrow {
 .example-wrap:hover .test-arrow {
 	visibility: visible;
 }
-a.test-arrow:hover {
-	text-decoration: none;
-}
 
 .code-attribute {
 	font-weight: 300;
@@ -1537,6 +1526,7 @@ details.dir-entry a {
 	https://developer.mozilla.org/en-US/docs/Web/CSS/contain */
 details.rustdoc-toggle {
 	contain: layout;
+	position: relative;
 }
 
 /* The hideme class is used on summary tags that contain a span with
@@ -1628,10 +1618,6 @@ details.rustdoc-toggle > summary:not(.hideme)::before {
 	on the parent <details> to make this work properly. */
 details.rustdoc-toggle[open] > summary.hideme {
 	position: absolute;
-}
-
-details.rustdoc-toggle {
-	position: relative;
 }
 
 details.rustdoc-toggle[open] > summary.hideme > span {
@@ -1822,10 +1808,6 @@ in storage.js
 		margin-left: 0px;
 	}
 
-	.source .content {
-		margin-top: 10px;
-	}
-
 	.anchor {
 		display: none !important;
 	}
@@ -1908,10 +1890,10 @@ in storage.js
 		border-bottom: 1px solid #aaa9;
 		padding: 5px 0px;
 	}
-	.search-results .result-name, .search-results div.desc, .search-results .result-description {
+	.search-results .result-name, .search-results div.desc {
 		width: 100%;
 	}
-	.search-results div.desc, .search-results .result-description, .item-right {
+	.search-results div.desc, .item-right {
 		padding-left: 2em;
 	}
 
@@ -1933,6 +1915,11 @@ in storage.js
 	/* Align summary-nested and unnested item-info gizmos. */
 	.impl-items > .item-info {
 		margin-left: 34px;
+	}
+
+	.source nav.sub {
+		margin: 0;
+		padding: 8px;
 	}
 }
 
@@ -1962,12 +1949,12 @@ in storage.js
 		overflow-wrap: anywhere;
 	}
 
-	.sub-container {
+	nav.sub {
 		flex-direction: column;
 	}
 
-	.sub-logo-container {
-		align-self: center;
+	nav.sub form {
+		align-self: stretch;
 	}
 
 	.sub-logo-container > img {
@@ -1983,8 +1970,8 @@ in storage.js
 	}
 }
 
-.method-toggle summary,
-.implementors-toggle summary,
+.method-toggle > summary,
+.implementors-toggle > summary,
 .impl,
 #implementors-list > .docblock,
 .impl-items > section,
@@ -1993,10 +1980,7 @@ in storage.js
 	margin-bottom: 0.75em;
 }
 
-.method-toggle[open]:not(:last-child) {
-	margin-bottom: 2em;
-}
-
+.method-toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {
 	margin-bottom: 2em;
 }

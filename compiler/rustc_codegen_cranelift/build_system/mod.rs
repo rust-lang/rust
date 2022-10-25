@@ -4,7 +4,7 @@ use std::process;
 
 use self::utils::is_ci;
 
-mod abi_checker;
+mod abi_cafe;
 mod build_backend;
 mod build_sysroot;
 mod config;
@@ -122,32 +122,23 @@ pub fn main() {
         host_triple.clone()
     };
 
-    if target_triple.ends_with("-msvc") {
-        eprintln!("The MSVC toolchain is not yet supported by rustc_codegen_cranelift.");
-        eprintln!("Switch to the MinGW toolchain for Windows support.");
-        eprintln!("Hint: You can use `rustup set default-host x86_64-pc-windows-gnu` to");
-        eprintln!("set the global default target to MinGW");
-        process::exit(1);
-    }
-
-    let cg_clif_build_dir =
-        build_backend::build_backend(channel, &host_triple, use_unstable_features);
+    let cg_clif_dylib = build_backend::build_backend(channel, &host_triple, use_unstable_features);
     match command {
         Command::Test => {
             tests::run_tests(
                 channel,
                 sysroot_kind,
                 &target_dir,
-                &cg_clif_build_dir,
+                &cg_clif_dylib,
                 &host_triple,
                 &target_triple,
             );
 
-            abi_checker::run(
+            abi_cafe::run(
                 channel,
                 sysroot_kind,
                 &target_dir,
-                &cg_clif_build_dir,
+                &cg_clif_dylib,
                 &host_triple,
                 &target_triple,
             );
@@ -157,7 +148,7 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &target_dir,
-                &cg_clif_build_dir,
+                &cg_clif_dylib,
                 &host_triple,
                 &target_triple,
             );

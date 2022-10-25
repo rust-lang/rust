@@ -27,7 +27,7 @@ pub struct SsoHashSet<T> {
     map: SsoHashMap<T, ()>,
 }
 
-/// Adapter function used ot return
+/// Adapter function used to return
 /// result if SsoHashMap functions into
 /// result SsoHashSet should return.
 #[inline(always)]

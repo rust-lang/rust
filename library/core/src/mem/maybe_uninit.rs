@@ -146,7 +146,6 @@ use crate::slice;
 ///
 /// ```
 /// use std::mem::MaybeUninit;
-/// use std::ptr;
 ///
 /// // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
 /// // safe because the type we are claiming to have initialized here is a
@@ -162,7 +161,7 @@ use crate::slice;
 ///
 /// // For each item in the array, drop if we allocated it.
 /// for elem in &mut data[0..data_len] {
-///     unsafe { ptr::drop_in_place(elem.as_mut_ptr()); }
+///     unsafe { elem.assume_init_drop(); }
 /// }
 /// ```
 ///

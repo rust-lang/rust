@@ -15,7 +15,6 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::cstore::{CrateSource, CrateStore};
-use rustc_session::utils::NativeLibKind;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::source_map::{Span, Spanned};
@@ -224,6 +223,7 @@ provide! { tcx, def_id, other, cdata,
     fn_arg_names => { table }
     generator_kind => { table }
     trait_def => { table }
+    deduced_param_attrs => { table }
     collect_trait_impl_trait_tys => {
         Ok(cdata
             .root
@@ -339,20 +339,10 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
-        is_dllimport_foreign_item: |tcx, id| match tcx.native_library_kind(id) {
-            Some(
-                NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified,
-            ) => true,
-            _ => false,
-        },
-        is_statically_included_foreign_item: |tcx, id| {
-            matches!(tcx.native_library_kind(id), Some(NativeLibKind::Static { .. }))
-        },
         is_private_dep: |_tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             false
         },
-        native_library_kind: |tcx, id| tcx.native_library(id).map(|l| l.kind),
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
@@ -595,11 +585,6 @@ impl CStore {
         sess: &Session,
     ) -> Span {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
-    }
-
-    /// Decodes all traits in the crate (for rustdoc).
-    pub fn traits_in_crate_untracked(&self, cnum: CrateNum) -> impl Iterator<Item = DefId> + '_ {
-        self.get_crate_data(cnum).get_traits()
     }
 
     /// Decodes all trait impls in the crate (for rustdoc).

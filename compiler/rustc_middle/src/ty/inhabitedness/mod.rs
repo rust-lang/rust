@@ -1,57 +1,60 @@
-pub use self::def_id_forest::DefIdForest;
+//! This module contains logic for determining whether a type is inhabited or
+//! uninhabited. The [`InhabitedPredicate`] type captures the minimum
+//! information needed to determine whether a type is inhabited given a
+//! `ParamEnv` and module ID.
+//!
+//! # Example
+//! ```rust
+//! enum Void {}
+//! mod a {
+//!     pub mod b {
+//!         pub struct SecretlyUninhabited {
+//!             _priv: !,
+//!         }
+//!     }
+//! }
+//!
+//! mod c {
+//!     pub struct AlsoSecretlyUninhabited {
+//!         _priv: Void,
+//!     }
+//!     mod d {
+//!     }
+//! }
+//!
+//! struct Foo {
+//!     x: a::b::SecretlyUninhabited,
+//!     y: c::AlsoSecretlyUninhabited,
+//! }
+//! ```
+//! In this code, the type `Foo` will only be visibly uninhabited inside the
+//! modules `b`, `c` and `d`. Calling `uninhabited_predicate` on `Foo` will
+//! return `NotInModule(b) AND NotInModule(c)`.
+//!
+//! We need this information for pattern-matching on `Foo` or types that contain
+//! `Foo`.
+//!
+//! # Example
+//! ```rust
+//! let foo_result: Result<T, Foo> = ... ;
+//! let Ok(t) = foo_result;
+//! ```
+//! This code should only compile in modules where the uninhabitedness of `Foo`
+//! is visible.
 
-use crate::ty;
 use crate::ty::context::TyCtxt;
-use crate::ty::{AdtDef, FieldDef, Ty, VariantDef};
-use crate::ty::{AdtKind, Visibility};
-use crate::ty::{DefId, SubstsRef};
+use crate::ty::{self, DefId, Ty, VariantDef, Visibility};
 
 use rustc_type_ir::sty::TyKind::*;
 
-mod def_id_forest;
+pub mod inhabited_predicate;
 
-// The methods in this module calculate `DefIdForest`s of modules in which an
-// `AdtDef`/`VariantDef`/`FieldDef` is visibly uninhabited.
-//
-// # Example
-// ```rust
-// enum Void {}
-// mod a {
-//     pub mod b {
-//         pub struct SecretlyUninhabited {
-//             _priv: !,
-//         }
-//     }
-// }
-//
-// mod c {
-//     pub struct AlsoSecretlyUninhabited {
-//         _priv: Void,
-//     }
-//     mod d {
-//     }
-// }
-//
-// struct Foo {
-//     x: a::b::SecretlyUninhabited,
-//     y: c::AlsoSecretlyUninhabited,
-// }
-// ```
-// In this code, the type `Foo` will only be visibly uninhabited inside the
-// modules `b`, `c` and `d`. Calling `uninhabited_from` on `Foo` or its `AdtDef` will
-// return the forest of modules {`b`, `c`->`d`} (represented in a `DefIdForest` by the
-// set {`b`, `c`}).
-//
-// We need this information for pattern-matching on `Foo` or types that contain
-// `Foo`.
-//
-// # Example
-// ```rust
-// let foo_result: Result<T, Foo> = ... ;
-// let Ok(t) = foo_result;
-// ```
-// This code should only compile in modules where the uninhabitedness of `Foo` is
-// visible.
+pub use inhabited_predicate::InhabitedPredicate;
+
+pub(crate) fn provide(providers: &mut ty::query::Providers) {
+    *providers =
+        ty::query::Providers { inhabited_predicate_adt, inhabited_predicate_type, ..*providers };
+}
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Checks whether a type is visibly uninhabited from a particular module.
@@ -100,131 +103,92 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
-        // To check whether this type is uninhabited at all (not just from the
-        // given node), you could check whether the forest is empty.
-        // ```
-        // forest.is_empty()
-        // ```
-        ty.uninhabited_from(self, param_env).contains(self, module)
+        !ty.inhabited_predicate(self).apply(self, param_env, module)
     }
 }
 
-impl<'tcx> AdtDef<'tcx> {
-    /// Calculates the forest of `DefId`s from which this ADT is visibly uninhabited.
-    fn uninhabited_from(
-        self,
-        tcx: TyCtxt<'tcx>,
-        substs: SubstsRef<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest<'tcx> {
-        // Non-exhaustive ADTs from other crates are always considered inhabited.
-        if self.is_variant_list_non_exhaustive() && !self.did().is_local() {
-            DefIdForest::empty()
-        } else {
-            DefIdForest::intersection(
-                tcx,
-                self.variants()
-                    .iter()
-                    .map(|v| v.uninhabited_from(tcx, substs, self.adt_kind(), param_env)),
-            )
+/// Returns an `InhabitedPredicate` that is generic over type parameters and
+/// requires calling [`InhabitedPredicate::subst`]
+fn inhabited_predicate_adt(tcx: TyCtxt<'_>, def_id: DefId) -> InhabitedPredicate<'_> {
+    if let Some(def_id) = def_id.as_local() {
+        if matches!(tcx.representability(def_id), ty::Representability::Infinite) {
+            return InhabitedPredicate::True;
         }
     }
+    let adt = tcx.adt_def(def_id);
+    InhabitedPredicate::any(
+        tcx,
+        adt.variants().iter().map(|variant| variant.inhabited_predicate(tcx, adt)),
+    )
 }
 
 impl<'tcx> VariantDef {
     /// Calculates the forest of `DefId`s from which this variant is visibly uninhabited.
-    pub fn uninhabited_from(
+    pub fn inhabited_predicate(
         &self,
         tcx: TyCtxt<'tcx>,
-        substs: SubstsRef<'tcx>,
-        adt_kind: AdtKind,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest<'tcx> {
-        let is_enum = match adt_kind {
-            // For now, `union`s are never considered uninhabited.
-            // The precise semantics of inhabitedness with respect to unions is currently undecided.
-            AdtKind::Union => return DefIdForest::empty(),
-            AdtKind::Enum => true,
-            AdtKind::Struct => false,
-        };
-        // Non-exhaustive variants from other crates are always considered inhabited.
+        adt: ty::AdtDef<'_>,
+    ) -> InhabitedPredicate<'tcx> {
+        debug_assert!(!adt.is_union());
         if self.is_field_list_non_exhaustive() && !self.def_id.is_local() {
-            DefIdForest::empty()
-        } else {
-            DefIdForest::union(
-                tcx,
-                self.fields.iter().map(|f| f.uninhabited_from(tcx, substs, is_enum, param_env)),
-            )
+            // Non-exhaustive variants from other crates are always considered inhabited.
+            return InhabitedPredicate::True;
         }
-    }
-}
-
-impl<'tcx> FieldDef {
-    /// Calculates the forest of `DefId`s from which this field is visibly uninhabited.
-    fn uninhabited_from(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        substs: SubstsRef<'tcx>,
-        is_enum: bool,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest<'tcx> {
-        let data_uninhabitedness = move || self.ty(tcx, substs).uninhabited_from(tcx, param_env);
-        if is_enum {
-            data_uninhabitedness()
-        } else {
-            match self.vis {
-                Visibility::Restricted(from) => {
-                    let forest = DefIdForest::from_id(from);
-                    let iter = Some(forest).into_iter().chain(Some(data_uninhabitedness()));
-                    DefIdForest::intersection(tcx, iter)
+        InhabitedPredicate::all(
+            tcx,
+            self.fields.iter().map(|field| {
+                let pred = tcx.type_of(field.did).inhabited_predicate(tcx);
+                if adt.is_enum() {
+                    return pred;
                 }
-                Visibility::Public => data_uninhabitedness(),
-            }
-        }
+                match field.vis {
+                    Visibility::Public => pred,
+                    Visibility::Restricted(from) => {
+                        pred.or(tcx, InhabitedPredicate::NotInModule(from))
+                    }
+                }
+            }),
+        )
     }
 }
 
 impl<'tcx> Ty<'tcx> {
-    /// Calculates the forest of `DefId`s from which this type is visibly uninhabited.
-    fn uninhabited_from(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest<'tcx> {
-        tcx.type_uninhabited_from(param_env.and(self))
+    pub fn inhabited_predicate(self, tcx: TyCtxt<'tcx>) -> InhabitedPredicate<'tcx> {
+        match self.kind() {
+            // For now, union`s are always considered inhabited
+            Adt(adt, _) if adt.is_union() => InhabitedPredicate::True,
+            // Non-exhaustive ADTs from other crates are always considered inhabited
+            Adt(adt, _) if adt.is_variant_list_non_exhaustive() && !adt.did().is_local() => {
+                InhabitedPredicate::True
+            }
+            Never => InhabitedPredicate::False,
+            Param(_) | Projection(_) => InhabitedPredicate::GenericType(self),
+            Tuple(tys) if tys.is_empty() => InhabitedPredicate::True,
+            // use a query for more complex cases
+            Adt(..) | Array(..) | Tuple(_) => tcx.inhabited_predicate_type(self),
+            // references and other types are inhabited
+            _ => InhabitedPredicate::True,
+        }
     }
 }
 
-// Query provider for `type_uninhabited_from`.
-pub(crate) fn type_uninhabited_from<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-) -> DefIdForest<'tcx> {
-    let ty = key.value;
-    let param_env = key.param_env;
+/// N.B. this query should only be called through `Ty::inhabited_predicate`
+fn inhabited_predicate_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> InhabitedPredicate<'tcx> {
     match *ty.kind() {
-        Adt(def, substs) => def.uninhabited_from(tcx, substs, param_env),
+        Adt(adt, substs) => tcx.inhabited_predicate_adt(adt.did()).subst(tcx, substs),
 
-        Never => DefIdForest::full(),
-
-        Tuple(ref tys) => {
-            DefIdForest::union(tcx, tys.iter().map(|ty| ty.uninhabited_from(tcx, param_env)))
+        Tuple(tys) => {
+            InhabitedPredicate::all(tcx, tys.iter().map(|ty| ty.inhabited_predicate(tcx)))
         }
 
-        Array(ty, len) => match len.try_eval_usize(tcx, param_env) {
-            Some(0) | None => DefIdForest::empty(),
-            // If the array is definitely non-empty, it's uninhabited if
-            // the type of its elements is uninhabited.
-            Some(1..) => ty.uninhabited_from(tcx, param_env),
+        // If we can evaluate the array length before having a `ParamEnv`, then
+        // we can simplify the predicate. This is an optimization.
+        Array(ty, len) => match len.kind().try_to_machine_usize(tcx) {
+            Some(0) => InhabitedPredicate::True,
+            Some(1..) => ty.inhabited_predicate(tcx),
+            None => ty.inhabited_predicate(tcx).or(tcx, InhabitedPredicate::ConstIsZero(len)),
         },
 
-        // References to uninitialised memory are valid for any type, including
-        // uninhabited types, in unsafe code, so we treat all references as
-        // inhabited.
-        // The precise semantics of inhabitedness with respect to references is currently
-        // undecided.
-        Ref(..) => DefIdForest::empty(),
-
-        _ => DefIdForest::empty(),
+        _ => bug!("unexpected TyKind, use `Ty::inhabited_predicate`"),
     }
 }

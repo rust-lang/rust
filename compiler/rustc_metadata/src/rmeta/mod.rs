@@ -23,7 +23,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ReprOptions, Ty};
-use rustc_middle::ty::{GeneratorDiagnosticData, ParameterizedOverTcx, TyCtxt};
+use rustc_middle::ty::{DeducedParamAttrs, GeneratorDiagnosticData, ParameterizedOverTcx, TyCtxt};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
@@ -402,6 +402,7 @@ define_tables! {
     macro_definition: Table<DefIndex, LazyValue<ast::MacArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
+    deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,
 
     trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, Ty<'static>>>>,
 }
