@@ -341,15 +341,6 @@ pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     lhs: Bx::Value,
     rhs: Bx::Value,
 ) -> Bx::Value {
-    cast_shift_rhs(bx, op, lhs, rhs)
-}
-
-fn cast_shift_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    op: hir::BinOpKind,
-    lhs: Bx::Value,
-    rhs: Bx::Value,
-) -> Bx::Value {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
         let mut rhs_llty = bx.cx().val_ty(rhs);
