@@ -2280,12 +2280,12 @@ fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clea
     let fields = get_struct_fields_name(&s.fields);
 
     if !fields.is_empty() {
-        match s.struct_type {
-            CtorKind::Fictive => {
+        match s.ctor_kind {
+            None => {
                 print_sidebar_block(&mut sidebar, "fields", "Fields", fields.iter());
             }
-            CtorKind::Fn => print_sidebar_title(&mut sidebar, "fields", "Tuple Fields"),
-            CtorKind::Const => {}
+            Some(CtorKind::Fn) => print_sidebar_title(&mut sidebar, "fields", "Tuple Fields"),
+            Some(CtorKind::Const) => {}
         }
     }
 

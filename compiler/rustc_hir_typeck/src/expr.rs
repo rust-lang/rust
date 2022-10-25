@@ -533,8 +533,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.set_tainted_by_errors(e);
                 tcx.ty_error_with_guaranteed(e)
             }
-            Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
-                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span);
+            Res::Def(DefKind::Variant, _) => {
+                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, "E0533", "value");
                 tcx.ty_error_with_guaranteed(e)
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
@@ -2025,8 +2025,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let variant_ident_span = self.tcx.def_ident_span(variant.def_id).unwrap();
-        match variant.ctor_kind {
-            CtorKind::Fn => match ty.kind() {
+        match variant.ctor_kind() {
+            Some(CtorKind::Fn) => match ty.kind() {
                 ty::Adt(adt, ..) if adt.is_enum() => {
                     err.span_label(
                         variant_ident_span,

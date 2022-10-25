@@ -72,8 +72,8 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
 
                 let adt = tcx.adt_def(def_id);
                 for variant in adt.variants() {
-                    if let Some(ctor) = variant.ctor_def_id {
-                        constraint_cx.build_constraints_for_item(ctor.expect_local());
+                    if let Some(ctor_def_id) = variant.ctor_def_id() {
+                        constraint_cx.build_constraints_for_item(ctor_def_id.expect_local());
                     }
                 }
             }

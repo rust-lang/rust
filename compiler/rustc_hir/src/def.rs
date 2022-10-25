@@ -28,8 +28,6 @@ pub enum CtorKind {
     Fn,
     /// Constructor constant automatically created by a unit struct/variant.
     Const,
-    /// Unusable name in value namespace created by a struct variant.
-    Fictive,
 }
 
 /// An attribute that is not a macro; e.g., `#[inline]` or `#[rustfmt::skip]`.
@@ -132,13 +130,9 @@ impl DefKind {
             DefKind::Variant => "variant",
             DefKind::Ctor(CtorOf::Variant, CtorKind::Fn) => "tuple variant",
             DefKind::Ctor(CtorOf::Variant, CtorKind::Const) => "unit variant",
-            DefKind::Ctor(CtorOf::Variant, CtorKind::Fictive) => "struct variant",
             DefKind::Struct => "struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => "tuple struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
-            DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) => {
-                panic!("impossible struct constructor")
-            }
             DefKind::OpaqueTy => "opaque type",
             DefKind::ImplTraitPlaceholder => "opaque type in trait",
             DefKind::TyAlias => "type alias",
@@ -562,19 +556,11 @@ impl<T> PerNS<Option<T>> {
 }
 
 impl CtorKind {
-    pub fn from_ast(vdata: &ast::VariantData) -> CtorKind {
+    pub fn from_ast(vdata: &ast::VariantData) -> Option<(CtorKind, NodeId)> {
         match *vdata {
-            ast::VariantData::Tuple(..) => CtorKind::Fn,
-            ast::VariantData::Unit(..) => CtorKind::Const,
-            ast::VariantData::Struct(..) => CtorKind::Fictive,
-        }
-    }
-
-    pub fn from_hir(vdata: &hir::VariantData<'_>) -> CtorKind {
-        match *vdata {
-            hir::VariantData::Tuple(..) => CtorKind::Fn,
-            hir::VariantData::Unit(..) => CtorKind::Const,
-            hir::VariantData::Struct(..) => CtorKind::Fictive,
+            ast::VariantData::Tuple(_, node_id) => Some((CtorKind::Fn, node_id)),
+            ast::VariantData::Unit(node_id) => Some((CtorKind::Const, node_id)),
+            ast::VariantData::Struct(..) => None,
         }
     }
 }

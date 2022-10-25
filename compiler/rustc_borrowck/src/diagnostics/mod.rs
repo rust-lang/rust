@@ -350,7 +350,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     } else {
                         def.non_enum_variant()
                     };
-                    if !including_tuple_field.0 && variant.ctor_kind == CtorKind::Fn {
+                    if !including_tuple_field.0 && variant.ctor_kind() == Some(CtorKind::Fn) {
                         return None;
                     }
                     Some(variant.fields[field.index()].name.to_string())

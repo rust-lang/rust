@@ -53,9 +53,9 @@ use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{struct_span_err, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{struct_span_err, DiagnosticId, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirIdMap, Node};
 use rustc_hir_analysis::astconv::AstConv;
@@ -433,15 +433,27 @@ fn report_unexpected_variant_res(
     res: Res,
     qpath: &hir::QPath<'_>,
     span: Span,
+    err_code: &str,
+    expected: &str,
 ) -> ErrorGuaranteed {
-    struct_span_err!(
-        tcx.sess,
+    let res_descr = match res {
+        Res::Def(DefKind::Variant, _) => "struct variant",
+        _ => res.descr(),
+    };
+    let path_str = rustc_hir_pretty::qpath_to_string(qpath);
+    let mut err = tcx.sess.struct_span_err_with_code(
         span,
-        E0533,
-        "expected unit struct, unit variant or constant, found {} `{}`",
-        res.descr(),
-        rustc_hir_pretty::qpath_to_string(qpath),
-    )
+        format!("expected {expected}, found {res_descr} `{path_str}`"),
+        DiagnosticId::Error(err_code.into()),
+    );
+    match res {
+        Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == "E0164" => {
+            let patterns_url = "https://doc.rust-lang.org/book/ch18-00-patterns.html";
+            err.span_label(span, "`fn` calls are not allowed in patterns");
+            err.help(format!("for more information, visit {patterns_url}"))
+        }
+        _ => err.span_label(span, format!("not a {expected}")),
+    }
     .emit()
 }
 

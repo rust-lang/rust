@@ -315,15 +315,15 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
 impl FromWithTcx<clean::Struct> for Struct {
     fn from_tcx(struct_: clean::Struct, tcx: TyCtxt<'_>) -> Self {
         let fields_stripped = struct_.has_stripped_entries();
-        let clean::Struct { struct_type, generics, fields } = struct_;
+        let clean::Struct { ctor_kind, generics, fields } = struct_;
 
-        let kind = match struct_type {
-            CtorKind::Fn => StructKind::Tuple(ids_keeping_stripped(fields, tcx)),
-            CtorKind::Const => {
+        let kind = match ctor_kind {
+            Some(CtorKind::Fn) => StructKind::Tuple(ids_keeping_stripped(fields, tcx)),
+            Some(CtorKind::Const) => {
                 assert!(fields.is_empty());
                 StructKind::Unit
             }
-            CtorKind::Fictive => StructKind::Plain { fields: ids(fields, tcx), fields_stripped },
+            None => StructKind::Plain { fields: ids(fields, tcx), fields_stripped },
         };
 
         Struct {

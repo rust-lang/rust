@@ -17,7 +17,7 @@ fn main() {
     //~^ ERROR expected function, tuple struct or tuple variant, found struct `Empty1`
     let e3 = E::Empty3; //~ ERROR expected value, found struct variant `E::Empty3`
     let e3 = E::Empty3();
-    //~^ ERROR expected function, tuple struct or tuple variant, found struct variant `E::Empty3`
+    //~^ ERROR expected value, found struct variant `E::Empty3`
 
     let xe1 = XEmpty1; //~ ERROR expected value, found struct `XEmpty1`
     let xe1 = XEmpty1();

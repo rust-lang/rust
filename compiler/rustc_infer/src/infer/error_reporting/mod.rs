@@ -65,7 +65,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
@@ -1967,7 +1967,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     .variants()
                     .iter()
                     .filter(|variant| {
-                        variant.fields.len() == 1 && variant.ctor_kind == hir::def::CtorKind::Fn
+                        variant.fields.len() == 1 && variant.ctor_kind() == Some(CtorKind::Fn)
                     })
                     .filter_map(|variant| {
                         let sole_field = &variant.fields[0];

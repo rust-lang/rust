@@ -495,8 +495,8 @@ impl CStore {
         self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
     }
 
-    pub fn ctor_def_id_and_kind_untracked(&self, def: DefId) -> Option<(DefId, CtorKind)> {
-        self.get_crate_data(def.krate).get_ctor_def_id_and_kind(def.index)
+    pub fn ctor_untracked(&self, def: DefId) -> Option<(CtorKind, DefId)> {
+        self.get_crate_data(def.krate).get_ctor(def.index)
     }
 
     pub fn visibility_untracked(&self, def: DefId) -> Visibility<DefId> {

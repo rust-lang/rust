@@ -6,7 +6,7 @@ use crate::type_error_struct;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::{self, Namespace, Res};
+use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::{
     infer,
@@ -595,7 +595,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let mut unit_variant = None;
         if let hir::ExprKind::Path(qpath) = &callee_expr.kind
-            && let Res::Def(def::DefKind::Ctor(kind, def::CtorKind::Const), _)
+            && let Res::Def(def::DefKind::Ctor(kind, CtorKind::Const), _)
                 = self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
             // Only suggest removing parens if there are no arguments
             && arg_exprs.is_empty()

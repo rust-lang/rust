@@ -276,7 +276,7 @@ fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Struct {
-        struct_type: variant.ctor_kind,
+        ctor_kind: variant.ctor_kind(),
         generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
         fields: variant.fields.iter().map(|x| clean_middle_field(x, cx)).collect(),
     }

@@ -853,8 +853,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.set_tainted_by_errors(e);
                 return tcx.ty_error_with_guaranteed(e);
             }
-            Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fictive | CtorKind::Fn), _) => {
-                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span);
+            Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
+                let expected = "unit struct, unit variant or constant";
+                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, "E0533", expected);
                 return tcx.ty_error_with_guaranteed(e);
             }
             Res::SelfCtor(..)
@@ -1002,30 +1003,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         let report_unexpected_res = |res: Res| {
-            let sm = tcx.sess.source_map();
-            let path_str = sm
-                .span_to_snippet(sm.span_until_char(pat.span, '('))
-                .map_or_else(|_| String::new(), |s| format!(" `{}`", s.trim_end()));
-            let msg = format!(
-                "expected tuple struct or tuple variant, found {}{}",
-                res.descr(),
-                path_str
-            );
-
-            let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{msg}");
-            match res {
-                Res::Def(DefKind::Fn | DefKind::AssocFn, _) => {
-                    err.span_label(pat.span, "`fn` calls are not allowed in patterns");
-                    err.help(
-                        "for more information, visit \
-                              https://doc.rust-lang.org/book/ch18-00-patterns.html",
-                    );
-                }
-                _ => {
-                    err.span_label(pat.span, "not a tuple variant or struct");
-                }
-            }
-            let e = err.emit();
+            let expected = "tuple struct or tuple variant";
+            let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, "E0164", expected);
             on_error(e);
             e
         };
@@ -1481,8 +1460,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // if this is a tuple struct, then all field names will be numbers
         // so if any fields in a struct pattern use shorthand syntax, they will
         // be invalid identifiers (for example, Foo { 0, 1 }).
-        if let (CtorKind::Fn, PatKind::Struct(qpath, field_patterns, ..)) =
-            (variant.ctor_kind, &pat.kind)
+        if let (Some(CtorKind::Fn), PatKind::Struct(qpath, field_patterns, ..)) =
+            (variant.ctor_kind(), &pat.kind)
         {
             let has_shorthand_field_name = field_patterns.iter().any(|field| field.is_shorthand);
             if has_shorthand_field_name {
@@ -1659,7 +1638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [hir::PatField<'tcx>],
         variant: &ty::VariantDef,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        if let (CtorKind::Fn, PatKind::Struct(qpath, ..)) = (variant.ctor_kind, &pat.kind) {
+        if let (Some(CtorKind::Fn), PatKind::Struct(qpath, ..)) = (variant.ctor_kind(), &pat.kind) {
             let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
                 s.print_qpath(qpath, false)
             });

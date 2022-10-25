@@ -118,8 +118,8 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 match i.kind {
                     ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
                         // If this is a unit or tuple-like struct, register the constructor.
-                        if let Some(ctor_hir_id) = struct_def.ctor_id() {
-                            this.create_def(ctor_hir_id, DefPathData::Ctor, i.span);
+                        if let Some(ctor_node_id) = struct_def.ctor_node_id() {
+                            this.create_def(ctor_node_id, DefPathData::Ctor, i.span);
                         }
                     }
                     _ => {}
@@ -196,8 +196,8 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
         }
         let def = self.create_def(v.id, DefPathData::TypeNs(v.ident.name), v.span);
         self.with_parent(def, |this| {
-            if let Some(ctor_hir_id) = v.data.ctor_id() {
-                this.create_def(ctor_hir_id, DefPathData::Ctor, v.span);
+            if let Some(ctor_node_id) = v.data.ctor_node_id() {
+                this.create_def(ctor_node_id, DefPathData::Ctor, v.span);
             }
             visit::walk_variant(this, v)
         });
