@@ -42,6 +42,13 @@ jobs:
           repository: wasmerio/cargo-wasix
           ref: main
           path: cargo-wasix
+          fetch-depth: 2
+
+      - name: Print cargo-wasix info
+        shell: bash
+        run:
+          cd cargo-wasix
+          echo "cargo-wasix commit: $(git rev-parse HEAD)"
 
       - name: Build
         shell: bash
@@ -67,6 +74,11 @@ jobs:
     strategy:
       matrix:
         os: [self-hosted-ubuntu, macos-12, windows-2019]
+        include:
+          - os: macos-12
+            arch: x86
+          - os: macos-12
+            arch: aarch64
     runs-on: ${{ matrix.os }}
     steps:
 
@@ -141,7 +153,7 @@ jobs:
 
       - name: Setup (Mac OS)
         shell: bash
-        if: matrix.os == 'macos-12'
+        if: matrix.os == 'macos-12' && matrix.arch == 'x86'
         run: |
           brew update
           # Need ninja for building llvm (for aarch64 cross compile)
@@ -150,8 +162,6 @@ jobs:
       - name: Build (Mac Os, x86)
         shell: bash
         if: matrix.os == 'macos-12'
-        # TODO: remove once mac os is validated!
-        continue-on-error: true
         env:
           WASIX_NO_UPDATE_REPOS: '1'
           GITHUB_ACTIONS: 'false'
@@ -165,7 +175,7 @@ jobs:
 
       - name: Archive build output (Mac OS - x86)
         uses: actions/upload-artifact@v3
-        if: matrix.os == 'macos-12'
+        if: matrix.os == 'macos-12' && matrix.arch == 'x86'
         with:
           name: rust-toolchain-x86_64-apple-darwin
           path: |
@@ -176,9 +186,7 @@ jobs:
 
       - name: Build (Mac Os, aarch64)
         shell: bash
-        if: matrix.os == 'macos-12'
-        # TODO: remove once mac os is validated!
-        continue-on-error: true
+        if: matrix.os == 'macos-12' && matrix.arch == 'aarch64'
         env:
           WASIX_NO_UPDATE_REPOS: '1'
           GITHUB_ACTIONS: 'false'
@@ -192,7 +200,7 @@ jobs:
 
       - name: Archive build output (Mac OS - aarch64)
         uses: actions/upload-artifact@v3
-        if: matrix.os == 'macos-12'
+        if: matrix.os == 'macos-12' && matrix.arch == 'aarch64'
         with:
           name: rust-toolchain-aarch64-apple-darwin
           path: |
