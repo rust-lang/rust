@@ -14,6 +14,9 @@ intrinsics! {
     //
     // for reference, see also implementation from gcc
     // https://raw.githubusercontent.com/gcc-mirror/gcc/master/libgcc/config/epiphany/mulsi3.c
+    //
+    // and from LLVM (in relatively readable RISC-V assembly):
+    // https://github.com/llvm/llvm-project/blob/main/compiler-rt/lib/builtins/riscv/int_mul_impl.inc
     pub extern "C" fn __mulsi3(a: u32, b: u32) -> u32 {
         let (mut a, mut b) = (a, b);
         let mut r = 0;
