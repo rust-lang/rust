@@ -1687,6 +1687,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err,
                 true,
                 false,
+                false,
             );
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit();

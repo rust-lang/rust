@@ -403,6 +403,7 @@ fn compare_predicate_entailment<'tcx>(
             terr,
             false,
             false,
+            false,
         );
 
         return Err(diag.emit());
@@ -514,6 +515,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                     found: impl_return_ty.into(),
                 })),
                 terr,
+                false,
                 false,
                 false,
             );
@@ -1423,6 +1425,7 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
                 found: impl_ty.into(),
             })),
             terr,
+            false,
             false,
             false,
         );
