@@ -1576,7 +1576,10 @@ impl<T, A: Allocator + Clone> ExactSizeIterator for IntoIter<T, A> {
 impl<T, A: Allocator + Clone> FusedIterator for IntoIter<T, A> {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
-impl<T> Default for IntoIter<T> {
+impl<T, A> Default for IntoIter<T, A>
+where
+    A: Allocator + Default + Clone,
+{
     /// Creates an empty `btree_set::IntoIter`.
     ///
     /// ```

@@ -450,7 +450,10 @@ impl<K: Debug, V: Debug, A: Allocator + Clone> Debug for IntoIter<K, V, A> {
 }
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
-impl<K, V> Default for IntoIter<K, V> {
+impl<K, V, A> Default for IntoIter<K, V, A>
+where
+    A: Allocator + Default + Clone,
+{
     /// Creates an empty `btree_map::IntoIter`.
     ///
     /// ```
@@ -459,7 +462,7 @@ impl<K, V> Default for IntoIter<K, V> {
     /// assert_eq!(iter.len(), 0);
     /// ```
     fn default() -> Self {
-        IntoIter { range: Default::default(), length: 0, alloc: Global }
+        IntoIter { range: Default::default(), length: 0, alloc: Default::default() }
     }
 }
 
@@ -2106,7 +2109,10 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoKeys<K, V, A> {
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoKeys<K, V, A> {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
-impl<K, V> Default for IntoKeys<K, V> {
+impl<K, V, A> Default for IntoKeys<K, V, A>
+where
+    A: Allocator + Default + Clone,
+{
     /// Creates an empty `btree_map::IntoKeys`.
     ///
     /// ```
@@ -2154,7 +2160,10 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoValues<K, V, A> {
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoValues<K, V, A> {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
-impl<K, V> Default for IntoValues<K, V> {
+impl<K, V, A> Default for IntoValues<K, V, A>
+where
+    A: Allocator + Default + Clone,
+{
     /// Creates an empty `btree_map::IntoValues`.
     ///
     /// ```
