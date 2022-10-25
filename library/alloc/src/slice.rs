@@ -822,48 +822,88 @@ where
     merge_sort(v, &mut is_less);
 }
 
-// Slices of up to this length get sorted using insertion sort.
-const MAX_INSERTION: usize = 20;
-
 // Sort a small number of elements as fast as possible, without allocations.
-#[inline]
 #[cfg(not(no_global_oom_handling))]
-fn sort_small<T, F>(v: &mut [T], is_less: &mut F)
+fn stable_sort_small<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
 
+    // This implementation is really not fit for anything beyond that, and the call is probably a
+    // bug.
+    debug_assert!(len <= 40);
+
     if len < 2 {
         return;
     }
 
-    if T::is_copy() {
-        // SAFETY: We check the corresponding min len for sortX.
-        unsafe {
-            if len == 2 {
-                sort2(v, is_less);
-            } else if len == 3 {
-                sort3(v, is_less);
-            } else if len < 8 {
-                sort4(&mut v[..4], is_less);
-                insertion_sort_remaining(v, 4, is_less);
-            } else if len < 16 {
-                sort8(&mut v[..8], is_less);
-                insertion_sort_remaining(v, 8, is_less);
-            } else {
-                sort16(&mut v[..16], is_less);
-                insertion_sort_remaining(v, 16, is_less);
-            }
-        }
+    // It's not clear that using custom code for specific sizes is worth it here.
+    // So we go with the simpler code.
+    let offset = if len <= 6 || !qualifies_for_branchless_sort::<T>() {
+        1
     } else {
-        for i in (0..len - 1).rev() {
-            // SAFETY: We checked above that len is at least 2.
-            unsafe {
-                insert_head(&mut v[i..], is_less);
+        // Once a certain threshold is reached, it becomes worth it to analyze the input and do
+        // branchless swapping for the first 5 elements.
+
+        // SAFETY: We just checked that len >= 5
+        unsafe {
+            let arr_ptr = v.as_mut_ptr();
+
+            let should_swap_0_1 = is_less(&*arr_ptr.add(1), &*arr_ptr.add(0));
+            let should_swap_1_2 = is_less(&*arr_ptr.add(2), &*arr_ptr.add(1));
+            let should_swap_2_3 = is_less(&*arr_ptr.add(3), &*arr_ptr.add(2));
+            let should_swap_3_4 = is_less(&*arr_ptr.add(4), &*arr_ptr.add(3));
+
+            let swap_count = should_swap_0_1 as usize
+                + should_swap_1_2 as usize
+                + should_swap_2_3 as usize
+                + should_swap_3_4 as usize;
+
+            if swap_count == 0 {
+                // Potentially already sorted. No need to swap, we know the first 5 elements are
+                // already in the right order.
+                5
+            } else if swap_count == 4 {
+                // Potentially reversed.
+                let mut rev_i = 4;
+                while rev_i < (len - 1) {
+                    if !is_less(&*arr_ptr.add(rev_i + 1), &*arr_ptr.add(rev_i)) {
+                        break;
+                    }
+                    rev_i += 1;
+                }
+                rev_i += 1;
+                v[..rev_i].reverse();
+                insertion_sort_shift_left(v, rev_i, is_less);
+                return;
+            } else {
+                // Potentially random pattern.
+                branchless_swap(arr_ptr.add(0), arr_ptr.add(1), should_swap_0_1);
+                branchless_swap(arr_ptr.add(2), arr_ptr.add(3), should_swap_2_3);
+
+                if len >= 12 {
+                    // This aims to find a good balance between generating more code, which is bad
+                    // for cold loops and improving hot code while not increasing mean comparison
+                    // count too much.
+                    sort8_stable(&mut v[4..12], is_less);
+                    insertion_sort_shift_left(&mut v[4..], 8, is_less);
+                    insertion_sort_shift_right(v, 4, is_less);
+                    return;
+                } else {
+                    // Complete the sort network for the first 4 elements.
+                    swap_next_if_less(arr_ptr.add(1), is_less);
+                    swap_next_if_less(arr_ptr.add(2), is_less);
+                    swap_next_if_less(arr_ptr.add(0), is_less);
+                    swap_next_if_less(arr_ptr.add(1), is_less);
+
+                    4
+                }
             }
         }
-    }
+    };
+
+    insertion_sort_shift_left(v, offset, is_less);
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -878,17 +918,19 @@ where
 
     let len = v.len();
 
+    // Slices of up to this length get sorted using insertion sort.
+    const MAX_NO_ALLOC_SIZE: usize = 20;
+
     // Short arrays get sorted in-place via insertion sort to avoid allocations.
-    if len <= MAX_INSERTION {
-        sort_small(v, is_less);
+    if len <= MAX_NO_ALLOC_SIZE {
+        stable_sort_small(v, is_less);
         return;
     }
 
-    // Allocate a buffer to use as scratch memory. We keep the length 0 so we can keep in it
-    // shallow copies of the contents of `v` without risking the dtors running on copies if
-    // `is_less` panics. When merging two sorted runs, this buffer holds a copy of the shorter run,
-    // which will always have length at most `len / 2`.
-    let mut buf = Vec::with_capacity(len / 2);
+    // Don't allocate right at the beginning, wait to see if the slice is already sorted or
+    // reversed.
+    let mut buf;
+    let mut buf_ptr: *mut T = ptr::null_mut();
 
     // In order to identify natural runs in `v`, we traverse it backwards. That might seem like a
     // strange decision, but consider the fact that merges more often go in the opposite direction
@@ -916,6 +958,19 @@ where
             }
         }
 
+        if start == 0 && end == len {
+            // The input was either fully ascending or descending. It is now sorted and we can
+            // return without allocating.
+            return;
+        } else if buf_ptr.is_null() {
+            // Allocate a buffer to use as scratch memory. We keep the length 0 so we can keep in it
+            // shallow copies of the contents of `v` without risking the dtors running on copies if
+            // `is_less` panics. When merging two sorted runs, this buffer holds a copy of the
+            // shorter run, which will always have length at most `len / 2`.
+            buf = Vec::with_capacity(len / 2);
+            buf_ptr = buf.as_mut_ptr();
+        }
+
         // SAFETY: end > start.
         start = provide_sorted_batch(v, start, end, is_less);
 
@@ -928,12 +983,7 @@ where
             let left = runs[r + 1];
             let right = runs[r];
             unsafe {
-                merge(
-                    &mut v[left.start..right.start + right.len],
-                    left.len,
-                    buf.as_mut_ptr(),
-                    is_less,
-                );
+                merge(&mut v[left.start..right.start + right.len], left.len, buf_ptr, is_less);
             }
             runs[r] = Run { start: left.start, len: left.len + right.len };
             runs.remove(r + 1);
@@ -966,7 +1016,11 @@ where
                 || (n >= 3 && runs[n - 3].len <= runs[n - 2].len + runs[n - 1].len)
                 || (n >= 4 && runs[n - 4].len <= runs[n - 3].len + runs[n - 2].len))
         {
-            if n >= 3 && runs[n - 3].len < runs[n - 1].len { Some(n - 3) } else { Some(n - 2) }
+            if n >= 3 && runs[n - 3].len < runs[n - 1].len {
+                Some(n - 3)
+            } else {
+                Some(n - 2)
+            }
         } else {
             None
         }
@@ -986,10 +1040,7 @@ fn provide_sorted_batch<T, F>(v: &mut [T], mut start: usize, end: usize, is_less
 where
     F: FnMut(&T, &T) -> bool,
 {
-    // Not doing so is a logic bug, but not a safety bug.
     debug_assert!(end > start);
-
-    const MAX_PRE_SORT16: usize = 8;
 
     // Testing showed that using MAX_INSERTION here yields the best performance for many types, but
     // incurs more total comparisons. A balance between least comparisons and best performance, as
@@ -1001,24 +1052,48 @@ where
     let start_found = start;
     let start_end_diff = end - start;
 
-    if T::is_copy() && start_end_diff < MAX_PRE_SORT16 && start_found >= 16 {
-        // SAFETY: We just checked that start_found is >= 16.
-        unsafe {
-            start = start_found.unchecked_sub(16);
-            sort16(&mut v[start..start_found], is_less);
-        }
-        insertion_sort_remaining(&mut v[start..end], 16, is_less);
-    } else if start_end_diff < MIN_INSERTION_RUN {
-        start = start.saturating_sub(MIN_INSERTION_RUN - start_end_diff);
+    const FAST_SORT_SIZE: usize = 24;
 
-        for i in (start..start_found).rev() {
-            // SAFETY: We ensured that the slice length is always at lest 2 long.
-            // We know that start_found will be at least one less than end,
-            // and the range is exclusive. Which gives us i always <= (end - 2).
-            unsafe {
-                insert_head(&mut v[i..end], is_less);
-            }
+    if qualifies_for_branchless_sort::<T>() && end >= (FAST_SORT_SIZE + 3) && start_end_diff <= 6 {
+        // For random inputs on average how many elements are naturally already sorted
+        // (start_end_diff) will be relatively small. And it's faster to avoid a merge operation
+        // between the newly sorted elements on the left by the sort network and the already sorted
+        // elements. Instead if there are 3 or fewer already sorted elements they get merged by
+        // participating in the sort network. This wastes the information that they are already
+        // sorted, but extra branching is not worth it.
+        //
+        // Note, this optimization significantly reduces comparison count, versus just always using
+        // insertion_sort_shift_left. Insertion sort is faster than calling merge here, and this is
+        // yet faster starting at FAST_SORT_SIZE 20.
+        let is_small_pre_sorted = start_end_diff <= 3;
+
+        start = if is_small_pre_sorted {
+            end - FAST_SORT_SIZE
+        } else {
+            start_found - (FAST_SORT_SIZE - 3)
+        };
+
+        // SAFETY: start >= 0 && start + FAST_SORT_SIZE <= end
+        unsafe {
+            // Use a straight-line sorting network here instead of some hybrid network with early
+            // exit. If the input is already sorted the previous adaptive analysis path of TimSort
+            // ought to have found it. So we prefer minimizing the total amount of comparisons,
+            // which are user provided and may be of arbitrary cost.
+            sort24_stable(&mut v[start..(start + FAST_SORT_SIZE)], is_less);
         }
+
+        // For most patterns this branch should have good prediction accuracy.
+        if !is_small_pre_sorted {
+            insertion_sort_shift_left(&mut v[start..end], FAST_SORT_SIZE, is_less);
+        }
+    } else if start_end_diff < MIN_INSERTION_RUN && start != 0 {
+        // v[start_found..end] are elements that are already sorted in the input. We want to extend
+        // the sorted region to the left, so we push up MIN_INSERTION_RUN - 1 to the right. Which is
+        // more efficient that trying to push those already sorted elements to the left.
+
+        start = if end >= MIN_INSERTION_RUN { end - MIN_INSERTION_RUN } else { 0 };
+
+        insertion_sort_shift_right(&mut v[start..end], start_found - start, is_less);
     }
 
     start
@@ -1032,41 +1107,15 @@ struct InsertionHole<T> {
 
 impl<T> Drop for InsertionHole<T> {
     fn drop(&mut self) {
-        // SAFETY: caller must ensure src is valid to read and dest is valid to write. They must not
-        // alias.
         unsafe {
             ptr::copy_nonoverlapping(self.src, self.dest, 1);
         }
     }
 }
 
-/// Sort v assuming v[..offset] is already sorted.
-#[inline]
-#[cfg(not(no_global_oom_handling))]
-fn insertion_sort_remaining<T, F>(v: &mut [T], offset: usize, is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    let len = v.len();
-
-    // This is a logic but not a safety bug.
-    debug_assert!(offset != 0 && offset <= len);
-
-    if len < 2 || offset == 0 {
-        return;
-    }
-
-    // Shift each element of the unsorted region v[i..] as far left as is needed to make v sorted.
-    for i in offset..len {
-        insert_tail(&mut v[..=i], is_less);
-    }
-}
-
 /// Inserts `v[v.len() - 1]` into pre-sorted sequence `v[..v.len() - 1]` so that whole `v[..]`
 /// becomes sorted.
-#[inline]
-#[cfg(not(no_global_oom_handling))]
-fn insert_tail<T, F>(v: &mut [T], is_less: &mut F)
+unsafe fn insert_tail<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -1075,6 +1124,7 @@ where
     let arr_ptr = v.as_mut_ptr();
     let i = v.len() - 1;
 
+    // SAFETY: caller must ensure v is at least len 2.
     unsafe {
         // See insert_head which talks about why this approach is beneficial.
         let i_ptr = arr_ptr.add(i);
@@ -1110,27 +1160,82 @@ where
                 break;
             }
 
+            ptr::copy_nonoverlapping(j_ptr, hole.dest, 1);
             hole.dest = j_ptr;
-            ptr::copy_nonoverlapping(hole.dest, j_ptr.add(1), 1);
         }
         // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
+    }
+}
+
+/// Sort v assuming v[..offset] is already sorted.
+///
+/// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
+/// performance impact. Even improving performance in some cases.
+#[inline(never)]
+fn insertion_sort_shift_left<T, F>(v: &mut [T], offset: usize, is_less: &mut F)
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    let len = v.len();
+
+    // This is a logic but not a safety bug.
+    debug_assert!(offset != 0 && offset <= len);
+
+    if ((len < 2) as u8 + (offset == 0) as u8) != 0 {
+        return;
+    }
+
+    // Shift each element of the unsorted region v[i..] as far left as is needed to make v sorted.
+    for i in offset..len {
+        // SAFETY: we tested that len >= 2.
+        unsafe {
+            // Maybe use insert_head here and avoid additional code.
+            insert_tail(&mut v[..=i], is_less);
+        }
+    }
+}
+
+/// Sort v assuming v[offset..] is already sorted.
+///
+/// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
+/// performance impact. Even improving performance in some cases.
+#[inline(never)]
+fn insertion_sort_shift_right<T, F>(v: &mut [T], offset: usize, is_less: &mut F)
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    let len = v.len();
+
+    // This is a logic but not a safety bug.
+    debug_assert!(offset != 0 && offset <= len);
+
+    if ((len < 2) as u8 + (offset == 0) as u8) != 0 {
+        return;
+    }
+
+    // Shift each element of the unsorted region v[..i] as far left as is needed to make v sorted.
+    for i in (0..offset).rev() {
+        // We ensured that the slice length is always at least 2 long.
+        // We know that start_found will be at least one less than end,
+        // and the range is exclusive. Which gives us i always <= (end - 2).
+        unsafe {
+            insert_head(&mut v[i..len], is_less);
+        }
     }
 }
 
 /// Inserts `v[0]` into pre-sorted sequence `v[1..]` so that whole `v[..]` becomes sorted.
 ///
 /// This is the integral subroutine of insertion sort.
-#[inline]
-#[cfg(not(no_global_oom_handling))]
 unsafe fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
     debug_assert!(v.len() >= 2);
 
-    // SAFETY: caller must ensure v is at least len 2.
-    unsafe {
-        if is_less(&v[1], &v[0]) {
+    if is_less(&v[1], &v[0]) {
+        // SAFETY: caller must ensure v is at least len 2.
+        unsafe {
             // There are three ways to implement insertion here:
             //
             // 1. Swap adjacent elements until the first one gets to its final destination.
@@ -1291,446 +1396,189 @@ where
     }
 }
 
-trait IsCopy<T> {
+#[rustc_unsafe_specialization_marker]
+trait IsCopyMarker {}
+
+impl<T: Copy> IsCopyMarker for T {}
+
+trait IsCopy {
     fn is_copy() -> bool;
 }
 
-impl<T> IsCopy<T> for T {
+impl<T> IsCopy for T {
+    default fn is_copy() -> bool {
+        false
+    }
+}
+
+impl<T: IsCopyMarker> IsCopy for T {
     fn is_copy() -> bool {
-        // FIXME, heuristic loss and uniqueness preservation bug.
         true
     }
 }
 
-// FIXME!
-// impl<T: Copy> IsCopy<T> for T {
-//     fn is_copy() -> bool {
-//         true
-//     }
-// }
+#[inline]
+fn qualifies_for_branchless_sort<T>() -> bool {
+    // This is a heuristic, and as such it will guess wrong from time to time. The two parts broken
+    // down:
+    //
+    // - Copy: We guess that copy types have relatively cheap comparison functions. The branchless
+    //         sort does on average 8% more comparisons for random inputs and up to 50% in some
+    //         circumstances. The time won avoiding branches can be offset by this increase in
+    //         comparisons if the type is expensive to compare.
+    //
+    // - Type size: Large types are more expensive to move and the time won avoiding branches can be
+    //              offset by the increased cost of moving the values.
+    T::is_copy() && (mem::size_of::<T>() <= mem::size_of::<[usize; 4]>())
+}
 
 // --- Branchless sorting (less branches not zero) ---
 
-/// Swap value with next value in array pointed to by arr_ptr if should_swap is true.
+/// Swap two values in array pointed to by a_ptr and b_ptr if b is less than a.
 #[inline]
-unsafe fn swap_next_if<T>(arr_ptr: *mut T, should_swap: bool) {
+unsafe fn branchless_swap<T>(a_ptr: *mut T, b_ptr: *mut T, should_swap: bool) {
     // This is a branchless version of swap if.
     // The equivalent code with a branch would be:
     //
     // if should_swap {
-    //     ptr::swap_nonoverlapping(arr_ptr, arr_ptr.add(1), 1)
+    //     ptr::swap_nonoverlapping(a_ptr, b_ptr, 1);
     // }
-    //
-    // Be mindful in your benchmarking that this only starts to outperform branching code if the
-    // benchmark doesn't execute the same branches again and again.
-    // }
-    //
 
     // Give ourselves some scratch space to work with.
     // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
     let mut tmp = mem::MaybeUninit::<T>::uninit();
 
-    // Perform the conditional swap.
-    // SAFETY: the caller must guarantee that `arr_ptr` and `arr_ptr.add(1)` are
-    // valid for writes and properly aligned. `tmp` cannot be overlapping either `arr_ptr` or
-    // `arr_ptr.add(1) because `tmp` was just allocated on the stack as a separate allocated object.
-    // And `arr_ptr` and `arr_ptr.add(1)` can't overlap either.
-    // However `arr_ptr` and `arr_ptr.add(should_swap as usize)` can point to the same memory if
-    // should_swap is false.
+    // The goal is to generate cmov instructions here.
+    let a_swap_ptr = if should_swap { b_ptr } else { a_ptr };
+    let b_swap_ptr = if should_swap { a_ptr } else { b_ptr };
+
+    // SAFETY: the caller must guarantee that `a_ptr` and `b_ptr` are valid for writes
+    // and properly aligned, and part of the same allocation, and do not alias.
     unsafe {
-        ptr::copy_nonoverlapping(arr_ptr.add(!should_swap as usize), tmp.as_mut_ptr(), 1);
-        ptr::copy(arr_ptr.add(should_swap as usize), arr_ptr, 1);
-        ptr::copy_nonoverlapping(tmp.as_ptr(), arr_ptr.add(1), 1);
+        ptr::copy_nonoverlapping(b_swap_ptr, tmp.as_mut_ptr(), 1);
+        ptr::copy(a_swap_ptr, a_ptr, 1);
+        ptr::copy_nonoverlapping(tmp.as_ptr(), b_ptr, 1);
     }
 }
 
-/// Swap value with next value in array pointed to by arr_ptr if should_swap is true.
+/// Swap two values in array pointed to by a_ptr and b_ptr if b is less than a.
+#[inline]
+unsafe fn swap_if_less<T, F>(arr_ptr: *mut T, a: usize, b: usize, is_less: &mut F)
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    // SAFETY: the caller must guarantee that `a` and `b` each added to `arr_ptr` yield valid
+    // pointers into `arr_ptr`. and properly aligned, and part of the same allocation, and do not
+    // alias. `a` and `b` must be different numbers.
+    unsafe {
+        debug_assert!(a != b);
+
+        let a_ptr = arr_ptr.add(a);
+        let b_ptr = arr_ptr.add(b);
+
+        // PANIC SAFETY: if is_less panics, no scratch memory was created and the slice should still be
+        // in a well defined state, without duplicates.
+
+        // Important to only swap if it is more and not if it is equal. is_less should return false for
+        // equal, so we don't swap.
+        let should_swap = is_less(&*b_ptr, &*a_ptr);
+
+        branchless_swap(a_ptr, b_ptr, should_swap);
+    }
+}
+
+/// Comparing and swapping anything but adjacent elements will yield a non stable sort.
+/// So this must be fundamental building block for stable sorting networks.
 #[inline]
 unsafe fn swap_next_if_less<T, F>(arr_ptr: *mut T, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    // SAFETY: the caller must guarantee that `arr_ptr` and `arr_ptr.add(1)` are valid for writes
-    // and properly aligned.
-    //
-    // PANIC SAFETY: if is_less panics, no scratch memory was created and the slice should still be
-    // in a well defined state, without duplicates.
-    //
-    // Important to only swap if it is more and not if it is equal. is_less should return false for
-    // equal, so we don't swap.
+    // SAFETY: the caller must guarantee that `arr_ptr` and `arr_ptr.add(1)` yield valid
+    // pointers that are properly aligned, and part of the same allocation.
     unsafe {
-        let should_swap = is_less(&*arr_ptr.add(1), &*arr_ptr);
-        swap_next_if(arr_ptr, should_swap);
+        swap_if_less(arr_ptr, 0, 1, is_less);
     }
 }
 
-/// Sort the first 2 elements of v.
-unsafe fn sort2<T, F>(v: &mut [T], is_less: &mut F)
+/// Sort 8 elements
+///
+/// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
+/// performance impact.
+#[inline(never)]
+unsafe fn sort8_stable<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    debug_assert!(v.len() >= 2);
-
-    // SAFETY: caller must ensure v is at least len 2.
-    unsafe {
-        swap_next_if_less(v.as_mut_ptr(), is_less);
-    }
-}
-
-/// Sort the first 3 elements of v.
-unsafe fn sort3<T, F>(v: &mut [T], is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    debug_assert!(v.len() >= 3);
-
-    // SAFETY: caller must ensure v is at least len 3.
-    unsafe {
-        let arr_ptr = v.as_mut_ptr();
-        let x1 = arr_ptr;
-        let x2 = arr_ptr.add(1);
-
-        swap_next_if_less(x1, is_less);
-        swap_next_if_less(x2, is_less);
-
-        // After two swaps we are here:
-        //
-        // abc -> ab bc | abc
-        // acb -> ac bc | abc
-        // bac -> ab bc | abc
-        // bca -> bc ac | bac !
-        // cab -> ac bc | abc
-        // cba -> bc ac | bac !
-
-        // Which means we need to swap again.
-        swap_next_if_less(x1, is_less);
-    }
-}
-
-/// Sort the first 4 elements of v.
-unsafe fn sort4<T, F>(v: &mut [T], is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    debug_assert!(v.len() >= 4);
-
-    // SAFETY: caller must ensure v is at least len 4.
-    unsafe {
-        let arr_ptr = v.as_mut_ptr();
-        let x1 = arr_ptr;
-        let x2 = arr_ptr.add(1);
-        let x3 = arr_ptr.add(2);
-
-        swap_next_if_less(x1, is_less);
-        swap_next_if_less(x3, is_less);
-
-        // PANIC SAFETY: if is_less panics, no scratch memory was created and the slice should still be
-        // in a well defined state, without duplicates.
-        if is_less(&*x3, &*x2) {
-            ptr::swap_nonoverlapping(x2, x3, 1);
-
-            swap_next_if_less(x1, is_less);
-            swap_next_if_less(x3, is_less);
-            swap_next_if_less(x2, is_less);
-        }
-    }
-}
-
-#[inline]
-unsafe fn merge_up<T, F>(
-    mut src_left: *const T,
-    mut src_right: *const T,
-    mut dest_ptr: *mut T,
-    is_less: &mut F,
-) -> (*const T, *const T, *mut T)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    // This is a branchless merge utility function.
-    // The equivalent code with a branch would be:
-    //
-    // if is_less(&*src_right, &*src_left) {
-    //     // x == 0 && y == 1
-    //     // Elements should be swapped in final order.
-    //
-    //     // Copy right side into dest[0] and the left side into dest[1]
-    //     ptr::copy_nonoverlapping(src_right, dest_ptr, 1);
-    //     ptr::copy_nonoverlapping(src_left, dest_ptr.add(1), 1);
-    //
-    //     // Move right cursor one further, because we swapped.
-    //     src_right = src_right.add(1);
-    // } else {
-    //     // x == 1 && y == 0
-    //     // Elements are in order and don't need to be swapped.
-    //
-    //     // Copy left side into dest[0] and the right side into dest[1]
-    //     ptr::copy_nonoverlapping(src_left, dest_ptr, 1);
-    //     ptr::copy_nonoverlapping(src_right, dest_ptr.add(1), 1);
-    //
-    //     // Move left cursor one further, because we didn't swap.
-    //     src_left = src_left.add(1);
-    // }
-    //
-    // dest_ptr = dest_ptr.add(1);
-
-    // SAFETY: The caller must ensure that src_left and src_right are valid to read. And that
-    // dest_ptr and dest_ptr.add(1) are valid for writes. Also src and dest must not alias.
-    unsafe {
-        let x = !is_less(&*src_right, &*src_left);
-        let y = !x;
-        ptr::copy_nonoverlapping(src_right, dest_ptr.add(x as usize), 1);
-        ptr::copy_nonoverlapping(src_left, dest_ptr.add(y as usize), 1);
-        src_right = src_right.add(y as usize);
-        src_left = src_left.add(x as usize);
-        dest_ptr = dest_ptr.add(1);
-    }
-
-    (src_left, src_right, dest_ptr)
-}
-
-#[inline]
-unsafe fn merge_down<T, F>(
-    mut src_left: *const T,
-    mut src_right: *const T,
-    mut dest_ptr: *mut T,
-    is_less: &mut F,
-) -> (*const T, *const T, *mut T)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    // This is a branchless merge utility function.
-    // The equivalent code with a branch would be:
-    //
-    // dest_ptr = dest_ptr.sub(1);
-    //
-    // if is_less(&*src_right, &*src_left) {
-    //     // x == 0 && y == 1
-    //     // Elements should be swapped in final order.
-    //
-    //     // Copy right side into dest[0] and the left side into dest[1]
-    //     ptr::copy_nonoverlapping(src_right, dest_ptr, 1);
-    //     ptr::copy_nonoverlapping(src_left, dest_ptr.add(1), 1);
-    //
-    //     // Move left cursor one back, because we swapped.
-    //     src_left = src_left.sub(1);
-    // } else {
-    //     // x == 1 && y == 0
-    //     // Elements are in order and don't need to be swapped.
-    //
-    //     // Copy left side into dest[0] and the right side into dest[1]
-    //     ptr::copy_nonoverlapping(src_left, dest_ptr, 1);
-    //     ptr::copy_nonoverlapping(src_right, dest_ptr.add(1), 1);
-    //
-    //     // Move right cursor one back, because we didn't swap.
-    //     src_right = src_right.sub(1);
-    // }
-
-    // SAFETY: The caller must ensure that src_left and src_right are valid to read. And that
-    // dest_ptr and dest_ptr.sub(1) are valid for writes. Also src and dest must not alias.
-    unsafe {
-        let x = !is_less(&*src_right, &*src_left);
-        let y = !x;
-        dest_ptr = dest_ptr.sub(1);
-        ptr::copy_nonoverlapping(src_right, dest_ptr.add(x as usize), 1);
-        ptr::copy_nonoverlapping(src_left, dest_ptr.add(y as usize), 1);
-        src_right = src_right.sub(x as usize);
-        src_left = src_left.sub(y as usize);
-    }
-
-    (src_left, src_right, dest_ptr)
-}
-
-#[inline]
-unsafe fn finish_up<T, F>(
-    src_left: *const T,
-    src_right: *const T,
-    dest_ptr: *mut T,
-    is_less: &mut F,
-) where
-    F: FnMut(&T, &T) -> bool,
-{
-    // SAFETY: The caller must ensure that src_left and src_right are valid to
-    // read. And that dest_ptr is valid to write. Also src and dest must not alias.
-    unsafe {
-        let copy_ptr = if is_less(&*src_right, &*src_left) { src_right } else { src_left };
-        ptr::copy_nonoverlapping(copy_ptr, dest_ptr, 1);
-    }
-}
-
-#[inline]
-unsafe fn finish_down<T, F>(
-    src_left: *const T,
-    src_right: *const T,
-    dest_ptr: *mut T,
-    is_less: &mut F,
-) where
-    F: FnMut(&T, &T) -> bool,
-{
-    // SAFETY: The caller must ensure that src_left and src_right are valid to
-    // read. And that dest_ptr is valid to write. Also src and dest must not alias.
-    unsafe {
-        let copy_ptr = if is_less(&*src_right, &*src_left) { src_left } else { src_right };
-        ptr::copy_nonoverlapping(copy_ptr, dest_ptr, 1);
-    }
-}
-
-unsafe fn parity_merge8<T, F>(src_ptr: *const T, dest_ptr: *mut T, is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    // SAFETY: the caller must guarantee that `arr_ptr` and `dest_ptr` are valid for writes and
-    // properly aligned. And they point to a contiguous owned region of memory each at least 8
-    // elements long. Also `src_ptr` and `dest_ptr` must not alias.
-    //
-    // The caller must guarantee that the values of `dest_ptr[0..len]` have trivial
-    // destructors that are sound to be called on a shallow copy of T.
-    unsafe {
-        // Eg. src == [2, 3, 4, 7, 0, 1, 6, 8]
-        //
-        // in: ptr_left = src[0] ptr_right = src[4] ptr_dest = dest[0]
-        // mu: ptr_left = src[0] ptr_right = src[5] ptr_dest = dest[1] dest == [0, 2, u, u, u, u, u, u]
-        // mu: ptr_left = src[0] ptr_right = src[6] ptr_dest = dest[2] dest == [0, 1, 2, u, u, u, u, u]
-        // mu: ptr_left = src[1] ptr_right = src[6] ptr_dest = dest[3] dest == [0, 1, 2, 6, u, u, u, u]
-        // fu: dest == [0, 1, 2, 3, u, u, u, u]
-        // in: ptr_left = src[3] ptr_right = src[7] ptr_dest = dest[7]
-        // md: ptr_left = src[3] ptr_right = src[6] ptr_dest = dest[6] dest == [0, 1, 2, 6, u, u, 7, 8]
-        // md: ptr_left = src[2] ptr_right = src[6] ptr_dest = dest[5] dest == [0, 1, 2, 6, u, 6, 7, 8]
-        // md: ptr_left = src[2] ptr_right = src[5] ptr_dest = dest[4] dest == [0, 1, 2, 3, 4, 6, 7, 8]
-        // fd: dest == [0, 1, 2, 3, 4, 6, 7, 8]
-
-        let mut ptr_left = src_ptr;
-        let mut ptr_right = src_ptr.add(4);
-        let mut ptr_dest = dest_ptr;
-
-        (ptr_left, ptr_right, ptr_dest) = merge_up(ptr_left, ptr_right, ptr_dest, is_less);
-        (ptr_left, ptr_right, ptr_dest) = merge_up(ptr_left, ptr_right, ptr_dest, is_less);
-        (ptr_left, ptr_right, ptr_dest) = merge_up(ptr_left, ptr_right, ptr_dest, is_less);
-
-        finish_up(ptr_left, ptr_right, ptr_dest, is_less);
-
-        // ---
-
-        ptr_left = src_ptr.add(3);
-        ptr_right = src_ptr.add(7);
-        ptr_dest = dest_ptr.add(7);
-
-        (ptr_left, ptr_right, ptr_dest) = merge_down(ptr_left, ptr_right, ptr_dest, is_less);
-        (ptr_left, ptr_right, ptr_dest) = merge_down(ptr_left, ptr_right, ptr_dest, is_less);
-        (ptr_left, ptr_right, ptr_dest) = merge_down(ptr_left, ptr_right, ptr_dest, is_less);
-
-        finish_down(ptr_left, ptr_right, ptr_dest, is_less);
-    }
-}
-
-unsafe fn parity_merge<T, F>(src_ptr: *const T, dest_ptr: *mut T, len: usize, is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    // SAFETY: the caller must guarantee that `src_ptr` and `dest_ptr` are valid for writes and
-    // properly aligned. And they point to a contiguous owned region of memory each at least len
-    // elements long. Also `src_ptr` and `dest_ptr` must not alias.
-    //
-    // The caller must guarantee that the values of `dest_ptr[0..len]` have trivial
-    // destructors that are sound to be called on a shallow copy of T.
-    unsafe {
-        let mut block = len / 2;
-
-        let mut ptr_left = src_ptr;
-        let mut ptr_right = src_ptr.add(block);
-        let mut ptr_data = dest_ptr;
-
-        let mut t_ptr_left = src_ptr.add(block - 1);
-        let mut t_ptr_right = src_ptr.add(len - 1);
-        let mut t_ptr_data = dest_ptr.add(len - 1);
-
-        block -= 1;
-        while block != 0 {
-            (ptr_left, ptr_right, ptr_data) = merge_up(ptr_left, ptr_right, ptr_data, is_less);
-            (t_ptr_left, t_ptr_right, t_ptr_data) =
-                merge_down(t_ptr_left, t_ptr_right, t_ptr_data, is_less);
-
-            block -= 1;
-        }
-
-        finish_up(ptr_left, ptr_right, ptr_data, is_less);
-        finish_down(t_ptr_left, t_ptr_right, t_ptr_data, is_less);
-    }
-}
-
-// This implementation is only valid for Copy types. For these reasons:
-// 1. Panic safety
-// 2. Uniqueness preservation for types with interior mutability.
-unsafe fn sort8<T, F>(v: &mut [T], is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    debug_assert!(v.len() == 8);
-
     // SAFETY: caller must ensure v is at least len 8.
     unsafe {
-        sort4(v, is_less);
-        sort4(&mut v[4..], is_less);
+        debug_assert!(v.len() == 8);
 
         let arr_ptr = v.as_mut_ptr();
-        if !is_less(&*arr_ptr.add(4), &*arr_ptr.add(3)) {
-            return;
-        }
 
+        // Transposition sorting-network, by only comparing and swapping adjacent wires we have a stable
+        // sorting-network. Sorting-networks are great at leveraging Instruction-Level-Parallelism
+        // (ILP), they expose multiple comparisons in straight-line code with builtin data-dependency
+        // parallelism and ordering per layer. This has to do 28 comparisons in contrast to the 19
+        // comparisons done by an optimal size 8 unstable sorting-network.
+        swap_next_if_less(arr_ptr.add(0), is_less);
+        swap_next_if_less(arr_ptr.add(2), is_less);
+        swap_next_if_less(arr_ptr.add(4), is_less);
+        swap_next_if_less(arr_ptr.add(6), is_less);
+
+        swap_next_if_less(arr_ptr.add(1), is_less);
+        swap_next_if_less(arr_ptr.add(3), is_less);
+        swap_next_if_less(arr_ptr.add(5), is_less);
+
+        swap_next_if_less(arr_ptr.add(0), is_less);
+        swap_next_if_less(arr_ptr.add(2), is_less);
+        swap_next_if_less(arr_ptr.add(4), is_less);
+        swap_next_if_less(arr_ptr.add(6), is_less);
+
+        swap_next_if_less(arr_ptr.add(1), is_less);
+        swap_next_if_less(arr_ptr.add(3), is_less);
+        swap_next_if_less(arr_ptr.add(5), is_less);
+
+        swap_next_if_less(arr_ptr.add(0), is_less);
+        swap_next_if_less(arr_ptr.add(2), is_less);
+        swap_next_if_less(arr_ptr.add(4), is_less);
+        swap_next_if_less(arr_ptr.add(6), is_less);
+
+        swap_next_if_less(arr_ptr.add(1), is_less);
+        swap_next_if_less(arr_ptr.add(3), is_less);
+        swap_next_if_less(arr_ptr.add(5), is_less);
+
+        swap_next_if_less(arr_ptr.add(0), is_less);
+        swap_next_if_less(arr_ptr.add(2), is_less);
+        swap_next_if_less(arr_ptr.add(4), is_less);
+        swap_next_if_less(arr_ptr.add(6), is_less);
+
+        swap_next_if_less(arr_ptr.add(1), is_less);
+        swap_next_if_less(arr_ptr.add(3), is_less);
+        swap_next_if_less(arr_ptr.add(5), is_less);
+    }
+}
+
+unsafe fn sort24_stable<T, F>(v: &mut [T], is_less: &mut F)
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    // SAFETY: caller must ensure v is exactly len 24.
+    unsafe {
+        debug_assert!(v.len() == 24);
+
+        sort8_stable(&mut v[0..8], is_less);
+        sort8_stable(&mut v[8..16], is_less);
+        sort8_stable(&mut v[16..24], is_less);
+
+        // We only need place for 8 entries because we know both sides are of length 8.
         let mut swap = mem::MaybeUninit::<[T; 8]>::uninit();
         let swap_ptr = swap.as_mut_ptr() as *mut T;
 
-        // We know the two parts v[0..4] and v[4..8] are already sorted. Merge into swap_ptr, so
-        // that a panic of is_less leaves arr_ptr unchanged and in a valid state, preserving all
-        // original elements.
-        parity_merge8(arr_ptr, swap_ptr, is_less);
-        // Once the merge is done, copy everything from swap to arr.
-        ptr::copy_nonoverlapping(swap_ptr, arr_ptr, 8);
-    }
-}
+        // We only need place for 8 entries because we know both sides are of length 8.
+        merge(&mut v[..16], 8, swap_ptr, is_less);
 
-// This implementation is only valid for Copy types. For these reasons:
-// 1. Panic safety
-// 2. Uniqueness preservation for types with interior mutability.
-unsafe fn sort16<T, F>(v: &mut [T], is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    debug_assert!(v.len() == 16);
-
-    // SAFETY: caller must ensure v is at least len 16.
-    unsafe {
-        // Sort the 4 parts of v individually.
-        sort4(v, is_less);
-        sort4(&mut v[4..], is_less);
-        sort4(&mut v[8..], is_less);
-        sort4(&mut v[12..], is_less);
-
-        // If all 3 pairs of border elements are sorted, we know the whole 16 elements are now sorted.
-        // Doing this check reduces the total comparisons done on average for different input patterns.
-        let arr_ptr = v.as_mut_ptr();
-        if !is_less(&*arr_ptr.add(4), &*arr_ptr.add(3))
-            && !is_less(&*arr_ptr.add(8), &*arr_ptr.add(7))
-            && !is_less(&*arr_ptr.add(12), &*arr_ptr.add(11))
-        {
-            return;
-        }
-
-        let mut swap = mem::MaybeUninit::<[T; 16]>::uninit();
-        let swap_ptr = swap.as_mut_ptr() as *mut T;
-
-        // Merge the already sorted v[0..4] with v[4..8] into swap.
-        parity_merge8(arr_ptr, swap_ptr, is_less);
-        // Merge the already sorted v[8..12] with v[12..16] into swap.
-        parity_merge8(arr_ptr.add(8), swap_ptr.add(8), is_less);
-
-        // v is still the same as before parity_merge8
-        // swap now contains a shallow copy of v and is sorted in v[0..8] and v[8..16]
-        // Merge the two partitions.
-        // parity_merge(swap_ptr, arr_ptr, 16, is_less);
-
-        // FIXME discuss perf loss by promising original elements in case of panic.
-        ptr::copy_nonoverlapping(swap_ptr, arr_ptr, 16);
-        parity_merge(arr_ptr, swap_ptr, 16, is_less);
-        ptr::copy_nonoverlapping(swap_ptr, arr_ptr, 16);
+        // We only need place for 8 entries because the shorter side is length 8.
+        merge(&mut v[..24], 16, swap_ptr, is_less);
     }
 }
