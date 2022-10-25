@@ -691,7 +691,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let is_expected = &|res| source.is_expected(res);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let typo_sugg = self.lookup_typo_candidate(path, source.namespace(), is_expected);
-        if let TypoCandidate::Shadowed(res, Some(sugg_span)) = typo_sugg {
+        let is_local = &|res: Res| res.opt_def_id().map_or(false, |id| id.is_local());
+        if let TypoCandidate::Shadowed(res, Some(sugg_span)) = typo_sugg && is_local(res) {
             err.span_label(
                 sugg_span,
                 format!("you might have meant to refer to this {}", res.descr()),
