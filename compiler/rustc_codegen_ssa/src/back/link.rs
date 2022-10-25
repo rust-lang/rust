@@ -391,13 +391,14 @@ fn link_rlib<'a>(
     }
 
     for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
+        collate_raw_dylibs(sess, codegen_results.crate_info.used_libraries.iter())?
     {
         let output_path = archive_builder_builder.create_dll_import_lib(
             sess,
             &raw_dylib_name,
             &raw_dylib_imports,
             tmpdir.as_ref(),
+            true,
         );
 
         ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|error| {
@@ -449,9 +450,9 @@ fn link_rlib<'a>(
 /// then the CodegenResults value contains one NativeLib instance for each block.  However, the
 /// linker appears to expect only a single import library for each library used, so we need to
 /// collate the symbols together by library name before generating the import libraries.
-fn collate_raw_dylibs(
-    sess: &Session,
-    used_libraries: &[NativeLib],
+fn collate_raw_dylibs<'a, 'b>(
+    sess: &'a Session,
+    used_libraries: impl IntoIterator<Item = &'b NativeLib>,
 ) -> Result<Vec<(String, Vec<DllImport>)>, ErrorGuaranteed> {
     // Use index maps to preserve original order of imports and libraries.
     let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
@@ -2068,13 +2069,43 @@ fn linker_with_args<'a>(
 
     // Link with the import library generated for any raw-dylib functions.
     for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
+        collate_raw_dylibs(sess, codegen_results.crate_info.used_libraries.iter())?
     {
         cmd.add_object(&archive_builder_builder.create_dll_import_lib(
             sess,
             &raw_dylib_name,
             &raw_dylib_imports,
             tmpdir,
+            true,
+        ));
+    }
+    // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
+    // they are used within inlined functions or instantiated generic functions. We do this *after*
+    // handling the raw-dylib symbols in the current crate to make sure that those are chosen first
+    // by the linker.
+    let (_, dependency_linkage) = codegen_results
+        .crate_info
+        .dependency_formats
+        .iter()
+        .find(|(ty, _)| *ty == crate_type)
+        .expect("failed to find crate type in dependency format list");
+    let native_libraries_from_nonstatics = codegen_results
+        .crate_info
+        .native_libraries
+        .iter()
+        .filter_map(|(cnum, libraries)| {
+            (dependency_linkage[cnum.as_usize() - 1] != Linkage::Static).then(|| libraries)
+        })
+        .flatten();
+    for (raw_dylib_name, raw_dylib_imports) in
+        collate_raw_dylibs(sess, native_libraries_from_nonstatics)?
+    {
+        cmd.add_object(&archive_builder_builder.create_dll_import_lib(
+            sess,
+            &raw_dylib_name,
+            &raw_dylib_imports,
+            tmpdir,
+            false,
         ));
     }
 
