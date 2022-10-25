@@ -1,6 +1,6 @@
-// compile-flags: -C overflow-checks=off
+// compile-flags: -Coverflow-checks=off -Zunsound-mir-opts
 
-// EMIT_MIR inherit_overflow_checks_use.main.DataflowConstProp.diff
+// EMIT_MIR inherit_overflow.main.DataflowConstProp.diff
 fn main() {
     // After inlining, this will contain a `CheckedBinaryOp`. The overflow
     // must be ignored by the constant propagation to avoid triggering a panic.

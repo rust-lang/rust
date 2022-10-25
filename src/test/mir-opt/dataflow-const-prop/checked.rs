@@ -1,5 +1,5 @@
 // unit-test: DataflowConstProp
-// compile-flags: -C overflow-checks=on
+// compile-flags: -Zunsound-mir-opts -Coverflow-checks=on
 
 // EMIT_MIR checked.main.DataflowConstProp.diff
 #[allow(arithmetic_overflow)]

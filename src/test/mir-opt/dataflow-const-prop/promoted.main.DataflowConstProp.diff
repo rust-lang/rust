@@ -16,7 +16,7 @@
           StorageLive(_2);                 // scope 0 at $DIR/promoted.rs:+2:14: +2:17
           _4 = const _;                    // scope 0 at $DIR/promoted.rs:+2:14: +2:17
                                            // mir::Constant
-                                           // + span: $DIR/promoted.rs:6:14: 6:17
+                                           // + span: $DIR/promoted.rs:7:14: 7:17
                                            // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[0])) }
           _2 = &(*_4);                     // scope 0 at $DIR/promoted.rs:+2:14: +2:17
           _1 = (*_2);                      // scope 0 at $DIR/promoted.rs:+2:13: +2:17

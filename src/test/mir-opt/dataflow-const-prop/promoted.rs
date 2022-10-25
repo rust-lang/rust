@@ -1,4 +1,5 @@
 // unit-test: DataflowConstProp
+// compile-flags: -Zunsound-mir-opts
 
 // EMIT_MIR promoted.main.DataflowConstProp.diff
 fn main() {

@@ -1,4 +1,5 @@
 // unit-test: DataflowConstProp
+// compile-flags: -Zunsound-mir-opts
 
 fn foo(n: i32) {}
 
