@@ -543,6 +543,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS_INFO,
     crate::suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL_INFO,
     crate::suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL_INFO,
+    crate::suspicious_xor_used_as_pow::SUSPICIOUS_XOR_USED_AS_POW_INFO,
     crate::swap::ALMOST_SWAPPED_INFO,
     crate::swap::MANUAL_SWAP_INFO,
     crate::swap_ptr_to_ref::SWAP_PTR_TO_REF_INFO,
