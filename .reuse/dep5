@@ -53,3 +53,7 @@ License: OFL-1.1
 Files: src/librustdoc/html/static/fonts/SourceSerif4*
 Copyright: 2014-2021 Adobe Systems Incorporated
 License: OFL-1.1
+
+Files: src/librustdoc/html/static/css/normalize.css
+Copyright: Nicolas Gallagher and Jonathan Neal
+License: MIT
