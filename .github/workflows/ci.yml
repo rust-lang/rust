@@ -46,9 +46,10 @@ jobs:
 
       - name: Print cargo-wasix info
         shell: bash
-        run:
+        run: |
           cd cargo-wasix
-          echo "cargo-wasix commit: $(git rev-parse HEAD)"
+          echo "cargo-wasix commit:"
+          echo $(git rev-parse head)
 
       - name: Build
         shell: bash
@@ -129,7 +130,7 @@ jobs:
 
       - name: Build (Linux)
         shell: bash
-        if: matrix.os == 'self-hosted-ubuntu'
+        if: matrix.os == 'self-hosted-ubuntu' || matrix.os == 'ubuntu-latest'
         env:
           WASIX_NO_UPDATE_REPOS: '1'
           WASIX_COMPONENTS: rust
@@ -142,7 +143,7 @@ jobs:
 
       - name: Archive build output (Linux)
         uses: actions/upload-artifact@v3
-        if: matrix.os == 'self-hosted-ubuntu'
+        if: matrix.os == 'self-hosted-ubuntu' || matrix.os == 'ubuntu-latest'
         with:
           name: rust-toolchain-x86_64-unknown-linux-gnu
           path: |
@@ -153,7 +154,7 @@ jobs:
 
       - name: Setup (Mac OS)
         shell: bash
-        if: matrix.os == 'macos-12' && matrix.arch == 'x86'
+        if: matrix.os == 'macos-12'
         run: |
           brew update
           # Need ninja for building llvm (for aarch64 cross compile)
@@ -161,7 +162,7 @@ jobs:
 
       - name: Build (Mac Os, x86)
         shell: bash
-        if: matrix.os == 'macos-12'
+        if: matrix.os == 'macos-12' && matrix.arch == 'x86'
         env:
           WASIX_NO_UPDATE_REPOS: '1'
           GITHUB_ACTIONS: 'false'
