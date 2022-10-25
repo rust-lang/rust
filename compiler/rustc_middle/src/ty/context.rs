@@ -79,7 +79,7 @@ use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
 
-use super::{ImplPolarity, RvalueScopes};
+use super::{ImplPolarity, ResolverOutputs, RvalueScopes};
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
@@ -1067,10 +1067,9 @@ pub struct GlobalCtxt<'tcx> {
     pub consts: CommonConsts<'tcx>,
 
     definitions: RwLock<Definitions>,
-    cstore: Box<CrateStoreDyn>,
 
     /// Output of the resolver.
-    pub(crate) untracked_resolutions: ty::ResolverOutputs,
+    pub(crate) untracked_resolutions: ty::ResolverGlobalCtxt,
     untracked_resolver_for_lowering: Steal<ty::ResolverAstLowering>,
     /// The entire crate as AST. This field serves as the input for the hir_crate query,
     /// which lowers it from AST to HIR. It must not be read or used by anything else.
@@ -1233,10 +1232,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        definitions: Definitions,
-        cstore: Box<CrateStoreDyn>,
-        untracked_resolutions: ty::ResolverOutputs,
-        untracked_resolver_for_lowering: ty::ResolverAstLowering,
+        resolver_outputs: ResolverOutputs,
         krate: Lrc<ast::Crate>,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
@@ -1245,6 +1241,11 @@ impl<'tcx> TyCtxt<'tcx> {
         crate_name: &str,
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
+        let ResolverOutputs {
+            definitions,
+            global_ctxt: untracked_resolutions,
+            ast_lowering: untracked_resolver_for_lowering,
+        } = resolver_outputs;
         let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
             s.emit_fatal(err);
         });
@@ -1253,7 +1254,7 @@ impl<'tcx> TyCtxt<'tcx> {
             &interners,
             s,
             &definitions,
-            &*cstore,
+            &*untracked_resolutions.cstore,
             // This is only used to create a stable hashing context.
             &untracked_resolutions.source_span,
         );
@@ -1268,7 +1269,6 @@ impl<'tcx> TyCtxt<'tcx> {
             interners,
             dep_graph,
             definitions: RwLock::new(definitions),
-            cstore,
             prof: s.prof.clone(),
             types: common_types,
             lifetimes: common_lifetimes,
@@ -1369,7 +1369,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(id) = id.as_local() {
             self.definitions_untracked().def_key(id)
         } else {
-            self.cstore.def_key(id)
+            self.untracked_resolutions.cstore.def_key(id)
         }
     }
 
@@ -1383,7 +1383,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(id) = id.as_local() {
             self.definitions_untracked().def_path(id)
         } else {
-            self.cstore.def_path(id)
+            self.untracked_resolutions.cstore.def_path(id)
         }
     }
 
@@ -1393,7 +1393,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(def_id) = def_id.as_local() {
             self.definitions_untracked().def_path_hash(def_id)
         } else {
-            self.cstore.def_path_hash(def_id)
+            self.untracked_resolutions.cstore.def_path_hash(def_id)
         }
     }
 
@@ -1402,7 +1402,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if crate_num == LOCAL_CRATE {
             self.sess.local_stable_crate_id()
         } else {
-            self.cstore.stable_crate_id(crate_num)
+            self.untracked_resolutions.cstore.stable_crate_id(crate_num)
         }
     }
 
@@ -1413,7 +1413,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if stable_crate_id == self.sess.local_stable_crate_id() {
             LOCAL_CRATE
         } else {
-            self.cstore.stable_crate_id_to_crate_num(stable_crate_id)
+            self.untracked_resolutions.cstore.stable_crate_id_to_crate_num(stable_crate_id)
         }
     }
 
@@ -1432,8 +1432,9 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
             // it to a DefId.
-            let cnum = self.cstore.stable_crate_id_to_crate_num(stable_crate_id);
-            self.cstore.def_path_hash_to_def_id(cnum, hash)
+            let cstore = &*self.untracked_resolutions.cstore;
+            let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
+            cstore.def_path_hash_to_def_id(cnum, hash)
         }
     }
 
@@ -1445,7 +1446,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let (crate_name, stable_crate_id) = if def_id.is_local() {
             (self.crate_name, self.sess.local_stable_crate_id())
         } else {
-            let cstore = &self.cstore;
+            let cstore = &*self.untracked_resolutions.cstore;
             (cstore.crate_name(def_id.krate), cstore.stable_crate_id(def_id.krate))
         };
 
@@ -1520,7 +1521,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
     pub fn cstore_untracked(self) -> &'tcx CrateStoreDyn {
-        &*self.cstore
+        &*self.untracked_resolutions.cstore
     }
 
     /// Note that this is *untracked* and should only be used within the query
@@ -1546,7 +1547,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let hcx = StableHashingContext::new(
             self.sess,
             &*definitions,
-            &*self.cstore,
+            &*self.untracked_resolutions.cstore,
             &self.untracked_resolutions.source_span,
         );
         f(hcx)
@@ -2364,7 +2365,7 @@ impl<'tcx> TyCtxt<'tcx> {
             st,
             self.sess,
             &self.definitions.read(),
-            &*self.cstore,
+            &*self.untracked_resolutions.cstore,
             // This is only used to create a stable hashing context.
             &self.untracked_resolutions.source_span,
         )
