@@ -75,11 +75,16 @@ jobs:
     strategy:
       matrix:
         os: [self-hosted-ubuntu, macos-12, windows-2019]
-        include:
-          - os: macos-12
-            arch: x86
-          - os: macos-12
+        arch: [x86, aarch64]
+        exclude:
+          - os: windows-2019
             arch: aarch64
+          - os: self-hosted-ubuntu
+            arch: aarch64
+          - os: ubuntu-latest
+            arch: aarch64
+
+
     runs-on: ${{ matrix.os }}
     steps:
 
@@ -122,15 +127,15 @@ jobs:
       # Linux!
 
       - name: Setup (Ubuntu)
+        if: matrix.arch == 'x86' && (matrix.os == 'self-hosted-ubuntu' || matrix.os == 'ubuntu-latest')
         shell: bash
-        if: matrix.os == 'self-hosted-ubuntu' || matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential curl wget xz-utils git python3 ninja-build cmake
 
       - name: Build (Linux)
+        if: matrix.arch == 'x86' && (matrix.os == 'self-hosted-ubuntu' || matrix.os == 'ubuntu-latest')
         shell: bash
-        if: matrix.os == 'self-hosted-ubuntu' || matrix.os == 'ubuntu-latest'
         env:
           WASIX_NO_UPDATE_REPOS: '1'
           WASIX_COMPONENTS: rust
@@ -211,16 +216,16 @@ jobs:
       # Windows
 
       - name: Set up MinGW
+        if: matrix.os == 'windows-2019' && matrix.arch == 'x86'
         uses: egor-tensin/setup-mingw@v2
-        if: matrix.os == 'windows-2019'
       
       - name: Install ninja
-        if: matrix.os == 'windows-2019'
+        if: matrix.os == 'windows-2019' && matrix.arch == 'x86'
         uses: seanmiddleditch/gha-setup-ninja@master
 
       - name: Build (Windows)
+        if: matrix.os == 'windows-2019' && matrix.arch == 'x86'
         shell: bash
-        if: matrix.os == 'windows-2019'
         # TODO: remove once Windows is validated!
         continue-on-error: true
         env:
@@ -235,10 +240,19 @@ jobs:
           GITHUB_ACTIONS=false WASIX_BUILD_DIR=$GITHUB_WORKSPACE cargo run -- wasix build-toolchain
 
       - name: Archive build output (Windows)
+        if: matrix.os == 'windows-2019' && matrix.arch == 'x86'
         uses: actions/upload-artifact@v3
-        if: matrix.os == 'windows-2019'
         with:
           name: rust-toolchain-x86_64-pc-windows-msvc
           path: |
             wasix-rust/build/x86_64-pc-windows-msvc/stage2
             !wasix-rust/build/x86_64-pc-windows-msvc/stage2/lib/rustlib/src
+
+      # Clean up the build directory.
+      # This is required because otherwise the disk is to full for Github Action
+      # cleanup and the build fails.
+      - name: Clean up disk (Windows)
+        if: matrix.os == 'windows-2019'
+        shell: bash
+        run: |
+          rm -rf wasix-rust/build || true
