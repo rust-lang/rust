@@ -101,12 +101,10 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::Nop => {
                 // safe (at least as emitted during MIR construction)
             }
-
-            // Move to above list once mir construction uses it.
-            StatementKind::Intrinsic(..) => unreachable!(),
         }
         self.super_statement(statement, location);
     }
