@@ -321,7 +321,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     return Ok(Some(body));
                 }
 
-                this.handle_unsupported(format!("can't call foreign function: {}", link_name))?;
+                this.handle_unsupported(format!("can't call foreign function: {link_name}"))?;
                 return Ok(None);
             }
         }
@@ -420,10 +420,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "miri_get_alloc_id" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr)?;
+                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr).map_err(|_e| {
+                    err_machine_stop!(TerminationInfo::Abort(
+                        format!("pointer passed to miri_get_alloc_id must not be dangling, got {ptr:?}")
+                    ))
+                })?;
                 this.write_scalar(Scalar::from_u64(alloc_id.0.get()), dest)?;
             }
-            "miri_print_stacks" => {
+            "miri_print_borrow_stacks" => {
                 let [id] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let id = this.read_scalar(id)?.to_u64()?;
                 if let Some(id) = std::num::NonZeroU64::new(id) {

@@ -263,7 +263,7 @@ pub fn report_error<'tcx, 'mir>(
     msg.insert(0, e.to_string());
     report_msg(
         DiagLevel::Error,
-        &if let Some(title) = title { format!("{}: {}", title, msg[0]) } else { msg[0].clone() },
+        &if let Some(title) = title { format!("{title}: {}", msg[0]) } else { msg[0].clone() },
         msg,
         vec![],
         helps,

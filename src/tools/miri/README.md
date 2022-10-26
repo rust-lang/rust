@@ -538,15 +538,23 @@ extern "Rust" {
     fn miri_start_panic(payload: *mut u8) -> !;
 
     /// Miri-provided extern function to get the internal unique identifier for the allocation that a pointer
-    /// points to. This is only useful as an input to `miri_print_stacks`, and it is a separate call because
+    /// points to. If this pointer is invalid (not pointing to an allocation), interpretation will abort.
+    ///
+    /// This is only useful as an input to `miri_print_borrow_stacks`, and it is a separate call because
     /// getting a pointer to an allocation at runtime can change the borrow stacks in the allocation.
+    /// This function should be considered unstable. It exists only to support `miri_print_borrow_stacks` and so
+    /// inherits all of its instability.
     fn miri_get_alloc_id(ptr: *const ()) -> u64;
 
     /// Miri-provided extern function to print (from the interpreter, not the program) the contents of all
-    /// borrow stacks in an allocation. The format of what this emits is unstable and may change at any time.
-    /// In particular, users should be aware that Miri will periodically attempt to garbage collect the
-    /// contents of all stacks. Callers of this function may wish to pass `-Zmiri-tag-gc=0` to disable the GC.
-    fn miri_print_stacks(alloc_id: u64);
+    /// borrow stacks in an allocation. The leftmost tag is the bottom of the stack.
+    /// The format of what this emits is unstable and may change at any time. In particular, users should be
+    /// aware that Miri will periodically attempt to garbage collect the contents of all stacks. Callers of
+    /// this function may wish to pass `-Zmiri-tag-gc=0` to disable the GC.
+    ///
+    /// This function is extremely unstable. At any time the format of its output may change, its signature may
+    /// change, or it may be removed entirely.
+    fn miri_print_borrow_stacks(alloc_id: u64);
 
     /// Miri-provided extern function to print (from the interpreter, not the
     /// program) the contents of a section of program memory, as bytes. Bytes

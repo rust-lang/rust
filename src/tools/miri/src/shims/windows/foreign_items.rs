@@ -418,13 +418,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Indicate an error.
                 this.write_null(dest)?;
             }
-            "GetFileInformationByHandleEx" if this.frame_in_std() => {
-                #[allow(non_snake_case)]
-                let [_hFile, _FileInformationClass, _lpFileInformation, _dwBufferSize] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                // Just make it fail.
-                this.write_null(dest)?;
-            }
             "GetFileType" if this.frame_in_std() => {
                 #[allow(non_snake_case)]
                 let [_hFile] =

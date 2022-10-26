@@ -40,7 +40,7 @@ impl<T> RangeMap<T> {
         let mut left = 0usize; // inclusive
         let mut right = self.v.len(); // exclusive
         loop {
-            debug_assert!(left < right, "find_offset: offset {} is out-of-bounds", offset);
+            debug_assert!(left < right, "find_offset: offset {offset} is out-of-bounds");
             let candidate = left.checked_add(right).unwrap() / 2;
             let elem = &self.v[candidate];
             if offset < elem.range.start {

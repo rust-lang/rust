@@ -192,7 +192,7 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
             if log::Level::from_str(&var).is_ok() {
                 env::set_var(
                     "RUSTC_LOG",
-                    &format!(
+                    format!(
                         "rustc_middle::mir::interpret={0},rustc_const_eval::interpret={0}",
                         var
                     ),
@@ -243,7 +243,7 @@ fn host_sysroot() -> Option<String> {
                     )
                 }
             }
-            format!("{}/toolchains/{}", home, toolchain)
+            format!("{home}/toolchains/{toolchain}")
         }
         _ => option_env!("RUST_SYSROOT")
             .unwrap_or_else(|| {
@@ -330,7 +330,7 @@ fn main() {
         } else if crate_kind == "host" {
             false
         } else {
-            panic!("invalid `MIRI_BE_RUSTC` value: {:?}", crate_kind)
+            panic!("invalid `MIRI_BE_RUSTC` value: {crate_kind:?}")
         };
 
         // We cannot use `rustc_driver::main` as we need to adjust the CLI arguments.

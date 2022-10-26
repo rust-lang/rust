@@ -870,6 +870,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.machine.threads.active_thread_stack_mut()
     }
 
+    /// Set the name of the current thread. The buffer must not include the null terminator.
     #[inline]
     fn set_thread_name(&mut self, thread: ThreadId, new_thread_name: Vec<u8>) {
         let this = self.eval_context_mut();

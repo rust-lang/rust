@@ -1153,7 +1153,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let alloc_extra = this.get_alloc_extra(alloc_id)?;
         let stacks = alloc_extra.stacked_borrows.as_ref().unwrap().borrow();
         for (range, stack) in stacks.stacks.iter_all() {
-            print!("{:?}: [", range);
+            print!("{range:?}: [");
+            if let Some(bottom) = stack.unknown_bottom() {
+                print!(" unknown-bottom(..{bottom:?})");
+            }
             for i in 0..stack.len() {
                 let item = stack.get(i).unwrap();
                 print!(" {:?}{:?}", item.perm(), item.tag());
