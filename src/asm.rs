@@ -564,39 +564,52 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
                 _ => unimplemented!(),
             }
         },
+        // They can be retrieved from https://gcc.gnu.org/onlinedocs/gcc/Machine-Constraints.html
         InlineAsmRegOrRegClass::RegClass(reg) => match reg {
-            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => unimplemented!(),
-            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => unimplemented!(),
-            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => unimplemented!(),
-            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => unimplemented!(),
-            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => unimplemented!(),
+            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => "w",
+            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => "x",
+            InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+                unreachable!("clobber-only")
+            }
+            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
             | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low16)
-            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low8) => unimplemented!(),
-            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16)
+            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low8)
+            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16)
             | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low8)
-            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low4) => unimplemented!(),
-            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg)
-            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg) => unimplemented!(),
-            InlineAsmRegClass::Avr(_) => unimplemented!(),
-            InlineAsmRegClass::Bpf(_) => unimplemented!(),
-            InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => unimplemented!(),
-            InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => unimplemented!(),
-            InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => unimplemented!(),
-            InlineAsmRegClass::Msp430(_) => unimplemented!(),
-            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => unimplemented!(),
-            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => unimplemented!(),
-            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => unimplemented!(),
-            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) => unimplemented!(),
-            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => unimplemented!(),
-            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) => unimplemented!(),
+            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low4)
+            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg)
+            | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg) => "t",
+            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_upper) => "d",
+            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_pair) => "r",
+            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_iw) => "w",
+            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => "e",
+            InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) => "w",
+            InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) => "d", // more specific than "r"
+            InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) => "f",
+            InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
+            // https://github.com/gcc-mirror/gcc/blob/master/gcc/config/nvptx/nvptx.md -> look for
+            // "define_constraint".
+            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => "h",
+            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => "r",
+            InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => "l",
+
+            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => "b",
+            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::cr)
             | InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::xer) => {
                 unreachable!("clobber-only")
             },
-            InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => unimplemented!(),
-            InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => unimplemented!(),
-            InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => unimplemented!(),
+            InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => "f",
+            InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => {
+                unreachable!("clobber-only")
+            }
             InlineAsmRegClass::X86(X86InlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) => "Q",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) => "q",
@@ -604,16 +617,18 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg) => "x",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => "v",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => "Yk",
-            InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg0) => unimplemented!(),
-            InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => unimplemented!(),
             InlineAsmRegClass::X86(
-                X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg | X86InlineAsmRegClass::tmm_reg,
+                X86InlineAsmRegClass::kreg0
+                | X86InlineAsmRegClass::x87_reg
+                | X86InlineAsmRegClass::mmx_reg
+                | X86InlineAsmRegClass::tmm_reg,
             ) => unreachable!("clobber-only"),
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
                 bug!("GCC backend does not support SPIR-V")
             }
-            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => unimplemented!(),
-            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => unimplemented!(),
+            InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => "r",
+            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::Err => unreachable!(),
         }
     };
@@ -691,7 +706,10 @@ impl<'gcc, 'tcx> AsmMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             && options.contains(InlineAsmOptions::ATT_SYNTAX);
 
         // Build the template string
-        let mut template_str = String::new();
+        let mut template_str = ".pushsection .text\n".to_owned();
+        if att_dialect {
+            template_str.push_str(".att_syntax\n");
+        }
         for piece in template {
             match *piece {
                 InlineAsmTemplatePiece::String(ref string) => {
@@ -739,48 +757,51 @@ impl<'gcc, 'tcx> AsmMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             }
         }
 
-        let template_str =
-            if att_dialect {
-                format!(".att_syntax\n\t{}\n\t.intel_syntax noprefix", template_str)
-            }
-            else {
-                template_str
-            };
+        if att_dialect {
+            template_str.push_str("\n\t.intel_syntax noprefix");
+        }
         // NOTE: seems like gcc will put the asm in the wrong section, so set it to .text manually.
-        let template_str = format!(".pushsection .text\n{}\n.popsection", template_str);
+        template_str.push_str("\n.popsection");
         self.context.add_top_level_asm(None, &template_str);
     }
 }
 
 fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option<char>) -> Option<char> {
+    // The modifiers can be retrieved from
+    // https://gcc.gnu.org/onlinedocs/gcc/Modifiers.html#Modifiers
     match reg {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => modifier,
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => modifier,
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg)
         | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
-            unimplemented!()
+            if modifier == Some('v') { None } else { modifier }
         }
-        InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg)  => unimplemented!(),
+        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+            unreachable!("clobber-only")
+        }
+        InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => None,
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
-        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16) => unimplemented!(),
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16) => None,
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low16)
-        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low8) => unimplemented!(),
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low8) => Some('P'),
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low8)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low4) => {
-            unimplemented!()
+            if modifier.is_none() {
+                Some('q')
+            } else {
+                modifier
+            }
         }
-        InlineAsmRegClass::Avr(_) => unimplemented!(),
-        InlineAsmRegClass::Bpf(_) => unimplemented!(),
-        InlineAsmRegClass::Hexagon(_) => unimplemented!(),
-        InlineAsmRegClass::Mips(_) => unimplemented!(),
-        InlineAsmRegClass::Msp430(_) => unimplemented!(),
-        InlineAsmRegClass::Nvptx(_) => unimplemented!(),
-        InlineAsmRegClass::PowerPC(_) => unimplemented!(),
+        InlineAsmRegClass::Hexagon(_) => None,
+        InlineAsmRegClass::Mips(_) => None,
+        InlineAsmRegClass::Nvptx(_) => None,
+        InlineAsmRegClass::PowerPC(_) => None,
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg)
-        | InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => unimplemented!(),
-        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => unimplemented!(),
+        | InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => None,
+        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => {
+            unreachable!("clobber-only")
+        }
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) => match modifier {
             None => if arch == InlineAsmArch::X86_64 { Some('q') } else { Some('k') },
@@ -804,16 +825,29 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
             _ => unreachable!(),
         },
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => None,
-        InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg0) => None,
-        InlineAsmRegClass::X86(X86InlineAsmRegClass::x87_reg | X86InlineAsmRegClass::mmx_reg | X86InlineAsmRegClass::tmm_reg) => {
+        InlineAsmRegClass::X86(
+            X86InlineAsmRegClass::x87_reg
+            | X86InlineAsmRegClass::mmx_reg
+            | X86InlineAsmRegClass::kreg0
+            | X86InlineAsmRegClass::tmm_reg,
+        ) => {
             unreachable!("clobber-only")
         }
-        InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => unimplemented!(),
+        InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => None,
+        InlineAsmRegClass::Bpf(_) => None,
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_pair)
+        | InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_iw)
+        | InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => match modifier {
+            Some('h') => Some('B'),
+            Some('l') => Some('A'),
+            _ => None,
+        },
+        InlineAsmRegClass::Avr(_) => None,
+        InlineAsmRegClass::S390x(_) => None,
+        InlineAsmRegClass::Msp430(_) => None,
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
-        },
-        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => unimplemented!(),
-        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => unimplemented!(),
+        }
         InlineAsmRegClass::Err => unreachable!(),
     }
 }

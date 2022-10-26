@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     strategy:
       fail-fast: false
@@ -25,6 +25,8 @@ jobs:
         commands: [
           "--mini-tests",
           "--std-tests",
+          # FIXME: re-enable asm tests when GCC can emit in the right syntax.
+          # "--asm-tests",
           "--test-libcore",
           "--extended-rand-tests",
           "--extended-regex-example-tests",
@@ -43,7 +45,8 @@ jobs:
         path: llvm
 
     - name: Install packages
-      run: sudo apt-get install ninja-build ripgrep
+      # `llvm-10-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      run: sudo apt-get install ninja-build ripgrep llvm-10-tools
 
     - name: Download artifact
       uses: dawidd6/action-download-artifact@v2
