@@ -771,7 +771,10 @@ impl Step for RustdocTheme {
             cmd.env("RUSTDOC_LINKER", linker);
         }
         if builder.is_fuse_ld_lld(self.compiler.host) {
-            cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
+            cmd.env(
+                "RUSTDOC_LLD_NO_THREADS",
+                util::lld_flag_no_threads(self.compiler.host.contains("windows")),
+            );
         }
         try_run(builder, &mut cmd);
     }
