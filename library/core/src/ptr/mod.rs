@@ -1733,6 +1733,12 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 /// by their address rather than comparing the values they point to
 /// (which is what the `PartialEq for &T` implementation does).
 ///
+/// When comparing wide pointers, both the address and the metadata are tested for equality.
+/// However, note that comparing trait object pointers (`*const dyn Trait`) is unrealiable: pointers
+/// to values of the same underlying type can compare inequal (because vtables are duplicated in
+/// multiple codegen units), and pointers to values of *different* underlying type can compare equal
+/// (since identical vtables can be deduplicated within a codegen unit).
+///
 /// # Examples
 ///
 /// ```
@@ -1758,41 +1764,6 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 /// assert!(std::ptr::eq(&a[..3], &a[..3]));
 /// assert!(!std::ptr::eq(&a[..2], &a[..3]));
 /// assert!(!std::ptr::eq(&a[0..2], &a[1..3]));
-/// ```
-///
-/// Traits are also compared by their implementation:
-///
-/// ```
-/// #[repr(transparent)]
-/// struct Wrapper { member: i32 }
-///
-/// trait Trait {}
-/// impl Trait for Wrapper {}
-/// impl Trait for i32 {}
-///
-/// let wrapper = Wrapper { member: 10 };
-///
-/// // Pointers have equal addresses.
-/// assert!(std::ptr::eq(
-///     &wrapper as *const Wrapper as *const u8,
-///     &wrapper.member as *const i32 as *const u8
-/// ));
-///
-/// // Objects have equal addresses, but `Trait` has different implementations.
-/// assert!(!std::ptr::eq(
-///     &wrapper as &dyn Trait,
-///     &wrapper.member as &dyn Trait,
-/// ));
-/// assert!(!std::ptr::eq(
-///     &wrapper as &dyn Trait as *const dyn Trait,
-///     &wrapper.member as &dyn Trait as *const dyn Trait,
-/// ));
-///
-/// // Converting the reference to a `*const u8` compares by address.
-/// assert!(std::ptr::eq(
-///     &wrapper as &dyn Trait as *const dyn Trait as *const u8,
-///     &wrapper.member as &dyn Trait as *const dyn Trait as *const u8,
-/// ));
 /// ```
 #[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline]
