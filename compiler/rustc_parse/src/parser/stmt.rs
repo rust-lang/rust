@@ -553,39 +553,46 @@ impl<'a> Parser<'a> {
         match stmt.kind {
             // Expression without semicolon.
             StmtKind::Expr(ref mut expr)
-                if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) =>
-            {
+                if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) => {
                 // Just check for errors and recover; do not eat semicolon yet.
-                if let Err(mut e) =
-                    self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)])
-                {
-                    if let TokenKind::DocComment(..) = self.token.kind {
-                        if let Ok(snippet) = self.span_to_snippet(self.token.span) {
-                            let sp = self.token.span;
-                            let marker = &snippet[..3];
-                            let (comment_marker, doc_comment_marker) = marker.split_at(2);
+                // `expect_one_of` returns PResult<'a, bool /* recovered */>
+                let replace_with_err =
+                    match self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)]) {
+                    // Recover from parser, skip type error to avoid extra errors.
+                    Ok(true) => true,
+                    Err(mut e) => {
+                        if let TokenKind::DocComment(..) = self.token.kind &&
+                            let Ok(snippet) = self.span_to_snippet(self.token.span) {
+                                let sp = self.token.span;
+                                let marker = &snippet[..3];
+                                let (comment_marker, doc_comment_marker) = marker.split_at(2);
 
-                            e.span_suggestion(
-                                sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
-                                &format!(
-                                    "add a space before `{}` to use a regular comment",
-                                    doc_comment_marker,
-                                ),
-                                format!("{} {}", comment_marker, doc_comment_marker),
-                                Applicability::MaybeIncorrect,
-                            );
+                                e.span_suggestion(
+                                    sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
+                                    &format!(
+                                        "add a space before `{}` to use a regular comment",
+                                        doc_comment_marker,
+                                    ),
+                                    format!("{} {}", comment_marker, doc_comment_marker),
+                                    Applicability::MaybeIncorrect,
+                                );
                         }
-                    }
-                    if let Err(mut e) =
-                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
-                    {
-                        if recover.no() {
-                            return Err(e);
+
+                        if let Err(mut e) =
+                            self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
+                        {
+                            if recover.no() {
+                                return Err(e);
+                            }
+                            e.emit();
+                            self.recover_stmt();
                         }
-                        e.emit();
-                        self.recover_stmt();
+                        true
                     }
-                    // Don't complain about type errors in body tail after parse error (#57383).
+                    _ => false
+                };
+                if replace_with_err {
+                    // We already emitted an error, so don't emit another type error
                     let sp = expr.span.to(self.prev_token.span);
                     *expr = self.mk_expr_err(sp);
                 }
