@@ -10,5 +10,11 @@ note: the lint level is defined here
 LL | #![deny(clippy::use_self)]
    |         ^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: unnecessary structure name repetition
+  --> $DIR/main.rs:7:9
+   |
+LL |         Foo
+   |         ^^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 2 previous errors
 

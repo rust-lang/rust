@@ -47,7 +47,6 @@ impl Mul for Bad {
 
 impl Clone for Bad {
     fn clone(&self) -> Self {
-        // FIXME: applicable here
         Bad
     }
 }
@@ -136,6 +135,18 @@ mod impl_in_macro {
         }
     }
     parse_ip_impl!(Foo); // Should not lint
+}
+
+mod full_path_replacement {
+    trait Error {
+        fn custom<T: std::fmt::Display>(_msg: T) -> Self;
+    }
+
+    impl Error for std::fmt::Error {
+        fn custom<T: std::fmt::Display>(_msg: T) -> Self {
+            std::fmt::Error // Should lint
+        }
+    }
 }
 
 fn main() {}
