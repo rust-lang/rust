@@ -50,7 +50,7 @@ LL |         m = 2; // warning because it is not immediately followed by break
 error: attempt to mutate range bound within loop
   --> $DIR/mut_range_bound.rs:79:13
    |
-LL |             n = 1; // FIXME: warning because is is not immediately followed by break
+LL |             n = 1; // FIXME: warning because it is not immediately followed by break
    |             ^
    |
    = note: the range of the loop is unchanged

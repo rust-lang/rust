@@ -226,7 +226,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
     /// This will try to set the current suggestion (so it can be moved into the suggestions vec
     /// later). If `allow_move_and_clone` is false, the suggestion *won't* be set -- this gives us
     /// an opportunity to look for another type in the chain that will be trivially copyable.
-    /// However, if we are at the the end of the chain, we want to accept whatever is there. (The
+    /// However, if we are at the end of the chain, we want to accept whatever is there. (The
     /// suggestion won't actually be output, but the diagnostic message will be output, so the user
     /// can determine the best way to handle the lint.)
     fn try_setting_current_suggestion(&mut self, expr: &'tcx Expr<'_>, allow_move_and_clone: bool) {
