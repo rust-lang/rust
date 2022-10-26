@@ -1,13 +1,16 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::definitions::DefPathData;
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         associated_item,
         associated_item_def_ids,
         associated_items,
+        associated_items_for_impl_trait_in_trait,
         impl_item_implementor_ids,
         ..*providers
     };
@@ -110,5 +113,36 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
         trait_item_def_id: impl_item_ref.trait_item_def_id,
         container: ty::ImplContainer,
         fn_has_self_parameter: has_self,
+    }
+}
+
+fn associated_items_for_impl_trait_in_trait(tcx: TyCtxt<'_>, fn_def_id: DefId) -> &'_ [DefId] {
+    struct RPITVisitor {
+        rpits: Vec<LocalDefId>,
+    }
+
+    impl<'v> Visitor<'v> for RPITVisitor {
+        fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+            if let hir::TyKind::OpaqueDef(item_id, _, _) = ty.kind {
+                self.rpits.push(item_id.owner_id.def_id)
+            }
+            intravisit::walk_ty(self, ty)
+        }
+    }
+
+    let mut visitor = RPITVisitor { rpits: Vec::new() };
+
+    if let Some(output) = tcx.hir().get_fn_output(fn_def_id.expect_local()) {
+        visitor.visit_fn_ret_ty(output);
+
+        let trait_def_id = tcx.parent(fn_def_id).expect_local();
+
+        tcx.arena.alloc_from_iter(visitor.rpits.iter().map(|_opaque_ty_def_id| {
+            let trait_assoc_ty =
+                tcx.at(output.span()).create_def(trait_def_id, DefPathData::ImplTraitAssocTy);
+            trait_assoc_ty.def_id().to_def_id()
+        }))
+    } else {
+        &[]
     }
 }
