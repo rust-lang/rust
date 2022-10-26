@@ -1,14 +1,20 @@
 use std::cell::RefCell;
+use std::fmt::Debug;
 
 use super::TraitEngine;
 use super::{ChalkFulfillmentContext, FulfillmentContext};
 use crate::infer::InferCtxtExt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_infer::infer::canonical::{
+    Canonical, CanonicalVarValues, CanonicalizedQueryResponse, QueryResponse,
+};
 use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::traits::query::Fallible;
 use rustc_infer::traits::{
     FulfillmentError, Obligation, ObligationCause, PredicateObligation, TraitEngineExt as _,
 };
+use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
@@ -153,5 +159,21 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             implied_bounds.insert(normalized);
         }
         implied_bounds
+    }
+
+    pub fn make_canonicalized_query_response<T>(
+        &self,
+        inference_vars: CanonicalVarValues<'tcx>,
+        answer: T,
+    ) -> Fallible<CanonicalizedQueryResponse<'tcx, T>>
+    where
+        T: Debug + TypeFoldable<'tcx>,
+        Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
+    {
+        self.infcx.make_canonicalized_query_response(
+            inference_vars,
+            answer,
+            &mut **self.engine.borrow_mut(),
+        )
     }
 }

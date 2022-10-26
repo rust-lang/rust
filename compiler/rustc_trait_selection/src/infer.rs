@@ -1,5 +1,5 @@
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{self, TraitEngine, TraitEngineExt};
+use crate::traits::{self, ObligationCtxt};
 
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -142,7 +142,7 @@ pub trait InferCtxtBuilderExt<'tcx> {
     fn enter_canonical_trait_query<K, R>(
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
+        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
@@ -170,17 +170,17 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
     fn enter_canonical_trait_query<K, R>(
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
+        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
         R: Debug + TypeFoldable<'tcx>,
         Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
     {
-        let (ref infcx, key, canonical_inference_vars) =
+        let (infcx, key, canonical_inference_vars) =
             self.build_with_canonical(DUMMY_SP, canonical_key);
-        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-        let value = operation(infcx, &mut *fulfill_cx, key)?;
-        infcx.make_canonicalized_query_response(canonical_inference_vars, value, &mut *fulfill_cx)
+        let ocx = ObligationCtxt::new(&infcx);
+        let value = operation(&ocx, key)?;
+        ocx.make_canonicalized_query_response(canonical_inference_vars, value)
     }
 }
