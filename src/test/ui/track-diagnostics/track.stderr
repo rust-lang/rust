@@ -1,16 +1,16 @@
 error[E0425]: cannot find value `rust` in this scope
-  --> $DIR/track.rs:$LINE::$COL
+  --> $DIR/track.rs:LL:CC
    |
 LL |     break rust
    |           ^^^^ not found in this scope
--Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:$LINE::$COL
+-Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:LL:CC
 
 error[E0268]: `break` outside of a loop
-  --> $DIR/track.rs:$LINE::$COL
+  --> $DIR/track.rs:LL:CC
    |
 LL |     break rust
    |     ^^^^^^^^^^ cannot `break` outside of a loop
--Ztrack-diagnostics: created at compiler/rustc_passes/src/errors.rs:$LINE::$COL
+-Ztrack-diagnostics: created at compiler/rustc_passes/src/errors.rs:LL:CC
 
 error: internal compiler error: It looks like you're trying to break rust; would you like some ICE?
 
