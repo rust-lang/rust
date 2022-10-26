@@ -922,9 +922,9 @@ pub struct TestReachabilityVisitor<'tcx, 'a> {
 impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
     fn access_level_diagnostic(&mut self, def_id: LocalDefId) {
         if self.tcx.has_attr(def_id.to_def_id(), sym::rustc_effective_visibility) {
+            let mut error_msg = String::new();
+            let span = self.tcx.def_span(def_id.to_def_id());
             if let Some(effective_vis) = self.access_levels.get_effective_vis(def_id) {
-                let mut error_msg = String::new();
-                let span = self.tcx.def_span(def_id.to_def_id());
                 for level in AccessLevel::all_levels() {
                     let vis_str = match effective_vis.get(level) {
                         ty::Visibility::Restricted(restricted_id) => {
@@ -943,8 +943,10 @@ impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
                     }
                     error_msg.push_str(&format!("{:?}: {}", level, vis_str));
                 }
-                self.tcx.sess.emit_err(ReportEffectiveVisibility { span, descr: error_msg });
+            } else {
+                error_msg.push_str("not in the table");
             }
+            self.tcx.sess.emit_err(ReportEffectiveVisibility { span, descr: error_msg });
         }
     }
 }

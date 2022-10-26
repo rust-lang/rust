@@ -17,12 +17,12 @@ mod outer { //~ ERROR Public: pub(crate), Exported: pub(crate), Reachable: pub(c
         }
 
         #[rustc_effective_visibility]
-        struct PrivStruct; //~ ERROR Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+        struct PrivStruct; //~ ERROR not in the table
 
         #[rustc_effective_visibility]
         pub union PubUnion { //~ ERROR Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
             #[rustc_effective_visibility]
-            a: u8, //~ ERROR Public: pub(self), Exported: pub(self), Reachable: pub(self), ReachableFromImplTrait: pub(self)
+            a: u8, //~ ERROR not in the table
             #[rustc_effective_visibility]
             pub b: u8, //~ ERROR Public: pub(crate), Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
         }
@@ -38,13 +38,13 @@ mod outer { //~ ERROR Public: pub(crate), Exported: pub(crate), Reachable: pub(c
     }
 
     #[rustc_effective_visibility]
-    macro_rules! none_macro { //~ Public: pub(crate), Exported: pub(crate), Reachable: pub(crate), ReachableFromImplTrait: pub(crate)
+    macro_rules! none_macro { //~ ERROR Public: pub(crate), Exported: pub(crate), Reachable: pub(crate), ReachableFromImplTrait: pub(crate)
         () => {};
     }
 
     #[macro_export]
     #[rustc_effective_visibility]
-    macro_rules! public_macro { //~ Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
+    macro_rules! public_macro { //~ ERROR Public: pub, Exported: pub, Reachable: pub, ReachableFromImplTrait: pub
         () => {};
     }
 
