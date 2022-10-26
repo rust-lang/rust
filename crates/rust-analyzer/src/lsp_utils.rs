@@ -87,6 +87,7 @@ impl GlobalState {
         state: Progress,
         message: Option<String>,
         fraction: Option<f64>,
+        cancel_token: Option<String>,
     ) {
         if !self.config.work_done_progress() {
             return;
@@ -95,7 +96,10 @@ impl GlobalState {
             assert!((0.0..=1.0).contains(&f));
             (f * 100.0) as u32
         });
-        let token = lsp_types::ProgressToken::String(format!("rustAnalyzer/{}", title));
+        let cancellable = Some(cancel_token.is_some());
+        let token = lsp_types::ProgressToken::String(
+            cancel_token.unwrap_or_else(|| format!("rustAnalyzer/{}", title)),
+        );
         let work_done_progress = match state {
             Progress::Begin => {
                 self.send_request::<lsp_types::request::WorkDoneProgressCreate>(
@@ -105,14 +109,14 @@ impl GlobalState {
 
                 lsp_types::WorkDoneProgress::Begin(lsp_types::WorkDoneProgressBegin {
                     title: title.into(),
-                    cancellable: None,
+                    cancellable,
                     message,
                     percentage,
                 })
             }
             Progress::Report => {
                 lsp_types::WorkDoneProgress::Report(lsp_types::WorkDoneProgressReport {
-                    cancellable: None,
+                    cancellable,
                     message,
                     percentage,
                 })

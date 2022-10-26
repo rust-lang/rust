@@ -24,6 +24,25 @@ Automatically refresh project info via `cargo metadata` on
 --
 Run build scripts (`build.rs`) for more precise code analysis.
 --
+[[rust-analyzer.cargo.buildScripts.invocationLocation]]rust-analyzer.cargo.buildScripts.invocationLocation (default: `"workspace"`)::
++
+--
+Specifies the working directory for running build scripts.
+- "workspace": run build scripts for a workspace in the workspace's root directory.
+  This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.
+- "root": run build scripts in the project's root directory.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
+--
+[[rust-analyzer.cargo.buildScripts.invocationStrategy]]rust-analyzer.cargo.buildScripts.invocationStrategy (default: `"per_workspace"`)::
++
+--
+Specifies the invocation strategy to use when running the build scripts command.
+If `per_workspace` is set, the command will be executed for each workspace.
+If `once` is set, the command will be executed once.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
+--
 [[rust-analyzer.cargo.buildScripts.overrideCommand]]rust-analyzer.cargo.buildScripts.overrideCommand (default: `null`)::
 +
 --
@@ -117,6 +136,25 @@ List of features to activate. Defaults to
 `#rust-analyzer.cargo.features#`.
 
 Set to `"all"` to pass `--all-features` to Cargo.
+--
+[[rust-analyzer.checkOnSave.invocationLocation]]rust-analyzer.checkOnSave.invocationLocation (default: `"workspace"`)::
++
+--
+Specifies the working directory for running checks.
+- "workspace": run checks for workspaces in the corresponding workspaces' root directories.
+  This falls back to "root" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.
+- "root": run checks in the project's root directory.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
+--
+[[rust-analyzer.checkOnSave.invocationStrategy]]rust-analyzer.checkOnSave.invocationStrategy (default: `"per_workspace"`)::
++
+--
+Specifies the invocation strategy to use when running the checkOnSave command.
+If `per_workspace` is set, the command will be executed for each workspace.
+If `once` is set, the command will be executed once.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
 --
 [[rust-analyzer.checkOnSave.noDefaultFeatures]]rust-analyzer.checkOnSave.noDefaultFeatures (default: `null`)::
 +

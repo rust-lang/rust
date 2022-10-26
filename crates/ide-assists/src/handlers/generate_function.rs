@@ -179,7 +179,7 @@ fn add_func_to_accumulator(
         let function_template = function_builder.render(adt_name.is_some());
         let mut func = function_template.to_string(ctx.config.snippet_cap);
         if let Some(name) = adt_name {
-            func = format!("\n{}impl {} {{\n{}\n{}}}", indent, name, func, indent);
+            func = format!("\n{indent}impl {name} {{\n{func}\n{indent}}}");
         }
         builder.edit_file(file);
         match ctx.config.snippet_cap {
@@ -198,7 +198,7 @@ fn get_adt_source(
     let file = ctx.sema.parse(range.file_id);
     let adt_source =
         ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
-    find_struct_impl(ctx, &adt_source, fn_name).map(|impl_| (impl_, range.file_id))
+    find_struct_impl(ctx, &adt_source, &[fn_name.to_string()]).map(|impl_| (impl_, range.file_id))
 }
 
 struct FunctionTemplate {
@@ -212,23 +212,26 @@ struct FunctionTemplate {
 
 impl FunctionTemplate {
     fn to_string(&self, cap: Option<SnippetCap>) -> String {
+        let Self { leading_ws, fn_def, ret_type, should_focus_return_type, trailing_ws, tail_expr } =
+            self;
+
         let f = match cap {
             Some(cap) => {
-                let cursor = if self.should_focus_return_type {
+                let cursor = if *should_focus_return_type {
                     // Focus the return type if there is one
-                    match self.ret_type {
-                        Some(ref ret_type) => ret_type.syntax(),
-                        None => self.tail_expr.syntax(),
+                    match ret_type {
+                        Some(ret_type) => ret_type.syntax(),
+                        None => tail_expr.syntax(),
                     }
                 } else {
-                    self.tail_expr.syntax()
+                    tail_expr.syntax()
                 };
-                render_snippet(cap, self.fn_def.syntax(), Cursor::Replace(cursor))
+                render_snippet(cap, fn_def.syntax(), Cursor::Replace(cursor))
             }
-            None => self.fn_def.to_string(),
+            None => fn_def.to_string(),
         };
 
-        format!("{}{}{}", self.leading_ws, f, self.trailing_ws)
+        format!("{leading_ws}{f}{trailing_ws}")
     }
 }
 
@@ -330,9 +333,9 @@ impl FunctionBuilder {
                 let mut indent = IndentLevel::from_node(&it);
                 if is_method {
                     indent = indent + 1;
-                    leading_ws = format!("{}", indent);
+                    leading_ws = format!("{indent}");
                 } else {
-                    leading_ws = format!("\n\n{}", indent);
+                    leading_ws = format!("\n\n{indent}");
                 }
 
                 fn_def = fn_def.indent(indent);
@@ -340,9 +343,10 @@ impl FunctionBuilder {
             }
             GeneratedFunctionTarget::InEmptyItemList(it) => {
                 let indent = IndentLevel::from_node(&it);
-                leading_ws = format!("\n{}", indent + 1);
-                fn_def = fn_def.indent(indent + 1);
-                trailing_ws = format!("\n{}", indent);
+                let leading_indent = indent + 1;
+                leading_ws = format!("\n{leading_indent}");
+                fn_def = fn_def.indent(leading_indent);
+                trailing_ws = format!("\n{indent}");
             }
         };
 
