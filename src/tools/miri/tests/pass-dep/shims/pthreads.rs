@@ -1,10 +1,14 @@
 //@ignore-target-windows: No libc on Windows
+#![feature(cstr_from_bytes_until_nul)]
+use std::ffi::CStr;
+use std::thread;
 
 fn main() {
     test_mutex_libc_init_recursive();
     test_mutex_libc_init_normal();
     test_mutex_libc_init_errorcheck();
     test_rwlock_libc_static_initializer();
+    test_named_thread_truncation();
 
     #[cfg(any(target_os = "linux"))]
     test_mutex_libc_static_initializer_recursive();
@@ -124,4 +128,25 @@ fn test_rwlock_libc_static_initializer() {
 
         assert_eq!(libc::pthread_rwlock_destroy(rw.get()), 0);
     }
+}
+
+fn test_named_thread_truncation() {
+    let long_name = std::iter::once("test_named_thread_truncation")
+        .chain(std::iter::repeat(" yada").take(100))
+        .collect::<String>();
+
+    let result = thread::Builder::new().name(long_name.clone()).spawn(move || {
+        // Rust remembers the full thread name itself.
+        assert_eq!(thread::current().name(), Some(long_name.as_str()));
+
+        // But the system is limited -- make sure we successfully set a truncation.
+        let mut buf = vec![0u8; long_name.len() + 1];
+        unsafe {
+            libc::pthread_getname_np(libc::pthread_self(), buf.as_mut_ptr().cast(), buf.len());
+        }
+        let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
+        assert!(cstr.to_bytes().len() >= 15); // POSIX seems to promise at least 15 chars
+        assert!(long_name.as_bytes().starts_with(cstr.to_bytes()));
+    });
+    result.unwrap().join().unwrap();
 }

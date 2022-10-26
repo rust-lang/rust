@@ -78,9 +78,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let name = name.to_pointer(this)?;
 
         let name = this.read_c_str(name)?.to_owned();
+
+        if name.len() > 15 {
+            // Thread names are limited to 16 characaters, including the null terminator.
+            return this.eval_libc("ERANGE");
+        }
+
         this.set_thread_name(thread, name);
 
         Ok(Scalar::from_u32(0))
+    }
+
+    fn pthread_getname_np(
+        &mut self,
+        thread: Scalar<Provenance>,
+        name_out: Scalar<Provenance>,
+        len: Scalar<Provenance>,
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        let this = self.eval_context_mut();
+
+        let thread = ThreadId::try_from(thread.to_machine_usize(this)?).unwrap();
+        let name_out = name_out.to_pointer(this)?;
+        let len = len.to_machine_usize(this)?;
+
+        let name = this.get_thread_name(thread).to_owned();
+        let (success, _written) = this.write_c_str(&name, name_out, len)?;
+
+        if success { Ok(Scalar::from_u32(0)) } else { this.eval_libc("ERANGE") }
     }
 
     fn sched_yield(&mut self) -> InterpResult<'tcx, i32> {
