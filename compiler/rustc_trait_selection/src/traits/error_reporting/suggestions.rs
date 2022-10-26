@@ -1019,7 +1019,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut never_suggest_borrow: Vec<_> =
             [LangItem::Copy, LangItem::Clone, LangItem::Unpin, LangItem::Sized]
                 .iter()
-                .filter_map(|lang_item| self.tcx.lang_items().require(*lang_item).ok())
+                .filter_map(|lang_item| self.tcx.lang_items().get(*lang_item))
                 .collect();
 
         if let Some(def_id) = self.tcx.get_diagnostic_item(sym::Send) {

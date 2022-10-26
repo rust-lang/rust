@@ -152,7 +152,7 @@ impl UnnecessaryDefPath {
                         has_ctor,
                     ),
                     (0, Item::LangItem(item)) => (
-                        format!("{cx_snip}.tcx.lang_items().require(LangItem::{item}).ok() == Some({def_snip})"),
+                        format!("{cx_snip}.tcx.lang_items().get(LangItem::{item}) == Some({def_snip})"),
                         has_ctor,
                     ),
                     // match_trait_method
@@ -184,7 +184,7 @@ impl UnnecessaryDefPath {
                     (3, Item::LangItem(item)) => (
                         format!(
                             "path_res({cx_snip}, {def_snip}).opt_def_id()\
-                                .map_or(false, |id| {cx_snip}.tcx.lang_items().require(LangItem::{item}).ok() == Some(id))",
+                                .map_or(false, |id| {cx_snip}.tcx.lang_items().get(LangItem::{item}) == Some(id))",
                         ),
                         false,
                     ),
