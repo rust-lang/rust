@@ -1,3 +1,8 @@
+# ignore-i686-pc-windows-gnu
+
+# This test doesn't work on 32-bit MinGW as cdylib has its own copy of unwinder
+# so cross-DLL unwinding does not work.
+
 include ../tools.mk
 
 all:
