@@ -272,8 +272,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Paren(ref ex) => {
                     let mut ex = self.lower_expr_mut(ex);
                     // Include parens in span, but only if it is a super-span.
+                    // Use the inner ctxt to maintain desugaring marker for `(a..b)`
                     if e.span.contains(ex.span) {
-                        ex.span = self.lower_span(e.span);
+                        ex.span = self.lower_span(e.span.with_ctxt(ex.span.ctxt()));
                     }
                     // Merge attributes into the inner expression.
                     if !e.attrs.is_empty() {
