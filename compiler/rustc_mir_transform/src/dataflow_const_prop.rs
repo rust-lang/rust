@@ -128,23 +128,26 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
     ) -> ValueOrPlaceOrRef<Self::Value> {
         match rvalue {
             Rvalue::Cast(
-                CastKind::IntToInt
+                kind @ (CastKind::IntToInt
                 | CastKind::FloatToInt
                 | CastKind::FloatToFloat
-                | CastKind::IntToFloat,
+                | CastKind::IntToFloat),
                 operand,
                 ty,
-            ) => {
-                let operand = self.eval_operand(operand, state);
-                match operand {
-                    FlatSet::Elem(operand) => self
-                        .ecx
-                        .misc_cast(&operand, *ty)
-                        .map(|result| ValueOrPlaceOrRef::Value(self.wrap_immediate(result, *ty)))
-                        .unwrap_or(ValueOrPlaceOrRef::top()),
-                    _ => ValueOrPlaceOrRef::top(),
+            ) => match self.eval_operand(operand, state) {
+                FlatSet::Elem(op) => match kind {
+                    CastKind::IntToInt | CastKind::IntToFloat => {
+                        self.ecx.int_to_int_or_float(&op, *ty)
+                    }
+                    CastKind::FloatToInt | CastKind::FloatToFloat => {
+                        self.ecx.float_to_float_or_int(&op, *ty)
+                    }
+                    _ => unreachable!(),
                 }
-            }
+                .map(|result| ValueOrPlaceOrRef::Value(self.wrap_immediate(result, *ty)))
+                .unwrap_or(ValueOrPlaceOrRef::top()),
+                _ => ValueOrPlaceOrRef::top(),
+            },
             Rvalue::BinaryOp(op, box (left, right)) => {
                 // Overflows must be ignored here.
                 let (val, _overflow) = self.binary_op(state, *op, left, right);
