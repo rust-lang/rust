@@ -22,7 +22,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, Ty, UserType,
+    self, AdtKind, CanonicalUserType, DefIdTree, GenericParamDefKind, Ty, UserType,
 };
 use rustc_middle::ty::{GenericArgKind, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts};
 use rustc_session::lint;
@@ -333,23 +333,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Basically whenever we are converting from a type scheme into
-    /// the fn body space, we always want to normalize associated
-    /// types as well. This function combines the two.
-    // FIXME(compiler-errors): Remove this.
-    fn instantiate_type_scheme<T>(&self, span: Span, substs: SubstsRef<'tcx>, value: T) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        debug!("instantiate_type_scheme(value={:?}, substs={:?})", value, substs);
-        let value = EarlyBinder(value).subst(self.tcx, substs);
-        let result = self.normalize(span, value);
-        debug!("instantiate_type_scheme = {:?}", result);
-        result
-    }
-
-    /// As `instantiate_type_scheme`, but for the bounds found in a
-    /// generic type scheme.
+    /// Instantiates and normalizes the bounds for a given item
     pub(in super::super) fn instantiate_bounds(
         &self,
         span: Span,
@@ -1161,10 +1145,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let def_id = res.def_id();
 
-        // The things we are substituting into the type should not contain
-        // escaping late-bound regions, and nor should the base type scheme.
-        let ty = tcx.type_of(def_id);
-
         let arg_count = GenericArgCountResult {
             explicit_late_bound,
             correct: if infer_args_for_err.is_empty() {
@@ -1287,8 +1267,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
             )
         });
-        assert!(!substs.has_escaping_bound_vars());
-        assert!(!ty.has_escaping_bound_vars());
 
         // First, store the "user substs" for later.
         self.write_user_type_annotation_from_substs(hir_id, def_id, substs, user_self_ty);
@@ -1297,7 +1275,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
-        let ty_substituted = self.instantiate_type_scheme(span, &substs, ty);
+        let ty = tcx.bound_type_of(def_id);
+        assert!(!substs.has_escaping_bound_vars());
+        assert!(!ty.0.has_escaping_bound_vars());
+        let ty_substituted = self.normalize(span, ty.subst(tcx, substs));
 
         if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
             // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
@@ -1305,9 +1286,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // type parameters, which we can infer by unifying the provided `Self`
             // with the substituted impl type.
             // This also occurs for an enum variant on a type alias.
-            let ty = tcx.type_of(impl_def_id);
-
-            let impl_ty = self.instantiate_type_scheme(span, &substs, ty);
+            let impl_ty = self.normalize(span, tcx.bound_type_of(impl_def_id).subst(tcx, substs));
             match self.at(&self.misc(span), self.param_env).eq(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
