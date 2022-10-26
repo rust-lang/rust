@@ -63,6 +63,7 @@ thread_local! {
     static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static NO_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
+    static NO_VERBOSE_CONSTANTS: Cell<bool> = const { Cell::new(false) };
 }
 
 macro_rules! define_helper {
@@ -117,6 +118,9 @@ define_helper!(
     /// Prevent selection of visible paths. `Display` impl of DefId will prefer
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
+    /// Prevent verbose printing of constants. Verbose printing of constants is
+    /// never desirable in some contexts like `std::any::type_name`.
+    fn with_no_verbose_constants(NoVerboseConstantsGuard, NO_VERBOSE_CONSTANTS);
 );
 
 /// The "region highlights" are used to control region printing during
@@ -759,7 +763,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Array(ty, sz) => {
                 p!("[", print(ty), "; ");
-                if self.tcx().sess.verbose() {
+                if !NO_VERBOSE_CONSTANTS.with(|flag| flag.get()) && self.tcx().sess.verbose() {
                     p!(write("{:?}", sz));
                 } else if let ty::ConstKind::Unevaluated(..) = sz.kind() {
                     // Do not try to evaluate unevaluated constants. If we are const evaluating an
@@ -1181,7 +1185,7 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
-        if self.tcx().sess.verbose() {
+        if !NO_VERBOSE_CONSTANTS.with(|flag| flag.get()) && self.tcx().sess.verbose() {
             p!(write("Const({:?}: {:?})", ct.kind(), ct.ty()));
             return Ok(self);
         }
@@ -1416,7 +1420,7 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
-        if self.tcx().sess.verbose() {
+        if !NO_VERBOSE_CONSTANTS.with(|flag| flag.get()) && self.tcx().sess.verbose() {
             p!(write("ValTree({:?}: ", valtree), print(ty), ")");
             return Ok(self);
         }
