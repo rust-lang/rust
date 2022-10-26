@@ -138,21 +138,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
+    /// Handles 'IntToInt' and 'IntToFloat' casts.
     pub fn int_to_int_or_float(
         &self,
         src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
-        if (src.layout.ty.is_integral() || src.layout.ty.is_char() || src.layout.ty.is_bool())
-            && (cast_ty.is_floating_point() || cast_ty.is_integral() || cast_ty.is_char())
-        {
-            let scalar = src.to_scalar();
-            Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
-        } else {
-            bug!("Unexpected cast from type {:?}", src.layout.ty)
-        }
+        assert!(src.layout.ty.is_integral() || src.layout.ty.is_char() || src.layout.ty.is_bool());
+        assert!(cast_ty.is_floating_point() || cast_ty.is_integral() || cast_ty.is_char());
+
+        Ok(self.cast_from_int_like(src.to_scalar(), src.layout, cast_ty)?.into())
     }
 
+    /// Handles 'FloatToFloat' and 'FloatToInt' casts.
     pub fn float_to_float_or_int(
         &self,
         src: &ImmTy<'tcx, M::Provenance>,
@@ -180,31 +178,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
+        assert!(src.layout.ty.is_any_ptr());
+        assert!(cast_ty.is_unsafe_ptr());
         // Handle casting any ptr to raw ptr (might be a fat ptr).
-        if src.layout.ty.is_any_ptr() && cast_ty.is_unsafe_ptr() {
-            let dest_layout = self.layout_of(cast_ty)?;
-            if dest_layout.size == src.layout.size {
-                // Thin or fat pointer that just hast the ptr kind of target type changed.
-                return Ok(**src);
-            } else {
-                // Casting the metadata away from a fat ptr.
-                assert_eq!(src.layout.size, 2 * self.pointer_size());
-                assert_eq!(dest_layout.size, self.pointer_size());
-                assert!(src.layout.ty.is_unsafe_ptr());
-                return match **src {
-                    Immediate::ScalarPair(data, _) => Ok(data.into()),
-                    Immediate::Scalar(..) => span_bug!(
-                        self.cur_span(),
-                        "{:?} input to a fat-to-thin cast ({:?} -> {:?})",
-                        *src,
-                        src.layout.ty,
-                        cast_ty
-                    ),
-                    Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
-                };
-            }
+        let dest_layout = self.layout_of(cast_ty)?;
+        if dest_layout.size == src.layout.size {
+            // Thin or fat pointer that just hast the ptr kind of target type changed.
+            return Ok(**src);
         } else {
-            bug!("Can't cast 'Ptr' or 'FnPtr' into {:?}", cast_ty);
+            // Casting the metadata away from a fat ptr.
+            assert_eq!(src.layout.size, 2 * self.pointer_size());
+            assert_eq!(dest_layout.size, self.pointer_size());
+            assert!(src.layout.ty.is_unsafe_ptr());
+            return match **src {
+                Immediate::ScalarPair(data, _) => Ok(data.into()),
+                Immediate::Scalar(..) => span_bug!(
+                    self.cur_span(),
+                    "{:?} input to a fat-to-thin cast ({:?} -> {:?})",
+                    *src,
+                    src.layout.ty,
+                    cast_ty
+                ),
+                Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
+            };
         }
     }
 
@@ -243,6 +239,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(Scalar::from_maybe_pointer(ptr, self).into())
     }
 
+    /// Low-level cast helper function. This works directly on scalars and can take 'int-like' input
+    /// type (basically everything with a scalar layout) to int/float/char types.
     pub fn cast_from_int_like(
         &self,
         scalar: Scalar<M::Provenance>, // input value (there is no ScalarTy so we separate data+layout)
@@ -282,6 +280,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         })
     }
 
+    /// Low-level cast helper function. Converts an apfloat `f` into int or float types.
     fn cast_from_float<F>(&self, f: F, dest_ty: Ty<'tcx>) -> Scalar<M::Provenance>
     where
         F: Float + Into<Scalar<M::Provenance>> + FloatConvert<Single> + FloatConvert<Double>,

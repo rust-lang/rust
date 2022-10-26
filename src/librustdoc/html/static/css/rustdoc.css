@@ -1585,6 +1585,15 @@ details.rustdoc-toggle > summary:hover::before {
 	opacity: 1;
 }
 
+details.rustdoc-toggle > summary:focus-visible::before {
+	/* The SVG is black, and gets turned white using a filter in the dark themes.
+	   Do the same with the outline.
+	   The dotted 1px style is copied from Firefox's focus ring style.
+	*/
+	outline: 1px dotted #000;
+	outline-offset: 1px;
+}
+
 details.rustdoc-toggle.top-doc > summary,
 details.rustdoc-toggle.top-doc > summary::before,
 details.rustdoc-toggle.non-exhaustive > summary,
