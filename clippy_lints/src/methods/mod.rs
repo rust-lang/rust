@@ -69,6 +69,7 @@ mod path_buf_push_overwrite;
 mod range_zip_with_len;
 mod repeat_once;
 mod search_is_some;
+mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
 mod single_char_add_str;
 mod single_char_insert_string;
@@ -3070,6 +3071,49 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     ///
+    /// Checks an argument of `seek` method of `Seek` trait
+    /// and if it start seek from `SeekFrom::Current(0)`, suggests `stream_position` instead.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Readability. Use dedicated method.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// use std::fs::File;
+    /// use std::io::{self, Write, Seek, SeekFrom};
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = File::create("foo.txt")?;
+    ///     f.write_all(b"Hello")?;
+    ///     eprintln!("Written {} bytes", f.seek(SeekFrom::Current(0))?);
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// use std::fs::File;
+    /// use std::io::{self, Write, Seek, SeekFrom};
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = File::create("foo.txt")?;
+    ///     f.write_all(b"Hello")?;
+    ///     eprintln!("Written {} bytes", f.stream_position()?);
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub SEEK_FROM_CURRENT,
+    complexity,
+    "use dedicated method for seek from current position"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
     /// Checks for jumps to the start of a stream that implements `Seek`
     /// and uses the `seek` method providing `Start` as parameter.
     ///
@@ -3222,6 +3266,7 @@ impl_lint_pass!(Methods => [
     VEC_RESIZE_TO_ZERO,
     VERBOSE_FILE_READS,
     ITER_KV_MAP,
+    SEEK_FROM_CURRENT,
     SEEK_TO_START_INSTEAD_OF_REWIND,
 ]);
 
@@ -3638,6 +3683,9 @@ impl Methods {
                     vec_resize_to_zero::check(cx, expr, count_arg, default_arg, span);
                 },
                 ("seek", [arg]) => {
+                    if meets_msrv(self.msrv, msrvs::SEEK_FROM_CURRENT) {
+                        seek_from_current::check(cx, expr, recv, arg);
+                    }
                     if meets_msrv(self.msrv, msrvs::SEEK_REWIND) {
                         seek_to_start_instead_of_rewind::check(cx, expr, recv, arg, span);
                     }

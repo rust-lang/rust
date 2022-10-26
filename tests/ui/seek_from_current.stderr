@@ -1,0 +1,10 @@
+error: using `SeekFrom::Current` to start from current position
+  --> $DIR/seek_from_current.rs:21:5
+   |
+LL |     f.seek(SeekFrom::Current(0))?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `f.stream_position()`
+   |
+   = note: `-D clippy::seek-from-current` implied by `-D warnings`
+
+error: aborting due to previous error
+
