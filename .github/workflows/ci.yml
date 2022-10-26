@@ -227,7 +227,6 @@ jobs:
         if: matrix.os == 'windows-2019' && matrix.arch == 'x86'
         shell: bash
         # TODO: remove once Windows is validated!
-        continue-on-error: true
         env:
           WASIX_NO_UPDATE_REPOS: '1'
           WASIX_COMPONENTS: rust
