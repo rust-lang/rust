@@ -2271,15 +2271,16 @@ macro_rules! int_impl {
         /// # Panics
         ///
         /// This function will panic if `self` is less than or equal to zero,
-        /// or if `base` is less then 2.
+        /// or if `base` is less than 2.
         ///
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_log)]
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".ilog(5), 1);")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_allow_const_fn_unstable(const_option)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2298,10 +2299,11 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_log)]
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".ilog2(), 1);")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_allow_const_fn_unstable(const_option)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2319,10 +2321,11 @@ macro_rules! int_impl {
         /// # Example
         ///
         /// ```
-        /// #![feature(int_log)]
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".ilog10(), 1);")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_allow_const_fn_unstable(const_option)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2343,10 +2346,10 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_log)]
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_ilog(5), Some(1));")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2379,10 +2382,10 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_log)]
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_ilog2(), Some(1));")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2403,10 +2406,10 @@ macro_rules! int_impl {
         /// # Example
         ///
         /// ```
-        /// #![feature(int_log)]
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_ilog10(), Some(1));")]
         /// ```
-        #[unstable(feature = "int_log", issue = "70887")]
+        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

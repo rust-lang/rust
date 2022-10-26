@@ -62,7 +62,6 @@
 #![feature(try_trait_v2)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
-#![feature(int_log)]
 #![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
 #![feature(iter_collect_into)]
