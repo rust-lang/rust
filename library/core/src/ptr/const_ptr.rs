@@ -802,7 +802,7 @@ impl<T: ?Sized> *const T {
 
     /// Returns whether two pointers are guaranteed to be inequal.
     ///
-    /// At runtime this function behaves like `Some(self == other)`.
+    /// At runtime this function behaves like `Some(self != other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine inequality of two pointers, so this function may
     /// spuriously return `None` for pointers that later actually turn out to have its inequality known.
