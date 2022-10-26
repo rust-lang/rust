@@ -64,7 +64,7 @@ pub(crate) struct GlobalState {
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_clients: Vec<Result<ProcMacroServer, String>>,
 
-    pub(crate) flycheck: Vec<FlycheckHandle>,
+    pub(crate) flycheck: Arc<[FlycheckHandle]>,
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
 
@@ -117,6 +117,7 @@ pub(crate) struct GlobalStateSnapshot {
     vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     pub(crate) proc_macros_loaded: bool,
+    pub(crate) flycheck: Arc<[FlycheckHandle]>,
 }
 
 impl std::panic::UnwindSafe for GlobalStateSnapshot {}
@@ -155,7 +156,7 @@ impl GlobalState {
             source_root_config: SourceRootConfig::default(),
             proc_macro_clients: vec![],
 
-            flycheck: Vec::new(),
+            flycheck: Arc::new([]),
             flycheck_sender,
             flycheck_receiver,
 
@@ -295,6 +296,7 @@ impl GlobalState {
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
             proc_macros_loaded: !self.fetch_build_data_queue.last_op_result().0.is_empty(),
+            flycheck: self.flycheck.clone(),
         }
     }
 
@@ -396,6 +398,10 @@ impl GlobalStateSnapshot {
         let path = base.join(&path.path).unwrap();
         let path = path.as_path().unwrap();
         url_from_abs_path(path)
+    }
+
+    pub(crate) fn file_id_to_file_path(&self, file_id: FileId) -> vfs::VfsPath {
+        self.vfs.read().0.file_path(file_id)
     }
 
     pub(crate) fn cargo_target_for_crate_root(

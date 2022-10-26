@@ -549,45 +549,36 @@ ul.block, .block li {
 	margin-bottom: 0px;
 }
 
-pre.example-line-numbers {
-	overflow: initial;
-	border: 1px solid;
-	padding: 13px 8px;
-	text-align: right;
-	border-top-left-radius: 5px;
-	border-bottom-left-radius: 5px;
-}
-
-.src-line-numbers {
-	text-align: right;
-}
-.rustdoc:not(.source) .example-wrap > pre:not(.example-line-numbers) {
-	width: 100%;
+.rustdoc .example-wrap > pre {
+	margin: 0;
+	flex-grow: 1;
 	overflow-x: auto;
 }
 
-.rustdoc:not(.source) .example-wrap > pre.src-line-numbers {
-	width: auto;
-	overflow-x: visible;
-}
-
-.rustdoc .example-wrap > pre {
-	margin: 0;
-}
-
-.search-loading {
-	text-align: center;
-}
-
-.content > .example-wrap pre.src-line-numbers {
-	position: relative;
+.rustdoc .example-wrap > pre.example-line-numbers,
+.rustdoc .example-wrap > pre.src-line-numbers {
+	flex-grow: 0;
+	overflow: initial;
+	text-align: right;
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
 }
+
+.example-line-numbers {
+	border: 1px solid;
+	padding: 13px 8px;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+}
+
 .src-line-numbers span {
 	cursor: pointer;
+}
+
+.search-loading {
+	text-align: center;
 }
 
 .docblock-short {
@@ -2031,10 +2022,6 @@ in storage.js
 	overflow-y: hidden;
 	max-height: 240px;
 	padding-bottom: 0;
-}
-
-.scraped-example:not(.expanded) .code-wrapper pre.src-line-numbers {
-	overflow-x: hidden;
 }
 
 .scraped-example .code-wrapper .prev {

@@ -137,7 +137,9 @@ impl Thread {
         unsafe {
             // Available since glibc 2.12, musl 1.1.16, and uClibc 1.0.20.
             let name = truncate_cstr(name, TASK_COMM_LEN);
-            libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
+            let res = libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
+            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -152,7 +154,9 @@ impl Thread {
     pub fn set_name(name: &CStr) {
         unsafe {
             let name = truncate_cstr(name, libc::MAXTHREADNAMESIZE);
-            libc::pthread_setname_np(name.as_ptr());
+            let res = libc::pthread_setname_np(name.as_ptr());
+            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -160,11 +164,12 @@ impl Thread {
     pub fn set_name(name: &CStr) {
         unsafe {
             let cname = CStr::from_bytes_with_nul_unchecked(b"%s\0".as_slice());
-            libc::pthread_setname_np(
+            let res = libc::pthread_setname_np(
                 libc::pthread_self(),
                 cname.as_ptr(),
                 name.as_ptr() as *mut libc::c_void,
             );
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -177,9 +182,8 @@ impl Thread {
         }
 
         if let Some(f) = pthread_setname_np.get() {
-            unsafe {
-                f(libc::pthread_self(), name.as_ptr());
-            }
+            let res = unsafe { f(libc::pthread_self(), name.as_ptr()) };
+            debug_assert_eq!(res, 0);
         }
     }
 

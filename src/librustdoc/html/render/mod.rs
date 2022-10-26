@@ -1276,6 +1276,15 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
 
     if let Some((did, ty)) = decl.output.as_return().and_then(|t| Some((t.def_id(cx.cache())?, t)))
     {
+        // Box has pass-through impls for Read, Write, Iterator, and Future when the
+        // boxed type implements one of those. We don't want to treat every Box return
+        // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
+        // issue, with a pass-through impl for Future.
+        if Some(did) == cx.tcx().lang_items().owned_box()
+            || Some(did) == cx.tcx().lang_items().pin_type()
+        {
+            return "".to_string();
+        }
         if let Some(impls) = cx.cache().impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
