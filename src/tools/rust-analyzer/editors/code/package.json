@@ -37,7 +37,7 @@
     "dependencies": {
         "d3": "^7.6.1",
         "d3-graphviz": "^4.1.1",
-        "vscode-languageclient": "^8.0.0-next.14"
+        "vscode-languageclient": "^8.0.2"
     },
     "devDependencies": {
         "@types/node": "~16.11.7",
@@ -60,6 +60,7 @@
         "onCommand:rust-analyzer.analyzerStatus",
         "onCommand:rust-analyzer.memoryUsage",
         "onCommand:rust-analyzer.reloadWorkspace",
+        "onCommand:rust-analyzer.startServer",
         "workspaceContains:*/Cargo.toml",
         "workspaceContains:*/rust-project.json"
     ],
@@ -189,6 +190,16 @@
             {
                 "command": "rust-analyzer.reload",
                 "title": "Restart server",
+                "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.startServer",
+                "title": "Start server",
+                "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.stopServer",
+                "title": "Stop server",
                 "category": "rust-analyzer"
             },
             {
@@ -421,6 +432,32 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.cargo.buildScripts.invocationLocation": {
+                    "markdownDescription": "Specifies the working directory for running build scripts.\n- \"workspace\": run build scripts for a workspace in the workspace's root directory.\n    This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.\n- \"root\": run build scripts in the project's root directory.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "default": "workspace",
+                    "type": "string",
+                    "enum": [
+                        "workspace",
+                        "root"
+                    ],
+                    "enumDescriptions": [
+                        "The command will be executed in the corresponding workspace root.",
+                        "The command will be executed in the project root."
+                    ]
+                },
+                "rust-analyzer.cargo.buildScripts.invocationStrategy": {
+                    "markdownDescription": "Specifies the invocation strategy to use when running the build scripts command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "default": "per_workspace",
+                    "type": "string",
+                    "enum": [
+                        "per_workspace",
+                        "once"
+                    ],
+                    "enumDescriptions": [
+                        "The command will be executed for each workspace.",
+                        "The command will be executed once."
+                    ]
+                },
                 "rust-analyzer.cargo.buildScripts.overrideCommand": {
                     "markdownDescription": "Override the command rust-analyzer uses to run build scripts and\nbuild procedural macros. The command is required to output json\nand should therefore include `--message-format=json` or a similar\noption.\n\nBy default, a cargo invocation will be constructed for the configured\ntargets and features, with the following base command line:\n\n```bash\ncargo check --quiet --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
@@ -544,6 +581,32 @@
                         {
                             "type": "null"
                         }
+                    ]
+                },
+                "rust-analyzer.checkOnSave.invocationLocation": {
+                    "markdownDescription": "Specifies the working directory for running checks.\n- \"workspace\": run checks for workspaces in the corresponding workspaces' root directories.\n    This falls back to \"root\" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.\n- \"root\": run checks in the project's root directory.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "default": "workspace",
+                    "type": "string",
+                    "enum": [
+                        "workspace",
+                        "root"
+                    ],
+                    "enumDescriptions": [
+                        "The command will be executed in the corresponding workspace root.",
+                        "The command will be executed in the project root."
+                    ]
+                },
+                "rust-analyzer.checkOnSave.invocationStrategy": {
+                    "markdownDescription": "Specifies the invocation strategy to use when running the checkOnSave command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "default": "per_workspace",
+                    "type": "string",
+                    "enum": [
+                        "per_workspace",
+                        "once"
+                    ],
+                    "enumDescriptions": [
+                        "The command will be executed for each workspace.",
+                        "The command will be executed once."
                     ]
                 },
                 "rust-analyzer.checkOnSave.noDefaultFeatures": {

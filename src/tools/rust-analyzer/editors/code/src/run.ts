@@ -18,9 +18,9 @@ export async function selectRunnable(
     showButtons: boolean = true
 ): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor;
-    const client = ctx.client;
-    if (!editor || !client) return;
+    if (!editor) return;
 
+    const client = await ctx.getClient();
     const textDocument: lc.TextDocumentIdentifier = {
         uri: editor.document.uri.toString(),
     };
