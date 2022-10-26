@@ -60,8 +60,8 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
         if_chain! {
             if let hir::ExprKind::Binary(binop, _, _) | hir::ExprKind::AssignOp(binop, ..) = expr.kind;
             if let Some((binop_trait_lang, op_assign_trait_lang)) = binop_traits(binop.node);
-            if let Ok(binop_trait_id) = cx.tcx.lang_items().require(binop_trait_lang);
-            if let Ok(op_assign_trait_id) = cx.tcx.lang_items().require(op_assign_trait_lang);
+            if let Some(binop_trait_id) = cx.tcx.lang_items().get(binop_trait_lang);
+            if let Some(op_assign_trait_id) = cx.tcx.lang_items().get(op_assign_trait_lang);
 
             // Check for more than one binary operation in the implemented function
             // Linting when multiple operations are involved can result in false positives
@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
                 (&OP_ASSIGN_TRAITS, SUSPICIOUS_OP_ASSIGN_IMPL),
             ]
                 .iter()
-                .find(|&(ts, _)| ts.iter().any(|&t| Ok(trait_id) == cx.tcx.lang_items().require(t)));
+                .find(|&(ts, _)| ts.iter().any(|&t| Some(trait_id) == cx.tcx.lang_items().get(t)));
             if count_binops(body.value) == 1;
             then {
                 span_lint(
