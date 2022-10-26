@@ -1733,6 +1733,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 /// by their address rather than comparing the values they point to
 /// (which is what the `PartialEq for &T` implementation does).
 ///
+/// When comparing wide pointers, both the address and the metadata are tested for equality.
 /// However, note that comparing trait object pointers (`*const dyn Trait`) is unrealiable: pointers
 /// to values of the same underlying type can compare inequal (because vtables are duplicated in
 /// multiple codegen units), and pointers to values of *different* underlying type can compare equal
