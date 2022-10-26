@@ -20,8 +20,6 @@ allow-unauthenticated = [
     "AsyncAwait-OnDeck",
 ]
 
-[assign]
-
 [glacier]
 
 [ping.icebreakers-llvm]
@@ -246,6 +244,9 @@ trigger_files = [
     "src/version"
 ]
 
+[autolabel."S-waiting-on-review"]
+new_pr = true
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
@@ -420,3 +421,157 @@ cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+
+[assign]
+warn_non_default_branch = true
+contributing_url = "https://rustc-dev-guide.rust-lang.org/contributing.html"
+
+[assign.adhoc_groups]
+compiler-team = [
+    "@cjgillot",
+    "@estebank",
+    "@petrochenkov",
+    "@davidtwco",
+    "@oli-obk",
+    "@lcnr",
+    "@nagisa",
+    "@wesleywiser",
+]
+compiler-team-contributors = [
+    "@compiler-errors",
+    "@eholk",
+    "@jackh726",
+    "@fee1-dead",
+    "@TaKO8Ki",
+]
+compiler = [
+    "compiler-team",
+    "compiler-team-contributors",
+]
+libs = [
+    "@joshtriplett",
+    "@Mark-Simulacrum",
+    "@m-ou-se",
+    "@thomcc",
+]
+bootstrap = [
+    "@Mark-Simulacrum",
+    "@jyn514",
+]
+infra-ci = [
+    "@Mark-Simulacrum",
+    "@pietroalbini",
+    "@jyn514",
+]
+rustdoc = [
+    "@jsha",
+    "@GuillaumeGomez",
+    "@CraftSpider",
+    "@notriddle",
+]
+docs = [
+    "@ehuss",
+    "@GuillaumeGomez",
+    "@JohnTitor",
+]
+query-system = [
+    "@cjgillot",
+]
+incremental = [
+    "@michaelwoerister",
+    "@wesleywiser",
+]
+diagnostics = [
+    "@compiler-errors",
+    "@davidtwco",
+    "@estebank",
+    "@oli-obk",
+    "@TaKO8Ki",
+]
+parser = [
+    "@davidtwco",
+    "@estebank",
+    "@nnethercote",
+    "@petrochenkov",
+]
+lexer = [
+    "@nnethercote",
+    "@petrochenkov",
+]
+mir = [
+    "@davidtwco",
+    "@oli-obk",
+]
+mir-opt = [
+    "@nagisa",
+    "@oli-obk",
+    "@wesleywiser",
+]
+types = [
+    "@compiler-errors",
+    "@jackh726",
+    "@lcnr",
+    "@oli-obk",
+    "@spastorino",
+]
+borrowck = [
+    "@davidtwco",
+    "@pnkfelix",
+]
+ast_lowering = [
+    "@spastorino",
+]
+fallback = [
+    "@Mark-Simulacrum"
+]
+
+[assign.owners]
+"/.github/workflows" =                       ["infra-ci"]
+"/Cargo.lock" =                              ["@Mark-Simulacrum"]
+"/Cargo.toml" =                              ["@Mark-Simulacrum"]
+"/compiler" =                                ["compiler"]
+"/compiler/rustc_apfloat" =                  ["@eddyb"]
+"/compiler/rustc_ast" =                      ["compiler", "parser"]
+"/compiler/rustc_ast_lowering" =             ["compiler", "ast_lowering"]
+"/compiler/rustc_hir_analysis" =             ["compiler", "types"]
+"/compiler/rustc_lexer" =                    ["compiler", "lexer"]
+"/compiler/rustc_llvm" =                     ["@cuviper"]
+"/compiler/rustc_middle/src/mir" =           ["compiler", "mir"]
+"/compiler/rustc_middle/src/traits" =        ["compiler", "types"]
+"/compiler/rustc_const_eval/src/interpret" = ["compiler", "mir"]
+"/compiler/rustc_const_eval/src/transform" = ["compiler", "mir-opt"]
+"/compiler/rustc_mir_build/src/build" =      ["compiler", "mir"]
+"/compiler/rustc_parse" =                    ["compiler", "parser"]
+"/compiler/rustc_parse/src/lexer" =          ["compiler", "lexer"]
+"/compiler/rustc_query_impl" =               ["compiler", "query-system"]
+"/compiler/rustc_query_system" =             ["compiler", "query-system"]
+"/compiler/rustc_trait_selection" =          ["compiler", "types"]
+"/compiler/rustc_traits" =                   ["compiler", "types"]
+"/compiler/rustc_type_ir" =                  ["compiler", "types"]
+"/library/alloc" =                           ["libs"]
+"/library/core" =                            ["libs", "@scottmcm"]
+"/library/panic_abort" =                     ["libs"]
+"/library/panic_unwind" =                    ["libs"]
+"/library/proc_macro" =                      ["@petrochenkov"]
+"/library/std" =                             ["libs"]
+"/library/std/src/sys/windows" =             ["@ChrisDenton", "@thomcc"]
+"/library/stdarch" =                         ["libs"]
+"/library/test" =                            ["libs"]
+"/src/bootstrap" =                           ["bootstrap"]
+"/src/ci" =                                  ["infra-ci"]
+"/src/doc" =                                 ["docs"]
+"/src/doc/rustdoc" =                         ["rustdoc"]
+"/src/etc" =                                 ["@Mark-Simulacrum"]
+"/src/librustdoc" =                          ["rustdoc"]
+"/src/llvm-project" =                        ["@cuviper"]
+"/src/rustdoc-json-types" =                  ["rustdoc"]
+"/src/stage0.json" =                         ["bootstrap"]
+"/src/tools/cargo" =                         ["@ehuss", "@joshtriplett"]
+"/src/tools/compiletest" =                   ["bootstrap"]
+"/src/tools/linkchecker" =                   ["@ehuss"]
+"/src/tools/rust-installer" =                ["bootstrap"]
+"/src/tools/rustbook" =                      ["@ehuss"]
+"/src/tools/rustdoc" =                       ["rustdoc"]
+"/src/tools/rustdoc-js" =                    ["rustdoc"]
+"/src/tools/rustdoc-themes" =                ["rustdoc"]
+"/src/tools/tidy" =                          ["bootstrap"]
