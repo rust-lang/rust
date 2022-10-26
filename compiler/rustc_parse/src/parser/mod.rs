@@ -511,7 +511,7 @@ impl<'a> Parser<'a> {
     /// If this returns false, recovering broken code into valid code (especially if this recovery does lookahead)
     /// is not allowed. All recovery done by the parser must be gated behind this check.
     ///
-    /// Technically, this only needs to restruct eager recovery by doing lookahead at more tokens.
+    /// Technically, this only needs to restrict eager recovery by doing lookahead at more tokens.
     /// But making the distinction is very subtle, and simply forbidding all recovery is a lot simpler to uphold.
     fn may_recover(&self) -> bool {
         matches!(self.recovery, Recovery::Allowed)
