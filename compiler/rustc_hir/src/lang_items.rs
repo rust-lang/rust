@@ -39,7 +39,7 @@ macro_rules! expand_group {
 pub struct LanguageItems {
     /// Mappings from lang items to their possibly found [`DefId`]s.
     /// The index corresponds to the order in [`LangItem`].
-    items: Vec<Option<DefId>>,
+    items: [Option<DefId>; std::mem::variant_count::<LangItem>()],
     /// Lang items that were not found during collection.
     pub missing: Vec<LangItem>,
     /// Mapping from [`LangItemGroup`] discriminants to all
@@ -48,6 +48,17 @@ pub struct LanguageItems {
 }
 
 impl LanguageItems {
+    /// Construct an empty collection of lang items and no missing ones.
+    pub fn new() -> Self {
+        const EMPTY: Vec<DefId> = Vec::new();
+
+        Self {
+            items: [None; std::mem::variant_count::<LangItem>()],
+            missing: Vec::new(),
+            groups: [EMPTY; NUM_GROUPS],
+        }
+    }
+
     pub fn get(&self, item: LangItem) -> Option<DefId> {
         self.items[item as usize]
     }
@@ -132,18 +143,6 @@ macro_rules! language_item_table {
         }
 
         impl LanguageItems {
-            /// Construct an empty collection of lang items and no missing ones.
-            pub fn new() -> Self {
-                fn init_none(_: LangItem) -> Option<DefId> { None }
-                const EMPTY: Vec<DefId> = Vec::new();
-
-                Self {
-                    items: vec![$(init_none(LangItem::$variant)),*],
-                    missing: Vec::new(),
-                    groups: [EMPTY; NUM_GROUPS],
-                }
-            }
-
             /// Returns the [`DefId`]s of all lang items in a group.
             pub fn group(&self, group: LangItemGroup) -> &[DefId] {
                 self.groups[group as usize].as_ref()
