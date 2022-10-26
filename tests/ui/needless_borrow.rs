@@ -385,3 +385,26 @@ mod used_more_than_once {
     fn use_x(_: impl AsRef<str>) {}
     fn use_x_again(_: impl AsRef<str>) {}
 }
+
+// https://github.com/rust-lang/rust-clippy/issues/9111#issuecomment-1277114280
+#[allow(dead_code)]
+mod issue_9111 {
+    struct A;
+
+    impl Extend<u8> for A {
+        fn extend<T: IntoIterator<Item = u8>>(&mut self, _: T) {
+            unimplemented!()
+        }
+    }
+
+    impl<'a> Extend<&'a u8> for A {
+        fn extend<T: IntoIterator<Item = &'a u8>>(&mut self, _: T) {
+            unimplemented!()
+        }
+    }
+
+    fn main() {
+        let mut a = A;
+        a.extend(&[]); // vs a.extend([]);
+    }
+}
