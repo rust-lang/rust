@@ -140,9 +140,6 @@ impl<'tcx> LanguageItemCollector<'tcx> {
 
         // Matched.
         self.items.set(lang_item, item_def_id);
-        if let Some(group) = lang_item.group() {
-            self.items.groups[group as usize].push(item_def_id);
-        }
     }
 
     // Like collect_item() above, but also checks whether the lang item is declared

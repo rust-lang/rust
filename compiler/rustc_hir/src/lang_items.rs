@@ -17,22 +17,6 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-pub enum LangItemGroup {
-    Op,
-    Fn,
-}
-
-const NUM_GROUPS: usize = 2;
-
-macro_rules! expand_group {
-    () => {
-        None
-    };
-    ($group:expr) => {
-        Some($group)
-    };
-}
-
 /// All of the language items, defined or not.
 /// Defined lang items can come from the current crate or its dependencies.
 #[derive(HashStable_Generic, Debug)]
@@ -42,21 +26,12 @@ pub struct LanguageItems {
     items: [Option<DefId>; std::mem::variant_count::<LangItem>()],
     /// Lang items that were not found during collection.
     pub missing: Vec<LangItem>,
-    /// Mapping from [`LangItemGroup`] discriminants to all
-    /// [`DefId`]s of lang items in that group.
-    pub groups: [Vec<DefId>; NUM_GROUPS],
 }
 
 impl LanguageItems {
     /// Construct an empty collection of lang items and no missing ones.
     pub fn new() -> Self {
-        const EMPTY: Vec<DefId> = Vec::new();
-
-        Self {
-            items: [None; std::mem::variant_count::<LangItem>()],
-            missing: Vec::new(),
-            groups: [EMPTY; NUM_GROUPS],
-        }
+        Self { items: [None; std::mem::variant_count::<LangItem>()], missing: Vec::new() }
     }
 
     pub fn get(&self, item: LangItem) -> Option<DefId> {
@@ -86,7 +61,7 @@ impl LanguageItems {
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
     (
-        $( $(#[$attr:meta])* $variant:ident $($group:expr)?, $module:ident :: $name:ident, $method:ident, $target:expr, $generics:expr; )*
+        $( $(#[$attr:meta])* $variant:ident, $module:ident :: $name:ident, $method:ident, $target:expr, $generics:expr; )*
     ) => {
 
         enum_from_u32! {
@@ -120,15 +95,6 @@ macro_rules! language_item_table {
                 }
             }
 
-            /// The [group](LangItemGroup) that this lang item belongs to,
-            /// or `None` if it doesn't belong to a group.
-            pub fn group(self) -> Option<LangItemGroup> {
-                use LangItemGroup::*;
-                match self {
-                    $( LangItem::$variant => expand_group!($($group)*), )*
-                }
-            }
-
             pub fn target(self) -> Target {
                 match self {
                     $( LangItem::$variant => $target, )*
@@ -143,11 +109,6 @@ macro_rules! language_item_table {
         }
 
         impl LanguageItems {
-            /// Returns the [`DefId`]s of all lang items in a group.
-            pub fn group(&self, group: LangItemGroup) -> &[DefId] {
-                self.groups[group as usize].as_ref()
-            }
-
             $(
                 #[doc = concat!("Returns the [`DefId`] of the `", stringify!($name), "` lang item if it is defined.")]
                 pub fn $method(&self) -> Option<DefId> {
@@ -209,30 +170,30 @@ language_item_table! {
     TransmuteOpts,           sym::transmute_opts,      transmute_opts,             Target::Struct,         GenericRequirement::Exact(0);
     TransmuteTrait,          sym::transmute_trait,     transmute_trait,            Target::Trait,          GenericRequirement::Exact(3);
 
-    Add(Op),                 sym::add,                 add_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Sub(Op),                 sym::sub,                 sub_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Mul(Op),                 sym::mul,                 mul_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Div(Op),                 sym::div,                 div_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Rem(Op),                 sym::rem,                 rem_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Neg(Op),                 sym::neg,                 neg_trait,                  Target::Trait,          GenericRequirement::Exact(0);
-    Not(Op),                 sym::not,                 not_trait,                  Target::Trait,          GenericRequirement::Exact(0);
-    BitXor(Op),              sym::bitxor,              bitxor_trait,               Target::Trait,          GenericRequirement::Exact(1);
-    BitAnd(Op),              sym::bitand,              bitand_trait,               Target::Trait,          GenericRequirement::Exact(1);
-    BitOr(Op),               sym::bitor,               bitor_trait,                Target::Trait,          GenericRequirement::Exact(1);
-    Shl(Op),                 sym::shl,                 shl_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    Shr(Op),                 sym::shr,                 shr_trait,                  Target::Trait,          GenericRequirement::Exact(1);
-    AddAssign(Op),           sym::add_assign,          add_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    SubAssign(Op),           sym::sub_assign,          sub_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    MulAssign(Op),           sym::mul_assign,          mul_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    DivAssign(Op),           sym::div_assign,          div_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    RemAssign(Op),           sym::rem_assign,          rem_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    BitXorAssign(Op),        sym::bitxor_assign,       bitxor_assign_trait,        Target::Trait,          GenericRequirement::Exact(1);
-    BitAndAssign(Op),        sym::bitand_assign,       bitand_assign_trait,        Target::Trait,          GenericRequirement::Exact(1);
-    BitOrAssign(Op),         sym::bitor_assign,        bitor_assign_trait,         Target::Trait,          GenericRequirement::Exact(1);
-    ShlAssign(Op),           sym::shl_assign,          shl_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    ShrAssign(Op),           sym::shr_assign,          shr_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
-    Index(Op),               sym::index,               index_trait,                Target::Trait,          GenericRequirement::Exact(1);
-    IndexMut(Op),            sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
+    Add,                     sym::add,                 add_trait,                  Target::Trait,          GenericRequirement::Exact(1);
+    Sub,                     sym::sub,                 sub_trait,                  Target::Trait,          GenericRequirement::Exact(1);
+    Mul,                     sym::mul,                 mul_trait,                  Target::Trait,          GenericRequirement::Exact(1);
+    Div,                     sym::div,                 div_trait,                  Target::Trait,          GenericRequirement::Exact(1);
+    Rem,                     sym::rem,                 rem_trait,                  Target::Trait,          GenericRequirement::Exact(1);
+    Neg,                     sym::neg,                 neg_trait,                  Target::Trait,          GenericRequirement::Exact(0);
+    Not,                     sym::not,                 not_trait,                  Target::Trait,          GenericRequirement::Exact(0);
+    BitXor,                  sym::bitxor,              bitxor_trait,               Target::Trait,          GenericRequirement::Exact(1);
+    BitAnd,                  sym::bitand,              bitand_trait,               Target::Trait,          GenericRequirement::Exact(1);
+    BitOr,                   sym::bitor,               bitor_trait,                Target::Trait,          GenericRequirement::Exact(1);
+    Shl,                     sym::shl,                 shl_trait,                  Target::Trait,          GenericRequirement::Exact(1);
+    Shr,                     sym::shr,                 shr_trait,                  Target::Trait,          GenericRequirement::Exact(1);
+    AddAssign,               sym::add_assign,          add_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
+    SubAssign,               sym::sub_assign,          sub_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
+    MulAssign,               sym::mul_assign,          mul_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
+    DivAssign,               sym::div_assign,          div_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
+    RemAssign,               sym::rem_assign,          rem_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
+    BitXorAssign,            sym::bitxor_assign,       bitxor_assign_trait,        Target::Trait,          GenericRequirement::Exact(1);
+    BitAndAssign,            sym::bitand_assign,       bitand_assign_trait,        Target::Trait,          GenericRequirement::Exact(1);
+    BitOrAssign,             sym::bitor_assign,        bitor_assign_trait,         Target::Trait,          GenericRequirement::Exact(1);
+    ShlAssign,               sym::shl_assign,          shl_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
+    ShrAssign,               sym::shr_assign,          shr_assign_trait,           Target::Trait,          GenericRequirement::Exact(1);
+    Index,                   sym::index,               index_trait,                Target::Trait,          GenericRequirement::Exact(1);
+    IndexMut,                sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
     UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
     VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;
@@ -242,9 +203,9 @@ language_item_table! {
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy,        GenericRequirement::None;
     Receiver,                sym::receiver,            receiver_trait,             Target::Trait,          GenericRequirement::None;
 
-    Fn(Fn),                  kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
-    FnMut(Fn),               sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
-    FnOnce(Fn),              sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
+    Fn,                      kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
+    FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
+    FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
 
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
@@ -254,8 +215,8 @@ language_item_table! {
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
 
-    PartialEq(Op),           sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
-    PartialOrd(Op),          sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
+    PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
+    PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and
     // various panic cases with `match`. The `panic_bounds_check` item is for indexing arrays.
@@ -351,3 +312,34 @@ pub enum GenericRequirement {
     Minimum(usize),
     Exact(usize),
 }
+
+pub static FN_TRAITS: &'static [LangItem] = &[LangItem::Fn, LangItem::FnMut, LangItem::FnOnce];
+
+pub static OPERATORS: &'static [LangItem] = &[
+    LangItem::Add,
+    LangItem::Sub,
+    LangItem::Mul,
+    LangItem::Div,
+    LangItem::Rem,
+    LangItem::Neg,
+    LangItem::Not,
+    LangItem::BitXor,
+    LangItem::BitAnd,
+    LangItem::BitOr,
+    LangItem::Shl,
+    LangItem::Shr,
+    LangItem::AddAssign,
+    LangItem::SubAssign,
+    LangItem::MulAssign,
+    LangItem::DivAssign,
+    LangItem::RemAssign,
+    LangItem::BitXorAssign,
+    LangItem::BitAndAssign,
+    LangItem::BitOrAssign,
+    LangItem::ShlAssign,
+    LangItem::ShrAssign,
+    LangItem::Index,
+    LangItem::IndexMut,
+    LangItem::PartialEq,
+    LangItem::PartialOrd,
+];

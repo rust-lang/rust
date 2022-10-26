@@ -3,7 +3,7 @@
 //! context.
 
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItemGroup;
+use rustc_hir::lang_items;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AssocItemContainer, DefIdTree, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
@@ -74,22 +74,24 @@ pub fn call_kind<'tcx>(
         }
     });
 
-    let fn_call = parent
-        .and_then(|p| tcx.lang_items().group(LangItemGroup::Fn).iter().find(|did| **did == p));
+    let fn_call = parent.and_then(|p| {
+        lang_items::FN_TRAITS.iter().filter_map(|&l| tcx.lang_items().get(l)).find(|&id| id == p)
+    });
 
-    let operator = (!from_hir_call)
-        .then(|| parent)
-        .flatten()
-        .and_then(|p| tcx.lang_items().group(LangItemGroup::Op).iter().find(|did| **did == p));
+    let operator = if !from_hir_call && let Some(p) = parent {
+        lang_items::OPERATORS.iter().filter_map(|&l| tcx.lang_items().get(l)).find(|&id| id == p)
+    } else {
+        None
+    };
 
     let is_deref = !from_hir_call && tcx.is_diagnostic_item(sym::deref_method, method_did);
 
     // Check for a 'special' use of 'self' -
     // an FnOnce call, an operator (e.g. `<<`), or a
     // deref coercion.
-    let kind = if let Some(&trait_id) = fn_call {
+    let kind = if let Some(trait_id) = fn_call {
         Some(CallKind::FnCall { fn_trait_id: trait_id, self_ty: method_substs.type_at(0) })
-    } else if let Some(&trait_id) = operator {
+    } else if let Some(trait_id) = operator {
         Some(CallKind::Operator { self_arg, trait_id, self_ty: method_substs.type_at(0) })
     } else if is_deref {
         let deref_target = tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
