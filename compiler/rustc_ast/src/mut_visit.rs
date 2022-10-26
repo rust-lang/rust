@@ -152,6 +152,12 @@ pub trait MutVisitor: Sized {
         noop_visit_expr(e, self);
     }
 
+    /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
+    /// It can be removed once that feature is stabilized.
+    fn visit_method_receiver_expr(&mut self, ex: &mut P<Expr>) {
+        self.visit_expr(ex)
+    }
+
     fn filter_map_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
         noop_filter_map_expr(e, self)
     }
@@ -1301,7 +1307,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_ident(ident);
             vis.visit_id(id);
             visit_opt(args, |args| vis.visit_generic_args(args));
-            vis.visit_expr(receiver);
+            vis.visit_method_receiver_expr(receiver);
             visit_exprs(exprs, vis);
             vis.visit_span(span);
         }
@@ -1587,5 +1593,11 @@ impl DummyAstNode for Crate {
             id: DUMMY_NODE_ID,
             is_placeholder: Default::default(),
         }
+    }
+}
+
+impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::ast_traits::AstNodeWrapper<N, T> {
+    fn dummy() -> Self {
+        crate::ast_traits::AstNodeWrapper::new(N::dummy(), T::dummy())
     }
 }

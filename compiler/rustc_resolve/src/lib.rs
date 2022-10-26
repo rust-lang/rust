@@ -42,9 +42,10 @@ use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, ResolverOutputs};
+use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools};
+use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::{CrateStore, CrateStoreDyn, MetadataLoaderDyn};
+use rustc_session::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc_session::lint::LintBuffer;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
@@ -1376,9 +1377,7 @@ impl<'a> Resolver<'a> {
         Default::default()
     }
 
-    pub fn into_outputs(
-        self,
-    ) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs, ty::ResolverAstLowering) {
+    pub fn into_outputs(self) -> ResolverOutputs {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions;
         let cstore = Box::new(self.crate_loader.into_cstore());
@@ -1394,7 +1393,8 @@ impl<'a> Resolver<'a> {
         let main_def = self.main_def;
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let access_levels = self.access_levels;
-        let resolutions = ResolverOutputs {
+        let global_ctxt = ResolverGlobalCtxt {
+            cstore,
             source_span,
             expn_that_defined,
             visibilities,
@@ -1416,7 +1416,7 @@ impl<'a> Resolver<'a> {
             confused_type_with_std_module,
             registered_tools: self.registered_tools,
         };
-        let resolutions_lowering = ty::ResolverAstLowering {
+        let ast_lowering = ty::ResolverAstLowering {
             legacy_const_generic_args: self.legacy_const_generic_args,
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,
@@ -1429,16 +1429,15 @@ impl<'a> Resolver<'a> {
             trait_map: self.trait_map,
             builtin_macro_kinds: self.builtin_macro_kinds,
         };
-        (definitions, cstore, resolutions, resolutions_lowering)
+        ResolverOutputs { definitions, global_ctxt, ast_lowering }
     }
 
-    pub fn clone_outputs(
-        &self,
-    ) -> (Definitions, Box<CrateStoreDyn>, ResolverOutputs, ty::ResolverAstLowering) {
+    pub fn clone_outputs(&self) -> ResolverOutputs {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions.clone();
         let cstore = Box::new(self.cstore().clone());
-        let resolutions = ResolverOutputs {
+        let global_ctxt = ResolverGlobalCtxt {
+            cstore,
             source_span: self.source_span.clone(),
             expn_that_defined: self.expn_that_defined.clone(),
             visibilities: self.visibilities.clone(),
@@ -1460,7 +1459,7 @@ impl<'a> Resolver<'a> {
             registered_tools: self.registered_tools.clone(),
             access_levels: self.access_levels.clone(),
         };
-        let resolutions_lowering = ty::ResolverAstLowering {
+        let ast_lowering = ty::ResolverAstLowering {
             legacy_const_generic_args: self.legacy_const_generic_args.clone(),
             partial_res_map: self.partial_res_map.clone(),
             import_res_map: self.import_res_map.clone(),
@@ -1473,7 +1472,7 @@ impl<'a> Resolver<'a> {
             trait_map: self.trait_map.clone(),
             builtin_macro_kinds: self.builtin_macro_kinds.clone(),
         };
-        (definitions, cstore, resolutions, resolutions_lowering)
+        ResolverOutputs { definitions, global_ctxt, ast_lowering }
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {

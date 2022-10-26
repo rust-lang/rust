@@ -661,3 +661,48 @@ enum BL {
         span: Span,
     }
 }
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser_add_paren)]
+struct BM {
+    #[suggestion_part(code("foo"))]
+    //~^ ERROR expected exactly one string literal for `code = ...`
+    span: Span,
+    r#type: String,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser_add_paren)]
+struct BN {
+    #[suggestion_part(code("foo", "bar"))]
+    //~^ ERROR expected exactly one string literal for `code = ...`
+    span: Span,
+    r#type: String,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser_add_paren)]
+struct BO {
+    #[suggestion_part(code(3))]
+    //~^ ERROR expected exactly one string literal for `code = ...`
+    span: Span,
+    r#type: String,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser_add_paren)]
+struct BP {
+    #[suggestion_part(code())]
+    //~^ ERROR expected exactly one string literal for `code = ...`
+    span: Span,
+    r#type: String,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser_add_paren)]
+struct BQ {
+    #[suggestion_part(code = 3)]
+    //~^ ERROR `code = "..."`/`code(...)` must contain only string literals
+    span: Span,
+    r#type: String,
+}

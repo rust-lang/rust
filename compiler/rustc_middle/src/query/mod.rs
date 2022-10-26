@@ -23,7 +23,7 @@ rustc_queries! {
         desc { "triggering a delay span bug" }
     }
 
-    query resolutions(_: ()) -> &'tcx ty::ResolverOutputs {
+    query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
         eval_always
         no_hash
         desc { "getting the resolver outputs" }
