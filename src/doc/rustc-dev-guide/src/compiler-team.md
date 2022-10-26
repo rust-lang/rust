@@ -111,20 +111,22 @@ The guidelines for reviewers are as follows:
 
 [Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
 
-### high-five
+### Reviewer rotation
 
-Once you have r+ rights, you can also be added to the [high-five][hi5]
-rotation. high-five is the bot that assigns incoming PRs to
-reviewers. If you are added, you will be randomly selected to review
+Once you have r+ rights, you can also be added to the [reviewer rotation].
+[triagebot] is the bot that [automatically assigns] incoming PRs to reviewers.
+If you are added, you will be randomly selected to review
 PRs. If you find you are assigned a PR that you don't feel comfortable
 reviewing, you can also leave a comment like `r? @so-and-so` to assign
 to someone else — if you don't know who to request, just write `r?
 @nikomatsakis for reassignment` and @nikomatsakis will pick someone
 for you.
 
-[hi5]: https://github.com/rust-highfive
+[reviewer rotation]: https://github.com/rust-lang/rust/blob/36285c5de8915ecc00d91ae0baa79a87ed5858d5/triagebot.toml#L528-L577
+[triagebot]: https://github.com/rust-lang/triagebot/
+[automatically assigns]: https://github.com/rust-lang/triagebot/wiki/Assignment
 
-Getting on the high-five list is much appreciated as it lowers the
+Getting on the reviewer rotation is much appreciated as it lowers the
 review burden for all of us! However, if you don't have time to give
 people timely feedback on their PRs, it may be better that you don't
 get on the list.

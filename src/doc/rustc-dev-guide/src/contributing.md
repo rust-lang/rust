@@ -73,7 +73,7 @@ when contributing to Rust under [the git section](./git.md).
 ### r?
 
 All pull requests are reviewed by another person. We have a bot,
-[@rust-highfive][rust-highfive], that will automatically assign a random person
+[@rustbot], that will automatically assign a random person
 to review your request based on which files you changed.
 
 If you want to request that a specific person reviews your pull request, you
@@ -82,7 +82,7 @@ if you want to ask a review to @awesome-reviewer, add
 
     r? @awesome-reviewer
 
-to the end of the pull request description, and [@rust-highfive][rust-highfive] will assign
+to the end of the pull request description, and [@rustbot] will assign
 them instead of a random person. This is entirely optional.
 
 You can also assign a random reviewer from a specific team by writing `r? rust-lang/groupname`.
@@ -91,8 +91,10 @@ team by adding:
 
     r? rust-lang/diagnostics
 
-For a full list of possible `groupname` check the `groups` section at the
-[rust highfive config file](https://github.com/rust-lang/highfive/blob/master/highfive/configs/rust-lang/rust.json).
+For a full list of possible `groupname` check the `adhoc_groups` section at the
+[triagebot.toml config file](https://github.com/rust-lang/rust/blob/master/triagebot.toml)
+or the list of teams in the [rust-lang teams
+database](https://github.com/rust-lang/team/tree/master/teams).
 
 ### CI
 
@@ -133,7 +135,7 @@ Changes that are rolled up are tested and merged alongside other PRs, to
 speed the process up. Typically only small changes that are expected not to conflict
 with one another are marked as "always roll up".
 
-[rust-highfive]: https://github.com/rust-highfive
+[@rustbot]: https://github.com/rustbot
 [@bors]: https://github.com/bors
 [merge-queue]: https://bors.rust-lang.org/queue/rust
 

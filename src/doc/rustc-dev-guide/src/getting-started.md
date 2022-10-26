@@ -156,7 +156,7 @@ highlights, but there are a lot more details, which we will link to below.
 
 ### Code Review
 
-When you open a PR on the `rust-lang/rust` repo, a bot called `@rust-highfive` will
+When you open a PR on the `rust-lang/rust` repo, a bot called `@rustbot` will
 automatically assign a reviewer to the PR based on which files you changed.
 The reviewer is the person that will approve the PR to be tested and merged.
 If you want a specific reviewer (e.g. a team member you've been working with),
