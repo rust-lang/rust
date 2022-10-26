@@ -591,6 +591,7 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// the program has undefined behavior. In particular, the aliasing rules still apply: pointers
 /// and references that have been invalidated due to aliasing accesses cannot be used any more,
 /// even if they have been exposed!
+///
 /// Note that there is no algorithm that decides which provenance will be used. You can think of this
 /// as "guessing" the right provenance, and the guess will be "maximally in your favor", in the sense
 /// that if there is any way to avoid undefined behavior (while upholding all aliasing requirements),
