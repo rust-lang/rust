@@ -21,7 +21,7 @@ use serde::Deserialize;
 use crate::builder::Cargo;
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
-use crate::config::{LlvmLibunwind, TargetSelection};
+use crate::config::{LlvmLibunwind, RustcLto, TargetSelection};
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
@@ -701,6 +701,28 @@ impl Step for Rustc {
             ));
         }
 
+        // cfg(bootstrap): remove if condition once the bootstrap compiler supports dylib LTO
+        if compiler.stage != 0 {
+            match builder.config.rust_lto {
+                RustcLto::Thin | RustcLto::Fat => {
+                    // Since using LTO for optimizing dylibs is currently experimental,
+                    // we need to pass -Zdylib-lto.
+                    cargo.rustflag("-Zdylib-lto");
+                    // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
+                    // compiling dylibs (and their dependencies), even when LTO is enabled for the
+                    // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
+                    let lto_type = match builder.config.rust_lto {
+                        RustcLto::Thin => "thin",
+                        RustcLto::Fat => "fat",
+                        _ => unreachable!(),
+                    };
+                    cargo.rustflag(&format!("-Clto={}", lto_type));
+                    cargo.rustflag("-Cembed-bitcode=yes");
+                }
+                RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
+            }
+        }
+
         builder.info(&format!(
             "Building stage{} compiler artifacts ({} -> {})",
             compiler.stage, &compiler.host, target
@@ -1153,6 +1175,20 @@ impl Step for Sysroot {
                     sysroot_lib_rustlib_src_rust.display(),
                 );
             }
+        }
+        // Same for the rustc-src component.
+        let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
+        t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
+        let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
+        if let Err(e) =
+            symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
+        {
+            eprintln!(
+                "warning: creating symbolic link `{}` to `{}` failed with {}",
+                sysroot_lib_rustlib_rustcsrc_rust.display(),
+                builder.src.display(),
+                e,
+            );
         }
 
         INTERNER.intern_path(sysroot)

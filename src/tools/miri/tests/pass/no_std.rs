@@ -5,10 +5,30 @@
 // windows linker section, we can run this test on windows again.
 //@ignore-target-windows
 
+// Plumbing to let us use `writeln!` to host stdout:
+
+extern "Rust" {
+    fn miri_write_to_stdout(bytes: &[u8]);
+}
+
+struct Host;
+
+use core::fmt::Write;
+
+impl Write for Host {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        unsafe {
+            miri_write_to_stdout(s.as_bytes());
+        }
+        Ok(())
+    }
+}
+
+// Aaaand the test:
+
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    for _ in 0..10 {}
-
+    writeln!(Host, "hello, world!").unwrap();
     0
 }
 

@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_trait_def_id, if_sequence, in_constant, is_else_clause, paths, SpanlessEq};
+use clippy_utils::{if_sequence, in_constant, is_else_clause, SpanlessEq};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -106,7 +107,10 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
 
                 // Check that the type being compared implements `core::cmp::Ord`
                 let ty = cx.typeck_results().expr_ty(lhs1);
-                let is_ord = get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]));
+                let is_ord = cx
+                    .tcx
+                    .get_diagnostic_item(sym::Ord)
+                    .map_or(false, |id| implements_trait(cx, ty, id, &[]));
 
                 if !is_ord {
                     return;

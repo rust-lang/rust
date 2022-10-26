@@ -30,8 +30,7 @@ pub enum SchedulingAction {
     Stop,
 }
 
-/// Timeout callbacks can be created by synchronization primitives to tell the
-/// scheduler that they should be called once some period of time passes.
+/// Trait for callbacks that can be executed when some event happens, such as after a timeout.
 pub trait MachineCallback<'mir, 'tcx>: VisitTags {
     fn call(&self, ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx>;
 }
@@ -269,7 +268,7 @@ pub struct ThreadManager<'mir, 'tcx> {
     threads: IndexVec<ThreadId, Thread<'mir, 'tcx>>,
     /// This field is pub(crate) because the synchronization primitives
     /// (`crate::sync`) need a way to access it.
-    pub(crate) sync: SynchronizationState,
+    pub(crate) sync: SynchronizationState<'mir, 'tcx>,
     /// A mapping from a thread-local static to an allocation id of a thread
     /// specific allocation.
     thread_local_alloc_ids: RefCell<FxHashMap<(DefId, ThreadId), Pointer<Provenance>>>,
@@ -303,7 +302,7 @@ impl VisitTags for ThreadManager<'_, '_> {
             timeout_callbacks,
             active_thread: _,
             yield_active_thread: _,
-            sync: _,
+            sync,
         } = self;
 
         for thread in threads {
@@ -315,6 +314,7 @@ impl VisitTags for ThreadManager<'_, '_> {
         for callback in timeout_callbacks.values() {
             callback.callback.visit_tags(visit);
         }
+        sync.visit_tags(visit);
     }
 }
 

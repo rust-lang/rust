@@ -93,12 +93,12 @@ fn lint_cstring_as_ptr(
                     cx.struct_span_lint(
                         TEMPORARY_CSTRING_AS_PTR,
                         as_ptr_span,
-                        fluent::lint::cstring_ptr,
+                        fluent::lint_cstring_ptr,
                         |diag| {
-                            diag.span_label(as_ptr_span, fluent::lint::as_ptr_label)
-                                .span_label(unwrap.span, fluent::lint::unwrap_label)
-                                .note(fluent::lint::note)
-                                .help(fluent::lint::help)
+                            diag.span_label(as_ptr_span, fluent::as_ptr_label)
+                                .span_label(unwrap.span, fluent::unwrap_label)
+                                .note(fluent::note)
+                                .help(fluent::help)
                         },
                     );
                 }

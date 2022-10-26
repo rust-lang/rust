@@ -38,11 +38,13 @@ use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::definitions::Definitions;
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
+use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, Span};
@@ -142,8 +144,15 @@ mod sty;
 
 pub type RegisteredTools = FxHashSet<Ident>;
 
-#[derive(Debug)]
 pub struct ResolverOutputs {
+    pub definitions: Definitions,
+    pub global_ctxt: ResolverGlobalCtxt,
+    pub ast_lowering: ResolverAstLowering,
+}
+
+#[derive(Debug)]
+pub struct ResolverGlobalCtxt {
+    pub cstore: Box<CrateStoreDyn>,
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
     /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
     pub has_pub_restricted: bool,
@@ -2694,6 +2703,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     closure::provide(providers);
     context::provide(providers);
     erase_regions::provide(providers);
+    inhabitedness::provide(providers);
     util::provide(providers);
     print::provide(providers);
     super::util::bug::provide(providers);
@@ -2701,7 +2711,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,
-        type_uninhabited_from: inhabitedness::type_uninhabited_from,
         const_param_default: consts::const_param_default,
         vtable_allocation: vtable::vtable_allocation_provider,
         ..*providers

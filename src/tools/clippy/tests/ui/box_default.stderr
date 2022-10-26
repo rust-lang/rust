@@ -1,59 +1,88 @@
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:21:32
+  --> $DIR/box_default.rs:22:32
    |
 LL |     let _string: Box<String> = Box::new(Default::default());
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
    |
-   = help: use `Box::default()` instead
    = note: `-D clippy::box-default` implied by `-D warnings`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:22:17
+  --> $DIR/box_default.rs:23:17
    |
 LL |     let _byte = Box::new(u8::default());
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `Box::default()` instead
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<u8>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:23:16
+  --> $DIR/box_default.rs:24:16
    |
 LL |     let _vec = Box::new(Vec::<u8>::new());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `Box::default()` instead
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<std::vec::Vec<u8>>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:24:17
+  --> $DIR/box_default.rs:25:17
    |
 LL |     let _impl = Box::new(ImplementsDefault::default());
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `Box::default()` instead
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:25:18
+  --> $DIR/box_default.rs:26:18
    |
 LL |     let _impl2 = Box::new(<ImplementsDefault as Default>::default());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `Box::default()` instead
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:26:42
+  --> $DIR/box_default.rs:27:42
    |
 LL |     let _impl3: Box<ImplementsDefault> = Box::new(Default::default());
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `Box::default()` instead
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
 
 error: `Box::new(_)` of default value
-  --> $DIR/box_default.rs:28:28
+  --> $DIR/box_default.rs:29:28
    |
 LL |     let _in_macro = outer!(Box::new(String::new()));
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `Box::default()` instead
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<std::string::String>::default()`
 
-error: aborting due to 7 previous errors
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:30:34
+   |
+LL |     let _string_default = outer!(Box::new(String::from("")));
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<std::string::String>::default()`
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:31:46
+   |
+LL |     let _vec2: Box<Vec<ImplementsDefault>> = Box::new(vec![]);
+   |                                              ^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:32:33
+   |
+LL |     let _vec3: Box<Vec<bool>> = Box::new(Vec::from([]));
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:33:25
+   |
+LL |     let _vec4: Box<_> = Box::new(Vec::from([false; 0]));
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<std::vec::Vec<bool>>::default()`
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:35:16
+   |
+LL |     call_ty_fn(Box::new(u8::default()));
+   |                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:39:5
+   |
+LL |     Box::new(bool::default())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<bool>::default()`
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:56:28
+   |
+LL |     let _: Box<dyn Read> = Box::new(ImplementsDefault::default());
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
+
+error: aborting due to 14 previous errors
 

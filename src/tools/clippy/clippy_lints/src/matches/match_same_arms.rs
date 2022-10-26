@@ -221,7 +221,6 @@ fn iter_matching_struct_fields<'a>(
 
 #[expect(clippy::similar_names)]
 impl<'a> NormalizedPat<'a> {
-    #[expect(clippy::too_many_lines)]
     fn from_pat(cx: &LateContext<'_>, arena: &'a DroplessArena, pat: &'a Pat<'_>) -> Self {
         match pat.kind {
             PatKind::Wild | PatKind::Binding(.., None) => Self::Wild,
@@ -235,9 +234,8 @@ impl<'a> NormalizedPat<'a> {
                 Self::Struct(cx.qpath_res(path, pat.hir_id).opt_def_id(), fields)
             },
             PatKind::TupleStruct(ref path, pats, wild_idx) => {
-                let adt = match cx.typeck_results().pat_ty(pat).ty_adt_def() {
-                    Some(x) => x,
-                    None => return Self::Wild,
+                let Some(adt) = cx.typeck_results().pat_ty(pat).ty_adt_def() else {
+                    return Self::Wild
                 };
                 let (var_id, variant) = if adt.is_enum() {
                     match cx.qpath_res(path, pat.hir_id).opt_def_id() {

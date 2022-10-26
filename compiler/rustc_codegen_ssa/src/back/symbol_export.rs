@@ -13,7 +13,7 @@ use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, SymbolName, TyCtxt};
-use rustc_session::config::CrateType;
+use rustc_session::config::{CrateType, OomStrategy};
 use rustc_target::spec::SanitizerSet;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
@@ -206,6 +206,15 @@ fn exported_symbols_provider_local<'tcx>(
                 },
             ));
         }
+
+        symbols.push((
+            ExportedSymbol::NoDefId(SymbolName::new(tcx, OomStrategy::SYMBOL)),
+            SymbolExportInfo {
+                level: SymbolExportLevel::Rust,
+                kind: SymbolExportKind::Text,
+                used: false,
+            },
+        ));
     }
 
     if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {

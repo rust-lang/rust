@@ -394,7 +394,6 @@ pub use crate::intrinsics::copy;
 pub use crate::intrinsics::write_bytes;
 
 mod metadata;
-pub(crate) use metadata::PtrRepr;
 #[unstable(feature = "ptr_metadata", issue = "81513")]
 pub use metadata::{from_raw_parts, from_raw_parts_mut, metadata, DynMetadata, Pointee, Thin};
 

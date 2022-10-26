@@ -184,7 +184,6 @@ h4.code-header {
 }
 .code-header {
 	font-weight: 600;
-	border-bottom-style: none;
 	margin: 0;
 	padding: 0;
 }
@@ -403,10 +402,6 @@ img {
 	overflow-y: hidden;
 }
 
-.rustdoc.source .sidebar .sidebar-logo {
-	display: none;
-}
-
 .source .sidebar, #sidebar-toggle, #source-sidebar {
 	background-color: var(--sidebar-background-color);
 }
@@ -539,7 +534,6 @@ ul.block, .block li {
 }
 
 .source .content pre.rust {
-	white-space: pre;
 	overflow: auto;
 	padding-left: 0;
 }
@@ -920,7 +914,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	flex-flow: row wrap;
 }
 
-.search-results .result-name, .search-results div.desc, .search-results .result-description {
+.search-results .result-name, .search-results div.desc {
 	width: 50%;
 }
 .search-results .result-name {
@@ -1233,9 +1227,6 @@ a.test-arrow {
 }
 .example-wrap:hover .test-arrow {
 	visibility: visible;
-}
-a.test-arrow:hover {
-	text-decoration: none;
 }
 
 .code-attribute {
@@ -1899,10 +1890,10 @@ in storage.js
 		border-bottom: 1px solid #aaa9;
 		padding: 5px 0px;
 	}
-	.search-results .result-name, .search-results div.desc, .search-results .result-description {
+	.search-results .result-name, .search-results div.desc {
 		width: 100%;
 	}
-	.search-results div.desc, .search-results .result-description, .item-right {
+	.search-results div.desc, .item-right {
 		padding-left: 2em;
 	}
 

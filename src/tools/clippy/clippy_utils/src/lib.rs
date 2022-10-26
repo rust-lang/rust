@@ -25,10 +25,12 @@ extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_hir_typeck;
+extern crate rustc_index;
 extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_middle;
+extern crate rustc_mir_dataflow;
 extern crate rustc_parse_format;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -48,6 +50,7 @@ pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
 pub mod macros;
+pub mod mir;
 pub mod msrvs;
 pub mod numeric_literal;
 pub mod paths;
@@ -122,7 +125,7 @@ pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Opt
         return Some(version);
     } else if let Some(sess) = sess {
         if let Some(span) = span {
-            sess.span_err(span, &format!("`{msrv}` is not a valid Rust version"));
+            sess.span_err(span, format!("`{msrv}` is not a valid Rust version"));
         }
     }
     None
@@ -815,11 +818,35 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
                 false
             }
         },
-        ExprKind::Call(repl_func, _) => is_default_equivalent_call(cx, repl_func),
+        ExprKind::Call(repl_func, []) => is_default_equivalent_call(cx, repl_func),
+        ExprKind::Call(from_func, [ref arg]) => is_default_equivalent_from(cx, from_func, arg),
         ExprKind::Path(qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, e.hir_id), OptionNone),
         ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
         _ => false,
     }
+}
+
+fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &Expr<'_>) -> bool {
+    if let ExprKind::Path(QPath::TypeRelative(ty, seg)) = from_func.kind &&
+        seg.ident.name == sym::from
+    {
+        match arg.kind {
+            ExprKind::Lit(hir::Lit {
+                node: LitKind::Str(ref sym, _),
+                ..
+            }) => return sym.is_empty() && is_path_diagnostic_item(cx, ty, sym::String),
+            ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
+            ExprKind::Repeat(_, ArrayLen::Body(len)) => {
+                if let ExprKind::Lit(ref const_lit) = cx.tcx.hir().body(len.body).value.kind &&
+                    let LitKind::Int(v, _) = const_lit.node
+                {
+                        return v == 0 && is_path_diagnostic_item(cx, ty, sym::Vec);
+                }
+            }
+            _ => (),
+        }
+    }
+    false
 }
 
 /// Checks if the top level expression can be moved into a closure as is.
@@ -1739,6 +1766,7 @@ pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool
 /// ```rust,ignore
 /// if let Some(args) = match_function_call(cx, cmp_max_call, &paths::CMP_MAX);
 /// ```
+/// This function is deprecated. Use [`match_function_call_with_def_id`].
 pub fn match_function_call<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
@@ -1749,6 +1777,22 @@ pub fn match_function_call<'tcx>(
         if let ExprKind::Path(ref qpath) = fun.kind;
         if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
         if match_def_path(cx, fun_def_id, path);
+        then {
+            return Some(args);
+        }
+    };
+    None
+}
+
+pub fn match_function_call_with_def_id<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    fun_def_id: DefId,
+) -> Option<&'tcx [Expr<'tcx>]> {
+    if_chain! {
+        if let ExprKind::Call(fun, args) = expr.kind;
+        if let ExprKind::Path(ref qpath) = fun.kind;
+        if cx.qpath_res(qpath, fun.hir_id).opt_def_id() == Some(fun_def_id);
         then {
             return Some(args);
         }

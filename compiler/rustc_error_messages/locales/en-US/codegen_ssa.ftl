@@ -34,6 +34,8 @@ codegen_ssa_rlib_only_rmeta_found = could not find rlib for: `{$crate_name}`, fo
 
 codegen_ssa_rlib_not_found = could not find rlib for: `{$crate_name}`
 
+codegen_ssa_rlib_incompatible_dependency_formats = `{$ty1}` and `{$ty2}` do not have equivalent dependency formats (`{$list1}` vs `{$list2}`)
+
 codegen_ssa_linking_failed = linking with `{$linker_path}` failed: {$exit_status}
 
 codegen_ssa_extern_funcs_not_found = some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified

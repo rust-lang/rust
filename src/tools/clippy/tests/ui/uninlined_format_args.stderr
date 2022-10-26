@@ -828,7 +828,43 @@ LL +     println!("{val}");
    |
 
 error: variables can be used directly in the `format!` string
-  --> $DIR/uninlined_format_args.rs:168:5
+  --> $DIR/uninlined_format_args.rs:155:9
+   |
+LL |         panic!("p1 {}", local_i32);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -         panic!("p1 {}", local_i32);
+LL +         panic!("p1 {local_i32}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args.rs:158:9
+   |
+LL |         panic!("p2 {0}", local_i32);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -         panic!("p2 {0}", local_i32);
+LL +         panic!("p2 {local_i32}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args.rs:161:9
+   |
+LL |         panic!("p3 {local_i32}", local_i32 = local_i32);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -         panic!("p3 {local_i32}", local_i32 = local_i32);
+LL +         panic!("p3 {local_i32}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args.rs:181:5
    |
 LL |     println!("expand='{}'", local_i32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -839,5 +875,5 @@ LL -     println!("expand='{}'", local_i32);
 LL +     println!("expand='{local_i32}'");
    |
 
-error: aborting due to 70 previous errors
+error: aborting due to 73 previous errors
 

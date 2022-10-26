@@ -175,15 +175,19 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        unsafe {
-            let mut out_dirent = MaybeUninit::uninit();
-            error::SolidError::err_if_negative(abi::SOLID_FS_ReadDir(
+        let entry = unsafe {
+            let mut out_entry = MaybeUninit::uninit();
+            match error::SolidError::err_if_negative(abi::SOLID_FS_ReadDir(
                 self.inner.dirp,
-                out_dirent.as_mut_ptr(),
-            ))
-            .ok()?;
-            Some(Ok(DirEntry { entry: out_dirent.assume_init(), inner: Arc::clone(&self.inner) }))
-        }
+                out_entry.as_mut_ptr(),
+            )) {
+                Ok(_) => out_entry.assume_init(),
+                Err(e) if e.as_raw() == abi::SOLID_ERR_NOTFOUND => return None,
+                Err(e) => return Some(Err(e.as_io_error())),
+            }
+        };
+
+        (entry.d_name[0] != 0).then(|| Ok(DirEntry { entry, inner: Arc::clone(&self.inner) }))
     }
 }
 

@@ -15,10 +15,6 @@ note: required by a bound in `Foo::Bar`
    |
 LL |     type Bar: ~const std::ops::Add;
    |               ^^^^^^^^^^^^^^^^^^^^ required by this bound in `Foo::Bar`
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | impl const Foo for NonConstAdd where NonConstAdd: ~const Add {
-   |                                +++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

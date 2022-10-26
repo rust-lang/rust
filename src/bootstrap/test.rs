@@ -461,24 +461,30 @@ impl Step for RustDemangler {
 pub struct Miri {
     stage: u32,
     host: TargetSelection,
+    target: TargetSelection,
 }
 
 impl Step for Miri {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/miri")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Miri { stage: run.builder.top_stage, host: run.target });
+        run.builder.ensure(Miri {
+            stage: run.builder.top_stage,
+            host: run.build_triple(),
+            target: run.target,
+        });
     }
 
     /// Runs `cargo test` for miri.
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
+        let target = self.target;
         let compiler = builder.compiler(stage, host);
         // We need the stdlib for the *next* stage, as it was built with this compiler that also built Miri.
         // Except if we are at stage 2, the bootstrap loop is complete and we can stick with our current stage.
@@ -495,7 +501,7 @@ impl Step for Miri {
         builder.ensure(compile::Std::new(compiler_std, host));
         let sysroot = builder.sysroot(compiler_std);
 
-        // # Run `cargo miri setup`.
+        // # Run `cargo miri setup` for the given target.
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -508,6 +514,7 @@ impl Step for Miri {
         );
         cargo.add_rustc_lib_path(builder, compiler);
         cargo.arg("--").arg("miri").arg("setup");
+        cargo.arg("--target").arg(target.rustc_target_arg());
 
         // Tell `cargo miri setup` where to find the sources.
         cargo.env("MIRI_LIB_SRC", builder.src.join("library"));
@@ -556,16 +563,53 @@ impl Step for Miri {
         cargo.add_rustc_lib_path(builder, compiler);
 
         // miri tests need to know about the stage sysroot
-        cargo.env("MIRI_SYSROOT", miri_sysroot);
+        cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", sysroot);
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-        cargo.env("MIRI", miri);
+        cargo.env("MIRI", &miri);
         // propagate --bless
         if builder.config.cmd.bless() {
             cargo.env("MIRI_BLESS", "Gesundheit");
         }
 
+        // Set the target.
+        cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
+        // Forward test filters.
         cargo.arg("--").args(builder.config.cmd.test_args());
+
+        let mut cargo = Command::from(cargo);
+        builder.run(&mut cargo);
+
+        // # Run `cargo miri test`.
+        // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
+        // that we get the desired output), but that is sufficient to make sure that the libtest harness
+        // itself executes properly under Miri.
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            host,
+            "run",
+            "src/tools/miri/cargo-miri",
+            SourceType::Submodule,
+            &[],
+        );
+        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.arg("--").arg("miri").arg("test");
+        cargo
+            .arg("--manifest-path")
+            .arg(builder.src.join("src/tools/miri/test-cargo-miri/Cargo.toml"));
+        cargo.arg("--target").arg(target.rustc_target_arg());
+        cargo.arg("--tests"); // don't run doctests, they are too confused by the staging
+        cargo.arg("--").args(builder.config.cmd.test_args());
+
+        // Tell `cargo miri` where to find things.
+        cargo.env("MIRI_SYSROOT", &miri_sysroot);
+        cargo.env("MIRI_HOST_SYSROOT", sysroot);
+        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
+        cargo.env("MIRI", &miri);
+        // Debug things.
+        cargo.env("RUST_BACKTRACE", "1");
 
         let mut cargo = Command::from(cargo);
         builder.run(&mut cargo);

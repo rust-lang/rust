@@ -42,7 +42,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     );
                 }
 
-                let &[ref _sig, ref _func] = check_arg_count(args)?;
+                let [_sig, _func] = check_arg_count(args)?;
                 this.write_null(dest)?;
             }
         }

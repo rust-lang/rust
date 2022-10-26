@@ -147,7 +147,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     let mut ntest = 0;
     let mut nbench = 0;
 
-    for test in filter_tests(&opts, tests) {
+    for test in filter_tests(&opts, tests).into_iter() {
         use crate::TestFn::*;
 
         let TestDescAndFn { desc: TestDesc { name, .. }, testfn } = test;

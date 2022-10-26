@@ -22,7 +22,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
+use rustc_span::{BytePos, FileName, RealFileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::default::Default;
@@ -1423,16 +1423,40 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
         if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
             if let [variant] = &*enum_def.variants {
                 if variant.ident.name == sym::Input {
-                    sess.buffer_lint_with_diagnostic(
-                        &PROC_MACRO_BACK_COMPAT,
-                        item.ident.span,
-                        ast::CRATE_NODE_ID,
-                        "using `procedural-masquerade` crate",
-                        BuiltinLintDiagnostics::ProcMacroBackCompat(
-                        "The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. \
-                        Versions of this crate below 0.1.7 will eventually stop compiling.".to_string())
-                    );
-                    return true;
+                    let filename = sess.source_map().span_to_filename(item.ident.span);
+                    if let FileName::Real(RealFileName::LocalPath(path)) = filename {
+                        if let Some(c) = path
+                            .components()
+                            .flat_map(|c| c.as_os_str().to_str())
+                            .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
+                        {
+                            let crate_matches = if c.starts_with("allsorts-rental") {
+                                true
+                            } else {
+                                let mut version = c.trim_start_matches("rental-").split(".");
+                                version.next() == Some("0")
+                                    && version.next() == Some("5")
+                                    && version
+                                        .next()
+                                        .and_then(|c| c.parse::<u32>().ok())
+                                        .map_or(false, |v| v < 6)
+                            };
+
+                            if crate_matches {
+                                sess.buffer_lint_with_diagnostic(
+                                        &PROC_MACRO_BACK_COMPAT,
+                                        item.ident.span,
+                                        ast::CRATE_NODE_ID,
+                                        "using an old version of `rental`",
+                                        BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                        "older versions of the `rental` crate will stop compiling in future versions of Rust; \
+                                        please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
+                                        )
+                                    );
+                                return true;
+                            }
+                        }
+                    }
                 }
             }
         }

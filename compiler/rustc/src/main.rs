@@ -1,3 +1,5 @@
+#![feature(unix_sigpipe)]
+
 // A note about jemalloc: rustc uses jemalloc when built for CI and
 // distribution. The obvious way to do this is with the `#[global_allocator]`
 // mechanism. However, for complicated reasons (see
@@ -23,6 +25,7 @@
 // libraries. So we must reference jemalloc symbols one way or another, because
 // this file is the only object code in the rustc executable.
 
+#[unix_sigpipe = "sig_dfl"]
 fn main() {
     // See the comment at the top of this file for an explanation of this.
     #[cfg(feature = "jemalloc-sys")]
@@ -58,6 +61,5 @@ fn main() {
         }
     }
 
-    rustc_driver::set_sigpipe_handler();
     rustc_driver::main()
 }

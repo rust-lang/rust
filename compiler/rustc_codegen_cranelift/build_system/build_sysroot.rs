@@ -3,14 +3,14 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use super::rustc_info::{get_file_name, get_rustc_version, get_wrapper_file_name};
-use super::utils::{spawn_and_wait, try_hard_link};
+use super::utils::{cargo_command, spawn_and_wait, try_hard_link};
 use super::SysrootKind;
 
 pub(crate) fn build_sysroot(
     channel: &str,
     sysroot_kind: SysrootKind,
     target_dir: &Path,
-    cg_clif_build_dir: &Path,
+    cg_clif_dylib_src: &Path,
     host_triple: &str,
     target_triple: &str,
 ) {
@@ -23,7 +23,6 @@ pub(crate) fn build_sysroot(
     fs::create_dir_all(target_dir.join("lib")).unwrap();
 
     // Copy the backend
-    let cg_clif_dylib = get_file_name("rustc_codegen_cranelift", "dylib");
     let cg_clif_dylib_path = target_dir
         .join(if cfg!(windows) {
             // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
@@ -32,8 +31,8 @@ pub(crate) fn build_sysroot(
         } else {
             "lib"
         })
-        .join(&cg_clif_dylib);
-    try_hard_link(cg_clif_build_dir.join(cg_clif_dylib), &cg_clif_dylib_path);
+        .join(get_file_name("rustc_codegen_cranelift", "dylib"));
+    try_hard_link(cg_clif_dylib_src, &cg_clif_dylib_path);
 
     // Build and copy rustc and cargo wrappers
     for wrapper in ["rustc-clif", "cargo-clif"] {
@@ -186,10 +185,10 @@ fn build_clif_sysroot_for_triple(
     }
 
     // Build sysroot
-    let mut build_cmd = Command::new("cargo");
-    build_cmd.arg("build").arg("--target").arg(triple).current_dir("build_sysroot");
+    let mut build_cmd = cargo_command("cargo", "build", Some(triple), Path::new("build_sysroot"));
     let mut rustflags = "-Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
     rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
+    rustflags.push_str(&format!(" --sysroot={}", target_dir.to_str().unwrap()));
     if channel == "release" {
         build_cmd.arg("--release");
         rustflags.push_str(" -Zmir-opt-level=3");

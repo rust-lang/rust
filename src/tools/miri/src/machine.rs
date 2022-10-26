@@ -421,8 +421,10 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) basic_block_count: u64,
 
     /// Handle of the optional shared object file for external functions.
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     pub external_so_lib: Option<(libloading::Library, std::path::PathBuf)>,
+    #[cfg(not(target_os = "linux"))]
+    pub external_so_lib: Option<!>,
 
     /// Run a garbage collector for SbTags every N basic blocks.
     pub(crate) gc_interval: u32,
@@ -485,7 +487,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             report_progress: config.report_progress,
             basic_block_count: 0,
             clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
-            #[cfg(unix)]
+            #[cfg(target_os = "linux")]
             external_so_lib: config.external_so_file.as_ref().map(|lib_file_path| {
                 let target_triple = layout_cx.tcx.sess.opts.target_triple.triple();
                 // Check if host target == the session target.
@@ -506,6 +508,10 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     },
                     lib_file_path.clone(),
                 )
+            }),
+            #[cfg(not(target_os = "linux"))]
+            external_so_lib: config.external_so_file.as_ref().map(|_| {
+                panic!("loading external .so files is only supported on Linux")
             }),
             gc_interval: config.gc_interval,
             since_gc: 0,
@@ -648,7 +654,6 @@ impl VisitTags for MiriMachine<'_, '_> {
             preemption_rate: _,
             report_progress: _,
             basic_block_count: _,
-            #[cfg(unix)]
             external_so_lib: _,
             gc_interval: _,
             since_gc: _,

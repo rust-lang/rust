@@ -14,6 +14,10 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     target: Option<BasicBlock>,
 ) {
     match intrinsic {
+        "llvm.x86.sse2.pause" | "llvm.aarch64.isb" => {
+            // Spin loop hint
+        }
+
         // Used by `_mm_movemask_epi8` and `_mm256_movemask_epi8`
         "llvm.x86.sse2.pmovmskb.128" | "llvm.x86.avx2.pmovmskb" | "llvm.x86.sse2.movmsk.pd" => {
             intrinsic_args!(fx, args => (a); intrinsic);
@@ -25,8 +29,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             let mut res = fx.bcx.ins().iconst(types::I32, 0);
 
             for lane in (0..lane_count).rev() {
-                let a_lane =
-                    a.value_field(fx, mir::Field::new(lane.try_into().unwrap())).load_scalar(fx);
+                let a_lane = a.value_lane(fx, lane).load_scalar(fx);
 
                 // cast float to int
                 let a_lane = match lane_ty {

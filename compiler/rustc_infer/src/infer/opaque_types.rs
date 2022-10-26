@@ -1,6 +1,7 @@
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
+use hir::def::DefKind;
 use hir::def_id::{DefId, LocalDefId};
 use hir::{HirId, OpaqueTyOrigin};
 use rustc_data_structures::sync::Lrc;
@@ -543,16 +544,18 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let item_bounds = tcx.bound_explicit_item_bounds(def_id.to_def_id());
 
-        for predicate in item_bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
-            debug!(?predicate);
-            let predicate = predicate.subst(tcx, substs);
-
+        for (predicate, _) in item_bounds.subst_iter_copied(tcx, substs) {
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match *ty.kind() {
                     // We can't normalize associated types from `rustc_infer`,
                     // but we can eagerly register inference variables for them.
-                    ty::Projection(projection_ty) if !projection_ty.has_escaping_bound_vars() => {
+                    // FIXME(RPITIT): Don't replace RPITITs with inference vars.
+                    ty::Projection(projection_ty)
+                        if !projection_ty.has_escaping_bound_vars()
+                            && tcx.def_kind(projection_ty.item_def_id)
+                                != DefKind::ImplTraitPlaceholder =>
+                    {
                         self.infer_projection(
                             param_env,
                             projection_ty,
@@ -565,6 +568,12 @@ impl<'tcx> InferCtxt<'tcx> {
                     // as the bounds must hold on the hidden type after all.
                     ty::Opaque(def_id2, substs2)
                         if def_id.to_def_id() == def_id2 && substs == substs2 =>
+                    {
+                        hidden_ty
+                    }
+                    // FIXME(RPITIT): This can go away when we move to associated types
+                    ty::Projection(proj)
+                        if def_id.to_def_id() == proj.item_def_id && substs == proj.substs =>
                     {
                         hidden_ty
                     }

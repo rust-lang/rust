@@ -119,20 +119,20 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         arg_span = expn.call_site;
     }
 
-    cx.struct_span_lint(NON_FMT_PANICS, arg_span, fluent::lint::non_fmt_panic, |lint| {
+    cx.struct_span_lint(NON_FMT_PANICS, arg_span, fluent::lint_non_fmt_panic, |lint| {
         lint.set_arg("name", symbol);
-        lint.note(fluent::lint::note);
-        lint.note(fluent::lint::more_info_note);
+        lint.note(fluent::note);
+        lint.note(fluent::more_info_note);
         if !is_arg_inside_call(arg_span, span) {
             // No clue where this argument is coming from.
             return lint;
         }
         if arg_macro.map_or(false, |id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
-            lint.note(fluent::lint::supports_fmt_note);
+            lint.note(fluent::supports_fmt_note);
             if let Some((open, close, _)) = find_delimiters(cx, arg_span) {
                 lint.multipart_suggestion(
-                    fluent::lint::supports_fmt_suggestion,
+                    fluent::supports_fmt_suggestion,
                     vec![
                         (arg_span.until(open.shrink_to_hi()), "".into()),
                         (close.until(arg_span.shrink_to_hi()), "".into()),
@@ -178,7 +178,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
             if suggest_display {
                 lint.span_suggestion_verbose(
                     arg_span.shrink_to_lo(),
-                    fluent::lint::display_suggestion,
+                    fluent::display_suggestion,
                     "\"{}\", ",
                     fmt_applicability,
                 );
@@ -186,7 +186,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 lint.set_arg("ty", ty);
                 lint.span_suggestion_verbose(
                     arg_span.shrink_to_lo(),
-                    fluent::lint::debug_suggestion,
+                    fluent::debug_suggestion,
                     "\"{:?}\", ",
                     fmt_applicability,
                 );
@@ -196,7 +196,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 if let Some((open, close, del)) = find_delimiters(cx, span) {
                     lint.set_arg("already_suggested", suggest_display || suggest_debug);
                     lint.multipart_suggestion(
-                        fluent::lint::panic_suggestion,
+                        fluent::panic_suggestion,
                         if del == '(' {
                             vec![(span.until(open), "std::panic::panic_any".into())]
                         } else {
@@ -254,30 +254,25 @@ fn check_panic_str<'tcx>(
                 .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
                 .collect(),
         };
-        cx.struct_span_lint(
-            NON_FMT_PANICS,
-            arg_spans,
-            fluent::lint::non_fmt_panic_unused,
-            |lint| {
-                lint.set_arg("count", n_arguments);
-                lint.note(fluent::lint::note);
-                if is_arg_inside_call(arg.span, span) {
-                    lint.span_suggestion(
-                        arg.span.shrink_to_hi(),
-                        fluent::lint::add_args_suggestion,
-                        ", ...",
-                        Applicability::HasPlaceholders,
-                    );
-                    lint.span_suggestion(
-                        arg.span.shrink_to_lo(),
-                        fluent::lint::add_fmt_suggestion,
-                        "\"{}\", ",
-                        Applicability::MachineApplicable,
-                    );
-                }
-                lint
-            },
-        );
+        cx.struct_span_lint(NON_FMT_PANICS, arg_spans, fluent::lint_non_fmt_panic_unused, |lint| {
+            lint.set_arg("count", n_arguments);
+            lint.note(fluent::note);
+            if is_arg_inside_call(arg.span, span) {
+                lint.span_suggestion(
+                    arg.span.shrink_to_hi(),
+                    fluent::add_args_suggestion,
+                    ", ...",
+                    Applicability::HasPlaceholders,
+                );
+                lint.span_suggestion(
+                    arg.span.shrink_to_lo(),
+                    fluent::add_fmt_suggestion,
+                    "\"{}\", ",
+                    Applicability::MachineApplicable,
+                );
+            }
+            lint
+        });
     } else {
         let brace_spans: Option<Vec<_>> =
             snippet.filter(|s| s.starts_with('"') || s.starts_with("r#")).map(|s| {
@@ -290,14 +285,14 @@ fn check_panic_str<'tcx>(
         cx.struct_span_lint(
             NON_FMT_PANICS,
             brace_spans.unwrap_or_else(|| vec![span]),
-            fluent::lint::non_fmt_panic_braces,
+            fluent::lint_non_fmt_panic_braces,
             |lint| {
                 lint.set_arg("count", count);
-                lint.note(fluent::lint::note);
+                lint.note(fluent::note);
                 if is_arg_inside_call(arg.span, span) {
                     lint.span_suggestion(
                         arg.span.shrink_to_lo(),
-                        fluent::lint::suggestion,
+                        fluent::suggestion,
                         "\"{}\", ",
                         Applicability::MachineApplicable,
                     );

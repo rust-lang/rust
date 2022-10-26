@@ -774,31 +774,36 @@ fn clean_ty_generics<'tcx>(
     let mut where_predicates =
         where_predicates.into_iter().flat_map(|p| clean_predicate(*p, cx)).collect::<Vec<_>>();
 
-    // Type parameters have a Sized bound by default unless removed with
-    // ?Sized. Scan through the predicates and mark any type parameter with
-    // a Sized bound, removing the bounds as we find them.
+    // In the surface language, all type parameters except `Self` have an
+    // implicit `Sized` bound unless removed with `?Sized`.
+    // However, in the list of where-predicates below, `Sized` appears like a
+    // normal bound: It's either present (the type is sized) or
+    // absent (the type is unsized) but never *maybe* (i.e. `?Sized`).
     //
-    // Note that associated types also have a sized bound by default, but we
+    // This is unsuitable for rendering.
+    // Thus, as a first step remove all `Sized` bounds that should be implicit.
+    //
+    // Note that associated types also have an implicit `Sized` bound but we
     // don't actually know the set of associated types right here so that's
-    // handled in cleaning associated types
+    // handled when cleaning associated types.
     let mut sized_params = FxHashSet::default();
-    where_predicates.retain(|pred| match *pred {
-        WherePredicate::BoundPredicate { ty: Generic(ref g), ref bounds, .. } => {
-            if bounds.iter().any(|b| b.is_sized_bound(cx)) {
-                sized_params.insert(*g);
-                false
-            } else {
-                true
-            }
+    where_predicates.retain(|pred| {
+        if let WherePredicate::BoundPredicate { ty: Generic(g), bounds, .. } = pred
+        && *g != kw::SelfUpper
+        && bounds.iter().any(|b| b.is_sized_bound(cx))
+        {
+            sized_params.insert(*g);
+            false
+        } else {
+            true
         }
-        _ => true,
     });
 
-    // Run through the type parameters again and insert a ?Sized
-    // unbound for any we didn't find to be Sized.
+    // As a final step, go through the type parameters again and insert a
+    // `?Sized` bound for each one we didn't find to be `Sized`.
     for tp in &stripped_params {
-        if matches!(tp.kind, types::GenericParamDefKind::Type { .. })
-            && !sized_params.contains(&tp.name)
+        if let types::GenericParamDefKind::Type { .. } = tp.kind
+        && !sized_params.contains(&tp.name)
         {
             where_predicates.push(WherePredicate::BoundPredicate {
                 ty: Type::Generic(tp.name),
@@ -1201,21 +1206,19 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             }
 
             if let ty::TraitContainer = assoc_item.container {
-                // FIXME(fmease): `tcx.explicit_item_bounds` does not contain the bounds of GATs,
-                //                e.g. the bounds `Copy`, `Display` & (implicitly) `Sized` in
-                //                `type Assoc<T: Copy> where T: Display`. This also means that we
-                //                later incorrectly render `where T: ?Sized`.
-                //
-                //                The result of `tcx.explicit_predicates_of` *does* contain them but
-                //                it does not contain the other bounds / predicates we need.
-                //                Either merge those two interned lists somehow or refactor
-                //                `clean_ty_generics` to call `explicit_item_bounds` by itself.
                 let bounds = tcx.explicit_item_bounds(assoc_item.def_id);
-                let predicates = ty::GenericPredicates { parent: None, predicates: bounds };
-                let mut generics =
-                    clean_ty_generics(cx, tcx.generics_of(assoc_item.def_id), predicates);
-                // Filter out the bounds that are (likely?) directly attached to the associated type,
-                // as opposed to being located in the where clause.
+                let predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
+                let predicates =
+                    tcx.arena.alloc_from_iter(bounds.into_iter().chain(predicates).copied());
+                let mut generics = clean_ty_generics(
+                    cx,
+                    tcx.generics_of(assoc_item.def_id),
+                    ty::GenericPredicates { parent: None, predicates },
+                );
+                // Move bounds that are (likely) directly attached to the associated type
+                // from the where clause to the associated type.
+                // There is no guarantee that this is what the user actually wrote but we have
+                // no way of knowing.
                 let mut bounds = generics
                     .where_predicates
                     .drain_filter(|pred| match *pred {
@@ -1273,6 +1276,24 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     }
                     None => bounds.push(GenericBound::maybe_sized(cx)),
                 }
+                // Move bounds that are (likely) directly attached to the parameters of the
+                // (generic) associated type from the where clause to the respective parameter.
+                // There is no guarantee that this is what the user actually wrote but we have
+                // no way of knowing.
+                let mut where_predicates = Vec::new();
+                for mut pred in generics.where_predicates {
+                    if let WherePredicate::BoundPredicate { ty: Generic(arg), bounds, .. } = &mut pred
+                    && let Some(GenericParamDef {
+                        kind: GenericParamDefKind::Type { bounds: param_bounds, .. },
+                        ..
+                    }) = generics.params.iter_mut().find(|param| &param.name == arg)
+                    {
+                        param_bounds.extend(mem::take(bounds));
+                    } else {
+                        where_predicates.push(pred);
+                    }
+                }
+                generics.where_predicates = where_predicates;
 
                 if tcx.impl_defaultness(assoc_item.def_id).has_value() {
                     AssocTypeItem(

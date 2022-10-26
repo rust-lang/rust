@@ -11,6 +11,7 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(casts::CAST_ABS_TO_UNSIGNED),
     LintId::of(casts::CAST_ENUM_CONSTRUCTOR),
     LintId::of(casts::CAST_ENUM_TRUNCATION),
+    LintId::of(casts::CAST_NAN_TO_INT),
     LintId::of(casts::CAST_SLICE_FROM_RAW_PARTS),
     LintId::of(crate_in_macro_def::CRATE_IN_MACRO_DEF),
     LintId::of(drop_forget_ref::DROP_NON_DROP),

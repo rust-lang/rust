@@ -33,6 +33,8 @@ mod basic_expr {
         let x: [i32; 3] = [1, 2, 3];
         let x: (i32, i32) = if true { (1, 2) } else { (3, 4) };
         let x: _ = 1;
+        let x: u64 = 1;
+        const CONST_X: i8 = 1;
     }
 }
 
@@ -58,6 +60,14 @@ mod nested_local {
 
             // Should NOT lint this because this literal is bound to `_` of outer `Local`.
             2
+        };
+
+        const CONST_X: i32 = {
+            // Should lint this because this literal is not bound to any types.
+            let y = 1;
+
+            // Should NOT lint this because this literal is bound to `_` of outer `Local`.
+            1
         };
     }
 }

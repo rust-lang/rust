@@ -25,18 +25,18 @@ use syn::{
 use unic_langid::langid;
 
 struct Resource {
-    ident: Ident,
+    krate: Ident,
     #[allow(dead_code)]
     fat_arrow_token: token::FatArrow,
-    resource: LitStr,
+    resource_path: LitStr,
 }
 
 impl Parse for Resource {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         Ok(Resource {
-            ident: input.parse()?,
+            krate: input.parse()?,
             fat_arrow_token: input.parse()?,
-            resource: input.parse()?,
+            resource_path: input.parse()?,
         })
     }
 }
@@ -94,19 +94,20 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
     // diagnostics.
     let mut previous_defns = HashMap::new();
 
+    // Set of Fluent attribute names already output, to avoid duplicate type errors - any given
+    // constant created for a given attribute is the same.
+    let mut previous_attrs = HashSet::new();
+
     let mut includes = TokenStream::new();
     let mut generated = TokenStream::new();
+
     for res in resources.0 {
-        let ident_span = res.ident.span().unwrap();
-        let path_span = res.resource.span().unwrap();
+        let krate_span = res.krate.span().unwrap();
+        let path_span = res.resource_path.span().unwrap();
 
-        // Set of Fluent attribute names already output, to avoid duplicate type errors - any given
-        // constant created for a given attribute is the same.
-        let mut previous_attrs = HashSet::new();
-
-        let relative_ftl_path = res.resource.value();
+        let relative_ftl_path = res.resource_path.value();
         let absolute_ftl_path =
-            invocation_relative_path_to_absolute(ident_span, &relative_ftl_path);
+            invocation_relative_path_to_absolute(krate_span, &relative_ftl_path);
         // As this macro also outputs an `include_str!` for this file, the macro will always be
         // re-executed when the file changes.
         let mut resource_file = match File::open(absolute_ftl_path) {
@@ -185,7 +186,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
 
         let mut constants = TokenStream::new();
         for entry in resource.entries() {
-            let span = res.ident.span();
+            let span = res.krate.span();
             if let Entry::Message(Message { id: Identifier { name }, attributes, .. }) = entry {
                 let _ = previous_defns.entry(name.to_string()).or_insert(path_span);
 
@@ -199,28 +200,29 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                     .emit();
                 }
 
-                // `typeck_foo_bar` => `foo_bar` (in `typeck.ftl`)
-                // `const_eval_baz` => `baz` (in `const_eval.ftl`)
+                // Require that the message name starts with the crate name
+                // `hir_typeck_foo_bar` (in `hir_typeck.ftl`)
+                // `const_eval_baz` (in `const_eval.ftl`)
                 // `const-eval-hyphen-having` => `hyphen_having` (in `const_eval.ftl`)
                 // The last case we error about above, but we want to fall back gracefully
                 // so that only the error is being emitted and not also one about the macro
                 // failing.
-                let crate_prefix = format!("{}_", res.ident);
+                let crate_prefix = format!("{}_", res.krate);
 
                 let snake_name = name.replace('-', "_");
-                let snake_name = match snake_name.strip_prefix(&crate_prefix) {
-                    Some(rest) => Ident::new(rest, span),
-                    None => {
-                        Diagnostic::spanned(
-                            path_span,
-                            Level::Error,
-                            format!("name `{name}` does not start with the crate name"),
-                        )
-                        .help(format!("prepend `{crate_prefix}` to the slug name: `{crate_prefix}{snake_name}`"))
-                        .emit();
-                        Ident::new(&snake_name, span)
-                    }
+                if !snake_name.starts_with(&crate_prefix) {
+                    Diagnostic::spanned(
+                        path_span,
+                        Level::Error,
+                        format!("name `{name}` does not start with the crate name"),
+                    )
+                    .help(format!(
+                        "prepend `{crate_prefix}` to the slug name: `{crate_prefix}{snake_name}`"
+                    ))
+                    .emit();
                 };
+
+                let snake_name = Ident::new(&snake_name, span);
 
                 constants.extend(quote! {
                     pub const #snake_name: crate::DiagnosticMessage =
@@ -275,12 +277,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
 
         includes.extend(quote! { include_str!(#relative_ftl_path), });
 
-        let ident = res.ident;
-        generated.extend(quote! {
-            pub mod #ident {
-                #constants
-            }
-        });
+        generated.extend(constants);
     }
 
     quote! {
