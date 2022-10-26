@@ -422,6 +422,12 @@ cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
 message = "`rustc_macros::diagnostics` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
 
+[mentions."compiler/rustc_target/src/spec"]
+message = """
+These commits modify **compiler targets**.
+(See the [Target Tier Policy](https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html).)
+"""
+
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/contributing.html"
