@@ -139,7 +139,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     pub fn int_to_int_or_float(
-        &mut self,
+        &self,
         src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
@@ -154,7 +154,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     pub fn float_to_float_or_int(
-        &mut self,
+        &self,
         src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
@@ -176,7 +176,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Handles 'FnPtrToPtr' and 'PtrToPtr' casts.
     pub fn ptr_to_ptr(
-        &mut self,
+        &self,
         src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
@@ -226,7 +226,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     pub fn pointer_from_exposed_address_cast(
-        &mut self,
+        &self,
         src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
