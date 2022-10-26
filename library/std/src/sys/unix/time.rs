@@ -149,7 +149,11 @@ impl From<libc::timespec> for Timespec {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+#[cfg(any(
+    all(target_os = "macos", not(target_arch = "aarch64")),
+    target_os = "ios",
+    target_os = "watchos"
+))]
 mod inner {
     use crate::sync::atomic::{AtomicU64, Ordering};
     use crate::sys::cvt;
@@ -265,7 +269,11 @@ mod inner {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "watchos")))]
+#[cfg(not(any(
+    all(target_os = "macos", not(target_arch = "aarch64")),
+    target_os = "ios",
+    target_os = "watchos"
+)))]
 mod inner {
     use crate::fmt;
     use crate::mem::MaybeUninit;
@@ -281,7 +289,11 @@ mod inner {
 
     impl Instant {
         pub fn now() -> Instant {
-            Instant { t: Timespec::now(libc::CLOCK_MONOTONIC) }
+            #[cfg(target_os = "macos")]
+            const clock_id: clock_t = libc::CLOCK_UPTIME_RAW;
+            #[cfg(not(target_os = "macos"))]
+            const clock_id: clock_t = libc::CLOCK_MONOTONIC;
+            Instant { t: Timespec::now(clock_id) }
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
