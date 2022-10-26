@@ -177,9 +177,12 @@ pub fn predicate_obligations<'tcx>(
 /// `for<'a> where { T: 'a } fn(&'a T)`, at which point the `T: 'a` bound is
 /// trivially implied from the `param_env`.
 ///
-/// This means that we WF bounds aren't always sufficiently checked for now. 
+/// This means that we WF bounds aren't always sufficiently checked for now.
 fn emit_obligations_for<'tcx, T: TypeVisitable<'tcx>>(value: T) -> bool {
-    !value.has_escaping_bound_vars()
+    // We also don't emit obligations for placeholders. This will be incorrect
+    // if we ever decide to also replace `ty::Param` with placeholders during
+    // canonicalization or whatever. Hopefully we will have implications by then.
+    !value.has_escaping_bound_vars() && !value.has_placeholders()
 }
 
 struct WfPredicates<'tcx> {
