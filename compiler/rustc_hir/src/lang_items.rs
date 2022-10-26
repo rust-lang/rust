@@ -12,13 +12,10 @@ use crate::errors::LangItemError;
 use crate::{MethodKind, Target};
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-
-use std::sync::LazyLock;
 
 pub enum LangItemGroup {
     Op,
@@ -104,12 +101,26 @@ macro_rules! language_item_table {
                 }
             }
 
+            /// Opposite of [`LangItem::name`]
+            pub fn from_name(name: Symbol) -> Option<Self> {
+                match name {
+                    $( $module::$name => Some(LangItem::$variant), )*
+                    _ => None,
+                }
+            }
+
             /// The [group](LangItemGroup) that this lang item belongs to,
             /// or `None` if it doesn't belong to a group.
             pub fn group(self) -> Option<LangItemGroup> {
                 use LangItemGroup::*;
                 match self {
                     $( LangItem::$variant => expand_group!($($group)*), )*
+                }
+            }
+
+            pub fn target(self) -> Target {
+                match self {
+                    $( LangItem::$variant => $target, )*
                 }
             }
 
@@ -145,15 +156,6 @@ macro_rules! language_item_table {
                 }
             )*
         }
-
-        /// A mapping from the name of the lang item to its order and the form it must be of.
-        pub static ITEM_REFS: LazyLock<FxIndexMap<Symbol, (usize, Target)>> = LazyLock::new(|| {
-            let mut item_refs = FxIndexMap::default();
-            $( item_refs.insert($module::$name, (LangItem::$variant as usize, $target)); )*
-            item_refs
-        });
-
-// End of the macro
     }
 }
 

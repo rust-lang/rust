@@ -16,7 +16,7 @@ use crate::weak_lang_items;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::{extract, GenericRequirement, ITEM_REFS};
+use rustc_hir::lang_items::{extract, GenericRequirement};
 use rustc_hir::{HirId, LangItem, LanguageItems, Target};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::ExternCrate;
@@ -43,17 +43,17 @@ impl<'tcx> LanguageItemCollector<'tcx> {
     fn check_for_lang(&mut self, actual_target: Target, hir_id: HirId) {
         let attrs = self.tcx.hir().attrs(hir_id);
         if let Some((name, span)) = extract(&attrs) {
-            match ITEM_REFS.get(&name).cloned() {
+            match LangItem::from_name(name) {
                 // Known lang item with attribute on correct target.
-                Some((item_index, expected_target)) if actual_target == expected_target => {
-                    self.collect_item_extended(item_index, hir_id, span);
+                Some(lang_item) if actual_target == lang_item.target() => {
+                    self.collect_item_extended(lang_item, hir_id, span);
                 }
                 // Known lang item with attribute on incorrect target.
-                Some((_, expected_target)) => {
+                Some(lang_item) => {
                     self.tcx.sess.emit_err(LangItemOnIncorrectTarget {
                         span,
                         name,
-                        expected_target,
+                        expected_target: lang_item.target(),
                         actual_target,
                     });
                 }
@@ -147,9 +147,8 @@ impl<'tcx> LanguageItemCollector<'tcx> {
 
     // Like collect_item() above, but also checks whether the lang item is declared
     // with the right number of generic arguments.
-    fn collect_item_extended(&mut self, item_index: usize, hir_id: HirId, span: Span) {
+    fn collect_item_extended(&mut self, lang_item: LangItem, hir_id: HirId, span: Span) {
         let item_def_id = self.tcx.hir().local_def_id(hir_id).to_def_id();
-        let lang_item = LangItem::from_u32(item_index as u32).unwrap();
         let name = lang_item.name();
 
         // Now check whether the lang_item has the expected number of generic
