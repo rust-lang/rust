@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use super::rustc_info::{get_file_name, get_rustc_version, get_wrapper_file_name};
-use super::utils::{cargo_command, spawn_and_wait, try_hard_link};
+use super::utils::{spawn_and_wait, try_hard_link, CargoProject, Compiler};
 use super::SysrootKind;
 
 pub(crate) fn build_sysroot(
@@ -149,6 +149,8 @@ pub(crate) fn build_sysroot(
     }
 }
 
+static STANDARD_LIBRARY: CargoProject = CargoProject::local("build_sysroot");
+
 fn build_clif_sysroot_for_triple(
     channel: &str,
     target_dir: &Path,
@@ -185,19 +187,22 @@ fn build_clif_sysroot_for_triple(
     }
 
     // Build sysroot
-    let mut build_cmd = cargo_command("cargo", "build", Some(triple), Path::new("build_sysroot"));
     let mut rustflags = "-Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
     rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
     rustflags.push_str(&format!(" --sysroot={}", target_dir.to_str().unwrap()));
     if channel == "release" {
-        build_cmd.arg("--release");
         rustflags.push_str(" -Zmir-opt-level=3");
     }
     if let Some(linker) = linker {
         use std::fmt::Write;
         write!(rustflags, " -Clinker={}", linker).unwrap();
     }
-    build_cmd.env("RUSTFLAGS", rustflags);
+    let mut compiler = Compiler::with_triple(triple.to_owned());
+    compiler.rustflags = rustflags;
+    let mut build_cmd = STANDARD_LIBRARY.build(&compiler);
+    if channel == "release" {
+        build_cmd.arg("--release");
+    }
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     spawn_and_wait(build_cmd);
 

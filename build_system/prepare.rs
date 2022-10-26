@@ -5,30 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
-use super::utils::{cargo_command, copy_dir_recursively, spawn_and_wait};
-
-pub(crate) const ABI_CAFE: GitRepo =
-    GitRepo::github("Gankra", "abi-cafe", "4c6dc8c9c687e2b3a760ff2176ce236872b37212", "abi-cafe");
-
-pub(crate) const RAND: GitRepo =
-    GitRepo::github("rust-random", "rand", "0f933f9c7176e53b2a3c7952ded484e1783f0bf1", "rand");
-
-pub(crate) const REGEX: GitRepo =
-    GitRepo::github("rust-lang", "regex", "341f207c1071f7290e3f228c710817c280c8dca1", "regex");
-
-pub(crate) const PORTABLE_SIMD: GitRepo = GitRepo::github(
-    "rust-lang",
-    "portable-simd",
-    "d5cd4a8112d958bd3a252327e0d069a6363249bd",
-    "portable-simd",
-);
-
-pub(crate) const SIMPLE_RAYTRACER: GitRepo = GitRepo::github(
-    "ebobby",
-    "simple-raytracer",
-    "804a7a21b9e673a482797aa289a18ed480e4d813",
-    "<none>",
-);
+use super::utils::{copy_dir_recursively, spawn_and_wait, Compiler};
 
 pub(crate) fn prepare() {
     if Path::new("download").exists() {
@@ -42,22 +19,25 @@ pub(crate) fn prepare() {
     eprintln!("[INSTALL] hyperfine");
     Command::new("cargo").arg("install").arg("hyperfine").spawn().unwrap().wait().unwrap();
 
-    ABI_CAFE.fetch();
-    RAND.fetch();
-    REGEX.fetch();
-    PORTABLE_SIMD.fetch();
-    SIMPLE_RAYTRACER.fetch();
+    super::abi_cafe::ABI_CAFE_REPO.fetch();
+    super::tests::RAND_REPO.fetch();
+    super::tests::REGEX_REPO.fetch();
+    super::tests::PORTABLE_SIMD_REPO.fetch();
+    super::tests::SIMPLE_RAYTRACER_REPO.fetch();
 
     eprintln!("[LLVM BUILD] simple-raytracer");
-    let build_cmd = cargo_command("cargo", "build", None, &SIMPLE_RAYTRACER.source_dir());
+    let host_compiler = Compiler::host();
+    let build_cmd = super::tests::SIMPLE_RAYTRACER.build(&host_compiler);
     spawn_and_wait(build_cmd);
     fs::copy(
-        SIMPLE_RAYTRACER
-            .source_dir()
-            .join("target")
+        super::tests::SIMPLE_RAYTRACER
+            .target_dir()
+            .join(&host_compiler.triple)
             .join("debug")
             .join(get_file_name("main", "bin")),
-        SIMPLE_RAYTRACER.source_dir().join(get_file_name("raytracer_cg_llvm", "bin")),
+        super::tests::SIMPLE_RAYTRACER_REPO
+            .source_dir()
+            .join(get_file_name("raytracer_cg_llvm", "bin")),
     )
     .unwrap();
 }
@@ -100,7 +80,7 @@ enum GitRepoUrl {
 }
 
 impl GitRepo {
-    const fn github(
+    pub(crate) const fn github(
         user: &'static str,
         repo: &'static str,
         rev: &'static str,

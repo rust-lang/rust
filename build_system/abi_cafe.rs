@@ -1,11 +1,15 @@
-use std::env;
 use std::path::Path;
 
 use super::build_sysroot;
 use super::config;
-use super::prepare;
-use super::utils::{cargo_command, spawn_and_wait};
+use super::prepare::GitRepo;
+use super::utils::{spawn_and_wait, CargoProject, Compiler};
 use super::SysrootKind;
+
+pub(crate) static ABI_CAFE_REPO: GitRepo =
+    GitRepo::github("Gankra", "abi-cafe", "4c6dc8c9c687e2b3a760ff2176ce236872b37212", "abi-cafe");
+
+static ABI_CAFE: CargoProject = CargoProject::git(&ABI_CAFE_REPO, ".");
 
 pub(crate) fn run(
     channel: &str,
@@ -36,17 +40,16 @@ pub(crate) fn run(
     );
 
     eprintln!("Running abi-cafe");
-    let abi_cafe_path = prepare::ABI_CAFE.source_dir();
-    env::set_current_dir(abi_cafe_path.clone()).unwrap();
 
     let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
 
-    let mut cmd = cargo_command("cargo", "run", Some(target_triple), &abi_cafe_path);
+    let mut cmd = ABI_CAFE.run(&Compiler::host());
     cmd.arg("--");
     cmd.arg("--pairs");
     cmd.args(pairs);
     cmd.arg("--add-rustc-codegen-backend");
     cmd.arg(format!("cgclif:{}", cg_clif_dylib.display()));
+    cmd.current_dir(ABI_CAFE.source_dir());
 
     spawn_and_wait(cmd);
 }

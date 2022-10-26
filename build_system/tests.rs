@@ -1,8 +1,12 @@
+use crate::build_system::rustc_info::get_cargo_path;
+
 use super::build_sysroot;
 use super::config;
-use super::prepare;
+use super::prepare::GitRepo;
 use super::rustc_info::get_wrapper_file_name;
-use super::utils::{cargo_command, hyperfine_command, spawn_and_wait, spawn_and_wait_with_input};
+use super::utils::{
+    hyperfine_command, spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler,
+};
 use super::SysrootKind;
 use std::env;
 use std::ffi::OsStr;
@@ -30,7 +34,7 @@ const NO_SYSROOT_SUITE: &[TestCase] = &[
             "--crate-type",
             "lib,dylib",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
     }),
     TestCase::new("build.example", &|runner| {
@@ -39,7 +43,7 @@ const NO_SYSROOT_SUITE: &[TestCase] = &[
             "--crate-type",
             "lib",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
     }),
     TestCase::new("jit.mini_core_hello_world", &|runner| {
@@ -51,7 +55,7 @@ const NO_SYSROOT_SUITE: &[TestCase] = &[
             "--cfg",
             "jit",
             "--target",
-            &runner.host_triple,
+            &runner.target_compiler.triple,
         ]);
         jit_cmd.env("CG_CLIF_JIT_ARGS", "abc bcd");
         spawn_and_wait(jit_cmd);
@@ -65,7 +69,7 @@ const NO_SYSROOT_SUITE: &[TestCase] = &[
             "--cfg",
             "jit",
             "--target",
-            &runner.host_triple,
+            &runner.target_compiler.triple,
         ]);
         jit_cmd.env("CG_CLIF_JIT_ARGS", "abc bcd");
         spawn_and_wait(jit_cmd);
@@ -79,7 +83,7 @@ const NO_SYSROOT_SUITE: &[TestCase] = &[
             "bin",
             "-g",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
         runner.run_out_command("mini_core_hello_world", ["abc", "bcd"]);
     }),
@@ -94,7 +98,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "--crate-type",
             "bin",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
         runner.run_out_command("arbitrary_self_types_pointers_and_wrappers", []);
     }),
@@ -106,7 +110,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "--crate-type",
             "bin",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
         runner.run_out_command("issue_91827_extern_types", []);
     }),
@@ -116,7 +120,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "--crate-type",
             "lib",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
     }),
     TestCase::new("aot.alloc_example", &|runner| {
@@ -125,7 +129,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "--crate-type",
             "bin",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
         runner.run_out_command("alloc_example", []);
     }),
@@ -136,7 +140,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "-Cprefer-dynamic",
             "example/std_example.rs",
             "--target",
-            &runner.host_triple,
+            &runner.target_compiler.triple,
         ]);
 
         eprintln!("[JIT-lazy] std_example");
@@ -146,7 +150,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "-Cprefer-dynamic",
             "example/std_example.rs",
             "--target",
-            &runner.host_triple,
+            &runner.target_compiler.triple,
         ]);
     }),
     TestCase::new("aot.std_example", &|runner| {
@@ -155,7 +159,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "--crate-type",
             "bin",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
         runner.run_out_command("std_example", ["arg"]);
     }),
@@ -167,7 +171,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "--crate-type",
             "bin",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
         runner.run_out_command("dst_field_align", []);
     }),
@@ -178,7 +182,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "bin",
             "-Cpanic=abort",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
         runner.run_out_command("subslice-patterns-const-eval", []);
     }),
@@ -189,7 +193,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "bin",
             "-Cpanic=abort",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
         runner.run_out_command("track-caller-attribute", []);
     }),
@@ -200,7 +204,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "bin",
             "-Cpanic=abort",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
         runner.run_out_command("float-minmax-pass", []);
     }),
@@ -210,181 +214,218 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
             "--crate-type",
             "bin",
             "--target",
-            &runner.target_triple,
+            &runner.target_compiler.triple,
         ]);
         runner.run_out_command("mod_bench", []);
     }),
 ];
 
+pub(crate) static RAND_REPO: GitRepo =
+    GitRepo::github("rust-random", "rand", "0f933f9c7176e53b2a3c7952ded484e1783f0bf1", "rand");
+
+static RAND: CargoProject = CargoProject::git(&RAND_REPO, ".");
+
+pub(crate) static REGEX_REPO: GitRepo =
+    GitRepo::github("rust-lang", "regex", "341f207c1071f7290e3f228c710817c280c8dca1", "regex");
+
+static REGEX: CargoProject = CargoProject::git(&REGEX_REPO, ".");
+
+pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
+    "rust-lang",
+    "portable-simd",
+    "d5cd4a8112d958bd3a252327e0d069a6363249bd",
+    "portable-simd",
+);
+
+static PORTABLE_SIMD: CargoProject = CargoProject::git(&PORTABLE_SIMD_REPO, ".");
+
+pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
+    "ebobby",
+    "simple-raytracer",
+    "804a7a21b9e673a482797aa289a18ed480e4d813",
+    "<none>",
+);
+
+pub(crate) static SIMPLE_RAYTRACER: CargoProject = CargoProject::git(&SIMPLE_RAYTRACER_REPO, ".");
+
+static LIBCORE_TESTS: CargoProject =
+    CargoProject::local("build_sysroot/sysroot_src/library/core/tests");
+
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::new("test.rust-random/rand", &|runner| {
-        runner.in_dir(prepare::RAND.source_dir(), |runner| {
-            runner.run_cargo("clean", []);
+        spawn_and_wait(RAND.clean(&runner.target_compiler.cargo));
 
-            if runner.host_triple == runner.target_triple {
-                eprintln!("[TEST] rust-random/rand");
-                runner.run_cargo("test", ["--workspace"]);
-            } else {
-                eprintln!("[AOT] rust-random/rand");
-                runner.run_cargo("build", ["--workspace", "--tests"]);
-            }
-        });
+        if runner.is_native {
+            eprintln!("[TEST] rust-random/rand");
+            let mut test_cmd = RAND.test(&runner.target_compiler);
+            test_cmd.arg("--workspace");
+            spawn_and_wait(test_cmd);
+        } else {
+            eprintln!("[AOT] rust-random/rand");
+            let mut build_cmd = RAND.build(&runner.target_compiler);
+            build_cmd.arg("--workspace").arg("--tests");
+            spawn_and_wait(build_cmd);
+        }
     }),
     TestCase::new("bench.simple-raytracer", &|runner| {
-        runner.in_dir(prepare::SIMPLE_RAYTRACER.source_dir(), |runner| {
-            let run_runs = env::var("RUN_RUNS").unwrap_or("10".to_string()).parse().unwrap();
+        let run_runs = env::var("RUN_RUNS").unwrap_or("10".to_string()).parse().unwrap();
 
-            if runner.host_triple == runner.target_triple {
-                eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
-                let prepare = runner.cargo_command("clean", []);
+        if runner.is_native {
+            eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
+            let cargo_clif = env::current_dir()
+                .unwrap()
+                .join("build")
+                .join(get_wrapper_file_name("cargo-clif", "bin"));
+            let source_dir = SIMPLE_RAYTRACER.source_dir();
+            let manifest_path = SIMPLE_RAYTRACER.manifest_path();
+            let target_dir = SIMPLE_RAYTRACER.target_dir();
 
-                let llvm_build_cmd = cargo_command("cargo", "build", None, Path::new("."));
+            let clean_cmd = format!(
+                "cargo clean --manifest-path {manifest_path} --target-dir {target_dir}",
+                manifest_path = manifest_path.display(),
+                target_dir = target_dir.display(),
+            );
+            let llvm_build_cmd = format!(
+                "cargo build --manifest-path {manifest_path} --target-dir {target_dir}",
+                manifest_path = manifest_path.display(),
+                target_dir = target_dir.display(),
+            );
+            let clif_build_cmd = format!(
+                "{cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir}",
+                cargo_clif = cargo_clif.display(),
+                manifest_path = manifest_path.display(),
+                target_dir = target_dir.display(),
+            );
 
-                let cargo_clif = runner
-                    .root_dir
-                    .clone()
-                    .join("build")
-                    .join(get_wrapper_file_name("cargo-clif", "bin"));
-                let clif_build_cmd = cargo_command(cargo_clif, "build", None, Path::new("."));
+            let bench_compile =
+                hyperfine_command(1, run_runs, Some(&clean_cmd), &llvm_build_cmd, &clif_build_cmd);
 
-                let bench_compile =
-                    hyperfine_command(1, run_runs, Some(prepare), llvm_build_cmd, clif_build_cmd);
+            spawn_and_wait(bench_compile);
 
-                spawn_and_wait(bench_compile);
+            eprintln!("[BENCH RUN] ebobby/simple-raytracer");
+            fs::copy(target_dir.join("debug").join("main"), source_dir.join("raytracer_cg_clif"))
+                .unwrap();
 
-                eprintln!("[BENCH RUN] ebobby/simple-raytracer");
-                fs::copy(PathBuf::from("./target/debug/main"), PathBuf::from("raytracer_cg_clif"))
-                    .unwrap();
-
-                let bench_run = hyperfine_command(
-                    0,
-                    run_runs,
-                    None,
-                    Command::new("./raytracer_cg_llvm"),
-                    Command::new("./raytracer_cg_clif"),
-                );
-                spawn_and_wait(bench_run);
-            } else {
-                runner.run_cargo("clean", []);
-                eprintln!("[BENCH COMPILE] ebobby/simple-raytracer (skipped)");
-                eprintln!("[COMPILE] ebobby/simple-raytracer");
-                runner.run_cargo("build", []);
-                eprintln!("[BENCH RUN] ebobby/simple-raytracer (skipped)");
-            }
-        });
+            let mut bench_run = hyperfine_command(
+                0,
+                run_runs,
+                None,
+                &source_dir.join("raytracer_cg_llvm").display().to_string(),
+                &source_dir.join("raytracer_cg_clif").display().to_string(),
+            );
+            bench_run.current_dir(SIMPLE_RAYTRACER.source_dir());
+            spawn_and_wait(bench_run);
+        } else {
+            spawn_and_wait(SIMPLE_RAYTRACER.clean(&runner.target_compiler.cargo));
+            eprintln!("[BENCH COMPILE] ebobby/simple-raytracer (skipped)");
+            eprintln!("[COMPILE] ebobby/simple-raytracer");
+            spawn_and_wait(SIMPLE_RAYTRACER.build(&runner.target_compiler));
+            eprintln!("[BENCH RUN] ebobby/simple-raytracer (skipped)");
+        }
     }),
     TestCase::new("test.libcore", &|runner| {
-        runner.in_dir(
-            std::env::current_dir()
-                .unwrap()
-                .join("build_sysroot")
-                .join("sysroot_src")
-                .join("library")
-                .join("core")
-                .join("tests"),
-            |runner| {
-                runner.run_cargo("clean", []);
+        spawn_and_wait(LIBCORE_TESTS.clean(&runner.host_compiler.cargo));
 
-                if runner.host_triple == runner.target_triple {
-                    runner.run_cargo("test", []);
-                } else {
-                    eprintln!("Cross-Compiling: Not running tests");
-                    runner.run_cargo("build", ["--tests"]);
-                }
-            },
-        );
+        if runner.is_native {
+            spawn_and_wait(LIBCORE_TESTS.test(&runner.target_compiler));
+        } else {
+            eprintln!("Cross-Compiling: Not running tests");
+            let mut build_cmd = LIBCORE_TESTS.build(&runner.target_compiler);
+            build_cmd.arg("--tests");
+            spawn_and_wait(build_cmd);
+        }
     }),
     TestCase::new("test.regex-shootout-regex-dna", &|runner| {
-        runner.in_dir(prepare::REGEX.source_dir(), |runner| {
-            runner.run_cargo("clean", []);
+        spawn_and_wait(REGEX.clean(&runner.target_compiler.cargo));
 
-            // newer aho_corasick versions throw a deprecation warning
-            let lint_rust_flags = format!("{} --cap-lints warn", runner.rust_flags);
+        // newer aho_corasick versions throw a deprecation warning
+        let lint_rust_flags = format!("{} --cap-lints warn", runner.target_compiler.rustflags);
 
-            let mut build_cmd = runner.cargo_command("build", ["--example", "shootout-regex-dna"]);
-            build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
-            spawn_and_wait(build_cmd);
+        let mut build_cmd = REGEX.build(&runner.target_compiler);
+        build_cmd.arg("--example").arg("shootout-regex-dna");
+        build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
+        spawn_and_wait(build_cmd);
 
-            if runner.host_triple == runner.target_triple {
-                let mut run_cmd = runner.cargo_command("run", ["--example", "shootout-regex-dna"]);
-                run_cmd.env("RUSTFLAGS", lint_rust_flags);
+        if runner.is_native {
+            let mut run_cmd = REGEX.run(&runner.target_compiler);
+            run_cmd.arg("--example").arg("shootout-regex-dna");
+            run_cmd.env("RUSTFLAGS", lint_rust_flags);
 
-                let input =
-                    fs::read_to_string(PathBuf::from("examples/regexdna-input.txt")).unwrap();
-                let expected_path = PathBuf::from("examples/regexdna-output.txt");
-                let expected = fs::read_to_string(&expected_path).unwrap();
+            let input =
+                fs::read_to_string(REGEX.source_dir().join("examples").join("regexdna-input.txt"))
+                    .unwrap();
+            let expected_path = REGEX.source_dir().join("examples").join("regexdna-output.txt");
+            let expected = fs::read_to_string(&expected_path).unwrap();
 
-                let output = spawn_and_wait_with_input(run_cmd, input);
-                // Make sure `[codegen mono items] start` doesn't poison the diff
-                let output = output
-                    .lines()
-                    .filter(|line| !line.contains("codegen mono items"))
-                    .chain(Some("")) // This just adds the trailing newline
-                    .collect::<Vec<&str>>()
-                    .join("\r\n");
+            let output = spawn_and_wait_with_input(run_cmd, input);
+            // Make sure `[codegen mono items] start` doesn't poison the diff
+            let output = output
+                .lines()
+                .filter(|line| !line.contains("codegen mono items"))
+                .chain(Some("")) // This just adds the trailing newline
+                .collect::<Vec<&str>>()
+                .join("\r\n");
 
-                let output_matches = expected.lines().eq(output.lines());
-                if !output_matches {
-                    let res_path = PathBuf::from("res.txt");
-                    fs::write(&res_path, &output).unwrap();
+            let output_matches = expected.lines().eq(output.lines());
+            if !output_matches {
+                let res_path = REGEX.source_dir().join("res.txt");
+                fs::write(&res_path, &output).unwrap();
 
-                    if cfg!(windows) {
-                        println!("Output files don't match!");
-                        println!("Expected Output:\n{}", expected);
-                        println!("Actual Output:\n{}", output);
-                    } else {
-                        let mut diff = Command::new("diff");
-                        diff.arg("-u");
-                        diff.arg(res_path);
-                        diff.arg(expected_path);
-                        spawn_and_wait(diff);
-                    }
-
-                    std::process::exit(1);
+                if cfg!(windows) {
+                    println!("Output files don't match!");
+                    println!("Expected Output:\n{}", expected);
+                    println!("Actual Output:\n{}", output);
+                } else {
+                    let mut diff = Command::new("diff");
+                    diff.arg("-u");
+                    diff.arg(res_path);
+                    diff.arg(expected_path);
+                    spawn_and_wait(diff);
                 }
+
+                std::process::exit(1);
             }
-        });
+        }
     }),
     TestCase::new("test.regex", &|runner| {
-        runner.in_dir(prepare::REGEX.source_dir(), |runner| {
-            runner.run_cargo("clean", []);
+        spawn_and_wait(REGEX.clean(&runner.host_compiler.cargo));
 
-            // newer aho_corasick versions throw a deprecation warning
-            let lint_rust_flags = format!("{} --cap-lints warn", runner.rust_flags);
+        // newer aho_corasick versions throw a deprecation warning
+        let lint_rust_flags = format!("{} --cap-lints warn", runner.target_compiler.rustflags);
 
-            if runner.host_triple == runner.target_triple {
-                let mut run_cmd = runner.cargo_command(
-                    "test",
-                    [
-                        "--tests",
-                        "--",
-                        "--exclude-should-panic",
-                        "--test-threads",
-                        "1",
-                        "-Zunstable-options",
-                        "-q",
-                    ],
-                );
-                run_cmd.env("RUSTFLAGS", lint_rust_flags);
-                spawn_and_wait(run_cmd);
-            } else {
-                eprintln!("Cross-Compiling: Not running tests");
-                let mut build_cmd =
-                    runner.cargo_command("build", ["--tests", "--target", &runner.target_triple]);
-                build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
-                spawn_and_wait(build_cmd);
-            }
-        });
+        if runner.is_native {
+            let mut run_cmd = REGEX.test(&runner.target_compiler);
+            run_cmd.args([
+                "--tests",
+                "--",
+                "--exclude-should-panic",
+                "--test-threads",
+                "1",
+                "-Zunstable-options",
+                "-q",
+            ]);
+            run_cmd.env("RUSTFLAGS", lint_rust_flags);
+            spawn_and_wait(run_cmd);
+        } else {
+            eprintln!("Cross-Compiling: Not running tests");
+            let mut build_cmd = REGEX.build(&runner.target_compiler);
+            build_cmd.arg("--tests");
+            build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
+            spawn_and_wait(build_cmd);
+        }
     }),
     TestCase::new("test.portable-simd", &|runner| {
-        runner.in_dir(prepare::PORTABLE_SIMD.source_dir(), |runner| {
-            runner.run_cargo("clean", []);
-            runner.run_cargo("build", ["--all-targets", "--target", &runner.target_triple]);
+        spawn_and_wait(PORTABLE_SIMD.clean(&runner.host_compiler.cargo));
 
-            if runner.host_triple == runner.target_triple {
-                runner.run_cargo("test", ["-q"]);
-            }
-        });
+        let mut build_cmd = PORTABLE_SIMD.build(&runner.target_compiler);
+        build_cmd.arg("--all-targets");
+        spawn_and_wait(build_cmd);
+
+        if runner.is_native {
+            let mut test_cmd = PORTABLE_SIMD.test(&runner.target_compiler);
+            test_cmd.arg("-q");
+            spawn_and_wait(test_cmd);
+        }
     }),
 ];
 
@@ -442,13 +483,11 @@ pub(crate) fn run_tests(
 }
 
 struct TestRunner {
-    root_dir: PathBuf,
     out_dir: PathBuf,
+    is_native: bool,
     jit_supported: bool,
-    rust_flags: String,
-    run_wrapper: Vec<String>,
-    host_triple: String,
-    target_triple: String,
+    host_compiler: Compiler,
+    target_compiler: Compiler,
 }
 
 impl TestRunner {
@@ -463,19 +502,31 @@ impl TestRunner {
         let jit_supported =
             target_triple.contains("x86_64") && is_native && !host_triple.contains("windows");
 
-        let mut rust_flags = env::var("RUSTFLAGS").ok().unwrap_or("".to_string());
-        let mut run_wrapper = Vec::new();
+        let mut rustc_clif = root_dir.clone();
+        rustc_clif.push("build");
+        rustc_clif.push(get_wrapper_file_name("rustc-clif", "bin"));
+
+        let mut rustdoc_clif = root_dir.clone();
+        rustdoc_clif.push("build");
+        rustdoc_clif.push(get_wrapper_file_name("rustdoc-clif", "bin"));
+
+        let mut rustflags = env::var("RUSTFLAGS").ok().unwrap_or("".to_string());
+        let mut runner = vec![];
 
         if !is_native {
             match target_triple.as_str() {
                 "aarch64-unknown-linux-gnu" => {
                     // We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
-                    rust_flags = format!("-Clinker=aarch64-linux-gnu-gcc{}", rust_flags);
-                    run_wrapper = vec!["qemu-aarch64", "-L", "/usr/aarch64-linux-gnu"];
+                    rustflags = format!("-Clinker=aarch64-linux-gnu-gcc{}", rustflags);
+                    runner = vec![
+                        "qemu-aarch64".to_owned(),
+                        "-L".to_owned(),
+                        "/usr/aarch64-linux-gnu".to_owned(),
+                    ];
                 }
                 "x86_64-pc-windows-gnu" => {
                     // We are cross-compiling for Windows. Run tests in wine.
-                    run_wrapper = vec!["wine"];
+                    runner = vec!["wine".to_owned()];
                 }
                 _ => {
                     println!("Unknown non-native platform");
@@ -484,19 +535,31 @@ impl TestRunner {
         }
 
         // FIXME fix `#[linkage = "extern_weak"]` without this
-        if host_triple.contains("darwin") {
-            rust_flags = format!("{} -Clink-arg=-undefined -Clink-arg=dynamic_lookup", rust_flags);
+        if target_triple.contains("darwin") {
+            rustflags = format!("{} -Clink-arg=-undefined -Clink-arg=dynamic_lookup", rustflags);
         }
 
-        Self {
-            root_dir,
-            out_dir,
-            jit_supported,
-            rust_flags,
-            run_wrapper: run_wrapper.iter().map(|s| s.to_string()).collect(),
-            host_triple,
-            target_triple,
-        }
+        let host_compiler = Compiler {
+            cargo: get_cargo_path(),
+            rustc: rustc_clif.clone(),
+            rustdoc: rustdoc_clif.clone(),
+            rustflags: String::new(),
+            rustdocflags: String::new(),
+            triple: host_triple,
+            runner: vec![],
+        };
+
+        let target_compiler = Compiler {
+            cargo: get_cargo_path(),
+            rustc: rustc_clif.clone(),
+            rustdoc: rustdoc_clif.clone(),
+            rustflags: rustflags.clone(),
+            rustdocflags: rustflags,
+            triple: target_triple,
+            runner,
+        };
+
+        Self { out_dir, is_native, jit_supported, host_compiler, target_compiler }
     }
 
     pub fn run_testsuite(&self, tests: &[TestCase]) {
@@ -516,25 +579,14 @@ impl TestRunner {
         }
     }
 
-    fn in_dir(&self, new: impl AsRef<Path>, callback: impl FnOnce(&TestRunner)) {
-        let current = env::current_dir().unwrap();
-
-        env::set_current_dir(new).unwrap();
-        callback(self);
-        env::set_current_dir(current).unwrap();
-    }
-
+    #[must_use]
     fn rustc_command<I, S>(&self, args: I) -> Command
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        let mut rustc_clif = self.root_dir.clone();
-        rustc_clif.push("build");
-        rustc_clif.push(get_wrapper_file_name("rustc-clif", "bin"));
-
-        let mut cmd = Command::new(rustc_clif);
-        cmd.args(self.rust_flags.split_whitespace());
+        let mut cmd = Command::new(&self.target_compiler.rustc);
+        cmd.args(self.target_compiler.rustflags.split_whitespace());
         cmd.arg("-L");
         cmd.arg(format!("crate={}", self.out_dir.display()));
         cmd.arg("--out-dir");
@@ -559,8 +611,8 @@ impl TestRunner {
         let mut full_cmd = vec![];
 
         // Prepend the RUN_WRAPPER's
-        if !self.run_wrapper.is_empty() {
-            full_cmd.extend(self.run_wrapper.iter().cloned());
+        if !self.target_compiler.runner.is_empty() {
+            full_cmd.extend(self.target_compiler.runner.iter().cloned());
         }
 
         full_cmd.push({
@@ -580,31 +632,5 @@ impl TestRunner {
         cmd.args(cmd_iter);
 
         spawn_and_wait(cmd);
-    }
-
-    fn cargo_command<'a, I>(&self, subcommand: &str, args: I) -> Command
-    where
-        I: IntoIterator<Item = &'a str>,
-    {
-        let mut cargo_clif = self.root_dir.clone();
-        cargo_clif.push("build");
-        cargo_clif.push(get_wrapper_file_name("cargo-clif", "bin"));
-
-        let mut cmd = cargo_command(
-            cargo_clif,
-            subcommand,
-            if subcommand == "clean" { None } else { Some(&self.target_triple) },
-            Path::new("."),
-        );
-        cmd.args(args);
-        cmd.env("RUSTFLAGS", &self.rust_flags);
-        cmd
-    }
-
-    fn run_cargo<'a, I>(&self, subcommand: &str, args: I)
-    where
-        I: IntoIterator<Item = &'a str>,
-    {
-        spawn_and_wait(self.cargo_command(subcommand, args));
     }
 }

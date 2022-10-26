@@ -1,35 +1,156 @@
 use std::env;
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 
-pub(crate) fn cargo_command(
-    cargo: impl AsRef<Path>,
-    subcommand: &str,
-    triple: Option<&str>,
-    source_dir: &Path,
-) -> Command {
-    let mut cmd = Command::new(cargo.as_ref());
-    cmd.arg(subcommand)
-        .arg("--manifest-path")
-        .arg(source_dir.join("Cargo.toml"))
-        .arg("--target-dir")
-        .arg(source_dir.join("target"));
+use super::prepare::GitRepo;
+use super::rustc_info::{get_cargo_path, get_host_triple, get_rustc_path, get_rustdoc_path};
 
-    if let Some(triple) = triple {
-        cmd.arg("--target").arg(triple);
-    }
-
-    cmd
+pub(crate) struct Compiler {
+    pub(crate) cargo: PathBuf,
+    pub(crate) rustc: PathBuf,
+    pub(crate) rustdoc: PathBuf,
+    pub(crate) rustflags: String,
+    pub(crate) rustdocflags: String,
+    pub(crate) triple: String,
+    pub(crate) runner: Vec<String>,
 }
 
+impl Compiler {
+    pub(crate) fn host() -> Compiler {
+        Compiler {
+            cargo: get_cargo_path(),
+            rustc: get_rustc_path(),
+            rustdoc: get_rustdoc_path(),
+            rustflags: String::new(),
+            rustdocflags: String::new(),
+            triple: get_host_triple(),
+            runner: vec![],
+        }
+    }
+
+    pub(crate) fn with_triple(triple: String) -> Compiler {
+        Compiler {
+            cargo: get_cargo_path(),
+            rustc: get_rustc_path(),
+            rustdoc: get_rustdoc_path(),
+            rustflags: String::new(),
+            rustdocflags: String::new(),
+            triple,
+            runner: vec![],
+        }
+    }
+}
+
+enum CargoProjectSource {
+    Local,
+    GitRepo(&'static GitRepo),
+}
+
+pub(crate) struct CargoProject {
+    source: CargoProjectSource,
+    path: &'static str,
+}
+
+impl CargoProject {
+    pub(crate) const fn local(path: &'static str) -> CargoProject {
+        CargoProject { source: CargoProjectSource::Local, path }
+    }
+
+    pub(crate) const fn git(git_repo: &'static GitRepo, path: &'static str) -> CargoProject {
+        CargoProject { source: CargoProjectSource::GitRepo(git_repo), path }
+    }
+
+    pub(crate) fn source_dir(&self) -> PathBuf {
+        match self.source {
+            CargoProjectSource::Local => std::env::current_dir().unwrap(),
+            CargoProjectSource::GitRepo(git_repo) => git_repo.source_dir(),
+        }
+        .join(self.path)
+    }
+
+    pub(crate) fn manifest_path(&self) -> PathBuf {
+        self.source_dir().join("Cargo.toml")
+    }
+
+    pub(crate) fn target_dir(&self) -> PathBuf {
+        match self.source {
+            CargoProjectSource::Local => std::env::current_dir().unwrap(),
+            CargoProjectSource::GitRepo(git_repo) => git_repo.source_dir(),
+        }
+        .join(self.path)
+        .join("target")
+    }
+
+    fn base_cmd(&self, command: &str, cargo: &Path) -> Command {
+        let mut cmd = Command::new(cargo);
+
+        cmd.arg(command)
+            .arg("--manifest-path")
+            .arg(self.manifest_path())
+            .arg("--target-dir")
+            .arg(self.target_dir());
+
+        cmd
+    }
+
+    fn build_cmd(&self, command: &str, compiler: &Compiler) -> Command {
+        let mut cmd = self.base_cmd(command, &compiler.cargo);
+
+        cmd.arg("--target").arg(&compiler.triple);
+
+        cmd.env("RUSTC", &compiler.rustc);
+        cmd.env("RUSTDOC", &compiler.rustdoc);
+        cmd.env("RUSTFLAGS", &compiler.rustflags);
+        cmd.env("RUSTDOCFLAGS", &compiler.rustdocflags);
+        if !compiler.runner.is_empty() {
+            cmd.env(
+                format!("CARGO_TARGET_{}_RUNNER", compiler.triple.to_uppercase().replace('-', "_")),
+                compiler.runner.join(" "),
+            );
+        }
+
+        cmd
+    }
+
+    #[must_use]
+    pub(crate) fn fetch(&self, cargo: impl AsRef<Path>) -> Command {
+        let mut cmd = Command::new(cargo.as_ref());
+
+        cmd.arg("fetch").arg("--manifest-path").arg(self.manifest_path());
+
+        cmd
+    }
+
+    #[must_use]
+    pub(crate) fn clean(&self, cargo: &Path) -> Command {
+        self.base_cmd("clean", cargo)
+    }
+
+    #[must_use]
+    pub(crate) fn build(&self, compiler: &Compiler) -> Command {
+        self.build_cmd("build", compiler)
+    }
+
+    #[must_use]
+    pub(crate) fn test(&self, compiler: &Compiler) -> Command {
+        self.build_cmd("test", compiler)
+    }
+
+    #[must_use]
+    pub(crate) fn run(&self, compiler: &Compiler) -> Command {
+        self.build_cmd("run", compiler)
+    }
+}
+
+#[must_use]
 pub(crate) fn hyperfine_command(
     warmup: u64,
     runs: u64,
-    prepare: Option<Command>,
-    a: Command,
-    b: Command,
+    prepare: Option<&str>,
+    a: &str,
+    b: &str,
 ) -> Command {
     let mut bench = Command::new("hyperfine");
 
@@ -42,10 +163,10 @@ pub(crate) fn hyperfine_command(
     }
 
     if let Some(prepare) = prepare {
-        bench.arg("--prepare").arg(format!("{:?}", prepare));
+        bench.arg("--prepare").arg(prepare);
     }
 
-    bench.arg(format!("{:?}", a)).arg(format!("{:?}", b));
+    bench.arg(a).arg(b);
 
     bench
 }
