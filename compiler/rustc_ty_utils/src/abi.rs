@@ -199,6 +199,7 @@ fn adjust_for_rust_scalar<'tcx>(
     layout: TyAndLayout<'tcx>,
     offset: Size,
     is_return: bool,
+    is_drop_target: bool,
 ) {
     // Booleans are always a noundef i1 that needs to be zero-extended.
     if scalar.is_bool() {
@@ -276,6 +277,25 @@ fn adjust_for_rust_scalar<'tcx>(
             }
         }
     }
+
+    // If this is the argument to `drop_in_place`, the contents of which we fully control as the
+    // compiler, then we may be able to mark that argument `noalias`. Currently, we're conservative
+    // and do so only if `drop_in_place` results in a direct call to the programmer's `drop` method.
+    // The `drop` method requires `&mut self`, so we're effectively just propagating the `noalias`
+    // guarantee from `drop` upward to `drop_in_place` in this case.
+    if is_drop_target {
+        match *layout.ty.kind() {
+            ty::RawPtr(inner) => {
+                if let ty::Adt(adt_def, _) = inner.ty.kind() {
+                    if adt_def.destructor(cx.tcx()).is_some() {
+                        debug!("marking drop_in_place argument as noalias");
+                        attrs.set(ArgAttribute::NoAlias);
+                    }
+                }
+            }
+            _ => bug!("drop target isn't a raw pointer"),
+        }
+    }
 }
 
 // FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
@@ -331,10 +351,16 @@ fn fn_abi_new_uncached<'tcx>(
     use SpecAbi::*;
     let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
 
+    let is_drop_in_place = match (cx.tcx.lang_items().drop_in_place_fn(), fn_def_id) {
+        (Some(drop_in_place_fn), Some(fn_def_id)) => drop_in_place_fn == fn_def_id,
+        _ => false,
+    };
+
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
         let _entered = span.enter();
         let is_return = arg_idx.is_none();
+        let is_drop_target = is_drop_in_place && arg_idx == Some(0);
 
         let layout = cx.layout_of(ty)?;
         let layout = if force_thin_self_ptr && arg_idx == Some(0) {
@@ -348,7 +374,15 @@ fn fn_abi_new_uncached<'tcx>(
 
         let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
             let mut attrs = ArgAttributes::new();
-            adjust_for_rust_scalar(*cx, &mut attrs, scalar, *layout, offset, is_return);
+            adjust_for_rust_scalar(
+                *cx,
+                &mut attrs,
+                scalar,
+                *layout,
+                offset,
+                is_return,
+                is_drop_target,
+            );
             attrs
         });
 
