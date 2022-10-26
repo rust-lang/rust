@@ -168,6 +168,20 @@ pub fn predicate_obligations<'tcx>(
     wf.normalize(infcx)
 }
 
+/// Whether we should emit nested obligations containing `value`.
+/// This is a hack to deal with higher ranked types as we require implications
+/// in binders for a more correct implementation.
+///
+/// `WF(for<'a> fn(&'a T))` would otherwise emit a `T: 'a` bound for `&'a T`
+/// which would require `T: 'static`. What we actually want here is the type
+/// `for<'a> where { T: 'a } fn(&'a T)`, at which point the `T: 'a` bound is
+/// trivially implied from the `param_env`.
+///
+/// This means that we WF bounds aren't always sufficiently checked for now. 
+fn emit_obligations_for<'tcx, T: TypeVisitable<'tcx>>(value: T) -> bool {
+    !value.has_escaping_bound_vars()
+}
+
 struct WfPredicates<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -280,7 +294,7 @@ impl<'tcx> WfPredicates<'tcx> {
         let param_env = self.param_env;
         let mut obligations = Vec::with_capacity(self.out.len());
         for mut obligation in self.out {
-            assert!(!obligation.has_escaping_bound_vars());
+            assert!(emit_obligations_for(obligation.predicate));
             let mut selcx = traits::SelectionContext::new(infcx);
             // Don't normalize the whole obligation, the param env is either
             // already normalized, or we're currently normalizing the
@@ -373,7 +387,7 @@ impl<'tcx> WfPredicates<'tcx> {
                 .filter(|(_, arg)| {
                     matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
                 })
-                .filter(|(_, arg)| !arg.has_escaping_bound_vars())
+                .filter(|&(_, arg)| emit_obligations_for(arg))
                 .map(|(i, arg)| {
                     let mut cause = traits::ObligationCause::misc(self.span, self.body_id);
                     // The first subst is the self ty - use the correct span for it.
@@ -433,7 +447,7 @@ impl<'tcx> WfPredicates<'tcx> {
                 .filter(|arg| {
                     matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
                 })
-                .filter(|arg| !arg.has_escaping_bound_vars())
+                .filter(|&arg| emit_obligations_for(arg))
                 .map(|arg| {
                     traits::Obligation::with_depth(
                         cause.clone(),
@@ -446,7 +460,7 @@ impl<'tcx> WfPredicates<'tcx> {
     }
 
     fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
-        if !subty.has_escaping_bound_vars() {
+        if emit_obligations_for(subty) {
             let cause = self.cause(cause);
             let trait_ref = ty::TraitRef {
                 def_id: self.tcx.require_lang_item(LangItem::Sized, None),
@@ -582,7 +596,7 @@ impl<'tcx> WfPredicates<'tcx> {
 
                 ty::Ref(r, rty, _) => {
                     // WfReference
-                    if !r.has_escaping_bound_vars() && !rty.has_escaping_bound_vars() {
+                    if emit_obligations_for(r) && emit_obligations_for(rty) {
                         let cause = self.cause(traits::ReferenceOutlivesReferent(ty));
                         self.out.push(traits::Obligation::with_depth(
                             cause,
@@ -755,7 +769,7 @@ impl<'tcx> WfPredicates<'tcx> {
                 }
                 traits::Obligation::with_depth(cause, self.recursion_depth, self.param_env, pred)
             })
-            .filter(|pred| !pred.has_escaping_bound_vars())
+            .filter(|obl| emit_obligations_for(obl.predicate))
             .collect()
     }
 
@@ -812,7 +826,7 @@ impl<'tcx> WfPredicates<'tcx> {
         //
         // Note: in fact we only permit builtin traits, not `Bar<'d>`, I
         // am looking forward to the future here.
-        if !data.has_escaping_bound_vars() && !region.has_escaping_bound_vars() {
+        if emit_obligations_for(data) && emit_obligations_for(region) {
             let implicit_bounds = object_region_bounds(self.tcx, data);
 
             let explicit_bound = region;
@@ -876,12 +890,12 @@ pub fn object_region_bounds<'tcx>(
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
 #[instrument(skip(tcx, predicates), level = "debug", ret)]
-pub(crate) fn required_region_bounds<'tcx>(
+fn required_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     erased_self_ty: Ty<'tcx>,
     predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
 ) -> Vec<ty::Region<'tcx>> {
-    assert!(!erased_self_ty.has_escaping_bound_vars());
+    assert!(emit_obligations_for(erased_self_ty));
 
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|obligation| {
@@ -898,7 +912,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t, r)) => {
                     // Search for a bound of the form `erased_self_ty
                     // : 'a`, but be wary of something like `for<'a>
                     // erased_self_ty : 'a` (we interpret a
@@ -908,11 +922,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                     // it's kind of a moot point since you could never
                     // construct such an object, but this seems
                     // correct even if that code changes).
-                    if t == &erased_self_ty && !r.has_escaping_bound_vars() {
-                        Some(*r)
-                    } else {
-                        None
-                    }
+                    if t == erased_self_ty && emit_obligations_for(r) { Some(r) } else { None }
                 }
             }
         })
