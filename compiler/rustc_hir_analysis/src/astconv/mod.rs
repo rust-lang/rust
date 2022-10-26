@@ -26,11 +26,9 @@ use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
-use rustc_middle::ty::DynKind;
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{
-    self, Const, DefIdTree, EarlyBinder, IsSuggestable, Ty, TyCtxt, TypeVisitable,
-};
+use rustc_middle::ty::{self, Const, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{DynKind, EarlyBinder};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -490,7 +488,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             self.astconv
                                 .normalize_ty(
                                     self.span,
-                                    EarlyBinder(tcx.at(self.span).type_of(param.def_id))
+                                    tcx.at(self.span)
+                                        .bound_type_of(param.def_id)
                                         .subst(tcx, substs),
                                 )
                                 .into()
@@ -1258,10 +1257,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_segment: &hir::PathSegment<'_>,
     ) -> Ty<'tcx> {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
-        self.normalize_ty(
-            span,
-            EarlyBinder(self.tcx().at(span).type_of(did)).subst(self.tcx(), substs),
-        )
+        self.normalize_ty(span, self.tcx().at(span).bound_type_of(did).subst(self.tcx(), substs))
     }
 
     fn conv_object_ty_poly_trait_ref(
