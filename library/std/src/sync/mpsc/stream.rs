@@ -114,7 +114,7 @@ impl<T> Packet<T> {
         match self.queue.producer_addition().cnt.fetch_add(1, Ordering::SeqCst) {
             // As described in the mod's doc comment, -1 == wakeup
             -1 => UpWoke(self.take_to_wake()),
-            // As as described before, SPSC queues must be >= -2
+            // As described before, SPSC queues must be >= -2
             -2 => UpSuccess,
 
             // Be sure to preserve the disconnected state, and the return value
