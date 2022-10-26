@@ -124,14 +124,6 @@ pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
 pub type Guidance = chalk_solve::Guidance<Interner>;
 pub type WhereClause = chalk_ir::WhereClause<Interner>;
 
-// FIXME: get rid of this
-pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
-    Substitution::from_iter(
-        Interner,
-        s.as_slice(Interner)[..std::cmp::min(s.len(Interner), n)].iter().cloned(),
-    )
-}
-
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
     generics(db.upcast(), id.parent).param_idx(id)
@@ -382,7 +374,6 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
 pub fn replace_errors_with_variables<T>(t: &T) -> Canonical<T>
 where
     T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + Clone,
-    T: HasInterner<Interner = Interner>,
 {
     use chalk_ir::{
         fold::{FallibleTypeFolder, TypeSuperFoldable},
