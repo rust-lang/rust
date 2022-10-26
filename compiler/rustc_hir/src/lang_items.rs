@@ -42,7 +42,7 @@ macro_rules! expand_group {
 pub struct LanguageItems {
     /// Mappings from lang items to their possibly found [`DefId`]s.
     /// The index corresponds to the order in [`LangItem`].
-    pub items: Vec<Option<DefId>>,
+    items: Vec<Option<DefId>>,
     /// Lang items that were not found during collection.
     pub missing: Vec<LangItem>,
     /// Mapping from [`LangItemGroup`] discriminants to all
@@ -131,11 +131,6 @@ macro_rules! language_item_table {
                     missing: Vec::new(),
                     groups: [EMPTY; NUM_GROUPS],
                 }
-            }
-
-            /// Returns the mappings to the possibly found `DefId`s for each lang item.
-            pub fn items(&self) -> &[Option<DefId>] {
-                &*self.items
             }
 
             /// Returns the [`DefId`]s of all lang items in a group.

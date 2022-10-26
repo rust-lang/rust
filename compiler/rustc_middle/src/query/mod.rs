@@ -1705,7 +1705,7 @@ rustc_queries! {
     }
 
     /// Returns the lang items defined in another crate by loading it from metadata.
-    query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, usize)] {
+    query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, LangItem)] {
         desc { "calculating the lang items defined in a crate" }
         separate_provide_extern
     }

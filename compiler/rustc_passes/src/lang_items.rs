@@ -65,12 +65,12 @@ impl<'tcx> LanguageItemCollector<'tcx> {
         }
     }
 
-    fn collect_item(&mut self, item_index: usize, item_def_id: DefId) {
+    fn collect_item(&mut self, lang_item: LangItem, item_def_id: DefId) {
         // Check for duplicates.
-        if let Some(original_def_id) = self.items.items[item_index] {
+        if let Some(original_def_id) = self.items.get(lang_item) {
             if original_def_id != item_def_id {
                 let local_span = self.tcx.hir().span_if_local(item_def_id);
-                let lang_item_name = LangItem::from_u32(item_index as u32).unwrap().name();
+                let lang_item_name = lang_item.name();
                 let crate_name = self.tcx.crate_name(item_def_id.krate);
                 let mut dependency_of = Empty;
                 let is_local = item_def_id.is_local();
@@ -139,8 +139,8 @@ impl<'tcx> LanguageItemCollector<'tcx> {
         }
 
         // Matched.
-        self.items.items[item_index] = Some(item_def_id);
-        if let Some(group) = LangItem::from_u32(item_index as u32).unwrap().group() {
+        self.items.set(lang_item, item_def_id);
+        if let Some(group) = lang_item.group() {
             self.items.groups[group as usize].push(item_def_id);
         }
     }
@@ -197,7 +197,7 @@ impl<'tcx> LanguageItemCollector<'tcx> {
             }
         }
 
-        self.collect_item(item_index, item_def_id);
+        self.collect_item(lang_item, item_def_id);
     }
 }
 
@@ -208,8 +208,8 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
 
     // Collect lang items in other crates.
     for &cnum in tcx.crates(()).iter() {
-        for &(def_id, item_index) in tcx.defined_lang_items(cnum).iter() {
-            collector.collect_item(item_index, def_id);
+        for &(def_id, lang_item) in tcx.defined_lang_items(cnum).iter() {
+            collector.collect_item(lang_item, def_id);
         }
     }
 
