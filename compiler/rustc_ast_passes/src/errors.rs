@@ -249,97 +249,97 @@ pub struct ImplAssocTyWithBound {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::foreign_ty_with_generic_param)]
-#[note(ast_passes::more_extern_note)]
+#[diag(ast_passes_foreign_ty_with_generic_param)]
+#[note(more_extern_note)]
 pub struct ForeignTyWithGenericParam {
     #[primary_span]
     #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
-    #[label(ast_passes::extern_block_label)]
+    #[label(extern_block_label)]
     pub extern_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::foreign_ty_with_where_clause)]
-#[note(ast_passes::more_extern_note)]
+#[diag(ast_passes_foreign_ty_with_where_clause)]
+#[note(more_extern_note)]
 pub struct ForeignTyWithWhereClause {
     #[primary_span]
     #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
-    #[label(ast_passes::extern_block_label)]
+    #[label(extern_block_label)]
     pub extern_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::foreign_ty_with_body)]
-#[note(ast_passes::more_extern_note)]
+#[diag(ast_passes_foreign_ty_with_body)]
+#[note(more_extern_note)]
 pub struct ForeignTyWithBody {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(ast_passes::body_label)]
+    #[label(body_label)]
     pub body_span: Span,
-    #[label(ast_passes::extern_block_label)]
+    #[label(extern_block_label)]
     pub extern_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::foreign_static_with_body)]
-#[note(ast_passes::more_extern_note)]
+#[diag(ast_passes_foreign_static_with_body)]
+#[note(more_extern_note)]
 pub struct ForeignStaticWithBody {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(ast_passes::body_label)]
+    #[label(body_label)]
     pub body_span: Span,
-    #[label(ast_passes::extern_block_label)]
+    #[label(extern_block_label)]
     pub extern_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::foreign_fn_with_body)]
+#[diag(ast_passes_foreign_fn_with_body)]
 #[help]
-#[note(ast_passes::more_extern_note)]
+#[note(more_extern_note)]
 pub struct ForeignFnWithBody {
     #[primary_span]
     #[label]
     pub span: Span,
     #[suggestion(code = ";", applicability = "maybe-incorrect")]
     pub body_span: Span,
-    #[label(ast_passes::extern_block_label)]
+    #[label(extern_block_label)]
     pub extern_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::foreign_fn_with_qualifier)]
+#[diag(ast_passes_foreign_fn_with_qualifier)]
 pub struct ForeignFnWithQualifier {
     #[primary_span]
     pub span: Span,
-    #[label(ast_passes::extern_block_label)]
+    #[label(extern_block_label)]
     pub extern_span: Span,
     #[suggestion_verbose(code = "fn ", applicability = "maybe-incorrect")]
     pub replace_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::foreign_item_non_ascii)]
+#[diag(ast_passes_foreign_item_non_ascii)]
 #[note]
 pub struct ForeignItemNonAscii {
     #[primary_span]
     pub span: Span,
-    #[label(ast_passes::extern_block_label)]
+    #[label(extern_block_label)]
     pub extern_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::forbidden_c_var_args)]
+#[diag(ast_passes_forbidden_c_var_args)]
 pub struct ForbiddenCVarArgs {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::unnamed_assoc_const)]
+#[diag(ast_passes_unnamed_assoc_const)]
 pub struct UnnamedAssocConst {
     #[primary_span]
     #[label]
@@ -347,14 +347,14 @@ pub struct UnnamedAssocConst {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::nomangle_item_non_ascii, code = "E0754")]
+#[diag(ast_passes_nomangle_item_non_ascii, code = "E0754")]
 pub struct NomangleItemNonAscii {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::mod_file_item_non_ascii, code = "E0754")]
+#[diag(ast_passes_mod_file_item_non_ascii, code = "E0754")]
 #[help]
 pub struct ModFileItemNonAscii {
     #[primary_span]
@@ -363,46 +363,46 @@ pub struct ModFileItemNonAscii {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::auto_trait_with_generic_param, code = "E0567")]
+#[diag(ast_passes_auto_trait_with_generic_param, code = "E0567")]
 pub struct AutoTraitWithGenericParam {
     #[primary_span]
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub span: Span,
-    #[label(ast_passes::ident_label)]
+    #[label(ident_label)]
     pub ident_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::auto_trait_with_super_trait_or_where_clause, code = "E0568")]
+#[diag(ast_passes_auto_trait_with_super_trait_or_where_clause, code = "E0568")]
 pub struct AutoTraitWithSuperTraitOrWhereClause {
     #[primary_span]
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub span: Span,
-    #[label(ast_passes::ident_label)]
+    #[label(ident_label)]
     pub ident_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::auto_trait_with_assoc_item, code = "E0380")]
+#[diag(ast_passes_auto_trait_with_assoc_item, code = "E0380")]
 pub struct AutoTraitWithAssocItem {
     #[primary_span]
     pub spans: Vec<Span>,
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub replace_span: Span,
-    #[label(ast_passes::ident_label)]
+    #[label(ident_label)]
     pub ident_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::generic_arg_after_constraint)]
+#[diag(ast_passes_generic_arg_after_constraint)]
 pub struct GenericArgAfterConstraint {
     #[primary_span]
     pub arg_spans: Vec<Span>,
-    #[label(ast_passes::constraints_label)]
+    #[label(constraints_label)]
     pub constraint_spans: Vec<Span>,
-    #[label(ast_passes::last_arg_label)]
+    #[label(last_arg_label)]
     pub last_arg_span: Span,
-    #[label(ast_passes::first_constraint_label)]
+    #[label(first_constraint_label)]
     pub first_constraint_span: Span,
     #[suggestion_verbose(code = "{correct_order}", applicability = "machine-applicable")]
     pub replace_span: Span,
@@ -412,45 +412,45 @@ pub struct GenericArgAfterConstraint {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::fn_ptr_ty_with_pat, code = "E0561")]
+#[diag(ast_passes_fn_ptr_ty_with_pat, code = "E0561")]
 pub struct FnPtrTyWithPat {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::multiple_explicit_lifetime_bound, code = "E0226")]
+#[diag(ast_passes_multiple_explicit_lifetime_bound, code = "E0226")]
 pub struct MultipleExplicitLifetimeBound {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::impl_trait_ty_in_path_param, code = "E0667")]
+#[diag(ast_passes_impl_trait_ty_in_path_param, code = "E0667")]
 pub struct ImplTraitTyInPathParam {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::impl_trait_ty_nested, code = "E0666")]
+#[diag(ast_passes_impl_trait_ty_nested, code = "E0666")]
 pub struct ImplTraitTyNested {
     #[primary_span]
-    #[label(ast_passes::nested_label)]
+    #[label(nested_label)]
     pub nested_span: Span,
-    #[label(ast_passes::outer_label)]
+    #[label(outer_label)]
     pub outer_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::impl_trait_ty_without_trait_bound)]
+#[diag(ast_passes_impl_trait_ty_without_trait_bound)]
 pub struct ImplTraitTyWithoutTraitBound {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::generic_param_wrong_order)]
+#[diag(ast_passes_generic_param_wrong_order)]
 pub struct GenericParamWrongOrder {
     #[primary_span]
     pub spans: Vec<Span>,
@@ -462,7 +462,7 @@ pub struct GenericParamWrongOrder {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::obsolete_auto_trait_syntax)]
+#[diag(ast_passes_obsolete_auto_trait_syntax)]
 #[help]
 pub struct ObsoleteAutoTraitSyntax {
     #[primary_span]
@@ -470,81 +470,81 @@ pub struct ObsoleteAutoTraitSyntax {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::unsafe_negative_impl, code = "E0198")]
+#[diag(ast_passes_unsafe_negative_impl, code = "E0198")]
 pub struct UnsafeNegativeImpl {
     #[primary_span]
     pub span: Span,
-    #[label(ast_passes::negative_label)]
+    #[label(negative_label)]
     pub negative_span: Span,
-    #[label(ast_passes::unsafe_label)]
+    #[label(unsafe_label)]
     pub unsafe_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::unsafe_inherent_impl, code = "E0197")]
+#[diag(ast_passes_unsafe_inherent_impl, code = "E0197")]
 pub struct UnsafeInherentImpl {
     #[primary_span]
-    #[label(ast_passes::ty_label)]
+    #[label(ty_label)]
     pub span: Span,
-    #[label(ast_passes::unsafe_label)]
+    #[label(unsafe_label)]
     pub unsafe_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::negative_inherent_impl)]
+#[diag(ast_passes_negative_inherent_impl)]
 pub struct NegativeInherentImpl {
     #[primary_span]
-    #[label(ast_passes::ty_label)]
+    #[label(ty_label)]
     pub span: Span,
-    #[label(ast_passes::negative_label)]
+    #[label(negative_label)]
     pub negative_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::default_inherent_impl)]
+#[diag(ast_passes_default_inherent_impl)]
 #[note]
 pub struct DefaultInherentImpl {
     #[primary_span]
-    #[label(ast_passes::ty_label)]
+    #[label(ty_label)]
     pub span: Span,
-    #[label(ast_passes::default_label)]
+    #[label(default_label)]
     pub default_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::const_inherent_impl)]
+#[diag(ast_passes_const_inherent_impl)]
 #[note]
 pub struct ConstInherentImpl {
     #[primary_span]
-    #[label(ast_passes::ty_label)]
+    #[label(ty_label)]
     pub span: Span,
-    #[label(ast_passes::const_label)]
+    #[label(const_label)]
     pub const_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::unsafe_extern_block)]
+#[diag(ast_passes_unsafe_extern_block)]
 pub struct UnsafeExternBlock {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::unsafe_module)]
+#[diag(ast_passes_unsafe_module)]
 pub struct UnsafeModule {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::empty_union)]
+#[diag(ast_passes_empty_union)]
 pub struct EmptyUnion {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::ty_alias_with_where_clause)]
+#[diag(ast_passes_ty_alias_with_where_clause)]
 #[note]
 pub struct TyAliasWithWhereClause {
     #[primary_span]
@@ -552,21 +552,21 @@ pub struct TyAliasWithWhereClause {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::generic_param_with_default_not_trailing)]
+#[diag(ast_passes_generic_param_with_default_not_trailing)]
 pub struct GenericParamWithDefaultNotTrailing {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::lifetime_nested_quantification, code = "E0316")]
+#[diag(ast_passes_lifetime_nested_quantification, code = "E0316")]
 pub struct LifetimeNestedQuantification {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::super_trait_with_maybe)]
+#[diag(ast_passes_super_trait_with_maybe)]
 #[note]
 pub struct SuperTraitWithMaybe {
     #[primary_span]
@@ -575,14 +575,14 @@ pub struct SuperTraitWithMaybe {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::trait_object_with_maybe)]
+#[diag(ast_passes_trait_object_with_maybe)]
 pub struct TraitObjectWithMaybe {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::forbidden_maybe_const)]
+#[diag(ast_passes_forbidden_maybe_const)]
 pub struct ForbiddenMaybeConst<'a, 'b> {
     #[primary_span]
     pub span: Span,
@@ -597,40 +597,40 @@ impl<'a> AddToDiagnostic for &'a DisallowTildeConstContext<'_> {
     {
         match self {
             DisallowTildeConstContext::TraitObject => {
-                diag.note(fluent::ast_passes::trait_object);
+                diag.note(fluent::trait_object);
             }
             DisallowTildeConstContext::Fn(FnKind::Closure(..)) => {
-                diag.note(fluent::ast_passes::closure);
+                diag.note(fluent::closure);
             }
             DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => {
-                diag.span_note(ident.span, fluent::ast_passes::fn_not_const);
+                diag.span_note(ident.span, fluent::fn_not_const);
             }
         }
     }
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::maybe_const_with_maybe_trait)]
+#[diag(ast_passes_maybe_const_with_maybe_trait)]
 pub struct MaybeConstWithMaybeTrait {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::const_async_fn)]
+#[diag(ast_passes_const_async_fn)]
 pub struct ConstAsyncFn {
     #[primary_span]
     pub spans: Vec<Span>,
-    #[label(ast_passes::const_label)]
+    #[label(const_label)]
     pub const_span: Span,
-    #[label(ast_passes::async_label)]
+    #[label(async_label)]
     pub async_span: Span,
-    #[label(ast_passes::fn_label)]
+    #[label(fn_label)]
     pub fn_span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::patterns_in_foreign_fns, code = "E0130")]
+#[diag(ast_passes_patterns_in_foreign_fns, code = "E0130")]
 pub struct PatternsInForeignFns {
     #[primary_span]
     #[label]
@@ -638,7 +638,7 @@ pub struct PatternsInForeignFns {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::patterns_in_fns_without_body, code = "E0642")]
+#[diag(ast_passes_patterns_in_fns_without_body, code = "E0642")]
 pub struct PatternsInFnsWithoutBody {
     #[primary_span]
     #[label]
@@ -646,7 +646,7 @@ pub struct PatternsInFnsWithoutBody {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes::equality_constraint)]
+#[diag(ast_passes_equality_constraint)]
 #[note]
 pub struct EqualityConstraint {
     #[primary_span]
@@ -668,7 +668,7 @@ impl AddToDiagnostic for EqualityConstraintToAssocConstraintSuggestion {
     {
         diag.set_arg("assoc_ty", self.assoc_ty);
         diag.multipart_suggestion(
-            fluent::ast_passes::assoc_constraint_suggestion,
+            fluent::assoc_constraint_suggestion,
             self.suggestion,
             Applicability::MaybeIncorrect,
         );

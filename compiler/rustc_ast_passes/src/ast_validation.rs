@@ -673,7 +673,7 @@ impl<'a> AstValidator<'a> {
                 MISSING_ABI,
                 id,
                 span,
-                fluent::ast_passes::deprecated_extern_missing_abi,
+                fluent::ast_passes_deprecated_extern_missing_abi,
                 BuiltinLintDiagnostics::MissingAbi(span, abi::Abi::FALLBACK),
             )
         }
@@ -1274,8 +1274,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
                     if let Some(ident) = ident {
                         let msg = match ctxt {
-                            FnCtxt::Foreign => fluent::ast_passes::patterns_in_foreign_fns,
-                            _ => fluent::ast_passes::patterns_in_fns_without_body,
+                            FnCtxt::Foreign => fluent::ast_passes_patterns_in_foreign_fns,
+                            _ => fluent::ast_passes_patterns_in_fns_without_body,
                         };
                         let diag = BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident);
                         self.lint_buffer.buffer_lint_with_diagnostic(
