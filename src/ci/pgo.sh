@@ -23,8 +23,8 @@ fi
 # The various build artifacts used in other commands: to launch rustc builds, build the perf
 # collector, and run benchmarks to gather profiling data
 BUILD_ARTIFACTS=$BUILD_ROOT/build/$PGO_HOST
-RUSTC_STAGE_0=$BUILD_ARTIFACTS/stage0/bin/rustc
-CARGO_STAGE_0=$BUILD_ARTIFACTS/stage0/bin/cargo
+RUSTC_STAGE_0=$BUILD_ARTIFACTS/bootstrap-sysroot/bin/rustc
+CARGO_STAGE_0=$BUILD_ARTIFACTS/bootstrap-sysroot/bin/cargo
 RUSTC_STAGE_2=$BUILD_ARTIFACTS/stage2/bin/rustc
 
 # Windows needs these to have the .exe extension
