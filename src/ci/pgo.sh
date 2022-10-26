@@ -25,7 +25,7 @@ fi
 BUILD_ARTIFACTS=$BUILD_ROOT/build/$PGO_HOST
 RUSTC_STAGE_0=$BUILD_ARTIFACTS/bootstrap-sysroot/bin/rustc
 CARGO_STAGE_0=$BUILD_ARTIFACTS/bootstrap-sysroot/bin/cargo
-RUSTC_STAGE_2=$BUILD_ARTIFACTS/stage2/bin/rustc
+RUSTC_STAGE_2=$BUILD_ARTIFACTS/stage2-sysroot/bin/rustc
 
 # Windows needs these to have the .exe extension
 if isWindows; then
