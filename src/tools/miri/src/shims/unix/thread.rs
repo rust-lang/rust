@@ -67,10 +67,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(Scalar::from_machine_usize(thread_id.into(), this))
     }
 
+    /// Set the name of the current thread. `max_name_len` is the maximal length of the name
+    /// including the null terminator.
     fn pthread_setname_np(
         &mut self,
         thread: Scalar<Provenance>,
         name: Scalar<Provenance>,
+        max_name_len: usize,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
@@ -79,8 +82,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let name = this.read_c_str(name)?.to_owned();
 
-        if name.len() > 15 {
-            // Thread names are limited to 16 characaters, including the null terminator.
+        // Comparing with `>=` to account for null terminator.
+        if name.len() >= max_name_len {
             return this.eval_libc("ERANGE");
         }
 
