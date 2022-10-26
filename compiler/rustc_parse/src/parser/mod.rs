@@ -158,7 +158,7 @@ pub struct Parser<'a> {
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
     pub current_closure: Option<ClosureSpans>,
-    /// Whether the parser is allowed to recover and parse invalid code successfully (and emit a diagnostic as a side effect).
+    /// Whether the parser is allowed to do recovery.
     /// This is disabled when parsing macro arguments, see #103534
     pub recovery: Recovery,
 }
@@ -506,6 +506,13 @@ impl<'a> Parser<'a> {
         self
     }
 
+    /// Whether the parser is allowed to recover from broken code.
+    ///
+    /// If this returns false, recovering broken code into valid code (especially if this recovery does lookahead)
+    /// is not allowed. All recovery done by the parser must be gated behind this check.
+    ///
+    /// Technically, this only needs to restruct eager recovery by doing lookahead at more tokens.
+    /// But making the distinction is very subtle, and simply forbidding all recovery is a lot simpler to uphold.
     fn may_recover(&self) -> bool {
         matches!(self.recovery, Recovery::Allowed)
     }
