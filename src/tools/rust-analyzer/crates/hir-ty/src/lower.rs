@@ -447,12 +447,31 @@ impl<'a> TyLoweringContext<'a> {
                             .db
                             .trait_data(trait_ref.hir_trait_id())
                             .associated_type_by_name(segment.name);
+
                         match found {
                             Some(associated_ty) => {
-                                // FIXME handle type parameters on the segment
+                                // FIXME: `substs_from_path_segment()` pushes `TyKind::Error` for every parent
+                                // generic params. It's inefficient to splice the `Substitution`s, so we may want
+                                // that method to optionally take parent `Substitution` as we already know them at
+                                // this point (`trait_ref.substitution`).
+                                let substitution = self.substs_from_path_segment(
+                                    segment,
+                                    Some(associated_ty.into()),
+                                    false,
+                                    None,
+                                );
+                                let len_self =
+                                    generics(self.db.upcast(), associated_ty.into()).len_self();
+                                let substitution = Substitution::from_iter(
+                                    Interner,
+                                    substitution
+                                        .iter(Interner)
+                                        .take(len_self)
+                                        .chain(trait_ref.substitution.iter(Interner)),
+                                );
                                 TyKind::Alias(AliasTy::Projection(ProjectionTy {
                                     associated_ty_id: to_assoc_type_id(associated_ty),
-                                    substitution: trait_ref.substitution,
+                                    substitution,
                                 }))
                                 .intern(Interner)
                             }
@@ -590,36 +609,48 @@ impl<'a> TyLoweringContext<'a> {
             res,
             Some(segment.name.clone()),
             move |name, t, associated_ty| {
-                if name == segment.name {
-                    let substs = match self.type_param_mode {
-                        ParamLoweringMode::Placeholder => {
-                            // if we're lowering to placeholders, we have to put
-                            // them in now
-                            let generics = generics(
-                                self.db.upcast(),
-                                self.resolver
-                                    .generic_def()
-                                    .expect("there should be generics if there's a generic param"),
-                            );
-                            let s = generics.placeholder_subst(self.db);
-                            s.apply(t.substitution.clone(), Interner)
-                        }
-                        ParamLoweringMode::Variable => t.substitution.clone(),
-                    };
-                    // We need to shift in the bound vars, since
-                    // associated_type_shorthand_candidates does not do that
-                    let substs = substs.shifted_in_from(Interner, self.in_binders);
-                    // FIXME handle type parameters on the segment
-                    Some(
-                        TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                            associated_ty_id: to_assoc_type_id(associated_ty),
-                            substitution: substs,
-                        }))
-                        .intern(Interner),
-                    )
-                } else {
-                    None
+                if name != segment.name {
+                    return None;
                 }
+
+                // FIXME: `substs_from_path_segment()` pushes `TyKind::Error` for every parent
+                // generic params. It's inefficient to splice the `Substitution`s, so we may want
+                // that method to optionally take parent `Substitution` as we already know them at
+                // this point (`t.substitution`).
+                let substs = self.substs_from_path_segment(
+                    segment.clone(),
+                    Some(associated_ty.into()),
+                    false,
+                    None,
+                );
+
+                let len_self = generics(self.db.upcast(), associated_ty.into()).len_self();
+
+                let substs = Substitution::from_iter(
+                    Interner,
+                    substs.iter(Interner).take(len_self).chain(t.substitution.iter(Interner)),
+                );
+
+                let substs = match self.type_param_mode {
+                    ParamLoweringMode::Placeholder => {
+                        // if we're lowering to placeholders, we have to put
+                        // them in now
+                        let generics = generics(self.db.upcast(), def);
+                        let s = generics.placeholder_subst(self.db);
+                        s.apply(substs, Interner)
+                    }
+                    ParamLoweringMode::Variable => substs,
+                };
+                // We need to shift in the bound vars, since
+                // associated_type_shorthand_candidates does not do that
+                let substs = substs.shifted_in_from(Interner, self.in_binders);
+                Some(
+                    TyKind::Alias(AliasTy::Projection(ProjectionTy {
+                        associated_ty_id: to_assoc_type_id(associated_ty),
+                        substitution: substs,
+                    }))
+                    .intern(Interner),
+                )
             },
         );
 
