@@ -358,6 +358,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_where_predicate(&mut self, predicate: &'v WherePredicate<'v>) {
         walk_where_predicate(self, predicate)
     }
+    fn visit_fn_ret_ty(&mut self, ret_ty: &'v FnRetTy<'v>) {
+        walk_fn_ret_ty(self, ret_ty)
+    }
     fn visit_fn_decl(&mut self, fd: &'v FnDecl<'v>) {
         walk_fn_decl(self, fd)
     }
@@ -903,7 +906,7 @@ pub fn walk_fn_decl<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &
     for ty in function_declaration.inputs {
         visitor.visit_ty(ty)
     }
-    walk_fn_ret_ty(visitor, &function_declaration.output)
+    visitor.visit_fn_ret_ty(&function_declaration.output)
 }
 
 pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FnRetTy<'v>) {
