@@ -226,5 +226,5 @@ else
 fi
 
 echo "Rustc binary size"
-ls -la ./build/$PGO_HOST/stage2/bin
-ls -la ./build/$PGO_HOST/stage2/lib
+ls -la ./build/$PGO_HOST/stage2-sysroot/bin
+ls -la ./build/$PGO_HOST/stage2-sysroot/lib
