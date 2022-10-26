@@ -36,6 +36,44 @@ macro_rules! expand_group {
     };
 }
 
+/// All of the language items, defined or not.
+/// Defined lang items can come from the current crate or its dependencies.
+#[derive(HashStable_Generic, Debug)]
+pub struct LanguageItems {
+    /// Mappings from lang items to their possibly found [`DefId`]s.
+    /// The index corresponds to the order in [`LangItem`].
+    pub items: Vec<Option<DefId>>,
+    /// Lang items that were not found during collection.
+    pub missing: Vec<LangItem>,
+    /// Mapping from [`LangItemGroup`] discriminants to all
+    /// [`DefId`]s of lang items in that group.
+    pub groups: [Vec<DefId>; NUM_GROUPS],
+}
+
+impl LanguageItems {
+    pub fn get(&self, item: LangItem) -> Option<DefId> {
+        self.items[item as usize]
+    }
+
+    pub fn set(&mut self, item: LangItem, def_id: DefId) {
+        self.items[item as usize] = Some(def_id);
+    }
+
+    /// Requires that a given `LangItem` was bound and returns the corresponding `DefId`.
+    /// If it wasn't bound, e.g. due to a missing `#[lang = "<it.name()>"]`,
+    /// returns an error encapsulating the `LangItem`.
+    pub fn require(&self, it: LangItem) -> Result<DefId, LangItemError> {
+        self.get(it).ok_or_else(|| LangItemError(it))
+    }
+
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (LangItem, DefId)> + 'a {
+        self.items
+            .iter()
+            .enumerate()
+            .filter_map(|(i, id)| id.map(|id| (LangItem::from_u32(i as u32).unwrap(), id)))
+    }
+}
+
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
@@ -82,20 +120,6 @@ macro_rules! language_item_table {
             }
         }
 
-        /// All of the language items, defined or not.
-        /// Defined lang items can come from the current crate or its dependencies.
-        #[derive(HashStable_Generic, Debug)]
-        pub struct LanguageItems {
-            /// Mappings from lang items to their possibly found [`DefId`]s.
-            /// The index corresponds to the order in [`LangItem`].
-            pub items: Vec<Option<DefId>>,
-            /// Lang items that were not found during collection.
-            pub missing: Vec<LangItem>,
-            /// Mapping from [`LangItemGroup`] discriminants to all
-            /// [`DefId`]s of lang items in that group.
-            pub groups: [Vec<DefId>; NUM_GROUPS],
-        }
-
         impl LanguageItems {
             /// Construct an empty collection of lang items and no missing ones.
             pub fn new() -> Self {
@@ -112,13 +136,6 @@ macro_rules! language_item_table {
             /// Returns the mappings to the possibly found `DefId`s for each lang item.
             pub fn items(&self) -> &[Option<DefId>] {
                 &*self.items
-            }
-
-            /// Requires that a given `LangItem` was bound and returns the corresponding `DefId`.
-            /// If it wasn't bound, e.g. due to a missing `#[lang = "<it.name()>"]`,
-            /// returns an error encapsulating the `LangItem`.
-            pub fn require(&self, it: LangItem) -> Result<DefId, LangItemError> {
-                self.items[it as usize].ok_or_else(|| LangItemError(it))
             }
 
             /// Returns the [`DefId`]s of all lang items in a group.
