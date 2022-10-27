@@ -234,6 +234,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 
 /// Expands the rules based macro defined by `lhses` and `rhses` for a given
 /// input `arg`.
+#[instrument(skip(cx, transparency, arg, lhses, rhses))]
 fn expand_macro<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -429,6 +430,7 @@ enum CanRetry {
 /// Try expanding the macro. Returns the index of the sucessful arm and its named_matches if it was successful,
 /// and nothing if it failed. On failure, it's the callers job to use `track` accordingly to record all errors
 /// correctly.
+#[instrument(level = "debug", skip(sess, arg, lhses, track), fields(tracking = %T::description()))]
 fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     sess: &ParseSess,
     name: Ident,
@@ -460,6 +462,8 @@ fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     // Try each arm's matchers.
     let mut tt_parser = TtParser::new(name);
     for (i, lhs) in lhses.iter().enumerate() {
+        let _tracing_span = trace_span!("Matching arm", %i);
+
         // Take a snapshot of the state of pre-expansion gating at this point.
         // This is used so that if a matcher is not `Success(..)`ful,
         // then the spans which became gated when parsing the unsuccessful matcher
@@ -472,6 +476,7 @@ fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 
         match result {
             Success(named_matches) => {
+                debug!("Parsed arm successfully");
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
                 sess.gated_spans.merge(gated_spans_snapshot);
@@ -479,13 +484,16 @@ fn try_match_macro<'matcher, T: Tracker<'matcher>>(
                 return Ok((i, named_matches));
             }
             Failure(_, _) => {
+                trace!("Failed to match arm, trying the next one");
                 // Try the next arm
             }
             Error(_, _) => {
+                debug!("Fatal error occurred during matching");
                 // We haven't emitted an error yet
                 return Err(CanRetry::Yes);
             }
             ErrorReported(guarantee) => {
+                debug!("Fatal error occurred and was reported during matching");
                 return Err(CanRetry::No(guarantee));
             }
         }
