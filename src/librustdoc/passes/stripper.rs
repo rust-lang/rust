@@ -161,7 +161,7 @@ impl<'a> ImplStripper<'a> {
         } else if self.is_json_output {
             // If the "for" item is exported and the impl block isn't `#[doc(hidden)]`, then we
             // need to keep it.
-            self.cache.access_levels.is_exported(for_def_id)
+            self.cache.effective_visibilities.is_exported(for_def_id)
                 && !item.attrs.lists(sym::doc).has_word(sym::hidden)
         } else {
             false
