@@ -53,6 +53,7 @@ mod enum_intrinsics_non_enums;
 mod errors;
 mod expect;
 mod for_loops_over_fallibles;
+mod hidden_reborrow_in_ptr_casts;
 pub mod hidden_unicode_codepoints;
 mod internal;
 mod late;
@@ -88,6 +89,7 @@ use array_into_iter::ArrayIntoIter;
 use builtin::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
+use hidden_reborrow_in_ptr_casts::*;
 use hidden_unicode_codepoints::*;
 use internal::*;
 use let_underscore::*;
@@ -191,6 +193,7 @@ macro_rules! late_lint_mod_passes {
             $args,
             [
                 ForLoopsOverFallibles: ForLoopsOverFallibles,
+                HiddenReborrowInPtrCasts: HiddenReborrowInPtrCasts,
                 HardwiredLints: HardwiredLints,
                 ImproperCTypesDeclarations: ImproperCTypesDeclarations,
                 ImproperCTypesDefinitions: ImproperCTypesDefinitions,
