@@ -4083,3 +4083,40 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
         "#]],
     );
 }
+
+#[test]
+fn gats_in_associated_type_binding() {
+    check_infer_with_mismatches(
+        r#"
+trait Trait {
+    type Assoc<T>;
+    fn get<U>(&self) -> Self::Assoc<U>;
+}
+
+fn f<T>(t: T)
+where
+    T: Trait<Assoc<i32> = u32>,
+    T: Trait<Assoc<isize> = usize>,
+{
+    let a = t.get::<i32>();
+    let a = t.get::<isize>();
+    let a = t.get::<()>();
+}
+
+    "#,
+        expect![[r#"
+            48..52 'self': &Self
+            84..85 't': T
+            164..252 '{     ...>(); }': ()
+            174..175 'a': u32
+            178..179 't': T
+            178..192 't.get::<i32>()': u32
+            202..203 'a': usize
+            206..207 't': T
+            206..222 't.get:...ize>()': usize
+            232..233 'a': Trait::Assoc<(), T>
+            236..237 't': T
+            236..249 't.get::<()>()': Trait::Assoc<(), T>
+        "#]],
+    )
+}
