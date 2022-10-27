@@ -29,7 +29,7 @@ use rustc_middle::ty::{
 };
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
+use rustc_span::{symbol::sym, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
 use std::collections::VecDeque;
@@ -990,7 +990,7 @@ fn binding_ty_auto_deref_stability<'tcx>(
                                 cx.typeck_results().node_type(ty.ty.hir_id),
                                 binder_args,
                             ))
-                            .is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+                            .is_sized(cx.tcx, cx.param_env.without_caller_bounds()),
                     )
                 }
             },
@@ -1005,7 +1005,7 @@ fn binding_ty_auto_deref_stability<'tcx>(
                         cx.typeck_results().node_type(ty.ty.hir_id),
                         binder_args,
                     ))
-                    .is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+                    .is_sized(cx.tcx, cx.param_env.without_caller_bounds()),
             ),
             TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::TraitObject(..) | TyKind::Err => {
                 Position::ReborrowStable(precedence)
@@ -1297,7 +1297,7 @@ impl<'tcx> TyPosition<'tcx> {
     fn position_for_result(self, cx: &LateContext<'tcx>) -> Position {
         match (self.position, self.ty) {
             (Position::ReborrowStable(precedence), Some(ty)) => {
-                Position::DerefStable(precedence, ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env))
+                Position::DerefStable(precedence, ty.is_sized(cx.tcx, cx.param_env))
             },
             (position, _) => position,
         }
@@ -1348,7 +1348,7 @@ fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedenc
             | ty::Tuple(_)
             | ty::Projection(_) => Position::DerefStable(
                 precedence,
-                ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+                ty.is_sized(cx.tcx, cx.param_env.without_caller_bounds()),
             )
             .into(),
         };
