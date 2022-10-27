@@ -162,6 +162,24 @@ struct Custom {
 /// tests more robust. In particular, if you want to verify that your code does
 /// produce an unrecognized error kind, the robust solution is to check for all
 /// the recognized error kinds and fail in those cases.
+///
+/// #Example
+///
+/// ```
+/// use std::{fs, io};
+///
+/// let file = match fs::OpenOptions::new()
+///                 .write(true)
+///                 .create_new(true)
+///                 .open("") {
+///     Ok(file) => file,
+///     Err(error) => match error.kind() {
+///         io::ErrorKind::AlreadyExists => panic!("File Already Exists"),
+///         _ => panic!("Other Problem Creating File {:?}", error),
+///     },
+/// }
+///
+/// ```
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
