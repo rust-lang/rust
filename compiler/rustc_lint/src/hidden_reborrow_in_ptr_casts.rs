@@ -3,7 +3,7 @@ use crate::{LateContext, LateLintPass, LintContext};
 use hir::Expr;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, adjustment::{Adjust, AutoBorrow}};
 
 declare_lint! {
     /// The `hidden_reborrow_in_ptr_casts` lint checks for hidden reborrows in `&mut T` -> `*const T` casts.
@@ -74,17 +74,23 @@ declare_lint_pass!(HiddenReborrowInPtrCasts => [HIDDEN_REBORROW_IN_PTR_CASTS]);
 
 impl<'tcx> LateLintPass<'tcx> for HiddenReborrowInPtrCasts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // `(e: t) as u`
-        if let hir::ExprKind::Cast(e, u) = expr.kind
-        && let t = cx.typeck_results().expr_ty(e)
-        && let u = cx.typeck_results().node_type(u.hir_id)
+        let tck = cx.typeck_results();
+
+        let t = tck.expr_ty(expr);
+
         // t = &mut t_pointee
-        && let &ty::Ref(.., t_pointee, mutbl) = t.kind() 
-        && mutbl == hir::Mutability::Mut
-        // t_pointee is freeze or have variables/generics that make it possibly !Freeze
-        && (t_pointee.is_freeze(cx.tcx, cx.param_env) || has_molten_generics(t_pointee, cx.tcx, cx.param_env))
+        if let &ty::Ref(.., t_pointee, hir::Mutability::Mut) = t.kind()
+        // // `t -> u` / reference -> pointer adjustments
+        && let adjustments = tck.adjustments()
+        && let Some(adjustments) = adjustments.get(expr.hir_id) 
+        && let [a, b] = &**adjustments
+        && let Adjust::Deref(None) = a.kind
+        && let Adjust::Borrow(AutoBorrow::RawPtr(_)) = b.kind
+        && let u = b.target 
         // u = *const _
         && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ..}) = u.kind()
+        // t_pointee is freeze or have variables/generics that make it possibly !Freeze
+        && (t_pointee.is_freeze(cx.tcx, cx.param_env) || has_molten_generics(t_pointee, cx.tcx, cx.param_env))
         {
             let msg = "implicit reborrow results in a read-only pointer";
             cx.struct_span_lint(HIDDEN_REBORROW_IN_PTR_CASTS, expr.span, msg, |lint| {
@@ -92,13 +98,13 @@ impl<'tcx> LateLintPass<'tcx> for HiddenReborrowInPtrCasts {
                     .note("cast of `&mut` reference to `*const` pointer causes an implicit reborrow, which converts the reference to `&`, stripping write provenance")
                     .note("it is UB to write through the resulting pointer, even after casting it to `*mut`")
                     .span_suggestion(
-                        e.span.shrink_to_hi(), 
+                        expr.span.shrink_to_hi(), 
                         "to save write provenance, cast to `*mut` pointer first", 
                         format!(" as *mut _"),
                         Applicability::MachineApplicable
                     )
                     .span_suggestion(
-                        e.span.shrink_to_hi(), 
+                        expr.span.shrink_to_hi(), 
                         "to make reborrow explicit, add cast to a shared reference", 
                         format!(" as &_"),
                         Applicability::MachineApplicable
