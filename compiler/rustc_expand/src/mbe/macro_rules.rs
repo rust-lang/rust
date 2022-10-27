@@ -316,14 +316,114 @@ fn expand_macro<'cx>(
                 is_local,
             });
         }
-        Err(()) => {
-            todo!("Retry macro invocation while tracking diagnostics info and emit error");
-
+        Err(CanRetry::No(_)) => {
+            debug!("Will not retry matching as an error was emitted already");
             return DummyResult::any(sp);
+        }
+        Err(CanRetry::Yes) => {
+            // Retry and emit a better error below.
         }
     }
 
+    // An error occured, try the expansion again, tracking the expansion closely for better diagnostics
+    let mut tracker = CollectTrackerAndEmitter::new(cx, sp);
+
+    let try_success_result = try_match_macro(sess, name, &arg, lhses, &mut tracker);
+    assert!(try_success_result.is_err(), "Macro matching returned a success on the second try");
+
+    if let Some(result) = tracker.result {
+        // An irrecoverable error occured and has been emitted.
+        return result;
+    }
+
+    let Some((token, label)) = tracker.best_failure else {
+        return tracker.result.expect("must have encountered Error or ErrorReported");
+    };
+
+    let span = token.span.substitute_dummy(sp);
+
+    let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
+    err.span_label(span, label);
+    if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
+        err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
+    }
+
+    annotate_doc_comment(&mut err, sess.source_map(), span);
+
+    // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
+    if let Some((arg, comma_span)) = arg.add_comma() {
+        for lhs in lhses {
+            let parser = parser_from_cx(sess, arg.clone());
+            let mut tt_parser = TtParser::new(name);
+
+            if let Success(_) =
+                tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker)
+            {
+                if comma_span.is_dummy() {
+                    err.note("you might be missing a comma");
+                } else {
+                    err.span_suggestion_short(
+                        comma_span,
+                        "missing comma here",
+                        ", ",
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+        }
+    }
+    err.emit();
+    cx.trace_macros_diag();
     DummyResult::any(sp)
+}
+
+/// The tracker used for the slow error path that collects useful info for diagnostics
+struct CollectTrackerAndEmitter<'a, 'cx> {
+    cx: &'a mut ExtCtxt<'cx>,
+    /// Which arm's failure should we report? (the one furthest along)
+    best_failure: Option<(Token, &'static str)>,
+    root_span: Span,
+    result: Option<Box<dyn MacResult + 'cx>>,
+}
+
+impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx> {
+    fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {
+        // Empty for now.
+    }
+
+    fn after_arm(&mut self, result: &NamedParseResult) {
+        match result {
+            Success(_) => {
+                unreachable!("should not collect detailed info for successful macro match");
+            }
+            Failure(token, msg) => match self.best_failure {
+                Some((ref best_token, _)) if best_token.span.lo() >= token.span.lo() => {}
+                _ => self.best_failure = Some((token.clone(), msg)),
+            },
+            Error(err_sp, msg) => {
+                let span = err_sp.substitute_dummy(self.root_span);
+                self.cx.struct_span_err(span, msg).emit();
+                self.result = Some(DummyResult::any(span));
+            }
+            ErrorReported(_) => self.result = Some(DummyResult::any(self.root_span)),
+        }
+    }
+
+    fn description() -> &'static str {
+        "detailed"
+    }
+}
+
+impl<'a, 'cx> CollectTrackerAndEmitter<'a, 'cx> {
+    fn new(cx: &'a mut ExtCtxt<'cx>, root_span: Span) -> Self {
+        Self { cx, best_failure: None, root_span, result: None }
+    }
+}
+
+enum CanRetry {
+    Yes,
+    /// We are not allowed to retry macro expansion as a fatal error has been emitted already.
+    No(ErrorGuaranteed),
 }
 
 /// Try expanding the macro. Returns the index of the sucessful arm and its named_matches if it was successful,
@@ -335,7 +435,7 @@ fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     arg: &TokenStream,
     lhses: &'matcher [Vec<MatcherLoc>],
     track: &mut T,
-) -> Result<(usize, NamedMatches), ()> {
+) -> Result<(usize, NamedMatches), CanRetry> {
     // We create a base parser that can be used for the "black box" parts.
     // Every iteration needs a fresh copy of that parser. However, the parser
     // is not mutated on many of the iterations, particularly when dealing with
@@ -383,10 +483,10 @@ fn try_match_macro<'matcher, T: Tracker<'matcher>>(
             }
             Error(_, _) => {
                 // We haven't emitted an error yet
-                return Err(());
+                return Err(CanRetry::Yes);
             }
-            ErrorReported(_) => {
-                return Err(());
+            ErrorReported(guarantee) => {
+                return Err(CanRetry::No(guarantee));
             }
         }
 
@@ -395,7 +495,7 @@ fn try_match_macro<'matcher, T: Tracker<'matcher>>(
         mem::swap(&mut gated_spans_snapshot, &mut sess.gated_spans.spans.borrow_mut());
     }
 
-    Err(())
+    Err(CanRetry::Yes)
 }
 
 // Note that macro-by-example's input is also matched against a token tree:
@@ -478,7 +578,7 @@ pub fn compile_declarative_macro(
     let mut tt_parser =
         TtParser::new(Ident::with_dummy_span(if macro_rules { kw::MacroRules } else { kw::Macro }));
     let argument_map =
-        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &argument_gram, &mut NoopTracker) {
+        match tt_parser.parse_tt(&mut Cow::Owned(parser), &argument_gram, &mut NoopTracker) {
             Success(m) => m,
             Failure(token, msg) => {
                 let s = parse_failure_msg(&token);
