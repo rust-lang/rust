@@ -31,7 +31,7 @@ use smallvec::{smallvec, SmallVec};
 
 use rustc_span::source_map::{respan, Spanned};
 use std::collections::{hash_map::Entry, BTreeSet};
-use std::mem::{replace, take, swap};
+use std::mem::{replace, swap, take};
 
 mod diagnostics;
 
@@ -3334,7 +3334,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             let (mut err, candidates) =
                 this.smart_resolve_report_errors(path, path_span, PathSource::Type, None);
 
-
             // There are two different error messages user might receive at
             // this point:
             // - E0412 cannot find type `{}` in this scope
@@ -3363,8 +3362,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             fn append_result<T, E>(res1: &mut Result<Vec<T>, E>, res2: Result<Vec<T>, E>) {
                 match res1 {
                     Ok(vec1) => match res2 {
-                        Ok(mut vec2) => { vec1.append(&mut vec2); },
-                        Err(e) => { *res1 = Err(e) },
+                        Ok(mut vec2) => vec1.append(&mut vec2),
+                        Err(e) => *res1 = Err(e),
                     },
                     Err(_) => (),
                 };
