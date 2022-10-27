@@ -11,7 +11,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::{Abi, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
@@ -931,7 +931,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match *ty.kind() {
             ty::Adt(def, substs) => {
                 if def.is_box() && matches!(self.mode, CItemKind::Definition) {
-                    if ty.boxed_ty().is_sized(tcx.at(DUMMY_SP), self.cx.param_env) {
+                    if ty.boxed_ty().is_sized(tcx, self.cx.param_env) {
                         return FfiSafe;
                     } else {
                         return FfiUnsafe {
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _)
                 if {
                     matches!(self.mode, CItemKind::Definition)
-                        && ty.is_sized(self.cx.tcx.at(DUMMY_SP), self.cx.param_env)
+                        && ty.is_sized(self.cx.tcx, self.cx.param_env)
                 } =>
             {
                 FfiSafe

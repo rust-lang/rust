@@ -1004,8 +1004,8 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
 }
 
 /// Check if a by-value binding is by-value. That is, check if the binding's type is not `Copy`.
-fn is_binding_by_move(cx: &MatchVisitor<'_, '_, '_>, hir_id: HirId, span: Span) -> bool {
-    !cx.typeck_results.node_type(hir_id).is_copy_modulo_regions(cx.tcx.at(span), cx.param_env)
+fn is_binding_by_move(cx: &MatchVisitor<'_, '_, '_>, hir_id: HirId) -> bool {
+    !cx.typeck_results.node_type(hir_id).is_copy_modulo_regions(cx.tcx, cx.param_env)
 }
 
 /// Check that there are no borrow or move conflicts in `binding @ subpat` patterns.
@@ -1031,7 +1031,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
 
     // Get the binding move, extract the mutability if by-ref.
     let mut_outer = match typeck_results.extract_binding_mode(sess, pat.hir_id, pat.span) {
-        Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id, pat.span) => {
+        Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id) => {
             // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             let mut conflicts_ref = Vec::new();
             sub.each_binding(|_, hir_id, span, _| {
@@ -1070,7 +1070,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                 (Mutability::Mut, Mutability::Mut) => conflicts_mut_mut.push((span, name)), // 2x `ref mut`.
                 _ => conflicts_mut_ref.push((span, name)), // `ref` + `ref mut` in either direction.
             },
-            Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id, span) => {
+            Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id) => {
                 conflicts_move.push((span, name)) // `ref mut?` + by-move conflict.
             }
             Some(ty::BindByValue(_)) | None => {} // `ref mut?` + by-copy is fine.

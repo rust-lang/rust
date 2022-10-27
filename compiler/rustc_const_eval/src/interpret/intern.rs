@@ -114,7 +114,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
     if let InternMode::Static(mutability) = mode {
         // For this, we need to take into account `UnsafeCell`. When `ty` is `None`, we assume
         // no interior mutability.
-        let frozen = ty.map_or(true, |ty| ty.is_freeze(ecx.tcx, ecx.param_env));
+        let frozen = ty.map_or(true, |ty| ty.is_freeze(*ecx.tcx, ecx.param_env));
         // For statics, allocation mutability is the combination of place mutability and
         // type mutability.
         // The entire allocation needs to be mutable if it contains an `UnsafeCell` anywhere.
