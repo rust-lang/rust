@@ -12,6 +12,7 @@ trait MyTrait {
 }
 
 impl MyTrait for i32 {
+    // This will break once a PR that implements #102745 is merged
     fn foo(&self) -> impl Future<Output = i32> + '_ {
         async {
             *self
