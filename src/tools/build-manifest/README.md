@@ -2,6 +2,7 @@
 
 This tool generates the manifests uploaded to static.rust-lang.org and used by rustup.
 You can see a full list of all manifests at <https://static.rust-lang.org/manifests.txt>.
+This listing is updated by <https://github.com/rust-lang/generate-manifest-list> every 7 days.
 
 This gets called by `promote-release` <https://github.com/rust-lang/promote-release> via `x.py dist hash-and-sign`.
 
