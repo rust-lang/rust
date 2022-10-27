@@ -1,0 +1,52 @@
+- // MIR for `main` before DeadStoreElimination
++ // MIR for `main` after DeadStoreElimination
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/constant-local-debuginfo.rs:+0:11: +0:11
+      let _1: i32;                         // in scope 0 at $DIR/constant-local-debuginfo.rs:+1:9: +1:10
+      let _3: ();                          // in scope 0 at $DIR/constant-local-debuginfo.rs:+4:5: +4:15
+      let mut _4: i32;                     // in scope 0 at $DIR/constant-local-debuginfo.rs:+4:9: +4:14
+      let mut _5: i32;                     // in scope 0 at $DIR/constant-local-debuginfo.rs:+4:9: +4:10
+      let mut _6: i32;                     // in scope 0 at $DIR/constant-local-debuginfo.rs:+4:13: +4:14
+      scope 1 {
+          debug a => _1;                   // in scope 1 at $DIR/constant-local-debuginfo.rs:+1:9: +1:10
+          let _2: i32;                     // in scope 1 at $DIR/constant-local-debuginfo.rs:+2:9: +2:10
+          scope 2 {
+              debug b => _2;               // in scope 2 at $DIR/constant-local-debuginfo.rs:+2:9: +2:10
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/constant-local-debuginfo.rs:+1:9: +1:10
+-         _1 = const 1_i32;                // scope 0 at $DIR/constant-local-debuginfo.rs:+1:13: +1:14
++         nop;                             // scope 0 at $DIR/constant-local-debuginfo.rs:+1:13: +1:14
+          StorageLive(_2);                 // scope 1 at $DIR/constant-local-debuginfo.rs:+2:9: +2:10
+-         _2 = const 4_i32;                // scope 1 at $DIR/constant-local-debuginfo.rs:+2:13: +2:14
++         nop;                             // scope 1 at $DIR/constant-local-debuginfo.rs:+2:13: +2:14
+          StorageLive(_3);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:5: +4:15
+          StorageLive(_4);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:9: +4:14
+          StorageLive(_5);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:9: +4:10
+-         _5 = const 1_i32;                // scope 2 at $DIR/constant-local-debuginfo.rs:+4:9: +4:10
++         nop;                             // scope 2 at $DIR/constant-local-debuginfo.rs:+4:9: +4:10
+          StorageLive(_6);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:13: +4:14
+-         _6 = const 4_i32;                // scope 2 at $DIR/constant-local-debuginfo.rs:+4:13: +4:14
++         nop;                             // scope 2 at $DIR/constant-local-debuginfo.rs:+4:13: +4:14
+          _4 = const 5_i32;                // scope 2 at $DIR/constant-local-debuginfo.rs:+4:9: +4:14
+          StorageDead(_6);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:13: +4:14
+          StorageDead(_5);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:13: +4:14
+          _3 = foo(move _4) -> bb1;        // scope 2 at $DIR/constant-local-debuginfo.rs:+4:5: +4:15
+                                           // mir::Constant
+                                           // + span: $DIR/constant-local-debuginfo.rs:8:5: 8:8
+                                           // + literal: Const { ty: fn(i32) {foo}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
+          StorageDead(_4);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:14: +4:15
+          StorageDead(_3);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:15: +4:16
+          nop;                             // scope 0 at $DIR/constant-local-debuginfo.rs:+0:11: +5:2
+          StorageDead(_2);                 // scope 1 at $DIR/constant-local-debuginfo.rs:+5:1: +5:2
+          StorageDead(_1);                 // scope 0 at $DIR/constant-local-debuginfo.rs:+5:1: +5:2
+          return;                          // scope 0 at $DIR/constant-local-debuginfo.rs:+5:2: +5:2
+      }
+  }
+  
