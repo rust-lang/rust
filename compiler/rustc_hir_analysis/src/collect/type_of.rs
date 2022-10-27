@@ -319,7 +319,37 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     }
                 }
                 ItemKind::TyAlias(self_ty, _) => icx.to_ty(self_ty),
-                ItemKind::Impl(hir::Impl { self_ty, .. }) => icx.to_ty(*self_ty),
+                ItemKind::Impl(
+                    hir::Impl { self_ty, .. }
+                ) => {
+                    struct MyVisitor(bool);
+                    impl<'v> hir::intravisit::Visitor<'v> for MyVisitor {
+                        fn visit_ty(&mut self, t: &'v Ty<'v>) {
+                            if matches!(
+                                &t.kind,
+                                TyKind::Path(hir::QPath::Resolved(
+                                    _,
+                                    Path {
+                                        res: hir::def::Res::SelfTyAlias { .. },
+                                        ..
+                                    },
+                                ))
+                            ) {
+                                self.0 = true;
+                                return;
+                            }
+                            hir::intravisit::walk_ty(self, t);
+                        }
+                    }
+
+                    let mut my_visitor = MyVisitor(false);
+                    my_visitor.visit_ty(self_ty);
+
+                    match my_visitor.0 {
+                        true => { tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: self_ty.span}); tcx.ty_error() },
+                        false => icx.to_ty(*self_ty),
+                    }
+                },
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
                     tcx.mk_fn_def(def_id.to_def_id(), substs)

@@ -270,3 +270,10 @@ pub struct ConstBoundForNonConstTrait {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_self_in_impl_self)]
+pub struct SelfInImplSelf {
+    #[primary_span]
+    pub span: Span,
+}

@@ -146,3 +146,5 @@ hir_analysis_const_impl_for_non_const_trait =
 
 hir_analysis_const_bound_for_non_const_trait =
     ~const can only be applied to `#[const_trait]` traits
+
+hir_analysis_self_in_impl_self = `Self` is not valid at this location
