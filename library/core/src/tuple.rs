@@ -101,6 +101,34 @@ macro_rules! tuple_impls {
                 }
             }
         }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "transpose_tuple_ref", since = "CURRENT_RUSTC_VERSION")]
+            impl<'a, $($T),+> From<&'a ($($T,)+)> for ($(&'a $T,)+)
+            where
+                last_type!($($T,)+): ?Sized
+            {
+                #[inline]
+                fn from(val: &'a ($($T,)+)) -> ($(&'a $T,)+) {
+                    ($( ${ignore(T)} &val.${index()}, )+)
+                }
+            }
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "transpose_tuple_ref", since = "CURRENT_RUSTC_VERSION")]
+            impl<'a, $($T),+> From<&'a mut ($($T,)+)> for ($(&'a mut $T,)+)
+            where
+                last_type!($($T,)+): ?Sized
+            {
+                #[inline]
+                fn from(val: &'a mut ($($T,)+)) -> ($(&'a mut $T,)+) {
+                    ($( ${ignore(T)} &mut val.${index()}, )+)
+                }
+            }
+        }
     }
 }
 
