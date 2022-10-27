@@ -1910,6 +1910,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 }
             }
+
+            // see if we can satisfy using an inherent associated type
+            for impl_ in tcx.inherent_impls(adt_def.did()) {
+                let assoc_ty = tcx.associated_items(impl_).find_by_name_and_kind(
+                    tcx,
+                    assoc_ident,
+                    ty::AssocKind::Type,
+                    *impl_,
+                );
+                if let Some(assoc_ty) = assoc_ty {
+                    let ty = tcx.type_of(assoc_ty.def_id);
+                    return Ok((ty, DefKind::AssocTy, assoc_ty.def_id));
+                }
+            }
         }
 
         // Find the type of the associated item, and the trait where the associated
