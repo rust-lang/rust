@@ -1,11 +1,7 @@
 // build-pass
 // edition:2018
 
-type BoxFuture<T> = std::pin::Pin<Box<dyn std::future::Future<Output=T>>>;
-
-fn main() {
-    f();
-}
+type BoxFuture<T> = std::pin::Pin<Box<dyn std::future::Future<Output = T>>>;
 
 async fn f() {
     run("dependency").await;
@@ -55,9 +51,7 @@ impl<'dep> User<'dep> {
         S: Storage,
         for<'a> SaveUser<'a>: StorageRequest<S>,
     {
-        SaveUser { name: "Joe" }
-            .execute()
-            .await;
+        SaveUser { name: "Joe" }.execute().await;
     }
 }
 
@@ -68,4 +62,8 @@ where
     for<'a> SaveUser<'a>: StorageRequestReturnType,
 {
     User { dep }.save().await;
+}
+
+fn main() {
+    f();
 }
