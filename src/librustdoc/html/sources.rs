@@ -256,9 +256,9 @@ where
     }
 }
 
-pub(crate) enum SourceContext {
+pub(crate) enum SourceContext<'a> {
     Standalone,
-    Embedded { offset: usize, needs_expansion: bool },
+    Embedded { url: &'a str, offset: usize, needs_expansion: bool },
 }
 
 /// Wrapper struct to render the source code of a file. This will do things like
@@ -270,31 +270,32 @@ pub(crate) fn print_src(
     context: &Context<'_>,
     root_path: &str,
     decoration_info: highlight::DecorationInfo,
-    source_context: SourceContext,
+    source_context: SourceContext<'_>,
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
     let extra;
     line_numbers.write_str("<pre class=\"src-line-numbers\">");
+    let current_href = &context
+        .href_from_span(clean::Span::new(file_span), false)
+        .expect("only local crates should have sources emitted");
     match source_context {
         SourceContext::Standalone => {
             extra = None;
             for line in 1..=lines {
-                writeln!(line_numbers, "<span id=\"{0}\">{0}</span>", line)
+                writeln!(line_numbers, "<a href=\"#{line}\" id=\"{line}\">{line}</a>")
             }
         }
-        SourceContext::Embedded { offset, needs_expansion } => {
+        SourceContext::Embedded { url, offset, needs_expansion } => {
             extra =
                 if needs_expansion { Some(r#"<span class="expand">&varr;</span>"#) } else { None };
-            for line in 1..=lines {
-                writeln!(line_numbers, "<span>{0}</span>", line + offset)
+            for line_number in 1..=lines {
+                let line = line_number + offset;
+                writeln!(line_numbers, "<a href=\"{root_path}{url}#{line}\">{line}</a>")
             }
         }
     }
     line_numbers.write_str("</pre>");
-    let current_href = &context
-        .href_from_span(clean::Span::new(file_span), false)
-        .expect("only local crates should have sources emitted");
     highlight::render_source_with_highlighting(
         s,
         buf,

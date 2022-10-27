@@ -575,8 +575,7 @@ ul.block, .block li {
 	border-color: var(--example-line-numbers-border-color);
 }
 
-.src-line-numbers span {
-	cursor: pointer;
+.src-line-numbers a {
 	color: var(--src-line-numbers-span-color);
 }
 .src-line-numbers .line-highlighted {
@@ -2060,7 +2059,7 @@ in storage.js
 	padding: 14px 0;
 }
 
-.scraped-example .code-wrapper .src-line-numbers span {
+.scraped-example .code-wrapper .src-line-numbers a {
 	padding: 0 14px;
 }
 
