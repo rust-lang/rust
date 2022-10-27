@@ -808,7 +808,15 @@ impl<'a> TyLoweringContext<'a> {
         // handle defaults. In expression or pattern path segments without
         // explicitly specified type arguments, missing type arguments are inferred
         // (i.e. defaults aren't used).
-        if !infer_args || had_explicit_args {
+        // Generic parameters for associated types are not supposed to have defaults, so we just
+        // ignore them.
+        let is_assoc_ty = if let GenericDefId::TypeAliasId(id) = def {
+            let container = id.lookup(self.db.upcast()).container;
+            matches!(container, ItemContainerId::TraitId(_))
+        } else {
+            false
+        };
+        if !is_assoc_ty && (!infer_args || had_explicit_args) {
             let defaults = self.db.generic_defaults(def);
             assert_eq!(total_len, defaults.len());
             let parent_from = item_len - substs.len();
@@ -997,9 +1005,28 @@ impl<'a> TyLoweringContext<'a> {
                     None => return SmallVec::new(),
                     Some(t) => t,
                 };
+                // FIXME: `substs_from_path_segment()` pushes `TyKind::Error` for every parent
+                // generic params. It's inefficient to splice the `Substitution`s, so we may want
+                // that method to optionally take parent `Substitution` as we already know them at
+                // this point (`super_trait_ref.substitution`).
+                let substitution = self.substs_from_path_segment(
+                    // FIXME: This is hack. We shouldn't really build `PathSegment` directly.
+                    PathSegment { name: &binding.name, args_and_bindings: binding.args.as_deref() },
+                    Some(associated_ty.into()),
+                    false, // this is not relevant
+                    Some(super_trait_ref.self_type_parameter(Interner)),
+                );
+                let self_params = generics(self.db.upcast(), associated_ty.into()).len_self();
+                let substitution = Substitution::from_iter(
+                    Interner,
+                    substitution
+                        .iter(Interner)
+                        .take(self_params)
+                        .chain(super_trait_ref.substitution.iter(Interner)),
+                );
                 let projection_ty = ProjectionTy {
                     associated_ty_id: to_assoc_type_id(associated_ty),
-                    substitution: super_trait_ref.substitution,
+                    substitution,
                 };
                 let mut preds: SmallVec<[_; 1]> = SmallVec::with_capacity(
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
