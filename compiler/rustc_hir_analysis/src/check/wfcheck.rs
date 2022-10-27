@@ -713,6 +713,10 @@ fn resolve_regions_with_wf_tys<'tcx>(
 
     add_constraints(&infcx, region_bound_pairs);
 
+    infcx.process_registered_region_obligations(
+        outlives_environment.region_bound_pairs(),
+        param_env,
+    );
     let errors = infcx.resolve_regions(&outlives_environment);
 
     debug!(?errors, "errors");
