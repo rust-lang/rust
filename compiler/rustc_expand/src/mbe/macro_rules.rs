@@ -33,6 +33,8 @@ use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::{mem, slice};
 
+use super::macro_parser::NamedParseResult;
+
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
 
@@ -205,6 +207,29 @@ fn trace_macros_note(cx_expansions: &mut FxIndexMap<Span, Vec<String>>, sp: Span
     cx_expansions.entry(sp).or_default().push(message);
 }
 
+pub(super) trait Tracker<'matcher> {
+    /// This is called before trying to match next MatcherLoc on the current token
+    fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
+
+    /// This is called after an arm has been parsed, either successfully or unsuccessfully. When this is called,
+    /// `before_match_loc` was called at least once (with a `MatcherLoc::Eof`)
+    fn after_arm(&mut self, result: &NamedParseResult);
+
+    /// For tracing
+    fn description() -> &'static str;
+}
+
+/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization
+struct NoopTracker;
+
+impl<'matcher> Tracker<'matcher> for NoopTracker {
+    fn before_match_loc(&mut self, _: &TtParser, _: &'matcher MatcherLoc) {}
+    fn after_arm(&mut self, _: &NamedParseResult) {}
+    fn description() -> &'static str {
+        "none"
+    }
+}
+
 /// Expands the rules based macro defined by `lhses` and `rhses` for a given
 /// input `arg`.
 fn expand_macro<'cx>(
@@ -262,7 +287,7 @@ fn expand_macro<'cx>(
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *sess.gated_spans.spans.borrow_mut());
 
-        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs) {
+        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
@@ -354,7 +379,7 @@ fn expand_macro<'cx>(
     if let Some((arg, comma_span)) = arg.add_comma() {
         for lhs in lhses {
             let parser = parser_from_cx(sess, arg.clone());
-            if let Success(_) = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs) {
+            if let Success(_) = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker) {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
                 } else {
@@ -452,7 +477,7 @@ pub fn compile_declarative_macro(
     let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
     let mut tt_parser =
         TtParser::new(Ident::with_dummy_span(if macro_rules { kw::MacroRules } else { kw::Macro }));
-    let argument_map = match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
+    let argument_map = match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &argument_gram, &mut NoopTracker) {
         Success(m) => m,
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);
