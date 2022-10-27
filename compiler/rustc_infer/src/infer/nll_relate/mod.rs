@@ -592,7 +592,7 @@ where
             (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
 
             (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
-                infcx.commit_if_ok(|_| infcx.super_combine_tys(self, a, b)).or_else(|err| {
+                infcx.super_combine_tys(self, a, b).or_else(|err| {
                     self.tcx().sess.delay_span_bug(
                         self.delegate.span(),
                         "failure to relate an opaque to itself should result in an error later on",
