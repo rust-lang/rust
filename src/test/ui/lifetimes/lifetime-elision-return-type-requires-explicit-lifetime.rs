@@ -45,4 +45,7 @@ fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &isize {
 fn l<'a>(_: &'a str, _: &'a str) -> &str { "" }
 //~^ ERROR missing lifetime specifier
 
+// This is ok because both `'a` are for the same parameter.
+fn m<'a>(_: &'a Foo<'a>) -> &str { "" }
+
 fn main() {}
