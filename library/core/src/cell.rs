@@ -1816,6 +1816,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// [`.get_mut()`]: `UnsafeCell::get_mut`
 ///
+/// # Memory layout
+///
 /// `UnsafeCell<T>` has the same in-memory representation as its inner type `T`. A consequence
 /// of this guarantee is that it is possible to convert between `T` and `UnsafeCell<T>`.
 /// Special care has to be taken when converting a nested `T` inside of an `Outer<T>` type
