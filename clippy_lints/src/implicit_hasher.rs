@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
             }
         }
 
-        if !cx.effective_visibilities.is_exported(item.def_id.def_id) {
+        if !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
             return;
         }
 

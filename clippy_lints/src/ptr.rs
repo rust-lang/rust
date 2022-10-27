@@ -164,7 +164,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             check_mut_from_ref(cx, sig, None);
             for arg in check_fn_args(
                 cx,
-                cx.tcx.fn_sig(item.def_id).skip_binder().inputs(),
+                cx.tcx.fn_sig(item.owner_id).skip_binder().inputs(),
                 sig.decl.inputs,
                 &[],
             )
@@ -188,7 +188,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         let (item_id, sig, is_trait_item) = match parents.next() {
             Some((_, Node::Item(i))) => {
                 if let ItemKind::Fn(sig, ..) = &i.kind {
-                    (i.def_id, sig, false)
+                    (i.owner_id, sig, false)
                 } else {
                     return;
                 }
@@ -200,14 +200,14 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                     return;
                 }
                 if let ImplItemKind::Fn(sig, _) = &i.kind {
-                    (i.def_id, sig, false)
+                    (i.owner_id, sig, false)
                 } else {
                     return;
                 }
             },
             Some((_, Node::TraitItem(i))) => {
                 if let TraitItemKind::Fn(sig, _) = &i.kind {
-                    (i.def_id, sig, true)
+                    (i.owner_id, sig, true)
                 } else {
                     return;
                 }
