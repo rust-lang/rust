@@ -1,0 +1,54 @@
+warning: implicit reborrow results in a read-only pointer
+  --> $DIR/hidden_reborrow_in_ptr_casts.rs:15:35
+   |
+LL | fn _6<T>(r: &mut T) -> *const T { r }
+   |                                   ^
+   |
+   = note: cast of `&mut` reference to `*const` pointer causes an implicit reborrow, which converts the reference to `&`, stripping write provenance
+   = note: it is UB to write through the resulting pointer, even after casting it to `*mut`
+   = note: `#[warn(hidden_reborrow_in_ptr_casts)]` on by default
+help: to save write provenance, cast to `*mut` pointer first
+   |
+LL | fn _6<T>(r: &mut T) -> *const T { r as *mut _ }
+   |                                     +++++++++
+help: to make reborrow explicit, add cast to a shared reference
+   |
+LL | fn _6<T>(r: &mut T) -> *const T { r as &_ }
+   |                                     +++++
+
+warning: implicit reborrow results in a read-only pointer
+  --> $DIR/hidden_reborrow_in_ptr_casts.rs:16:35
+   |
+LL | fn _7<T>(r: &mut T) -> *const T { r as *const _ }
+   |                                   ^
+   |
+   = note: cast of `&mut` reference to `*const` pointer causes an implicit reborrow, which converts the reference to `&`, stripping write provenance
+   = note: it is UB to write through the resulting pointer, even after casting it to `*mut`
+help: to save write provenance, cast to `*mut` pointer first
+   |
+LL | fn _7<T>(r: &mut T) -> *const T { r as *mut _ as *const _ }
+   |                                     +++++++++
+help: to make reborrow explicit, add cast to a shared reference
+   |
+LL | fn _7<T>(r: &mut T) -> *const T { r as &_ as *const _ }
+   |                                     +++++
+
+warning: implicit reborrow results in a read-only pointer
+  --> $DIR/hidden_reborrow_in_ptr_casts.rs:17:42
+   |
+LL | fn _8<T>(r: &mut T)             { _const(r) }
+   |                                          ^
+   |
+   = note: cast of `&mut` reference to `*const` pointer causes an implicit reborrow, which converts the reference to `&`, stripping write provenance
+   = note: it is UB to write through the resulting pointer, even after casting it to `*mut`
+help: to save write provenance, cast to `*mut` pointer first
+   |
+LL | fn _8<T>(r: &mut T)             { _const(r as *mut _) }
+   |                                            +++++++++
+help: to make reborrow explicit, add cast to a shared reference
+   |
+LL | fn _8<T>(r: &mut T)             { _const(r as &_) }
+   |                                            +++++
+
+warning: 3 warnings emitted
+
