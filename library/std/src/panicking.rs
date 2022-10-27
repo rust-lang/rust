@@ -261,7 +261,7 @@ fn default_hook(info: &PanicInfo<'_>) {
         let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
         if let Some(source) = info.source() {
             let report = Report::new(source).pretty(true);
-            let _ = writeln!(err, "Source: {report}");
+            let _ = writeln!(err, "\nSource: {report}\n");
         }
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
@@ -578,7 +578,6 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     }
 
     let loc = info.location().unwrap(); // The current implementation always returns Some
-    let source = info.source();
     let msg = info.message().unwrap(); // The current implementation always returns Some
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
         if let Some(msg) = msg.as_str() {
@@ -586,7 +585,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
                 &mut StrPanicPayload(msg),
                 info.message(),
                 loc,
-                source,
+                info.source(),
                 info.can_unwind(),
             );
         } else {
@@ -594,7 +593,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
                 &mut PanicPayload::new(msg),
                 info.message(),
                 loc,
-                source,
+                info.source(),
                 info.can_unwind(),
             );
         }

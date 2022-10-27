@@ -51,16 +51,8 @@ const _: () = assert!(cfg!(panic = "abort"), "panic_immediate_abort requires -C 
 #[rustc_do_not_const_check] // hooked by const-eval
 #[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
-    //panic_source(fmt, None)
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
-    }
-
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
 
     let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), None, true);
@@ -82,17 +74,17 @@ pub const fn panic_source(fmt: fmt::Arguments<'_>, source: &(dyn Error + 'static
         super::intrinsics::abort()
     }
 
-    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-    // that gets resolved to the `#[panic_handler]` function.
-    extern "Rust" {
-        #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo<'_>) -> !;
-    }
-
     let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), Some(source), true);
 
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }
+}
+
+// NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+// that gets resolved to the `#[panic_handler]` function.
+extern "Rust" {
+    #[lang = "panic_impl"]
+    fn panic_impl(pi: &PanicInfo<'_>) -> !;
 }
 
 /// Like `panic_fmt`, but for non-unwinding panics.

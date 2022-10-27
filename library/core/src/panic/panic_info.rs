@@ -66,7 +66,7 @@ impl<'a> PanicInfo<'a> {
     }
 
     #[unstable(feature = "error_in_panic", issue = "none")]
-    /// The lower-level source of this panic, if any.
+    /// The [`Error`] that caused this panic, if known.
     pub fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.source
     }
