@@ -4,6 +4,7 @@ use std::{
     cmp::{self, Ordering},
     iter,
     num::NonZeroUsize,
+    ops::Bound,
 };
 
 use chalk_ir::TyKind;
@@ -17,6 +18,8 @@ use hir_def::{
     AdtId, EnumVariantId, LocalEnumVariantId, UnionId, VariantId,
 };
 use la_arena::{ArenaMap, RawIdx};
+
+struct X(Option<NonZeroUsize>);
 
 use crate::{
     db::HirDatabase,
@@ -137,7 +140,38 @@ pub fn layout_of_adt_query(
                 Abi::Aggregate { sized: _ } => {}
             }
             st.largest_niche = None;
+            return Ok(st);
         }
+
+        let (start, end) = layout_scalar_valid_range(db, def);
+        match st.abi {
+            Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
+                if let Bound::Included(start) = start {
+                    let valid_range = scalar.valid_range_mut();
+                    valid_range.start = start;
+                }
+                if let Bound::Included(end) = end {
+                    let valid_range = scalar.valid_range_mut();
+                    valid_range.end = end;
+                }
+                // Update `largest_niche` if we have introduced a larger niche.
+                let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
+                if let Some(niche) = niche {
+                    match st.largest_niche {
+                        Some(largest_niche) => {
+                            // Replace the existing niche even if they're equal,
+                            // because this one is at a lower offset.
+                            if largest_niche.available(dl) <= niche.available(dl) {
+                                st.largest_niche = Some(niche);
+                            }
+                        }
+                        None => st.largest_niche = Some(niche),
+                    }
+                }
+            }
+            _ => user_error!("nonscalar layout for layout_scalar_valid_range"),
+        }
+
         return Ok(st);
     }
 
@@ -589,6 +623,22 @@ pub fn layout_of_adt_query(
     };
 
     Ok(best_layout.layout)
+}
+
+fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, Bound<u128>) {
+    let attrs = db.attrs(def.into());
+    let get = |name| {
+        let attr = attrs.by_key(name).tt_values();
+        for tree in attr {
+            if let Some(x) = tree.token_trees.first() {
+                if let Ok(x) = x.to_string().parse() {
+                    return Bound::Included(x);
+                }
+            }
+        }
+        Bound::Unbounded
+    };
+    (get("rustc_layout_scalar_valid_range_start"), get("rustc_layout_scalar_valid_range_end"))
 }
 
 pub fn layout_of_adt_recover(

@@ -147,6 +147,19 @@ fn tuple() {
 }
 
 #[test]
+fn non_zero() {
+    check_size_and_align(
+        r#"
+    //- minicore: non_zero, option
+    use core::num::NonZeroU8;
+    struct Goal(Option<NonZeroU8>);
+    "#,
+        1,
+        1,
+    );
+}
+
+#[test]
 fn niche_optimization() {
     check_size_and_align(
         r#"
