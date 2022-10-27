@@ -244,6 +244,10 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
         self.tcx
     }
 
+    fn intercrate(&self) -> bool {
+        false
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }

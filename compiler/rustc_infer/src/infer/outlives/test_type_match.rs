@@ -136,6 +136,11 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     fn tag(&self) -> &'static str {
         "Match"
     }
+
+    fn intercrate(&self) -> bool {
+        false
+    }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

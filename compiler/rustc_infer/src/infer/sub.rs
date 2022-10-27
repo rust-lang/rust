@@ -35,6 +35,11 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     fn tag(&self) -> &'static str {
         "Sub"
     }
+
+    fn intercrate(&self) -> bool {
+        self.fields.infcx.intercrate
+    }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.fields.infcx.tcx
     }

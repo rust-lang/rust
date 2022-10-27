@@ -521,6 +521,11 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
+
+    fn intercrate(&self) -> bool {
+        self.infcx.intercrate
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -797,6 +802,10 @@ struct ConstInferUnifier<'cx, 'tcx> {
 impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
+    }
+
+    fn intercrate(&self) -> bool {
+        self.infcx.intercrate
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

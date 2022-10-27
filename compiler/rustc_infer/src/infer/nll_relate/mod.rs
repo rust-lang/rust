@@ -531,6 +531,10 @@ where
         self.infcx.tcx
     }
 
+    fn intercrate(&self) -> bool {
+        self.infcx.intercrate
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.delegate.param_env()
     }
@@ -896,6 +900,10 @@ where
 {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
+    }
+
+    fn intercrate(&self) -> bool {
+        self.infcx.intercrate
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

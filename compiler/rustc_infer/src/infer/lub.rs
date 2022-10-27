@@ -30,6 +30,10 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
         "Lub"
     }
 
+    fn intercrate(&self) -> bool {
+        self.fields.infcx.intercrate
+    }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.fields.tcx()
     }
