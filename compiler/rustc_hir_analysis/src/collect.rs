@@ -1143,7 +1143,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         }
 
         ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. }) => {
-            // Do not try to inference the return type for a impl method coming from a trait
+            // Do not try to infer the return type for a impl method coming from a trait
             if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) =
                 tcx.hir().get(tcx.hir().get_parent_node(hir_id))
                 && i.of_trait.is_some()
@@ -1286,12 +1286,43 @@ fn infer_return_ty_for_fn_sig<'tcx>(
 
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     let icx = ItemCtxt::new(tcx, def_id);
-    match tcx.hir().expect_item(def_id.expect_local()).kind {
+    let item = tcx.hir().expect_item(def_id.expect_local());
+    match item.kind {
         hir::ItemKind::Impl(ref impl_) => impl_.of_trait.as_ref().map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id);
-            <dyn AstConv<'_>>::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
+            <dyn AstConv<'_>>::instantiate_mono_trait_ref(
+                &icx,
+                ast_trait_ref,
+                selfty,
+                check_impl_constness(tcx, impl_.constness, ast_trait_ref),
+            )
         }),
         _ => bug!(),
+    }
+}
+
+fn check_impl_constness(
+    tcx: TyCtxt<'_>,
+    constness: hir::Constness,
+    ast_trait_ref: &hir::TraitRef<'_>,
+) -> ty::BoundConstness {
+    match constness {
+        hir::Constness::Const => {
+            if let Some(trait_def_id) = ast_trait_ref.trait_def_id() && !tcx.has_attr(trait_def_id, sym::const_trait) {
+                let trait_name = tcx.item_name(trait_def_id).to_string();
+                tcx.sess.emit_err(errors::ConstImplForNonConstTrait {
+                    trait_ref_span: ast_trait_ref.path.span,
+                    trait_name,
+                    local_trait_span: trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
+                    marking: (),
+                    adding: (),
+                });
+                ty::BoundConstness::NotConst
+            } else {
+                ty::BoundConstness::ConstIfConst
+            }
+        },
+        hir::Constness::NotConst => ty::BoundConstness::NotConst,
     }
 }
 

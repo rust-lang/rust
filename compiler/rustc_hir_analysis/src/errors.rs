@@ -249,3 +249,24 @@ pub struct ExpectedUsedSymbol {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_const_impl_for_non_const_trait)]
+pub struct ConstImplForNonConstTrait {
+    #[primary_span]
+    pub trait_ref_span: Span,
+    pub trait_name: String,
+    #[suggestion(applicability = "machine-applicable", code = "#[const_trait]")]
+    pub local_trait_span: Option<Span>,
+    #[note]
+    pub marking: (),
+    #[note(adding)]
+    pub adding: (),
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_const_bound_for_non_const_trait)]
+pub struct ConstBoundForNonConstTrait {
+    #[primary_span]
+    pub span: Span,
+}
