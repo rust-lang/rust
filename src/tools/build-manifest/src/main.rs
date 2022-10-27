@@ -311,44 +311,28 @@ impl Builder {
     }
 
     fn add_profiles_to(&mut self, manifest: &mut Manifest) {
-        let mut profile = |name, pkgs| self.profile(name, &mut manifest.profiles, pkgs);
-        profile("minimal", &["rustc", "cargo", "rust-std", "rust-mingw"]);
-        profile(
-            "default",
-            &[
-                "rustc",
-                "cargo",
-                "rust-std",
-                "rust-mingw",
-                "rust-docs",
-                "rustfmt-preview",
-                "clippy-preview",
-            ],
-        );
-        profile(
-            "complete",
-            &[
-                "rustc",
-                "cargo",
-                "rust-std",
-                "rust-mingw",
-                "rust-docs",
-                "rustfmt-preview",
-                "clippy-preview",
-                "rls-preview",
-                "rust-analyzer-preview",
-                "rust-src",
-                "llvm-tools-preview",
-                "rust-analysis",
-                "miri-preview",
-            ],
-        );
+        use PkgType::*;
+
+        let mut profile = |name, pkgs: &_| self.profile(name, &mut manifest.profiles, pkgs);
+
+        // Use a Vec here to make sure we don't exclude any components in an earlier profile.
+        let minimal = vec![Rustc, Cargo, RustStd, RustMingw];
+        profile("minimal", &minimal);
+
+        let mut default = minimal;
+        default.extend([HtmlDocs, Rustfmt, Clippy]);
+        profile("default", &default);
+
+        // NOTE: this profile is effectively deprecated; do not add new components to it.
+        let mut complete = default;
+        complete.extend([Rls, RustAnalyzer, RustSrc, LlvmTools, RustAnalysis, Miri]);
+        profile("complete", &complete);
 
         // The compiler libraries are not stable for end users, and they're also huge, so we only
         // `rustc-dev` for nightly users, and only in the "complete" profile. It's still possible
         // for users to install the additional component manually, if needed.
         if self.versions.channel() == "nightly" {
-            self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
+            self.extend_profile("complete", &mut manifest.profiles, &[RustcDev]);
             // Do not include the rustc-docs component for now, as it causes
             // conflicts with the rust-docs component when installed. See
             // #75833.
@@ -468,20 +452,23 @@ impl Builder {
         &mut self,
         profile_name: &str,
         dst: &mut BTreeMap<String, Vec<String>>,
-        pkgs: &[&str],
+        pkgs: &[PkgType],
     ) {
-        dst.insert(profile_name.to_owned(), pkgs.iter().map(|s| (*s).to_owned()).collect());
+        dst.insert(
+            profile_name.to_owned(),
+            pkgs.iter().map(|s| s.manifest_component_name()).collect(),
+        );
     }
 
     fn extend_profile(
         &mut self,
         profile_name: &str,
         dst: &mut BTreeMap<String, Vec<String>>,
-        pkgs: &[&str],
+        pkgs: &[PkgType],
     ) {
         dst.get_mut(profile_name)
             .expect("existing profile")
-            .extend(pkgs.iter().map(|s| (*s).to_owned()));
+            .extend(pkgs.iter().map(|s| s.manifest_component_name()));
     }
 
     fn package(
