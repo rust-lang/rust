@@ -3,6 +3,6 @@ pub trait ToNbt<T> {
 }
 
 impl dyn ToNbt<Self> {}
-//~^ ERROR `Self` is not valid at this location
+//~^ ERROR `Self` is not valid in the self type of an impl block
 
 fn main() {}

@@ -322,7 +322,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 ItemKind::Impl(
                     hir::Impl { self_ty, .. }
                 ) => {
-                    struct MyVisitor(bool);
+                    struct MyVisitor(Vec<Span>);
                     impl<'v> hir::intravisit::Visitor<'v> for MyVisitor {
                         fn visit_ty(&mut self, t: &'v Ty<'v>) {
                             if matches!(
@@ -335,19 +335,22 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                     },
                                 ))
                             ) {
-                                self.0 = true;
+                                self.0.push(t.span);
                                 return;
                             }
                             hir::intravisit::walk_ty(self, t);
                         }
                     }
 
-                    let mut my_visitor = MyVisitor(false);
+                    let mut my_visitor = MyVisitor(vec![]);
                     my_visitor.visit_ty(self_ty);
 
                     match my_visitor.0 {
-                        true => { tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: self_ty.span}); tcx.ty_error() },
-                        false => icx.to_ty(*self_ty),
+                        spans if spans.len() > 0 => { 
+                            tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: (), });
+                            tcx.ty_error() 
+                        },
+                        _ => icx.to_ty(*self_ty),
                     }
                 },
                 ItemKind::Fn(..) => {

@@ -1,34 +1,50 @@
-error: `Self` is not valid at this location
+error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:14:13
    |
 LL | impl Tr for Self {}
    |             ^^^^
+   |
+   = note: replace `Self` with a different type
 
-error: `Self` is not valid at this location
-  --> $DIR/resolve-self-in-impl.rs:15:13
+error: `Self` is not valid in the self type of an impl block
+  --> $DIR/resolve-self-in-impl.rs:15:15
    |
 LL | impl Tr for S<Self> {}
-   |             ^^^^^^^
+   |               ^^^^
+   |
+   = note: replace `Self` with a different type
 
-error: `Self` is not valid at this location
+error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:16:6
    |
 LL | impl Self {}
    |      ^^^^
+   |
+   = note: replace `Self` with a different type
 
-error: `Self` is not valid at this location
-  --> $DIR/resolve-self-in-impl.rs:17:6
+error: `Self` is not valid in the self type of an impl block
+  --> $DIR/resolve-self-in-impl.rs:17:8
    |
 LL | impl S<Self> {}
-   |      ^^^^^^^
+   |        ^^^^
+   |
+   = note: replace `Self` with a different type
 
-error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:18:1: 18:23>`
-  --> $DIR/resolve-self-in-impl.rs:18:1
+error: `Self` is not valid in the self type of an impl block
+  --> $DIR/resolve-self-in-impl.rs:18:7
+   |
+LL | impl (Self, Self) {}
+   |       ^^^^  ^^^^
+   |
+   = note: replace `Self` with a different type
+
+error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>`
+  --> $DIR/resolve-self-in-impl.rs:19:1
    |
 LL | impl Tr<Self::A> for S {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...which immediately requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:18:1: 18:23>` again
+   = note: ...which immediately requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>` again
 note: cycle used when collecting item types in top-level module
   --> $DIR/resolve-self-in-impl.rs:1:1
    |
@@ -41,6 +57,6 @@ LL | |
 LL | | fn main() {}
    | |____________^
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0391`.
