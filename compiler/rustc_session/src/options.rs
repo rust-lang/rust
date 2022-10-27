@@ -181,7 +181,7 @@ top_level_options!(
         #[rustc_lint_opt_deny_field_access("use `Session::codegen_units` instead of this field")]
         cli_forced_codegen_units: Option<usize> [UNTRACKED],
         #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
-        cli_forced_thinlto_off: bool [UNTRACKED],
+        cli_forced_local_thinlto_off: bool [UNTRACKED],
 
         /// Remap source path prefixes in all output (messages, object files, debug, etc.).
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [TRACKED_NO_CRATE_HASH],
