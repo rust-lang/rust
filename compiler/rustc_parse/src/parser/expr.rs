@@ -9,9 +9,9 @@ use crate::errors::{
     ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncMoveOrderIncorrect,
     BinaryFloatLiteralNotSupported, BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct,
     ComparisonInterpretedAsGeneric, ComparisonOrShiftInterpretedAsGenericSugg,
-    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedExpressionFoundLet,
-    FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt,
-    HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
+    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedEqForLetExpr,
+    ExpectedExpressionFoundLet, FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart,
+    FoundExprWouldBeStmt, HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
     IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub, IntLiteralTooLarge,
     InvalidBlockMacroSegment, InvalidComparisonOperator, InvalidComparisonOperatorSub,
     InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth, InvalidIntLiteralWidth,
@@ -2329,7 +2329,15 @@ impl<'a> Parser<'a> {
             RecoverColon::Yes,
             CommaRecoveryMode::LikelyTuple,
         )?;
-        self.expect(&token::Eq)?;
+        if self.token == token::EqEq {
+            self.sess.emit_err(ExpectedEqForLetExpr {
+                span: self.token.span,
+                sugg_span: self.token.span,
+            });
+            self.bump();
+        } else {
+            self.expect(&token::Eq)?;
+        }
         let expr = self.with_res(self.restrictions | Restrictions::NO_STRUCT_LITERAL, |this| {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         })?;
