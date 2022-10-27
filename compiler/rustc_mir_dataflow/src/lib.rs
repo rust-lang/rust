@@ -4,6 +4,7 @@
 #![feature(min_specialization)]
 #![feature(once_cell)]
 #![feature(stmt_expr_attributes)]
+#![feature(spec_option_partial_eq)]
 #![feature(trusted_step)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]

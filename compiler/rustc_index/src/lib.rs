@@ -6,6 +6,7 @@
 #![feature(new_uninit)]
 #![feature(step_trait)]
 #![feature(stmt_expr_attributes)]
+#![feature(spec_option_partial_eq)]
 #![feature(test)]
 
 pub mod bit_set;

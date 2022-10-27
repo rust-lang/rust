@@ -34,6 +34,7 @@
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
+#![feature(spec_option_partial_eq)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![recursion_limit = "256"]

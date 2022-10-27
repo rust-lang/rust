@@ -7,6 +7,7 @@
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
+#![feature(spec_option_partial_eq)]
 #![feature(min_specialization)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]

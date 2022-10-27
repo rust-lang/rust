@@ -1,6 +1,7 @@
 #![feature(fmt_helpers_for_derive)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
+#![feature(spec_option_partial_eq)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 

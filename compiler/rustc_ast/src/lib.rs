@@ -15,6 +15,7 @@
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
+#![feature(spec_option_partial_eq)]
 #![feature(negative_impls)]
 #![feature(slice_internals)]
 #![feature(stmt_expr_attributes)]

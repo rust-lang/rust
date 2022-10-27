@@ -31,6 +31,7 @@
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
 #![feature(get_mut_unchecked)]
+#![feature(spec_option_partial_eq)]
 #![feature(if_let_guard)]
 #![feature(negative_impls)]
 #![feature(never_type)]

@@ -3,6 +3,7 @@
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![feature(min_specialization)]
+#![feature(spec_option_partial_eq)]
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![allow(rustc::potential_query_instability)]
