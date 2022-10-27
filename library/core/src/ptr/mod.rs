@@ -581,12 +581,21 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// Convert an address back to a pointer, picking up a previously 'exposed' provenance.
 ///
 /// This is equivalent to `addr as *const T`. The provenance of the returned pointer is that of *any*
-/// pointer that was previously passed to [`expose_addr`][pointer::expose_addr] or a `ptr as usize`
-/// cast. If there is no previously 'exposed' provenance that justifies the way this pointer will be
-/// used, the program has undefined behavior. Note that there is no algorithm that decides which
-/// provenance will be used. You can think of this as "guessing" the right provenance, and the guess
-/// will be "maximally in your favor", in the sense that if there is any way to avoid undefined
-/// behavior, then that is the guess that will be taken.
+/// pointer that was previously exposed by passing it to [`expose_addr`][pointer::expose_addr],
+/// or a `ptr as usize` cast. In addition, memory which is outside the control of the Rust abstract
+/// machine (MMIO registers, for example) is always considered to be exposed, so long as this memory
+/// is disjoint from memory that will be used by the abstract machine such as the stack, heap,
+/// and statics.
+///
+/// If there is no 'exposed' provenance that justifies the way this pointer will be used,
+/// the program has undefined behavior. In particular, the aliasing rules still apply: pointers
+/// and references that have been invalidated due to aliasing accesses cannot be used any more,
+/// even if they have been exposed!
+///
+/// Note that there is no algorithm that decides which provenance will be used. You can think of this
+/// as "guessing" the right provenance, and the guess will be "maximally in your favor", in the sense
+/// that if there is any way to avoid undefined behavior (while upholding all aliasing requirements),
+/// then that is the guess that will be taken.
 ///
 /// On platforms with multiple address spaces, it is your responsibility to ensure that the
 /// address makes sense in the address space that this pointer will be used with.
