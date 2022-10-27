@@ -250,6 +250,7 @@ fn expand_macro<'cx>(
     // hacky, but speeds up the `html5ever` benchmark significantly. (Issue
     // 68836 suggests a more comprehensive but more complex change to deal with
     // this situation.)
+    // FIXME(Nilstrieb): Stop recovery from happening on this parser and retry later with recovery if the macro failed to match.
     let parser = parser_from_cx(sess, arg.clone());
 
     // Try each arm's matchers.
