@@ -1049,7 +1049,7 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
 // If the conditions are met, returns `Some(Position::ImplArg(..))`; otherwise, returns `None`.
 //   The "is copyable" condition is to avoid the case where removing the `&` means `e` would have to
 // be moved, but it cannot be.
-#[expect(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, clippy::too_many_lines)]
 fn needless_borrow_impl_arg_position<'tcx>(
     cx: &LateContext<'tcx>,
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
@@ -1092,7 +1092,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
         .iter()
         .filter_map(|predicate| {
             if let PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                && trait_predicate.trait_ref.self_ty() == param_ty.to_ty(cx.tcx)
+                && trait_predicate.self_ty() == param_ty.to_ty(cx.tcx)
             {
                 Some(trait_predicate.trait_ref.def_id)
             } else {
@@ -1107,6 +1107,16 @@ fn needless_borrow_impl_arg_position<'tcx>(
                 || Some(trait_def_id) == sized_trait_def_id
                 || cx.tcx.is_diagnostic_item(sym::Any, trait_def_id)
         })
+    {
+        return Position::Other(precedence);
+    }
+
+    // See:
+    // - https://github.com/rust-lang/rust-clippy/pull/9674#issuecomment-1289294201
+    // - https://github.com/rust-lang/rust-clippy/pull/9674#issuecomment-1292225232
+    if projection_predicates
+        .iter()
+        .any(|projection_predicate| is_mixed_projection_predicate(cx, callee_def_id, projection_predicate))
     {
         return Position::Other(precedence);
     }
@@ -1190,8 +1200,39 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
         })
 }
 
-fn referent_used_exactly_once<'tcx>(
+fn is_mixed_projection_predicate<'tcx>(
     cx: &LateContext<'tcx>,
+    callee_def_id: DefId,
+    projection_predicate: &ProjectionPredicate<'tcx>,
+) -> bool {
+    let generics = cx.tcx.generics_of(callee_def_id);
+    // The predicate requires the projected type to equal a type parameter from the parent context.
+    if let Some(term_ty) = projection_predicate.term.ty()
+        && let ty::Param(term_param_ty) = term_ty.kind()
+        && (term_param_ty.index as usize) < generics.parent_count
+    {
+        // The inner-most self type is a type parameter from the current function.
+        let mut projection_ty = projection_predicate.projection_ty;
+        loop {
+            match projection_ty.self_ty().kind() {
+                ty::Projection(inner_projection_ty) => {
+                    projection_ty = *inner_projection_ty;
+                }
+                ty::Param(param_ty) => {
+                    return (param_ty.index as usize) >= generics.parent_count;
+                }
+                _ => {
+                    return false;
+                }
+            }
+        }
+    } else {
+        false
+    }
+}
+
+fn referent_used_exactly_once<'a, 'tcx>(
+    cx: &'a LateContext<'tcx>,
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     reference: &Expr<'tcx>,
 ) -> bool {
