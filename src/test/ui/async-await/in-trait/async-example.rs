@@ -26,7 +26,7 @@ fn main() {
     let _ = x.bar();
     // Calling from async block in non-async context
     async {
-        let _ = x.foo();
-        let _ = x.bar();
+        let _: i32 = x.foo().await;
+        let _: i32 = x.bar().await;
     };
 }
