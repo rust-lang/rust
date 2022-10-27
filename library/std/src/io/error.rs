@@ -168,14 +168,14 @@ struct Custom {
 /// ```
 /// use std::{fs, io};
 ///
-/// let file = match fs::OpenOptions::new()
+/// let file_result = match fs::OpenOptions::new()
 ///                 .write(true)
 ///                 .create_new(true)
 ///                 .open("") {
-///     Ok(file) => file,
+///     Ok(_) => Ok(),
 ///     Err(error) => match error.kind() {
-///         io::ErrorKind::AlreadyExists => panic!("File Already Exists"),
-///         _ => panic!("Other Problem Creating File {:?}", error),
+///         io::ErrorKind::AlreadyExists => Ok(),
+///         _ => error,
 ///     },
 /// };
 ///
