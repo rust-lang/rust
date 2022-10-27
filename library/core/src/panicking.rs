@@ -199,17 +199,53 @@ pub enum AssertKind {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[doc(hidden)]
-pub fn assert_failed<T, U>(
+#[rustc_const_unstable(feature = "const_assert_eq", issue = "none")]
+pub const fn assert_failed<T, U>(
     kind: AssertKind,
     left: &T,
     right: &U,
     args: Option<fmt::Arguments<'_>>,
+    string_for_const_msg: &str,
 ) -> !
 where
     T: fmt::Debug + ?Sized,
     U: fmt::Debug + ?Sized,
 {
-    assert_failed_inner(kind, &left, &right, args)
+    #[track_caller]
+    const fn assert_failed_const_impl<T: ?Sized, U: ?Sized>(
+        _: AssertKind,
+        _: &T,
+        _: &U,
+        _: Option<fmt::Arguments<'_>>,
+        msg: &str,
+    ) -> ! {
+        panic_str(msg)
+    }
+
+    #[track_caller]
+    #[inline]
+    fn assert_failed_runtime_impl<T, U>(
+        kind: AssertKind,
+        left: &T,
+        right: &U,
+        args: Option<fmt::Arguments<'_>>,
+        _: &str,
+    ) -> !
+    where
+        T: fmt::Debug + ?Sized,
+        U: fmt::Debug + ?Sized,
+    {
+        assert_failed_inner(kind, &left, &right, args)
+    }
+
+    // SAFETY: we are panicking in both branches, so this is consistent.
+    unsafe {
+        crate::intrinsics::const_eval_select(
+            (kind, left, right, args, string_for_const_msg),
+            assert_failed_const_impl,
+            assert_failed_runtime_impl,
+        )
+    }
 }
 
 /// Internal function for `assert_match!`

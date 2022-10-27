@@ -1,0 +1,27 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/assertions.rs:4:5
+   |
+LL |     assert_eq!(1, 2)
+   |     ^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: `1 == 2`', $DIR/assertions.rs:4:5
+   |
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/assertions.rs:8:5
+   |
+LL |     assert_ne!(1, 1)
+   |     ^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: `1 != 1`', $DIR/assertions.rs:8:5
+   |
+   = note: this error originates in the macro `assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/assertions.rs:12:5
+   |
+LL |     assert!(false)
+   |     ^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: false', $DIR/assertions.rs:12:5
+   |
+   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
