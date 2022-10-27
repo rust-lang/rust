@@ -197,7 +197,7 @@ impl<T: ?Sized> NonNull<T> {
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
         unsafe {
-            assert_unsafe_precondition!([T: ?Sized](ptr: *mut T) => !ptr.is_null());
+            assert_unsafe_precondition!("NonNull::new_unchecked requires that the pointer is non-null", [T: ?Sized](ptr: *mut T) => !ptr.is_null());
             NonNull { pointer: ptr as _ }
         }
     }
