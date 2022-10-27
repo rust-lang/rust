@@ -207,6 +207,10 @@ There are several ways to match the message with the line (see the examples belo
   This is more convenient than using multiple carets when there are multiple
   messages associated with the same line.
 
+The space character between `//~` (or other variants) and the subsequent text
+is negligible (i.e. there is no semantic difference between `//~ ERROR` and
+`//~ERROR` although the former is more common in the codebase).
+
 ### Error annotation examples
 
 Here are examples of error annotations on different lines of UI test
