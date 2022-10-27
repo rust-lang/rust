@@ -6,6 +6,7 @@ use super::{ChalkFulfillmentContext, FulfillmentContext};
 use crate::infer::InferCtxtExt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalVarValues, CanonicalizedQueryResponse, QueryResponse,
 };
@@ -111,14 +112,30 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.register_infer_ok_obligations(infer_ok)
     }
 
-    pub fn equate_types(
+    pub fn equate_types<T: ToTrace<'tcx>>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        expected: Ty<'tcx>,
-        actual: Ty<'tcx>,
+        expected: T,
+        actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         match self.infcx.at(cause, param_env).eq(expected, actual) {
+            Ok(InferOk { obligations, value: () }) => {
+                self.register_obligations(obligations);
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn sup_types<T: ToTrace<'tcx>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> Result<(), TypeError<'tcx>> {
+        match self.infcx.at(cause, param_env).sup(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_obligations(obligations);
                 Ok(())

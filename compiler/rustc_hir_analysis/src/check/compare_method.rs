@@ -290,10 +290,7 @@ fn compare_predicate_entailment<'tcx>(
     // type would be more appropriate. In other places we have a `Vec<Span>`
     // corresponding to their `Vec<Predicate>`, but we don't have that here.
     // Fixing this would improve the output of test `issue-83765.rs`.
-    let mut result = infcx
-        .at(&cause, param_env)
-        .sup(trait_fty, impl_fty)
-        .map(|infer_ok| ocx.register_infer_ok_obligations(infer_ok));
+    let mut result = ocx.sup_types(&cause, param_env, trait_fty, impl_fty);
 
     // HACK(RPITIT): #101614. When we are trying to infer the hidden types for
     // RPITITs, we need to equate the output tys instead of just subtyping. If
@@ -302,10 +299,7 @@ fn compare_predicate_entailment<'tcx>(
     // fixed up to `ReEmpty`, and which is certainly not what we want.
     if trait_fty.has_infer_types() {
         result = result.and_then(|()| {
-            infcx
-                .at(&cause, param_env)
-                .eq(trait_sig.output(), impl_sig.output())
-                .map(|infer_ok| ocx.register_infer_ok_obligations(infer_ok))
+            ocx.equate_types(&cause, param_env, trait_sig.output(), impl_sig.output())
         });
     }
 
@@ -1389,10 +1383,7 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
 
     debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
-    let err = infcx
-        .at(&cause, param_env)
-        .sup(trait_ty, impl_ty)
-        .map(|ok| ocx.register_infer_ok_obligations(ok));
+    let err = ocx.sup_types(&cause, param_env, trait_ty, impl_ty);
 
     if let Err(terr) = err {
         debug!(
