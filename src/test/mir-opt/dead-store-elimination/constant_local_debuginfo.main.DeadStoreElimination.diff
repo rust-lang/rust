@@ -18,11 +18,9 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/constant-local-debuginfo.rs:+1:9: +1:10
--         _1 = const 1_i32;                // scope 0 at $DIR/constant-local-debuginfo.rs:+1:13: +1:14
-+         nop;                             // scope 0 at $DIR/constant-local-debuginfo.rs:+1:13: +1:14
+          _1 = const 1_i32;                // scope 0 at $DIR/constant-local-debuginfo.rs:+1:13: +1:14
           StorageLive(_2);                 // scope 1 at $DIR/constant-local-debuginfo.rs:+2:9: +2:10
--         _2 = const 4_i32;                // scope 1 at $DIR/constant-local-debuginfo.rs:+2:13: +2:14
-+         nop;                             // scope 1 at $DIR/constant-local-debuginfo.rs:+2:13: +2:14
+          _2 = const 4_i32;                // scope 1 at $DIR/constant-local-debuginfo.rs:+2:13: +2:14
           StorageLive(_3);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:5: +4:15
           StorageLive(_4);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:9: +4:14
           StorageLive(_5);                 // scope 2 at $DIR/constant-local-debuginfo.rs:+4:9: +4:10

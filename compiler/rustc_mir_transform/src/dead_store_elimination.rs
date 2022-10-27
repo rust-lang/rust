@@ -20,10 +20,12 @@ use rustc_mir_dataflow::Analysis;
 
 /// Performs the optimization on the body
 ///
-/// The `borrowed` set must be a `BitSet` of all the locals that are ever borrowed in this body. It
+/// The `always_live` set must be a `BitSet` of all the locals that are considered always alive and
+/// never eliminated. This should be, at least, the set of locals which are ever borrowed in this
+/// body. It may include other locals as well if necessary. The minimum set of always alive locals
 /// can be generated via the [`borrowed_locals`] function.
-pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitSet<Local>) {
-    let mut live = MaybeTransitiveLiveLocals::new(borrowed)
+pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, always_live: &BitSet<Local>) {
+    let mut live = MaybeTransitiveLiveLocals::new(always_live)
         .into_engine(tcx, body)
         .iterate_to_fixpoint()
         .into_results_cursor(body);
@@ -41,7 +43,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
                 StatementKind::Assign(box (place, _))
                 | StatementKind::SetDiscriminant { place: box place, .. }
                 | StatementKind::Deinit(box place) => {
-                    if !place.is_indirect() && !borrowed.contains(place.local) {
+                    if !place.is_indirect() && !always_live.contains(place.local) {
                         live.seek_before_primary_effect(loc);
                         if !live.get().contains(place.local) {
                             patch.push(loc);
@@ -80,7 +82,21 @@ impl<'tcx> MirPass<'tcx> for DeadStoreElimination {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let borrowed = borrowed_locals(body);
-        eliminate(tcx, body, &borrowed);
+        let mut always_live = borrowed_locals(body);
+
+        // Include any locals which are used by debuginfo unless we're at a high enough MIR opt
+        // level that degrading debuginfo is acceptable.
+        if tcx.sess.mir_opt_level() < 3 {
+            for x in &body.var_debug_info {
+                match x.value {
+                    VarDebugInfoContents::Place(p) => {
+                        always_live.insert(p.local);
+                    }
+                    VarDebugInfoContents::Const(..) => {}
+                }
+            }
+        }
+
+        eliminate(tcx, body, &always_live);
     }
 }
