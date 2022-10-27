@@ -112,7 +112,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.register_infer_ok_obligations(infer_ok)
     }
 
-    pub fn equate_types<T: ToTrace<'tcx>>(
+    pub fn eq<T: ToTrace<'tcx>>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -128,7 +128,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn sup_types<T: ToTrace<'tcx>>(
+    pub fn sup<T: ToTrace<'tcx>>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,

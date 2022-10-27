@@ -87,7 +87,7 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        Ok(self.ocx.equate_types(&ObligationCause::dummy_with_span(self.span), self.param_env, a, b)?)
+        Ok(self.ocx.eq(&ObligationCause::dummy_with_span(self.span), self.param_env, a, b)?)
     }
 
     fn prove_predicate(&self, predicate: Predicate<'tcx>, cause: ObligationCause<'tcx>) {
@@ -176,7 +176,7 @@ fn type_op_eq<'tcx>(
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |ocx, key| {
         let (param_env, Eq { a, b }) = key.into_parts();
-        Ok(ocx.equate_types(&ObligationCause::dummy(), param_env, a, b)?)
+        Ok(ocx.eq(&ObligationCause::dummy(), param_env, a, b)?)
     })
 }
 
@@ -228,7 +228,7 @@ fn type_op_subtype<'tcx>(
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |ocx, key| {
         let (param_env, Subtype { sub, sup }) = key.into_parts();
-        Ok(ocx.sup_types(&ObligationCause::dummy(), param_env, sup, sub)?)
+        Ok(ocx.sup(&ObligationCause::dummy(), param_env, sup, sub)?)
     })
 }
 
