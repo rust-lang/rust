@@ -333,7 +333,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let is_exported = cx.effective_visibilities.is_exported(item.def_id.def_id);
+        let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         match item.kind {
             ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _) => self.check_ty(
@@ -392,7 +392,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &TraitItem<'_>) {
-        let is_exported = cx.effective_visibilities.is_exported(item.def_id.def_id);
+        let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         let context = CheckTyContext {
             is_exported,

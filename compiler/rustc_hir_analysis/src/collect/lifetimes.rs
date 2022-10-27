@@ -331,8 +331,8 @@ fn convert_named_region_map(named_region_map: NamedRegionMap) -> ResolveLifetime
 /// `resolve_lifetimes`.
 fn resolve_lifetimes_for<'tcx>(tcx: TyCtxt<'tcx>, def_id: hir::OwnerId) -> &'tcx ResolveLifetimes {
     let item_id = item_for(tcx, def_id.def_id);
-    let local_def_id = item_id.def_id.def_id;
-    if item_id.def_id == def_id {
+    let local_def_id = item_id.owner_id.def_id;
+    if item_id.owner_id == def_id {
         let item = tcx.hir().item(item_id);
         match item.kind {
             hir::ItemKind::Trait(..) => tcx.resolve_lifetimes_trait_definition(local_def_id),
@@ -557,11 +557,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // their owner, we can keep going until we find the Item that owns that. We then
                 // conservatively add all resolved lifetimes. Otherwise we run into problems in
                 // cases like `type Foo<'a> = impl Bar<As = impl Baz + 'a>`.
-                for (_hir_id, node) in self.tcx.hir().parent_iter(item.def_id.into()) {
+                for (_hir_id, node) in self.tcx.hir().parent_iter(item.owner_id.into()) {
                     match node {
                         hir::Node::Item(parent_item) => {
                             let resolved_lifetimes: &ResolveLifetimes = self.tcx.resolve_lifetimes(
-                                item_for(self.tcx, parent_item.def_id.def_id).def_id.def_id,
+                                item_for(self.tcx, parent_item.owner_id.def_id).owner_id.def_id,
                             );
                             // We need to add *all* deps, since opaque tys may want them from *us*
                             for (&owner, defs) in resolved_lifetimes.defs.iter() {
