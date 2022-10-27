@@ -466,7 +466,10 @@ macro_rules! make_value_visitor {
                         );
                         // ... that contains a `NonNull`... (gladly, only a single field here)
                         assert_eq!(nonnull_ptr.layout().fields.count(), 1);
-                        let raw_ptr = nonnull_ptr.project_field(self.ecx(), 0)?; // the actual raw ptr
+                        let ranged = nonnull_ptr.project_field(self.ecx(), 0)?; // the Ranged struct
+                        // ... which then contains a `Ranged<*const T>` ...
+                        assert_eq!(ranged.layout().fields.count(), 1);
+                        let raw_ptr = ranged.project_field(self.ecx(), 0)?; // the actual raw ptr
                         // ... whose only field finally is a raw ptr we can dereference.
                         self.visit_box(&raw_ptr)?;
 

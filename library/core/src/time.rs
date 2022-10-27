@@ -21,6 +21,7 @@
 
 use crate::fmt;
 use crate::iter::Sum;
+use crate::num::Ranged;
 use crate::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
@@ -28,20 +29,6 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
 const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(0)]
-#[rustc_layout_scalar_valid_range_end(999_999_999)]
-struct Nanoseconds(u32);
-
-impl Default for Nanoseconds {
-    #[inline]
-    fn default() -> Self {
-        // SAFETY: 0 is within the valid range
-        unsafe { Nanoseconds(0) }
-    }
-}
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
@@ -81,11 +68,18 @@ impl Default for Nanoseconds {
 /// compatibility, you may wish to format `Duration` objects yourself or use a
 /// crate to do so.
 #[stable(feature = "duration", since = "1.3.0")]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Duration")]
 pub struct Duration {
     secs: u64,
-    nanos: Nanoseconds, // Always 0 <= nanos < NANOS_PER_SEC
+    nanos: Ranged<u32, { 0..=(NANOS_PER_SEC as u128 - 1) }>,
+}
+
+#[stable(feature = "duration", since = "1.3.0")]
+impl Default for Duration {
+    fn default() -> Self {
+        Self { secs: 0, nanos: Ranged::new(0).unwrap() }
+    }
 }
 
 impl Duration {
@@ -196,6 +190,7 @@ impl Duration {
     #[inline]
     #[must_use]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
+    #[rustc_allow_const_fn_unstable(ranged_int)]
     pub const fn new(secs: u64, nanos: u32) -> Duration {
         let secs = match secs.checked_add((nanos / NANOS_PER_SEC) as u64) {
             Some(secs) => secs,
@@ -203,7 +198,7 @@ impl Duration {
         };
         let nanos = nanos % NANOS_PER_SEC;
         // SAFETY: nanos % NANOS_PER_SEC < NANOS_PER_SEC, therefore nanos is within the valid range
-        Duration { secs, nanos: unsafe { Nanoseconds(nanos) } }
+        Duration { secs, nanos: unsafe { Ranged::new_unchecked(nanos) } }
     }
 
     /// Creates a new `Duration` from the specified number of whole seconds.
@@ -307,7 +302,7 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_zero", since = "1.53.0")]
     #[inline]
     pub const fn is_zero(&self) -> bool {
-        self.secs == 0 && self.nanos.0 == 0
+        self.secs == 0 && self.subsec_nanos() == 0
     }
 
     /// Returns the number of _whole_ seconds contained by this `Duration`.
@@ -358,7 +353,7 @@ impl Duration {
     #[must_use]
     #[inline]
     pub const fn subsec_millis(&self) -> u32 {
-        self.nanos.0 / NANOS_PER_MILLI
+        self.subsec_nanos() / NANOS_PER_MILLI
     }
 
     /// Returns the fractional part of this `Duration`, in whole microseconds.
@@ -381,7 +376,7 @@ impl Duration {
     #[must_use]
     #[inline]
     pub const fn subsec_micros(&self) -> u32 {
-        self.nanos.0 / NANOS_PER_MICRO
+        self.subsec_nanos() / NANOS_PER_MICRO
     }
 
     /// Returns the fractional part of this `Duration`, in nanoseconds.
@@ -401,10 +396,11 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
+    #[rustc_allow_const_fn_unstable(ranged_int)]
     #[must_use]
     #[inline]
     pub const fn subsec_nanos(&self) -> u32 {
-        self.nanos.0
+        self.nanos.get()
     }
 
     /// Returns the total number of whole milliseconds contained by this `Duration`.
@@ -422,7 +418,7 @@ impl Duration {
     #[must_use]
     #[inline]
     pub const fn as_millis(&self) -> u128 {
-        self.secs as u128 * MILLIS_PER_SEC as u128 + (self.nanos.0 / NANOS_PER_MILLI) as u128
+        self.secs as u128 * MILLIS_PER_SEC as u128 + (self.subsec_nanos() / NANOS_PER_MILLI) as u128
     }
 
     /// Returns the total number of whole microseconds contained by this `Duration`.
@@ -440,7 +436,7 @@ impl Duration {
     #[must_use]
     #[inline]
     pub const fn as_micros(&self) -> u128 {
-        self.secs as u128 * MICROS_PER_SEC as u128 + (self.nanos.0 / NANOS_PER_MICRO) as u128
+        self.secs as u128 * MICROS_PER_SEC as u128 + (self.subsec_nanos() / NANOS_PER_MICRO) as u128
     }
 
     /// Returns the total number of nanoseconds contained by this `Duration`.
@@ -458,7 +454,7 @@ impl Duration {
     #[must_use]
     #[inline]
     pub const fn as_nanos(&self) -> u128 {
-        self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos.0 as u128
+        self.secs as u128 * NANOS_PER_SEC as u128 + self.subsec_nanos() as u128
     }
 
     /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
@@ -481,7 +477,7 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn checked_add(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_add(rhs.secs) {
-            let mut nanos = self.nanos.0 + rhs.nanos.0;
+            let mut nanos = self.subsec_nanos() + rhs.subsec_nanos();
             if nanos >= NANOS_PER_SEC {
                 nanos -= NANOS_PER_SEC;
                 if let Some(new_secs) = secs.checked_add(1) {
@@ -541,11 +537,11 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn checked_sub(self, rhs: Duration) -> Option<Duration> {
         if let Some(mut secs) = self.secs.checked_sub(rhs.secs) {
-            let nanos = if self.nanos.0 >= rhs.nanos.0 {
-                self.nanos.0 - rhs.nanos.0
+            let nanos = if self.subsec_nanos() >= rhs.subsec_nanos() {
+                self.subsec_nanos() - rhs.subsec_nanos()
             } else if let Some(sub_secs) = secs.checked_sub(1) {
                 secs = sub_secs;
-                self.nanos.0 + NANOS_PER_SEC - rhs.nanos.0
+                self.subsec_nanos() + NANOS_PER_SEC - rhs.subsec_nanos()
             } else {
                 return None;
             };
@@ -599,7 +595,7 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn checked_mul(self, rhs: u32) -> Option<Duration> {
         // Multiply nanoseconds as u64, because it cannot overflow that way.
-        let total_nanos = self.nanos.0 as u64 * rhs as u64;
+        let total_nanos = self.subsec_nanos() as u64 * rhs as u64;
         let extra_secs = total_nanos / (NANOS_PER_SEC as u64);
         let nanos = (total_nanos % (NANOS_PER_SEC as u64)) as u32;
         if let Some(s) = self.secs.checked_mul(rhs as u64) {
@@ -659,7 +655,7 @@ impl Duration {
             let secs = self.secs / (rhs as u64);
             let carry = self.secs - secs * (rhs as u64);
             let extra_nanos = carry * (NANOS_PER_SEC as u64) / (rhs as u64);
-            let nanos = self.nanos.0 / rhs + (extra_nanos as u32);
+            let nanos = self.subsec_nanos() / rhs + (extra_nanos as u32);
             debug_assert!(nanos < NANOS_PER_SEC);
             Some(Duration::new(secs, nanos))
         } else {
@@ -683,7 +679,7 @@ impl Duration {
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn as_secs_f64(&self) -> f64 {
-        (self.secs as f64) + (self.nanos.0 as f64) / (NANOS_PER_SEC as f64)
+        (self.secs as f64) + (self.subsec_nanos() as f64) / (NANOS_PER_SEC as f64)
     }
 
     /// Returns the number of seconds contained by this `Duration` as `f32`.
@@ -702,7 +698,7 @@ impl Duration {
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     pub const fn as_secs_f32(&self) -> f32 {
-        (self.secs as f32) + (self.nanos.0 as f32) / (NANOS_PER_SEC as f32)
+        (self.secs as f32) + (self.subsec_nanos() as f32) / (NANOS_PER_SEC as f32)
     }
 
     /// Creates a new `Duration` from the specified number of seconds represented
@@ -993,13 +989,13 @@ macro_rules! sum_durations {
         for entry in $iter {
             total_secs =
                 total_secs.checked_add(entry.secs).expect("overflow in iter::sum over durations");
-            total_nanos = match total_nanos.checked_add(entry.nanos.0 as u64) {
+            total_nanos = match total_nanos.checked_add(entry.nanos.get() as u64) {
                 Some(n) => n,
                 None => {
                     total_secs = total_secs
                         .checked_add(total_nanos / NANOS_PER_SEC as u64)
                         .expect("overflow in iter::sum over durations");
-                    (total_nanos % NANOS_PER_SEC as u64) + entry.nanos.0 as u64
+                    (total_nanos % NANOS_PER_SEC as u64) + entry.nanos.get() as u64
                 }
             };
         }
@@ -1191,27 +1187,27 @@ impl fmt::Debug for Duration {
         let prefix = if f.sign_plus() { "+" } else { "" };
 
         if self.secs > 0 {
-            fmt_decimal(f, self.secs, self.nanos.0, NANOS_PER_SEC / 10, prefix, "s")
-        } else if self.nanos.0 >= NANOS_PER_MILLI {
+            fmt_decimal(f, self.secs, self.subsec_nanos(), NANOS_PER_SEC / 10, prefix, "s")
+        } else if self.subsec_nanos() >= NANOS_PER_MILLI {
             fmt_decimal(
                 f,
-                (self.nanos.0 / NANOS_PER_MILLI) as u64,
-                self.nanos.0 % NANOS_PER_MILLI,
+                (self.subsec_nanos() / NANOS_PER_MILLI) as u64,
+                self.subsec_nanos() % NANOS_PER_MILLI,
                 NANOS_PER_MILLI / 10,
                 prefix,
                 "ms",
             )
-        } else if self.nanos.0 >= NANOS_PER_MICRO {
+        } else if self.subsec_nanos() >= NANOS_PER_MICRO {
             fmt_decimal(
                 f,
-                (self.nanos.0 / NANOS_PER_MICRO) as u64,
-                self.nanos.0 % NANOS_PER_MICRO,
+                (self.subsec_nanos() / NANOS_PER_MICRO) as u64,
+                self.subsec_nanos() % NANOS_PER_MICRO,
                 NANOS_PER_MICRO / 10,
                 prefix,
                 "µs",
             )
         } else {
-            fmt_decimal(f, self.nanos.0 as u64, 0, 1, prefix, "ns")
+            fmt_decimal(f, self.subsec_nanos() as u64, 0, 1, prefix, "ns")
         }
     }
 }

@@ -12,6 +12,13 @@ fn creation() {
 }
 
 #[test]
+fn niche() {
+    assert_eq!(std::mem::size_of::<Duration>(), 16);
+    #[cfg(not(bootstrap))]
+    assert_eq!(std::mem::size_of::<Option<Duration>>(), 16);
+}
+
+#[test]
 #[should_panic]
 fn new_overflow() {
     let _ = Duration::new(u64::MAX, 1_000_000_000);

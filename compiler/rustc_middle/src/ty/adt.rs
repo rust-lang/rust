@@ -51,6 +51,8 @@ bitflags! {
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
         /// Indicates whether the type is `UnsafeCell`.
         const IS_UNSAFE_CELL              = 1 << 9;
+        /// Indicates whether the type is `Ranged`.
+        const IS_RANGED              = 1 << 10;
     }
 }
 
@@ -249,6 +251,9 @@ impl AdtDefData {
         if Some(did) == tcx.lang_items().unsafe_cell_type() {
             flags |= AdtFlags::IS_UNSAFE_CELL;
         }
+        if Some(did) == tcx.lang_items().ranged_type() {
+            flags |= AdtFlags::IS_RANGED;
+        }
 
         AdtDefData { did, variants, flags, repr }
     }
@@ -339,6 +344,12 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_unsafe_cell(self) -> bool {
         self.flags().contains(AdtFlags::IS_UNSAFE_CELL)
+    }
+
+    /// Returns `true` if this is `Ranged<T, RANGE>`.
+    #[inline]
+    pub fn is_ranged(self) -> bool {
+        self.flags().contains(AdtFlags::IS_RANGED)
     }
 
     /// Returns `true` if this is `ManuallyDrop<T>`.

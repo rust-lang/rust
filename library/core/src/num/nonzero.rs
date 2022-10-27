@@ -5,6 +5,7 @@ use crate::ops::{BitOr, BitOrAssign, Div, Rem};
 use crate::str::FromStr;
 
 use super::from_str_radix;
+use super::Ranged;
 use super::{IntErrorKind, ParseIntError};
 use crate::intrinsics;
 
@@ -23,7 +24,7 @@ macro_rules! impl_nonzero_fmt {
 }
 
 macro_rules! nonzero_integers {
-    ( $( #[$stability: meta] #[$const_new_unchecked_stability: meta] $Ty: ident($Int: ty); )+ ) => {
+    ( $( #[$stability: meta] #[$const_new_unchecked_stability: meta] $Ty: ident($Int:ty, $UnsignedInt:ty); )+ ) => {
         $(
             /// An integer that is known not to equal zero.
             ///
@@ -37,10 +38,10 @@ macro_rules! nonzero_integers {
             #[$stability]
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
             #[repr(transparent)]
-            #[rustc_layout_scalar_valid_range_start(1)]
+            #[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_start(1))]
             #[rustc_nonnull_optimization_guaranteed]
             #[rustc_diagnostic_item = stringify!($Ty)]
-            pub struct $Ty($Int);
+            pub struct $Ty(Ranged<$Int, {1..=(<$Int>::wrapping_sub(0, 1) as $UnsignedInt as u128)}>);
 
             impl $Ty {
                 /// Creates a non-zero without checking whether the value is non-zero.
@@ -51,6 +52,7 @@ macro_rules! nonzero_integers {
                 /// The value must not be zero.
                 #[$stability]
                 #[$const_new_unchecked_stability]
+                #[rustc_allow_const_fn_unstable(ranged_int)]
                 #[must_use]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
@@ -60,19 +62,20 @@ macro_rules! nonzero_integers {
                             concat!(stringify!($Ty), "::new_unchecked requires a non-zero argument"),
                             (n: $Int) => n != 0
                         );
-                        Self(n)
+                        Self(Ranged::new_unchecked(n))
                     }
                 }
 
                 /// Creates a non-zero if the given value is not zero.
                 #[$stability]
                 #[rustc_const_stable(feature = "const_nonzero_int_methods", since = "1.47.0")]
+                #[rustc_allow_const_fn_unstable(ranged_int)]
                 #[must_use]
                 #[inline]
                 pub const fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
                         // SAFETY: we just checked that there's no `0`
-                        Some(unsafe { Self(n) })
+                        Some(unsafe { Self(Ranged::new_unchecked(n)) })
                     } else {
                         None
                     }
@@ -82,8 +85,9 @@ macro_rules! nonzero_integers {
                 #[$stability]
                 #[inline]
                 #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
+                #[rustc_allow_const_fn_unstable(ranged_int)]
                 pub const fn get(self) -> $Int {
-                    self.0
+                    self.0.get()
                 }
 
             }
@@ -94,7 +98,7 @@ macro_rules! nonzero_integers {
                 #[doc = concat!("Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`")]
                 #[inline]
                 fn from(nonzero: $Ty) -> Self {
-                    nonzero.0
+                    nonzero.0.get()
                 }
             }
 
@@ -162,18 +166,18 @@ macro_rules! nonzero_integers {
 }
 
 nonzero_integers! {
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU8(u8);
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU16(u16);
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU32(u32);
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU64(u64);
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU128(u128);
-    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroUsize(usize);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI8(i8);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI16(i16);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI32(i32);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI64(i64);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI128(i128);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU8(u8, u8);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU16(u16, u16);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU32(u32, u32);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU64(u64, u64);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU128(u128, u128);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroUsize(usize, usize);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI8(i8, u8);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI16(i16, u16);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI32(i32, u32);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI64(i64, u64);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI128(i128, u128);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize, usize);
 }
 
 macro_rules! from_str_radix_nzint_impl {
@@ -213,12 +217,13 @@ macro_rules! nonzero_leading_trailing_zeros {
                 /// ```
                 #[stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
                 #[rustc_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
+                #[rustc_allow_const_fn_unstable(ranged_int)]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
                 pub const fn leading_zeros(self) -> u32 {
                     // SAFETY: since `self` cannot be zero, it is safe to call `ctlz_nonzero`.
-                    unsafe { intrinsics::ctlz_nonzero(self.0 as $Uint) as u32 }
+                    unsafe { intrinsics::ctlz_nonzero(self.0.get() as $Uint) as u32 }
                 }
 
                 /// Returns the number of trailing zeros in the binary representation
@@ -237,12 +242,13 @@ macro_rules! nonzero_leading_trailing_zeros {
                 /// ```
                 #[stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
                 #[rustc_const_stable(feature = "nonzero_leading_trailing_zeros", since = "1.53.0")]
+                #[rustc_allow_const_fn_unstable(ranged_int)]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
                 pub const fn trailing_zeros(self) -> u32 {
                     // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
-                    unsafe { intrinsics::cttz_nonzero(self.0 as $Uint) as u32 }
+                    unsafe { intrinsics::cttz_nonzero(self.0.get() as $Uint) as u32 }
                 }
 
             }
@@ -497,7 +503,7 @@ macro_rules! nonzero_unsigned_operations {
                               without modifying the original"]
                 #[inline]
                 pub const fn ilog10(self) -> u32 {
-                    super::int_log10::$Int(self.0)
+                    super::int_log10::$Int(self.0.get())
                 }
             }
         )+

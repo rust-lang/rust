@@ -808,7 +808,7 @@ impl UniverseIndex {
     /// name the region `'a`, but that region was not nameable from
     /// `U` because it was not in scope there.
     pub fn next_universe(self) -> UniverseIndex {
-        UniverseIndex::from_u32(self.private.checked_add(1).unwrap())
+        UniverseIndex::from_u32(self.as_u32().checked_add(1).unwrap())
     }
 
     /// Returns `true` if `self` can name a name from `other` -- in other words,

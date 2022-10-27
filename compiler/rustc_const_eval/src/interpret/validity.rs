@@ -761,7 +761,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
         // *After* all of this, check the ABI.  We need to check the ABI to handle
         // types like `NonNull` where the `Scalar` info is more restrictive than what
-        // the fields say (`rustc_layout_scalar_valid_range_start`).
+        // the fields say (`Ranged<T, ...>`).
         // But in most cases, this will just propagate what the fields say,
         // and then we want the error to point at the field -- so, first recurse,
         // then check ABI.
@@ -783,6 +783,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             Abi::ScalarPair(a_layout, b_layout) => {
+                // FIXME: range restrictions work on the first element of a pair.
                 // There is no `rustc_layout_scalar_valid_range_start` for pairs, so
                 // we would validate these things as we descend into the fields,
                 // but that can miss bugs in layout computation. Layout computation

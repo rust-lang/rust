@@ -138,7 +138,7 @@ impl Parse for Newtype {
                 }
                 impl<E: ::rustc_serialize::Encoder> ::rustc_serialize::Encodable<E> for #name {
                     fn encode(&self, e: &mut E) {
-                        e.emit_u32(self.private);
+                        e.emit_u32(self.as_u32());
                     }
                 }
             }
@@ -196,10 +196,10 @@ impl Parse for Newtype {
         Ok(Self(quote! {
             #(#attrs)*
             #[derive(Clone, Copy, PartialEq, Eq, Hash, #(#derive_paths),*)]
-            #[rustc_layout_scalar_valid_range_end(#max)]
+            #[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_end(#max))]
             #[rustc_pass_by_value]
             #vis struct #name {
-                private: u32,
+                private: std::num::Ranged<u32, {0..=#max}>,
             }
 
             #(#consts)*
@@ -249,7 +249,7 @@ impl Parse for Newtype {
                 /// Prefer using `from_u32`.
                 #[inline]
                 #vis const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                    Self { private: value }
+                    Self { private: std::num::Ranged::new_unchecked(value) }
                 }
 
                 /// Extracts the value of this index as a `usize`.
@@ -261,7 +261,7 @@ impl Parse for Newtype {
                 /// Extracts the value of this index as a `u32`.
                 #[inline]
                 #vis const fn as_u32(self) -> u32 {
-                    self.private
+                    self.private.get()
                 }
 
                 /// Extracts the value of this index as a `usize`.

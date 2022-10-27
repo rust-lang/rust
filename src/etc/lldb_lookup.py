@@ -58,6 +58,9 @@ def summary_lookup(valobj, dict):
     if rust_type == RustType.STD_NONZERO_NUMBER:
         return StdNonZeroNumberSummaryProvider(valobj, dict)
 
+    if rust_type == RustType.STD_RANGED_NUMBER:
+        return StdRangedNumberSummaryProvider(valobj, dict)
+
     return ""
 
 

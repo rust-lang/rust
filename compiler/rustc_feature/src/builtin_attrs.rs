@@ -660,16 +660,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(
-        rustc_layout_scalar_valid_range_start, Normal, template!(List: "value"), ErrorFollowing,
-        "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
-        niche optimizations in libcore and libstd and will never be stable",
-    ),
-    rustc_attr!(
-        rustc_layout_scalar_valid_range_end, Normal, template!(List: "value"), ErrorFollowing,
-        "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
-        niche optimizations in libcore and libstd and will never be stable",
-    ),
-    rustc_attr!(
         rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
         "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable \
         niche optimizations in libcore and libstd and will never be stable",

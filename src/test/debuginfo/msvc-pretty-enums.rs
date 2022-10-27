@@ -137,7 +137,7 @@
 #![feature(repr128)]
 #![feature(arbitrary_enum_discriminant)]
 
-use std::num::{NonZeroI128, NonZeroU32};
+use std::num::{NonZeroI128, NonZeroU32, Ranged};
 
 pub enum CStyleEnum {
     Low = 2,
@@ -173,14 +173,9 @@ enum NicheLayoutWithFields3 {
     F,
 }
 
-#[rustc_layout_scalar_valid_range_start(340282366920938463463374607431768211454)]
-#[rustc_layout_scalar_valid_range_end(1)]
-#[repr(transparent)]
-struct Wrapping128(u128);
-
 // #[rustc_layout(debug)]
 enum Wrapping128Niche {
-    X(Wrapping128),
+    X(Ranged<u128, {340282366920938463463374607431768211454..=1}>),
     Y,
     Z,
 }
@@ -214,7 +209,7 @@ fn main() {
     let niche128_none: Option<NonZeroI128> = None;
 
     let wrapping_niche128_untagged =
-        unsafe { Wrapping128Niche::X(Wrapping128(340282366920938463463374607431768211454)) };
+        Wrapping128Niche::X(Ranged::new(340282366920938463463374607431768211454).unwrap());
     let wrapping_niche128_none1 = Wrapping128Niche::Y;
     let wrapping_niche128_none2 = Wrapping128Niche::Z;
 

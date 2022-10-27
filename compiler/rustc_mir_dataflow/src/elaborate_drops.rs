@@ -415,11 +415,14 @@ where
         let unique_ty = adt.non_enum_variant().fields[0].ty(self.tcx(), substs);
         let nonnull_ty =
             unique_ty.ty_adt_def().unwrap().non_enum_variant().fields[0].ty(self.tcx(), substs);
+        let ranged_ty =
+            nonnull_ty.ty_adt_def().unwrap().non_enum_variant().fields[0].ty(self.tcx(), substs);
         let ptr_ty = self.tcx().mk_imm_ptr(substs[0].expect_ty());
 
         let unique_place = self.tcx().mk_place_field(self.place, Field::new(0), unique_ty);
         let nonnull_place = self.tcx().mk_place_field(unique_place, Field::new(0), nonnull_ty);
-        let ptr_place = self.tcx().mk_place_field(nonnull_place, Field::new(0), ptr_ty);
+        let ranged_place = self.tcx().mk_place_field(nonnull_place, Field::new(0), ranged_ty);
+        let ptr_place = self.tcx().mk_place_field(ranged_place, Field::new(0), ptr_ty);
         let interior = self.tcx().mk_place_deref(ptr_place);
 
         let interior_path = self.elaborator.deref_subpath(self.path);

@@ -77,7 +77,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter;
 use std::mem;
-use std::ops::{Bound, Deref};
+use std::ops::Deref;
 use std::sync::Arc;
 
 use super::{ImplPolarity, ResolverOutputs, RvalueScopes};
@@ -1188,36 +1188,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
         let alloc = self.intern_const_alloc(alloc);
         self.create_memory_alloc(alloc)
-    }
-
-    /// Returns a range of the start/end indices specified with the
-    /// `rustc_layout_scalar_valid_range` attribute.
-    // FIXME(eddyb) this is an awkward spot for this method, maybe move it?
-    pub fn layout_scalar_valid_range(self, def_id: DefId) -> (Bound<u128>, Bound<u128>) {
-        let get = |name| {
-            let Some(attr) = self.get_attr(def_id, name) else {
-                return Bound::Unbounded;
-            };
-            debug!("layout_scalar_valid_range: attr={:?}", attr);
-            if let Some(
-                &[
-                    ast::NestedMetaItem::Literal(ast::Lit {
-                        kind: ast::LitKind::Int(a, _), ..
-                    }),
-                ],
-            ) = attr.meta_item_list().as_deref()
-            {
-                Bound::Included(a)
-            } else {
-                self.sess
-                    .delay_span_bug(attr.span, "invalid rustc_layout_scalar_valid_range attribute");
-                Bound::Unbounded
-            }
-        };
-        (
-            get(sym::rustc_layout_scalar_valid_range_start),
-            get(sym::rustc_layout_scalar_valid_range_end),
-        )
     }
 
     pub fn lift<T: Lift<'tcx>>(self, value: T) -> Option<T::Lifted> {

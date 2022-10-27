@@ -16,7 +16,6 @@ use rustc_target::abi::*;
 use std::cmp::{self, Ordering};
 use std::iter;
 use std::num::NonZeroUsize;
-use std::ops::Bound;
 
 use rand::{seq::SliceRandom, SeedableRng};
 use rand_xoshiro::Xoshiro128StarStar;
@@ -602,14 +601,14 @@ fn layout_of_uncached<'tcx>(
             // Compute the ABI of the element type:
             let e_ly = cx.layout_of(e_ty)?;
             let Abi::Scalar(e_abi) = e_ly.abi else {
-                    // This error isn't caught in typeck, e.g., if
-                    // the element type of the vector is generic.
-                    tcx.sess.fatal(&format!(
-                        "monomorphising SIMD type `{}` with a non-primitive-scalar \
-                        (integer/float/pointer) element type `{}`",
-                        ty, e_ty
-                    ))
-                };
+                // This error isn't caught in typeck, e.g., if
+                // the element type of the vector is generic.
+                tcx.sess.fatal(&format!(
+                    "monomorphising SIMD type `{}` with a non-primitive-scalar \
+                    (integer/float/pointer) element type `{}`",
+                    ty, e_ty
+                ))
+            };
 
             // Compute the size and alignment of the vector:
             let size = e_ly.size.checked_mul(e_len, dl).ok_or(LayoutError::SizeOverflow(ty))?;
@@ -784,54 +783,54 @@ fn layout_of_uncached<'tcx>(
                     return Ok(tcx.intern_layout(st));
                 }
 
-                let (start, end) = cx.tcx.layout_scalar_valid_range(def.did());
-                match st.abi {
-                    Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
-                        // the asserts ensure that we are not using the
-                        // `#[rustc_layout_scalar_valid_range(n)]`
-                        // attribute to widen the range of anything as that would probably
-                        // result in UB somewhere
-                        // FIXME(eddyb) the asserts are probably not needed,
-                        // as larger validity ranges would result in missed
-                        // optimizations, *not* wrongly assuming the inner
-                        // value is valid. e.g. unions enlarge validity ranges,
-                        // because the values may be uninitialized.
-                        if let Bound::Included(start) = start {
-                            // FIXME(eddyb) this might be incorrect - it doesn't
-                            // account for wrap-around (end < start) ranges.
-                            let valid_range = scalar.valid_range_mut();
-                            assert!(valid_range.start <= start);
-                            valid_range.start = start;
-                        }
-                        if let Bound::Included(end) = end {
-                            // FIXME(eddyb) this might be incorrect - it doesn't
-                            // account for wrap-around (end < start) ranges.
-                            let valid_range = scalar.valid_range_mut();
-                            assert!(valid_range.end >= end);
-                            valid_range.end = end;
-                        }
+                if def.is_ranged() {
+                    match st.abi {
+                        Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
+                            match substs[0].expect_ty().kind() {
+                                ty::Int(_) | ty::Uint(_) | ty::RawPtr(_) => {}
+                                _ => bug!(
+                                    "unsupported type in Ranged lang item generics: {:?}",
+                                    substs[0]
+                                ),
+                            }
+                            let [start, end, exhausted] = substs[1].expect_const().to_valtree().unwrap_branch() else {
+                                bug!("invalid range constant in Ranged lang item: {:?}", substs[1]);
+                            };
+                            let start = start.unwrap_leaf().try_to_u128().unwrap();
+                            let end = end.unwrap_leaf().try_to_u128().unwrap();
+                            let exhausted = exhausted.unwrap_leaf().try_to_bool().unwrap();
+                            assert!(!exhausted);
 
-                        // Update `largest_niche` if we have introduced a larger niche.
-                        let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
-                        if let Some(niche) = niche {
-                            match st.largest_niche {
-                                Some(largest_niche) => {
-                                    // Replace the existing niche even if they're equal,
-                                    // because this one is at a lower offset.
-                                    if largest_niche.available(dl) <= niche.available(dl) {
-                                        st.largest_niche = Some(niche);
+                            let max_value = scalar.size(cx).unsigned_int_max();
+                            assert!(start <= max_value, "{start} > {max_value}");
+                            assert!(end <= max_value, "{end} > {max_value}");
+
+                            let valid_range = scalar.valid_range_mut();
+                            valid_range.start = start;
+                            valid_range.end = end;
+
+                            // Update `largest_niche` if we have introduced a larger niche.
+                            let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
+                            if let Some(niche) = niche {
+                                match st.largest_niche {
+                                    Some(largest_niche) => {
+                                        // Replace the existing niche even if they're equal,
+                                        // because this one is at a lower offset.
+                                        if largest_niche.available(dl) <= niche.available(dl) {
+                                            st.largest_niche = Some(niche);
+                                        }
                                     }
+                                    None => st.largest_niche = Some(niche),
                                 }
-                                None => st.largest_niche = Some(niche),
                             }
                         }
+                        _ => span_bug!(
+                            tcx.def_span(def.did()),
+                            "nonscalar layout for Ranged type {:?}: {:#?}",
+                            def,
+                            st,
+                        ),
                     }
-                    _ => assert!(
-                        start == Bound::Unbounded && end == Bound::Unbounded,
-                        "nonscalar layout for layout_scalar_valid_range type {:?}: {:#?}",
-                        def,
-                        st,
-                    ),
                 }
 
                 return Ok(tcx.intern_layout(st));

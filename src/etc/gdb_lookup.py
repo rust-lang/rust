@@ -92,4 +92,7 @@ def lookup(valobj):
     if rust_type == RustType.STD_NONZERO_NUMBER:
         return StdNonZeroNumberProvider(valobj)
 
+    if rust_type == RustType.STD_RANGED_NUMBER:
+        return StdRangedNumberProvider(valobj)
+
     return None

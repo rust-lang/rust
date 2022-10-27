@@ -6,7 +6,7 @@ LL | const STR_TOO_LONG: &str = unsafe { mem::transmute((&42u8, 999usize)) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾───────allocN────────╼ e7 03 00 00 00 00 00 00 │ ╾──────╼........
+               ╾───────allocN───────╼ e7 03 00 00 00 00 00 00 │ ╾──────╼........
            }
 
 error[E0080]: it is undefined behavior to use this value

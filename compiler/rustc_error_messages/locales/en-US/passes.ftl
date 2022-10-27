@@ -211,13 +211,6 @@ passes_export_name =
     attribute should be applied to a free function, impl method or static
     .label = not a free function, impl method or static
 
-passes_rustc_layout_scalar_valid_range_not_struct =
-    attribute should be applied to a struct
-    .label = not a struct
-
-passes_rustc_layout_scalar_valid_range_arg =
-    expected exactly one integer literal argument
-
 passes_rustc_legacy_const_generics_only =
     #[rustc_legacy_const_generics] functions must only have const generics
     .label = non-const generic parameter

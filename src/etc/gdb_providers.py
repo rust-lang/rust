@@ -14,8 +14,17 @@ def unwrap_unique_or_non_null(unique_or_nonnull):
     # https://github.com/rust-lang/rust/commit/7a0911528058e87d22ea305695f4047572c5e067
     # BACKCOMPAT: rust 1.60
     # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
+
     ptr = unique_or_nonnull["pointer"]
-    return ptr if ptr.type.code == gdb.TYPE_CODE_PTR else ptr[ptr.type.fields()[0]]
+    if ptr.type.code == gdb.TYPE_CODE_PTR:
+        return ptr
+
+    # Grab the Ranged field of NonZero*
+    ptr = ptr[ptr.type.fields()[0]]
+    if ptr.type.code == gdb.TYPE_CODE_PTR:
+        return ptr
+
+    return ptr[ptr.type.fields()[0]]
 
 
 class EnumProvider:
@@ -242,6 +251,17 @@ class StdNonZeroNumberProvider:
         return self.value
 
 
+class StdRangedNumberProvider:
+    def __init__(self, valobj):
+        fields = valobj.type.fields()
+        assert len(fields) == 1
+        field = list(fields)[0]
+        self.value = str(valobj[field.name])
+
+    def to_string(self):
+        return self.value
+
+
 # Yields children (in a provider's sense of the word) for a BTreeMap.
 def children_of_btree_map(map):
     # Yields each key/value pair in the node and in any child nodes.
@@ -388,6 +408,7 @@ class StdHashMapProvider:
         table_inner = table["table"]
         capacity = int(table_inner["bucket_mask"]) + 1
         ctrl = table_inner["ctrl"]["pointer"]
+        ctrl = ctrl[ctrl.type.fields()[0]]
 
         self.size = int(table_inner["items"])
         self.pair_type = table.type.template_argument(0).strip_typedefs()

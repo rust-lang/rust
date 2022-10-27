@@ -6,7 +6,7 @@ LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc3────────╼                         │ ╾──────╼
+               ╾───────alloc7────────╼                         │ ╾──────╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -17,7 +17,7 @@ LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc7────────╼                         │ ╾──────╼
+               ╾───────alloc11───────╼                         │ ╾──────╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -141,11 +141,11 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref-ptr.rs:59:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered alloc41, but expected a function pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered alloc45, but expected a function pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc41───────╼                         │ ╾──────╼
+               ╾───────alloc45───────╼                         │ ╾──────╼
            }
 
 error: aborting due to 16 previous errors

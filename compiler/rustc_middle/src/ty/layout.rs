@@ -16,7 +16,6 @@ use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Targ
 use std::cmp::{self};
 use std::fmt;
 use std::num::NonZeroUsize;
-use std::ops::Bound;
 
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
@@ -331,13 +330,12 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
                         return Ok(SizeSkeleton::Pointer {
                             non_zero: non_zero
-                                || match tcx.layout_scalar_valid_range(def.did()) {
-                                    (Bound::Included(start), Bound::Unbounded) => start > 0,
-                                    (Bound::Included(start), Bound::Included(end)) => {
-                                        0 < start && start < end
-                                    }
-                                    _ => false,
-                                },
+                                || def.is_ranged()
+                                    && substs[1].expect_const().to_valtree().unwrap_branch()[0]
+                                        .unwrap_leaf()
+                                        .try_to_u128()
+                                        .unwrap()
+                                        > 0,
                             tail,
                         });
                     } else {

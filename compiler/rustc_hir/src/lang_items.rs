@@ -193,6 +193,8 @@ language_item_table! {
     Index,                   sym::index,               index_trait,                Target::Trait,          GenericRequirement::Exact(1);
     IndexMut,                sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
+    Ranged,                  sym::ranged     ,         ranged_type,                Target::Struct,         GenericRequirement::None;
+
     UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
     VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;
 

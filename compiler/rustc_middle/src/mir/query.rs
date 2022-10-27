@@ -30,14 +30,11 @@ pub enum UnsafetyViolationKind {
 pub enum UnsafetyViolationDetails {
     CallToUnsafeFunction,
     UseOfInlineAssembly,
-    InitializingTypeWith,
     CastOfPointerToInt,
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
     AccessToUnionField,
-    MutationOfLayoutConstrainedField,
-    BorrowOfLayoutConstrainedField,
     CallToFunctionWith,
 }
 
@@ -53,11 +50,6 @@ impl UnsafetyViolationDetails {
             UseOfInlineAssembly => (
                 "use of inline assembly",
                 "inline assembly is entirely unchecked and can cause undefined behavior",
-            ),
-            InitializingTypeWith => (
-                "initializing type with `rustc_layout_scalar_valid_range` attr",
-                "initializing a layout restricted type's field with a value outside the valid \
-                 range is undefined behavior",
             ),
             CastOfPointerToInt => {
                 ("cast of pointer to int", "casting pointers to integers in constants")
@@ -81,15 +73,6 @@ impl UnsafetyViolationDetails {
                 "access to union field",
                 "the field may not be properly initialized: using uninitialized data will cause \
                  undefined behavior",
-            ),
-            MutationOfLayoutConstrainedField => (
-                "mutation of layout constrained field",
-                "mutating layout constrained fields cannot statically be checked for valid values",
-            ),
-            BorrowOfLayoutConstrainedField => (
-                "borrow of layout constrained field with interior mutability",
-                "references to fields of layout constrained fields lose the constraints. Coupled \
-                 with interior mutability, the field can be changed to invalid values",
             ),
             CallToFunctionWith => (
                 "call to function with `#[target_feature]`",

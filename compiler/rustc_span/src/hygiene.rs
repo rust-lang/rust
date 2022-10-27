@@ -76,7 +76,7 @@ pub struct ExpnId {
 impl fmt::Debug for ExpnId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Generate crate_::{{expn_}}.
-        write!(f, "{:?}::{{{{expn{}}}}}", self.krate, self.local_id.private)
+        write!(f, "{:?}::{{{{expn{}}}}}", self.krate, self.local_id.as_u32())
     }
 }
 

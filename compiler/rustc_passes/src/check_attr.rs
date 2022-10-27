@@ -8,7 +8,7 @@ use crate::errors::{
     self, AttrApplication, DebugVisualizerUnreadable, InvalidAttrAtCrateLevel, ObjectLifetimeErr,
     OnlyHasEffectOn, TransparentIncompatible, UnrecognizedReprHint,
 };
-use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::{ast, AttrStyle, Attribute, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{fluent, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
@@ -103,10 +103,6 @@ impl CheckAttrVisitor<'_> {
                 ),
                 sym::no_link => self.check_no_link(hir_id, &attr, span, target),
                 sym::export_name => self.check_export_name(hir_id, &attr, span, target),
-                sym::rustc_layout_scalar_valid_range_start
-                | sym::rustc_layout_scalar_valid_range_end => {
-                    self.check_rustc_layout_scalar_valid_range(&attr, span, target)
-                }
                 sym::allow_internal_unstable => {
                     self.check_allow_internal_unstable(hir_id, &attr, span, target, &attrs)
                 }
@@ -1344,32 +1340,6 @@ impl CheckAttrVisitor<'_> {
                 self.tcx.sess.emit_err(errors::ExportName { attr_span: attr.span, span });
                 false
             }
-        }
-    }
-
-    fn check_rustc_layout_scalar_valid_range(
-        &self,
-        attr: &Attribute,
-        span: Span,
-        target: Target,
-    ) -> bool {
-        if target != Target::Struct {
-            self.tcx.sess.emit_err(errors::RustcLayoutScalarValidRangeNotStruct {
-                attr_span: attr.span,
-                span,
-            });
-            return false;
-        }
-
-        let Some(list) = attr.meta_item_list() else {
-            return false;
-        };
-
-        if matches!(&list[..], &[NestedMetaItem::Literal(Lit { kind: LitKind::Int(..), .. })]) {
-            true
-        } else {
-            self.tcx.sess.emit_err(errors::RustcLayoutScalarValidRangeArg { attr_span: attr.span });
-            false
         }
     }
 

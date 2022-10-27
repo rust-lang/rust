@@ -66,7 +66,13 @@ def unwrap_unique_or_non_null(unique_or_nonnull):
     # BACKCOMPAT: rust 1.60
     # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
     ptr = unique_or_nonnull.GetChildMemberWithName("pointer")
-    return ptr if ptr.TypeIsPointerType() else ptr.GetChildAtIndex(0)
+    if ptr.TypeIsPointerType():
+        return ptr
+    # Grab the Ranged field of NonZero*
+    ptr = ptr.GetChildAtIndex(0)
+    if ptr.TypeIsPointerType():
+        return ptr
+    return ptr.GetChildAtIndex(0)
 
 
 class DefaultSynthteticProvider:
@@ -534,7 +540,7 @@ class StdHashMapSyntheticProvider:
         inner_table = table.GetChildMemberWithName("table")
 
         capacity = inner_table.GetChildMemberWithName("bucket_mask").GetValueAsUnsigned() + 1
-        ctrl = inner_table.GetChildMemberWithName("ctrl").GetChildAtIndex(0)
+        ctrl = inner_table.GetChildMemberWithName("ctrl").GetChildAtIndex(0).GetChildAtIndex(0)
 
         self.size = inner_table.GetChildMemberWithName("items").GetValueAsUnsigned()
         self.pair_type = table.type.template_args[0]
@@ -743,7 +749,11 @@ class StdRefSyntheticProvider:
 
 def StdNonZeroNumberSummaryProvider(valobj, _dict):
     # type: (SBValue, dict) -> str
-    objtype = valobj.GetType()
-    field = objtype.GetFieldAtIndex(0)
-    element = valobj.GetChildMemberWithName(field.name)
+    field = valobj.GetChildAtIndex(0)
+    element = field.GetChildAtIndex(0)
+    return element.GetValue()
+
+def StdRangedNumberSummaryProvider(valobj, _dict):
+    # type: (SBValue, dict) -> str
+    element = field.GetChildAtIndex(0)
     return element.GetValue()

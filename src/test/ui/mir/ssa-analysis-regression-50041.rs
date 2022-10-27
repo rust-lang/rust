@@ -2,10 +2,10 @@
 // compile-flags: -Z mir-opt-level=4
 
 #![crate_type = "lib"]
-#![feature(lang_items)]
+#![feature(lang_items, ranged_int)]
 #![no_std]
 
-struct NonNull<T: ?Sized>(*const T);
+struct NonNull<T: ?Sized>(core::num::Ranged<*const T, { 1..=(usize::MAX as u128) }>);
 
 struct Unique<T: ?Sized>(NonNull<T>);
 
@@ -19,7 +19,7 @@ impl<T: ?Sized> Drop for Box<T> {
 #[lang = "box_free"]
 #[inline(always)]
 unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
-    dealloc(ptr.0.0)
+    dealloc(ptr.0.0.get())
 }
 
 #[inline(never)]

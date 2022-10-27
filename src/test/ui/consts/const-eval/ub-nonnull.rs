@@ -1,10 +1,11 @@
 // stderr-per-bitwidth
-#![feature(rustc_attrs)]
+#![feature(ranged_int)]
 #![allow(invalid_value)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
 use std::ptr::NonNull;
 use std::num::{NonZeroU8, NonZeroUsize};
+use std::num::Ranged;
 
 const NON_NULL: NonNull<u8> = unsafe { mem::transmute(1usize) };
 const NON_NULL_PTR: NonNull<u8> = unsafe { mem::transmute(&1) };
@@ -33,18 +34,12 @@ const UNINIT: NonZeroU8 = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR evaluation of constant value failed
 //~| uninitialized
 
-// Also test other uses of rustc_layout_scalar_valid_range_start
+// Also test other uses of Ranged
 
-#[rustc_layout_scalar_valid_range_start(10)]
-#[rustc_layout_scalar_valid_range_end(30)]
-struct RestrictedRange1(u32);
-const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
+const BAD_RANGE1: Ranged<u32, {10..=30}> = unsafe { Ranged::new_unchecked(42) };
 //~^ ERROR it is undefined behavior to use this value
 
-#[rustc_layout_scalar_valid_range_start(30)]
-#[rustc_layout_scalar_valid_range_end(10)]
-struct RestrictedRange2(u32);
-const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
+const BAD_RANGE2: Ranged<u32, {30..=10}> = unsafe { Ranged::new_unchecked(20) };
 //~^ ERROR it is undefined behavior to use this value
 
 fn main() {}

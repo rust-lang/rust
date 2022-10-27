@@ -32,6 +32,7 @@ class RustType(object):
     STD_REF_MUT = "StdRefMut"
     STD_REF_CELL = "StdRefCell"
     STD_NONZERO_NUMBER = "StdNonZeroNumber"
+    STD_RANGED_NUMBER = "StdRangedNumber"
 
 
 STD_STRING_REGEX = re.compile(r"^(alloc::(\w+::)+)String$")
@@ -51,6 +52,7 @@ STD_REF_REGEX = re.compile(r"^(core::(\w+::)+)Ref<.+>$")
 STD_REF_MUT_REGEX = re.compile(r"^(core::(\w+::)+)RefMut<.+>$")
 STD_REF_CELL_REGEX = re.compile(r"^(core::(\w+::)+)RefCell<.+>$")
 STD_NONZERO_NUMBER_REGEX = re.compile(r"^core::num::([a-z_]+::)*NonZero.+$")
+STD_RANGED_NUMBER_REGEX = re.compile(r"^core::num::([a-z_]+::)*Ranged<.+>$")
 
 TUPLE_ITEM_REGEX = re.compile(r"__\d+$")
 
@@ -75,6 +77,7 @@ STD_TYPE_TO_REGEX = {
     RustType.STD_REF_CELL: STD_REF_CELL_REGEX,
     RustType.STD_CELL: STD_CELL_REGEX,
     RustType.STD_NONZERO_NUMBER: STD_NONZERO_NUMBER_REGEX,
+    RustType.STD_RANGED_NUMBER: STD_RANGED_NUMBER_REGEX,
 }
 
 def is_tuple_fields(fields):

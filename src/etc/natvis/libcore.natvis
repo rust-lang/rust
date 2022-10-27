@@ -40,6 +40,10 @@
       <ExpandedItem>value</ExpandedItem>
     </Expand>
   </Type>
+  
+  <Type Name="core::num::ranged::Ranged">
+    <DisplayString>{__0}</DisplayString>
+  </Type>
 
   <Type Name="core::num::nonzero::NonZeroI8">
     <DisplayString>{__0}</DisplayString>

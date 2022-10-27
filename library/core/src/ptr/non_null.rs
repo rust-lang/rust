@@ -6,6 +6,8 @@ use crate::intrinsics::assert_unsafe_precondition;
 use crate::marker::Unsize;
 use crate::mem::{self, MaybeUninit};
 use crate::num::NonZeroUsize;
+#[cfg(not(bootstrap))]
+use crate::num::Ranged;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
@@ -48,9 +50,12 @@ use crate::slice::{self, SliceIndex};
 /// [`UnsafeCell<T>`]: crate::cell::UnsafeCell
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
+#[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_start(1))]
 #[rustc_nonnull_optimization_guaranteed]
 pub struct NonNull<T: ?Sized> {
+    #[cfg(not(bootstrap))]
+    pointer: Ranged<*const T, { 1..=(usize::MAX as u128) }>,
+    #[cfg(bootstrap)]
     pointer: *const T,
 }
 
@@ -193,12 +198,20 @@ impl<T: ?Sized> NonNull<T> {
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_new_unchecked", since = "1.25.0")]
+    #[rustc_allow_const_fn_unstable(ranged_int)]
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
         unsafe {
             assert_unsafe_precondition!("NonNull::new_unchecked requires that the pointer is non-null", [T: ?Sized](ptr: *mut T) => !ptr.is_null());
-            NonNull { pointer: ptr as _ }
+            #[cfg(not(bootstrap))]
+            {
+                NonNull { pointer: Ranged::new_unchecked(ptr as _) }
+            }
+            #[cfg(bootstrap)]
+            {
+                NonNull { pointer: ptr as _ }
+            }
         }
     }
 
@@ -329,10 +342,18 @@ impl<T: ?Sized> NonNull<T> {
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
+    #[rustc_allow_const_fn_unstable(ranged_int)]
     #[must_use]
     #[inline]
     pub const fn as_ptr(self) -> *mut T {
-        self.pointer as *mut T
+        #[cfg(not(bootstrap))]
+        {
+            self.pointer.get() as *mut T
+        }
+        #[cfg(bootstrap)]
+        {
+            self.pointer as *mut T
+        }
     }
 
     /// Returns a shared reference to the value. If the value may be uninitialized, [`as_uninit_ref`]
@@ -786,8 +807,16 @@ impl<T: ?Sized> const From<&mut T> for NonNull<T> {
     /// This conversion is safe and infallible since references cannot be null.
     #[inline]
     fn from(reference: &mut T) -> Self {
+        #[cfg(not(bootstrap))]
         // SAFETY: A mutable reference cannot be null.
-        unsafe { NonNull { pointer: reference as *mut T } }
+        unsafe {
+            NonNull { pointer: Ranged::new_unchecked(reference as *mut T) }
+        }
+        #[cfg(bootstrap)]
+        // SAFETY: A mutable reference cannot be null.
+        unsafe {
+            NonNull { pointer: reference as *mut T }
+        }
     }
 }
 
@@ -799,8 +828,17 @@ impl<T: ?Sized> const From<&T> for NonNull<T> {
     /// This conversion is safe and infallible since references cannot be null.
     #[inline]
     fn from(reference: &T) -> Self {
+        #[cfg(not(bootstrap))]
         // SAFETY: A reference cannot be null, so the conditions for
         // new_unchecked() are respected.
-        unsafe { NonNull { pointer: reference as *const T } }
+        unsafe {
+            NonNull { pointer: Ranged::new_unchecked(reference as *const T) }
+        }
+        #[cfg(bootstrap)]
+        // SAFETY: A reference cannot be null, so the conditions for
+        // new_unchecked() are respected.
+        unsafe {
+            NonNull { pointer: reference as *const T }
+        }
     }
 }

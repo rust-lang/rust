@@ -14,19 +14,20 @@
 // aligned (while on most it is 8-byte aligned) and so the resulting
 // padding and overall computed sizes can be quite different.
 
+// ignore-tidy-linelength
+// normalize-stdout-test "(print-type-size type: `std::ops::RangeInclusive<u128>`:).*" -> "$1 PLATFORM_DEPENDENT_THINGS"
+// normalize-stdout-test "(print-type-size     end padding:) (7|3) bytes.*" -> "$1 PLATFORM_DEPENDENT_SIZE"
+
 #![feature(start)]
-#![feature(rustc_attrs)]
+#![feature(ranged_int)]
 #![allow(dead_code)]
 
 use std::num::NonZeroU32;
+use std::num::Ranged;
 
 pub enum MyOption<T> { None, Some(T) }
 
-#[rustc_layout_scalar_valid_range_start(0)]
-#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
-pub struct MyNotNegativeOne {
-  _i: i32,
-}
+type MyNotNegativeOne = Ranged<i32, {0..=(-2_i32 as u32 as u128)}>;
 
 impl<T> Default for MyOption<T> {
     fn default() -> Self { MyOption::None }
@@ -89,6 +90,7 @@ fn start(_: isize, _: *const *const u8) -> isize {
     let _f: Enum4<(), (), bool, ()> = Enum4::One(());
     let _g: Enum4<(), (), (), MyOption<u8>> = Enum4::One(());
     let _h: MyOption<MyNotNegativeOne> = Default::default();
+    let _h2: MyOption<Ranged::<u32, {30..=10}>> = Default::default();
 
     // Unions do not currently participate in niche filling.
     let _i: MyOption<Union2<NonZeroU32, u32>> = Default::default();

@@ -11,8 +11,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 
-use std::ops::Bound;
-
 pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     body_did: LocalDefId,
@@ -112,16 +110,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         match rvalue {
             Rvalue::Aggregate(box ref aggregate, _) => match aggregate {
-                &AggregateKind::Array(..) | &AggregateKind::Tuple => {}
-                &AggregateKind::Adt(adt_did, ..) => {
-                    match self.tcx.layout_scalar_valid_range(adt_did) {
-                        (Bound::Unbounded, Bound::Unbounded) => {}
-                        _ => self.require_unsafe(
-                            UnsafetyViolationKind::General,
-                            UnsafetyViolationDetails::InitializingTypeWith,
-                        ),
-                    }
-                }
+                &AggregateKind::Array(..) | &AggregateKind::Tuple | &AggregateKind::Adt(..) => {}
                 &AggregateKind::Closure(def_id, _) | &AggregateKind::Generator(def_id, _, _) => {
                     let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
                         self.tcx.unsafety_check_result(def_id);
@@ -134,16 +123,6 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-        // On types with `scalar_valid_range`, prevent
-        // * `&mut x.field`
-        // * `x.field = y;`
-        // * `&x.field` if `field`'s type has interior mutability
-        // because either of these would allow modifying the layout constrained field and
-        // insert values that violate the layout constraints.
-        if context.is_mutating_use() || context.is_borrow() {
-            self.check_mut_borrowing_layout_constrained_field(*place, context.is_mutating_use());
-        }
-
         // Some checks below need the extra meta info of the local declaration.
         let decl = &self.body.local_decls[place.local];
 
@@ -285,44 +264,6 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
         new_used_unsafe_blocks.into_iter().for_each(|hir_id| {
             self.used_unsafe_blocks.insert(hir_id);
         });
-    }
-    fn check_mut_borrowing_layout_constrained_field(
-        &mut self,
-        place: Place<'tcx>,
-        is_mut_use: bool,
-    ) {
-        for (place_base, elem) in place.iter_projections().rev() {
-            match elem {
-                // Modifications behind a dereference don't affect the value of
-                // the pointer.
-                ProjectionElem::Deref => return,
-                ProjectionElem::Field(..) => {
-                    let ty = place_base.ty(&self.body.local_decls, self.tcx).ty;
-                    if let ty::Adt(def, _) = ty.kind() {
-                        if self.tcx.layout_scalar_valid_range(def.did())
-                            != (Bound::Unbounded, Bound::Unbounded)
-                        {
-                            let details = if is_mut_use {
-                                UnsafetyViolationDetails::MutationOfLayoutConstrainedField
-
-                            // Check `is_freeze` as late as possible to avoid cycle errors
-                            // with opaque types.
-                            } else if !place
-                                .ty(self.body, self.tcx)
-                                .ty
-                                .is_freeze(self.tcx, self.param_env)
-                            {
-                                UnsafetyViolationDetails::BorrowOfLayoutConstrainedField
-                            } else {
-                                continue;
-                            };
-                            self.require_unsafe(UnsafetyViolationKind::General, details);
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
     }
 
     /// Checks whether calling `func_did` needs an `unsafe` context or not, i.e. whether

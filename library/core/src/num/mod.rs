@@ -45,6 +45,7 @@ mod uint_macros; // import uint_impl!
 mod error;
 mod int_log10;
 mod nonzero;
+mod ranged;
 #[unstable(feature = "saturating_int_impl", issue = "87920")]
 mod saturating;
 mod wrapping;
@@ -57,6 +58,9 @@ pub use wrapping::Wrapping;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
+
+#[unstable(feature = "ranged_int", issue = "none")]
+pub use ranged::Ranged;
 
 #[cfg(not(no_fp_fmt_parse))]
 #[stable(feature = "rust1", since = "1.0.0")]

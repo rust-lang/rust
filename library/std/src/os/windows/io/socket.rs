@@ -8,6 +8,7 @@ use crate::io;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::mem::forget;
+use crate::num::Ranged;
 use crate::sys;
 use crate::sys::c;
 #[cfg(not(target_vendor = "uwp"))]
@@ -28,17 +29,20 @@ use crate::sys::cvt;
 /// socket, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(0)]
+#[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_start(0))]
 // This is -2, in two's complement. -1 is `INVALID_SOCKET`.
-#[cfg_attr(target_pointer_width = "32", rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE))]
 #[cfg_attr(
-    target_pointer_width = "64",
+    all(bootstrap, target_pointer_width = "32"),
+    rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)
+)]
+#[cfg_attr(
+    all(bootstrap, target_pointer_width = "64"),
     rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FF_FF_FF_FF_FE)
 )]
 #[rustc_nonnull_optimization_guaranteed]
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub struct BorrowedSocket<'socket> {
-    socket: RawSocket,
+    socket: Ranged<RawSocket, { 0..=(-2 as isize as usize as u128) }>,
     _phantom: PhantomData<&'socket OwnedSocket>,
 }
 
@@ -51,17 +55,20 @@ pub struct BorrowedSocket<'socket> {
 /// argument or returned as an owned value, and it never has the value
 /// `INVALID_SOCKET`.
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(0)]
+#[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_start(0))]
 // This is -2, in two's complement. -1 is `INVALID_SOCKET`.
-#[cfg_attr(target_pointer_width = "32", rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE))]
 #[cfg_attr(
-    target_pointer_width = "64",
+    all(bootstrap, target_pointer_width = "32"),
+    rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)
+)]
+#[cfg_attr(
+    all(bootstrap, target_pointer_width = "64"),
     rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FF_FF_FF_FF_FE)
 )]
 #[rustc_nonnull_optimization_guaranteed]
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub struct OwnedSocket {
-    socket: RawSocket,
+    socket: Ranged<RawSocket, { 0..=(-2 as isize as usize as u128) }>,
 }
 
 impl BorrowedSocket<'_> {
@@ -74,9 +81,11 @@ impl BorrowedSocket<'_> {
     /// `INVALID_SOCKET`.
     #[inline]
     #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
+    #[rustc_allow_const_fn_unstable(ranged_int)]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(socket: RawSocket) -> Self {
         assert!(socket != c::INVALID_SOCKET as RawSocket);
+        let socket = Ranged::new_unchecked(socket);
         Self { socket, _phantom: PhantomData }
     }
 }
@@ -167,7 +176,7 @@ fn last_error() -> io::Error {
 impl AsRawSocket for BorrowedSocket<'_> {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        self.socket
+        self.socket.get()
     }
 }
 
@@ -175,7 +184,7 @@ impl AsRawSocket for BorrowedSocket<'_> {
 impl AsRawSocket for OwnedSocket {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        self.socket
+        self.socket.get()
     }
 }
 
@@ -185,7 +194,7 @@ impl IntoRawSocket for OwnedSocket {
     fn into_raw_socket(self) -> RawSocket {
         let socket = self.socket;
         forget(self);
-        socket
+        socket.get()
     }
 }
 
@@ -194,6 +203,7 @@ impl FromRawSocket for OwnedSocket {
     #[inline]
     unsafe fn from_raw_socket(socket: RawSocket) -> Self {
         debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
+        let socket = Ranged::new(socket).unwrap();
         Self { socket }
     }
 }
@@ -203,7 +213,7 @@ impl Drop for OwnedSocket {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            let _ = c::closesocket(self.socket);
+            let _ = c::closesocket(self.socket.get());
         }
     }
 }

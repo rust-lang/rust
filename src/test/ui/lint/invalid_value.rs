@@ -1,13 +1,14 @@
 // This test checks that calling `mem::{uninitialized,zeroed}` with certain types results
 // in a lint.
 
-#![feature(never_type, rustc_attrs)]
+#![feature(never_type, ranged_int)]
 #![allow(deprecated)]
 #![deny(invalid_value)]
 
 use std::mem::{self, MaybeUninit};
 use std::ptr::NonNull;
 use std::num::NonZeroU32;
+use std::num::Ranged;
 
 enum Void {}
 
@@ -17,10 +18,7 @@ struct RefPair((&'static i32, i32));
 struct Wrap<T> { wrapped: T }
 enum WrapEnum<T> { Wrapped(T) }
 
-#[rustc_layout_scalar_valid_range_start(0)]
-#[rustc_layout_scalar_valid_range_end(128)]
-#[repr(transparent)]
-pub(crate) struct NonBig(u64);
+type NonBig = Ranged<u64, { 0..=128 }>;
 
 /// A two-variant enum, thus needs a tag and may not remain uninitialized.
 enum Fruit {
@@ -44,9 +42,7 @@ enum TwoUninhabited {
     B(Void),
 }
 
-#[rustc_layout_scalar_valid_range_start(254)]
-#[rustc_layout_scalar_valid_range_end(1)]
-pub(crate) struct WrapAroundRange(u8);
+type WrapAroundRange = Ranged<u8, {254..=1}>;
 
 #[allow(unused)]
 fn generic<T: 'static>() {

@@ -405,22 +405,6 @@ pub struct ExportName {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_rustc_layout_scalar_valid_range_not_struct)]
-pub struct RustcLayoutScalarValidRangeNotStruct {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_rustc_layout_scalar_valid_range_arg)]
-pub struct RustcLayoutScalarValidRangeArg {
-    #[primary_span]
-    pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_rustc_legacy_const_generics_only)]
 pub struct RustcLegacyConstGenericsOnly {
     #[primary_span]

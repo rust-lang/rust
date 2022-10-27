@@ -33,6 +33,7 @@ fn custom_coerce_unsize_info<'tcx>(
         def_id,
         substs: tcx.mk_substs_trait(source_ty, &[target_ty.into()]),
     });
+    let trait_ref = tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), trait_ref);
 
     match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), trait_ref)) {
         Ok(traits::ImplSource::UserDefined(traits::ImplSourceUserDefinedData {

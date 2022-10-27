@@ -9,6 +9,7 @@ use crate::fs;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::forget;
+use crate::num::Ranged;
 #[cfg(not(any(target_arch = "wasm32", target_env = "sgx")))]
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -28,15 +29,15 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// descriptor, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(0)]
+#[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_start(0))]
 // libstd/os/raw/mod.rs assures me that every libstd-supported platform has a
 // 32-bit c_int. Below is -2, in two's complement, but that only works out
 // because c_int is 32 bits.
-#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
+#[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE))]
 #[rustc_nonnull_optimization_guaranteed]
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub struct BorrowedFd<'fd> {
-    fd: RawFd,
+    fd: Ranged<RawFd, { 0..=(-2 as RawFd as u32 as u128) }>,
     _phantom: PhantomData<&'fd OwnedFd>,
 }
 
@@ -49,15 +50,15 @@ pub struct BorrowedFd<'fd> {
 /// passed as a consumed argument or returned as an owned value, and it never
 /// has the value `-1`.
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(0)]
+#[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_start(0))]
 // libstd/os/raw/mod.rs assures me that every libstd-supported platform has a
 // 32-bit c_int. Below is -2, in two's complement, but that only works out
 // because c_int is 32 bits.
-#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
+#[cfg_attr(bootstrap, rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE))]
 #[rustc_nonnull_optimization_guaranteed]
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub struct OwnedFd {
-    fd: RawFd,
+    fd: Ranged<RawFd, { 0..=(-2 as RawFd as u32 as u128) }>,
 }
 
 impl BorrowedFd<'_> {
@@ -69,11 +70,12 @@ impl BorrowedFd<'_> {
     /// the returned `BorrowedFd`, and it must not have the value `-1`.
     #[inline]
     #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
+    #[rustc_allow_const_fn_unstable(ranged_int)]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(fd: RawFd) -> Self {
         assert!(fd != u32::MAX as RawFd);
         // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        unsafe { Self { fd, _phantom: PhantomData } }
+        unsafe { Self { fd: Ranged::new_unchecked(fd), _phantom: PhantomData } }
     }
 }
 
@@ -126,7 +128,7 @@ impl BorrowedFd<'_> {
 impl AsRawFd for BorrowedFd<'_> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.fd
+        self.fd.get()
     }
 }
 
@@ -134,7 +136,7 @@ impl AsRawFd for BorrowedFd<'_> {
 impl AsRawFd for OwnedFd {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.fd
+        self.fd.get()
     }
 }
 
@@ -144,7 +146,7 @@ impl IntoRawFd for OwnedFd {
     fn into_raw_fd(self) -> RawFd {
         let fd = self.fd;
         forget(self);
-        fd
+        fd.get()
     }
 }
 
@@ -159,8 +161,14 @@ impl FromRawFd for OwnedFd {
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         assert_ne!(fd, u32::MAX as RawFd);
+        let fd = Ranged::new(fd).unwrap();
+        #[cfg(bootstrap)]
         // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        unsafe { Self { fd } }
+        unsafe {
+            Self { fd }
+        }
+        #[cfg(not(bootstrap))]
+        Self { fd }
     }
 }
 
@@ -174,7 +182,7 @@ impl Drop for OwnedFd {
             // the file descriptor was closed or not, and if we retried (for
             // something like EINTR), we might close another valid file descriptor
             // opened after we closed ours.
-            let _ = libc::close(self.fd);
+            let _ = libc::close(self.fd.get());
         }
     }
 }

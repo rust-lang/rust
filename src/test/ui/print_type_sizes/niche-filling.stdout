@@ -1,3 +1,8 @@
+print-type-size type: `std::ops::RangeInclusive<u128>`: PLATFORM_DEPENDENT_THINGS
+print-type-size     field `.start`: 16 bytes
+print-type-size     field `.end`: 16 bytes
+print-type-size     field `.exhausted`: 1 bytes
+print-type-size     end padding: PLATFORM_DEPENDENT_SIZE
 print-type-size type: `IndirectNonZero`: 12 bytes, alignment: 4 bytes
 print-type-size     field `.nested`: 8 bytes
 print-type-size     field `.post`: 2 bytes
@@ -43,17 +48,19 @@ print-type-size     variant `Three`: 0 bytes
 print-type-size         field `.0`: 0 bytes
 print-type-size     variant `Four`: 0 bytes
 print-type-size         field `.0`: 0 bytes
-print-type-size type: `MyNotNegativeOne`: 4 bytes, alignment: 4 bytes
-print-type-size     field `._i`: 4 bytes
-print-type-size type: `MyOption<MyNotNegativeOne>`: 4 bytes, alignment: 4 bytes
-print-type-size     variant `Some`: 4 bytes
-print-type-size         field `.0`: 4 bytes
-print-type-size     variant `None`: 0 bytes
 print-type-size type: `MyOption<char>`: 4 bytes, alignment: 4 bytes
 print-type-size     variant `Some`: 4 bytes
 print-type-size         field `.0`: 4 bytes
 print-type-size     variant `None`: 0 bytes
 print-type-size type: `MyOption<std::num::NonZeroU32>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<std::num::Ranged<i32, std::ops::RangeInclusive::<u128> { start: 0, end: 4294967294, exhausted: false }>>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<std::num::Ranged<u32, std::ops::RangeInclusive::<u128> { start: 30, end: 10, exhausted: false }>>`: 4 bytes, alignment: 4 bytes
 print-type-size     variant `Some`: 4 bytes
 print-type-size         field `.0`: 4 bytes
 print-type-size     variant `None`: 0 bytes
@@ -69,6 +76,12 @@ print-type-size     variant `Union2`: 4 bytes
 print-type-size         field `.a`: 4 bytes
 print-type-size         field `.b`: 4 bytes, offset: 0 bytes, alignment: 4 bytes
 print-type-size type: `std::num::NonZeroU32`: 4 bytes, alignment: 4 bytes
+print-type-size     field `.0`: 4 bytes
+print-type-size type: `std::num::Ranged<i32, std::ops::RangeInclusive::<u128> { start: 0, end: 4294967294, exhausted: false }>`: 4 bytes, alignment: 4 bytes
+print-type-size     field `.0`: 4 bytes
+print-type-size type: `std::num::Ranged<u32, std::ops::RangeInclusive::<u128> { start: 1, end: 4294967295, exhausted: false }>`: 4 bytes, alignment: 4 bytes
+print-type-size     field `.0`: 4 bytes
+print-type-size type: `std::num::Ranged<u32, std::ops::RangeInclusive::<u128> { start: 30, end: 10, exhausted: false }>`: 4 bytes, alignment: 4 bytes
 print-type-size     field `.0`: 4 bytes
 print-type-size type: `Enum4<(), (), (), MyOption<u8>>`: 2 bytes, alignment: 1 bytes
 print-type-size     variant `Four`: 2 bytes

@@ -27,6 +27,9 @@ pub use core::num::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, 
 #[stable(feature = "int_error_matching", since = "1.55.0")]
 pub use core::num::IntErrorKind;
 
+#[unstable(feature = "ranged_int", issue = "none")]
+pub use core::num::Ranged;
+
 #[cfg(test)]
 use crate::fmt;
 #[cfg(test)]

@@ -52,7 +52,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Abi, VariantIdx};
 use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
@@ -2524,32 +2524,27 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 }
                 // Recurse and checks for some compound types. (but not unions)
                 Adt(adt_def, substs) if !adt_def.is_union() => {
-                    // First check if this ADT has a layout attribute (like `NonNull` and friends).
-                    use std::ops::Bound;
-                    match cx.tcx.layout_scalar_valid_range(adt_def.did()) {
-                        // We exploit here that `layout_scalar_valid_range` will never
-                        // return `Bound::Excluded`.  (And we have tests checking that we
-                        // handle the attribute correctly.)
-                        // We don't add a span since users cannot declare such types anyway.
-                        (Bound::Included(lo), Bound::Included(hi)) if 0 < lo && lo < hi => {
-                            return Some((format!("`{}` must be non-null", ty), None));
+                    // First check if this ADT has a constrained layout (like `NonNull` and friends).
+                    if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty)) {
+                        match &layout.abi {
+                            Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) => {
+                                let range = scalar.valid_range(cx);
+                                if !range.contains(0) {
+                                    return Some((format!("`{}` must be non-null", ty), None));
+                                } else if init == InitKind::Uninit && !scalar.is_always_valid(cx) {
+                                    return Some((
+                                        format!(
+                                            "`{}` must be initialized inside its custom valid range",
+                                            ty,
+                                        ),
+                                        None,
+                                    ));
+                                }
+                            }
+                            _ => {}
                         }
-                        (Bound::Included(lo), Bound::Unbounded) if 0 < lo => {
-                            return Some((format!("`{}` must be non-null", ty), None));
-                        }
-                        (Bound::Included(_), _) | (_, Bound::Included(_))
-                            if init == InitKind::Uninit =>
-                        {
-                            return Some((
-                                format!(
-                                    "`{}` must be initialized inside its custom valid range",
-                                    ty,
-                                ),
-                                None,
-                            ));
-                        }
-                        _ => {}
                     }
+
                     // Handle structs.
                     if adt_def.is_struct() {
                         return variant_find_init_error(
