@@ -277,7 +277,11 @@ pub(crate) enum ParseResult<T> {
 /// A `ParseResult` where the `Success` variant contains a mapping of
 /// `MacroRulesNormalizedIdent`s to `NamedMatch`es. This represents the mapping
 /// of metavars to the token trees they bind to.
-pub(crate) type NamedParseResult = ParseResult<FxHashMap<MacroRulesNormalizedIdent, NamedMatch>>;
+pub(crate) type NamedParseResult = ParseResult<NamedMatches>;
+
+/// Contains a mapping of `MacroRulesNormalizedIdent`s to `NamedMatch`es.
+/// This represents the mapping of metavars to the token trees they bind to.
+pub(crate) type NamedMatches = FxHashMap<MacroRulesNormalizedIdent, NamedMatch>;
 
 /// Count how many metavars declarations are in `matcher`.
 pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
