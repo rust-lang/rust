@@ -188,7 +188,7 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &m
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
         ty::Adt(adt, substs) => {
-            tys.insert(adt.did()) && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
+            tys.insert(adt.did()) && !ty.is_freeze(cx.tcx, cx.param_env)
                 || KNOWN_WRAPPER_TYS
                     .iter()
                     .any(|&sym| cx.tcx.is_diagnostic_item(sym, adt.did()))
