@@ -177,7 +177,7 @@ struct Custom {
 ///         io::ErrorKind::AlreadyExists => panic!("File Already Exists"),
 ///         _ => panic!("Other Problem Creating File {:?}", error),
 ///     },
-/// }
+/// };
 ///
 /// ```
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
