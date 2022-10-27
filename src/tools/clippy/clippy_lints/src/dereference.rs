@@ -715,47 +715,47 @@ fn walk_parents<'tcx>(
             },
             Node::Item(&Item {
                 kind: ItemKind::Static(..) | ItemKind::Const(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             })
             | Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Const(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             })
             | Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Const(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             }) if span.ctxt() == ctxt => {
-                let ty = cx.tcx.type_of(def_id.def_id);
+                let ty = cx.tcx.type_of(owner_id.def_id);
                 Some(ty_auto_deref_stability(cx, ty, precedence).position_for_result(cx))
             },
 
             Node::Item(&Item {
                 kind: ItemKind::Fn(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             })
             | Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Fn(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             })
             | Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Fn(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             }) if span.ctxt() == ctxt => {
                 let output = cx
                     .tcx
-                    .erase_late_bound_regions(cx.tcx.fn_sig(def_id.to_def_id()).output());
+                    .erase_late_bound_regions(cx.tcx.fn_sig(owner_id.to_def_id()).output());
                 Some(ty_auto_deref_stability(cx, output, precedence).position_for_result(cx))
             },
 

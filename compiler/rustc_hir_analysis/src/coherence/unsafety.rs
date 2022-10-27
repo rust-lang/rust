@@ -13,7 +13,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let item = tcx.hir().expect_item(def_id);
     let hir::ItemKind::Impl(ref impl_) = item.kind else { bug!() };
 
-    if let Some(trait_ref) = tcx.impl_trait_ref(item.def_id) {
+    if let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) {
         let trait_def = tcx.trait_def(trait_ref.def_id);
         let unsafe_attr =
             impl_.generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");

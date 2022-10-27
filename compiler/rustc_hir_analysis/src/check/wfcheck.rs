@@ -147,10 +147,10 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
 /// the types first.
 #[instrument(skip(tcx), level = "debug")]
 fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
-    let def_id = item.def_id.def_id;
+    let def_id = item.owner_id.def_id;
 
     debug!(
-        ?item.def_id,
+        ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id.to_def_id())
     );
 
@@ -246,10 +246,10 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
 }
 
 fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) {
-    let def_id = item.def_id.def_id;
+    let def_id = item.owner_id.def_id;
 
     debug!(
-        ?item.def_id,
+        ?item.owner_id,
         item.name = ? tcx.def_path_str(def_id.to_def_id())
     );
 
@@ -263,7 +263,7 @@ fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) {
 }
 
 fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
-    let def_id = trait_item.def_id.def_id;
+    let def_id = trait_item.owner_id.def_id;
 
     let (method_sig, span) = match trait_item.kind {
         hir::TraitItemKind::Fn(ref sig, _) => (Some(sig), trait_item.span),
@@ -275,7 +275,7 @@ fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
 
     let encl_trait_def_id = tcx.local_parent(def_id);
     let encl_trait = tcx.hir().expect_item(encl_trait_def_id);
-    let encl_trait_def_id = encl_trait.def_id.to_def_id();
+    let encl_trait_def_id = encl_trait.owner_id.to_def_id();
     let fn_lang_item_name = if Some(encl_trait_def_id) == tcx.lang_items().fn_trait() {
         Some("fn")
     } else if Some(encl_trait_def_id) == tcx.lang_items().fn_mut_trait() {
@@ -348,7 +348,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
     loop {
         let mut should_continue = false;
         for gat_item in associated_items {
-            let gat_def_id = gat_item.id.def_id;
+            let gat_def_id = gat_item.id.owner_id;
             let gat_item = tcx.associated_item(gat_def_id);
             // If this item is not an assoc ty, or has no substs, then it's not a GAT
             if gat_item.kind != ty::AssocKind::Type {
@@ -365,7 +365,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
             // constrains the GAT with individually.
             let mut new_required_bounds: Option<FxHashSet<ty::Predicate<'_>>> = None;
             for item in associated_items {
-                let item_def_id = item.id.def_id;
+                let item_def_id = item.id.owner_id;
                 // Skip our own GAT, since it does not constrain itself at all.
                 if item_def_id == gat_def_id {
                     continue;
@@ -790,7 +790,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
     let (trait_name, trait_def_id) =
         match tcx.hir().get_by_def_id(tcx.hir().get_parent_item(item.hir_id()).def_id) {
             hir::Node::Item(item) => match item.kind {
-                hir::ItemKind::Trait(..) => (item.ident, item.def_id),
+                hir::ItemKind::Trait(..) => (item.ident, item.owner_id),
                 _ => return,
             },
             _ => return,
@@ -845,7 +845,7 @@ fn check_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>) {
         _ => (None, impl_item.span),
     };
 
-    check_associated_item(tcx, impl_item.def_id.def_id, span, method_sig);
+    check_associated_item(tcx, impl_item.owner_id.def_id, span, method_sig);
 }
 
 fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
@@ -1045,11 +1045,11 @@ fn check_type_defn<'tcx, F>(
 ) where
     F: FnMut(&WfCheckingCtxt<'_, 'tcx>) -> Vec<AdtVariant<'tcx>>,
 {
-    let _ = tcx.representability(item.def_id.def_id);
+    let _ = tcx.representability(item.owner_id.def_id);
 
-    enter_wf_checking_ctxt(tcx, item.span, item.def_id.def_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
         let variants = lookup_fields(wfcx);
-        let packed = tcx.adt_def(item.def_id).repr().packed();
+        let packed = tcx.adt_def(item.owner_id).repr().packed();
 
         for variant in &variants {
             // All field types must be well-formed.
@@ -1073,7 +1073,7 @@ fn check_type_defn<'tcx, F>(
                         // Just treat unresolved type expression as if it needs drop.
                         true
                     } else {
-                        ty.needs_drop(tcx, tcx.param_env(item.def_id))
+                        ty.needs_drop(tcx, tcx.param_env(item.owner_id))
                     }
                 }
             };
@@ -1121,15 +1121,15 @@ fn check_type_defn<'tcx, F>(
             }
         }
 
-        check_where_clauses(wfcx, item.span, item.def_id.def_id);
+        check_where_clauses(wfcx, item.span, item.owner_id.def_id);
     });
 }
 
 #[instrument(skip(tcx, item))]
 fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
-    debug!(?item.def_id);
+    debug!(?item.owner_id);
 
-    let def_id = item.def_id.def_id;
+    let def_id = item.owner_id.def_id;
     let trait_def = tcx.trait_def(def_id);
     if trait_def.is_marker
         || matches!(trait_def.specialization_kind, TraitSpecializationKind::Marker)
@@ -1240,13 +1240,13 @@ fn check_impl<'tcx>(
     ast_trait_ref: &Option<hir::TraitRef<'_>>,
     constness: hir::Constness,
 ) {
-    enter_wf_checking_ctxt(tcx, item.span, item.def_id.def_id, |wfcx| {
+    enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
         match *ast_trait_ref {
             Some(ref ast_trait_ref) => {
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).
-                let trait_ref = tcx.impl_trait_ref(item.def_id).unwrap();
+                let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap();
                 let trait_ref = wfcx.normalize(ast_trait_ref.path.span, None, trait_ref);
                 let trait_pred = ty::TraitPredicate {
                     trait_ref,
@@ -1268,7 +1268,7 @@ fn check_impl<'tcx>(
                 wfcx.register_obligations(obligations);
             }
             None => {
-                let self_ty = tcx.type_of(item.def_id);
+                let self_ty = tcx.type_of(item.owner_id);
                 let self_ty = wfcx.normalize(
                     item.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
@@ -1282,7 +1282,7 @@ fn check_impl<'tcx>(
             }
         }
 
-        check_where_clauses(wfcx, item.span, item.def_id.def_id);
+        check_where_clauses(wfcx, item.span, item.owner_id.def_id);
     });
 }
 
@@ -1778,14 +1778,14 @@ fn check_variances_for_type_defn<'tcx>(
     item: &hir::Item<'tcx>,
     hir_generics: &hir::Generics<'_>,
 ) {
-    let ty = tcx.type_of(item.def_id);
+    let ty = tcx.type_of(item.owner_id);
     if tcx.has_error_field(ty) {
         return;
     }
 
-    let ty_predicates = tcx.predicates_of(item.def_id);
+    let ty_predicates = tcx.predicates_of(item.owner_id);
     assert_eq!(ty_predicates.parent, None);
-    let variances = tcx.variances_of(item.def_id);
+    let variances = tcx.variances_of(item.owner_id);
 
     let mut constrained_parameters: FxHashSet<_> = variances
         .iter()
@@ -1798,7 +1798,7 @@ fn check_variances_for_type_defn<'tcx>(
 
     // Lazily calculated because it is only needed in case of an error.
     let explicitly_bounded_params = LazyCell::new(|| {
-        let icx = crate::collect::ItemCtxt::new(tcx, item.def_id.to_def_id());
+        let icx = crate::collect::ItemCtxt::new(tcx, item.owner_id.to_def_id());
         hir_generics
             .predicates
             .iter()
@@ -1919,10 +1919,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
 fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalDefId) {
     let items = tcx.hir_module_items(module);
-    items.par_items(|item| tcx.ensure().check_well_formed(item.def_id));
-    items.par_impl_items(|item| tcx.ensure().check_well_formed(item.def_id));
-    items.par_trait_items(|item| tcx.ensure().check_well_formed(item.def_id));
-    items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.def_id));
+    items.par_items(|item| tcx.ensure().check_well_formed(item.owner_id));
+    items.par_impl_items(|item| tcx.ensure().check_well_formed(item.owner_id));
+    items.par_trait_items(|item| tcx.ensure().check_well_formed(item.owner_id));
+    items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id));
 }
 
 ///////////////////////////////////////////////////////////////////////////
