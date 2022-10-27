@@ -471,6 +471,12 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             continue;
         }
 
+        // Some AMD CPUs support VAES without AVX512, even though the Intel
+        // documentation states that those instructions require AVX512VL.
+        if *cpuid == "AVX512VL" && intel.cpuid.contains(&"VAES".to_string()) {
+            continue;
+        }
+
         let cpuid = cpuid
             .chars()
             .flat_map(|c| c.to_lowercase())

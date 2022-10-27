@@ -38,7 +38,7 @@ extern "C" {
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_aesenc_epi128)
 #[inline]
-#[target_feature(enable = "avx512vaes,avx512vl")]
+#[target_feature(enable = "avx512vaes")]
 #[cfg_attr(test, assert_instr(vaesenc))]
 pub unsafe fn _mm256_aesenc_epi128(a: __m256i, round_key: __m256i) -> __m256i {
     aesenc_256(a, round_key)
@@ -49,7 +49,7 @@ pub unsafe fn _mm256_aesenc_epi128(a: __m256i, round_key: __m256i) -> __m256i {
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_aesenclast_epi128)
 #[inline]
-#[target_feature(enable = "avx512vaes,avx512vl")]
+#[target_feature(enable = "avx512vaes")]
 #[cfg_attr(test, assert_instr(vaesenclast))]
 pub unsafe fn _mm256_aesenclast_epi128(a: __m256i, round_key: __m256i) -> __m256i {
     aesenclast_256(a, round_key)
@@ -60,7 +60,7 @@ pub unsafe fn _mm256_aesenclast_epi128(a: __m256i, round_key: __m256i) -> __m256
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_aesdec_epi128)
 #[inline]
-#[target_feature(enable = "avx512vaes,avx512vl")]
+#[target_feature(enable = "avx512vaes")]
 #[cfg_attr(test, assert_instr(vaesdec))]
 pub unsafe fn _mm256_aesdec_epi128(a: __m256i, round_key: __m256i) -> __m256i {
     aesdec_256(a, round_key)
@@ -71,7 +71,7 @@ pub unsafe fn _mm256_aesdec_epi128(a: __m256i, round_key: __m256i) -> __m256i {
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_aesdeclast_epi128)
 #[inline]
-#[target_feature(enable = "avx512vaes,avx512vl")]
+#[target_feature(enable = "avx512vaes")]
 #[cfg_attr(test, assert_instr(vaesdeclast))]
 pub unsafe fn _mm256_aesdeclast_epi128(a: __m256i, round_key: __m256i) -> __m256i {
     aesdeclast_256(a, round_key)
