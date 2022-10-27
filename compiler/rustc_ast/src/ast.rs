@@ -1112,24 +1112,6 @@ pub struct Expr {
 }
 
 impl Expr {
-    /// Returns `true` if this expression would be valid somewhere that expects a value;
-    /// for example, an `if` condition.
-    pub fn returns(&self) -> bool {
-        if let ExprKind::Block(ref block, _) = self.kind {
-            match block.stmts.last().map(|last_stmt| &last_stmt.kind) {
-                // Implicit return
-                Some(StmtKind::Expr(_)) => true,
-                // Last statement is an explicit return?
-                Some(StmtKind::Semi(expr)) => matches!(expr.kind, ExprKind::Ret(_)),
-                // This is a block that doesn't end in either an implicit or explicit return.
-                _ => false,
-            }
-        } else {
-            // This is not a block, it is a value.
-            true
-        }
-    }
-
     /// Is this expr either `N`, or `{ N }`.
     ///
     /// If this is not the case, name resolution does not resolve `N` when using
