@@ -15,7 +15,7 @@ use smallvec::SmallVec;
 use std::cell::Cell;
 use std::fmt::{self, Debug};
 
-use super::{Field, Location, SourceInfo};
+use super::{Field, SourceInfo};
 
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationKind {
@@ -314,12 +314,12 @@ pub struct ClosureOutlivesRequirement<'tcx> {
     pub blame_span: Span,
 
     // ... due to this reason.
-    pub category: ConstraintCategory,
+    pub category: ConstraintCategory<'tcx>,
 }
 
 // Make sure this enum doesn't unintentionally grow
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(ConstraintCategory, 16);
+rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 
 /// Outlives-constraints can be categorized to determine whether and why they
 /// are interesting (for error reporting). Order of variants indicates sort
@@ -327,8 +327,8 @@ rustc_data_structures::static_assert_size!(ConstraintCategory, 16);
 ///
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
-pub enum ConstraintCategory {
+#[derive(TyEncodable, TyDecodable, HashStable, Lift, TypeVisitable, TypeFoldable)]
+pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
     UseAsConst,
@@ -342,7 +342,7 @@ pub enum ConstraintCategory {
     ClosureBounds,
 
     /// Contains the function type if available.
-    CallArgument(Location),
+    CallArgument(Option<Ty<'tcx>>),
     CopyBound,
     SizedBound,
     Assignment,
@@ -366,10 +366,6 @@ pub enum ConstraintCategory {
 
     /// A constraint that doesn't correspond to anything the user sees.
     Internal,
-}
-
-TrivialTypeTraversalAndLiftImpls! {
-    ConstraintCategory,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
