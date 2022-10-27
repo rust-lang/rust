@@ -101,7 +101,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
     unsafe {
-        intrinsics::assert_unsafe_precondition!(() => false);
+        intrinsics::assert_unsafe_precondition!("hint::unreachable_unchecked must never be reached", () => false);
         intrinsics::unreachable()
     }
 }

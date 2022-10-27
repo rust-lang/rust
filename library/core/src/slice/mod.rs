@@ -653,7 +653,10 @@ impl<T> [T] {
         let ptr = this.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
-            assert_unsafe_precondition!([T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len());
+            assert_unsafe_precondition!(
+                "slice::swap_unchecked requires that the indices are within the slice",
+                [T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len()
+            );
             ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
@@ -969,7 +972,10 @@ impl<T> [T] {
         let this = self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!([T](this: &[T], N: usize) => N != 0 && this.len() % N == 0);
+            assert_unsafe_precondition!(
+                "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
+            );
             exact_div(self.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
@@ -1109,7 +1115,10 @@ impl<T> [T] {
         let this = &*self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!([T](this: &[T], N: usize) => N != 0 && this.len() % N == 0);
+            assert_unsafe_precondition!(
+                "slice::as_chunks_unchecked_mut requires `N != 0` and the slice to split exactly into `N`-element chunks",
+                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
+            );
             exact_div(this.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
@@ -1685,7 +1694,10 @@ impl<T> [T] {
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
         unsafe {
-            assert_unsafe_precondition!((mid: usize, len: usize) => mid <= len);
+            assert_unsafe_precondition!(
+                "slice::split_at_mut_unchecked requires the index to be within the slice",
+                (mid: usize, len: usize) => mid <= len
+            );
             (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
         }
     }
