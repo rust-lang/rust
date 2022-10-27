@@ -75,11 +75,12 @@ using namespace llvm;
 
 #include "llvm-c/Core.h"
 
+class GradientUtils;
 extern std::map<std::string, std::function<llvm::Value *(
-                                 IRBuilder<> &, CallInst *, ArrayRef<Value *>)>>
+                                 IRBuilder<> &, CallInst *, ArrayRef<Value *>,
+                                 GradientUtils *)>>
     shadowHandlers;
 
-class GradientUtils;
 class DiffeGradientUtils;
 extern std::map<
     std::string,

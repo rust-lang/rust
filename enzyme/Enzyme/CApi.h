@@ -172,15 +172,16 @@ LLVMValueRef
 EnzymeExtractFunctionFromAugmentation(EnzymeAugmentedReturnPtr ret);
 LLVMTypeRef EnzymeExtractTapeTypeFromAugmentation(EnzymeAugmentedReturnPtr ret);
 
+class GradientUtils;
+class DiffeGradientUtils;
+
 typedef LLVMValueRef (*CustomShadowAlloc)(LLVMBuilderRef, LLVMValueRef,
-                                          size_t /*numArgs*/, LLVMValueRef *);
+                                          size_t /*numArgs*/, LLVMValueRef *,
+                                          GradientUtils *);
 typedef LLVMValueRef (*CustomShadowFree)(LLVMBuilderRef, LLVMValueRef);
 
 void EnzymeRegisterAllocationHandler(char *Name, CustomShadowAlloc AHandle,
                                      CustomShadowFree FHandle);
-
-class GradientUtils;
-class DiffeGradientUtils;
 
 typedef void (*CustomFunctionForward)(LLVMBuilderRef, LLVMValueRef,
                                       GradientUtils *, LLVMValueRef *,

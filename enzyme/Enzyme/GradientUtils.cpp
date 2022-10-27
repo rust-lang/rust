@@ -45,8 +45,9 @@
 #include "llvm/Support/AMDGPUMetadata.h"
 #include "llvm/Transforms/Utils/SimplifyIndVar.h"
 
-std::map<std::string, std::function<llvm::Value *(IRBuilder<> &, CallInst *,
-                                                  ArrayRef<Value *>)>>
+std::map<std::string,
+         std::function<llvm::Value *(IRBuilder<> &, CallInst *,
+                                     ArrayRef<Value *>, GradientUtils *)>>
     shadowHandlers;
 std::map<std::string, std::function<llvm::CallInst *(IRBuilder<> &, Value *)>>
     shadowErasers;
@@ -2786,7 +2787,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                   if (shadowHandlers.find(funcName.str()) !=
                       shadowHandlers.end()) {
 
-                    anti = shadowHandlers[funcName.str()](NB, orig, args);
+                    anti = shadowHandlers[funcName.str()](NB, orig, args, this);
                   } else {
                     auto rule = [&]() {
 #if LLVM_VERSION_MAJOR >= 11

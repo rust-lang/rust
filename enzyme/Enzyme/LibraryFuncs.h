@@ -29,9 +29,11 @@
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Instructions.h"
 
-extern std::map<std::string, std::function<llvm::Value *(
-                                 llvm::IRBuilder<> &, llvm::CallInst *,
-                                 llvm::ArrayRef<llvm::Value *>)>>
+class GradientUtils;
+extern std::map<std::string,
+                std::function<llvm::Value *(
+                    llvm::IRBuilder<> &, llvm::CallInst *,
+                    llvm::ArrayRef<llvm::Value *>, GradientUtils *)>>
     shadowHandlers;
 extern std::map<std::string, std::function<llvm::CallInst *(llvm::IRBuilder<> &,
                                                             llvm::Value *)>>

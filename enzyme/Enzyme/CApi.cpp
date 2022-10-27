@@ -239,12 +239,13 @@ void *EnzymeGradientUtilsTypeAnalyzer(GradientUtils *G) {
 void EnzymeRegisterAllocationHandler(char *Name, CustomShadowAlloc AHandle,
                                      CustomShadowFree FHandle) {
   shadowHandlers[std::string(Name)] =
-      [=](IRBuilder<> &B, CallInst *CI,
-          ArrayRef<Value *> Args) -> llvm::Value * {
+      [=](IRBuilder<> &B, CallInst *CI, ArrayRef<Value *> Args,
+          GradientUtils *gutils) -> llvm::Value * {
     SmallVector<LLVMValueRef, 3> refs;
     for (auto a : Args)
       refs.push_back(wrap(a));
-    return unwrap(AHandle(wrap(&B), wrap(CI), Args.size(), refs.data()));
+    return unwrap(
+        AHandle(wrap(&B), wrap(CI), Args.size(), refs.data(), gutils));
   };
   shadowErasers[std::string(Name)] = [=](IRBuilder<> &B,
                                          Value *ToFree) -> llvm::CallInst * {

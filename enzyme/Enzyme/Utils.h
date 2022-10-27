@@ -103,9 +103,11 @@ llvm::Value *CreateReAllocation(llvm::IRBuilder<> &B, llvm::Value *prev,
 
 llvm::PointerType *getDefaultAnonymousTapeType(llvm::LLVMContext &C);
 
-extern std::map<std::string, std::function<llvm::Value *(
-                                 llvm::IRBuilder<> &, llvm::CallInst *,
-                                 llvm::ArrayRef<llvm::Value *>)>>
+class GradientUtils;
+extern std::map<std::string,
+                std::function<llvm::Value *(
+                    llvm::IRBuilder<> &, llvm::CallInst *,
+                    llvm::ArrayRef<llvm::Value *>, GradientUtils *)>>
     shadowHandlers;
 
 template <typename... Args>

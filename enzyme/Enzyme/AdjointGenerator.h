@@ -10437,7 +10437,7 @@ public:
                   (Mode == DerivativeMode::ReverseModeGradient &&
                    backwardsShadow)) {
                 anti = applyChainRule(call.getType(), bb, [&]() {
-                  return shadowHandlers[funcName.str()](bb, orig, args);
+                  return shadowHandlers[funcName.str()](bb, orig, args, gutils);
                 });
                 if (anti->getType() != placeholder->getType()) {
                   llvm::errs() << "orig: " << *orig << "\n";
@@ -10695,8 +10695,19 @@ public:
           }
 
           auto rule = [&]() {
-            CallInst *CI = Builder2.CreateCall(orig->getFunctionType(),
-                                               orig->getCalledFunction(), args);
+            SmallVector<ValueType, 2> BundleTypes(args.size(),
+                                                  ValueType::Primal);
+
+            auto Defs = gutils->getInvertedBundles(orig, BundleTypes, Builder2,
+                                                   /*lookup*/ false);
+
+#if LLVM_VERSION_MAJOR > 7
+            CallInst *CI = Builder2.CreateCall(
+                orig->getFunctionType(), orig->getCalledFunction(), args, Defs);
+#else
+            CallInst *CI =
+                Builder2.CreateCall(orig->getCalledFunction(), args, Defs);
+#endif
             CI->setAttributes(orig->getAttributes());
             CI->setCallingConv(orig->getCallingConv());
             CI->setTailCallKind(orig->getTailCallKind());
