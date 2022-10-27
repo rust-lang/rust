@@ -11,7 +11,7 @@ use rustc_middle::{
     mir,
     ty::{self, FloatTy, Ty},
 };
-use rustc_target::abi::Integer;
+use rustc_target::abi::{Integer, Size};
 
 use crate::*;
 use atomic::EvalContextExt as _;
@@ -118,6 +118,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     err_ub_format!("overflow computing total size of `{intrinsic_name}`")
                 })?;
                 this.write_bytes_ptr(ptr, iter::repeat(val_byte).take(byte_count.bytes_usize()))?;
+            }
+
+            "ptr_mask" => {
+                let [ptr, mask] = check_arg_count(args)?;
+
+                let ptr = this.read_pointer(ptr)?;
+                let mask = this.read_scalar(mask)?.to_machine_usize(this)?;
+
+                let masked_addr = Size::from_bytes(ptr.addr().bytes() & mask);
+
+                this.write_pointer(Pointer::new(ptr.provenance, masked_addr), dest)?;
             }
 
             // Floating-point operations
