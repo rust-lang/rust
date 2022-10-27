@@ -3793,8 +3793,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::Field(ref subexpression, _) => {
                 self.resolve_expr(subexpression, Some(expr));
             }
-            ExprKind::MethodCall(ref segment, ref receiver, ref arguments, _) => {
-                self.resolve_expr(receiver, Some(expr));
+            ExprKind::MethodCall(ref segment, ref arguments, _) => {
+                let mut arguments = arguments.iter();
+                self.resolve_expr(arguments.next().unwrap(), Some(expr));
                 for argument in arguments {
                     self.resolve_expr(argument, None);
                 }

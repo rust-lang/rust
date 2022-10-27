@@ -795,9 +795,8 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(callee_expression);
             walk_list!(visitor, visit_expr, arguments);
         }
-        ExprKind::MethodCall(ref segment, ref receiver, ref arguments, _span) => {
-            visitor.visit_path_segment(segment);
-            visitor.visit_expr(receiver);
+        ExprKind::MethodCall(ref segment, ref arguments, _span) => {
+            visitor.visit_path_segment(expression.span, segment);
             walk_list!(visitor, visit_expr, arguments);
         }
         ExprKind::Binary(_, ref left_expression, ref right_expression) => {

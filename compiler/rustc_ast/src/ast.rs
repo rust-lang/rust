@@ -1338,13 +1338,14 @@ pub enum ExprKind {
     ///
     /// The `PathSegment` represents the method name and its generic arguments
     /// (within the angle brackets).
-    /// The standalone `Expr` is the receiver expression.
-    /// The vector of `Expr` is the arguments.
-    /// `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, x, [a, b, c, d])`.
+    /// The first element of the vector of an `Expr` is the expression that evaluates
+    /// to the object on which the method is being called on (the receiver),
+    /// and the remaining elements are the rest of the arguments.
+    /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
+    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
     /// This `Span` is the span of the function, without the dot and receiver
     /// (e.g. `foo(a, b)` in `x.foo(a, b)`
-    MethodCall(PathSegment, P<Expr>, Vec<P<Expr>>, Span),
+    MethodCall(PathSegment, Vec<P<Expr>>, Span),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(Vec<P<Expr>>),
     /// A binary operation (e.g., `a + b`, `a * b`).

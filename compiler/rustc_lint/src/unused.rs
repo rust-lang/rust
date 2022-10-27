@@ -608,7 +608,8 @@ trait UnusedDelimLint {
             ref call_or_other => {
                 let (args_to_check, ctx) = match *call_or_other {
                     Call(_, ref args) => (&args[..], UnusedDelimsCtx::FunctionArg),
-                    MethodCall(_, _, ref args, _) => (&args[..], UnusedDelimsCtx::MethodArg),
+                    // first "argument" is self (which sometimes needs delims)
+                    MethodCall(_, ref args, _) => (&args[1..], UnusedDelimsCtx::MethodArg),
                     // actual catch-all arm
                     _ => {
                         return;
