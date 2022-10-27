@@ -103,7 +103,7 @@ mod zst_offset;
 use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::ty::{contains_adt_constructor, implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_trait_method, iter_input_pats, meets_msrv, msrvs, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
@@ -3394,34 +3394,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
             let ret_ty = return_ty(cx, impl_item.hir_id());
 
-            // walk the return type and check for Self (this does not check associated types)
-            if let Some(self_adt) = self_ty.ty_adt_def() {
-                if contains_adt_constructor(ret_ty, self_adt) {
-                    return;
-                }
-            } else if ret_ty.contains(self_ty) {
+            if contains_ty_adt_constructor_opaque(cx, ret_ty, self_ty) {
                 return;
-            }
-
-            // if return type is impl trait, check the associated types
-            if let ty::Opaque(def_id, _) = *ret_ty.kind() {
-                // one of the associated types must be Self
-                for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
-                    if let ty::PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
-                        let assoc_ty = match projection_predicate.term.unpack() {
-                            ty::TermKind::Ty(ty) => ty,
-                            ty::TermKind::Const(_c) => continue,
-                        };
-                        // walk the associated type and check for Self
-                        if let Some(self_adt) = self_ty.ty_adt_def() {
-                            if contains_adt_constructor(assoc_ty, self_adt) {
-                                return;
-                            }
-                        } else if assoc_ty.contains(self_ty) {
-                            return;
-                        }
-                    }
-                }
             }
 
             if name == "new" && ret_ty != self_ty {
