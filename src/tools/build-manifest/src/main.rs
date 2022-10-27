@@ -180,7 +180,7 @@ static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"
 
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
-static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rust-docs-json-preview"];
+static NIGHTLY_ONLY_COMPONENTS: &[PkgType] = &[PkgType::Miri, PkgType::JsonDocs];
 
 macro_rules! t {
     ($e:expr) => {
@@ -285,12 +285,7 @@ impl Builder {
     fn add_packages_to(&mut self, manifest: &mut Manifest) {
         for pkg in PkgType::all() {
             let fallback = if pkg.use_docs_fallback() { DOCS_FALLBACK } else { &[] };
-            self.package(
-                &pkg.manifest_component_name(),
-                &mut manifest.pkg,
-                pkg.targets(),
-                fallback,
-            );
+            self.package(pkg, &mut manifest.pkg, fallback);
         }
     }
 
@@ -401,26 +396,27 @@ impl Builder {
         let mut components = Vec::new();
         let mut extensions = Vec::new();
 
-        let host_component = |pkg: &_| Component::from_str(pkg, host);
+        let host_component = |pkg: &_| Component::from_pkg(pkg, host);
 
         for pkg in PkgType::all() {
             match pkg {
                 // rustc/rust-std/cargo/docs are all required
                 PkgType::Rustc | PkgType::Cargo | PkgType::HtmlDocs => {
-                    components.push(host_component(&pkg.manifest_component_name()));
+                    components.push(host_component(pkg));
                 }
                 PkgType::RustStd => {
-                    components.push(host_component(&pkg.manifest_component_name()));
+                    components.push(host_component(pkg));
                     extensions.extend(
-                        TARGETS.iter().filter(|&&target| target != host).map(|target| {
-                            Component::from_str(&pkg.manifest_component_name(), target)
-                        }),
+                        TARGETS
+                            .iter()
+                            .filter(|&&target| target != host)
+                            .map(|target| Component::from_pkg(pkg, target)),
                     );
                 }
                 // so is rust-mingw if it's available for the target
                 PkgType::RustMingw => {
                     if host.contains("pc-windows-gnu") {
-                        components.push(host_component("rust-mingw"));
+                        components.push(host_component(pkg));
                     }
                 }
                 // Tools are always present in the manifest,
@@ -433,20 +429,16 @@ impl Builder {
                 | PkgType::LlvmTools
                 | PkgType::RustAnalysis
                 | PkgType::JsonDocs => {
-                    extensions.push(host_component(&pkg.manifest_component_name()));
+                    extensions.push(host_component(pkg));
                 }
                 PkgType::RustcDev | PkgType::RustcDocs => {
-                    extensions.extend(
-                        HOSTS.iter().map(|target| {
-                            Component::from_str(&pkg.manifest_component_name(), target)
-                        }),
-                    );
+                    extensions.extend(HOSTS.iter().map(|target| Component::from_pkg(pkg, target)));
                 }
                 PkgType::RustSrc => {
-                    extensions.push(Component::from_str(&pkg.manifest_component_name(), "*"));
+                    extensions.push(Component::from_pkg(pkg, "*"));
                 }
-                PkgType::Rust | PkgType::Other(_) => {}
-                // FIXME: is this correct? maybe we should add it so rustup knows about it ...
+                PkgType::Rust => {}
+                // NOTE: this is intentional, these artifacts aren't intended to be used with rustup
                 PkgType::ReproducibleArtifacts => {}
             }
         }
@@ -494,31 +486,27 @@ impl Builder {
 
     fn package(
         &mut self,
-        pkgname: &str,
+        pkg: &PkgType,
         dst: &mut BTreeMap<String, Package>,
-        targets: &[&str],
         fallback: &[(&str, &str)],
     ) {
-        if pkgname == "rust" {
+        if *pkg == PkgType::Rust {
             // This is handled specially by `rust_package` later.
             // Order is important, so don't call `rust_package` here.
             return;
         }
 
-        let version_info = self
-            .versions
-            .version(&PkgType::from_component(pkgname))
-            .expect("failed to load package version");
+        let version_info = self.versions.version(&pkg).expect("failed to load package version");
         let mut is_present = version_info.present;
 
         // Never ship nightly-only components for other trains.
-        if self.versions.channel() != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(&pkgname) {
+        if self.versions.channel() != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(&pkg) {
             is_present = false; // Pretend the component is entirely missing.
         }
 
         macro_rules! tarball_name {
             ($target_name:expr) => {
-                self.versions.tarball_name(&PkgType::from_component(pkgname), $target_name).unwrap()
+                self.versions.tarball_name(pkg, $target_name).unwrap()
             };
         }
         let mut target_from_compressed_tar = |target_name| {
@@ -547,7 +535,8 @@ impl Builder {
             Target::unavailable()
         };
 
-        let targets = targets
+        let targets = pkg
+            .targets()
             .iter()
             .map(|name| {
                 let target = if is_present {
@@ -562,7 +551,7 @@ impl Builder {
             .collect();
 
         dst.insert(
-            pkgname.to_string(),
+            pkg.manifest_component_name(),
             Package {
                 version: version_info.version.unwrap_or_default(),
                 git_commit_hash: version_info.git_commit,

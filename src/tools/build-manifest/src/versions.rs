@@ -13,7 +13,6 @@ macro_rules! pkg_type {
         #[derive(Debug, Hash, Eq, PartialEq, Clone)]
         pub(crate) enum PkgType {
             $($variant,)+
-            Other(String),
         }
 
         impl PkgType {
@@ -24,18 +23,10 @@ macro_rules! pkg_type {
                 }
             }
 
-            pub(crate) fn from_component(component: &str) -> Self {
-                match component {
-                    $( $component  $( | concat!($($is_preview)? $component, "-preview") )? => PkgType::$variant,)+
-                    _ => PkgType::Other(component.into()),
-                }
-            }
-
             /// First part of the tarball name.
             pub(crate) fn tarball_component_name(&self) -> &str {
                 match self {
                     $( PkgType::$variant => $component,)+
-                    PkgType::Other(component) => component,
                 }
             }
 
@@ -100,7 +91,6 @@ impl PkgType {
             PkgType::ReproducibleArtifacts => true,
             PkgType::RustMingw => true,
             PkgType::RustAnalysis => true,
-            PkgType::Other(_) => true,
         }
     }
 
@@ -127,7 +117,6 @@ impl PkgType {
             Rustfmt => HOSTS,
             RustAnalysis => TARGETS,
             LlvmTools => TARGETS,
-            Other(pkg) => panic!("add {pkg} to the list of known `PkgType`s"),
         }
     }
 
