@@ -72,6 +72,51 @@
 //! }
 //! ```
 //!
+//! # The question mark operator, `?`
+//!
+//! Similar to the [`Result`] type, when writing code that calls many functions that return the
+//! [`Option`] type, handling `Some`/`None` can be tedious. The question mark
+//! operator, [`?`], hides some of the boilerplate of propagating values
+//! up the call stack.
+//!
+//! It replaces this:
+//!
+//! ```
+//! # #![allow(dead_code)]
+//! fn add_last_numbers(stack: &mut Vec<i32>) -> Option<i32> {
+//!     let a = stack.pop();
+//!     let b = stack.pop();
+//!
+//!     match (a, b) {
+//!         (Some(x), Some(y)) => Some(x + y),
+//!         _ => None,
+//!     }
+//! }
+//!
+//! ```
+//!
+//! With this:
+//!
+//! ```
+//! # #![allow(dead_code)]
+//! fn add_last_numbers(stack: &mut Vec<i32>) -> Option<i32> {
+//!     Some(stack.pop()? + stack.pop()?)
+//! }
+//! ```
+//!
+//! *It's much nicer!*
+//!
+//! Ending the expression with [`?`] will result in the unwrapped
+//! success ([`Some`]) value, unless the result is [`None`], in which case
+//! [`None`] is returned early from the enclosing function.
+//!
+//! [`?`] can only be used in functions that return [`Option`] because of the
+//! early return of [`None`] that it provides.
+//!
+//! [`?`]: crate::ops::Try
+//! [`Some`]: Some
+//! [`None`]: None
+//!
 //! # Representation
 //!
 //! Rust guarantees to optimize the following types `T` such that
