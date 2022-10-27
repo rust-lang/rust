@@ -451,7 +451,7 @@ impl TtParser {
                         // Try zero matches of this sequence, by skipping over it.
                         self.cur_mps.push(MatcherPos {
                             idx: idx_first_after,
-                            matches: mp.matches.clone(), // a cheap clone
+                            matches: Lrc::clone(&mp.matches),
                         });
                     }
 
@@ -464,8 +464,8 @@ impl TtParser {
                     // sequence. If that's not possible, `ending_mp` will fail quietly when it is
                     // processed next time around the loop.
                     let ending_mp = MatcherPos {
-                        idx: mp.idx + 1,             // +1 skips the Kleene op
-                        matches: mp.matches.clone(), // a cheap clone
+                        idx: mp.idx + 1, // +1 skips the Kleene op
+                        matches: Lrc::clone(&mp.matches),
                     };
                     self.cur_mps.push(ending_mp);
 
@@ -480,8 +480,8 @@ impl TtParser {
                     // separator yet. Try ending the sequence. If that's not possible, `ending_mp`
                     // will fail quietly when it is processed next time around the loop.
                     let ending_mp = MatcherPos {
-                        idx: mp.idx + 2,             // +2 skips the separator and the Kleene op
-                        matches: mp.matches.clone(), // a cheap clone
+                        idx: mp.idx + 2, // +2 skips the separator and the Kleene op
+                        matches: Lrc::clone(&mp.matches),
                     };
                     self.cur_mps.push(ending_mp);
 
