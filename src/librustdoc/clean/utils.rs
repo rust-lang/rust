@@ -7,7 +7,6 @@ use crate::clean::{
     PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
 };
 use crate::core::DocContext;
-use crate::formats::item_type::ItemType;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
@@ -503,9 +502,6 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         return did;
     }
     inline::record_extern_fqn(cx, did, kind);
-    if let ItemType::Trait = kind {
-        inline::record_extern_trait(cx, did);
-    }
     did
 }
 
