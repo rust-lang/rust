@@ -27,6 +27,15 @@ impl [u8] {
         self.len() == other.len() && iter::zip(self, other).all(|(a, b)| a.eq_ignore_ascii_case(b))
     }
 
+    /// Checks if all bytes are ASCII decimal digit
+    #[inline]
+    pub fn is_ascii_digit(&self) -> bool {
+        self.iter().all(|i| {
+            let i = *i;
+            (i >= b'0') && (i <= b'9')
+        })
+    }
+    
     /// Converts this slice to its ASCII upper case equivalent in-place.
     ///
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
