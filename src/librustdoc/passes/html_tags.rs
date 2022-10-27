@@ -184,7 +184,60 @@ fn extract_html_tag(
                     }
                     drop_tag(tags, tag_name, r, f);
                 } else {
-                    tags.push((tag_name, r));
+                    let mut is_self_closing = false;
+                    let mut quote_pos = None;
+                    if c != '>' {
+                        let mut quote = None;
+                        let mut after_eq = false;
+                        for (i, c) in text[pos..].char_indices() {
+                            if !c.is_whitespace() {
+                                if let Some(q) = quote {
+                                    if c == q {
+                                        quote = None;
+                                        quote_pos = None;
+                                        after_eq = false;
+                                    }
+                                } else if c == '>' {
+                                    break;
+                                } else if c == '/' && !after_eq {
+                                    is_self_closing = true;
+                                } else {
+                                    if is_self_closing {
+                                        is_self_closing = false;
+                                    }
+                                    if (c == '"' || c == '\'') && after_eq {
+                                        quote = Some(c);
+                                        quote_pos = Some(pos + i);
+                                    } else if c == '=' {
+                                        after_eq = true;
+                                    }
+                                }
+                            } else if quote.is_none() {
+                                after_eq = false;
+                            }
+                        }
+                    }
+                    if let Some(quote_pos) = quote_pos {
+                        let qr = Range { start: quote_pos, end: quote_pos };
+                        f(
+                            &format!("unclosed quoted HTML attribute on tag `{}`", tag_name),
+                            &qr,
+                            false,
+                        );
+                    }
+                    if is_self_closing {
+                        // https://html.spec.whatwg.org/#parse-error-non-void-html-element-start-tag-with-trailing-solidus
+                        let valid = ALLOWED_UNCLOSED.contains(&&tag_name[..])
+                            || tags.iter().take(pos + 1).any(|(at, _)| {
+                                let at = at.to_lowercase();
+                                at == "svg" || at == "math"
+                            });
+                        if !valid {
+                            f(&format!("invalid self-closing HTML tag `{}`", tag_name), &r, false);
+                        }
+                    } else {
+                        tags.push((tag_name, r));
+                    }
                 }
             }
             break;
