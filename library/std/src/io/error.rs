@@ -163,7 +163,7 @@ struct Custom {
 /// produce an unrecognized error kind, the robust solution is to check for all
 /// the recognized error kinds and fail in those cases.
 ///
-/// #Example
+/// # Examples
 ///
 /// ```
 /// use std::{fs, io};
@@ -172,10 +172,10 @@ struct Custom {
 ///                 .write(true)
 ///                 .create_new(true)
 ///                 .open("") {
-///     Ok(_) => Ok(),
+///     Ok(file) => Ok(file),
 ///     Err(error) => match error.kind() {
-///         io::ErrorKind::AlreadyExists => Ok(),
-///         _ => error,
+///         io::ErrorKind::AlreadyExists => Err(error),
+///         _ => Err(error),
 ///     },
 /// };
 ///
