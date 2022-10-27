@@ -857,9 +857,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	   causes rounded corners and no border on iOS Safari. */
 	-webkit-appearance: none;
 	/* Override Normalize.css: we have margins and do
-	 not want to overflow - the `moz` attribute is necessary
-	 until Firefox 29, too early to drop at this point */
-	-moz-box-sizing: border-box !important;
+	 not want to overflow */
 	box-sizing: border-box !important;
 	outline: none;
 	border: 1px solid var(--border-color);

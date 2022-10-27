@@ -415,6 +415,16 @@ fn clean_projection<'tcx>(
     cx: &mut DocContext<'tcx>,
     def_id: Option<DefId>,
 ) -> Type {
+    if cx.tcx.def_kind(ty.item_def_id) == DefKind::ImplTraitPlaceholder {
+        let bounds = cx
+            .tcx
+            .explicit_item_bounds(ty.item_def_id)
+            .iter()
+            .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, ty.substs))
+            .collect::<Vec<_>>();
+        return clean_middle_opaque_bounds(cx, bounds);
+    }
+
     let trait_ = clean_trait_ref_with_bindings(cx, ty.trait_ref(cx.tcx), ThinVec::new());
     let self_type = clean_middle_ty(ty.self_ty(), cx, None);
     let self_def_id = if let Some(def_id) = def_id {
@@ -1720,59 +1730,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .iter()
                 .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, substs))
                 .collect::<Vec<_>>();
-            let mut regions = vec![];
-            let mut has_sized = false;
-            let mut bounds = bounds
-                .iter()
-                .filter_map(|bound| {
-                    let bound_predicate = bound.kind();
-                    let trait_ref = match bound_predicate.skip_binder() {
-                        ty::PredicateKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
-                        ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
-                            if let Some(r) = clean_middle_region(reg) {
-                                regions.push(GenericBound::Outlives(r));
-                            }
-                            return None;
-                        }
-                        _ => return None,
-                    };
-
-                    if let Some(sized) = cx.tcx.lang_items().sized_trait() {
-                        if trait_ref.def_id() == sized {
-                            has_sized = true;
-                            return None;
-                        }
-                    }
-
-                    let bindings: ThinVec<_> = bounds
-                        .iter()
-                        .filter_map(|bound| {
-                            if let ty::PredicateKind::Projection(proj) = bound.kind().skip_binder()
-                            {
-                                if proj.projection_ty.trait_ref(cx.tcx) == trait_ref.skip_binder() {
-                                    Some(TypeBinding {
-                                        assoc: projection_to_path_segment(proj.projection_ty, cx),
-                                        kind: TypeBindingKind::Equality {
-                                            term: clean_middle_term(proj.term, cx),
-                                        },
-                                    })
-                                } else {
-                                    None
-                                }
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
-                    Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, bindings))
-                })
-                .collect::<Vec<_>>();
-            bounds.extend(regions);
-            if !has_sized && !bounds.is_empty() {
-                bounds.insert(0, GenericBound::maybe_sized(cx));
-            }
-            ImplTrait(bounds)
+            clean_middle_opaque_bounds(cx, bounds)
         }
 
         ty::Closure(..) => panic!("Closure"),
@@ -1783,6 +1741,64 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Infer(..) => panic!("Infer"),
         ty::Error(_) => panic!("Error"),
     }
+}
+
+fn clean_middle_opaque_bounds<'tcx>(
+    cx: &mut DocContext<'tcx>,
+    bounds: Vec<ty::Predicate<'tcx>>,
+) -> Type {
+    let mut regions = vec![];
+    let mut has_sized = false;
+    let mut bounds = bounds
+        .iter()
+        .filter_map(|bound| {
+            let bound_predicate = bound.kind();
+            let trait_ref = match bound_predicate.skip_binder() {
+                ty::PredicateKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
+                    if let Some(r) = clean_middle_region(reg) {
+                        regions.push(GenericBound::Outlives(r));
+                    }
+                    return None;
+                }
+                _ => return None,
+            };
+
+            if let Some(sized) = cx.tcx.lang_items().sized_trait() {
+                if trait_ref.def_id() == sized {
+                    has_sized = true;
+                    return None;
+                }
+            }
+
+            let bindings: ThinVec<_> = bounds
+                .iter()
+                .filter_map(|bound| {
+                    if let ty::PredicateKind::Projection(proj) = bound.kind().skip_binder() {
+                        if proj.projection_ty.trait_ref(cx.tcx) == trait_ref.skip_binder() {
+                            Some(TypeBinding {
+                                assoc: projection_to_path_segment(proj.projection_ty, cx),
+                                kind: TypeBindingKind::Equality {
+                                    term: clean_middle_term(proj.term, cx),
+                                },
+                            })
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, bindings))
+        })
+        .collect::<Vec<_>>();
+    bounds.extend(regions);
+    if !has_sized && !bounds.is_empty() {
+        bounds.insert(0, GenericBound::maybe_sized(cx));
+    }
+    ImplTrait(bounds)
 }
 
 pub(crate) fn clean_field<'tcx>(field: &hir::FieldDef<'tcx>, cx: &mut DocContext<'tcx>) -> Item {

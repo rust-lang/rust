@@ -1297,6 +1297,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         // Only encode named non-reexport children, reexports are encoded
                         // separately and unnamed items are not used by name resolution.
                         hir::ItemKind::ExternCrate(..) => continue,
+                        hir::ItemKind::Struct(ref vdata, _) => {
+                            yield item_id.def_id.def_id.local_def_index;
+                            // Encode constructors which take a separate slot in value namespace.
+                            if let Some(ctor_hir_id) = vdata.ctor_hir_id() {
+                                yield tcx.hir().local_def_id(ctor_hir_id).local_def_index;
+                            }
+                        }
                         _ if tcx.def_key(item_id.def_id.to_def_id()).get_opt_name().is_some() => {
                             yield item_id.def_id.def_id.local_def_index;
                         }
@@ -1620,12 +1627,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
-            hir::ItemKind::Enum(..) => record_array!(self.tables.children[def_id] <-
-                self.tcx.adt_def(def_id).variants().iter().map(|v| {
-                    assert!(v.def_id.is_local());
-                    v.def_id.index
-                })
-            ),
+            hir::ItemKind::Enum(..) => {
+                record_array!(self.tables.children[def_id] <- iter::from_generator(||
+                    for variant in tcx.adt_def(def_id).variants() {
+                        yield variant.def_id.index;
+                        // Encode constructors which take a separate slot in value namespace.
+                        if let Some(ctor_def_id) = variant.ctor_def_id {
+                            yield ctor_def_id.index;
+                        }
+                    }
+                ))
+            }
             hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
                 record_array!(self.tables.children[def_id] <-
                     self.tcx.adt_def(def_id).non_enum_variant().fields.iter().map(|f| {

@@ -44,6 +44,12 @@ impl<T: ?Sized> !Send for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Send for *mut T {}
 
+// Most instances arise automatically, but this instance is needed to link up `T: Sync` with
+// `&T: Send` (and it also removes the unsound default instance `T Send` -> `&T: Send` that would
+// otherwise exist).
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Sync + ?Sized> Send for &T {}
+
 /// Types with a constant size known at compile time.
 ///
 /// All type parameters have an implicit bound of `Sized`. The special syntax
@@ -673,13 +679,6 @@ impl<T: ?Sized> StructuralPartialEq for PhantomData<T> {}
 
 #[unstable(feature = "structural_match", issue = "31434")]
 impl<T: ?Sized> StructuralEq for PhantomData<T> {}
-
-mod impls {
-    #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<T: Sync + ?Sized> Send for &T {}
-    #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<T: Send + ?Sized> Send for &mut T {}
-}
 
 /// Compiler-internal trait used to indicate the type of enum discriminants.
 ///
