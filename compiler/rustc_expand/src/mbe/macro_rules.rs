@@ -333,7 +333,7 @@ fn expand_macro<'cx>(
                 cx.struct_span_err(span, &msg).emit();
                 return DummyResult::any(span);
             }
-            ErrorReported => return DummyResult::any(sp),
+            ErrorReported(_) => return DummyResult::any(sp),
         }
 
         // The matcher was not `Success(..)`ful.
@@ -470,7 +470,7 @@ pub fn compile_declarative_macro(
                 .emit();
             return dummy_syn_ext();
         }
-        ErrorReported => {
+        ErrorReported(_) => {
             return dummy_syn_ext();
         }
     };

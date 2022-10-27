@@ -72,6 +72,7 @@
 
 pub(crate) use NamedMatch::*;
 pub(crate) use ParseResult::*;
+use rustc_errors::ErrorGuaranteed;
 
 use crate::mbe::{KleeneOp, TokenTree};
 
@@ -270,7 +271,7 @@ pub(crate) enum ParseResult<T> {
     Failure(Token, &'static str),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(rustc_span::Span, String),
-    ErrorReported,
+    ErrorReported(ErrorGuaranteed),
 }
 
 /// A `ParseResult` where the `Success` variant contains a mapping of
@@ -612,14 +613,14 @@ impl TtParser {
                         // edition-specific matching behavior for non-terminals.
                         let nt = match parser.to_mut().parse_nonterminal(kind) {
                             Err(mut err) => {
-                                err.span_label(
+                                let guarantee = err.span_label(
                                     span,
                                     format!(
                                         "while parsing argument for this `{kind}` macro fragment"
                                     ),
                                 )
                                 .emit();
-                                return ErrorReported;
+                                return ErrorReported(guarantee);
                             }
                             Ok(nt) => nt,
                         };
