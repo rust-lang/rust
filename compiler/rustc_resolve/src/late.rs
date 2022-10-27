@@ -568,7 +568,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
     /// They will be used to determine the correct lifetime for the fn return type.
     /// The `LifetimeElisionCandidate` is used for diagnostics, to suggest introducing named
     /// lifetimes.
-    lifetime_elision_candidates: Option<FxIndexMap<LifetimeRes, LifetimeElisionCandidate>>,
+    lifetime_elision_candidates: Option<Vec<(LifetimeRes, LifetimeElisionCandidate)>>,
 
     /// The trait that the current context can refer to.
     current_trait_ref: Option<(Module<'a>, TraitRef)>,
@@ -1802,7 +1802,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         match res {
             LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static => {
                 if let Some(ref mut candidates) = self.lifetime_elision_candidates {
-                    candidates.insert(res, candidate);
+                    candidates.push((res, candidate));
                 }
             }
             LifetimeRes::Infer | LifetimeRes::Error | LifetimeRes::ElidedAnchor { .. } => {}
@@ -1913,8 +1913,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         // We do not have a `self` candidate, look at the full list.
         let all_candidates = all_candidates.unwrap();
-        if all_candidates.len() == 1 {
-            Ok(*all_candidates.first().unwrap().0)
+        if let [(res, _)] = &all_candidates[..] {
+            Ok(*res)
         } else {
             let all_candidates = all_candidates
                 .into_iter()
@@ -2394,7 +2394,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // Do not account for the parameters we just bound for function lifetime elision.
         if let Some(ref mut candidates) = self.lifetime_elision_candidates {
             for (_, res) in function_lifetime_rib.bindings.values() {
-                candidates.remove(res);
+                candidates.retain(|(r, _)| r != res);
             }
         }
 
