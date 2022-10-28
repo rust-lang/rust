@@ -1017,7 +1017,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
             let (lhs_span, rhs_span) = match &expr.kind {
                 ExprKind::Field(base, ident) => (base.span, ident.span),
-                ExprKind::MethodCall(_, receiver, _, span) => (receiver.span, *span),
+                ExprKind::MethodCall(_, args, span) => (args[0].span, *span),
                 _ => return false,
             };
 

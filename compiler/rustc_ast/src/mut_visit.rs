@@ -1297,11 +1297,10 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_expr(f);
             visit_exprs(args, vis);
         }
-        ExprKind::MethodCall(PathSegment { ident, id, args }, receiver, exprs, span) => {
+        ExprKind::MethodCall(PathSegment { ident, id, args }, exprs, span) => {
             vis.visit_ident(ident);
             vis.visit_id(id);
             visit_opt(args, |args| vis.visit_generic_args(args));
-            vis.visit_expr(receiver);
             visit_exprs(exprs, vis);
             vis.visit_span(span);
         }
