@@ -276,10 +276,14 @@ pub struct PrimitiveLayouts<'tcx> {
     pub i8: TyAndLayout<'tcx>,
     pub i16: TyAndLayout<'tcx>,
     pub i32: TyAndLayout<'tcx>,
+    pub i64: TyAndLayout<'tcx>,
+    pub i128: TyAndLayout<'tcx>,
     pub isize: TyAndLayout<'tcx>,
     pub u8: TyAndLayout<'tcx>,
     pub u16: TyAndLayout<'tcx>,
     pub u32: TyAndLayout<'tcx>,
+    pub u64: TyAndLayout<'tcx>,
+    pub u128: TyAndLayout<'tcx>,
     pub usize: TyAndLayout<'tcx>,
     pub bool: TyAndLayout<'tcx>,
     pub mut_raw_ptr: TyAndLayout<'tcx>,   // *mut ()
@@ -296,15 +300,41 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
             i8: layout_cx.layout_of(tcx.types.i8)?,
             i16: layout_cx.layout_of(tcx.types.i16)?,
             i32: layout_cx.layout_of(tcx.types.i32)?,
+            i64: layout_cx.layout_of(tcx.types.i64)?,
+            i128: layout_cx.layout_of(tcx.types.i128)?,
             isize: layout_cx.layout_of(tcx.types.isize)?,
             u8: layout_cx.layout_of(tcx.types.u8)?,
             u16: layout_cx.layout_of(tcx.types.u16)?,
             u32: layout_cx.layout_of(tcx.types.u32)?,
+            u64: layout_cx.layout_of(tcx.types.u64)?,
+            u128: layout_cx.layout_of(tcx.types.u128)?,
             usize: layout_cx.layout_of(tcx.types.usize)?,
             bool: layout_cx.layout_of(tcx.types.bool)?,
             mut_raw_ptr: layout_cx.layout_of(mut_raw_ptr)?,
             const_raw_ptr: layout_cx.layout_of(const_raw_ptr)?,
         })
+    }
+
+    pub fn uint(&self, size: Size) -> Option<TyAndLayout<'tcx>> {
+        match size.bits() {
+            8 => Some(self.u8),
+            16 => Some(self.u16),
+            32 => Some(self.u32),
+            64 => Some(self.u64),
+            128 => Some(self.u128),
+            _ => None,
+        }
+    }
+
+    pub fn int(&self, size: Size) -> Option<TyAndLayout<'tcx>> {
+        match size.bits() {
+            8 => Some(self.i8),
+            16 => Some(self.i16),
+            32 => Some(self.i32),
+            64 => Some(self.i64),
+            128 => Some(self.i128),
+            _ => None,
+        }
     }
 }
 

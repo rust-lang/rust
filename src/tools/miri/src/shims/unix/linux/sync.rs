@@ -214,11 +214,10 @@ pub fn futex<'tcx>(
                         }
                     }
 
-                    let dest = dest.clone();
                     this.register_timeout_callback(
                         thread,
                         timeout_time,
-                        Box::new(Callback { thread, addr_usize, dest }),
+                        Box::new(Callback { thread, addr_usize, dest: dest.clone() }),
                     );
                 }
             } else {
