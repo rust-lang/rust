@@ -60,6 +60,8 @@ pub struct CastCheck<'tcx> {
     cast_ty: Ty<'tcx>,
     cast_span: Span,
     span: Span,
+    /// whether the cast is made in a const context or not.
+    pub constness: hir::Constness,
 }
 
 /// The kind of pointer and associated metadata (thin, length or vtable) - we
@@ -210,9 +212,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         cast_ty: Ty<'tcx>,
         cast_span: Span,
         span: Span,
+        constness: hir::Constness,
     ) -> Result<CastCheck<'tcx>, ErrorGuaranteed> {
         let expr_span = expr.span.find_ancestor_inside(span).unwrap_or(expr.span);
-        let check = CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span };
+        let check = CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span, constness };
 
         // For better error messages, check for some obviously unsized
         // cases now. We do a more thorough check at the end, once
