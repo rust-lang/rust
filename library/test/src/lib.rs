@@ -40,7 +40,7 @@ pub mod test {
         cli::{parse_opts, TestOpts},
         filter_tests,
         helpers::metrics::{Metric, MetricMap},
-        options::{Concurrent, Options, RunIgnored, RunStrategy, ShouldPanic},
+        options::{Options, RunIgnored, RunStrategy, ShouldPanic},
         run_test, test_main, test_main_static,
         test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk},
         time::{TestExecTime, TestTimeOptions},
@@ -85,7 +85,7 @@ use event::{CompletedTest, TestEvent};
 use helpers::concurrency::get_concurrency;
 use helpers::exit_code::get_exit_code;
 use helpers::shuffle::{get_shuffle_seed, shuffle_tests};
-use options::{Concurrent, RunStrategy};
+use options::RunStrategy;
 use test_result::*;
 use time::TestExecTime;
 
@@ -267,6 +267,19 @@ where
         join_handle: Option<thread::JoinHandle<()>>,
     }
 
+    impl RunningTest {
+        fn join(self, completed_test: &mut CompletedTest) {
+            if let Some(join_handle) = self.join_handle {
+                if let Err(_) = join_handle.join() {
+                    if let TrOk = completed_test.result {
+                        completed_test.result =
+                            TrFailedMsg("panicked after reporting success".to_string());
+                    }
+                }
+            }
+        }
+    }
+
     // Use a deterministic hasher
     type TestMap =
         HashMap<TestId, RunningTest, BuildHasherDefault<collections::hash_map::DefaultHasher>>;
@@ -366,10 +379,10 @@ where
             let (id, test) = remaining.pop_front().unwrap();
             let event = TestEvent::TeWait(test.desc.clone());
             notify_about_test_event(event)?;
-            let join_handle =
-                run_test(opts, !opts.run_tests, id, test, run_strategy, tx.clone(), Concurrent::No);
-            assert!(join_handle.is_none());
-            let completed_test = rx.recv().unwrap();
+            let join_handle = run_test(opts, !opts.run_tests, id, test, run_strategy, tx.clone());
+            // Wait for the test to complete.
+            let mut completed_test = rx.recv().unwrap();
+            RunningTest { join_handle }.join(&mut completed_test);
 
             let event = TestEvent::TeResult(completed_test);
             notify_about_test_event(event)?;
@@ -383,15 +396,8 @@ where
 
                 let event = TestEvent::TeWait(desc.clone());
                 notify_about_test_event(event)?; //here no pad
-                let join_handle = run_test(
-                    opts,
-                    !opts.run_tests,
-                    id,
-                    test,
-                    run_strategy,
-                    tx.clone(),
-                    Concurrent::Yes,
-                );
+                let join_handle =
+                    run_test(opts, !opts.run_tests, id, test, run_strategy, tx.clone());
                 running_tests.insert(id, RunningTest { join_handle });
                 timeout_queue.push_back(TimeoutEntry { id, desc, timeout });
                 pending += 1;
@@ -423,14 +429,7 @@ where
 
             let mut completed_test = res.unwrap();
             let running_test = running_tests.remove(&completed_test.id).unwrap();
-            if let Some(join_handle) = running_test.join_handle {
-                if let Err(_) = join_handle.join() {
-                    if let TrOk = completed_test.result {
-                        completed_test.result =
-                            TrFailedMsg("panicked after reporting success".to_string());
-                    }
-                }
-            }
+            running_test.join(&mut completed_test);
 
             let event = TestEvent::TeResult(completed_test);
             notify_about_test_event(event)?;
@@ -443,8 +442,10 @@ where
         for (id, b) in filtered.benchs {
             let event = TestEvent::TeWait(b.desc.clone());
             notify_about_test_event(event)?;
-            run_test(opts, false, id, b, run_strategy, tx.clone(), Concurrent::No);
-            let completed_test = rx.recv().unwrap();
+            let join_handle = run_test(opts, false, id, b, run_strategy, tx.clone());
+            // Wait for the test to complete.
+            let mut completed_test = rx.recv().unwrap();
+            RunningTest { join_handle }.join(&mut completed_test);
 
             let event = TestEvent::TeResult(completed_test);
             notify_about_test_event(event)?;
@@ -520,7 +521,6 @@ pub fn run_test(
     test: TestDescAndFn,
     strategy: RunStrategy,
     monitor_ch: Sender<CompletedTest>,
-    concurrency: Concurrent,
 ) -> Option<thread::JoinHandle<()>> {
     let TestDescAndFn { desc, testfn } = test;
 
@@ -538,7 +538,6 @@ pub fn run_test(
     struct TestRunOpts {
         pub strategy: RunStrategy,
         pub nocapture: bool,
-        pub concurrency: Concurrent,
         pub time: Option<time::TestTimeOptions>,
     }
 
@@ -549,7 +548,6 @@ pub fn run_test(
         testfn: Box<dyn FnOnce() -> Result<(), String> + Send>,
         opts: TestRunOpts,
     ) -> Option<thread::JoinHandle<()>> {
-        let concurrency = opts.concurrency;
         let name = desc.name.clone();
 
         let runtest = move || match opts.strategy {
@@ -576,7 +574,7 @@ pub fn run_test(
         // the test synchronously, regardless of the concurrency
         // level.
         let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_family = "wasm");
-        if concurrency == Concurrent::Yes && supports_threads {
+        if supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
             let mut runtest = Arc::new(Mutex::new(Some(runtest)));
             let runtest2 = runtest.clone();
@@ -597,7 +595,7 @@ pub fn run_test(
     }
 
     let test_run_opts =
-        TestRunOpts { strategy, nocapture: opts.nocapture, concurrency, time: opts.time_options };
+        TestRunOpts { strategy, nocapture: opts.nocapture, time: opts.time_options };
 
     match testfn {
         DynBenchFn(benchfn) => {
