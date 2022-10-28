@@ -1,1 +1,1 @@
-// All `str` tests live in liballoc/tests
+// All `str` tests live in alloc/tests

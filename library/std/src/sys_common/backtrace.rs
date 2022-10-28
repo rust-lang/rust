@@ -20,7 +20,7 @@ pub fn lock() -> impl Drop {
 /// Prints the current backtrace.
 pub fn print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
     // There are issues currently linking libbacktrace into tests, and in
-    // general during libstd's own unit tests we're not testing this path. In
+    // general during std's own unit tests we're not testing this path. In
     // test mode immediately return here to optimize away any references to the
     // libbacktrace symbols
     if cfg!(test) {

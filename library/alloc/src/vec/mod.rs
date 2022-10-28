@@ -3191,7 +3191,7 @@ where
     }
 }
 
-// note: test pulls in libstd, which causes errors here
+// note: test pulls in std, which causes errors here
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
@@ -3209,7 +3209,7 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     }
 }
 
-// note: test pulls in libstd, which causes errors here
+// note: test pulls in std, which causes errors here
 #[cfg(not(no_global_oom_handling))]
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
