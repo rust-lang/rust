@@ -2,6 +2,12 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
 
+// FIXME: The `map` field in ProvisionalEvaluationCache should be changed to
+// a `FxIndexMap` to avoid query instability, but right now it causes a perf regression. This would be
+// fixed or at least lightened by the addition of the `drain_filter` method to `FxIndexMap`
+// Relevant: https://github.com/rust-lang/rust/pull/103723 and https://github.com/bluss/indexmap/issues/242
+#![allow(rustc::potential_query_instability)]
+
 use self::EvaluationResult::*;
 use self::SelectionCandidate::*;
 
@@ -24,7 +30,8 @@ use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
