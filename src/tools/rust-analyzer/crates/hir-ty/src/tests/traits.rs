@@ -3966,7 +3966,7 @@ fn g(t: &(dyn T + Send)) {
 
 #[test]
 fn gats_in_path() {
-    check_infer_with_mismatches(
+    check_types(
         r#"
 //- minicore: deref
 use core::ops::Deref;
@@ -3976,32 +3976,22 @@ trait PointerFamily {
 
 fn f<P: PointerFamily>(p: P::Pointer<i32>) {
     let a = *p;
+      //^ i32
 }
 fn g<P: PointerFamily>(p: <P as PointerFamily>::Pointer<i32>) {
     let a = *p;
+      //^ i32
 }
         "#,
-        expect![[r#"
-            110..111 'p': PointerFamily::Pointer<i32, P>
-            130..149 '{     ... *p; }': ()
-            140..141 'a': i32
-            144..146 '*p': i32
-            145..146 'p': PointerFamily::Pointer<i32, P>
-            173..174 'p': PointerFamily::Pointer<i32, P>
-            212..231 '{     ... *p; }': ()
-            222..223 'a': i32
-            226..228 '*p': i32
-            227..228 'p': PointerFamily::Pointer<i32, P>
-        "#]],
     );
 }
 
 #[test]
 fn gats_with_impl_trait() {
-    // FIXME: the last function (`fn h()`) is not valid Rust as of this writing because you cannot
-    // specify the same associated type multiple times even if their arguments are different.
-    // Reconsider how to treat these invalid types.
-    check_infer_with_mismatches(
+    // FIXME: the last function (`fn i()`) is not valid Rust as of this writing because you cannot
+    // specify the same associated type multiple times even if their arguments are different (c.f.
+    // `fn h()`, which is valid). Reconsider how to treat these invalid types.
+    check_types(
         r#"
 //- minicore: deref
 use core::ops::Deref;
@@ -4012,45 +4002,30 @@ trait Trait {
 }
 
 fn f<T>(v: impl Trait) {
-    v.get::<i32>().deref();
-    v.get::<T>().deref();
+    let a = v.get::<i32>().deref();
+      //^ &i32
+    let a = v.get::<T>().deref();
+      //^ &T
 }
-fn g<T>(v: impl Trait<Assoc<T> = &'a T>) {
+fn g<'a, T: 'a>(v: impl Trait<Assoc<T> = &'a T>) {
     let a = v.get::<T>();
+      //^ &T
     let a = v.get::<()>();
+      //^ Trait::Assoc<(), impl Trait<Assoc<T> = &T>>
 }
-fn h(v: impl Trait<Assoc<i32> = &'a i32, Assoc<i64> = &'a i64> {
+fn h<'a>(v: impl Trait<Assoc<i32> = &'a i32> + Trait<Assoc<i64> = &'a i64>) {
     let a = v.get::<i32>();
+      //^ &i32
     let a = v.get::<i64>();
+      //^ &i64
+}
+fn i<'a>(v: impl Trait<Assoc<i32> = &'a i32, Assoc<i64> = &'a i64>) {
+    let a = v.get::<i32>();
+      //^ &i32
+    let a = v.get::<i64>();
+      //^ &i64
 }
     "#,
-        expect![[r#"
-            90..94 'self': &Self
-            126..127 'v': impl Trait
-            141..198 '{     ...f(); }': ()
-            147..148 'v': impl Trait
-            147..161 'v.get::<i32>()': Trait::Assoc<i32, impl Trait>
-            147..169 'v.get:...eref()': &i32
-            175..176 'v': impl Trait
-            175..187 'v.get::<T>()': Trait::Assoc<T, impl Trait>
-            175..195 'v.get:...eref()': &T
-            207..208 'v': impl Trait<Assoc<T> = &T>
-            240..296 '{     ...>(); }': ()
-            250..251 'a': &T
-            254..255 'v': impl Trait<Assoc<T> = &T>
-            254..266 'v.get::<T>()': &T
-            276..277 'a': Trait::Assoc<(), impl Trait<Assoc<T> = &T>>
-            280..281 'v': impl Trait<Assoc<T> = &T>
-            280..293 'v.get::<()>()': Trait::Assoc<(), impl Trait<Assoc<T> = &T>>
-            302..303 'v': impl Trait<Assoc<i32> = &i32, Assoc<i64> = &i64>
-            360..419 '{     ...>(); }': ()
-            370..371 'a': &i32
-            374..375 'v': impl Trait<Assoc<i32> = &i32, Assoc<i64> = &i64>
-            374..388 'v.get::<i32>()': &i32
-            398..399 'a': &i64
-            402..403 'v': impl Trait<Assoc<i32> = &i32, Assoc<i64> = &i64>
-            402..416 'v.get::<i64>()': &i64
-        "#]],
     );
 }
 
@@ -4086,7 +4061,7 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
 
 #[test]
 fn gats_in_associated_type_binding() {
-    check_infer_with_mismatches(
+    check_types(
         r#"
 trait Trait {
     type Assoc<T>;
@@ -4099,24 +4074,13 @@ where
     T: Trait<Assoc<isize> = usize>,
 {
     let a = t.get::<i32>();
+      //^ u32
     let a = t.get::<isize>();
+      //^ usize
     let a = t.get::<()>();
+      //^ Trait::Assoc<(), T>
 }
 
     "#,
-        expect![[r#"
-            48..52 'self': &Self
-            84..85 't': T
-            164..252 '{     ...>(); }': ()
-            174..175 'a': u32
-            178..179 't': T
-            178..192 't.get::<i32>()': u32
-            202..203 'a': usize
-            206..207 't': T
-            206..222 't.get:...ize>()': usize
-            232..233 'a': Trait::Assoc<(), T>
-            236..237 't': T
-            236..249 't.get::<()>()': Trait::Assoc<(), T>
-        "#]],
-    )
+    );
 }
