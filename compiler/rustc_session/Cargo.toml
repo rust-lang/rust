@@ -17,3 +17,10 @@ rustc_span = { path = "../rustc_span" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
+smallvec = "1.8.1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["libloaderapi"] }
