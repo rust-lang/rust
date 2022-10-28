@@ -829,12 +829,7 @@ impl<'a> Parser<'a> {
                 ("cast", None)
             };
 
-        // Save the memory location of expr before parsing any following postfix operators.
-        // This will be compared with the memory location of the output expression.
-        // If they different we can assume we parsed another expression because the existing expression is not reallocated.
-        let addr_before = &*cast_expr as *const _ as usize;
-        let with_postfix = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
-        let changed = addr_before != &*with_postfix as *const _ as usize;
+        let (with_postfix, changed) = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
 
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, or has a different memory location, it is an illegal postfix operator.
@@ -959,9 +954,9 @@ impl<'a> Parser<'a> {
         // structure
         let res = self.parse_dot_or_call_expr_with_(e0, lo);
         if attrs.is_empty() {
-            res
+            res.map(|(expr, _)| expr)
         } else {
-            res.map(|expr| {
+            res.map(|(expr, _)| {
                 expr.map(|mut expr| {
                     attrs.extend(expr.attrs);
                     expr.attrs = attrs;
@@ -971,7 +966,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_dot_or_call_expr_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
+    fn parse_dot_or_call_expr_with_(
+        &mut self,
+        mut e: P<Expr>,
+        lo: Span,
+    ) -> PResult<'a, (P<Expr>, bool)> {
+        let mut changed_expr = false;
         loop {
             let has_question = if self.prev_token.kind == TokenKind::Ident(kw::Return, false) {
                 // we are using noexpect here because we don't expect a `?` directly after a `return`
@@ -982,6 +982,7 @@ impl<'a> Parser<'a> {
             };
             if has_question {
                 // `expr?`
+                changed_expr = true;
                 e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
                 continue;
             }
@@ -998,13 +999,14 @@ impl<'a> Parser<'a> {
                 continue;
             }
             if self.expr_is_complete(&e) {
-                return Ok(e);
+                return Ok((e, changed_expr));
             }
             e = match self.token.kind {
                 token::OpenDelim(Delimiter::Parenthesis) => self.parse_fn_call_expr(lo, e),
                 token::OpenDelim(Delimiter::Bracket) => self.parse_index_expr(lo, e)?,
-                _ => return Ok(e),
-            }
+                _ => return Ok((e, changed_expr)),
+            };
+            changed_expr = true;
         }
     }
 
