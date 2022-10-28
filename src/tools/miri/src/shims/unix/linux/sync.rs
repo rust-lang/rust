@@ -90,9 +90,11 @@ pub fn futex<'tcx>(
             let timeout_time = if this.ptr_is_null(timeout.ptr)? {
                 None
             } else {
-                this.check_no_isolation(
-                    "`futex` syscall with `op=FUTEX_WAIT` and non-null timeout",
-                )?;
+                if op & futex_realtime != 0 {
+                    this.check_no_isolation(
+                        "`futex` syscall with `op=FUTEX_WAIT` and non-null timeout with `FUTEX_CLOCK_REALTIME`",
+                    )?;
+                }
                 let duration = match this.read_timespec(&timeout)? {
                     Some(duration) => duration,
                     None => {

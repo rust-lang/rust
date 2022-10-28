@@ -254,8 +254,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let timeout_time = if timeout_ms == this.eval_windows("c", "INFINITE")?.to_u32()? {
             None
         } else {
-            this.check_no_isolation("`WaitOnAddress` with non-infinite timeout")?;
-
             let duration = Duration::from_millis(timeout_ms.into());
             Some(Time::Monotonic(this.machine.clock.now().checked_add(duration).unwrap()))
         };
