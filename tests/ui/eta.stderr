@@ -134,5 +134,29 @@ error: redundant closure
 LL |     move || takes_fn_mut(|| f_used_once())
    |                          ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut f_used_once`
 
-error: aborting due to 22 previous errors
+error: redundant closure
+  --> $DIR/eta.rs:329:19
+   |
+LL |     array_opt.map(|a| a.as_slice());
+   |                   ^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `<[u8; 3]>::as_slice`
+
+error: redundant closure
+  --> $DIR/eta.rs:332:19
+   |
+LL |     slice_opt.map(|s| s.len());
+   |                   ^^^^^^^^^^^ help: replace the closure with the method itself: `<[u8]>::len`
+
+error: redundant closure
+  --> $DIR/eta.rs:335:17
+   |
+LL |     ptr_opt.map(|p| p.is_null());
+   |                 ^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `<*const usize>::is_null`
+
+error: redundant closure
+  --> $DIR/eta.rs:339:17
+   |
+LL |     dyn_opt.map(|d| d.method_on_dyn());
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `<dyn TestTrait>::method_on_dyn`
+
+error: aborting due to 26 previous errors
 
