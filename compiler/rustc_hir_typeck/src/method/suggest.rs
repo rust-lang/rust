@@ -106,7 +106,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let report_candidates = |span: Span,
                                  err: &mut Diagnostic,
-                                 mut sources: Vec<CandidateSource>,
+                                 sources: &mut Vec<CandidateSource>,
                                  sugg_span: Span| {
             sources.sort();
             sources.dedup();
@@ -248,7 +248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match error {
             MethodError::NoMatch(NoMatchData {
-                static_candidates: static_sources,
+                static_candidates: mut static_sources,
                 unsatisfied_predicates,
                 out_of_scope_traits,
                 lev_candidate,
@@ -422,9 +422,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.help(&format!("try with `{}::{}`", ty_str, item_name,));
                     }
 
-                    report_candidates(span, &mut err, static_sources, sugg_span);
+                    report_candidates(span, &mut err, &mut static_sources, sugg_span);
                 } else if static_sources.len() > 1 {
-                    report_candidates(span, &mut err, static_sources, sugg_span);
+                    report_candidates(span, &mut err, &mut static_sources, sugg_span);
                 }
 
                 let mut bound_spans = vec![];
@@ -1007,6 +1007,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         source,
                         out_of_scope_traits,
                         &unsatisfied_predicates,
+                        &static_sources,
                         unsatisfied_bounds,
                     );
                 }
@@ -1079,7 +1080,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Some(err);
             }
 
-            MethodError::Ambiguity(sources) => {
+            MethodError::Ambiguity(mut sources) => {
                 let mut err = struct_span_err!(
                     self.sess(),
                     item_name.span,
@@ -1088,7 +1089,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 err.span_label(item_name.span, format!("multiple `{}` found", item_name));
 
-                report_candidates(span, &mut err, sources, sugg_span);
+                report_candidates(span, &mut err, &mut sources, sugg_span);
                 err.emit();
             }
 
@@ -2015,6 +2016,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
         )],
+        static_candidates: &[CandidateSource],
         unsatisfied_bounds: bool,
     ) {
         let mut alt_rcvr_sugg = false;
@@ -2127,6 +2129,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(|info| match self.tcx.lookup_stability(info.def_id) {
                 Some(attr) => attr.level.is_stable(),
                 None => true,
+            })
+            .filter(|info| {
+                // Static candidates are already implemented, and known not to work
+                // Do not suggest them again
+                static_candidates.iter().all(|sc| match *sc {
+                    CandidateSource::Trait(def_id) => def_id != info.def_id,
+                    CandidateSource::Impl(def_id) => {
+                        self.tcx.trait_id_of_impl(def_id) != Some(info.def_id)
+                    }
+                })
             })
             .filter(|info| {
                 // We approximate the coherence rules to only suggest
