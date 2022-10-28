@@ -55,6 +55,9 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--code-highlight-question-mark-color: #ff9011;
 	--code-highlight-comment-color: #788797;
 	--code-highlight-doc-comment-color: #a1ac88;
+	--example-line-numbers-border-color: none;
+	--src-line-numbers-span-color: #5c6773;
+	--src-line-number-highlighted-background-color: rgba(255, 236, 164, 0.06);
 }
 
 .slider {
@@ -112,10 +115,8 @@ pre, .rustdoc.source .example-wrap {
 	color: #ff7733;
 }
 
-.src-line-numbers span { color: #5c6773; }
 .src-line-numbers .line-highlighted {
 	color: #708090;
-	background-color: rgba(255, 236, 164, 0.06);
 	padding-right: 4px;
 	border-right: 1px solid #ffb44c;
 }
@@ -168,13 +169,6 @@ details.rustdoc-toggle > summary::before {
 
 .result-name .primitive > i, .result-name .keyword > i {
 	color: #788797;
-}
-
-.src-line-numbers :target { background-color: transparent; }
-
-pre.example-line-numbers {
-	color: #5c67736e;
-	border: none;
 }
 
 a.test-arrow {
