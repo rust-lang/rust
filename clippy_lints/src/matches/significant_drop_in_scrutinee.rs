@@ -377,7 +377,7 @@ impl<'a, 'tcx> ArmSigDropHelper<'a, 'tcx> {
     }
 }
 
-fn has_significant_drop_in_arms<'tcx, 'a>(cx: &'a LateContext<'tcx>, arms: &'tcx [Arm<'_>]) -> FxHashSet<Span> {
+fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) -> FxHashSet<Span> {
     let mut helper = ArmSigDropHelper::new(cx);
     for arm in arms {
         helper.visit_expr(arm.body);

@@ -66,8 +66,8 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         use rustc_span::BytePos;
 
-        fn suggestion<'tcx>(
-            cx: &LateContext<'tcx>,
+        fn suggestion(
+            cx: &LateContext<'_>,
             diag: &mut Diagnostic,
             generics_span: Span,
             generics_suggestion_span: Span,

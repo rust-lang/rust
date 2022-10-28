@@ -62,7 +62,7 @@ fn peels_blocks_incl_unsafe<'a>(expr: &'a Expr<'a>) -> &'a Expr<'a> {
 //    <expr>
 // }
 // Returns true if <expr> resolves to `Some(x)`, `false` otherwise
-fn is_some_expr<'tcx>(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: &'tcx Expr<'_>) -> bool {
+fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: &Expr<'_>) -> bool {
     if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr) {
         // there can be not statements in the block as they would be removed when switching to `.filter`
         if let ExprKind::Call(callee, [arg]) = inner_expr.kind {

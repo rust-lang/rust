@@ -336,8 +336,8 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
     }
 }
 
-fn lint_for_missing_headers<'tcx>(
-    cx: &LateContext<'tcx>,
+fn lint_for_missing_headers(
+    cx: &LateContext<'_>,
     def_id: LocalDefId,
     span: impl Into<MultiSpan> + Copy,
     sig: &hir::FnSig<'_>,
@@ -467,7 +467,7 @@ struct DocHeaders {
     panics: bool,
 }
 
-fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &'a [Attribute]) -> DocHeaders {
+fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[Attribute]) -> DocHeaders {
     use pulldown_cmark::{BrokenLink, CowStr, Options};
     /// We don't want the parser to choke on intra doc links. Since we don't
     /// actually care about rendering them, just pretend that all broken links are

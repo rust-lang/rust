@@ -15,11 +15,11 @@ use rustc_span::{sym, Span};
 
 use super::MAP_CLONE;
 
-pub(super) fn check<'tcx>(
+pub(super) fn check(
     cx: &LateContext<'_>,
     e: &hir::Expr<'_>,
     recv: &hir::Expr<'_>,
-    arg: &'tcx hir::Expr<'_>,
+    arg: &hir::Expr<'_>,
     msrv: Option<RustcVersion>,
 ) {
     if_chain! {

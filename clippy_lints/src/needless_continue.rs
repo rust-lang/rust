@@ -287,7 +287,7 @@ const DROP_ELSE_BLOCK_MSG: &str = "consider dropping the `else` clause";
 
 const DROP_CONTINUE_EXPRESSION_MSG: &str = "consider dropping the `continue` expression";
 
-fn emit_warning<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str, typ: LintType) {
+fn emit_warning(cx: &EarlyContext<'_>, data: &LintData<'_>, header: &str, typ: LintType) {
     // snip    is the whole *help* message that appears after the warning.
     // message is the warning message.
     // expr    is the expression which the lint warning message refers to.
@@ -313,7 +313,7 @@ fn emit_warning<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str,
     );
 }
 
-fn suggestion_snippet_for_continue_inside_if<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>) -> String {
+fn suggestion_snippet_for_continue_inside_if(cx: &EarlyContext<'_>, data: &LintData<'_>) -> String {
     let cond_code = snippet(cx, data.if_cond.span, "..");
 
     let continue_code = snippet_block(cx, data.if_block.span, "..", Some(data.if_expr.span));
@@ -327,7 +327,7 @@ fn suggestion_snippet_for_continue_inside_if<'a>(cx: &EarlyContext<'_>, data: &'
     )
 }
 
-fn suggestion_snippet_for_continue_inside_else<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>) -> String {
+fn suggestion_snippet_for_continue_inside_else(cx: &EarlyContext<'_>, data: &LintData<'_>) -> String {
     let cond_code = snippet(cx, data.if_cond.span, "..");
 
     // Region B
@@ -361,7 +361,7 @@ fn suggestion_snippet_for_continue_inside_else<'a>(cx: &EarlyContext<'_>, data: 
     )
 }
 
-fn check_and_warn<'a>(cx: &EarlyContext<'_>, expr: &'a ast::Expr) {
+fn check_and_warn(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     if_chain! {
         if let ast::ExprKind::Loop(loop_block, ..) = &expr.kind;
         if let Some(last_stmt) = loop_block.stmts.last();

@@ -13,8 +13,8 @@ use rustc_span::sym;
 use super::OPTION_AS_REF_DEREF;
 
 /// lint use of `_.as_ref().map(Deref::deref)` for `Option`s
-pub(super) fn check<'tcx>(
-    cx: &LateContext<'tcx>,
+pub(super) fn check(
+    cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
     as_ref_recv: &hir::Expr<'_>,
     map_arg: &hir::Expr<'_>,

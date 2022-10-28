@@ -105,8 +105,8 @@ impl EarlyLintPass for RedundantClosureCall {
 
 impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
-        fn count_closure_usage<'a, 'tcx>(
-            cx: &'a LateContext<'tcx>,
+        fn count_closure_usage<'tcx>(
+            cx: &LateContext<'tcx>,
             block: &'tcx hir::Block<'_>,
             path: &'tcx hir::Path<'tcx>,
         ) -> usize {

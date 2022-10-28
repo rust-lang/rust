@@ -8,7 +8,7 @@ use rustc_span::sym;
 
 use super::SUSPICIOUS_MAP;
 
-pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, count_recv: &hir::Expr<'_>, map_arg: &hir::Expr<'_>) {
+pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, count_recv: &hir::Expr<'_>, map_arg: &hir::Expr<'_>) {
     if_chain! {
         if is_trait_method(cx, count_recv, sym::Iterator);
         let closure = expr_or_init(cx, map_arg);
