@@ -6,7 +6,7 @@ mod outer { //~ ERROR Direct: pub(crate), Reexported: pub(crate), Reachable: pub
     pub mod inner1 { //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
 
         #[rustc_effective_visibility]
-        extern "C" {} //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+        extern "C" {} //~ ERROR not in the table
 
         #[rustc_effective_visibility]
         pub trait PubTrait { //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
