@@ -571,10 +571,18 @@ ul.block, .block li {
 	padding: 13px 8px;
 	border-top-left-radius: 5px;
 	border-bottom-left-radius: 5px;
+	border-color: var(--example-line-numbers-border-color);
 }
 
 .src-line-numbers span {
 	cursor: pointer;
+	color: var(--src-line-numbers-span-color);
+}
+.src-line-numbers .line-highlighted {
+	background-color: var(--src-line-number-highlighted-background-color);
+}
+.src-line-numbers :target {
+	background-color: transparent;
 }
 
 .search-loading {
