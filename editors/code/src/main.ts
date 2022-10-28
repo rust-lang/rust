@@ -10,7 +10,6 @@ import { setContextValue } from "./util";
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
 export interface RustAnalyzerExtensionApi {
-    // FIXME: this should be non-optional
     readonly client?: lc.LanguageClient;
 }
 
@@ -42,22 +41,18 @@ export async function activate(
         isRustDocument(document)
     );
 
-    if (folders.length === 0 && rustDocuments.length === 0) {
-        // FIXME: Ideally we would choose not to activate at all (and avoid registering
-        // non-functional editor commands), but VS Code doesn't seem to have a good way of doing
-        // that
-        return {};
-    }
-
+    // FIXME: This can change over time
     const workspace: Workspace =
         folders.length === 0
-            ? {
-                  kind: "Detached Files",
-                  files: rustDocuments,
-              }
+            ? rustDocuments.length === 0
+                ? { kind: "Empty" }
+                : {
+                      kind: "Detached Files",
+                      files: rustDocuments,
+                  }
             : { kind: "Workspace Folder" };
 
-    const ctx = new Ctx(context, workspace, createCommands());
+    const ctx = new Ctx(context, createCommands(), workspace);
     // VS Code doesn't show a notification when an extension fails to activate
     // so we do it ourselves.
     const api = await activateServer(ctx).catch((err) => {
@@ -77,16 +72,16 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
 
     vscode.workspace.onDidChangeConfiguration(
         async (_) => {
-            await ctx
-                .clientFetcher()
-                .client?.sendNotification("workspace/didChangeConfiguration", { settings: "" });
+            await ctx.client?.sendNotification("workspace/didChangeConfiguration", {
+                settings: "",
+            });
         },
         null,
         ctx.subscriptions
     );
 
     await ctx.activate();
-    return ctx.clientFetcher();
+    return ctx;
 }
 
 function createCommands(): Record<string, CommandFactory> {
@@ -123,6 +118,7 @@ function createCommands(): Record<string, CommandFactory> {
                     health: "stopped",
                 });
             },
+            disabled: (_) => async () => {},
         },
 
         analyzerStatus: { enabled: commands.analyzerStatus },
