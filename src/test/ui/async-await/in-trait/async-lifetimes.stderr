@@ -1,0 +1,23 @@
+error[E0309]: the parameter type `Self` may not live long enough
+  --> $DIR/async-lifetimes.rs:9:43
+   |
+LL |     async fn foo(&'a self, key: &'b T) -> (&'a Self, &'b T);
+   |                                           ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `Self: 'a`...
+   = note: ...so that the reference type `&'a Self` does not outlive the data it points at
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/async-lifetimes.rs:9:43
+   |
+LL |     async fn foo(&'a self, key: &'b T) -> (&'a Self, &'b T);
+   |                                           ^^^^^^^^^^^^^^^^^ ...so that the reference type `&'b T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL | trait MyTrait<'a, 'b, T: 'b> {
+   |                        ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0309`.
