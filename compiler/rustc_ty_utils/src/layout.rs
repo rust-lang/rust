@@ -89,7 +89,11 @@ fn invert_mapping(map: &[u32]) -> Vec<u32> {
     inverse
 }
 
-fn scalar_pair<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, a: Scalar, b: Scalar) -> LayoutS<'tcx> {
+fn scalar_pair<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    a: Scalar,
+    b: Scalar,
+) -> LayoutS<VariantIdx> {
     let dl = cx.data_layout();
     let b_align = b.align(dl);
     let align = a.align(dl).max(b_align).max(dl.aggregate_align);
@@ -122,7 +126,7 @@ fn univariant_uninterned<'tcx>(
     fields: &[TyAndLayout<'_>],
     repr: &ReprOptions,
     kind: StructKind,
-) -> Result<LayoutS<'tcx>, LayoutError<'tcx>> {
+) -> Result<LayoutS<VariantIdx>, LayoutError<'tcx>> {
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
@@ -864,13 +868,13 @@ fn layout_of_uncached<'tcx>(
             // variant layouts, so we can't store them in the
             // overall LayoutS. Store the overall LayoutS
             // and the variant LayoutSs here until then.
-            struct TmpLayout<'tcx> {
-                layout: LayoutS<'tcx>,
-                variants: IndexVec<VariantIdx, LayoutS<'tcx>>,
+            struct TmpLayout {
+                layout: LayoutS<VariantIdx>,
+                variants: IndexVec<VariantIdx, LayoutS<VariantIdx>>,
             }
 
             let calculate_niche_filling_layout =
-                || -> Result<Option<TmpLayout<'tcx>>, LayoutError<'tcx>> {
+                || -> Result<Option<TmpLayout>, LayoutError<'tcx>> {
                     // The current code for niche-filling relies on variant indices
                     // instead of actual discriminants, so enums with
                     // explicit discriminants (RFC #2363) would misbehave.
@@ -1317,7 +1321,7 @@ fn layout_of_uncached<'tcx>(
                     // pick the layout with the larger niche; otherwise,
                     // pick tagged as it has simpler codegen.
                     use Ordering::*;
-                    let niche_size = |tmp_l: &TmpLayout<'_>| {
+                    let niche_size = |tmp_l: &TmpLayout| {
                         tmp_l.layout.largest_niche.map_or(0, |n| n.available(dl))
                     };
                     match (
@@ -1338,11 +1342,7 @@ fn layout_of_uncached<'tcx>(
                     tag,
                     tag_encoding,
                     tag_field,
-                    variants: best_layout
-                        .variants
-                        .into_iter()
-                        .map(|layout| tcx.intern_layout(layout))
-                        .collect(),
+                    variants: best_layout.variants,
                 },
                 _ => bug!(),
             };
@@ -1657,7 +1657,7 @@ fn generator_layout<'tcx>(
 
             size = size.max(variant.size);
             align = align.max(variant.align);
-            Ok(tcx.intern_layout(variant))
+            Ok(variant)
         })
         .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 

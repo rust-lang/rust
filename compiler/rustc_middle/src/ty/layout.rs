@@ -610,7 +610,7 @@ where
                 })
             }
 
-            Variants::Multiple { ref variants, .. } => variants[variant_index],
+            Variants::Multiple { ref variants, .. } => cx.tcx().intern_layout(variants[variant_index].clone()),
         };
 
         assert_eq!(*layout.variants(), Variants::Single { index: variant_index });

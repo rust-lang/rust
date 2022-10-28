@@ -2,23 +2,29 @@ pub use Integer::*;
 pub use Primitive::*;
 
 use crate::json::{Json, ToJson};
+#[cfg(feature = "nightly")]
 use crate::spec::Target;
 
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
+#[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
 use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
+#[cfg(feature = "nightly")]
 use rustc_data_structures::intern::Interned;
 use rustc_index::vec::{Idx, IndexVec};
+#[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 
+#[cfg(feature = "nightly")]
 pub mod call;
 
 /// Parsed [Data layout](https://llvm.org/docs/LangRef.html#data-layout)
 /// for a target, which contains everything needed to compute layouts.
+#[derive(Debug, PartialEq, Eq)]
 pub struct TargetDataLayout {
     pub endian: Endian,
     pub i1_align: AbiAndPrefAlign,
@@ -80,6 +86,7 @@ pub enum TargetDataLayoutErrors<'a> {
 }
 
 impl TargetDataLayout {
+    #[cfg(feature = "nightly")]
     pub fn parse<'a>(target: &'a Target) -> Result<TargetDataLayout, TargetDataLayoutErrors<'a>> {
         // Parse an address space index from a string.
         let parse_address_space = |s: &'a str, cause: &'a str| {
@@ -248,7 +255,7 @@ impl HasDataLayout for TargetDataLayout {
 }
 
 /// Endianness of the target, which must match cfg(target-endian).
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Endian {
     Little,
     Big,
@@ -288,8 +295,8 @@ impl ToJson for Endian {
 }
 
 /// Size of a type in bytes.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-#[derive(HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub struct Size {
     raw: u64,
 }
@@ -466,6 +473,7 @@ impl AddAssign for Size {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl Step for Size {
     #[inline]
     fn steps_between(start: &Self, end: &Self) -> Option<usize> {
@@ -504,8 +512,8 @@ impl Step for Size {
 }
 
 /// Alignment of a type in bytes (always a power of two).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-#[derive(HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub struct Align {
     pow2: u8,
 }
@@ -588,7 +596,8 @@ impl Align {
 
 /// A pair of alignments, ABI-mandated and preferred.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+
 pub struct AbiAndPrefAlign {
     pub abi: Align,
     pub pref: Align,
@@ -612,7 +621,9 @@ impl AbiAndPrefAlign {
 }
 
 /// Integers, also used for enum discriminants.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+
 pub enum Integer {
     I8,
     I16,
@@ -710,7 +721,8 @@ impl Integer {
 }
 
 /// Fundamental unit of memory access and layout.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum Primitive {
     /// The `bool` is the signedness of the `Integer` type.
     ///
@@ -777,7 +789,7 @@ impl Primitive {
 ///
 /// This is intended specifically to mirror LLVM’s `!range` metadata semantics.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub struct WrappingRange {
     pub start: u128,
     pub end: u128,
@@ -834,7 +846,7 @@ impl fmt::Debug for WrappingRange {
 
 /// Information about one scalar component of a Rust type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum Scalar {
     Initialized {
         value: Primitive,
@@ -924,7 +936,8 @@ impl Scalar {
 }
 
 /// Describes how the fields of a type are located in memory.
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum FieldsShape {
     /// Scalar primitives and `!`, which never have fields.
     Primitive,
@@ -1058,7 +1071,9 @@ impl AddressSpace {
 
 /// Describes how values of the type are passed by target ABIs,
 /// in terms of categories of C types there are ABI rules for.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+
 pub enum Abi {
     Uninhabited,
     Scalar(Scalar),
@@ -1113,16 +1128,18 @@ impl Abi {
     }
 }
 
+#[cfg(feature = "nightly")]
 rustc_index::newtype_index! {
     pub struct VariantIdx {
         derive [HashStable_Generic]
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub enum Variants<'a> {
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+pub enum Variants<V: Idx> {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
-    Single { index: VariantIdx },
+    Single { index: V },
 
     /// Enum-likes with more than one inhabited variant: each variant comes with
     /// a *discriminant* (usually the same as the variant index but the user can
@@ -1132,14 +1149,15 @@ pub enum Variants<'a> {
     /// For enums, the tag is the sole field of the layout.
     Multiple {
         tag: Scalar,
-        tag_encoding: TagEncoding,
+        tag_encoding: TagEncoding<V>,
         tag_field: usize,
-        variants: IndexVec<VariantIdx, Layout<'a>>,
+        variants: IndexVec<V, LayoutS<V>>,
     },
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub enum TagEncoding {
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+pub enum TagEncoding<V: Idx> {
     /// The tag directly stores the discriminant, but possibly with a smaller layout
     /// (so converting the tag to the discriminant can require sign extension).
     Direct,
@@ -1155,13 +1173,15 @@ pub enum TagEncoding {
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
     Niche {
-        untagged_variant: VariantIdx,
-        niche_variants: RangeInclusive<VariantIdx>,
+        untagged_variant: V,
+        #[cfg(feature = "nightly")]
+        niche_variants: RangeInclusive<V>,
         niche_start: u128,
     },
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub struct Niche {
     pub offset: Size,
     pub value: Primitive,
@@ -1244,8 +1264,9 @@ impl Niche {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, HashStable_Generic)]
-pub struct LayoutS<'a> {
+#[derive(PartialEq, Eq, Hash, Clone)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+pub struct LayoutS<V: Idx> {
     /// Says where the fields are located within the layout.
     pub fields: FieldsShape,
 
@@ -1256,7 +1277,7 @@ pub struct LayoutS<'a> {
     ///
     /// To access all fields of this layout, both `fields` and the fields of the active variant
     /// must be taken into account.
-    pub variants: Variants<'a>,
+    pub variants: Variants<V>,
 
     /// The `abi` defines how this data is passed between functions, and it defines
     /// value restrictions via `valid_range`.
@@ -1275,13 +1296,13 @@ pub struct LayoutS<'a> {
     pub size: Size,
 }
 
-impl<'a> LayoutS<'a> {
+impl<V: Idx> LayoutS<V> {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);
         let align = scalar.align(cx);
         LayoutS {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: V::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Scalar(scalar),
             largest_niche,
@@ -1289,9 +1310,39 @@ impl<'a> LayoutS<'a> {
             align,
         }
     }
+
+    #[inline]
+    pub fn fields(&self) -> &FieldsShape {
+        &self.fields
+    }
+
+    #[inline]
+    pub fn variants(&self) -> &Variants<V> {
+        &self.variants
+    }
+
+    #[inline]
+    pub fn abi(&self) -> Abi {
+        self.abi
+    }
+
+    #[inline]
+    pub fn largest_niche(&self) -> Option<Niche> {
+        self.largest_niche
+    }
+
+    #[inline]
+    pub fn align(&self) -> AbiAndPrefAlign {
+        self.align
+    }
+
+    #[inline]
+    pub fn size(&self) -> Size {
+        self.size
+    }
 }
 
-impl<'a> fmt::Debug for LayoutS<'a> {
+impl<V: Idx> fmt::Debug for LayoutS<V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This is how `Layout` used to print before it become
         // `Interned<LayoutS>`. We print it like this to avoid having to update
@@ -1308,10 +1359,12 @@ impl<'a> fmt::Debug for LayoutS<'a> {
     }
 }
 
+#[cfg(feature = "nightly")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 #[rustc_pass_by_value]
-pub struct Layout<'a>(pub Interned<'a, LayoutS<'a>>);
+pub struct Layout<'a>(pub Interned<'a, LayoutS<VariantIdx>>);
 
+#[cfg(feature = "nightly")]
 impl<'a> fmt::Debug for Layout<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // See comment on `<LayoutS as Debug>::fmt` above.
@@ -1319,12 +1372,13 @@ impl<'a> fmt::Debug for Layout<'a> {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl<'a> Layout<'a> {
     pub fn fields(self) -> &'a FieldsShape {
         &self.0.0.fields
     }
 
-    pub fn variants(self) -> &'a Variants<'a> {
+    pub fn variants(self) -> &'a Variants<VariantIdx> {
         &self.0.0.variants
     }
 
@@ -1352,15 +1406,18 @@ impl<'a> Layout<'a> {
 /// to that obtained from `layout_of(ty)`, as we need to produce
 /// layouts for which Rust types do not exist, such as enum variants
 /// or synthetic fields of enums (i.e., discriminants) and fat pointers.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable_Generic)]
+#[cfg(feature = "nightly")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub struct TyAndLayout<'a, Ty> {
     pub ty: Ty,
     pub layout: Layout<'a>,
 }
 
+#[cfg(feature = "nightly")]
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
-    type Target = &'a LayoutS<'a>;
-    fn deref(&self) -> &&'a LayoutS<'a> {
+    type Target = &'a LayoutS<VariantIdx>;
+    fn deref(&self) -> &&'a LayoutS<VariantIdx> {
         &self.layout.0.0
     }
 }
@@ -1402,6 +1459,7 @@ pub enum InitKind {
 
 /// Trait that needs to be implemented by the higher-level type representation
 /// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
+#[cfg(feature = "nightly")]
 pub trait TyAbiInterface<'a, C>: Sized {
     fn ty_and_layout_for_variant(
         this: TyAndLayout<'a, Self>,
@@ -1420,6 +1478,7 @@ pub trait TyAbiInterface<'a, C>: Sized {
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
 }
 
+#[cfg(feature = "nightly")]
 impl<'a, Ty> TyAndLayout<'a, Ty> {
     pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self
     where
@@ -1489,7 +1548,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     }
 }
 
-impl<'a, Ty> TyAndLayout<'a, Ty> {
+impl<V: Idx> LayoutS<V> {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         self.abi.is_unsized()

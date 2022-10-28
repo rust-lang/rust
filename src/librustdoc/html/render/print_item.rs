@@ -10,7 +10,7 @@ use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, Adt, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_target::abi::{Layout, Primitive, TagEncoding, Variants};
+use rustc_target::abi::{LayoutS, Primitive, TagEncoding, VariantIdx, Variants};
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
@@ -1892,7 +1892,7 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
 }
 
 fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
-    fn write_size_of_layout(w: &mut Buffer, layout: Layout<'_>, tag_size: u64) {
+    fn write_size_of_layout(w: &mut Buffer, layout: &LayoutS<VariantIdx>, tag_size: u64) {
         if layout.abi().is_unsized() {
             write!(w, "(unsized)");
         } else {
@@ -1927,7 +1927,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                  chapter for details on type layout guarantees.</p></div>"
             );
             w.write_str("<p><strong>Size:</strong> ");
-            write_size_of_layout(w, ty_layout.layout, 0);
+            write_size_of_layout(w, &ty_layout.layout.0, 0);
             writeln!(w, "</p>");
             if let Variants::Multiple { variants, tag, tag_encoding, .. } =
                 &ty_layout.layout.variants()
@@ -1953,7 +1953,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                     for (index, layout) in variants.iter_enumerated() {
                         let name = adt.variant(index).name;
                         write!(w, "<li><code>{name}</code>: ", name = name);
-                        write_size_of_layout(w, *layout, tag_size);
+                        write_size_of_layout(w, layout, tag_size);
                         writeln!(w, "</li>");
                     }
                     w.write_str("</ul>");
