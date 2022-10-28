@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{get_parent_node, is_bool};
+use clippy_utils::{has_repr_attr, is_bool};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl, HirId, Item, ItemKind, Node, Ty};
+use rustc_hir::{Body, FnDecl, HirId, Item, ItemKind, Ty};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
@@ -135,13 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
             return;
         }
         if let ItemKind::Struct(variant_data, _) = &item.kind {
-            if cx
-                .tcx
-                .hir()
-                .attrs(item.hir_id())
-                .iter()
-                .any(|attr| attr.has_name(sym::repr))
-            {
+            if has_repr_attr(cx, item.hir_id()) {
                 return;
             }
 
@@ -165,15 +159,10 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
         fn_decl: &'tcx FnDecl<'tcx>,
         _: &'tcx Body<'tcx>,
         span: Span,
-        hir_id: HirId,
+        _: HirId,
     ) {
         if let Some(fn_header) = fn_kind.header()
             && fn_header.abi == Abi::Rust
-            && if let Some(Node::Item(item)) = get_parent_node(cx.tcx, hir_id) {
-                !matches!(item.kind, ItemKind::ExternCrate(..))
-                } else {
-                    true
-            }
             && !span.from_expansion() {
             self.check_fn_sig(cx, fn_decl, span)
         }

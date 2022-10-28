@@ -1780,6 +1780,10 @@ pub fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
     attrs.iter().any(|attr| attr.has_name(symbol))
 }
 
+pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
+    has_attr(cx.tcx.hir().attrs(hir_id), sym::repr)
+}
+
 pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
     let map = &tcx.hir();
     let mut prev_enclosing_node = None;

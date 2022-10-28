@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::{HirId, Item, ItemKind};
+use clippy_utils::has_repr_attr;
+use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Const;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -71,8 +71,4 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'_>, item: &Item<'_
             false
         }
     }
-}
-
-fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    cx.tcx.hir().attrs(hir_id).iter().any(|attr| attr.has_name(sym::repr))
 }
