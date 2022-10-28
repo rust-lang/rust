@@ -143,6 +143,7 @@ pub struct UnconstrainedOpaqueType {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
+    pub what: &'static str,
 }
 
 pub struct MissingTypeParams {
