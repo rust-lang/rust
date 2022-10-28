@@ -3,7 +3,7 @@
 //! This library provides smart pointers and collections for managing
 //! heap-allocated values.
 //!
-//! This library, like libcore, normally doesn’t need to be used directly
+//! This library, like core, normally doesn’t need to be used directly
 //! since its contents are re-exported in the [`std` crate](../std/index.html).
 //! Crates that use the `#![no_std]` attribute however will typically
 //! not depend on `std`, so they’d use this crate instead.

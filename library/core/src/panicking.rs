@@ -1,8 +1,8 @@
-//! Panic support for libcore
+//! Panic support for core
 //!
 //! The core library cannot define panicking, but it does *declare* panicking. This
-//! means that the functions inside of libcore are allowed to panic, but to be
-//! useful an upstream crate must define panicking for libcore to use. The current
+//! means that the functions inside of core are allowed to panic, but to be
+//! useful an upstream crate must define panicking for core to use. The current
 //! interface for panicking is:
 //!
 //! ```
@@ -13,7 +13,7 @@
 //! This definition allows for panicking with any general message, but it does not
 //! allow for failing with a `Box<Any>` value. (`PanicInfo` just contains a `&(dyn Any + Send)`,
 //! for which we fill in a dummy value in `PanicInfo::internal_constructor`.)
-//! The reason for this is that libcore is not allowed to allocate.
+//! The reason for this is that core is not allowed to allocate.
 //!
 //! This module contains a few other panicking functions, but these are just the
 //! necessary lang items for the compiler. All panics are funneled through this
@@ -94,7 +94,7 @@ pub fn panic_nounwind(msg: &'static str) -> ! {
 // Next we define a bunch of higher-level wrappers that all bottom out in the two core functions
 // above.
 
-/// The underlying implementation of libcore's `panic!` macro when no formatting is used.
+/// The underlying implementation of core's `panic!` macro when no formatting is used.
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]

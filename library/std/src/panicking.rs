@@ -517,7 +517,7 @@ pub fn panicking() -> bool {
     !panic_count::count_is_zero()
 }
 
-/// Entry point of panics from the libcore crate (`panic_impl` lang item).
+/// Entry point of panics from the core crate (`panic_impl` lang item).
 #[cfg(not(test))]
 #[panic_handler]
 pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {

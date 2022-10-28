@@ -90,14 +90,14 @@ pub macro unreachable_2021 {
     ),
 }
 
-/// An internal trait used by libstd to pass data from libstd to `panic_unwind`
-/// and other panic runtimes. Not intended to be stabilized any time soon, do
-/// not use.
+/// An internal trait used by std to pass data from std to `panic_unwind` and
+/// other panic runtimes. Not intended to be stabilized any time soon, do not
+/// use.
 #[unstable(feature = "std_internals", issue = "none")]
 #[doc(hidden)]
 pub unsafe trait BoxMeUp {
     /// Take full ownership of the contents.
-    /// The return type is actually `Box<dyn Any + Send>`, but we cannot use `Box` in libcore.
+    /// The return type is actually `Box<dyn Any + Send>`, but we cannot use `Box` in core.
     ///
     /// After this method got called, only some dummy default value is left in `self`.
     /// Calling this method twice, or calling `get` after calling this method, is an error.

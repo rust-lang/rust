@@ -111,7 +111,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
 }
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
-/// this is only inline(never) when backtraces in libstd are enabled, otherwise
+/// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
 pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
@@ -127,7 +127,7 @@ where
 }
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
-/// this is only inline(never) when backtraces in libstd are enabled, otherwise
+/// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
 pub fn __rust_end_short_backtrace<F, T>(f: F) -> T

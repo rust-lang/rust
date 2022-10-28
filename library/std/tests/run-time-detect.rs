@@ -1,4 +1,4 @@
-//! These tests just check that the macros are available in libstd.
+//! These tests just check that the macros are available in std.
 
 #![cfg_attr(
     any(
