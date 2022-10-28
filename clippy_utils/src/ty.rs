@@ -59,6 +59,58 @@ pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
     })
 }
 
+/// Walks into `ty` and returns `true` if any inner type is an instance of the given type, or adt
+/// constructor of the same type.
+///
+/// This method also recurses into opaque type predicates, so call it with `impl Trait<U>` and `U`
+/// will also return `true`.
+pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, needle: Ty<'tcx>) -> bool {
+    ty.walk().any(|inner| match inner.unpack() {
+        GenericArgKind::Type(inner_ty) => {
+            if inner_ty == needle {
+                return true;
+            }
+
+            if inner_ty.ty_adt_def() == needle.ty_adt_def() {
+                return true;
+            }
+
+            if let ty::Opaque(def_id, _) = *inner_ty.kind() {
+                for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
+                    match predicate.kind().skip_binder() {
+                        // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
+                        // and check substituions to find `U`.
+                        ty::PredicateKind::Trait(trait_predicate) => {
+                            if trait_predicate
+                                .trait_ref
+                                .substs
+                                .types()
+                                .skip(1) // Skip the implicit `Self` generic parameter
+                                .any(|ty| contains_ty_adt_constructor_opaque(cx, ty, needle))
+                            {
+                                return true;
+                            }
+                        },
+                        // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
+                        // so we check the term for `U`.
+                        ty::PredicateKind::Projection(projection_predicate) => {
+                            if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
+                                if contains_ty_adt_constructor_opaque(cx, ty, needle) {
+                                    return true;
+                                }
+                            };
+                        },
+                        _ => (),
+                    }
+                }
+            }
+
+            false
+        },
+        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+    })
+}
+
 /// Resolves `<T as Iterator>::Item` for `T`
 /// Do not invoke without first verifying that the type implements `Iterator`
 pub fn get_iterator_item_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
