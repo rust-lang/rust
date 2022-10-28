@@ -154,6 +154,7 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
+#![feature(set_ptr_value)]
 #![feature(slice_ptr_get)]
 #![feature(slice_split_at_unchecked)]
 #![feature(str_internals)]

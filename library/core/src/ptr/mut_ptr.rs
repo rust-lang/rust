@@ -487,8 +487,7 @@ impl<T: ?Sized> *mut T {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_offset(self, count: isize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `offset`.
-        let this = unsafe { self.cast::<u8>().offset(count).cast::<()>() };
-        from_raw_parts_mut::<T>(this, metadata(self))
+        unsafe { self.cast::<u8>().offset(count).with_metadata_of(self) }
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -567,10 +566,7 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
     pub const fn wrapping_byte_offset(self, count: isize) -> Self {
-        from_raw_parts_mut::<T>(
-            self.cast::<u8>().wrapping_offset(count).cast::<()>(),
-            metadata(self),
-        )
+        self.cast::<u8>().wrapping_offset(count).with_metadata_of(self)
     }
 
     /// Masks out bits of the pointer according to a mask.
@@ -583,8 +579,7 @@ impl<T: ?Sized> *mut T {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline(always)]
     pub fn mask(self, mask: usize) -> *mut T {
-        let this = intrinsics::ptr_mask(self.cast::<()>(), mask) as *mut ();
-        from_raw_parts_mut::<T>(this, metadata(self))
+        intrinsics::ptr_mask(self.cast::<()>(), mask).cast_mut().with_metadata_of(self)
     }
 
     /// Returns `None` if the pointer is null, or else returns a unique reference to
@@ -1011,8 +1006,7 @@ impl<T: ?Sized> *mut T {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_add(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `add`.
-        let this = unsafe { self.cast::<u8>().add(count).cast::<()>() };
-        from_raw_parts_mut::<T>(this, metadata(self))
+        unsafe { self.cast::<u8>().add(count).with_metadata_of(self) }
     }
 
     /// Calculates the offset from a pointer (convenience for
@@ -1098,8 +1092,7 @@ impl<T: ?Sized> *mut T {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_sub(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `sub`.
-        let this = unsafe { self.cast::<u8>().sub(count).cast::<()>() };
-        from_raw_parts_mut::<T>(this, metadata(self))
+        unsafe { self.cast::<u8>().sub(count).with_metadata_of(self) }
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -1179,7 +1172,7 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
     pub const fn wrapping_byte_add(self, count: usize) -> Self {
-        from_raw_parts_mut::<T>(self.cast::<u8>().wrapping_add(count).cast::<()>(), metadata(self))
+        self.cast::<u8>().wrapping_add(count).with_metadata_of(self)
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -1259,7 +1252,7 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
     pub const fn wrapping_byte_sub(self, count: usize) -> Self {
-        from_raw_parts_mut::<T>(self.cast::<u8>().wrapping_sub(count).cast::<()>(), metadata(self))
+        self.cast::<u8>().wrapping_sub(count).with_metadata_of(self)
     }
 
     /// Reads the value from `self` without moving it. This leaves the
