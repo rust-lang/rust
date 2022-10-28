@@ -2,7 +2,6 @@
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
-
 use std::mem;
 
 use crate::clean::{self, Item, ItemId, ItemIdSet, NestedAttributesExt};
@@ -11,11 +10,11 @@ use crate::formats::cache::Cache;
 use crate::visit_lib::RustdocEffectiveVisibilities;
 
 pub(crate) struct Stripper<'a, 'tcx> {
-    pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) retained: &'a mut ItemIdSet,
     pub(crate) effective_visibilities: &'a RustdocEffectiveVisibilities,
     pub(crate) update_retained: bool,
     pub(crate) is_json_output: bool,
+    pub(crate) tcx: TyCtxt<'tcx>,
 }
 
 // We need to handle this differently for the JSON output because some non exported items could
@@ -35,7 +34,7 @@ fn is_item_reachable(
     }
 }
 
-impl<'a> DocFolder for Stripper<'a, '_> {
+impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
             clean::StrippedItem(..) => {
@@ -82,13 +81,13 @@ impl<'a> DocFolder for Stripper<'a, '_> {
             }
 
             clean::StructFieldItem(..) => {
-                if !i.visibility.is_public() {
+                if !i.visibility(self.tcx).is_public() {
                     return Some(strip_item(i));
                 }
             }
 
             clean::ModuleItem(..) => {
-                if i.item_id.is_local() && !i.visibility.is_public() {
+                if i.item_id.is_local() && !i.visibility(self.tcx).is_public() {
                     debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = strip_item(self.fold_item_recur(i));
@@ -239,12 +238,16 @@ impl<'a> DocFolder for ImplStripper<'a, '_> {
 }
 
 /// This stripper discards all private import statements (`use`, `extern crate`)
-pub(crate) struct ImportStripper;
+pub(crate) struct ImportStripper<'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
+}
 
-impl DocFolder for ImportStripper {
+impl<'tcx> DocFolder for ImportStripper<'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
-            clean::ExternCrateItem { .. } | clean::ImportItem(..) if !i.visibility.is_public() => {
+            clean::ExternCrateItem { .. } | clean::ImportItem(..)
+                if !i.visibility(self.tcx).is_public() =>
+            {
                 None
             }
             _ => Some(self.fold_item_recur(i)),

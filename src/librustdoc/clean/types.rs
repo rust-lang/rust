@@ -24,7 +24,7 @@ use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
@@ -348,12 +348,12 @@ pub(crate) struct Item {
     /// Optional because not every item has a name, e.g. impls.
     pub(crate) name: Option<Symbol>,
     pub(crate) attrs: Box<Attributes>,
-    pub(crate) visibility: Visibility,
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
     pub(crate) kind: Box<ItemKind>,
     pub(crate) item_id: ItemId,
-
+    /// This is the `DefId` of the `use` statement if the item was inlined.
+    pub(crate) inline_stmt_id: Option<DefId>,
     pub(crate) cfg: Option<Arc<Cfg>>,
 }
 
@@ -364,9 +364,7 @@ impl fmt::Debug for Item {
         let alternate = f.alternate();
         // hand-picked fields that don't bloat the logs too much
         let mut fmt = f.debug_struct("Item");
-        fmt.field("name", &self.name)
-            .field("visibility", &self.visibility)
-            .field("item_id", &self.item_id);
+        fmt.field("name", &self.name).field("item_id", &self.item_id);
         // allow printing the full item if someone really wants to
         if alternate {
             fmt.field("attrs", &self.attrs).field("kind", &self.kind).field("cfg", &self.cfg);
@@ -386,6 +384,15 @@ pub(crate) fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
             hir.span_with_body(hir.local_def_id_to_hir_id(local))
         },
     ))
+}
+
+fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    let parent = tcx.parent(def_id);
+    match tcx.def_kind(parent) {
+        DefKind::Struct | DefKind::Union => false,
+        DefKind::Variant => true,
+        parent_kind => panic!("unexpected parent kind: {:?}", parent_kind),
+    }
 }
 
 impl Item {
@@ -462,7 +469,6 @@ impl Item {
             name,
             kind,
             Box::new(Attributes::from_ast(ast_attrs)),
-            cx,
             ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     }
@@ -472,21 +478,18 @@ impl Item {
         name: Option<Symbol>,
         kind: ItemKind,
         attrs: Box<Attributes>,
-        cx: &mut DocContext<'_>,
         cfg: Option<Arc<Cfg>>,
     ) -> Item {
         trace!("name={:?}, def_id={:?} cfg={:?}", name, def_id, cfg);
 
-        // Primitives and Keywords are written in the source code as private modules.
-        // The modules need to be private so that nobody actually uses them, but the
-        // keywords and primitives that they are documenting are public.
-        let visibility = if matches!(&kind, ItemKind::KeywordItem | ItemKind::PrimitiveItem(..)) {
-            Visibility::Public
-        } else {
-            clean_visibility(cx.tcx.visibility(def_id))
-        };
-
-        Item { item_id: def_id.into(), kind: Box::new(kind), name, attrs, visibility, cfg }
+        Item {
+            item_id: def_id.into(),
+            kind: Box::new(kind),
+            name,
+            attrs,
+            cfg,
+            inline_stmt_id: None,
+        }
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
@@ -701,6 +704,51 @@ impl Item {
             _ => return None,
         };
         Some(header)
+    }
+
+    pub(crate) fn visibility(&self, tcx: TyCtxt<'_>) -> Visibility {
+        let def_id = match self.item_id {
+            // Anything but DefId *shouldn't* matter, but return a reasonable value anyway.
+            ItemId::Auto { .. } | ItemId::Blanket { .. } => return Visibility::Inherited,
+            // Primitives and Keywords are written in the source code as private modules.
+            // The modules need to be private so that nobody actually uses them, but the
+            // keywords and primitives that they are documenting are public.
+            ItemId::Primitive(..) => return Visibility::Public,
+            ItemId::DefId(def_id) => def_id,
+        };
+
+        match *self.kind {
+            // Explication on `ItemId::Primitive` just above.
+            ItemKind::KeywordItem | ItemKind::PrimitiveItem(_) => return Visibility::Public,
+            // Variant fields inherit their enum's visibility.
+            StructFieldItem(..) if is_field_vis_inherited(tcx, def_id) => {
+                return Visibility::Inherited;
+            }
+            // Variants always inherit visibility
+            VariantItem(..) => return Visibility::Inherited,
+            // Trait items inherit the trait's visibility
+            AssocConstItem(..) | TyAssocConstItem(..) | AssocTypeItem(..) | TyAssocTypeItem(..)
+            | TyMethodItem(..) | MethodItem(..) => {
+                let assoc_item = tcx.associated_item(def_id);
+                let is_trait_item = match assoc_item.container {
+                    ty::TraitContainer => true,
+                    ty::ImplContainer => {
+                        // Trait impl items always inherit the impl's visibility --
+                        // we don't want to show `pub`.
+                        tcx.impl_trait_ref(tcx.parent(assoc_item.def_id)).is_some()
+                    }
+                };
+                if is_trait_item {
+                    return Visibility::Inherited;
+                }
+            }
+            _ => {}
+        }
+        let def_id = match self.inline_stmt_id {
+            Some(inlined) => inlined,
+            None => def_id,
+        };
+        clean_visibility(tcx.visibility(def_id))
     }
 }
 

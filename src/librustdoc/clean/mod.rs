@@ -1083,10 +1083,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 TyAssocTypeItem(Box::new(generics), bounds)
             }
         };
-        let what_rustc_thinks =
-            Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx);
-        // Trait items always inherit the trait's visibility -- we don't want to show `pub`.
-        Item { visibility: Inherited, ..what_rustc_thinks }
+        Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx)
     })
 }
 
@@ -1117,18 +1114,7 @@ pub(crate) fn clean_impl_item<'tcx>(
             }
         };
 
-        let mut what_rustc_thinks =
-            Item::from_def_id_and_parts(local_did, Some(impl_.ident.name), inner, cx);
-
-        let impl_ref = cx.tcx.impl_trait_ref(cx.tcx.local_parent(impl_.owner_id.def_id));
-
-        // Trait impl items always inherit the impl's visibility --
-        // we don't want to show `pub`.
-        if impl_ref.is_some() {
-            what_rustc_thinks.visibility = Inherited;
-        }
-
-        what_rustc_thinks
+        Item::from_def_id_and_parts(local_did, Some(impl_.ident.name), inner, cx)
     })
 }
 
@@ -1340,18 +1326,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
         }
     };
 
-    let mut what_rustc_thinks =
-        Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name), kind, cx);
-
-    let impl_ref = tcx.impl_trait_ref(tcx.parent(assoc_item.def_id));
-
-    // Trait impl items always inherit the impl's visibility --
-    // we don't want to show `pub`.
-    if impl_ref.is_some() {
-        what_rustc_thinks.visibility = Visibility::Inherited;
-    }
-
-    what_rustc_thinks
+    Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name), kind, cx)
 }
 
 fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
@@ -1821,23 +1796,7 @@ pub(crate) fn clean_field_with_def_id(
     ty: Type,
     cx: &mut DocContext<'_>,
 ) -> Item {
-    let what_rustc_thinks =
-        Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx);
-    if is_field_vis_inherited(cx.tcx, def_id) {
-        // Variant fields inherit their enum's visibility.
-        Item { visibility: Visibility::Inherited, ..what_rustc_thinks }
-    } else {
-        what_rustc_thinks
-    }
-}
-
-fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let parent = tcx.parent(def_id);
-    match tcx.def_kind(parent) {
-        DefKind::Struct | DefKind::Union => false,
-        DefKind::Variant => true,
-        parent_kind => panic!("unexpected parent kind: {:?}", parent_kind),
-    }
+    Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx)
 }
 
 pub(crate) fn clean_visibility(vis: ty::Visibility<DefId>) -> Visibility {
@@ -1861,10 +1820,7 @@ pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocCont
             fields: variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
         }),
     };
-    let what_rustc_thinks =
-        Item::from_def_id_and_parts(variant.def_id, Some(variant.name), VariantItem(kind), cx);
-    // don't show `pub` for variants, which always inherit visibility
-    Item { visibility: Inherited, ..what_rustc_thinks }
+    Item::from_def_id_and_parts(variant.def_id, Some(variant.name), VariantItem(kind), cx)
 }
 
 fn clean_variant_data<'tcx>(
@@ -2038,10 +1994,7 @@ fn clean_maybe_renamed_item<'tcx>(
 
 fn clean_variant<'tcx>(variant: &hir::Variant<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let kind = VariantItem(clean_variant_data(&variant.data, &variant.disr_expr, cx));
-    let what_rustc_thinks =
-        Item::from_hir_id_and_parts(variant.id, Some(variant.ident.name), kind, cx);
-    // don't show `pub` for variants, which are always public
-    Item { visibility: Inherited, ..what_rustc_thinks }
+    Item::from_hir_id_and_parts(variant.id, Some(variant.ident.name), kind, cx)
 }
 
 fn clean_impl<'tcx>(
@@ -2114,6 +2067,7 @@ fn clean_extern_crate<'tcx>(
                 }
         });
 
+    let krate_owner_def_id = krate.owner_id.to_def_id();
     if please_inline {
         let mut visited = FxHashSet::default();
 
@@ -2122,7 +2076,7 @@ fn clean_extern_crate<'tcx>(
         if let Some(items) = inline::try_inline(
             cx,
             cx.tcx.parent_module(krate.hir_id()).to_def_id(),
-            Some(krate.owner_id.to_def_id()),
+            Some(krate_owner_def_id),
             res,
             name,
             Some(attrs),
@@ -2137,9 +2091,9 @@ fn clean_extern_crate<'tcx>(
         name: Some(name),
         attrs: Box::new(Attributes::from_ast(attrs)),
         item_id: crate_def_id.into(),
-        visibility: clean_visibility(ty_vis),
         kind: Box::new(ExternCrateItem { src: orig_name }),
         cfg: attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
+        inline_stmt_id: Some(krate_owner_def_id),
     }]
 }
 
