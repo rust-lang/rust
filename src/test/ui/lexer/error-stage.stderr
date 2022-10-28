@@ -1,0 +1,70 @@
+error: suffixes on string literals are invalid
+  --> $DIR/error-stage.rs:17:5
+   |
+LL |     "string"any_suffix;
+   |     ^^^^^^^^^^^^^^^^^^ invalid suffix `any_suffix`
+
+error: invalid width `123` for integer literal
+  --> $DIR/error-stage.rs:18:5
+   |
+LL |     10u123;
+   |     ^^^^^^
+   |
+   = help: valid widths are 8, 16, 32, 64 and 128
+
+error: invalid width `123` for float literal
+  --> $DIR/error-stage.rs:19:5
+   |
+LL |     10.0f123;
+   |     ^^^^^^^^
+   |
+   = help: valid widths are 32 and 64
+
+error: binary float literal is not supported
+  --> $DIR/error-stage.rs:20:5
+   |
+LL |     0b10f32;
+   |     ^^^^^^^ not supported
+
+error: integer literal is too large
+  --> $DIR/error-stage.rs:21:5
+   |
+LL |     999340282366920938463463374607431768211455999;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: suffixes on string literals are invalid
+  --> $DIR/error-stage.rs:26:5
+   |
+LL |     "string"any_suffix;
+   |     ^^^^^^^^^^^^^^^^^^ invalid suffix `any_suffix`
+
+error: invalid width `123` for integer literal
+  --> $DIR/error-stage.rs:27:5
+   |
+LL |     10u123;
+   |     ^^^^^^
+   |
+   = help: valid widths are 8, 16, 32, 64 and 128
+
+error: invalid width `123` for float literal
+  --> $DIR/error-stage.rs:28:5
+   |
+LL |     10.0f123;
+   |     ^^^^^^^^
+   |
+   = help: valid widths are 32 and 64
+
+error: binary float literal is not supported
+  --> $DIR/error-stage.rs:29:5
+   |
+LL |     0b10f32;
+   |     ^^^^^^^ not supported
+
+error: integer literal is too large
+  --> $DIR/error-stage.rs:30:5
+   |
+LL |     999340282366920938463463374607431768211455999;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+
