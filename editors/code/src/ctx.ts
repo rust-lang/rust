@@ -4,10 +4,14 @@ import * as ra from "./lsp_ext";
 
 import { Config, substituteVariablesInEnv, substituteVSCodeVariables } from "./config";
 import { createClient } from "./client";
-import { isRustEditor, log, RustEditor } from "./util";
+import { isRustDocument, isRustEditor, log, RustEditor } from "./util";
 import { ServerStatusParams } from "./lsp_ext";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
+
+// We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
+// only those are in use. We use "Empty" to represent these scenarios
+// (r-a still somewhat works with Live Share, because commands are tunneled to the host)
 
 export type Workspace =
     | { kind: "Empty" }
@@ -18,6 +22,24 @@ export type Workspace =
           kind: "Detached Files";
           files: vscode.TextDocument[];
       };
+
+export function fetchWorkspace(): Workspace {
+    const folders = (vscode.workspace.workspaceFolders || []).filter(
+        (folder) => folder.uri.scheme === "file"
+    );
+    const rustDocuments = vscode.workspace.textDocuments.filter((document) =>
+        isRustDocument(document)
+    );
+
+    return folders.length === 0
+        ? rustDocuments.length === 0
+            ? { kind: "Empty" }
+            : {
+                  kind: "Detached Files",
+                  files: rustDocuments,
+              }
+        : { kind: "Workspace Folder" };
+}
 
 export type CommandFactory = {
     enabled: (ctx: CtxInit) => Cmd;
@@ -73,6 +95,31 @@ export class Ctx {
         this.statusBar.dispose();
         void this.disposeClient();
         this.commandDisposables.forEach((disposable) => disposable.dispose());
+    }
+
+    async onWorkspaceFolderChanges() {
+        const workspace = fetchWorkspace();
+        if (workspace.kind === "Detached Files" && this.workspace.kind === "Detached Files") {
+            if (workspace.files !== this.workspace.files) {
+                if (this.client?.isRunning()) {
+                    // Ideally we wouldn't need to tear down the server here, but currently detached files
+                    // are only specified at server start
+                    await this.stopAndDispose();
+                    await this.start();
+                }
+                return;
+            }
+        }
+        if (workspace.kind === "Workspace Folder" && this.workspace.kind === "Workspace Folder") {
+            return;
+        }
+        if (workspace.kind === "Empty") {
+            await this.stopAndDispose();
+            return;
+        }
+        if (this.client?.isRunning()) {
+            await this.restart();
+        }
     }
 
     private async getOrCreateClient() {
@@ -143,8 +190,8 @@ export class Ctx {
         return this._client;
     }
 
-    async activate() {
-        log.info("Activating language client");
+    async start() {
+        log.info("Starting language client");
         const client = await this.getOrCreateClient();
         if (!client) {
             return;
@@ -153,13 +200,10 @@ export class Ctx {
         this.updateCommands();
     }
 
-    async deactivate() {
-        if (!this._client) {
-            return;
-        }
-        log.info("Deactivating language client");
-        this.updateCommands("disable");
-        await this._client.stop();
+    async restart() {
+        // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
+        await this.stopAndDispose();
+        await this.start();
     }
 
     async stop() {
@@ -167,6 +211,15 @@ export class Ctx {
             return;
         }
         log.info("Stopping language client");
+        this.updateCommands("disable");
+        await this._client.stop();
+    }
+
+    async stopAndDispose() {
+        if (!this._client) {
+            return;
+        }
+        log.info("Disposing language client");
         this.updateCommands("disable");
         await this.disposeClient();
     }
