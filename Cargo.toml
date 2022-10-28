@@ -3,6 +3,13 @@ name = "rustc_codegen_cranelift"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+# This is used just to teach rust-analyzer how to check the build system. required-features is used
+# to disable it for regular builds.
+name = "y"
+path = "./y.rs"
+required-features = ["__check_build_system_using_ra"]
+
 [lib]
 crate-type = ["dylib"]
 
@@ -40,6 +47,7 @@ smallvec = "1.8.1"
 unstable-features = ["jit", "inline_asm"]
 jit = ["cranelift-jit", "libloading"]
 inline_asm = []
+__check_build_system_using_ra = []
 
 [package.metadata.rust-analyzer]
 rustc_private = true
