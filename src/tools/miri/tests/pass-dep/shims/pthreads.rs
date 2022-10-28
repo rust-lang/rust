@@ -10,7 +10,7 @@ fn main() {
     test_rwlock_libc_static_initializer();
     test_named_thread_truncation();
 
-    #[cfg(any(target_os = "linux"))]
+    #[cfg(target_os = "linux")]
     test_mutex_libc_static_initializer_recursive();
 }
 
