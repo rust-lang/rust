@@ -204,13 +204,13 @@ export class Ctx {
         }
     }
 
-    setServerStatus(status: ServerStatusParams) {
+    setServerStatus(status: ServerStatusParams | { health: "stopped" }) {
         let icon = "";
         const statusBar = this.statusBar;
         switch (status.health) {
             case "ok":
-                statusBar.tooltip = status.message ?? "Ready";
-                statusBar.command = undefined;
+                statusBar.tooltip = (status.message ?? "Ready") + "Click to stop.";
+                statusBar.command = "rust-analyzer.stopServer";
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
                 break;
@@ -234,6 +234,13 @@ export class Ctx {
                 statusBar.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
                 icon = "$(error) ";
                 break;
+            case "stopped":
+                statusBar.tooltip = "Server is stopped. Click to start.";
+                statusBar.command = "rust-analyzer.startServer";
+                statusBar.color = undefined;
+                statusBar.backgroundColor = undefined;
+                statusBar.text = `$(stop-circle) rust-analyzer`;
+                return;
         }
         if (!status.quiescent) icon = "$(sync~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
