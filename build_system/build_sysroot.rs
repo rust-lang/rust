@@ -35,7 +35,7 @@ pub(crate) fn build_sysroot(
     try_hard_link(cg_clif_dylib_src, &cg_clif_dylib_path);
 
     // Build and copy rustc and cargo wrappers
-    for wrapper in ["rustc-clif", "cargo-clif"] {
+    for wrapper in ["rustc-clif", "rustdoc-clif", "cargo-clif"] {
         let wrapper_name = get_wrapper_file_name(wrapper, "bin");
 
         let mut build_cargo_wrapper_cmd = Command::new("rustc");
