@@ -813,6 +813,7 @@ symbols! {
         impl_lint_pass,
         impl_macros,
         impl_trait_in_bindings,
+        impl_trait_in_fn_trait_return,
         implied_by,
         import,
         import_name_type,
