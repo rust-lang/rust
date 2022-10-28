@@ -2177,23 +2177,17 @@ impl<T> [T] {
     /// let v = [10, 40, 30];
     /// assert!(v.contains(&30));
     /// assert!(!v.contains(&50));
-    /// ```
     ///
-    /// If you do not have a `&T`, but some other value that you can compare
-    /// with one (for example, `String` implements `PartialEq<str>`), you can
-    /// use `iter().any`:
-    ///
-    /// ```
     /// let v = [String::from("hello"), String::from("world")]; // slice of `String`
-    /// assert!(v.iter().any(|e| e == "hello")); // search with `&str`
-    /// assert!(!v.iter().any(|e| e == "hi"));
+    /// assert!(v.contains(|e| e == &"hello")); // search with `&str`
+    /// assert!(v.contains(|e| e == &"world".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     #[must_use]
-    pub fn contains(&self, x: &T) -> bool
+    pub fn contains<Q>(&self, x: &Q) -> bool
     where
-        T: PartialEq,
+        T: PartialEq<Q>,
     {
         cmp::SliceContains::slice_contains(x, self)
     }
@@ -2220,9 +2214,9 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn starts_with(&self, needle: &[T]) -> bool
+    pub fn starts_with<Q>(&self, needle: &[Q]) -> bool
     where
-        T: PartialEq,
+        T: PartialEq<Q>,
     {
         let n = needle.len();
         self.len() >= n && needle == &self[..n]
@@ -2250,9 +2244,9 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn ends_with(&self, needle: &[T]) -> bool
+    pub fn ends_with<Q>(&self, needle: &[Q]) -> bool
     where
-        T: PartialEq,
+        T: PartialEq<Q>,
     {
         let (m, n) = (self.len(), needle.len());
         m >= n && needle == &self[m - n..]
@@ -2280,9 +2274,9 @@ impl<T> [T] {
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
     #[stable(feature = "slice_strip", since = "1.51.0")]
-    pub fn strip_prefix<P: SlicePattern<Item = T> + ?Sized>(&self, prefix: &P) -> Option<&[T]>
+    pub fn strip_prefix<Q, P: SlicePattern<Item = Q> + ?Sized>(&self, prefix: &P) -> Option<&[T]>
     where
-        T: PartialEq,
+        T: PartialEq<Q>,
     {
         // This function will need rewriting if and when SlicePattern becomes more sophisticated.
         let prefix = prefix.as_slice();
@@ -2314,9 +2308,9 @@ impl<T> [T] {
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
     #[stable(feature = "slice_strip", since = "1.51.0")]
-    pub fn strip_suffix<P: SlicePattern<Item = T> + ?Sized>(&self, suffix: &P) -> Option<&[T]>
+    pub fn strip_suffix<Q, P: SlicePattern<Item = Q> + ?Sized>(&self, suffix: &P) -> Option<&[T]>
     where
-        T: PartialEq,
+        T: PartialEq<Q>,
     {
         // This function will need rewriting if and when SlicePattern becomes more sophisticated.
         let suffix = suffix.as_slice();
