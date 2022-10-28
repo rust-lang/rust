@@ -26,6 +26,12 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "implementing the trait `{}` is not unsafe",
                     trait_ref.print_only_trait_path()
                 )
+                .span_suggestion_verbose(
+                    item.span.with_hi(item.span.lo() + rustc_span::BytePos(7)),
+                    "remove `unsafe` from this trait implementation",
+                    "",
+                    rustc_errors::Applicability::MachineApplicable,
+                )
                 .emit();
             }
 
@@ -37,6 +43,18 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "the trait `{}` requires an `unsafe impl` declaration",
                     trait_ref.print_only_trait_path()
                 )
+                .note(format!(
+                    "the trait `{}` enforces invariants that the compiler can't check. \
+                    Review the trait documentation and make sure this implementation \
+                    upholds those invariants before adding the `unsafe` keyword",
+                    trait_ref.print_only_trait_path()
+                ))
+                .span_suggestion_verbose(
+                    item.span.shrink_to_lo(),
+                    "add `unsafe` to this trait implementation",
+                    "unsafe ",
+                    rustc_errors::Applicability::MaybeIncorrect,
+                )
                 .emit();
             }
 
@@ -47,6 +65,18 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     E0569,
                     "requires an `unsafe impl` declaration due to `#[{}]` attribute",
                     attr_name
+                )
+                .note(format!(
+                    "the trait `{}` enforces invariants that the compiler can't check. \
+                    Review the trait documentation and make sure this implementation \
+                    upholds those invariants before adding the `unsafe` keyword",
+                    trait_ref.print_only_trait_path()
+                ))
+                .span_suggestion_verbose(
+                    item.span.shrink_to_lo(),
+                    "add `unsafe` to this trait implementation",
+                    "unsafe ",
+                    rustc_errors::Applicability::MaybeIncorrect,
                 )
                 .emit();
             }
