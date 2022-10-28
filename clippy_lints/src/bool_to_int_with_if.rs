@@ -3,7 +3,7 @@ use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use clippy_utils::{diagnostics::span_lint_and_then, is_else_clause, is_integer_literal, sugg::Sugg};
+use clippy_utils::{diagnostics::span_lint_and_then, in_constant, is_else_clause, is_integer_literal, sugg::Sugg};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -44,14 +44,14 @@ declare_clippy_lint! {
 declare_lint_pass!(BoolToIntWithIf => [BOOL_TO_INT_WITH_IF]);
 
 impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {
-    fn check_expr(&mut self, ctx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        if !expr.span.from_expansion() {
-            check_if_else(ctx, expr);
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
+        if !expr.span.from_expansion() && !in_constant(cx, expr.hir_id) {
+            check_if_else(cx, expr);
         }
     }
 }
 
-fn check_if_else<'tcx>(ctx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
+fn check_if_else<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
     if let ExprKind::If(check, then, Some(else_)) = expr.kind
         && let Some(then_lit) = int_literal(then)
         && let Some(else_lit) = int_literal(else_)
@@ -66,17 +66,17 @@ fn check_if_else<'tcx>(ctx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx
         };
         let mut applicability = Applicability::MachineApplicable;
         let snippet = {
-            let mut sugg = Sugg::hir_with_applicability(ctx, check, "..", &mut applicability);
+            let mut sugg = Sugg::hir_with_applicability(cx, check, "..", &mut applicability);
             if inverted {
                 sugg = !sugg;
             }
             sugg
         };
 
-        let ty = ctx.typeck_results().expr_ty(then_lit); // then and else must be of same type
+        let ty = cx.typeck_results().expr_ty(then_lit); // then and else must be of same type
 
         let suggestion = {
-            let wrap_in_curly = is_else_clause(ctx.tcx, expr);
+            let wrap_in_curly = is_else_clause(cx.tcx, expr);
             let mut s = Sugg::NonParen(format!("{ty}::from({snippet})").into());
             if wrap_in_curly {
                 s = s.blockify();
@@ -87,7 +87,7 @@ fn check_if_else<'tcx>(ctx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx
         let into_snippet = snippet.clone().maybe_par();
         let as_snippet = snippet.as_ty(ty);
 
-        span_lint_and_then(ctx,
+        span_lint_and_then(cx,
             BOOL_TO_INT_WITH_IF,
             expr.span,
             "boolean to int conversion using if",

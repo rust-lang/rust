@@ -108,6 +108,8 @@ fn main() {
         123
     };
 
+    pub const SHOULD_NOT_LINT: usize = if true { 1 } else { 0 };
+
     some_fn(a);
 }
 
