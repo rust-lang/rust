@@ -79,19 +79,14 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[unstable(feature = "set_ptr_value", issue = "75091")]
+    #[rustc_const_unstable(feature = "set_ptr_value", issue = "75091")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
-    pub fn with_metadata_of<U>(self, mut val: *const U) -> *const U
+    pub const fn with_metadata_of<U>(self, meta: *const U) -> *const U
     where
         U: ?Sized,
     {
-        let target = &mut val as *mut *const U as *mut *const u8;
-        // SAFETY: In case of a thin pointer, this operations is identical
-        // to a simple assignment. In case of a fat pointer, with the current
-        // fat pointer layout implementation, the first field of such a
-        // pointer is always the data pointer, which is likewise assigned.
-        unsafe { *target = self as *const u8 };
-        val
+        from_raw_parts::<U>(self as *const (), metadata(meta))
     }
 
     /// Changes constness without changing the type.
