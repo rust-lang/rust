@@ -1,7 +1,7 @@
 //! Errors emitted by `rustc_hir_analysis`.
 
-use rustc_errors::IntoDiagnostic;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler};
+use rustc_errors::{IntoDiagnostic, MultiSpan};
 use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -269,4 +269,13 @@ pub struct ConstImplForNonConstTrait {
 pub struct ConstBoundForNonConstTrait {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_self_in_impl_self)]
+pub struct SelfInImplSelf {
+    #[primary_span]
+    pub span: MultiSpan,
+    #[note]
+    pub note: (),
 }
