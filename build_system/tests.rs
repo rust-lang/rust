@@ -3,7 +3,7 @@ use super::config;
 use super::prepare;
 use super::rustc_info::get_wrapper_file_name;
 use super::utils::{cargo_command, hyperfine_command, spawn_and_wait, spawn_and_wait_with_input};
-use build_system::SysrootKind;
+use super::SysrootKind;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
