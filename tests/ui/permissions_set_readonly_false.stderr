@@ -1,0 +1,11 @@
+error: call to `set_readonly` with argument `false`
+  --> $DIR/permissions_set_readonly_false.rs:19:5
+   |
+LL |     permissions.set_readonly(false);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: on Unix platforms this results in the file being world writable
+   = note: `-D clippy::permissions-set-readonly-false` implied by `-D warnings`
+
+error: aborting due to previous error
+
