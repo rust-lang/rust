@@ -419,4 +419,12 @@ mod issue7296 {
     }
 }
 
+mod false_negative {
+    #![allow(unused)]
+
+    fn foo<'a>(x: &'a u8, y: &'_ u8) {}
+
+    fn bar<'a>(x: &'a u8, y: &'_ u8, z: &'_ u8) {}
+}
+
 fn main() {}
