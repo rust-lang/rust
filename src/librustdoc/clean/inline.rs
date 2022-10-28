@@ -55,12 +55,39 @@ pub(crate) fn try_inline(
     let mut ret = Vec::new();
 
     debug!("attrs={:?}", attrs);
-    let attrs_clone = attrs;
+
+    let attrs_without_docs = attrs.map(|attrs| {
+        attrs.into_iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>()
+    });
+    // We need this ugly code because:
+    //
+    // ```
+    // attrs_without_docs.map(|a| a.as_slice())
+    // ```
+    //
+    // will fail because it returns a temporary slice and:
+    //
+    // ```
+    // attrs_without_docs.map(|s| {
+    //     vec = s.as_slice();
+    //     vec
+    // })
+    // ```
+    //
+    // will fail because we're moving an uninitialized variable into a closure.
+    let vec;
+    let attrs_without_docs = match attrs_without_docs {
+        Some(s) => {
+            vec = s;
+            Some(vec.as_slice())
+        }
+        None => None,
+    };
 
     let kind = match res {
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, ItemType::Trait);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::TraitItem(Box::new(build_external_trait(cx, did)))
         }
         Res::Def(DefKind::Fn, did) => {
@@ -69,27 +96,27 @@ pub(crate) fn try_inline(
         }
         Res::Def(DefKind::Struct, did) => {
             record_extern_fqn(cx, did, ItemType::Struct);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::StructItem(build_struct(cx, did))
         }
         Res::Def(DefKind::Union, did) => {
             record_extern_fqn(cx, did, ItemType::Union);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::UnionItem(build_union(cx, did))
         }
         Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, ItemType::Typedef);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::TypedefItem(build_type_alias(cx, did))
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, ItemType::Enum);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::EnumItem(build_enum(cx, did))
         }
         Res::Def(DefKind::ForeignTy, did) => {
             record_extern_fqn(cx, did, ItemType::ForeignType);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::ForeignTypeItem
         }
         // Never inline enum variants but leave them shown as re-exports.
@@ -123,7 +150,7 @@ pub(crate) fn try_inline(
         _ => return None,
     };
 
-    let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs_clone);
+    let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs);
     cx.inlined.insert(did.into());
     let mut item = clean::Item::from_def_id_and_attrs_and_parts(
         did,
