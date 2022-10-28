@@ -292,10 +292,6 @@ p:last-child {
 	margin: 0;
 }
 
-summary {
-	outline: none;
-}
-
 /* Fix some style changes due to normalize.css 8 */
 
 button {
@@ -571,10 +567,18 @@ ul.block, .block li {
 	padding: 13px 8px;
 	border-top-left-radius: 5px;
 	border-bottom-left-radius: 5px;
+	border-color: var(--example-line-numbers-border-color);
 }
 
 .src-line-numbers span {
 	cursor: pointer;
+	color: var(--src-line-numbers-span-color);
+}
+.src-line-numbers .line-highlighted {
+	background-color: var(--src-line-number-highlighted-background-color);
+}
+.src-line-numbers :target {
+	background-color: transparent;
 }
 
 .search-loading {
@@ -1527,6 +1531,8 @@ details.rustdoc-toggle > summary.hideme {
 
 details.rustdoc-toggle > summary {
 	list-style: none;
+	/* focus outline is shown on `::before` instead of this */
+	outline: none;
 }
 details.rustdoc-toggle > summary::-webkit-details-marker,
 details.rustdoc-toggle > summary::marker {

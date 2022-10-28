@@ -319,7 +319,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     }
                 }
                 ItemKind::TyAlias(self_ty, _) => icx.to_ty(self_ty),
-                ItemKind::Impl(hir::Impl { self_ty, .. }) => icx.to_ty(*self_ty),
+                ItemKind::Impl(hir::Impl { self_ty, .. }) => {
+                    match self_ty.find_self_aliases() {
+                        spans if spans.len() > 0 => {
+                            tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: (), });
+                            tcx.ty_error()
+                        },
+                        _ => icx.to_ty(*self_ty),
+                    }
+                },
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
                     tcx.mk_fn_def(def_id.to_def_id(), substs)

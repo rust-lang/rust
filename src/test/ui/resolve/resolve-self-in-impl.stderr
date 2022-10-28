@@ -1,86 +1,50 @@
-error[E0391]: cycle detected when computing type of `<impl at $DIR/resolve-self-in-impl.rs:14:1: 14:17>`
+error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:14:13
    |
 LL | impl Tr for Self {}
    |             ^^^^
    |
-   = note: ...which immediately requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:14:1: 14:17>` again
-note: cycle used when collecting item types in top-level module
-  --> $DIR/resolve-self-in-impl.rs:1:1
-   |
-LL | / #![feature(associated_type_defaults)]
-LL | |
-LL | | struct S<T = u8>(T);
-LL | | trait Tr<T = u8> {
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+   = note: replace `Self` with a different type
 
-error[E0391]: cycle detected when computing type of `<impl at $DIR/resolve-self-in-impl.rs:15:1: 15:20>`
+error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:15:15
    |
 LL | impl Tr for S<Self> {}
    |               ^^^^
    |
-   = note: ...which immediately requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:15:1: 15:20>` again
-note: cycle used when collecting item types in top-level module
-  --> $DIR/resolve-self-in-impl.rs:1:1
-   |
-LL | / #![feature(associated_type_defaults)]
-LL | |
-LL | | struct S<T = u8>(T);
-LL | | trait Tr<T = u8> {
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+   = note: replace `Self` with a different type
 
-error[E0391]: cycle detected when computing type of `<impl at $DIR/resolve-self-in-impl.rs:16:1: 16:10>`
+error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:16:6
    |
 LL | impl Self {}
    |      ^^^^
    |
-   = note: ...which immediately requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:16:1: 16:10>` again
-note: cycle used when collecting item types in top-level module
-  --> $DIR/resolve-self-in-impl.rs:1:1
-   |
-LL | / #![feature(associated_type_defaults)]
-LL | |
-LL | | struct S<T = u8>(T);
-LL | | trait Tr<T = u8> {
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+   = note: replace `Self` with a different type
 
-error[E0391]: cycle detected when computing type of `<impl at $DIR/resolve-self-in-impl.rs:17:1: 17:13>`
+error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:17:8
    |
 LL | impl S<Self> {}
    |        ^^^^
    |
-   = note: ...which immediately requires computing type of `<impl at $DIR/resolve-self-in-impl.rs:17:1: 17:13>` again
-note: cycle used when collecting item types in top-level module
-  --> $DIR/resolve-self-in-impl.rs:1:1
-   |
-LL | / #![feature(associated_type_defaults)]
-LL | |
-LL | | struct S<T = u8>(T);
-LL | | trait Tr<T = u8> {
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+   = note: replace `Self` with a different type
 
-error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:18:1: 18:23>`
-  --> $DIR/resolve-self-in-impl.rs:18:1
+error: `Self` is not valid in the self type of an impl block
+  --> $DIR/resolve-self-in-impl.rs:18:7
+   |
+LL | impl (Self, Self) {}
+   |       ^^^^  ^^^^
+   |
+   = note: replace `Self` with a different type
+
+error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>`
+  --> $DIR/resolve-self-in-impl.rs:19:1
    |
 LL | impl Tr<Self::A> for S {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: ...which immediately requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:18:1: 18:23>` again
+   = note: ...which immediately requires computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>` again
 note: cycle used when collecting item types in top-level module
   --> $DIR/resolve-self-in-impl.rs:1:1
    |
@@ -93,6 +57,6 @@ LL | |
 LL | | fn main() {}
    | |____________^
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0391`.
