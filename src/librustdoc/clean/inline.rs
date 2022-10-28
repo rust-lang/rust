@@ -20,7 +20,7 @@ use crate::clean::{
     self, clean_fn_decl_from_did_and_sig, clean_generics, clean_impl_item, clean_middle_assoc_item,
     clean_middle_field, clean_middle_ty, clean_trait_ref_with_bindings, clean_ty,
     clean_ty_generics, clean_variant_def, clean_visibility, utils, Attributes, AttributesExt,
-    ImplKind, ItemId, Type, Visibility,
+    ImplKind, ItemId, Type,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -152,18 +152,10 @@ pub(crate) fn try_inline(
 
     let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs);
     cx.inlined.insert(did.into());
-    let mut item = clean::Item::from_def_id_and_attrs_and_parts(
-        did,
-        Some(name),
-        kind,
-        Box::new(attrs),
-        cx,
-        cfg,
-    );
-    if let Some(import_def_id) = import_def_id {
-        // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
-        item.visibility = clean_visibility(cx.tcx.visibility(import_def_id));
-    }
+    let mut item =
+        clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, Box::new(attrs), cfg);
+    // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
+    item.inline_stmt_id = import_def_id;
     ret.push(item);
     Some(ret)
 }
@@ -239,13 +231,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
         .tcx
         .associated_items(did)
         .in_definition_order()
-        .map(|item| {
-            // When building an external trait, the cleaned trait will have all items public,
-            // which causes methods to have a `pub` prefix, which is invalid since items in traits
-            // can not have a visibility prefix. Thus we override the visibility here manually.
-            // See https://github.com/rust-lang/rust/issues/81274
-            clean::Item { visibility: Visibility::Inherited, ..clean_middle_assoc_item(item, cx) }
-        })
+        .map(|item| clean_middle_assoc_item(item, cx))
         .collect();
 
     let predicates = cx.tcx.predicates_of(did);
@@ -559,7 +545,6 @@ pub(crate) fn build_impl(
             },
         })),
         Box::new(merged_attrs),
-        cx,
         cfg,
     ));
 }
@@ -607,7 +592,6 @@ fn build_module_items(
                     name: None,
                     attrs: Box::new(clean::Attributes::default()),
                     item_id: ItemId::Primitive(prim_ty, did.krate),
-                    visibility: clean::Public,
                     kind: Box::new(clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
                         clean::ImportSource {
@@ -626,6 +610,7 @@ fn build_module_items(
                         true,
                     ))),
                     cfg: None,
+                    inline_stmt_id: None,
                 });
             } else if let Some(i) = try_inline(cx, did, None, res, item.ident.name, None, visited) {
                 items.extend(i)
