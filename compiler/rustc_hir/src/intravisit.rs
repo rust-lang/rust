@@ -410,12 +410,7 @@ pub trait Visitor<'v>: Sized {
         walk_inf(self, inf);
     }
     fn visit_generic_arg(&mut self, generic_arg: &'v GenericArg<'v>) {
-        match generic_arg {
-            GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
-            GenericArg::Type(ty) => self.visit_ty(ty),
-            GenericArg::Const(ct) => self.visit_anon_const(&ct.value),
-            GenericArg::Infer(inf) => self.visit_infer(inf),
-        }
+        walk_generic_arg(self, generic_arg);
     }
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         walk_lifetime(self, lifetime)
@@ -478,6 +473,15 @@ pub fn walk_ident<'v, V: Visitor<'v>>(visitor: &mut V, ident: Ident) {
 
 pub fn walk_label<'v, V: Visitor<'v>>(visitor: &mut V, label: &'v Label) {
     visitor.visit_ident(label.ident);
+}
+
+pub fn walk_generic_arg<'v, V: Visitor<'v>>(visitor: &mut V, generic_arg: &'v GenericArg<'v>) {
+    match generic_arg {
+        GenericArg::Lifetime(lt) => visitor.visit_lifetime(lt),
+        GenericArg::Type(ty) => visitor.visit_ty(ty),
+        GenericArg::Const(ct) => visitor.visit_anon_const(&ct.value),
+        GenericArg::Infer(inf) => visitor.visit_infer(inf),
+    }
 }
 
 pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime) {
