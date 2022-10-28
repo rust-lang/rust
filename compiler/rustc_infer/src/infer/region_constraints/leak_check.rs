@@ -1,6 +1,7 @@
 use super::*;
 use crate::infer::CombinedSnapshot;
 use rustc_data_structures::{
+    fx::FxIndexMap,
     graph::{scc::Sccs, vec_graph::VecGraph},
     undo_log::UndoLogs,
 };
@@ -371,7 +372,7 @@ rustc_index::newtype_index! {
 /// an edge `R1 -> R2` in the graph.
 struct MiniGraph<'tcx> {
     /// Map from a region to the index of the node in the graph.
-    nodes: FxHashMap<ty::Region<'tcx>, LeakCheckNode>,
+    nodes: FxIndexMap<ty::Region<'tcx>, LeakCheckNode>,
 
     /// Map from node index to SCC, and stores the successors of each SCC. All
     /// the regions in the same SCC are equal to one another, and if `S1 -> S2`,
@@ -388,7 +389,7 @@ impl<'tcx> MiniGraph<'tcx> {
     where
         'tcx: 'a,
     {
-        let mut nodes = FxHashMap::default();
+        let mut nodes = FxIndexMap::default();
         let mut edges = Vec::new();
 
         // Note that if `R2: R1`, we get a callback `r1, r2`, so `target` is first parameter.
@@ -438,7 +439,7 @@ impl<'tcx> MiniGraph<'tcx> {
     }
 
     fn add_node(
-        nodes: &mut FxHashMap<ty::Region<'tcx>, LeakCheckNode>,
+        nodes: &mut FxIndexMap<ty::Region<'tcx>, LeakCheckNode>,
         r: ty::Region<'tcx>,
     ) -> LeakCheckNode {
         let l = nodes.len();

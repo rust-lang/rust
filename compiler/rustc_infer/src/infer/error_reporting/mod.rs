@@ -58,7 +58,7 @@ use crate::traits::{
     StatementAsExpression,
 };
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
 use rustc_hir as hir;
@@ -1498,9 +1498,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             values = None;
         }
         struct OpaqueTypesVisitor<'tcx> {
-            types: FxHashMap<TyCategory, FxHashSet<Span>>,
-            expected: FxHashMap<TyCategory, FxHashSet<Span>>,
-            found: FxHashMap<TyCategory, FxHashSet<Span>>,
+            types: FxIndexMap<TyCategory, FxIndexSet<Span>>,
+            expected: FxIndexMap<TyCategory, FxIndexSet<Span>>,
+            found: FxIndexMap<TyCategory, FxIndexSet<Span>>,
             ignore_span: Span,
             tcx: TyCtxt<'tcx>,
         }
@@ -1538,7 +1538,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 &self,
                 err: &mut Diagnostic,
                 target: &str,
-                types: &FxHashMap<TyCategory, FxHashSet<Span>>,
+                types: &FxIndexMap<TyCategory, FxIndexSet<Span>>,
             ) {
                 for (key, values) in types.iter() {
                     let count = values.len();
@@ -3254,7 +3254,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if blk.expr.is_some() {
             return false;
         }
-        let mut shadowed = FxHashSet::default();
+        let mut shadowed = FxIndexSet::default();
         let mut candidate_idents = vec![];
         let mut find_compatible_candidates = |pat: &hir::Pat<'_>| {
             if let hir::PatKind::Binding(_, hir_id, ident, _) = &pat.kind
