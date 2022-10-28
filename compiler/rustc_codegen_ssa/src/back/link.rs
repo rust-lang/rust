@@ -1123,7 +1123,8 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         if path.exists() {
             return session_tlib;
         } else {
-            let default_sysroot = filesearch::get_or_default_sysroot();
+            let default_sysroot =
+                filesearch::get_or_default_sysroot().expect("Failed finding sysroot");
             let default_tlib = filesearch::make_target_lib_path(
                 &default_sysroot,
                 sess.opts.target_triple.triple(),
