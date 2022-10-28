@@ -16,7 +16,7 @@ use crate::errors::NegativePositiveConflict;
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause};
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{struct_span_err, DiagnosticBuilder, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self, ImplSubject, TyCtxt};
@@ -435,7 +435,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
 
     // FIXME: Currently only handles ?Sized.
     //        Needs to support ?Move and ?DynSized when they are implemented.
-    let mut types_without_default_bounds = FxHashSet::default();
+    let mut types_without_default_bounds = FxIndexSet::default();
     let sized_trait = tcx.lang_items().sized_trait();
 
     if !substs.is_empty() {
