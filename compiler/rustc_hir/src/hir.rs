@@ -2418,6 +2418,30 @@ impl<'hir> Ty<'hir> {
         }
         final_ty
     }
+
+    pub fn find_self_aliases(&self) -> Vec<Span> {
+        use crate::intravisit::Visitor;
+        struct MyVisitor(Vec<Span>);
+        impl<'v> Visitor<'v> for MyVisitor {
+            fn visit_ty(&mut self, t: &'v Ty<'v>) {
+                if matches!(
+                    &t.kind,
+                    TyKind::Path(QPath::Resolved(
+                        _,
+                        Path { res: crate::def::Res::SelfTyAlias { .. }, .. },
+                    ))
+                ) {
+                    self.0.push(t.span);
+                    return;
+                }
+                crate::intravisit::walk_ty(self, t);
+            }
+        }
+
+        let mut my_visitor = MyVisitor(vec![]);
+        my_visitor.visit_ty(self);
+        my_visitor.0
+    }
 }
 
 /// Not represented directly in the AST; referred to by name through a `ty_path`.
