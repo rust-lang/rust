@@ -15,7 +15,7 @@
 //! that contains allocations whose mutability we cannot identify.)
 
 use super::validity::RefTracking;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpResult;
@@ -37,7 +37,7 @@ pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
     ExtraFnVal = !,
     FrameExtra = (),
     AllocExtra = (),
-    MemoryMap = FxHashMap<AllocId, (MemoryKind<T>, Allocation)>,
+    MemoryMap = FxIndexMap<AllocId, (MemoryKind<T>, Allocation)>,
 >;
 
 struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>> {
@@ -47,7 +47,7 @@ struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_ev
     ref_tracking: &'rt mut RefTracking<(MPlaceTy<'tcx>, InternMode)>,
     /// A list of all encountered allocations. After type-based interning, we traverse this list to
     /// also intern allocations that are only referenced by a raw pointer or inside a union.
-    leftover_allocations: &'rt mut FxHashSet<AllocId>,
+    leftover_allocations: &'rt mut FxIndexSet<AllocId>,
     /// The root kind of the value that we're looking at. This field is never mutated for a
     /// particular allocation. It is primarily used to make as many allocations as possible
     /// read-only so LLVM can place them in const memory.
@@ -79,7 +79,7 @@ struct IsStaticOrFn;
 /// to account for (e.g. for vtables).
 fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>>(
     ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
-    leftover_allocations: &'rt mut FxHashSet<AllocId>,
+    leftover_allocations: &'rt mut FxIndexSet<AllocId>,
     alloc_id: AllocId,
     mode: InternMode,
     ty: Option<Ty<'tcx>>,
@@ -355,7 +355,7 @@ pub fn intern_const_alloc_recursive<
     // `leftover_allocations` collects *all* allocations we see, because some might not
     // be available in a typed way. They get interned at the end.
     let mut ref_tracking = RefTracking::empty();
-    let leftover_allocations = &mut FxHashSet::default();
+    let leftover_allocations = &mut FxIndexSet::default();
 
     // start with the outermost allocation
     intern_shallow(
