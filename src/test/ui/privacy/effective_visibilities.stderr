@@ -10,7 +10,7 @@ error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImpl
 LL |     pub mod inner1 {
    |     ^^^^^^^^^^^^^^
 
-error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+error: not in the table
   --> $DIR/effective_visibilities.rs:9:9
    |
 LL |         extern "C" {}
