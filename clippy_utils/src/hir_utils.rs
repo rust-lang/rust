@@ -8,7 +8,7 @@ use rustc_hir::HirIdMap;
 use rustc_hir::{
     ArrayLen, BinOpKind, BindingAnnotation, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
     GenericArgs, Guard, HirId, InlineAsmOperand, Let, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path,
-    PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
+    PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
@@ -1028,6 +1028,14 @@ pub fn hash_stmt(cx: &LateContext<'_>, s: &Stmt<'_>) -> u64 {
     let mut h = SpanlessHash::new(cx);
     h.hash_stmt(s);
     h.finish()
+}
+
+pub fn is_bool(ty: &Ty<'_>) -> bool {
+    if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
+        matches!(path.res, Res::PrimTy(PrimTy::Bool))
+    } else {
+        false
+    }
 }
 
 pub fn hash_expr(cx: &LateContext<'_>, e: &Expr<'_>) -> u64 {

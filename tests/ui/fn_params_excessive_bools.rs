@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 
 extern "C" {
+    // Should not lint, most of the time users have no control over extern function signatures
     fn f(_: bool, _: bool, _: bool, _: bool);
 }
 
