@@ -7,6 +7,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::LocalDefId;
+use std::hash::Hash;
 
 /// Represents the levels of effective visibility an item can have.
 ///
@@ -74,9 +75,9 @@ impl EffectiveVisibility {
 }
 
 /// Holds a map of effective visibilities for reachable HIR nodes.
-#[derive(Default, Clone, Debug)]
-pub struct EffectiveVisibilities {
-    map: FxHashMap<LocalDefId, EffectiveVisibility>,
+#[derive(Clone, Debug)]
+pub struct EffectiveVisibilities<Id = LocalDefId> {
+    map: FxHashMap<Id, EffectiveVisibility>,
 }
 
 impl EffectiveVisibilities {
@@ -111,10 +112,6 @@ impl EffectiveVisibilities {
         })
     }
 
-    pub fn effective_vis(&self, id: LocalDefId) -> Option<&EffectiveVisibility> {
-        self.map.get(&id)
-    }
-
     pub fn iter(&self) -> impl Iterator<Item = (&LocalDefId, &EffectiveVisibility)> {
         self.map.iter()
     }
@@ -136,27 +133,31 @@ impl EffectiveVisibilities {
         }
         self.map.insert(id, effective_vis);
     }
+}
+
+impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
+    pub fn effective_vis(&self, id: Id) -> Option<&EffectiveVisibility> {
+        self.map.get(&id)
+    }
 
     // `parent_id` is not necessarily a parent in source code tree,
     // it is the node from which the maximum effective visibility is inherited.
     pub fn update(
         &mut self,
-        id: LocalDefId,
+        id: Id,
         nominal_vis: Visibility,
-        default_vis: impl FnOnce() -> Visibility,
-        parent_id: LocalDefId,
+        default_vis: Visibility,
+        inherited_eff_vis: Option<EffectiveVisibility>,
         level: Level,
         tree: impl DefIdTree,
     ) -> bool {
         let mut changed = false;
-        let mut current_effective_vis = self.effective_vis(id).copied().unwrap_or_else(|| {
-            if id.is_top_level_module() {
-                EffectiveVisibility::from_vis(Visibility::Public)
-            } else {
-                EffectiveVisibility::from_vis(default_vis())
-            }
-        });
-        if let Some(inherited_effective_vis) = self.effective_vis(parent_id) {
+        let mut current_effective_vis = self
+            .map
+            .get(&id)
+            .copied()
+            .unwrap_or_else(|| EffectiveVisibility::from_vis(default_vis));
+        if let Some(inherited_effective_vis) = inherited_eff_vis {
             let mut inherited_effective_vis_at_prev_level =
                 *inherited_effective_vis.at_level(level);
             let mut calculated_effective_vis = inherited_effective_vis_at_prev_level;
@@ -191,6 +192,12 @@ impl EffectiveVisibilities {
         }
         self.map.insert(id, current_effective_vis);
         changed
+    }
+}
+
+impl<Id> Default for EffectiveVisibilities<Id> {
+    fn default() -> Self {
+        EffectiveVisibilities { map: Default::default() }
     }
 }
 
