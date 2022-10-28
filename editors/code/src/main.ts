@@ -120,9 +120,7 @@ function createCommands(): Record<string, CommandFactory> {
                 // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
                 await ctx.stop();
                 ctx.setServerStatus({
-                    health: "ok",
-                    quiescent: true,
-                    message: "server is not running",
+                    health: "stopped",
                 });
             },
         },
