@@ -178,14 +178,11 @@ impl<T: ?Sized> *const T {
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
-    pub fn addr(self) -> usize
-    where
-        T: Sized,
-    {
+    pub fn addr(self) -> usize {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
         // provenance).
-        unsafe { mem::transmute(self) }
+        unsafe { mem::transmute(self.cast::<()>()) }
     }
 
     /// Gets the "address" portion of the pointer, and 'exposes' the "provenance" part for future
@@ -215,12 +212,9 @@ impl<T: ?Sized> *const T {
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
-    pub fn expose_addr(self) -> usize
-    where
-        T: Sized,
-    {
+    pub fn expose_addr(self) -> usize {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-        self as usize
+        self.cast::<()>() as usize
     }
 
     /// Creates a new pointer with the given address.
@@ -238,10 +232,7 @@ impl<T: ?Sized> *const T {
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
-    pub fn with_addr(self, addr: usize) -> Self
-    where
-        T: Sized,
-    {
+    pub fn with_addr(self, addr: usize) -> Self {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         //
         // In the mean-time, this operation is defined to be "as if" it was
@@ -264,10 +255,7 @@ impl<T: ?Sized> *const T {
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
-    pub fn map_addr(self, f: impl FnOnce(usize) -> usize) -> Self
-    where
-        T: Sized,
-    {
+    pub fn map_addr(self, f: impl FnOnce(usize) -> usize) -> Self {
         self.with_addr(f(self.addr()))
     }
 
