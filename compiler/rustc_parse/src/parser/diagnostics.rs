@@ -769,6 +769,10 @@ impl<'a> Parser<'a> {
         segment: &PathSegment,
         end: &[&TokenKind],
     ) -> bool {
+        if !self.may_recover() {
+            return false;
+        }
+
         // This function is intended to be invoked after parsing a path segment where there are two
         // cases:
         //
@@ -863,6 +867,10 @@ impl<'a> Parser<'a> {
     /// Check if a method call with an intended turbofish has been written without surrounding
     /// angle brackets.
     pub(super) fn check_turbofish_missing_angle_brackets(&mut self, segment: &mut PathSegment) {
+        if !self.may_recover() {
+            return;
+        }
+
         if token::ModSep == self.token.kind && segment.args.is_none() {
             let snapshot = self.create_snapshot_for_diagnostic();
             self.bump();
@@ -1396,6 +1404,10 @@ impl<'a> Parser<'a> {
         &mut self,
         base: P<T>,
     ) -> PResult<'a, P<T>> {
+        if !self.may_recover() {
+            return Ok(base);
+        }
+
         // Do not add `::` to expected tokens.
         if self.token == token::ModSep {
             if let Some(ty) = base.to_ty() {
