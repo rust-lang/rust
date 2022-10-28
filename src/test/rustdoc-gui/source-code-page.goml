@@ -6,6 +6,11 @@ click: ".src-line-numbers > a:nth-child(4)" // This is the anchor for line 4.
 // Ensure that the page URL was updated.
 assert-document-property: ({"URL": "lib.rs.html#4"}, ENDS_WITH)
 assert-attribute: ("//*[@id='4']", {"class": "line-highlighted"})
+// Ensure that the default style, with the right border, isn't used.
+assert-css: ("//*[@id='4']", {"border-right-width": "0px"})
+reload:
+assert-attribute: ("//*[@id='4']", {"class": "line-highlighted"})
+assert-css: ("//*[@id='4']", {"border-right-width": "0px"})
 // We now check that the good anchors are highlighted
 goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#4-6"
 assert-attribute-false: (".src-line-numbers > a:nth-child(3)", {"class": "line-highlighted"})

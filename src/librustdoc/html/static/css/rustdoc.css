@@ -578,11 +578,13 @@ ul.block, .block li {
 .src-line-numbers a {
 	color: var(--src-line-numbers-span-color);
 }
-.src-line-numbers .line-highlighted {
-	background-color: var(--src-line-number-highlighted-background-color);
-}
 .src-line-numbers :target {
 	background-color: transparent;
+	border-right: none;
+	padding-right: 0;
+}
+.src-line-numbers .line-highlighted {
+	background-color: var(--src-line-number-highlighted-background-color);
 }
 
 .search-loading {
