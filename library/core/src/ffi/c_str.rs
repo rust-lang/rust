@@ -13,9 +13,9 @@ use crate::str;
 /// array of bytes. It can be constructed safely from a <code>&[[u8]]</code>
 /// slice, or unsafely from a raw `*const c_char`. It can then be
 /// converted to a Rust <code>&[str]</code> by performing UTF-8 validation, or
-/// into an owned `CString`.
+/// into an owned [`CString`].
 ///
-/// `&CStr` is to `CString` as <code>&[str]</code> is to `String`: the former
+/// `&CStr` is to [`CString`] as <code>&[str]</code> is to [`String`]: the former
 /// in each pair are borrowed references; the latter are owned
 /// strings.
 ///
@@ -23,6 +23,9 @@ use crate::str;
 /// placed in the signatures of FFI functions. Instead, safe wrappers of FFI
 /// functions may leverage the unsafe [`CStr::from_ptr`] constructor to provide
 /// a safe interface to other consumers.
+///
+/// [`CString`]: ../../std/ffi/struct.CString.html
+/// [`String`]: ../../std/string/struct.String.html
 ///
 /// # Examples
 ///
