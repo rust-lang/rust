@@ -683,13 +683,16 @@ nav.sub {
 	display: flex;
 	align-items: center;
 }
-nav.sub form {
+.search-form {
+	position: relative;
+	display: flex;
+	height: 34px;
 	flex-grow: 1;
 }
 .source nav.sub {
 	margin: 0 0 15px 0;
 }
-.source nav.sub form {
+.source .search-form {
 	margin-left: 32px;
 }
 
@@ -780,11 +783,6 @@ table,
 	padding-right: 1.25rem;
 }
 
-.search-container {
-	position: relative;
-	display: flex;
-	height: 34px;
-}
 .search-results-title {
 	margin-top: 0;
 	white-space: nowrap;
@@ -860,15 +858,12 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	   -webkit-appearance: textfield for search inputs. That
 	   causes rounded corners and no border on iOS Safari. */
 	-webkit-appearance: none;
-	/* Override Normalize.css: we have margins and do
-	 not want to overflow */
-	box-sizing: border-box !important;
 	outline: none;
 	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	padding: 8px;
 	font-size: 1rem;
-	width: 100%;
+	flex-grow: 1;
 	background-color: var(--button-background-color);
 	color: var(--search-color);
 }
@@ -1957,7 +1952,7 @@ in storage.js
 		flex-direction: column;
 	}
 
-	nav.sub form {
+	.search-form {
 		align-self: stretch;
 	}
 

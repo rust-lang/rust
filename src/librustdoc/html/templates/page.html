@@ -115,24 +115,22 @@
                 </a> {#- -#}
                 {%- endif -%}
                 <form class="search-form"> {#- -#}
-                    <div class="search-container"> {#- -#}
-                        <span></span> {#- This empty span is a hacky fix for Safari - See #93184 -#}
-                        <input {# -#}
-                            class="search-input" {# -#}
-                            name="search" {# -#}
-                            autocomplete="off" {# -#}
-                            spellcheck="false" {# -#}
-                            placeholder="Click or press ‘S’ to search, ‘?’ for more options…" {# -#}
-                            type="search"> {#- -#}
-                        <div id="help-button" title="help" tabindex="-1"> {#- -#}
-                            <a href="{{page.root_path|safe}}help.html">?</a> {#- -#}
-                        </div> {#- -#}
-                        <div id="settings-menu" tabindex="-1"> {#- -#}
-                            <a href="{{page.root_path|safe}}settings.html" title="settings"> {#- -#}
-                                <img width="22" height="22" alt="Change settings" {# -#}
-                                 src="{{static_root_path|safe}}wheel{{page.resource_suffix}}.svg"> {#- -#}
-                            </a> {#- -#}
-                        </div> {#- -#}
+                    <span></span> {#- This empty span is a hacky fix for Safari - See #93184 -#}
+                    <input {# -#}
+                        class="search-input" {# -#}
+                        name="search" {# -#}
+                        autocomplete="off" {# -#}
+                        spellcheck="false" {# -#}
+                        placeholder="Click or press ‘S’ to search, ‘?’ for more options…" {# -#}
+                        type="search"> {#- -#}
+                    <div id="help-button" title="help" tabindex="-1"> {#- -#}
+                        <a href="{{page.root_path|safe}}help.html">?</a> {#- -#}
+                    </div> {#- -#}
+                    <div id="settings-menu" tabindex="-1"> {#- -#}
+                        <a href="{{page.root_path|safe}}settings.html" title="settings"> {#- -#}
+                            <img width="22" height="22" alt="Change settings" {# -#}
+                             src="{{static_root_path|safe}}wheel{{page.resource_suffix}}.svg"> {#- -#}
+                        </a> {#- -#}
                     </div> {#- -#}
                 </form> {#- -#}
             </nav> {#- -#}
