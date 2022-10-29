@@ -1,3 +1,4 @@
+use clippy_utils::higher::If;
 use rustc_ast::LitKind;
 use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -52,9 +53,9 @@ impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {
 }
 
 fn check_if_else<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
-    if let ExprKind::If(check, then, Some(else_)) = expr.kind
+    if let Some(If { cond, then, r#else: Some(r#else) }) = If::hir(expr)
         && let Some(then_lit) = int_literal(then)
-        && let Some(else_lit) = int_literal(else_)
+        && let Some(else_lit) = int_literal(r#else)
     {
         let inverted = if is_integer_literal(then_lit, 1) && is_integer_literal(else_lit, 0) {
             false
@@ -66,7 +67,7 @@ fn check_if_else<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>
         };
         let mut applicability = Applicability::MachineApplicable;
         let snippet = {
-            let mut sugg = Sugg::hir_with_applicability(cx, check, "..", &mut applicability);
+            let mut sugg = Sugg::hir_with_applicability(cx, cond, "..", &mut applicability);
             if inverted {
                 sugg = !sugg;
             }
