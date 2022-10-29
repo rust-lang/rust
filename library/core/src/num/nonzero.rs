@@ -171,6 +171,32 @@ macro_rules! nonzero_integer {
                 }
             }
 
+            /// Converts a primitive mutable reference to a non-zero mutable reference
+            /// if the referenced integer is not zero.
+            #[unstable(feature = "nonzero_from_mut", issue = "none")]
+            #[must_use]
+            #[inline]
+            pub fn from_mut(n: &mut $Int) -> Option<&mut Self> {
+                // SAFETY: Self is repr(transparent), and the value is non-zero.
+                // As long as the returned reference is alive,
+                // the user cannot `*n = 0` directly.
+                (*n != 0).then(|| unsafe { &mut *(n as *mut $Int as *mut Self) })
+            }
+
+            /// Converts a primitive mutable reference to a non-zero mutable reference
+            /// without checking whether the referenced value is non-zero.
+            /// This results in undefined behavior if `*n` is zero.
+            ///
+            /// # Safety
+            /// The referenced value must not be currently zero.
+            #[unstable(feature = "nonzero_from_mut", issue = "none")]
+            #[must_use]
+            #[inline]
+            pub unsafe fn from_mut_unchecked(n: &mut $Int) -> &mut Self {
+                // SAFETY: Self is repr(transparent), and the value is assumed to be non-zero.
+                unsafe { &mut *(n as *mut $Int as *mut Self) }
+            }
+
             /// Returns the value as a primitive type.
             #[$stability]
             #[inline]
