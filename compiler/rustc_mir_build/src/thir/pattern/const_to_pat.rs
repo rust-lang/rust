@@ -506,7 +506,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // convert the dereferenced constant to a pattern that is the sub-pattern of the
                 // deref pattern.
                 _ => {
-                    if !pointee_ty.is_sized(tcx.at(span), param_env) {
+                    if !pointee_ty.is_sized(tcx, param_env) {
                         // `tcx.deref_mir_constant()` below will ICE with an unsized type
                         // (except slices, which are handled in a separate arm above).
                         let msg = format!("cannot use unsized non-slice type `{}` in constant patterns", pointee_ty);
@@ -534,7 +534,7 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::FnDef(..) => {
                 PatKind::Constant { value: cv }
             }
-            ty::RawPtr(pointee) if pointee.ty.is_sized(tcx.at(span), param_env) => {
+            ty::RawPtr(pointee) if pointee.ty.is_sized(tcx, param_env) => {
                 PatKind::Constant { value: cv }
             }
             // FIXME: these can have very surprising behaviour where optimization levels or other

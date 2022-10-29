@@ -643,24 +643,24 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             intravisit::walk_expr(self, ex);
         }
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
-            trace!(?it.def_id);
+            trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id.def_id != self.def_id {
-                self.check(it.def_id.def_id);
+            if it.owner_id.def_id != self.def_id {
+                self.check(it.owner_id.def_id);
                 intravisit::walk_item(self, it);
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
-            trace!(?it.def_id);
+            trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id.def_id != self.def_id {
-                self.check(it.def_id.def_id);
+            if it.owner_id.def_id != self.def_id {
+                self.check(it.owner_id.def_id);
                 intravisit::walk_impl_item(self, it);
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
-            trace!(?it.def_id);
-            self.check(it.def_id.def_id);
+            trace!(?it.owner_id);
+            self.check(it.owner_id.def_id);
             intravisit::walk_trait_item(self, it);
         }
     }
@@ -778,24 +778,24 @@ fn find_opaque_ty_constraints_for_rpit(
             intravisit::walk_expr(self, ex);
         }
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
-            trace!(?it.def_id);
+            trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id.def_id != self.def_id {
-                self.check(it.def_id.def_id);
+            if it.owner_id.def_id != self.def_id {
+                self.check(it.owner_id.def_id);
                 intravisit::walk_item(self, it);
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
-            trace!(?it.def_id);
+            trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id.def_id != self.def_id {
-                self.check(it.def_id.def_id);
+            if it.owner_id.def_id != self.def_id {
+                self.check(it.owner_id.def_id);
                 intravisit::walk_impl_item(self, it);
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
-            trace!(?it.def_id);
-            self.check(it.def_id.def_id);
+            trace!(?it.owner_id);
+            self.check(it.owner_id.def_id);
             intravisit::walk_trait_item(self, it);
         }
     }

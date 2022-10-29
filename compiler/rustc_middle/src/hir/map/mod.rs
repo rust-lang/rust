@@ -354,19 +354,19 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn item(self, id: ItemId) -> &'hir Item<'hir> {
-        self.tcx.hir_owner(id.def_id).unwrap().node.expect_item()
+        self.tcx.hir_owner(id.owner_id).unwrap().node.expect_item()
     }
 
     pub fn trait_item(self, id: TraitItemId) -> &'hir TraitItem<'hir> {
-        self.tcx.hir_owner(id.def_id).unwrap().node.expect_trait_item()
+        self.tcx.hir_owner(id.owner_id).unwrap().node.expect_trait_item()
     }
 
     pub fn impl_item(self, id: ImplItemId) -> &'hir ImplItem<'hir> {
-        self.tcx.hir_owner(id.def_id).unwrap().node.expect_impl_item()
+        self.tcx.hir_owner(id.owner_id).unwrap().node.expect_impl_item()
     }
 
     pub fn foreign_item(self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        self.tcx.hir_owner(id.def_id).unwrap().node.expect_foreign_item()
+        self.tcx.hir_owner(id.owner_id).unwrap().node.expect_foreign_item()
     }
 
     pub fn body(self, id: BodyId) -> &'hir Body<'hir> {
@@ -1377,14 +1377,14 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_item(&mut self, item: &'hir Item<'hir>) {
         if associated_body(Node::Item(item)).is_some() {
-            self.body_owners.push(item.def_id.def_id);
+            self.body_owners.push(item.owner_id.def_id);
         }
 
         self.items.push(item.item_id());
 
         // Items that are modules are handled here instead of in visit_mod.
         if let ItemKind::Mod(module) = &item.kind {
-            self.submodules.push(item.def_id);
+            self.submodules.push(item.owner_id);
             // A module collector does not recurse inside nested modules.
             if self.crate_collector {
                 intravisit::walk_mod(self, module, item.hir_id());
@@ -1413,7 +1413,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
         if associated_body(Node::TraitItem(item)).is_some() {
-            self.body_owners.push(item.def_id.def_id);
+            self.body_owners.push(item.owner_id.def_id);
         }
 
         self.trait_items.push(item.trait_item_id());
@@ -1422,7 +1422,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
     fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
         if associated_body(Node::ImplItem(item)).is_some() {
-            self.body_owners.push(item.def_id.def_id);
+            self.body_owners.push(item.owner_id.def_id);
         }
 
         self.impl_items.push(item.impl_item_id());

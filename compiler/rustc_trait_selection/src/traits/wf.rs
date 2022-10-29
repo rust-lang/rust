@@ -214,7 +214,9 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
         trait_ref, item, cause, pred
     );
     let (items, impl_def_id) = match item {
-        Some(hir::Item { kind: hir::ItemKind::Impl(impl_), def_id, .. }) => (impl_.items, *def_id),
+        Some(hir::Item { kind: hir::ItemKind::Impl(impl_), owner_id, .. }) => {
+            (impl_.items, *owner_id)
+        }
         _ => return,
     };
     let fix_span =
@@ -236,7 +238,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                     tcx.impl_item_implementor_ids(impl_def_id).get(&projection_ty.item_def_id)
                 && let Some(impl_item_span) = items
                     .iter()
-                    .find(|item| item.id.def_id.to_def_id() == impl_item_id)
+                    .find(|item| item.id.owner_id.to_def_id() == impl_item_id)
                     .map(fix_span)
             {
                 cause.span = impl_item_span;
@@ -251,7 +253,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                     tcx.impl_item_implementor_ids(impl_def_id).get(&item_def_id)
                 && let Some(impl_item_span) = items
                     .iter()
-                    .find(|item| item.id.def_id.to_def_id() == impl_item_id)
+                    .find(|item| item.id.owner_id.to_def_id() == impl_item_id)
                     .map(fix_span)
             {
                 cause.span = impl_item_span;

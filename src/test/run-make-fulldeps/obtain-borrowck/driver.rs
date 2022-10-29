@@ -69,25 +69,25 @@ impl rustc_driver::Callbacks for CompilerCalls {
 
             let crate_items = tcx.hir_crate_items(());
             for id in crate_items.items() {
-                if matches!(tcx.def_kind(id.def_id), DefKind::Fn) {
-                    bodies.push(id.def_id);
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Fn) {
+                    bodies.push(id.owner_id);
                 }
             }
 
             for id in crate_items.trait_items() {
-                if matches!(tcx.def_kind(id.def_id), DefKind::AssocFn) {
+                if matches!(tcx.def_kind(id.owner_id), DefKind::AssocFn) {
                     let trait_item = hir.trait_item(id);
                     if let rustc_hir::TraitItemKind::Fn(_, trait_fn) = &trait_item.kind {
                         if let rustc_hir::TraitFn::Provided(_) = trait_fn {
-                            bodies.push(trait_item.def_id);
+                            bodies.push(trait_item.owner_id);
                         }
                     }
                 }
             }
 
             for id in crate_items.impl_items() {
-                if matches!(tcx.def_kind(id.def_id), DefKind::AssocFn) {
-                    bodies.push(id.def_id);
+                if matches!(tcx.def_kind(id.owner_id), DefKind::AssocFn) {
+                    bodies.push(id.owner_id);
                 }
             }
 

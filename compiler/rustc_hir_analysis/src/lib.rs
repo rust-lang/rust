@@ -381,7 +381,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         error = true;
                     }
                     if let hir::IsAsync::Async = sig.header.asyncness {
-                        let span = tcx.def_span(it.def_id);
+                        let span = tcx.def_span(it.owner_id);
                         struct_span_err!(
                             tcx.sess,
                             span,

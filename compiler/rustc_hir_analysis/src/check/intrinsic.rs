@@ -26,7 +26,7 @@ fn equate_intrinsic_type<'tcx>(
 ) {
     let (own_counts, span) = match &it.kind {
         hir::ForeignItemKind::Fn(.., generics) => {
-            let own_counts = tcx.generics_of(it.def_id.to_def_id()).own_counts();
+            let own_counts = tcx.generics_of(it.owner_id.to_def_id()).own_counts();
             (own_counts, generics.span)
         }
         _ => {
@@ -57,7 +57,7 @@ fn equate_intrinsic_type<'tcx>(
     {
         let fty = tcx.mk_fn_ptr(sig);
         let cause = ObligationCause::new(it.span, it.hir_id(), ObligationCauseCode::IntrinsicType);
-        require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.def_id)), fty);
+        require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.owner_id)), fty);
     }
 }
 
@@ -129,7 +129,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
 /// and in `library/core/src/intrinsics.rs`.
 pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)));
-    let intrinsic_id = it.def_id.to_def_id();
+    let intrinsic_id = it.owner_id.to_def_id();
     let intrinsic_name = tcx.item_name(intrinsic_id);
     let name_str = intrinsic_name.as_str();
 

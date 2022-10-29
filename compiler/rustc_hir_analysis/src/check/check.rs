@@ -114,7 +114,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 _ => {
                     // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
                     ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
-                        || ty.is_copy_modulo_regions(tcx.at(span), param_env)
+                        || ty.is_copy_modulo_regions(tcx, param_env)
                 }
             }
         }
@@ -227,17 +227,17 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
         return;
     }
 
-    let substs = InternalSubsts::identity_for_item(tcx, item.def_id.to_def_id());
-    let span = tcx.def_span(item.def_id.def_id);
+    let substs = InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id());
+    let span = tcx.def_span(item.owner_id.def_id);
 
-    check_opaque_for_inheriting_lifetimes(tcx, item.def_id.def_id, span);
-    if tcx.type_of(item.def_id.def_id).references_error() {
+    check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
+    if tcx.type_of(item.owner_id.def_id).references_error() {
         return;
     }
-    if check_opaque_for_cycles(tcx, item.def_id.def_id, substs, span, &origin).is_err() {
+    if check_opaque_for_cycles(tcx, item.owner_id.def_id, substs, span, &origin).is_err() {
         return;
     }
-    check_opaque_meets_bounds(tcx, item.def_id.def_id, substs, span, &origin);
+    check_opaque_meets_bounds(tcx, item.owner_id.def_id, substs, span, &origin);
 }
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
 /// in "inheriting lifetimes".
@@ -492,25 +492,25 @@ fn check_opaque_meets_bounds<'tcx>(
 fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     debug!(
         "check_item_type(it.def_id={:?}, it.name={})",
-        id.def_id,
-        tcx.def_path_str(id.def_id.to_def_id())
+        id.owner_id,
+        tcx.def_path_str(id.owner_id.to_def_id())
     );
     let _indenter = indenter();
-    match tcx.def_kind(id.def_id) {
+    match tcx.def_kind(id.owner_id) {
         DefKind::Static(..) => {
-            tcx.ensure().typeck(id.def_id.def_id);
-            maybe_check_static_with_link_section(tcx, id.def_id.def_id);
-            check_static_inhabited(tcx, id.def_id.def_id);
+            tcx.ensure().typeck(id.owner_id.def_id);
+            maybe_check_static_with_link_section(tcx, id.owner_id.def_id);
+            check_static_inhabited(tcx, id.owner_id.def_id);
         }
         DefKind::Const => {
-            tcx.ensure().typeck(id.def_id.def_id);
+            tcx.ensure().typeck(id.owner_id.def_id);
         }
         DefKind::Enum => {
             let item = tcx.hir().item(id);
             let hir::ItemKind::Enum(ref enum_definition, _) = item.kind else {
                 return;
             };
-            check_enum(tcx, &enum_definition.variants, item.def_id.def_id);
+            check_enum(tcx, &enum_definition.variants, item.owner_id.def_id);
         }
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl => {
@@ -518,12 +518,12 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             let hir::ItemKind::Impl(ref impl_) = it.kind else {
                 return;
             };
-            debug!("ItemKind::Impl {} with id {:?}", it.ident, it.def_id);
-            if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.def_id) {
+            debug!("ItemKind::Impl {} with id {:?}", it.ident, it.owner_id);
+            if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.owner_id) {
                 check_impl_items_against_trait(
                     tcx,
                     it.span,
-                    it.def_id.def_id,
+                    it.owner_id.def_id,
                     impl_trait_ref,
                     &impl_.items,
                 );
@@ -545,15 +545,15 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                         fn_maybe_err(tcx, item.ident.span, abi);
                     }
                     hir::TraitItemKind::Type(.., Some(default)) => {
-                        let assoc_item = tcx.associated_item(item.def_id);
+                        let assoc_item = tcx.associated_item(item.owner_id);
                         let trait_substs =
-                            InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
+                            InternalSubsts::identity_for_item(tcx, it.owner_id.to_def_id());
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
                             assoc_item,
                             assoc_item,
                             default.span,
-                            ty::TraitRef { def_id: it.def_id.to_def_id(), substs: trait_substs },
+                            ty::TraitRef { def_id: it.owner_id.to_def_id(), substs: trait_substs },
                         );
                     }
                     _ => {}
@@ -561,16 +561,16 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             }
         }
         DefKind::Struct => {
-            check_struct(tcx, id.def_id.def_id);
+            check_struct(tcx, id.owner_id.def_id);
         }
         DefKind::Union => {
-            check_union(tcx, id.def_id.def_id);
+            check_union(tcx, id.owner_id.def_id);
         }
         DefKind::OpaqueTy => {
             check_opaque(tcx, id);
         }
         DefKind::ImplTraitPlaceholder => {
-            let parent = tcx.impl_trait_in_trait_parent(id.def_id.to_def_id());
+            let parent = tcx.impl_trait_in_trait_parent(id.owner_id.to_def_id());
             // Only check the validity of this opaque type if the function has a default body
             if let hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
@@ -581,8 +581,8 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             }
         }
         DefKind::TyAlias => {
-            let pty_ty = tcx.type_of(id.def_id);
-            let generics = tcx.generics_of(id.def_id);
+            let pty_ty = tcx.type_of(id.owner_id);
+            let generics = tcx.generics_of(id.owner_id);
             check_type_params_are_used(tcx, &generics, pty_ty);
         }
         DefKind::ForeignMod => {
@@ -604,7 +604,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                 }
             } else {
                 for item in items {
-                    let def_id = item.id.def_id.def_id;
+                    let def_id = item.id.owner_id.def_id;
                     let generics = tcx.generics_of(def_id);
                     let own_counts = generics.own_counts();
                     if generics.params.len() - own_counts.lifetimes != 0 {
@@ -659,7 +659,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
 
 pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     // an error would be reported if this fails.
-    let _ = traits::OnUnimplementedDirective::of_item(tcx, item.def_id.to_def_id());
+    let _ = traits::OnUnimplementedDirective::of_item(tcx, item.owner_id.to_def_id());
 }
 
 pub(super) fn check_specialization_validity<'tcx>(
@@ -746,7 +746,7 @@ fn check_impl_items_against_trait<'tcx>(
     let trait_def = tcx.trait_def(impl_trait_ref.def_id);
 
     for impl_item in impl_item_refs {
-        let ty_impl_item = tcx.associated_item(impl_item.id.def_id);
+        let ty_impl_item = tcx.associated_item(impl_item.id.owner_id);
         let ty_trait_item = if let Some(trait_item_id) = ty_impl_item.trait_item_def_id {
             tcx.associated_item(trait_item_id)
         } else {
@@ -758,7 +758,7 @@ fn check_impl_items_against_trait<'tcx>(
         match impl_item_full.kind {
             hir::ImplItemKind::Const(..) => {
                 let _ = tcx.compare_assoc_const_impl_item_with_trait_item((
-                    impl_item.id.def_id.def_id,
+                    impl_item.id.owner_id.def_id,
                     ty_impl_item.trait_item_def_id.unwrap(),
                 ));
             }
