@@ -38,7 +38,7 @@ impl<'a> Page<'a> {
     pub(crate) fn get_static_root_path(&self) -> String {
         match self.static_root_path {
             Some(s) => s.to_string(),
-            None => format!("{}{}", self.root_path, "static.files/"),
+            None => format!("{}static.files/", self.root_path),
         }
     }
 }
