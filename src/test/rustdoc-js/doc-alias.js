@@ -1,5 +1,3 @@
-// exact-check
-
 const QUERY = [
     'StructItem',
     'StructFieldItem',
