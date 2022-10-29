@@ -374,14 +374,15 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
-* `-Zmiri-retag-fields` changes Stacked Borrows retagging to recurse into fields.
+* `-Zmiri-retag-fields` changes Stacked Borrows retagging to recurse into *all* fields.
   This means that references in fields of structs/enums/tuples/arrays/... are retagged,
   and in particular, they are protected when passed as function arguments.
+  (The default is to recurse only in cases where rustc would actually emit a `noalias` attribute.)
 * `-Zmiri-retag-fields=<all|none|scalar>` controls when Stacked Borrows retagging recurses into
   fields. `all` means it always recurses (like `-Zmiri-retag-fields`), `none` means it never
-  recurses (the default), `scalar` means it only recurses for types where we would also emit
+  recurses, `scalar` (the default) means it only recurses for types where we would also emit
   `noalias` annotations in the generated LLVM IR (types passed as indivudal scalars or pairs of
-  scalars).
+  scalars). Setting this to `none` is **unsound**.
 * `-Zmiri-tag-gc=<blocks>` configures how often the pointer tag garbage collector runs. The default
   is to search for and remove unreachable tags once every `10000` basic blocks. Setting this to
   `0` disables the garbage collector, which causes some programs to have explosive memory usage
