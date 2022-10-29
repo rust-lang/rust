@@ -912,7 +912,7 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    query used_trait_imports(key: LocalDefId) -> &'tcx FxHashSet<LocalDefId> {
+    query used_trait_imports(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
         desc { |tcx| "finding used_trait_imports `{}`", tcx.def_path_str(key.to_def_id()) }
         cache_on_disk_if { true }
     }
