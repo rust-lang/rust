@@ -2813,7 +2813,9 @@ impl<'tcx> TyCtxt<'tcx> {
         span: impl Into<MultiSpan>,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.struct_span_lint_hir(lint, hir_id, span, decorator.msg(), |diag| {
+        let msg = decorator.msg();
+        let (level, src) = self.lint_level_at_node(lint, hir_id);
+        struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, |diag| {
             decorator.decorate_lint(diag)
         })
     }
@@ -2823,6 +2825,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     pub fn struct_span_lint_hir(
         self,
         lint: &'static Lint,
