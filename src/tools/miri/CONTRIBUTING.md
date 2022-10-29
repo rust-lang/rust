@@ -23,13 +23,13 @@ tested against. Other versions will likely not work. After installing
 [`rustup-toolchain-install-master`], you can run the following command to
 install that exact version of rustc as a toolchain:
 ```
-./rustup-toolchain
+./miri toolchain
 ```
 This will set up a rustup toolchain called `miri` and set it as an override for
 the current directory.
 
 You can also create a `.auto-everything` file (contents don't matter, can be empty), which
-will cause any `./miri` command to automatically call `rustup-toolchain`, `clippy` and `rustfmt`
+will cause any `./miri` command to automatically call `./miri toolchain`, `clippy` and `rustfmt`
 for you. If you don't want all of these to happen, you can add individual `.auto-toolchain`,
 `.auto-clippy` and `.auto-fmt` files respectively.
 
@@ -132,7 +132,7 @@ development version of Miri using
 and then you can use it as if it was installed by `rustup`.  Make sure you use
 the same toolchain when calling `cargo miri` that you used when installing Miri!
 Usually this means you have to write `cargo +miri miri ...` to select the `miri`
-toolchain that was installed by `./rustup-toolchain`.
+toolchain that was installed by `./miri toolchain`.
 
 There's a test for the cargo wrapper in the `test-cargo-miri` directory; run
 `./run-test.py` in there to execute it. Like `./miri test`, this respects the
@@ -217,7 +217,7 @@ for changes in rustc. In both cases, `rustc-version` needs updating.
 
 To update the `rustc-version` file and install the latest rustc, you can run:
 ```
-./rustup-toolchain HEAD
+./miri toolchain HEAD
 ```
 
 Now edit Miri until `./miri test` passes, and submit a PR. Generally, it is
@@ -300,7 +300,7 @@ We assume we start on an up-to-date master branch in the Miri repo.
 # Fetch and merge rustc side of the history. Takes ca 5 min the first time.
 ./miri rustc-pull
 # Update toolchain reference and apply formatting.
-./rustup-toolchain HEAD && ./miri fmt
+./miri toolchain HEAD && ./miri fmt
 git commit -am "rustup"
 ```
 
