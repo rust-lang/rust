@@ -481,6 +481,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
         self.imp.is_unsafe_ident_pat(ident_pat)
     }
+
+    pub fn is_diverging_match_arm(&self, match_arm: &ast::MatchArm) -> Option<bool> {
+        self.imp.is_diverging_match_arm(match_arm)
+    }
 }
 
 impl<'db> SemanticsImpl<'db> {
@@ -1420,6 +1424,10 @@ impl<'db> SemanticsImpl<'db> {
             // Binding a reference to a packed type is possibly unsafe.
             .map(|ty| ty.original.is_packed(self.db))
             .unwrap_or(false)
+    }
+
+    fn is_diverging_match_arm(&self, match_arm: &ast::MatchArm) -> Option<bool> {
+        self.analyze(match_arm.syntax())?.is_diverging_match_arm(self.db, match_arm)
     }
 }
 
