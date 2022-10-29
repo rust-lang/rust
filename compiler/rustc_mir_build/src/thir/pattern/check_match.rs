@@ -507,7 +507,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                                 _ => "aren't",
                             },
                         ),
-                        " else { todo!() }".to_string(),
+                        " else { todo!() }",
                         Applicability::HasPlaceholders,
                     );
                 }
