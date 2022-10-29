@@ -81,7 +81,7 @@ mod imp {
         _data: *mut libc::c_void,
     ) {
         let guard = thread_info::stack_guard().unwrap_or(0..0);
-        let addr = (*info).si_addr() as usize;
+        let addr = (&*info).si_addr() as usize;
 
         // If the faulting address is within the guard page, then we print a
         // message saying so and abort.

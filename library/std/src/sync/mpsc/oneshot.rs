@@ -86,7 +86,7 @@ impl<T> Packet<T> {
                 NothingSent => {}
                 _ => panic!("sending on a oneshot that's already sent on "),
             }
-            assert!((*self.data.get()).is_none());
+            assert!((&*self.data.get()).is_none());
             ptr::write(self.data.get(), Some(t));
             ptr::write(self.upgrade.get(), SendUsed);
 
@@ -289,7 +289,7 @@ impl<T> Packet<T> {
             // We then need to check to see if there was an upgrade requested,
             // and if so, the upgraded port needs to have its selection aborted.
             DISCONNECTED => unsafe {
-                if (*self.data.get()).is_some() {
+                if (&*self.data.get()).is_some() {
                     Ok(true)
                 } else {
                     match ptr::replace(self.upgrade.get(), SendUsed) {

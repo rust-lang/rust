@@ -799,7 +799,7 @@ mod lazy {
             // the inner cell nor mutable reference to the Option<T> inside said
             // cell. This make it safe to hand a reference, though the lifetime
             // of 'static is itself unsafe, making the get method unsafe.
-            unsafe { (*self.inner.get()).as_ref() }
+            unsafe { (&*self.inner.get()).as_ref() }
         }
 
         /// The caller must ensure that no reference is active: this method
@@ -853,7 +853,7 @@ mod lazy {
         #[allow(unused)]
         pub unsafe fn take(&mut self) -> Option<T> {
             // SAFETY: See doc comment for this method.
-            unsafe { (*self.inner.get()).take() }
+            unsafe { (&mut *self.inner.get()).take() }
         }
     }
 }

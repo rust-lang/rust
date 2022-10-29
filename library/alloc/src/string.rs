@@ -2909,7 +2909,7 @@ impl Drop for Drain<'_> {
         unsafe {
             // Use Vec::drain. "Reaffirm" the bounds checks to avoid
             // panic code being inserted again.
-            let self_vec = (*self.string).as_mut_vec();
+            let self_vec = (&mut *self.string).as_mut_vec();
             if self.start <= self.end && self.end <= self_vec.len() {
                 self_vec.drain(self.start..self.end);
             }

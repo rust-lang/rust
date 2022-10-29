@@ -1699,7 +1699,7 @@ unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
         if len > idx + 1 {
             ptr::copy(slice_ptr.add(idx), slice_ptr.add(idx + 1), len - idx - 1);
         }
-        (*slice_ptr.add(idx)).write(val);
+        slice_ptr.add(idx).cast::<T>().write(val);
     }
 }
 
@@ -1713,7 +1713,7 @@ unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
         let len = slice.len();
         debug_assert!(idx < len);
         let slice_ptr = slice.as_mut_ptr();
-        let ret = (*slice_ptr.add(idx)).assume_init_read();
+        let ret = slice_ptr.add(idx).cast::<T>().read();
         ptr::copy(slice_ptr.add(idx + 1), slice_ptr.add(idx), len - idx - 1);
         ret
     }
