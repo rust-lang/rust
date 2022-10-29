@@ -24,7 +24,7 @@ use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, Ty, UserType,
 };
-use rustc_middle::ty::{GenericArgKind, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts};
+use rustc_middle::ty::{GenericArgKind, SubstsRef, UserSelfTy, UserSubsts};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
@@ -162,47 +162,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn write_method_call(&self, hir_id: hir::HirId, method: MethodCallee<'tcx>) {
         self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_substs(hir_id, method.substs);
-
-        // When the method is confirmed, the `method.substs` includes
-        // parameters from not just the method, but also the impl of
-        // the method -- in particular, the `Self` type will be fully
-        // resolved. However, those are not something that the "user
-        // specified" -- i.e., those types come from the inferred type
-        // of the receiver, not something the user wrote. So when we
-        // create the user-substs, we want to replace those earlier
-        // types with just the types that the user actually wrote --
-        // that is, those that appear on the *method itself*.
-        //
-        // As an example, if the user wrote something like
-        // `foo.bar::<u32>(...)` -- the `Self` type here will be the
-        // type of `foo` (possibly adjusted), but we don't want to
-        // include that. We want just the `[_, u32]` part.
-        if !method.substs.is_empty() {
-            let method_generics = self.tcx.generics_of(method.def_id);
-            if !method_generics.params.is_empty() {
-                let user_type_annotation = self.probe(|_| {
-                    let user_substs = UserSubsts {
-                        substs: InternalSubsts::for_item(self.tcx, method.def_id, |param, _| {
-                            let i = param.index as usize;
-                            if i < method_generics.parent_count {
-                                self.var_for_def(DUMMY_SP, param)
-                            } else {
-                                method.substs[i]
-                            }
-                        }),
-                        user_self_ty: None, // not relevant here
-                    };
-
-                    self.canonicalize_user_type_annotation(UserType::TypeOf(
-                        method.def_id,
-                        user_substs,
-                    ))
-                });
-
-                debug!("write_method_call: user_type_annotation={:?}", user_type_annotation);
-                self.write_user_type_annotation(hir_id, user_type_annotation);
-            }
-        }
     }
 
     pub fn write_substs(&self, node_id: hir::HirId, substs: SubstsRef<'tcx>) {

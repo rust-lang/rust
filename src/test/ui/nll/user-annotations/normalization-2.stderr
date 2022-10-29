@@ -115,6 +115,14 @@ help: the following changes may resolve your lifetime errors
    = help: replace `'c` with `'static`
 
 error: lifetime may not live long enough
+  --> $DIR/normalization-2.rs:71:7
+   |
+LL | fn test_method_call<'a>(x: MyTy<()>) {
+   |                     -- lifetime `'a` defined here
+LL |     x.method2::<Ty<'a>>();
+   |       ^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
   --> $DIR/normalization-2.rs:88:5
    |
 LL | fn test_struct_path<'a, 'b, 'c, 'd>() {
@@ -190,5 +198,5 @@ help: the following changes may resolve your lifetime errors
    = help: replace `'b` with `'static`
    = help: replace `'c` with `'static`
 
-error: aborting due to 18 previous errors
+error: aborting due to 19 previous errors
 

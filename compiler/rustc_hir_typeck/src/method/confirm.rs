@@ -12,7 +12,8 @@ use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutabili
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{self, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, Ty};
-use rustc_span::Span;
+use rustc_middle::ty::{InternalSubsts, UserSubsts, UserType};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
 
 use std::iter;
@@ -400,6 +401,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.cfcx.var_for_def(self.cfcx.span, param)
             }
         }
+
         let substs = <dyn AstConv<'_>>::create_substs_for_generic_args(
             self.tcx,
             pick.item.def_id,
@@ -409,7 +411,45 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             &arg_count_correct,
             &mut MethodSubstsCtxt { cfcx: self, pick, seg },
         );
-        // FIXME(aliemjay): Type annotation should be registered before normalization.
+
+        // When the method is confirmed, the `substs` includes
+        // parameters from not just the method, but also the impl of
+        // the method -- in particular, the `Self` type will be fully
+        // resolved. However, those are not something that the "user
+        // specified" -- i.e., those types come from the inferred type
+        // of the receiver, not something the user wrote. So when we
+        // create the user-substs, we want to replace those earlier
+        // types with just the types that the user actually wrote --
+        // that is, those that appear on the *method itself*.
+        //
+        // As an example, if the user wrote something like
+        // `foo.bar::<u32>(...)` -- the `Self` type here will be the
+        // type of `foo` (possibly adjusted), but we don't want to
+        // include that. We want just the `[_, u32]` part.
+        if !substs.is_empty() && !generics.params.is_empty() {
+            let user_type_annotation = self.probe(|_| {
+                let user_substs = UserSubsts {
+                    substs: InternalSubsts::for_item(self.tcx, pick.item.def_id, |param, _| {
+                        let i = param.index as usize;
+                        if i < generics.parent_count {
+                            self.fcx.var_for_def(DUMMY_SP, param)
+                        } else {
+                            substs[i]
+                        }
+                    }),
+                    user_self_ty: None, // not relevant here
+                };
+
+                self.fcx.canonicalize_user_type_annotation(UserType::TypeOf(
+                    pick.item.def_id,
+                    user_substs,
+                ))
+            });
+
+            debug!("instantiate_method_substs: user_type_annotation={:?}", user_type_annotation);
+            self.fcx.write_user_type_annotation(self.call_expr.hir_id, user_type_annotation);
+        }
+
         self.normalize_associated_types_in(self.span, substs)
     }
 
