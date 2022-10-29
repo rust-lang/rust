@@ -558,10 +558,7 @@ impl<'test> TestCx<'test> {
             .arg(&aux_dir)
             .args(&self.props.compile_flags)
             .envs(self.props.rustc_env.clone());
-        self.maybe_add_external_args(
-            &mut rustc,
-            self.split_maybe_args(&self.config.target_rustcflags),
-        );
+        self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
 
         let src = match read_from {
             ReadFrom::Stdin(src) => Some(src),
@@ -629,10 +626,7 @@ impl<'test> TestCx<'test> {
             .arg("-L")
             .arg(aux_dir);
         self.set_revision_flags(&mut rustc);
-        self.maybe_add_external_args(
-            &mut rustc,
-            self.split_maybe_args(&self.config.target_rustcflags),
-        );
+        self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
         rustc.args(&self.props.compile_flags);
 
         self.compose_and_run_compiler(rustc, Some(src))
@@ -1186,23 +1180,14 @@ impl<'test> TestCx<'test> {
         ProcRes { status, stdout: out, stderr: err, cmdline: format!("{:?}", cmd) }
     }
 
-    fn cleanup_debug_info_options(&self, options: &Option<String>) -> Option<String> {
-        if options.is_none() {
-            return None;
-        }
-
+    fn cleanup_debug_info_options(&self, options: &Vec<String>) -> Vec<String> {
         // Remove options that are either unwanted (-O) or may lead to duplicates due to RUSTFLAGS.
         let options_to_remove = ["-O".to_owned(), "-g".to_owned(), "--debuginfo".to_owned()];
-        let new_options = self
-            .split_maybe_args(options)
-            .into_iter()
-            .filter(|x| !options_to_remove.contains(x))
-            .collect::<Vec<String>>();
 
-        Some(new_options.join(" "))
+        options.iter().filter(|x| !options_to_remove.contains(x)).map(|x| x.clone()).collect()
     }
 
-    fn maybe_add_external_args(&self, cmd: &mut Command, args: Vec<String>) {
+    fn maybe_add_external_args(&self, cmd: &mut Command, args: &Vec<String>) {
         // Filter out the arguments that should not be added by runtest here.
         //
         // Notable use-cases are: do not add our optimisation flag if
@@ -2035,15 +2020,9 @@ impl<'test> TestCx<'test> {
         }
 
         if self.props.force_host {
-            self.maybe_add_external_args(
-                &mut rustc,
-                self.split_maybe_args(&self.config.host_rustcflags),
-            );
+            self.maybe_add_external_args(&mut rustc, &self.config.host_rustcflags);
         } else {
-            self.maybe_add_external_args(
-                &mut rustc,
-                self.split_maybe_args(&self.config.target_rustcflags),
-            );
+            self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
             if !is_rustdoc {
                 if let Some(ref linker) = self.config.linker {
                     rustc.arg(format!("-Clinker={}", linker));
