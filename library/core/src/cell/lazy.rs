@@ -31,7 +31,7 @@ pub struct LazyCell<T, F = fn() -> T> {
     init: Cell<Option<F>>,
 }
 
-impl<T, F> LazyCell<T, F> {
+impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// Creates a new lazy value with the given initializing function.
     ///
     /// # Examples
@@ -51,9 +51,7 @@ impl<T, F> LazyCell<T, F> {
     pub const fn new(init: F) -> LazyCell<T, F> {
         LazyCell { cell: OnceCell::new(), init: Cell::new(Some(init)) }
     }
-}
 
-impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// Forces the evaluation of this lazy value and returns a reference to
     /// the result.
     ///
