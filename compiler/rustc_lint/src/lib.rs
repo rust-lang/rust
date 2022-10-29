@@ -54,6 +54,7 @@ mod errors;
 mod expect;
 mod for_loops_over_fallibles;
 pub mod hidden_unicode_codepoints;
+mod implicit_unsafe_autorefs;
 mod internal;
 mod late;
 mod let_underscore;
@@ -89,6 +90,7 @@ use builtin::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
+use implicit_unsafe_autorefs::*;
 use internal::*;
 use let_underscore::*;
 use methods::*;
@@ -191,6 +193,7 @@ macro_rules! late_lint_mod_passes {
             $args,
             [
                 ForLoopsOverFallibles: ForLoopsOverFallibles,
+                ImplicitUnsafeAutorefs: ImplicitUnsafeAutorefs,
                 HardwiredLints: HardwiredLints,
                 ImproperCTypesDeclarations: ImproperCTypesDeclarations,
                 ImproperCTypesDefinitions: ImproperCTypesDefinitions,
