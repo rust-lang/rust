@@ -368,6 +368,7 @@ pub trait Extend<A> {
     fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
 
     /// Extends a collection with exactly one element.
+    #[inline]
     #[unstable(feature = "extend_one", issue = "72631")]
     fn extend_one(&mut self, item: A) {
         self.extend(Some(item));
@@ -376,6 +377,7 @@ pub trait Extend<A> {
     /// Reserves capacity in a collection for the given number of additional elements.
     ///
     /// The default implementation does nothing.
+    #[inline]
     #[unstable(feature = "extend_one", issue = "72631")]
     fn extend_reserve(&mut self, additional: usize) {
         let _ = additional;
@@ -384,9 +386,11 @@ pub trait Extend<A> {
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
 impl Extend<()> for () {
+    #[inline]
     fn extend<T: IntoIterator<Item = ()>>(&mut self, iter: T) {
         iter.into_iter().for_each(drop)
     }
+    #[inline]
     fn extend_one(&mut self, _item: ()) {}
 }
 
@@ -416,10 +420,12 @@ where
     /// assert_eq!(b, [2, 5, 8]);
     /// assert_eq!(c, [3, 6, 9]);
     /// ```
+    #[inline]
     fn extend<T: IntoIterator<Item = (A, B)>>(&mut self, into_iter: T) {
         let (a, b) = self;
         let iter = into_iter.into_iter();
 
+        #[inline]
         fn extend<'a, A, B>(
             a: &'a mut impl Extend<A>,
             b: &'a mut impl Extend<B>,
@@ -439,11 +445,13 @@ where
         iter.fold((), extend(a, b));
     }
 
+    #[inline]
     fn extend_one(&mut self, item: (A, B)) {
         self.0.extend_one(item.0);
         self.1.extend_one(item.1);
     }
 
+    #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         self.0.extend_reserve(additional);
         self.1.extend_reserve(additional);

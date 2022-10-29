@@ -92,10 +92,12 @@ impl<A: Clone> Iterator for Repeat<A> {
         Some(self.element.clone())
     }
 
+    #[inline]
     fn last(self) -> Option<A> {
         loop {}
     }
 
+    #[inline]
     fn count(self) -> usize {
         loop {}
     }

@@ -24,6 +24,7 @@ impl<I: Clone, U, F: Clone> Clone for FlatMap<I, U, F>
 where
     U: Clone + IntoIterator<IntoIter: Clone>,
 {
+    #[inline]
     fn clone(&self) -> Self {
         FlatMap { inner: self.inner.clone() }
     }
@@ -194,6 +195,7 @@ where
     I: Clone + Iterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
     U: Clone + Iterator,
 {
+    #[inline]
     fn clone(&self) -> Self {
         Flatten { inner: self.inner.clone() }
     }

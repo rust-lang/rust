@@ -34,6 +34,7 @@ struct FromGenerator<G>(G);
 impl<G: Generator<Return = ()> + Unpin> Iterator for FromGenerator<G> {
     type Item = G::Yield;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         match Pin::new(&mut self.0).resume(()) {
             GeneratorState::Yielded(n) => Some(n),

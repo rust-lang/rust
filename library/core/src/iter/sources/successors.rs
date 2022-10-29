@@ -11,6 +11,7 @@ use crate::{fmt, iter::FusedIterator};
 /// let powers_of_10 = successors(Some(1_u16), |n| n.checked_mul(10));
 /// assert_eq!(powers_of_10.collect::<Vec<_>>(), &[1, 10, 100, 1_000, 10_000]);
 /// ```
+#[inline]
 #[stable(feature = "iter_successors", since = "1.34.0")]
 pub fn successors<T, F>(first: Option<T>, succ: F) -> Successors<T, F>
 where

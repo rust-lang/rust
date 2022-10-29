@@ -108,6 +108,7 @@ where
         }
     }
 
+    #[inline]
     fn try_fold<Acc, F, R>(&mut self, mut acc: Acc, mut f: F) -> R
     where
         F: FnMut(Acc, Self::Item) -> R,
@@ -128,6 +129,7 @@ where
         from_fn(nth(&mut self.iter, self.step)).try_fold(acc, f)
     }
 
+    #[inline]
     fn fold<Acc, F>(mut self, mut acc: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
@@ -154,6 +156,7 @@ where
 {
     // The zero-based index starting from the end of the iterator of the
     // last element. Used in the `DoubleEndedIterator` implementation.
+    #[inline]
     fn next_back_index(&self) -> usize {
         let rem = self.iter.len() % (self.step + 1);
         if self.first_take {
@@ -184,6 +187,7 @@ where
         self.iter.nth_back(n)
     }
 
+    #[inline]
     fn try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
     where
         F: FnMut(Acc, Self::Item) -> R,

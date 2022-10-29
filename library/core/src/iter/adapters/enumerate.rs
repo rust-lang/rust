@@ -172,6 +172,7 @@ where
     {
         // Can safely add and subtract the count, as `ExactSizeIterator` promises
         // that the number of elements fits into a `usize`.
+        #[inline]
         fn enumerate<T, Acc, R>(
             mut count: usize,
             mut fold: impl FnMut(Acc, (usize, T)) -> R,
@@ -193,6 +194,7 @@ where
     {
         // Can safely add and subtract the count, as `ExactSizeIterator` promises
         // that the number of elements fits into a `usize`.
+        #[inline]
         fn enumerate<T, Acc>(
             mut count: usize,
             mut fold: impl FnMut(Acc, (usize, T)) -> Acc,
@@ -220,10 +222,12 @@ impl<I> ExactSizeIterator for Enumerate<I>
 where
     I: ExactSizeIterator,
 {
+    #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
 
+    #[inline]
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }

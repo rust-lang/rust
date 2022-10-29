@@ -22,6 +22,7 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
     pub(in crate::iter) fn new(a: A, b: B) -> Zip<A, B> {
         ZipImpl::new(a, b)
     }
+    #[inline]
     fn super_nth(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
         while let Some(x) = Iterator::next(self) {
             if n == 0 {
@@ -222,6 +223,7 @@ where
         (lower, upper)
     }
 
+    #[inline]
     default unsafe fn get_unchecked(&mut self, _idx: usize) -> <Self as Iterator>::Item
     where
         Self: TrustedRandomAccessNoCoerce,
@@ -535,6 +537,7 @@ pub unsafe trait TrustedRandomAccess: TrustedRandomAccessNoCoerce {}
 #[rustc_specialization_trait]
 pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
     // Convenience method.
+    #[inline]
     fn size(&self) -> usize
     where
         Self: Iterator,
@@ -570,6 +573,7 @@ unsafe trait SpecTrustedRandomAccess: Iterator {
 }
 
 unsafe impl<I: Iterator> SpecTrustedRandomAccess for I {
+    #[inline]
     default unsafe fn try_get_unchecked(&mut self, _: usize) -> Self::Item {
         panic!("Should only be called on TrustedRandomAccess iterators");
     }

@@ -90,6 +90,7 @@ impl<A, F: FnOnce() -> A> Iterator for OnceWith<F> {
 
 #[stable(feature = "iter_once_with", since = "1.43.0")]
 impl<A, F: FnOnce() -> A> DoubleEndedIterator for OnceWith<F> {
+    #[inline]
     fn next_back(&mut self) -> Option<A> {
         self.next()
     }
@@ -97,6 +98,7 @@ impl<A, F: FnOnce() -> A> DoubleEndedIterator for OnceWith<F> {
 
 #[stable(feature = "iter_once_with", since = "1.43.0")]
 impl<A, F: FnOnce() -> A> ExactSizeIterator for OnceWith<F> {
+    #[inline]
     fn len(&self) -> usize {
         self.gen.iter().len()
     }

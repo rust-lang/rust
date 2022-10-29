@@ -166,6 +166,7 @@ impl<I> ExactSizeIterator for Fuse<I>
 where
     I: ExactSizeIterator,
 {
+    #[inline]
     fn len(&self) -> usize {
         match self.iter {
             Some(ref iter) => iter.len(),
@@ -173,6 +174,7 @@ where
         }
     }
 
+    #[inline]
     fn is_empty(&self) -> bool {
         match self.iter {
             Some(ref iter) => iter.is_empty(),

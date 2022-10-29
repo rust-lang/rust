@@ -43,10 +43,12 @@ where
 {
     type Item = T;
 
+    #[inline]
     fn next(&mut self) -> Option<T> {
         self.it.next().copied()
     }
 
+    #[inline]
     fn next_chunk<const N: usize>(
         &mut self,
     ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>>
@@ -56,10 +58,12 @@ where
         <I as SpecNextChunk<'_, N, T>>::spec_next_chunk(&mut self.it)
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
     }
 
+    #[inline]
     fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -69,6 +73,7 @@ where
         self.it.try_fold(init, copy_try_fold(f))
     }
 
+    #[inline]
     fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
@@ -76,14 +81,17 @@ where
         self.it.fold(init, copy_fold(f))
     }
 
+    #[inline]
     fn nth(&mut self, n: usize) -> Option<T> {
         self.it.nth(n).copied()
     }
 
+    #[inline]
     fn last(self) -> Option<T> {
         self.it.last().copied()
     }
 
+    #[inline]
     fn count(self) -> usize {
         self.it.count()
     }
@@ -93,6 +101,7 @@ where
         self.it.advance_by(n)
     }
 
+    #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
         Self: TrustedRandomAccessNoCoerce,
@@ -109,10 +118,12 @@ where
     I: DoubleEndedIterator<Item = &'a T>,
     T: Copy,
 {
+    #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.it.next_back().copied()
     }
 
+    #[inline]
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -122,6 +133,7 @@ where
         self.it.try_rfold(init, copy_try_fold(f))
     }
 
+    #[inline]
     fn rfold<Acc, F>(self, init: Acc, f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
@@ -141,10 +153,12 @@ where
     I: ExactSizeIterator<Item = &'a T>,
     T: Copy,
 {
+    #[inline]
     fn len(&self) -> usize {
         self.it.len()
     }
 
+    #[inline]
     fn is_empty(&self) -> bool {
         self.it.is_empty()
     }
@@ -191,6 +205,7 @@ where
     I: Iterator<Item = &'a T>,
     T: Copy,
 {
+    #[inline]
     default fn spec_next_chunk(&mut self) -> Result<[T; N], array::IntoIter<T, N>> {
         array::iter_next_chunk(&mut self.map(|e| *e))
     }

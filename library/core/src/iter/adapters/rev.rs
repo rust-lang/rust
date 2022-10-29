@@ -47,6 +47,7 @@ where
         self.iter.nth_back(n)
     }
 
+    #[inline]
     fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -56,6 +57,7 @@ where
         self.iter.try_rfold(init, f)
     }
 
+    #[inline]
     fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
@@ -92,6 +94,7 @@ where
         self.iter.nth(n)
     }
 
+    #[inline]
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -101,6 +104,7 @@ where
         self.iter.try_fold(init, f)
     }
 
+    #[inline]
     fn rfold<Acc, F>(self, init: Acc, f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
@@ -108,6 +112,7 @@ where
         self.iter.fold(init, f)
     }
 
+    #[inline]
     fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         P: FnMut(&Self::Item) -> bool,
@@ -121,10 +126,12 @@ impl<I> ExactSizeIterator for Rev<I>
 where
     I: ExactSizeIterator + DoubleEndedIterator,
 {
+    #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
 
+    #[inline]
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }

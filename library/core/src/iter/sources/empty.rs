@@ -16,6 +16,7 @@ use crate::marker;
 ///
 /// assert_eq!(None, nope.next());
 /// ```
+#[inline]
 #[stable(feature = "iter_empty", since = "1.2.0")]
 #[rustc_const_stable(feature = "const_iter_empty", since = "1.32.0")]
 pub const fn empty<T>() -> Empty<T> {
@@ -45,10 +46,12 @@ impl<T> fmt::Debug for Empty<T> {
 impl<T> Iterator for Empty<T> {
     type Item = T;
 
+    #[inline]
     fn next(&mut self) -> Option<T> {
         None
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, Some(0))
     }
@@ -56,6 +59,7 @@ impl<T> Iterator for Empty<T> {
 
 #[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> DoubleEndedIterator for Empty<T> {
+    #[inline]
     fn next_back(&mut self) -> Option<T> {
         None
     }
@@ -63,6 +67,7 @@ impl<T> DoubleEndedIterator for Empty<T> {
 
 #[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> ExactSizeIterator for Empty<T> {
+    #[inline]
     fn len(&self) -> usize {
         0
     }
@@ -78,6 +83,7 @@ impl<T> FusedIterator for Empty<T> {}
 // which isn't necessary.
 #[stable(feature = "iter_empty", since = "1.2.0")]
 impl<T> Clone for Empty<T> {
+    #[inline]
     fn clone(&self) -> Empty<T> {
         Empty(marker::PhantomData)
     }
@@ -88,6 +94,7 @@ impl<T> Clone for Empty<T> {
 #[stable(feature = "iter_empty", since = "1.2.0")]
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl<T> const Default for Empty<T> {
+    #[inline]
     fn default() -> Empty<T> {
         Empty(marker::PhantomData)
     }

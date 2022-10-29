@@ -61,6 +61,7 @@ where
         self.iter.count() / N
     }
 
+    #[inline]
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
@@ -95,6 +96,7 @@ where
         self.try_rfold((), |(), x| ControlFlow::Break(x)).break_value()
     }
 
+    #[inline]
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
@@ -128,6 +130,7 @@ where
     I: DoubleEndedIterator + ExactSizeIterator,
 {
     /// Updates `self.remainder` such that `self.iter.len` is divisible by `N`.
+    #[inline]
     fn next_back_remainder(&mut self) {
         // Make sure to not override `self.remainder` with an empty array
         // when `next_back` is called after `ArrayChunks` exhaustion.

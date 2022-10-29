@@ -43,6 +43,7 @@ where
         }
     }
 
+    #[inline]
     fn fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
@@ -52,6 +53,7 @@ where
         intersperse_fold(self.iter, init, f, move || separator.clone(), self.needs_sep)
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         intersperse_size_hint(&self.iter, self.needs_sep)
     }
@@ -94,6 +96,7 @@ where
     I::Item: crate::clone::Clone,
     G: Clone,
 {
+    #[inline]
     fn clone(&self) -> Self {
         IntersperseWith {
             separator: self.separator.clone(),
@@ -132,6 +135,7 @@ where
         }
     }
 
+    #[inline]
     fn fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
@@ -140,6 +144,7 @@ where
         intersperse_fold(self.iter, init, f, self.separator, self.needs_sep)
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         intersperse_size_hint(&self.iter, self.needs_sep)
     }

@@ -2132,6 +2132,7 @@ pub trait Iterator {
     /// assert!("Iterator".chars().is_partitioned(char::is_uppercase));
     /// assert!(!"IntoIterator".chars().is_partitioned(char::is_uppercase));
     /// ```
+    #[inline]
     #[unstable(feature = "iter_is_partitioned", reason = "new API", issue = "62544")]
     fn is_partitioned<P>(mut self, mut predicate: P) -> bool
     where
@@ -3186,6 +3187,7 @@ pub trait Iterator {
     /// assert_eq!(y, [2, 5]);
     /// assert_eq!(z, [3, 6]);
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn unzip<A, B, FromA, FromB>(self) -> (FromA, FromB)
     where
@@ -3218,6 +3220,7 @@ pub trait Iterator {
     /// assert_eq!(v_copied, vec![1, 2, 3]);
     /// assert_eq!(v_map, vec![1, 2, 3]);
     /// ```
+    #[inline]
     #[stable(feature = "iter_copied", since = "1.36.0")]
     fn copied<'a, T: 'a>(self) -> Copied<Self>
     where
@@ -3265,6 +3268,7 @@ pub trait Iterator {
     /// let faster: Vec<_> = a.iter().filter(|s| s.len() == 1).cloned().collect();
     /// assert_eq!(&[vec![23]], &faster[..]);
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>
     where
@@ -3298,8 +3302,8 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some(&3));
     /// assert_eq!(it.next(), Some(&1));
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn cycle(self) -> Cycle<Self>
     where
         Self: Sized + Clone,
@@ -3342,6 +3346,7 @@ pub trait Iterator {
     /// }
     /// ```
     #[track_caller]
+    #[inline]
     #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
     fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
     where
@@ -3372,6 +3377,7 @@ pub trait Iterator {
     ///
     /// assert_eq!(sum, 6);
     /// ```
+    #[inline]
     #[stable(feature = "iter_arith", since = "1.11.0")]
     fn sum<S>(self) -> S
     where
@@ -3401,6 +3407,7 @@ pub trait Iterator {
     /// assert_eq!(factorial(1), 1);
     /// assert_eq!(factorial(5), 120);
     /// ```
+    #[inline]
     #[stable(feature = "iter_arith", since = "1.11.0")]
     fn product<P>(self) -> P
     where
@@ -3422,6 +3429,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().cmp([1, 2].iter()), Ordering::Less);
     /// assert_eq!([1, 2].iter().cmp([1].iter()), Ordering::Greater);
     /// ```
+    #[inline]
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn cmp<I>(self, other: I) -> Ordering
     where
@@ -3451,6 +3459,7 @@ pub trait Iterator {
     /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (x * x).cmp(&y)), Ordering::Equal);
     /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (2 * x).cmp(&y)), Ordering::Greater);
     /// ```
+    #[inline]
     #[unstable(feature = "iter_order_by", issue = "64295")]
     fn cmp_by<I, F>(self, other: I, cmp: F) -> Ordering
     where
@@ -3489,6 +3498,7 @@ pub trait Iterator {
     ///
     /// assert_eq!([f64::NAN].iter().partial_cmp([1.].iter()), None);
     /// ```
+    #[inline]
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn partial_cmp<I>(self, other: I) -> Option<Ordering>
     where
@@ -3527,6 +3537,7 @@ pub trait Iterator {
     ///     Some(Ordering::Greater)
     /// );
     /// ```
+    #[inline]
     #[unstable(feature = "iter_order_by", issue = "64295")]
     fn partial_cmp_by<I, F>(self, other: I, partial_cmp: F) -> Option<Ordering>
     where
@@ -3560,6 +3571,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().eq([1].iter()), true);
     /// assert_eq!([1].iter().eq([1, 2].iter()), false);
     /// ```
+    #[inline]
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn eq<I>(self, other: I) -> bool
     where
@@ -3585,6 +3597,7 @@ pub trait Iterator {
     ///
     /// assert!(xs.iter().eq_by(&ys, |&x, &y| x * x == y));
     /// ```
+    #[inline]
     #[unstable(feature = "iter_order_by", issue = "64295")]
     fn eq_by<I, F>(self, other: I, eq: F) -> bool
     where
@@ -3617,6 +3630,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().ne([1].iter()), false);
     /// assert_eq!([1].iter().ne([1, 2].iter()), true);
     /// ```
+    #[inline]
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn ne<I>(self, other: I) -> bool
     where
@@ -3638,6 +3652,7 @@ pub trait Iterator {
     /// assert_eq!([1, 2].iter().lt([1].iter()), false);
     /// assert_eq!([1, 2].iter().lt([1, 2].iter()), false);
     /// ```
+    #[inline]
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn lt<I>(self, other: I) -> bool
     where
@@ -3659,6 +3674,7 @@ pub trait Iterator {
     /// assert_eq!([1, 2].iter().le([1].iter()), false);
     /// assert_eq!([1, 2].iter().le([1, 2].iter()), true);
     /// ```
+    #[inline]
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn le<I>(self, other: I) -> bool
     where
@@ -3680,6 +3696,7 @@ pub trait Iterator {
     /// assert_eq!([1, 2].iter().gt([1].iter()), true);
     /// assert_eq!([1, 2].iter().gt([1, 2].iter()), false);
     /// ```
+    #[inline]
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn gt<I>(self, other: I) -> bool
     where
@@ -3701,6 +3718,7 @@ pub trait Iterator {
     /// assert_eq!([1, 2].iter().ge([1].iter()), true);
     /// assert_eq!([1, 2].iter().ge([1, 2].iter()), true);
     /// ```
+    #[inline]
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn ge<I>(self, other: I) -> bool
     where
@@ -3760,6 +3778,7 @@ pub trait Iterator {
     /// ```
     ///
     /// [`is_sorted`]: Iterator::is_sorted
+    #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     fn is_sorted_by<F>(mut self, compare: F) -> bool
     where
@@ -3877,12 +3896,15 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     fn next(&mut self) -> Option<I::Item> {
         (**self).next()
     }
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
+    #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
         (**self).advance_by(n)
     }
+    #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
     }

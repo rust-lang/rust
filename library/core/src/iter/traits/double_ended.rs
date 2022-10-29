@@ -362,12 +362,15 @@ pub trait DoubleEndedIterator: Iterator {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
+    #[inline]
     fn next_back(&mut self) -> Option<I::Item> {
         (**self).next_back()
     }
+    #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
         (**self).advance_back_by(n)
     }
+    #[inline]
     fn nth_back(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth_back(n)
     }

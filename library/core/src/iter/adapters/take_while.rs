@@ -70,6 +70,7 @@ where
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
+        #[inline]
         fn check<'a, T, Acc, R: Try<Output = Acc>>(
             flag: &'a mut bool,
             p: &'a mut impl FnMut(&T) -> bool,

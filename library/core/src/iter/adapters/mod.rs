@@ -174,10 +174,12 @@ where
 {
     type Item = <I::Item as Try>::Output;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.try_for_each(ControlFlow::Break).break_value()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         if self.residual.is_some() {
             (0, Some(0))
@@ -187,6 +189,7 @@ where
         }
     }
 
+    #[inline]
     fn try_fold<B, F, T>(&mut self, init: B, mut f: F) -> T
     where
         F: FnMut(B, Self::Item) -> T,

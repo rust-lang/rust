@@ -136,10 +136,12 @@ impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F>
 where
     F: FnMut(&I::Item),
 {
+    #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
 
+    #[inline]
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }

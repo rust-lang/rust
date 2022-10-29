@@ -51,6 +51,7 @@ use crate::iter::{FusedIterator, TrustedLen};
 ///     println!("{f:?}");
 /// }
 /// ```
+#[inline]
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub fn once<T>(value: T) -> Once<T> {
     Once { inner: Some(value).into_iter() }
@@ -69,10 +70,12 @@ pub struct Once<T> {
 impl<T> Iterator for Once<T> {
     type Item = T;
 
+    #[inline]
     fn next(&mut self) -> Option<T> {
         self.inner.next()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
@@ -80,6 +83,7 @@ impl<T> Iterator for Once<T> {
 
 #[stable(feature = "iter_once", since = "1.2.0")]
 impl<T> DoubleEndedIterator for Once<T> {
+    #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.inner.next_back()
     }
@@ -87,6 +91,7 @@ impl<T> DoubleEndedIterator for Once<T> {
 
 #[stable(feature = "iter_once", since = "1.2.0")]
 impl<T> ExactSizeIterator for Once<T> {
+    #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }

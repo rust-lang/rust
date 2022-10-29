@@ -36,14 +36,17 @@ where
 {
     type Item = T;
 
+    #[inline]
     fn next(&mut self) -> Option<T> {
         self.it.next().cloned()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
     }
 
+    #[inline]
     fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -53,6 +56,7 @@ where
         self.it.try_fold(init, clone_try_fold(f))
     }
 
+    #[inline]
     fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
@@ -60,6 +64,7 @@ where
         self.it.map(T::clone).fold(init, f)
     }
 
+    #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
         Self: TrustedRandomAccessNoCoerce,
@@ -76,10 +81,12 @@ where
     I: DoubleEndedIterator<Item = &'a T>,
     T: Clone,
 {
+    #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.it.next_back().cloned()
     }
 
+    #[inline]
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -89,6 +96,7 @@ where
         self.it.try_rfold(init, clone_try_fold(f))
     }
 
+    #[inline]
     fn rfold<Acc, F>(self, init: Acc, f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
@@ -103,10 +111,12 @@ where
     I: ExactSizeIterator<Item = &'a T>,
     T: Clone,
 {
+    #[inline]
     fn len(&self) -> usize {
         self.it.len()
     }
 
+    #[inline]
     fn is_empty(&self) -> bool {
         self.it.is_empty()
     }

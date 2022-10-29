@@ -40,6 +40,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
+        #[inline]
         fn check<'a, T>(
             flag: &'a mut bool,
             pred: &'a mut impl FnMut(&T) -> bool,

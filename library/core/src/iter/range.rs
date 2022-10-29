@@ -84,6 +84,7 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///   * Corollary: `Step::forward(a, 0) == a`
     /// * `Step::forward(a, n) >= a`
     /// * `Step::backward(Step::forward(a, n), n) == a`
+    #[inline]
     fn forward(start: Self, count: usize) -> Self {
         Step::forward_checked(start, count).expect("overflow in `Step::forward`")
     }
@@ -108,6 +109,7 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// For any `a` and `n`, where no overflow occurs:
     ///
     /// * `Step::forward_unchecked(a, n)` is equivalent to `Step::forward(a, n)`
+    #[inline]
     unsafe fn forward_unchecked(start: Self, count: usize) -> Self {
         Step::forward(start, count)
     }
@@ -153,6 +155,7 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///   * Corollary: `Step::backward(a, 0) == a`
     /// * `Step::backward(a, n) <= a`
     /// * `Step::forward(Step::backward(a, n), n) == a`
+    #[inline]
     fn backward(start: Self, count: usize) -> Self {
         Step::backward_checked(start, count).expect("overflow in `Step::backward`")
     }
@@ -177,6 +180,7 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// For any `a` and `n`, where no overflow occurs:
     ///
     /// * `Step::backward_unchecked(a, n)` is equivalent to `Step::backward(a, n)`
+    #[inline]
     unsafe fn backward_unchecked(start: Self, count: usize) -> Self {
         Step::backward(start, count)
     }
