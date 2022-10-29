@@ -337,7 +337,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 }
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_def_id(self.def_id.to_def_id()),
+                    id: id_from_def_id(self.owner_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -359,7 +359,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 let mut text = "const ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_def_id(self.def_id.to_def_id()),
+                    id: id_from_def_id(self.owner_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -428,7 +428,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 let mut text = "mod ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_def_id(self.def_id.to_def_id()),
+                    id: id_from_def_id(self.owner_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -764,7 +764,7 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
                 }
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_def_id(self.def_id.to_def_id()),
+                    id: id_from_def_id(self.owner_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -780,7 +780,7 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
                 let mut text = "type ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_def_id(self.def_id.to_def_id()),
+                    id: id_from_def_id(self.owner_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];

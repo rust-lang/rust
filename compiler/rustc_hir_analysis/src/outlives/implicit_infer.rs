@@ -29,7 +29,7 @@ pub(super) fn infer_predicates<'tcx>(
 
         // Visit all the crates and infer predicates
         for id in tcx.hir().items() {
-            let item_did = id.def_id;
+            let item_did = id.owner_id;
 
             debug!("InferVisitor::visit_item(item={:?})", item_did);
 

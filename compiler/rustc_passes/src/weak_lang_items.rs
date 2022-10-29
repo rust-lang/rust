@@ -34,7 +34,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
                     items.missing.push(item);
                 }
             } else {
-                let span = tcx.def_span(id.def_id);
+                let span = tcx.def_span(id.owner_id);
                 tcx.sess.emit_err(UnknownExternLangItem { span, lang_item });
             }
         }

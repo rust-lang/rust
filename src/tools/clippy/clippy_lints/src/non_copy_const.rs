@@ -303,7 +303,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                         if let Some(of_trait_def_id) = of_trait_ref.trait_def_id();
                         if let Some(of_assoc_item) = cx
                             .tcx
-                            .associated_item(impl_item.def_id)
+                            .associated_item(impl_item.owner_id)
                             .trait_item_def_id;
                         if cx
                             .tcx

@@ -872,9 +872,9 @@ fn foo(&self) -> Self::T { String::new() }
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
                             if let hir::Defaultness::Default { has_value: true } =
-                                self.impl_defaultness(item.id.def_id)
+                                self.impl_defaultness(item.id.owner_id)
                             {
-                                if self.type_of(item.id.def_id) == found {
+                                if self.type_of(item.id.owner_id) == found {
                                     diag.span_label(
                                         item.span,
                                         "associated type defaults can't be assumed inside the \
@@ -894,7 +894,7 @@ fn foo(&self) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
-                        if self.type_of(item.id.def_id) == found {
+                        if self.type_of(item.id.owner_id) == found {
                             diag.span_label(item.span, "expected this associated type");
                             return true;
                         }

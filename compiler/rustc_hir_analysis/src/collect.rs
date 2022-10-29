@@ -571,7 +571,7 @@ fn get_new_lifetime_name<'tcx>(
 fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     let it = tcx.hir().item(item_id);
     debug!("convert: item {} with id {}", it.ident, it.hir_id());
-    let def_id = item_id.def_id.def_id;
+    let def_id = item_id.owner_id.def_id;
 
     match it.kind {
         // These don't define types.
@@ -583,11 +583,11 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         hir::ItemKind::ForeignMod { items, .. } => {
             for item in items {
                 let item = tcx.hir().foreign_item(item.id);
-                tcx.ensure().generics_of(item.def_id);
-                tcx.ensure().type_of(item.def_id);
-                tcx.ensure().predicates_of(item.def_id);
+                tcx.ensure().generics_of(item.owner_id);
+                tcx.ensure().type_of(item.owner_id);
+                tcx.ensure().predicates_of(item.owner_id);
                 match item.kind {
-                    hir::ForeignItemKind::Fn(..) => tcx.ensure().fn_sig(item.def_id),
+                    hir::ForeignItemKind::Fn(..) => tcx.ensure().fn_sig(item.owner_id),
                     hir::ForeignItemKind::Static(..) => {
                         let mut visitor = HirPlaceholderCollector::default();
                         visitor.visit_foreign_item(item);
@@ -683,7 +683,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
 
 fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     let trait_item = tcx.hir().trait_item(trait_item_id);
-    let def_id = trait_item_id.def_id;
+    let def_id = trait_item_id.owner_id;
     tcx.ensure().generics_of(def_id);
 
     match trait_item.kind {
@@ -730,7 +730,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 }
 
 fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
-    let def_id = impl_item_id.def_id;
+    let def_id = impl_item_id.owner_id;
     tcx.ensure().generics_of(def_id);
     tcx.ensure().type_of(def_id);
     tcx.ensure().predicates_of(def_id);
@@ -1010,7 +1010,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
 
                 match item {
                     Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
-                        if !tcx.impl_defaultness(item.id.def_id).has_value() {
+                        if !tcx.impl_defaultness(item.id.owner_id).has_value() {
                             tcx.sess
                                 .struct_span_err(
                                     item.span,

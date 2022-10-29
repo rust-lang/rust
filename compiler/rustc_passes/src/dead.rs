@@ -280,8 +280,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     }
 
     fn visit_node(&mut self, node: Node<'tcx>) {
-        if let Node::ImplItem(hir::ImplItem { def_id, .. }) = node
-            && self.should_ignore_item(def_id.to_def_id())
+        if let Node::ImplItem(hir::ImplItem { owner_id, .. }) = node
+            && self.should_ignore_item(owner_id.to_def_id())
         {
             return;
         }
@@ -293,7 +293,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         match node {
             Node::Item(item) => match item.kind {
                 hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                    let def = self.tcx.adt_def(item.def_id);
+                    let def = self.tcx.adt_def(item.owner_id);
                     self.repr_has_repr_c = def.repr().c();
                     self.repr_has_repr_simd = def.repr().simd();
 
@@ -306,7 +306,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 intravisit::walk_trait_item(self, trait_item);
             }
             Node::ImplItem(impl_item) => {
-                let item = self.tcx.local_parent(impl_item.def_id.def_id);
+                let item = self.tcx.local_parent(impl_item.owner_id.def_id);
                 if self.tcx.impl_trait_ref(item).is_none() {
                     //// If it's a type whose items are live, then it's live, too.
                     //// This is done to handle the case where, for example, the static
@@ -517,10 +517,10 @@ fn check_item<'tcx>(
 ) {
     let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, id.hir_id());
     if allow_dead_code {
-        worklist.push(id.def_id.def_id);
+        worklist.push(id.owner_id.def_id);
     }
 
-    match tcx.def_kind(id.def_id) {
+    match tcx.def_kind(id.owner_id) {
         DefKind::Enum => {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
@@ -540,15 +540,15 @@ fn check_item<'tcx>(
             }
         }
         DefKind::Impl => {
-            let of_trait = tcx.impl_trait_ref(id.def_id);
+            let of_trait = tcx.impl_trait_ref(id.owner_id);
 
             if of_trait.is_some() {
-                worklist.push(id.def_id.def_id);
+                worklist.push(id.owner_id.def_id);
             }
 
             // get DefIds from another query
             let local_def_ids = tcx
-                .associated_item_def_ids(id.def_id)
+                .associated_item_def_ids(id.owner_id)
                 .iter()
                 .filter_map(|def_id| def_id.as_local());
 
@@ -566,12 +566,12 @@ fn check_item<'tcx>(
             if let hir::ItemKind::Struct(ref variant_data, _) = item.kind
                 && let Some(ctor_hir_id) = variant_data.ctor_hir_id()
             {
-                struct_constructors.insert(tcx.hir().local_def_id(ctor_hir_id), item.def_id.def_id);
+                struct_constructors.insert(tcx.hir().local_def_id(ctor_hir_id), item.owner_id.def_id);
             }
         }
         DefKind::GlobalAsm => {
             // global_asm! is always live.
-            worklist.push(id.def_id.def_id);
+            worklist.push(id.owner_id.def_id);
         }
         _ => {}
     }
@@ -579,12 +579,12 @@ fn check_item<'tcx>(
 
 fn check_trait_item<'tcx>(tcx: TyCtxt<'tcx>, worklist: &mut Vec<LocalDefId>, id: hir::TraitItemId) {
     use hir::TraitItemKind::{Const, Fn};
-    if matches!(tcx.def_kind(id.def_id), DefKind::AssocConst | DefKind::AssocFn) {
+    if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
         let trait_item = tcx.hir().trait_item(id);
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
             && has_allow_dead_code_or_lang_attr(tcx, trait_item.hir_id())
         {
-            worklist.push(trait_item.def_id.def_id);
+            worklist.push(trait_item.owner_id.def_id);
         }
     }
 }
@@ -594,10 +594,10 @@ fn check_foreign_item<'tcx>(
     worklist: &mut Vec<LocalDefId>,
     id: hir::ForeignItemId,
 ) {
-    if matches!(tcx.def_kind(id.def_id), DefKind::Static(_) | DefKind::Fn)
+    if matches!(tcx.def_kind(id.owner_id), DefKind::Static(_) | DefKind::Fn)
         && has_allow_dead_code_or_lang_attr(tcx, id.hir_id())
     {
-        worklist.push(id.def_id.def_id);
+        worklist.push(id.owner_id.def_id);
     }
 }
 
@@ -861,19 +861,19 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
     let module_items = tcx.hir_module_items(module);
 
     for item in module_items.items() {
-        if !live_symbols.contains(&item.def_id.def_id) {
-            let parent = tcx.local_parent(item.def_id.def_id);
+        if !live_symbols.contains(&item.owner_id.def_id) {
+            let parent = tcx.local_parent(item.owner_id.def_id);
             if parent != module && !live_symbols.contains(&parent) {
                 // We already have diagnosed something.
                 continue;
             }
-            visitor.check_definition(item.def_id.def_id);
+            visitor.check_definition(item.owner_id.def_id);
             continue;
         }
 
-        let def_kind = tcx.def_kind(item.def_id);
+        let def_kind = tcx.def_kind(item.owner_id);
         if let DefKind::Struct | DefKind::Union | DefKind::Enum = def_kind {
-            let adt = tcx.adt_def(item.def_id);
+            let adt = tcx.adt_def(item.owner_id);
             let mut dead_variants = Vec::new();
 
             for variant in adt.variants() {
@@ -917,7 +917,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
             }
 
             visitor.warn_dead_fields_and_variants(
-                item.def_id.def_id,
+                item.owner_id.def_id,
                 "constructed",
                 dead_variants,
                 false,
@@ -926,11 +926,11 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
     }
 
     for impl_item in module_items.impl_items() {
-        visitor.check_definition(impl_item.def_id.def_id);
+        visitor.check_definition(impl_item.owner_id.def_id);
     }
 
     for foreign_item in module_items.foreign_items() {
-        visitor.check_definition(foreign_item.def_id.def_id);
+        visitor.check_definition(foreign_item.owner_id.def_id);
     }
 
     // We do not warn trait items.

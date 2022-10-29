@@ -29,7 +29,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'_>, item: &hir::Item<'_>, attrs: &CodegenF
     match item.kind {
         hir::ItemKind::Fn(ref sig, ..) if sig.header.is_const() => true,
         hir::ItemKind::Impl { .. } | hir::ItemKind::Fn(..) => {
-            let generics = tcx.generics_of(item.def_id);
+            let generics = tcx.generics_of(item.owner_id);
             generics.requires_monomorphization(tcx)
         }
         _ => false,
@@ -42,7 +42,7 @@ fn method_might_be_inlined(
     impl_src: LocalDefId,
 ) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id().owner.to_def_id());
-    let generics = tcx.generics_of(impl_item.def_id);
+    let generics = tcx.generics_of(impl_item.owner_id);
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true;
     }
@@ -216,7 +216,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         if item_might_be_inlined(
                             self.tcx,
                             &item,
-                            self.tcx.codegen_fn_attrs(item.def_id),
+                            self.tcx.codegen_fn_attrs(item.owner_id),
                         ) {
                             self.visit_nested_body(body);
                         }
@@ -305,11 +305,11 @@ fn check_item<'tcx>(
     worklist: &mut Vec<LocalDefId>,
     effective_visibilities: &privacy::EffectiveVisibilities,
 ) {
-    if has_custom_linkage(tcx, id.def_id.def_id) {
-        worklist.push(id.def_id.def_id);
+    if has_custom_linkage(tcx, id.owner_id.def_id) {
+        worklist.push(id.owner_id.def_id);
     }
 
-    if !matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
+    if !matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
         return;
     }
 
@@ -318,8 +318,8 @@ fn check_item<'tcx>(
     if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
         item.kind
     {
-        if !effective_visibilities.is_reachable(item.def_id.def_id) {
-            worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id.def_id));
+        if !effective_visibilities.is_reachable(item.owner_id.def_id) {
+            worklist.extend(items.iter().map(|ii_ref| ii_ref.id.owner_id.def_id));
 
             let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res else {
                 unreachable!();
@@ -403,8 +403,8 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
         }
 
         for id in crate_items.impl_items() {
-            if has_custom_linkage(tcx, id.def_id.def_id) {
-                reachable_context.worklist.push(id.def_id.def_id);
+            if has_custom_linkage(tcx, id.owner_id.def_id) {
+                reachable_context.worklist.push(id.owner_id.def_id);
             }
         }
     }

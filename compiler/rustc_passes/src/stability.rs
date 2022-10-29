@@ -378,7 +378,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         }
 
         self.annotate(
-            i.def_id.def_id,
+            i.owner_id.def_id,
             i.span,
             fn_sig,
             kind,
@@ -397,7 +397,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         };
 
         self.annotate(
-            ti.def_id.def_id,
+            ti.owner_id.def_id,
             ti.span,
             fn_sig,
             AnnotationKind::Required,
@@ -420,7 +420,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         };
 
         self.annotate(
-            ii.def_id.def_id,
+            ii.owner_id.def_id,
             ii.span,
             fn_sig,
             kind,
@@ -478,7 +478,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
         self.annotate(
-            i.def_id.def_id,
+            i.owner_id.def_id,
             i.span,
             None,
             AnnotationKind::Required,
@@ -569,25 +569,25 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
             hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })
                 | hir::ItemKind::ForeignMod { .. }
         ) {
-            self.check_missing_stability(i.def_id.def_id, i.span);
+            self.check_missing_stability(i.owner_id.def_id, i.span);
         }
 
         // Ensure stable `const fn` have a const stability attribute.
-        self.check_missing_const_stability(i.def_id.def_id, i.span);
+        self.check_missing_const_stability(i.owner_id.def_id, i.span);
 
         intravisit::walk_item(self, i)
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
-        self.check_missing_stability(ti.def_id.def_id, ti.span);
+        self.check_missing_stability(ti.owner_id.def_id, ti.span);
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         let impl_def_id = self.tcx.hir().get_parent_item(ii.hir_id());
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
-            self.check_missing_stability(ii.def_id.def_id, ii.span);
-            self.check_missing_const_stability(ii.def_id.def_id, ii.span);
+            self.check_missing_stability(ii.owner_id.def_id, ii.span);
+            self.check_missing_const_stability(ii.owner_id.def_id, ii.span);
         }
         intravisit::walk_impl_item(self, ii);
     }
@@ -606,7 +606,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
-        self.check_missing_stability(i.def_id.def_id, i.span);
+        self.check_missing_stability(i.owner_id.def_id, i.span);
         intravisit::walk_foreign_item(self, i);
     }
     // Note that we don't need to `check_missing_stability` for default generic parameters,
@@ -712,7 +712,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     return;
                 }
 
-                let Some(cnum) = self.tcx.extern_mod_stmt_cnum(item.def_id.def_id) else {
+                let Some(cnum) = self.tcx.extern_mod_stmt_cnum(item.owner_id.def_id) else {
                     return;
                 };
                 let def_id = cnum.as_def_id();
@@ -765,7 +765,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 }
 
                 for impl_item_ref in *items {
-                    let impl_item = self.tcx.associated_item(impl_item_ref.id.def_id);
+                    let impl_item = self.tcx.associated_item(impl_item_ref.id.owner_id);
 
                     if let Some(def_id) = impl_item.trait_item_def_id {
                         // Pass `None` to skip deprecation warnings.

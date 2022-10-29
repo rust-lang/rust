@@ -90,11 +90,11 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     let mut crates_to_lint = vec![];
 
     for id in tcx.hir().items() {
-        if matches!(tcx.def_kind(id.def_id), DefKind::ExternCrate) {
+        if matches!(tcx.def_kind(id.owner_id), DefKind::ExternCrate) {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::ExternCrate(orig_name) = item.kind {
                 crates_to_lint.push(ExternCrateToLint {
-                    def_id: item.def_id.to_def_id(),
+                    def_id: item.owner_id.to_def_id(),
                     span: item.span,
                     orig_name,
                     warn_if_unused: !item.ident.as_str().starts_with('_'),

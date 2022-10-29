@@ -306,7 +306,7 @@ pub fn suggest_new_region_bound(
                 };
 
                 // Get the identity type for this RPIT
-                let did = item_id.def_id.to_def_id();
+                let did = item_id.owner_id.to_def_id();
                 let ty = tcx.mk_opaque(did, ty::InternalSubsts::identity_for_item(tcx, did));
 
                 if let Some(span) = opaque
