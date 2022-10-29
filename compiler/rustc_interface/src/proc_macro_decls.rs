@@ -9,7 +9,7 @@ fn proc_macro_decls_static(tcx: TyCtxt<'_>, (): ()) -> Option<LocalDefId> {
     for id in tcx.hir().items() {
         let attrs = finder.tcx.hir().attrs(id.hir_id());
         if finder.tcx.sess.contains_name(attrs, sym::rustc_proc_macro_decls) {
-            finder.decls = Some(id.def_id.def_id);
+            finder.decls = Some(id.owner_id.def_id);
         }
     }
 

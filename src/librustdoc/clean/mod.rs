@@ -1042,7 +1042,7 @@ fn clean_poly_trait_ref<'tcx>(
 }
 
 fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
-    let local_did = trait_item.def_id.to_def_id();
+    let local_did = trait_item.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
             hir::TraitItemKind::Const(ty, Some(default)) => AssocConstItem(
@@ -1094,7 +1094,7 @@ pub(crate) fn clean_impl_item<'tcx>(
     impl_: &hir::ImplItem<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Item {
-    let local_did = impl_.def_id.to_def_id();
+    let local_did = impl_.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match impl_.kind {
             hir::ImplItemKind::Const(ty, expr) => {
@@ -1103,7 +1103,7 @@ pub(crate) fn clean_impl_item<'tcx>(
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
                 let m = clean_function(cx, sig, impl_.generics, body);
-                let defaultness = cx.tcx.impl_defaultness(impl_.def_id);
+                let defaultness = cx.tcx.impl_defaultness(impl_.owner_id);
                 MethodItem(m, Some(defaultness))
             }
             hir::ImplItemKind::Type(hir_ty) => {
@@ -1120,7 +1120,7 @@ pub(crate) fn clean_impl_item<'tcx>(
         let mut what_rustc_thinks =
             Item::from_def_id_and_parts(local_did, Some(impl_.ident.name), inner, cx);
 
-        let impl_ref = cx.tcx.impl_trait_ref(cx.tcx.local_parent(impl_.def_id.def_id));
+        let impl_ref = cx.tcx.impl_trait_ref(cx.tcx.local_parent(impl_.owner_id.def_id));
 
         // Trait impl items always inherit the impl's visibility --
         // we don't want to show `pub`.
@@ -1958,7 +1958,7 @@ fn clean_maybe_renamed_item<'tcx>(
 ) -> Vec<Item> {
     use hir::ItemKind;
 
-    let def_id = item.def_id.to_def_id();
+    let def_id = item.owner_id.to_def_id();
     let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
@@ -2100,11 +2100,11 @@ fn clean_extern_crate<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> Vec<Item> {
     // this is the ID of the `extern crate` statement
-    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.def_id.def_id).unwrap_or(LOCAL_CRATE);
+    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.owner_id.def_id).unwrap_or(LOCAL_CRATE);
     // this is the ID of the crate itself
     let crate_def_id = cnum.as_def_id();
     let attrs = cx.tcx.hir().attrs(krate.hir_id());
-    let ty_vis = cx.tcx.visibility(krate.def_id);
+    let ty_vis = cx.tcx.visibility(krate.owner_id);
     let please_inline = ty_vis.is_public()
         && attrs.iter().any(|a| {
             a.has_name(sym::doc)
@@ -2122,7 +2122,7 @@ fn clean_extern_crate<'tcx>(
         if let Some(items) = inline::try_inline(
             cx,
             cx.tcx.parent_module(krate.hir_id()).to_def_id(),
-            Some(krate.def_id.to_def_id()),
+            Some(krate.owner_id.to_def_id()),
             res,
             name,
             Some(attrs),
@@ -2158,11 +2158,11 @@ fn clean_use_statement<'tcx>(
         return Vec::new();
     }
 
-    let visibility = cx.tcx.visibility(import.def_id);
+    let visibility = cx.tcx.visibility(import.owner_id);
     let attrs = cx.tcx.hir().attrs(import.hir_id());
     let inline_attr = attrs.lists(sym::doc).get_word_attr(sym::inline);
     let pub_underscore = visibility.is_public() && name == kw::Underscore;
-    let current_mod = cx.tcx.parent_module_from_def_id(import.def_id.def_id);
+    let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);
 
     // The parent of the module in which this import resides. This
     // is the same as `current_mod` if that's already the top
@@ -2233,7 +2233,7 @@ fn clean_use_statement<'tcx>(
         }
         if !denied {
             let mut visited = FxHashSet::default();
-            let import_def_id = import.def_id.to_def_id();
+            let import_def_id = import.owner_id.to_def_id();
 
             if let Some(mut items) = inline::try_inline(
                 cx,
@@ -2256,7 +2256,7 @@ fn clean_use_statement<'tcx>(
         Import::new_simple(name, resolve_use_source(cx, path), true)
     };
 
-    vec![Item::from_def_id_and_parts(import.def_id.to_def_id(), None, ImportItem(inner), cx)]
+    vec![Item::from_def_id_and_parts(import.owner_id.to_def_id(), None, ImportItem(inner), cx)]
 }
 
 fn clean_maybe_renamed_foreign_item<'tcx>(
@@ -2264,7 +2264,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     item: &hir::ForeignItem<'tcx>,
     renamed: Option<Symbol>,
 ) -> Item {
-    let def_id = item.def_id.to_def_id();
+    let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
             hir::ForeignItemKind::Fn(decl, names, generics) => {

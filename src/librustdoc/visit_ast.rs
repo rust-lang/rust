@@ -295,11 +295,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
 
-        let def_id = item.def_id.to_def_id();
+        let def_id = item.owner_id.to_def_id();
         let is_pub = self.cx.tcx.visibility(def_id).is_public();
 
         if is_pub {
-            self.store_path(item.def_id.to_def_id());
+            self.store_path(item.owner_id.to_def_id());
         }
 
         match item.kind {
@@ -360,7 +360,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 // 3. We're inlining, since a reexport where inlining has been requested
                 //    should be inlined even if it is also documented at the top level.
 
-                let def_id = item.def_id.to_def_id();
+                let def_id = item.owner_id.to_def_id();
                 let is_macro_2_0 = !macro_def.macro_rules;
                 let nonexported = !self.cx.tcx.has_attr(def_id, sym::macro_export);
 
@@ -405,7 +405,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om: &mut Module<'tcx>,
     ) {
         // If inlining we only want to include public functions.
-        if !self.inlining || self.cx.tcx.visibility(item.def_id).is_public() {
+        if !self.inlining || self.cx.tcx.visibility(item.owner_id).is_public() {
             om.foreigns.push((item, renamed));
         }
     }

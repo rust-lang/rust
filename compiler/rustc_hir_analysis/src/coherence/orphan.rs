@@ -101,7 +101,7 @@ fn do_orphan_check_impl<'tcx>(
         span_bug!(sp, "opaque type not found, but `has_opaque_types` is set")
     }
 
-    match traits::orphan_check(tcx, item.def_id.to_def_id()) {
+    match traits::orphan_check(tcx, item.owner_id.to_def_id()) {
         Ok(()) => {}
         Err(err) => emit_orphan_check_error(
             tcx,

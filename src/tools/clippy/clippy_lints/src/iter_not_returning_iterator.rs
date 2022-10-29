@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for IterNotReturningIterator {
         let name = item.ident.name.as_str();
         if matches!(name, "iter" | "iter_mut") {
             if let TraitItemKind::Fn(fn_sig, _) = &item.kind {
-                check_sig(cx, name, fn_sig, item.def_id.def_id);
+                check_sig(cx, name, fn_sig, item.owner_id.def_id);
             }
         }
     }
@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for IterNotReturningIterator {
             )
         {
             if let ImplItemKind::Fn(fn_sig, _) = &item.kind {
-                check_sig(cx, name, fn_sig, item.def_id.def_id);
+                check_sig(cx, name, fn_sig, item.owner_id.def_id);
             }
         }
     }
