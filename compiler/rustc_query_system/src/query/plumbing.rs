@@ -20,6 +20,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
+use std::borrow::Borrow;
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
@@ -370,11 +371,26 @@ where
     C: QueryCache,
     C::Key: Clone + DepNodeParams<Qcx::DepContext>,
     C::Value: Value<Qcx::DepContext>,
+    C::Stored: Debug + std::borrow::Borrow<C::Value>,
     Qcx: QueryContext,
 {
     match JobOwner::<'_, C::Key>::try_start(&qcx, state, span, key.clone()) {
         TryGetJob::NotYetStarted(job) => {
-            let (result, dep_node_index) = execute_job(qcx, key, dep_node, query, job.id);
+            let (result, dep_node_index) = execute_job(qcx, key.clone(), dep_node, query, job.id);
+            if query.feedable {
+                // We may have put a value inside the cache from inside the execution.
+                // Verify that it has the same hash as what we have now, to ensure consistency.
+                let _ = cache.lookup(&key, |cached_result, _| {
+                    let hasher = query.hash_result.expect("feedable forbids no_hash");
+                    let old_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| hasher(&mut hcx, cached_result.borrow()));
+                    let new_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| hasher(&mut hcx, &result));
+                    debug_assert_eq!(
+                        old_hash, new_hash,
+                        "Computed query value for {:?}({:?}) is inconsistent with fed value,\ncomputed={:#?}\nfed={:#?}",
+                        query.dep_kind, key, result, cached_result,
+                    );
+                });
+            }
             let result = job.complete(cache, result, dep_node_index);
             (result, Some(dep_node_index))
         }

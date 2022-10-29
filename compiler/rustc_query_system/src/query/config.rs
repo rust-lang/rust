@@ -15,8 +15,8 @@ pub trait QueryConfig<Qcx: QueryContext> {
     const NAME: &'static str;
 
     type Key: Eq + Hash + Clone + Debug;
-    type Value;
-    type Stored: Clone;
+    type Value: Debug;
+    type Stored: Debug + Clone + std::borrow::Borrow<Self::Value>;
 
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
@@ -45,6 +45,7 @@ pub struct QueryVTable<Qcx: QueryContext, K, V> {
     pub dep_kind: Qcx::DepKind,
     pub eval_always: bool,
     pub depth_limit: bool,
+    pub feedable: bool,
 
     pub compute: fn(Qcx::DepContext, K) -> V,
     pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,

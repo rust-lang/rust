@@ -252,6 +252,18 @@ macro_rules! depth_limit {
     };
 }
 
+macro_rules! feedable {
+    ([]) => {{
+        false
+    }};
+    ([(feedable) $($rest:tt)*]) => {{
+        true
+    }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        feedable!([$($modifiers)*])
+    };
+}
+
 macro_rules! hash_result {
     ([]) => {{
         Some(dep_graph::hash_result)
@@ -491,6 +503,7 @@ macro_rules! define_queries {
                     anon: is_anon!([$($modifiers)*]),
                     eval_always: is_eval_always!([$($modifiers)*]),
                     depth_limit: depth_limit!([$($modifiers)*]),
+                    feedable: feedable!([$($modifiers)*]),
                     dep_kind: dep_graph::DepKind::$name,
                     hash_result: hash_result!([$($modifiers)*]),
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
