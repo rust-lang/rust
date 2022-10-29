@@ -33,3 +33,5 @@ where
     {
     }
 }
+
+fn main() {}
