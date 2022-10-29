@@ -348,7 +348,7 @@ pub(crate) fn run_global_ctxt(
 
     let auto_traits =
         tcx.all_traits().filter(|&trait_def_id| tcx.trait_is_auto(trait_def_id)).collect();
-    let access_levels = tcx.privacy_access_levels(()).map_id(Into::into);
+    let effective_visibilities = tcx.effective_visibilities(()).map_id(Into::into);
 
     let mut ctxt = DocContext {
         tcx,
@@ -361,7 +361,7 @@ pub(crate) fn run_global_ctxt(
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits,
-        cache: Cache::new(access_levels, render_options.document_private),
+        cache: Cache::new(effective_visibilities, render_options.document_private),
         inlined: FxHashSet::default(),
         output_format,
         render_options,

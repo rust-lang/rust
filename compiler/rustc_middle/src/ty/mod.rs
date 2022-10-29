@@ -17,7 +17,7 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
-use crate::middle::privacy::AccessLevels;
+use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, GeneratorLayout};
 use crate::traits::{self, Reveal};
 use crate::ty;
@@ -160,7 +160,7 @@ pub struct ResolverGlobalCtxt {
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
     /// Reference span for definitions.
     pub source_span: IndexVec<LocalDefId, Span>,
-    pub access_levels: AccessLevels,
+    pub effective_visibilities: EffectiveVisibilities,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,

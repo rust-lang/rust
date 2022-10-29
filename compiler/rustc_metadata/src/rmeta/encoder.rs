@@ -787,9 +787,8 @@ fn should_encode_attr(
     } else if attr.doc_str().is_some() {
         // We keep all public doc comments because they might be "imported" into downstream crates
         // if they use `#[doc(inline)]` to copy an item's documentation into their own.
-        *is_def_id_public.get_or_insert_with(|| {
-            tcx.privacy_access_levels(()).get_effective_vis(def_id).is_some()
-        })
+        *is_def_id_public
+            .get_or_insert_with(|| tcx.effective_visibilities(()).effective_vis(def_id).is_some())
     } else if attr.has_name(sym::doc) {
         // If this is a `doc` attribute, and it's marked `inline` (as in `#[doc(inline)]`), we can
         // remove it. It won't be inlinable in downstream crates.

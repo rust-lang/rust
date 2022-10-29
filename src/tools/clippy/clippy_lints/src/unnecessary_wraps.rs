@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         match fn_kind {
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 let def_id = cx.tcx.hir().local_def_id(hir_id);
-                if self.avoid_breaking_exported_api && cx.access_levels.is_exported(def_id) {
+                if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
                     return;
                 }
             },

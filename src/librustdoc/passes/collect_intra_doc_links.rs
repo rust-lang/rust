@@ -1202,8 +1202,8 @@ impl LinkCollector<'_, '_> {
                 item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
             })
         {
-            if self.cx.tcx.privacy_access_levels(()).is_exported(src_id)
-                && !self.cx.tcx.privacy_access_levels(()).is_exported(dst_id)
+            if self.cx.tcx.effective_visibilities(()).is_exported(src_id)
+                && !self.cx.tcx.effective_visibilities(()).is_exported(dst_id)
             {
                 privacy_error(self.cx, diag_info, path_str);
             }
