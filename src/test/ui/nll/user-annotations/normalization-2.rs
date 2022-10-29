@@ -68,8 +68,8 @@ fn test_variants<'a, 'b, 'c>() {
 }
 
 fn test_method_call<'a>(x: MyTy<()>) {
-    // FIXME This should fail.
     x.method2::<Ty<'a>>();
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn test_struct_path<'a, 'b, 'c, 'd>() {
