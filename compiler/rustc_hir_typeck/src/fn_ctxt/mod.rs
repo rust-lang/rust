@@ -297,11 +297,14 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.tcx().mk_projection(item_def_id, item_substs)
     }
 
-    fn normalize_ty_2(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if ty.has_escaping_bound_vars() {
-            ty // FIXME: normalization and escaping regions
-        } else {
-            self.normalize(span, ty)
+    fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
+        match ty.kind() {
+            ty::Adt(adt_def, _) => Some(*adt_def),
+            // FIXME(#104767): Should we handle bound regions here?
+            ty::Alias(ty::Projection, _) if !ty.has_escaping_bound_vars() => {
+                self.normalize(span, ty).ty_adt_def()
+            }
+            _ => None,
         }
     }
 
@@ -310,7 +313,9 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span) {
-        self.write_ty(hir_id, self.normalize_ty_2(span, ty))
+        // FIXME: normalization and escaping regions
+        let ty = if !ty.has_escaping_bound_vars() { self.normalize(span, ty) } else { ty };
+        self.write_ty(hir_id, ty)
     }
 }
 

@@ -505,6 +505,11 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         }
     }
 
+    fn probe_adt(&self, _span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
+        // FIXME(#103640): Should we handle the case where `ty` is a projection?
+        ty.ty_adt_def()
+    }
+
     fn set_tainted_by_errors(&self, _: ErrorGuaranteed) {
         // There's no obvious place to track this, so just let it go.
     }
