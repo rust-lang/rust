@@ -138,6 +138,9 @@ There's a test for the cargo wrapper in the `test-cargo-miri` directory; run
 `./run-test.py` in there to execute it. Like `./miri test`, this respects the
 `MIRI_TEST_TARGET` environment variable to execute the test for another target.
 
+Note that installing Miri like this will "take away" Miri management from `rustup`.
+If you want to later go back to a rustup-installed Miri, run `rustup update`.
+
 ### Using a modified standard library
 
 Miri re-builds the standard library into a custom sysroot, so it is fairly easy
