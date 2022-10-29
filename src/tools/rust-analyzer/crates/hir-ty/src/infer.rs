@@ -333,6 +333,8 @@ pub struct InferenceResult {
     assoc_resolutions: FxHashMap<ExprOrPatId, AssocItemId>,
     pub diagnostics: Vec<InferenceDiagnostic>,
     pub type_of_expr: ArenaMap<ExprId, Ty>,
+    /// For each match expr, record diverging arm's expr.
+    pub diverging_arms: FxHashMap<ExprId, Vec<ExprId>>,
     /// For each pattern record the type it resolves to.
     ///
     /// **Note**: When a pattern type is resolved it may still contain
