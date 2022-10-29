@@ -5,15 +5,19 @@
 
 use rustc_data_structures::fx::FxHasher;
 use std::hash::Hasher;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{fmt, str};
 
 pub(crate) struct StaticFile {
-    pub(crate) filename: &'static str,
+    pub(crate) filename: PathBuf,
     pub(crate) bytes: &'static [u8],
 }
 
 impl StaticFile {
+    fn new(filename: &str, bytes: &'static [u8]) -> StaticFile {
+        Self { filename: static_filename(filename, bytes), bytes }
+    }
+
     pub(crate) fn minified(&self) -> Vec<u8> {
         if self.filename.ends_with(".css") {
             minifier::css::minify(str::from_utf8(self.bytes).unwrap()).unwrap().to_string().into()
@@ -24,8 +28,8 @@ impl StaticFile {
         }
     }
 
-    pub(crate) fn output_filename(&self) -> PathBuf {
-        static_filename(self.filename, self.bytes)
+    pub(crate) fn output_filename(&self) -> &Path {
+        &self.filename
     }
 }
 
@@ -66,13 +70,18 @@ macro_rules! static_files {
             $(pub $field: StaticFile,)+
         }
 
-        pub(crate) const STATIC_FILES: StaticFiles = StaticFiles {
-            $($field: StaticFile { filename: $file_path, bytes: include_bytes!($file_path) },)+
-        };
+        pub(crate) static STATIC_FILES: std::sync::LazyLock<StaticFiles> = std::sync::LazyLock::new(|| StaticFiles {
+            $($field: StaticFile::new($file_path, include_bytes!($file_path)),)+
+        });
 
-        pub(crate) static STATIC_FILES_LIST: &[&'static StaticFile] = &[
+        pub(crate) fn for_each<E>(f: impl Fn(&StaticFile) -> Result<(), E>) -> Result<(), E> {
+            for sf in [
             $(&STATIC_FILES.$field,)+
-        ];
+            ] {
+                f(sf)?
+            }
+            Ok(())
+        }
     }
 }
 

@@ -85,12 +85,11 @@ pub(super) fn write_shared(
     }
 
     if options.emit.is_empty() || options.emit.contains(&EmitType::Toolchain) {
-        for f in static_files::STATIC_FILES_LIST {
-            let filename = cx.dst.join(
-                Path::new("static.files/").join(static_files::static_filename(f.filename, f.bytes)),
-            );
-            cx.shared.fs.write(filename, f.minified())?;
-        }
+        let static_dir = cx.dst.join(Path::new("static.files"));
+        static_files::for_each(|f: &static_files::StaticFile| {
+            let filename = static_dir.join(f.output_filename());
+            cx.shared.fs.write(filename, f.minified())
+        })?;
     }
 
     /// Read a file and return all lines that match the `"{crate}":{data},` format,
