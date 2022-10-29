@@ -1,5 +1,5 @@
 warning: unreachable `pub` item
-  --> $DIR/issue-103317.rs:6:5
+  --> $DIR/issue-103317.rs:7:5
    |
 LL |     pub enum T {
    |     ---^^^^^^^
@@ -8,7 +8,7 @@ LL |     pub enum T {
    |
    = help: or consider exporting it for use by other crates
 note: the lint level is defined here
-  --> $DIR/issue-103317.rs:3:8
+  --> $DIR/issue-103317.rs:4:8
    |
 LL | #[warn(unreachable_pub)]
    |        ^^^^^^^^^^^^^^^
