@@ -1,7 +1,7 @@
 use crate::lints::{
     PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
-    UnusedAllocationMutDiag, UnusedClosure, UnusedDef, UnusedDelim, UnusedDelimSuggestion,
-    UnusedGenerator, UnusedImportBracesDiag, UnusedOp, UnusedResult,
+    UnusedAllocationMutDiag, UnusedClosure, UnusedDef, UnusedDefSuggestion, UnusedDelim,
+    UnusedDelimSuggestion, UnusedGenerator, UnusedImportBracesDiag, UnusedOp, UnusedResult,
 };
 use crate::Lint;
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
@@ -418,6 +418,19 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::Def(span, def_id, reason) => {
+                    let suggestion = if matches!(
+                        cx.tcx.get_diagnostic_name(*def_id),
+                        Some(sym::add)
+                            | Some(sym::sub)
+                            | Some(sym::mul)
+                            | Some(sym::div)
+                            | Some(sym::rem)
+                            | Some(sym::neg),
+                    ) {
+                        Some(UnusedDefSuggestion::Default { span: span.shrink_to_lo() })
+                    } else {
+                        None
+                    };
                     cx.emit_spanned_lint(
                         UNUSED_MUST_USE,
                         *span,
@@ -427,6 +440,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                             cx,
                             def_id: *def_id,
                             note: *reason,
+                            suggestion,
                         },
                     );
                 }
