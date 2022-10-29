@@ -2869,10 +2869,6 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
         }
 
-        if needs_expansion {
-            write!(w, r#"<span class="expand">&varr;</span>"#);
-        }
-
         // Look for the example file in the source map if it exists, otherwise return a dummy span
         let file_span = (|| {
             let source_map = tcx.sess.source_map();
@@ -2906,7 +2902,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             cx,
             &root_path,
             highlight::DecorationInfo(decoration_info),
-            sources::SourceContext::Embedded { offset: line_min },
+            sources::SourceContext::Embedded { offset: line_min, needs_expansion },
         );
         write!(w, "</div></div>");
 

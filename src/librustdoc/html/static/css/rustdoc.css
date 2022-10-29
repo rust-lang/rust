@@ -2023,45 +2023,36 @@ in storage.js
 	padding-bottom: 0;
 }
 
-.scraped-example .code-wrapper .prev {
-	position: absolute;
-	top: 0.25em;
-	right: 2.25em;
-	z-index: 100;
-	cursor: pointer;
-}
-
-.scraped-example .code-wrapper .next {
-	position: absolute;
-	top: 0.25em;
-	right: 1.25em;
-	z-index: 100;
-	cursor: pointer;
-}
-
+.scraped-example .code-wrapper .next,
+.scraped-example .code-wrapper .prev,
 .scraped-example .code-wrapper .expand {
 	position: absolute;
 	top: 0.25em;
-	right: 0.25em;
-	z-index: 100;
+	z-index: 1;
 	cursor: pointer;
 }
-
-.scraped-example:not(.expanded) .code-wrapper:before {
-	content: " ";
-	width: 100%;
-	height: 5px;
-	position: absolute;
-	z-index: 100;
-	top: 0;
+.scraped-example .code-wrapper .prev {
+	right: 2.25em;
+}
+.scraped-example .code-wrapper .next {
+	right: 1.25em;
+}
+.scraped-example .code-wrapper .expand {
+	right: 0.25em;
 }
 
+.scraped-example:not(.expanded) .code-wrapper:before,
 .scraped-example:not(.expanded) .code-wrapper:after {
 	content: " ";
 	width: 100%;
 	height: 5px;
 	position: absolute;
-	z-index: 100;
+	z-index: 1;
+}
+.scraped-example:not(.expanded) .code-wrapper:before {
+	top: 0;
+}
+.scraped-example:not(.expanded) .code-wrapper:after {
 	bottom: 0;
 }
 
