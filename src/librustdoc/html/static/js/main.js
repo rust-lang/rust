@@ -932,7 +932,7 @@ function loadCss(cssFileName) {
      * Hide all the popover menus.
      */
     window.hidePopoverMenus = function() {
-        onEachLazy(document.querySelectorAll(".search-container .popover"), elem => {
+        onEachLazy(document.querySelectorAll(".search-form .popover"), elem => {
             elem.style.display = "none";
         });
     };

@@ -1901,6 +1901,13 @@ impl fmt::Display for Symbol {
     }
 }
 
+// takes advantage of `str::to_string` specialization
+impl ToString for Symbol {
+    fn to_string(&self) -> String {
+        self.as_str().to_string()
+    }
+}
+
 impl<S: Encoder> Encodable<S> for Symbol {
     default fn encode(&self, s: &mut S) {
         s.emit_str(self.as_str());
