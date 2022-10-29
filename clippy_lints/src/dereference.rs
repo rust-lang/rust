@@ -9,6 +9,7 @@ use clippy_utils::{
 };
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::graph::iterate::{CycleDetector, TriColorDepthFirstSearch};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
@@ -1242,6 +1243,8 @@ fn referent_used_exactly_once<'a, 'tcx>(
         && let Some(statement) = mir.basic_blocks[location.block].statements.get(location.statement_index)
         && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
         && !place.has_deref()
+        // Ensure not in a loop (https://github.com/rust-lang/rust-clippy/issues/9710)
+        && TriColorDepthFirstSearch::new(&mir.basic_blocks).run_from(location.block, &mut CycleDetector).is_none()
     {
         let body_owner_local_def_id = cx.tcx.hir().enclosing_body_owner(reference.hir_id);
         if possible_borrowers
