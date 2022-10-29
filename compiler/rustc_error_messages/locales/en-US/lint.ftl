@@ -309,6 +309,7 @@ lint_unused_generator =
     .note = generators are lazy and do nothing unless resumed
 
 lint_unused_def = unused {$pre}`{$def}`{$post} that must be used
+    .suggestion = use `let _ = ...` to ignore the resulting value
 
 lint_path_statement_drop = path statement drops value
     .suggestion = use `drop` to clarify the intent

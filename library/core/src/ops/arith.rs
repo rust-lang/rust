@@ -86,7 +86,8 @@ pub trait Add<Rhs = Self> {
     /// ```
     /// assert_eq!(12 + 1, 13);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "add"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn add(self, rhs: Rhs) -> Self::Output;
 }
@@ -195,7 +196,8 @@ pub trait Sub<Rhs = Self> {
     /// ```
     /// assert_eq!(12 - 1, 11);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "sub"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn sub(self, rhs: Rhs) -> Self::Output;
 }
@@ -325,7 +327,8 @@ pub trait Mul<Rhs = Self> {
     /// ```
     /// assert_eq!(12 * 2, 24);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "mul"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn mul(self, rhs: Rhs) -> Self::Output;
 }
@@ -459,7 +462,8 @@ pub trait Div<Rhs = Self> {
     /// ```
     /// assert_eq!(12 / 2, 6);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "div"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn div(self, rhs: Rhs) -> Self::Output;
 }
@@ -562,7 +566,8 @@ pub trait Rem<Rhs = Self> {
     /// ```
     /// assert_eq!(12 % 10, 2);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "rem"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rem(self, rhs: Rhs) -> Self::Output;
 }
@@ -678,7 +683,8 @@ pub trait Neg {
     /// let x: i32 = 12;
     /// assert_eq!(-x, -12);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "neg"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn neg(self) -> Self::Output;
 }

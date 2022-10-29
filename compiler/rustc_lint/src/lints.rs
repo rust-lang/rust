@@ -1402,6 +1402,21 @@ pub struct UnusedDef<'a, 'b> {
     pub cx: &'a LateContext<'b>,
     pub def_id: DefId,
     pub note: Option<Symbol>,
+    pub suggestion: Option<UnusedDefSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnusedDefSuggestion {
+    #[suggestion(
+        suggestion,
+        style = "verbose",
+        code = "let _ = ",
+        applicability = "machine-applicable"
+    )]
+    Default {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 // Needed because of def_path_str
@@ -1416,6 +1431,9 @@ impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
         // check for #[must_use = "..."]
         if let Some(note) = self.note {
             diag.note(note.as_str());
+        }
+        if let Some(sugg) = self.suggestion {
+            diag.subdiagnostic(sugg);
         }
         diag
     }
