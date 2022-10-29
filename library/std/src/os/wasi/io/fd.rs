@@ -1,9 +1,10 @@
 //! Owned and borrowed file descriptors.
 
-#![unstable(feature = "wasi_ext", issue = "71213")]
+#![stable(feature = "io_safety_wasi", since = "1.65.0")]
 
 // Tests for this module
 #[cfg(test)]
 mod tests;
 
+#[stable(feature = "io_safety_wasi", since = "1.65.0")]
 pub use crate::os::fd::owned::*;
