@@ -9,7 +9,7 @@ use super::super::{ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter,
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
 use super::super::{
-    Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
+    Inspect, Map, MapInto, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
 };
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
@@ -3272,6 +3272,30 @@ pub trait Iterator {
         T: Clone,
     {
         Cloned::new(self)
+    }
+
+    /// Creates an iterator which converts its elements [`into`] something else.
+    ///
+    /// [`into`]: Into::into
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let bools = [true, false];
+    ///
+    /// let conv: Vec<u32> = a.iter().map_into().collect();
+    ///
+    /// assert_eq!(conv, vec![1, 0]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn map_into<T>(self) -> MapInto<Self, T>
+    where
+        Self: Sized,
+        Self::Item: Into<T>,
+    {
+        MapInto::new(self)
     }
 
     /// Repeats an iterator endlessly.

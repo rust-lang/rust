@@ -431,6 +431,8 @@ pub use self::adapters::Cloned;
 pub use self::adapters::Copied;
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
+#[unstable(feature = "converting_iterators", issue = "none")]
+pub use self::adapters::MapInto;
 #[stable(feature = "iter_map_while", since = "1.57.0")]
 pub use self::adapters::MapWhile;
 #[unstable(feature = "inplace_iteration", issue = "none")]

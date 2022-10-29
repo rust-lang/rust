@@ -5,6 +5,7 @@ mod array_chunks;
 mod by_ref_sized;
 mod chain;
 mod cloned;
+mod convert;
 mod copied;
 mod cycle;
 mod enumerate;
@@ -65,6 +66,9 @@ pub use self::zip::TrustedRandomAccessNoCoerce;
 
 #[stable(feature = "iter_zip", since = "1.59.0")]
 pub use self::zip::zip;
+
+#[unstable(feature = "converting_iterators", issue = "none")]
+pub use self::convert::MapInto;
 
 /// This trait provides transitive access to source-stage in an iterator-adapter pipeline
 /// under the conditions that
