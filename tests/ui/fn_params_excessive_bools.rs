@@ -25,6 +25,8 @@ struct S;
 trait Trait {
     fn f(_: bool, _: bool, _: bool, _: bool);
     fn g(_: bool, _: bool, _: bool, _: Vec<u32>);
+    #[allow(clippy::fn_params_excessive_bools)]
+    fn h(_: bool, _: bool, _: bool, _: bool, _: bool, _: bool);
 }
 
 impl S {
@@ -39,6 +41,7 @@ impl Trait for S {
     // We only lint in the trait definition
     fn f(_: bool, _: bool, _: bool, _: bool) {}
     fn g(_: bool, _: bool, _: bool, _: Vec<u32>) {}
+    fn h(_: bool, _: bool, _: bool, _: bool, _: bool, _: bool) {}
 }
 
 fn main() {

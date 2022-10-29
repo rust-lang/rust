@@ -16,7 +16,7 @@ LL | fn t(_: S, _: S, _: Box<S>, _: Vec<u32>, _: bool, _: bool, _: bool, _: bool
    = help: consider refactoring bools into two-variant enums
 
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:31:5
+  --> $DIR/fn_params_excessive_bools.rs:33:5
    |
 LL |     fn f(&self, _: bool, _: bool, _: bool, _: bool) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     fn f(&self, _: bool, _: bool, _: bool, _: bool) {}
    = help: consider refactoring bools into two-variant enums
 
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:45:5
+  --> $DIR/fn_params_excessive_bools.rs:48:5
    |
 LL | /     fn n(_: bool, _: u32, _: bool, _: Box<u32>, _: bool, _: bool) {
 LL | |         fn nn(_: bool, _: bool, _: bool, _: bool) {}
@@ -34,7 +34,7 @@ LL | |     }
    = help: consider refactoring bools into two-variant enums
 
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:46:9
+  --> $DIR/fn_params_excessive_bools.rs:49:9
    |
 LL |         fn nn(_: bool, _: bool, _: bool, _: bool) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
