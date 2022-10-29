@@ -9,7 +9,12 @@ use rustc_span::symbol::sym;
 
 use super::{utils, REDUNDANT_ALLOCATION};
 
-pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    hir_ty: &hir::Ty<'_>,
+    qpath: &QPath<'_>,
+    def_id: DefId,
+) -> bool {
     let mut applicability = Applicability::MaybeIncorrect;
     let outer_sym = if Some(def_id) == cx.tcx.lang_items().owned_box() {
         "Box"
@@ -29,7 +34,12 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             hir_ty.span,
             &format!("usage of `{outer_sym}<{generic_snippet}>`"),
             |diag| {
-                diag.span_suggestion(hir_ty.span, "try", format!("{generic_snippet}"), applicability);
+                diag.span_suggestion(
+                    hir_ty.span,
+                    "try",
+                    format!("{generic_snippet}"),
+                    applicability,
+                );
                 diag.note(&format!(
                     "`{generic_snippet}` is already a pointer, `{outer_sym}<{generic_snippet}>` allocates a pointer on the heap"
                 ));
@@ -55,11 +65,11 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             // Reallocation of a fat pointer causes it to become thin. `hir_ty_to_ty` is safe to use
             // here because `mod.rs` guarantees this lint is only run on types outside of bodies and
             // is not run on locals.
-            if !hir_ty_to_ty(cx.tcx, ty).is_sized(cx.tcx.at(ty.span), cx.param_env) {
+            if !hir_ty_to_ty(cx.tcx, ty).is_sized(cx.tcx, cx.param_env) {
                 return false;
             }
             ty.span
-        },
+        }
         None => return false,
     };
     if inner_sym == outer_sym {

@@ -312,7 +312,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
                             } else if !place
                                 .ty(self.body, self.tcx)
                                 .ty
-                                .is_freeze(self.tcx.at(self.source_info.span), self.param_env)
+                                .is_freeze(self.tcx, self.param_env)
                             {
                                 UnsafetyViolationDetails::BorrowOfLayoutConstrainedField
                             } else {

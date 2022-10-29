@@ -114,7 +114,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 _ => {
                     // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
                     ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
-                        || ty.is_copy_modulo_regions(tcx.at(span), param_env)
+                        || ty.is_copy_modulo_regions(tcx, param_env)
                 }
             }
         }

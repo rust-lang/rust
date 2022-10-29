@@ -752,7 +752,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             return;
         }
         let param_env = ty::ParamEnv::empty();
-        if ty.is_copy_modulo_regions(cx.tcx.at(item.span), param_env) {
+        if ty.is_copy_modulo_regions(cx.tcx, param_env) {
             return;
         }
         if can_type_implement_copy(

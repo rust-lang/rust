@@ -1783,7 +1783,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
         let erased_ty = tcx.erase_regions(ty);
-        if !erased_ty.is_sized(tcx.at(span), self.param_env) {
+        if !erased_ty.is_sized(tcx, self.param_env) {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return
             // slot or local, so to find all unsized rvalues it is enough

@@ -260,7 +260,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     };
                     match borrow_kind {
                         BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique => {
-                            if !ty.is_freeze(self.tcx.at(pat.span), self.param_env) {
+                            if !ty.is_freeze(self.tcx, self.param_env) {
                                 self.requires_unsafe(pat.span, BorrowOfLayoutConstrainedField);
                             }
                         }
@@ -457,9 +457,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 if visitor.found {
                     match borrow_kind {
                         BorrowKind::Shallow | BorrowKind::Shared | BorrowKind::Unique
-                            if !self.thir[arg]
-                                .ty
-                                .is_freeze(self.tcx.at(self.thir[arg].span), self.param_env) =>
+                            if !self.thir[arg].ty.is_freeze(self.tcx, self.param_env) =>
                         {
                             self.requires_unsafe(expr.span, BorrowOfLayoutConstrainedField)
                         }
