@@ -1,4 +1,6 @@
-use crate::simd::{intrinsics, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{
+    intrinsics, LaneCount, Mask, Simd, SimdConstPtr, SimdElement, SimdMutPtr, SupportedLaneCount,
+};
 
 /// Parallel `PartialEq`.
 pub trait SimdPartialEq {
@@ -71,3 +73,37 @@ macro_rules! impl_mask {
 }
 
 impl_mask! { i8, i16, i32, i64, isize }
+
+impl<T, const LANES: usize> SimdPartialEq for Simd<*const T, LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Mask = Mask<isize, LANES>;
+
+    #[inline]
+    fn simd_eq(self, other: Self) -> Self::Mask {
+        self.addr().simd_eq(other.addr())
+    }
+
+    #[inline]
+    fn simd_ne(self, other: Self) -> Self::Mask {
+        self.addr().simd_ne(other.addr())
+    }
+}
+
+impl<T, const LANES: usize> SimdPartialEq for Simd<*mut T, LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Mask = Mask<isize, LANES>;
+
+    #[inline]
+    fn simd_eq(self, other: Self) -> Self::Mask {
+        self.addr().simd_eq(other.addr())
+    }
+
+    #[inline]
+    fn simd_ne(self, other: Self) -> Self::Mask {
+        self.addr().simd_ne(other.addr())
+    }
+}

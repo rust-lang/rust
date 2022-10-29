@@ -1,8 +1,6 @@
-// Vectors of pointers are not for public use at the current time.
-pub(crate) mod ptr;
-
 use crate::simd::{
-    intrinsics, LaneCount, Mask, MaskElement, SimdPartialOrd, SupportedLaneCount, Swizzle,
+    intrinsics, LaneCount, Mask, MaskElement, SimdCast, SimdCastPtr, SimdConstPtr, SimdMutPtr,
+    SimdPartialOrd, SupportedLaneCount, Swizzle,
 };
 
 /// A SIMD vector of `LANES` elements of type `T`. `Simd<T, N>` has the same shape as [`[T; N]`](array), but operates like `T`.
@@ -211,9 +209,24 @@ where
     #[must_use]
     #[inline]
     #[cfg(not(bootstrap))]
-    pub fn cast<U: SimdElement>(self) -> Simd<U, LANES> {
-        // Safety: The input argument is a vector of a valid SIMD element type.
+    pub fn cast<U: SimdCast>(self) -> Simd<U, LANES>
+    where
+        T: SimdCast,
+    {
+        // Safety: supported types are guaranteed by SimdCast
         unsafe { intrinsics::simd_as(self) }
+    }
+
+    /// Lanewise casts pointers to another pointer type.
+    #[must_use]
+    #[inline]
+    pub fn cast_ptr<U>(self) -> Simd<U, LANES>
+    where
+        T: SimdCastPtr<U>,
+        U: SimdElement,
+    {
+        // Safety: supported types are guaranteed by SimdCastPtr
+        unsafe { intrinsics::simd_cast_ptr(self) }
     }
 
     /// Rounds toward zero and converts to the same-width integer type, assuming that
@@ -234,11 +247,10 @@ where
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn to_int_unchecked<I>(self) -> Simd<I, LANES>
     where
-        T: core::convert::FloatToInt<I>,
-        I: SimdElement,
+        T: core::convert::FloatToInt<I> + SimdCast,
+        I: SimdCast,
     {
-        // Safety: `self` is a vector, and `FloatToInt` ensures the type can be casted to
-        // an integer.
+        // Safety: supported types are guaranteed by SimdCast, the caller is responsible for the extra invariants
         unsafe { intrinsics::simd_cast(self) }
     }
 
@@ -349,7 +361,7 @@ where
         idxs: Simd<usize, LANES>,
         or: Self,
     ) -> Self {
-        let base_ptr = crate::simd::ptr::SimdConstPtr::splat(slice.as_ptr());
+        let base_ptr = Simd::<*const T, LANES>::splat(slice.as_ptr());
         // Ferris forgive me, I have done pointer arithmetic here.
         let ptrs = base_ptr.wrapping_add(idxs);
         // Safety: The ptrs have been bounds-masked to prevent memory-unsafe reads insha'allah
@@ -457,7 +469,7 @@ where
         // 3. &mut [T] which will become our base ptr.
         unsafe {
             // Now Entering ☢️ *mut T Zone
-            let base_ptr = crate::simd::ptr::SimdMutPtr::splat(slice.as_mut_ptr());
+            let base_ptr = Simd::<*mut T, LANES>::splat(slice.as_mut_ptr());
             // Ferris forgive me, I have done pointer arithmetic here.
             let ptrs = base_ptr.wrapping_add(idxs);
             // The ptrs have been bounds-masked to prevent memory-unsafe writes insha'allah
@@ -738,4 +750,28 @@ impl Sealed for f64 {}
 // Safety: f64 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for f64 {
     type Mask = i64;
+}
+
+impl<T> Sealed for *const T {}
+
+// Safety: (thin) const pointers are valid SIMD element types, and are supported by this API
+//
+// Fat pointers may be supported in the future.
+unsafe impl<T> SimdElement for *const T
+where
+    T: core::ptr::Pointee<Metadata = ()>,
+{
+    type Mask = isize;
+}
+
+impl<T> Sealed for *mut T {}
+
+// Safety: (thin) mut pointers are valid SIMD element types, and are supported by this API
+//
+// Fat pointers may be supported in the future.
+unsafe impl<T> SimdElement for *mut T
+where
+    T: core::ptr::Pointee<Metadata = ()>,
+{
+    type Mask = isize;
 }
