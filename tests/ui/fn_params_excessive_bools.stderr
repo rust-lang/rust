@@ -24,15 +24,7 @@ LL |     fn f(&self, _: bool, _: bool, _: bool, _: bool) {}
    = help: consider refactoring bools into two-variant enums
 
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:38:5
-   |
-LL |     fn f(_: bool, _: bool, _: bool, _: bool) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider refactoring bools into two-variant enums
-
-error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:43:5
+  --> $DIR/fn_params_excessive_bools.rs:45:5
    |
 LL | /     fn n(_: bool, _: u32, _: bool, _: Box<u32>, _: bool, _: bool) {
 LL | |         fn nn(_: bool, _: bool, _: bool, _: bool) {}
@@ -42,12 +34,12 @@ LL | |     }
    = help: consider refactoring bools into two-variant enums
 
 error: more than 3 bools in function parameters
-  --> $DIR/fn_params_excessive_bools.rs:44:9
+  --> $DIR/fn_params_excessive_bools.rs:46:9
    |
 LL |         fn nn(_: bool, _: bool, _: bool, _: bool) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider refactoring bools into two-variant enums
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 

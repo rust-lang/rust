@@ -35,6 +35,8 @@ impl S {
 }
 
 impl Trait for S {
+    // Should not lint because the trait might not be changeable by the user
+    // We only lint in the trait definition
     fn f(_: bool, _: bool, _: bool, _: bool) {}
     fn g(_: bool, _: bool, _: bool, _: Vec<u32>) {}
 }

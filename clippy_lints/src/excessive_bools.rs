@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{has_repr_attr, is_bool};
+use clippy_utils::{get_parent_as_impl, has_repr_attr, is_bool};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, HirId, Item, ItemKind, Ty};
 use rustc_lint::{LateContext, LateLintPass};
@@ -159,11 +159,16 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
         fn_decl: &'tcx FnDecl<'tcx>,
         _: &'tcx Body<'tcx>,
         span: Span,
-        _: HirId,
+        hir_id: HirId,
     ) {
         if let Some(fn_header) = fn_kind.header()
             && fn_header.abi == Abi::Rust
-            && !span.from_expansion() {
+            && !span.from_expansion()
+            && get_parent_as_impl(cx.tcx, hir_id)
+                .map_or(true,
+                    |impl_item| impl_item.of_trait.is_none()
+                )
+            {
             self.check_fn_sig(cx, fn_decl, span);
         }
     }
