@@ -108,9 +108,12 @@ pub trait AstConv<'tcx> {
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx>;
 
-    fn normalize_ty_2(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        ty
-    }
+    /// Returns `AdtDef` if `ty` is an ADT.
+    /// Note that `ty` might be a projection type that needs normalization.
+    /// This used to get the enum variants in scope of the type.
+    /// For example, `Self::A` could refer to an associated type
+    /// or to an enum variant depending on the result of this function.
+    fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>>;
 
     /// Invoked when we encounter an error from some prior pass
     /// (e.g., resolve) that is translated into a ty-error. This is
@@ -1811,7 +1814,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Check if we have an enum variant.
         let mut variant_resolution = None;
-        if let ty::Adt(adt_def, _) = self.normalize_ty_2(span, qself_ty).kind() {
+        if let Some(adt_def) = self.probe_adt(span, qself_ty) {
             if adt_def.is_enum() {
                 let variant_def = adt_def
                     .variants()
@@ -2263,6 +2266,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Option<Ty<'tcx>>,
         kind: DefKind,
         def_id: DefId,
+        span: Span,
     ) -> Vec<PathSeg> {
         // We need to extract the type parameters supplied by the user in
         // the path `path`. Due to the current setup, this is a bit of a
@@ -2330,8 +2334,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             // Case 2. Reference to a variant constructor.
             DefKind::Ctor(CtorOf::Variant, ..) | DefKind::Variant => {
-                let adt_def = self_ty.map(|t| t.ty_adt_def().unwrap());
-                let (generics_def_id, index) = if let Some(adt_def) = adt_def {
+                let (generics_def_id, index) = if let Some(self_ty) = self_ty {
+                    let adt_def = self.probe_adt(span, self_ty).unwrap();
                     debug_assert!(adt_def.is_enum());
                     (adt_def.did(), last)
                 } else if last >= 1 && segments[last - 1].args.is_some() {
@@ -2428,7 +2432,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
 
                 let path_segs =
-                    self.def_ids_for_value_path_segments(path.segments, None, kind, def_id);
+                    self.def_ids_for_value_path_segments(path.segments, None, kind, def_id, span);
                 let generic_segs: FxHashSet<_> =
                     path_segs.iter().map(|PathSeg(_, index)| index).collect();
                 self.prohibit_generics(

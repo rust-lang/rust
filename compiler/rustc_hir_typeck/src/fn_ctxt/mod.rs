@@ -17,7 +17,7 @@ use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
@@ -281,12 +281,15 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.tcx().mk_projection(item_def_id, item_substs)
     }
 
-    fn normalize_ty_2(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        use rustc_middle::ty::TypeVisitable;
-        if ty.has_escaping_bound_vars() {
-            ty // FIXME: normalization and escaping regions
-        } else {
-            self.normalize_associated_types_in(span, ty)
+    fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
+        match ty.kind() {
+            ty::Adt(adt_def, _) => Some(*adt_def),
+            // FIXME: We should normalize even with escaping bound vars.
+            // See test/ui/associated-types/bound-region-variant-resolution.rs
+            ty::Projection(_) if !ty.has_escaping_bound_vars() => {
+                self.normalize_associated_types_in(span, ty).ty_adt_def()
+            }
+            _ => None,
         }
     }
 
@@ -295,7 +298,11 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span) {
-        self.write_ty(hir_id, self.normalize_ty_2(span, ty))
+        let ty_normalized = match ty.has_escaping_bound_vars() {
+            false => self.normalize_associated_types_in(span, ty),
+            true => ty, // FIXME: normalization and escaping regions
+        };
+        self.write_ty(hir_id, ty_normalized)
     }
 }
 

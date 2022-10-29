@@ -1059,9 +1059,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Def(kind, def_id) => <dyn AstConv<'_>>::def_ids_for_value_path_segments(
                 self,
                 segments,
-                self_ty.map(|ty| ty.normalized),
+                self_ty.map(|ty| ty.raw),
                 kind,
                 def_id,
+                span,
             ),
             _ => bug!("instantiate_value_path on {:?}", res),
         };
@@ -1174,7 +1175,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .unwrap_or(false);
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
-            let ty = self.normalize_ty_2(span, tcx.at(span).type_of(impl_def_id));
+            let ty = tcx.at(span).type_of(impl_def_id);
+            let ty = self.normalize_associated_types_in(span, ty);
             match *ty.kind() {
                 ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
@@ -1297,10 +1299,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If we have a default, then we it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
-                            let default = tcx.bound_type_of(param.def_id);
-                            self.fcx
-                                .normalize_ty_2(self.span, default.subst(tcx, substs.unwrap()))
-                                .into()
+                            let default =
+                                tcx.bound_type_of(param.def_id).subst(tcx, substs.unwrap());
+                            self.fcx.normalize_associated_types_in(self.span, default).into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
                             // This case also occurs as a result of some malformed input, e.g.

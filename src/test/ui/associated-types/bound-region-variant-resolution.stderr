@@ -1,0 +1,15 @@
+error: expected type, found variant `Some`
+  --> $DIR/bound-region-variant-resolution.rs:9:23
+   |
+LL |     None::<for<'y> fn(<&'x Option<()> as Deref>::Target::Some)>;
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0223]: ambiguous associated type
+  --> $DIR/bound-region-variant-resolution.rs:11:23
+   |
+LL |     None::<for<'y> fn(<&'y Option<()> as Deref>::Target::Some)>;
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<<&'y Option<()> as Deref>::Target as Trait>::Some`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0223`.
