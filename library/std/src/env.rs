@@ -343,7 +343,7 @@ impl Error for VarError {
 /// env::set_var(key, "VALUE");
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 /// ```
-#[cfg_attr(not(bootstrap), lang = "env_set_var")]
+#[cfg_attr(all(not(bootstrap), not(test)), lang = "env_set_var")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
     _set_var(key.as_ref(), value.as_ref())
@@ -386,7 +386,7 @@ fn _set_var(key: &OsStr, value: &OsStr) {
 /// env::remove_var(key);
 /// assert!(env::var(key).is_err());
 /// ```
-#[cfg_attr(not(bootstrap), lang = "env_remove_var")]
+#[cfg_attr(all(not(bootstrap), not(test)), lang = "env_remove_var")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn remove_var<K: AsRef<OsStr>>(key: K) {
     _remove_var(key.as_ref())
