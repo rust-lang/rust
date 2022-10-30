@@ -22,7 +22,9 @@ use rustc_hir::{BodyOwnerKind, HirId};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, DefIdTree, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt,
+};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use std::iter;
 
@@ -421,13 +423,15 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             first_extern_index
         } else {
             // If this is a closure, generator, or inline-const, then the late-bound regions from the enclosing
-            // function are actually external regions to us. For example, here, 'a is not local
+            // function/closures are actually external regions to us. For example, here, 'a is not local
             // to the closure c (although it is local to the fn foo):
             // fn foo<'a>() {
             //     let c = || { let x: &'a u32 = ...; }
             // }
-            self.infcx
-                .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices);
+            self.infcx.replace_late_bound_regions_with_nll_infer_vars(
+                self.infcx.tcx.local_parent(self.mir_def.did),
+                &mut indices,
+            );
             // Any regions created during the execution of `defining_ty` or during the above
             // late-bound region replacement are all considered 'extern' regions
             self.infcx.num_region_vars()
@@ -444,12 +448,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             bound_inputs_and_output,
             &mut indices,
         );
-        // Converse of above, if this is a function then the late-bound regions declared on its
-        // signature are local to the fn.
-        if self.mir_def.did.to_def_id() == typeck_root_def_id {
-            self.infcx
-                .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices);
-        }
+        // Converse of above, if this is a function/closure then the late-bound regions declared on its
+        // signature are local.
+        self.infcx.replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices);
 
         let (unnormalized_output_ty, mut unnormalized_input_tys) =
             inputs_and_output.split_last().unwrap();
@@ -748,18 +749,28 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     #[instrument(skip(self, indices))]
     fn replace_late_bound_regions_with_nll_infer_vars(
         &self,
-        mir_def_id: LocalDefId,
+        mut mir_def_id: LocalDefId,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) {
         let typeck_root_def_id = self.tcx.typeck_root_def_id(mir_def_id.to_def_id());
-        for_each_late_bound_region_defined_on(self.tcx, typeck_root_def_id, |r| {
-            debug!(?r);
-            if !indices.indices.contains_key(&r) {
-                let region_vid = self.next_nll_region_var(FR);
-                debug!(?region_vid);
-                indices.insert_late_bound_region(r, region_vid.to_region_vid());
+
+        // Walk up the tree, collecting late-bound regions until we hit the typeck root
+        loop {
+            for_each_late_bound_region_defined_on(self.tcx, mir_def_id.to_def_id(), |r| {
+                debug!(?r);
+                if !indices.indices.contains_key(&r) {
+                    let region_vid = self.next_nll_region_var(FR);
+                    debug!(?region_vid);
+                    indices.insert_late_bound_region(r, region_vid.to_region_vid());
+                }
+            });
+
+            if mir_def_id.to_def_id() == typeck_root_def_id {
+                break;
+            } else {
+                mir_def_id = self.tcx.parent(mir_def_id.to_def_id()).expect_local();
             }
-        });
+        }
     }
 }
 
@@ -810,14 +821,11 @@ fn for_each_late_bound_region_defined_on<'tcx>(
     fn_def_id: DefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
-    if let Some(late_bounds) = tcx.is_late_bound_map(fn_def_id.expect_local()) {
-        for &region_def_id in late_bounds.iter() {
-            let name = tcx.item_name(region_def_id.to_def_id());
-            let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                scope: fn_def_id,
-                bound_region: ty::BoundRegionKind::BrNamed(region_def_id.to_def_id(), name),
-            }));
-            f(liberated_region);
-        }
+    for bound_var in tcx.late_bound_vars(tcx.hir().local_def_id_to_hir_id(fn_def_id.expect_local()))
+    {
+        let ty::BoundVariableKind::Region(bound_region) = bound_var else { continue; };
+        let liberated_region =
+            tcx.mk_region(ty::ReFree(ty::FreeRegion { scope: fn_def_id, bound_region }));
+        f(liberated_region);
     }
 }
