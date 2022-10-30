@@ -77,6 +77,29 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                 }
 
                 if let Some(func_id) = func_id {
+                    let env_set_var = self.tcx.lang_items().env_set_var();
+                    let env_remove_var = self.tcx.lang_items().env_remove_var();
+
+                    // This is a temporary hack to forbid the use of `std::env::set_var` and
+                    // `std::env::remove_var` in `unsafe` contexts.
+                    if Some(*func_id) == env_set_var || Some(*func_id) == env_remove_var {
+                        let safety_context = self.body.source_scopes[self.source_info.scope]
+                            .local_data
+                            .as_ref()
+                            .assert_crate_local()
+                            .safety;
+
+                        if matches!(
+                            safety_context,
+                            Safety::BuiltinUnsafe | Safety::FnUnsafe | Safety::ExplicitUnsafe(_)
+                        ) {
+                            self.tcx.sess.span_err(
+                                terminator.source_info.span,
+                                "mutation of environment inside unsafe context",
+                            );
+                        }
+                    };
+
                     self.check_target_features(*func_id);
                 }
             }

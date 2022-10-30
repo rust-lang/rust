@@ -1,0 +1,14 @@
+error: mutation of environment inside unsafe context
+  --> $DIR/mut-env-in-unsafe.rs:8:9
+   |
+LL |         set_var("FOO", "bar");
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: mutation of environment inside unsafe context
+  --> $DIR/mut-env-in-unsafe.rs:9:9
+   |
+LL |         remove_var("FOO");
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

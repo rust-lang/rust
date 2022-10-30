@@ -673,6 +673,8 @@ symbols! {
         end,
         env,
         env_macro,
+        env_remove_var,
+        env_set_var,
         eprint_macro,
         eprintln_macro,
         eq,
