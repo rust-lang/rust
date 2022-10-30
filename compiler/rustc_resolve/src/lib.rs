@@ -1613,10 +1613,12 @@ impl<'a> Resolver<'a> {
     ) -> SmallVec<[LocalDefId; 1]> {
         let mut import_ids = smallvec![];
         while let NameBindingKind::Import { import, binding, .. } = kind {
-            let id = self.local_def_id(import.id);
-            self.maybe_unused_trait_imports.insert(id);
+            if let Some(node_id) = import.id() {
+                let def_id = self.local_def_id(node_id);
+                self.maybe_unused_trait_imports.insert(def_id);
+                import_ids.push(def_id);
+            }
             self.add_to_glob_map(&import, trait_name);
-            import_ids.push(id);
             kind = &binding.kind;
         }
         import_ids
@@ -1683,7 +1685,9 @@ impl<'a> Resolver<'a> {
             }
             used.set(true);
             import.used.set(true);
-            self.used_imports.insert(import.id);
+            if let Some(id) = import.id() {
+                self.used_imports.insert(id);
+            }
             self.add_to_glob_map(&import, ident);
             self.record_use(ident, binding, false);
         }
@@ -1691,8 +1695,8 @@ impl<'a> Resolver<'a> {
 
     #[inline]
     fn add_to_glob_map(&mut self, import: &Import<'_>, ident: Ident) {
-        if import.is_glob() {
-            let def_id = self.local_def_id(import.id);
+        if let ImportKind::Glob { id, .. } = import.kind {
+            let def_id = self.local_def_id(id);
             self.glob_map.entry(def_id).or_default().insert(ident.name);
         }
     }
