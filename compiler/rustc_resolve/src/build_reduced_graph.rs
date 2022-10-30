@@ -364,7 +364,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         module_path: Vec<Segment>,
         kind: ImportKind<'a>,
         span: Span,
-        id: NodeId,
         item: &ast::Item,
         root_span: Span,
         root_id: NodeId,
@@ -377,7 +376,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             module_path,
             imported_module: Cell::new(None),
             span,
-            id,
             use_span: item.span,
             use_span_with_attributes: item.span_with_attributes(),
             has_attributes: !item.attrs.is_empty(),
@@ -574,27 +572,20 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     },
                     type_ns_only,
                     nested,
+                    id,
                     additional_ids: (id1, id2),
                 };
 
-                self.add_import(
-                    module_path,
-                    kind,
-                    use_tree.span,
-                    id,
-                    item,
-                    root_span,
-                    item.id,
-                    vis,
-                );
+                self.add_import(module_path, kind, use_tree.span, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Glob => {
                 let kind = ImportKind::Glob {
                     is_prelude: self.r.session.contains_name(&item.attrs, sym::prelude_import),
                     max_vis: Cell::new(None),
+                    id,
                 };
                 self.r.visibilities.insert(self.r.local_def_id(id), vis);
-                self.add_import(prefix, kind, use_tree.span, id, item, root_span, item.id, vis);
+                self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Nested(ref items) => {
                 // Ensure there is at most one `self` in the list
@@ -881,9 +872,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         })
         .unwrap_or((true, None, self.r.dummy_binding));
         let import = self.r.arenas.alloc_import(Import {
-            kind: ImportKind::ExternCrate { source: orig_name, target: ident },
+            kind: ImportKind::ExternCrate { source: orig_name, target: ident, id: item.id },
             root_id: item.id,
-            id: item.id,
             parent_scope: self.parent_scope,
             imported_module: Cell::new(module),
             has_attributes: !item.attrs.is_empty(),
@@ -1118,7 +1108,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             this.r.arenas.alloc_import(Import {
                 kind: ImportKind::MacroUse,
                 root_id: item.id,
-                id: item.id,
                 parent_scope: this.parent_scope,
                 imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
                 use_span_with_attributes: item.span_with_attributes(),
