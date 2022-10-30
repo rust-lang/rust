@@ -99,6 +99,13 @@ impl<'data> BorrowedBuf<'data> {
         unsafe { MaybeUninit::slice_assume_init_ref(&self.buf[0..self.filled]) }
     }
 
+    /// Returns a mutable reference to the filled portion of the buffer.
+    #[inline]
+    pub fn filled_mut(&mut self) -> &mut [u8] {
+        // SAFETY: We only slice the filled part of the buffer, which is always valid
+        unsafe { MaybeUninit::slice_assume_init_mut(&mut self.buf[0..self.filled]) }
+    }
+
     /// Returns a cursor over the unfilled part of the buffer.
     #[inline]
     pub fn unfilled<'this>(&'this mut self) -> BorrowedCursor<'this> {
