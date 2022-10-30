@@ -121,7 +121,7 @@ pub unsafe fn _mm512_maskz_gf2p8mul_epi8(k: __mmask64, a: __m512i, b: __m512i) -
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "avx512gfni,avx")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm256_gf2p8mul_epi8(a: __m256i, b: __m256i) -> __m256i {
     transmute(vgf2p8mulb_256(a.as_i8x32(), b.as_i8x32()))
@@ -177,8 +177,8 @@ pub unsafe fn _mm256_maskz_gf2p8mul_epi8(k: __mmask32, a: __m256i, b: __m256i) -
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(vgf2p8mulb))]
+#[target_feature(enable = "avx512gfni")]
+#[cfg_attr(test, assert_instr(gf2p8mulb))]
 pub unsafe fn _mm_gf2p8mul_epi8(a: __m128i, b: __m128i) -> __m128i {
     transmute(vgf2p8mulb_128(a.as_i8x16(), b.as_i8x16()))
 }
@@ -307,7 +307,7 @@ pub unsafe fn _mm512_mask_gf2p8affine_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "avx512gfni,avx")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_gf2p8affine_epi64_epi8<const B: i32>(x: __m256i, a: __m256i) -> __m256i {
@@ -380,8 +380,8 @@ pub unsafe fn _mm256_mask_gf2p8affine_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
+#[target_feature(enable = "avx512gfni")]
+#[cfg_attr(test, assert_instr(gf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_gf2p8affine_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -> __m128i {
     static_assert_imm8!(B);
@@ -534,7 +534,7 @@ pub unsafe fn _mm512_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "avx512gfni,avx")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m256i, a: __m256i) -> __m256i {
@@ -613,8 +613,8 @@ pub unsafe fn _mm256_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
+#[target_feature(enable = "avx512gfni")]
+#[cfg_attr(test, assert_instr(gf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -> __m128i {
     static_assert_imm8!(B);
