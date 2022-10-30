@@ -8,6 +8,7 @@ use rustc_data_structures::sharded::Sharded;
 #[cfg(not(parallel_compiler))]
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::sync::WorkerLocal;
+use rustc_index::vec::{Idx, IndexVec};
 use std::default::Default;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -203,6 +204,177 @@ where
             let map = self.cache.lock();
             for (k, v) in map.iter() {
                 f(k, &v.0, v.1);
+            }
+        }
+    }
+}
+
+pub struct VecCache<K: Idx, V> {
+    #[cfg(parallel_compiler)]
+    cache: Sharded<IndexVec<K, Option<(V, DepNodeIndex)>>>,
+    #[cfg(not(parallel_compiler))]
+    cache: Lock<IndexVec<K, Option<(V, DepNodeIndex)>>>,
+}
+
+impl<K: Idx, V> Default for VecCache<K, V> {
+    fn default() -> Self {
+        VecCache { cache: Default::default() }
+    }
+}
+
+impl<K: Eq + Idx, V: Clone + Debug> QueryStorage for VecCache<K, V> {
+    type Value = V;
+    type Stored = V;
+
+    #[inline]
+    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
+        // We have no dedicated storage
+        value
+    }
+}
+
+impl<K, V> QueryCache for VecCache<K, V>
+where
+    K: Eq + Idx + Clone + Debug,
+    V: Clone + Debug,
+{
+    type Key = K;
+
+    #[inline(always)]
+    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, ()>
+    where
+        OnHit: FnOnce(&V, DepNodeIndex) -> R,
+    {
+        #[cfg(parallel_compiler)]
+        let lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
+        #[cfg(not(parallel_compiler))]
+        let lock = self.cache.lock();
+        if let Some(Some(value)) = lock.get(*key) {
+            let hit_result = on_hit(&value.0, value.1);
+            Ok(hit_result)
+        } else {
+            Err(())
+        }
+    }
+
+    #[inline]
+    fn complete(&self, key: K, value: V, index: DepNodeIndex) -> Self::Stored {
+        #[cfg(parallel_compiler)]
+        let mut lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
+        #[cfg(not(parallel_compiler))]
+        let mut lock = self.cache.lock();
+        lock.insert(key, (value.clone(), index));
+        value
+    }
+
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        #[cfg(parallel_compiler)]
+        {
+            let shards = self.cache.lock_shards();
+            for shard in shards.iter() {
+                for (k, v) in shard.iter_enumerated() {
+                    if let Some(v) = v {
+                        f(&k, &v.0, v.1);
+                    }
+                }
+            }
+        }
+        #[cfg(not(parallel_compiler))]
+        {
+            let map = self.cache.lock();
+            for (k, v) in map.iter_enumerated() {
+                if let Some(v) = v {
+                    f(&k, &v.0, v.1);
+                }
+            }
+        }
+    }
+}
+
+pub struct VecArenaCache<'tcx, K: Idx, V> {
+    arena: WorkerLocal<TypedArena<(V, DepNodeIndex)>>,
+    #[cfg(parallel_compiler)]
+    cache: Sharded<IndexVec<K, Option<&'tcx (V, DepNodeIndex)>>>,
+    #[cfg(not(parallel_compiler))]
+    cache: Lock<IndexVec<K, Option<&'tcx (V, DepNodeIndex)>>>,
+}
+
+impl<'tcx, K: Idx, V> Default for VecArenaCache<'tcx, K, V> {
+    fn default() -> Self {
+        VecArenaCache {
+            arena: WorkerLocal::new(|_| TypedArena::default()),
+            cache: Default::default(),
+        }
+    }
+}
+
+impl<'tcx, K: Eq + Idx, V: Debug + 'tcx> QueryStorage for VecArenaCache<'tcx, K, V> {
+    type Value = V;
+    type Stored = &'tcx V;
+
+    #[inline]
+    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
+        let value = self.arena.alloc((value, DepNodeIndex::INVALID));
+        let value = unsafe { &*(&value.0 as *const _) };
+        &value
+    }
+}
+
+impl<'tcx, K, V: 'tcx> QueryCache for VecArenaCache<'tcx, K, V>
+where
+    K: Eq + Idx + Clone + Debug,
+    V: Debug,
+{
+    type Key = K;
+
+    #[inline(always)]
+    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, ()>
+    where
+        OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
+    {
+        #[cfg(parallel_compiler)]
+        let lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
+        #[cfg(not(parallel_compiler))]
+        let lock = self.cache.lock();
+        if let Some(Some(value)) = lock.get(*key) {
+            let hit_result = on_hit(&&value.0, value.1);
+            Ok(hit_result)
+        } else {
+            Err(())
+        }
+    }
+
+    #[inline]
+    fn complete(&self, key: K, value: V, index: DepNodeIndex) -> Self::Stored {
+        let value = self.arena.alloc((value, index));
+        let value = unsafe { &*(value as *const _) };
+        #[cfg(parallel_compiler)]
+        let mut lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
+        #[cfg(not(parallel_compiler))]
+        let mut lock = self.cache.lock();
+        lock.insert(key, value);
+        &value.0
+    }
+
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        #[cfg(parallel_compiler)]
+        {
+            let shards = self.cache.lock_shards();
+            for shard in shards.iter() {
+                for (k, v) in shard.iter_enumerated() {
+                    if let Some(v) = v {
+                        f(&k, &v.0, v.1);
+                    }
+                }
+            }
+        }
+        #[cfg(not(parallel_compiler))]
+        {
+            let map = self.cache.lock();
+            for (k, v) in map.iter_enumerated() {
+                if let Some(v) = v {
+                    f(&k, &v.0, v.1);
+                }
             }
         }
     }

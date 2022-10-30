@@ -7,7 +7,9 @@ pub use self::job::deadlock;
 pub use self::job::{print_query_stack, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap};
 
 mod caches;
-pub use self::caches::{ArenaCache, DefaultCache, QueryCache, QueryStorage};
+pub use self::caches::{
+    ArenaCache, DefaultCache, QueryCache, QueryStorage, VecArenaCache, VecCache,
+};
 
 mod config;
 pub use self::config::{QueryConfig, QueryDescription, QueryVTable};

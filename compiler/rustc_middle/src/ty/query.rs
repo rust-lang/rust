@@ -120,6 +120,14 @@ macro_rules! query_helper_param_ty {
 }
 
 macro_rules! query_storage {
+    // FIXME(cjgillot) this macro-based way to perform type-based dispatch is clearly brittle.
+    // It should probably be replaced by an associated type on the `Key` trait.
+    ([][CrateNum, $V:ty]) => { VecCache<CrateNum, $V> };
+    ([(arena_cache) $($rest:tt)*][CrateNum, $V:ty]) => { VecArenaCache<'tcx, CrateNum, $V> };
+    ([][LocalDefId, $V:ty]) => { VecCache<LocalDefId, $V> };
+    ([(arena_cache) $($rest:tt)*][LocalDefId, $V:ty]) => { VecArenaCache<'tcx, LocalDefId, $V> };
+    ([][hir::OwnerId, $V:ty]) => { VecCache<hir::OwnerId, $V> };
+    ([(arena_cache) $($rest:tt)*][hir::OwnerId, $V:ty]) => { VecArenaCache<'tcx, hir::OwnerId, $V> };
     ([][$K:ty, $V:ty]) => { DefaultCache<$K, $V> };
     ([(arena_cache) $($rest:tt)*][$K:ty, $V:ty]) => { ArenaCache<'tcx, $K, $V> };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => { query_storage!([$($modifiers)*][$($args)*]) };
