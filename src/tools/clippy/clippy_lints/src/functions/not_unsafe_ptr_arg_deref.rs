@@ -31,7 +31,7 @@ pub(super) fn check_fn<'tcx>(
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(eid)) = item.kind {
         let body = cx.tcx.hir().body(eid);
-        check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.def_id.def_id);
+        check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.owner_id.def_id);
     }
 }
 
@@ -42,7 +42,7 @@ fn check_raw_ptr<'tcx>(
     body: &'tcx hir::Body<'tcx>,
     def_id: LocalDefId,
 ) {
-    if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(def_id) {
+    if unsafety == hir::Unsafety::Normal && cx.effective_visibilities.is_exported(def_id) {
         let raw_ptrs = iter_input_pats(decl, body)
             .filter_map(|arg| raw_ptr_arg(cx, arg))
             .collect::<HirIdSet>();

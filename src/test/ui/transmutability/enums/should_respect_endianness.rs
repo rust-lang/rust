@@ -2,7 +2,6 @@
 //! an enum with a multi-byte tag.
 
 #![crate_type = "lib"]
-#![feature(arbitrary_enum_discriminant)]
 #![feature(transmutability)]
 #![allow(dead_code)]
 

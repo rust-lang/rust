@@ -275,7 +275,7 @@ impl f32 {
     /// This result is not an element of the function's codomain, but it is the
     /// closest floating point number in the real numbers and thus fulfills the
     /// property `self == self.div_euclid(rhs) * rhs + self.rem_euclid(rhs)`
-    /// approximatively.
+    /// approximately.
     ///
     /// # Examples
     ///

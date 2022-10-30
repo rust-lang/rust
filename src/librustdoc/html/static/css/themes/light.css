@@ -50,6 +50,9 @@
 	--code-highlight-question-mark-color: #ff9011;
 	--code-highlight-comment-color: #8e908c;
 	--code-highlight-doc-comment-color: #4d4d4c;
+	--example-line-numbers-border-color: #c7c7c7;
+	--src-line-numbers-span-color: #c67e2d;
+	--src-line-number-highlighted-background-color: #fdffd3;
 }
 
 .slider {
@@ -68,11 +71,6 @@ input:focus + .slider {
 	 */
 }
 
-.src-line-numbers span { color: #c67e2d; }
-.src-line-numbers .line-highlighted {
-	background-color: #FDFFD3 !important;
-}
-
 .content .item-info::before { color: #ccc; }
 
 body.source .example-wrap pre.rust a {
@@ -88,12 +86,6 @@ body.source .example-wrap pre.rust a {
 }
 #crate-search-div:hover::after, #crate-search-div:focus-within::after {
 	filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg) brightness(96%) contrast(93%);
-}
-
-.src-line-numbers :target { background-color: transparent; }
-
-pre.example-line-numbers {
-	border-color: #c7c7c7;
 }
 
 a.test-arrow {

@@ -5,7 +5,6 @@ use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
 use rustc_target::abi::{AddressSpace, Integer};
 
@@ -75,16 +74,16 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
     }
 
     fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx().at(DUMMY_SP), ty::ParamEnv::reveal_all())
+        ty.is_sized(self.tcx(), ty::ParamEnv::reveal_all())
     }
 
     fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx().at(DUMMY_SP), ty::ParamEnv::reveal_all())
+        ty.is_freeze(self.tcx(), ty::ParamEnv::reveal_all())
     }
 
     fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
         let param_env = ty::ParamEnv::reveal_all();
-        if ty.is_sized(self.tcx().at(DUMMY_SP), param_env) {
+        if ty.is_sized(self.tcx(), param_env) {
             return false;
         }
 

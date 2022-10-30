@@ -2,7 +2,7 @@ use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 
@@ -77,8 +77,8 @@ pub(crate) struct Cache {
 
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
-    // the access levels from the privacy check pass.
-    pub(crate) access_levels: AccessLevels<DefId>,
+    // the effective visibilities from the privacy check pass.
+    pub(crate) effective_visibilities: EffectiveVisibilities<DefId>,
 
     /// The version of the crate being documented, if given from the `--crate-version` flag.
     pub(crate) crate_version: Option<String>,
@@ -132,8 +132,11 @@ struct CacheBuilder<'a, 'tcx> {
 }
 
 impl Cache {
-    pub(crate) fn new(access_levels: AccessLevels<DefId>, document_private: bool) -> Self {
-        Cache { access_levels, document_private, ..Cache::default() }
+    pub(crate) fn new(
+        effective_visibilities: EffectiveVisibilities<DefId>,
+        document_private: bool,
+    ) -> Self {
+        Cache { effective_visibilities, document_private, ..Cache::default() }
     }
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
@@ -381,7 +384,10 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // paths map if there was already an entry present and we're
                     // not a public item.
                     if !self.cache.paths.contains_key(&item.item_id.expect_def_id())
-                        || self.cache.access_levels.is_public(item.item_id.expect_def_id())
+                        || self
+                            .cache
+                            .effective_visibilities
+                            .is_directly_public(item.item_id.expect_def_id())
                     {
                         self.cache.paths.insert(
                             item.item_id.expect_def_id(),

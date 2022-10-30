@@ -362,7 +362,7 @@ impl IO_STATUS_BLOCK {
 
 pub type LPOVERLAPPED_COMPLETION_ROUTINE = unsafe extern "system" fn(
     dwErrorCode: DWORD,
-    dwNumberOfBytesTransfered: DWORD,
+    dwNumberOfBytesTransferred: DWORD,
     lpOverlapped: *mut OVERLAPPED,
 );
 

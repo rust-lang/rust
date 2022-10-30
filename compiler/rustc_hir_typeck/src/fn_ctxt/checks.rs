@@ -33,16 +33,27 @@ use rustc_span::{self, sym, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
+use std::mem;
 use std::ops::ControlFlow;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(in super::super) fn check_casts(&self) {
-        let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
+    pub(in super::super) fn check_casts(&mut self) {
+        // don't hold the borrow to deferred_cast_checks while checking to avoid borrow checker errors
+        // when writing to `self.param_env`.
+        let mut deferred_cast_checks = mem::take(&mut *self.deferred_cast_checks.borrow_mut());
+
         debug!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
         for cast in deferred_cast_checks.drain(..) {
+            let prev_env = self.param_env;
+            self.param_env = self.param_env.with_constness(cast.constness);
+
             cast.check(self);
+
+            self.param_env = prev_env;
         }
+
+        *self.deferred_cast_checks.borrow_mut() = deferred_cast_checks;
     }
 
     pub(in super::super) fn check_transmutes(&self) {

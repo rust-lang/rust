@@ -72,8 +72,12 @@ pub(crate) fn render_source_with_highlighting(
     line_numbers: Buffer,
     href_context: HrefContext<'_, '_, '_>,
     decoration_info: DecorationInfo,
+    extra: Option<&str>,
 ) {
     write_header(out, "", Some(line_numbers), Tooltip::None);
+    if let Some(extra) = extra {
+        out.push_str(extra);
+    }
     write_code(out, src, Some(href_context), Some(decoration_info));
     write_footer(out, None);
 }

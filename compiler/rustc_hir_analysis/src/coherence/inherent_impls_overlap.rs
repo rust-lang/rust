@@ -156,14 +156,14 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
     }
 
     fn check_item(&mut self, id: hir::ItemId) {
-        let def_kind = self.tcx.def_kind(id.def_id);
+        let def_kind = self.tcx.def_kind(id.owner_id);
         if !matches!(def_kind, DefKind::Enum | DefKind::Struct | DefKind::Trait | DefKind::Union) {
             return;
         }
 
-        let impls = self.tcx.inherent_impls(id.def_id);
+        let impls = self.tcx.inherent_impls(id.owner_id);
 
-        let overlap_mode = OverlapMode::get(self.tcx, id.def_id.to_def_id());
+        let overlap_mode = OverlapMode::get(self.tcx, id.owner_id.to_def_id());
 
         let impls_items = impls
             .iter()

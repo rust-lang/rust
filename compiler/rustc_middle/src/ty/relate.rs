@@ -574,8 +574,8 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 /// it.
 pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
-    a: ty::Const<'tcx>,
-    b: ty::Const<'tcx>,
+    mut a: ty::Const<'tcx>,
+    mut b: ty::Const<'tcx>,
 ) -> RelateResult<'tcx, ty::Const<'tcx>> {
     debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
@@ -594,6 +594,17 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
             DUMMY_SP,
             &format!("cannot relate constants of different types: {} != {}", a_ty, b_ty),
         );
+    }
+
+    // HACK(const_generics): We still need to eagerly evaluate consts when
+    // relating them because during `normalize_param_env_or_error`,
+    // we may relate an evaluated constant in a obligation against
+    // an unnormalized (i.e. unevaluated) const in the param-env.
+    // FIXME(generic_const_exprs): Once we always lazily unify unevaluated constants
+    // these `eval` calls can be removed.
+    if !relation.tcx().features().generic_const_exprs {
+        a = a.eval(tcx, relation.param_env());
+        b = b.eval(tcx, relation.param_env());
     }
 
     // Currently, the values that can be unified are primitive types,

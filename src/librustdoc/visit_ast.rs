@@ -7,7 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_hir::CRATE_HIR_ID;
-use rustc_middle::middle::privacy::AccessLevel;
+use rustc_middle::middle::privacy::Level;
 use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -230,10 +230,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     } else {
                         // All items need to be handled here in case someone wishes to link
                         // to them with intra-doc links
-                        self.cx.cache.access_levels.set_access_level(
+                        self.cx.cache.effective_visibilities.set_public_at_level(
                             did,
                             || Visibility::Restricted(CRATE_DEF_ID),
-                            AccessLevel::Public,
+                            Level::Direct,
                         );
                     }
                 }
@@ -246,7 +246,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None => return false,
         };
 
-        let is_private = !self.cx.cache.access_levels.is_public(res_did);
+        let is_private = !self.cx.cache.effective_visibilities.is_directly_public(res_did);
         let is_hidden = inherits_doc_hidden(self.cx.tcx, res_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.
@@ -295,11 +295,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
 
-        let def_id = item.def_id.to_def_id();
+        let def_id = item.owner_id.to_def_id();
         let is_pub = self.cx.tcx.visibility(def_id).is_public();
 
         if is_pub {
-            self.store_path(item.def_id.to_def_id());
+            self.store_path(item.owner_id.to_def_id());
         }
 
         match item.kind {
@@ -360,7 +360,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 // 3. We're inlining, since a reexport where inlining has been requested
                 //    should be inlined even if it is also documented at the top level.
 
-                let def_id = item.def_id.to_def_id();
+                let def_id = item.owner_id.to_def_id();
                 let is_macro_2_0 = !macro_def.macro_rules;
                 let nonexported = !self.cx.tcx.has_attr(def_id, sym::macro_export);
 
@@ -405,7 +405,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om: &mut Module<'tcx>,
     ) {
         // If inlining we only want to include public functions.
-        if !self.inlining || self.cx.tcx.visibility(item.def_id).is_public() {
+        if !self.inlining || self.cx.tcx.visibility(item.owner_id).is_public() {
             om.foreigns.push((item, renamed));
         }
     }

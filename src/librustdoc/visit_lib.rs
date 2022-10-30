@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_ID};
-use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
+use rustc_middle::middle::privacy::{EffectiveVisibilities, Level};
 use rustc_middle::ty::{TyCtxt, Visibility};
 
 // FIXME: this may not be exhaustive, but is sufficient for rustdocs current uses
@@ -10,10 +10,10 @@ use rustc_middle::ty::{TyCtxt, Visibility};
 /// specific rustdoc annotations into account (i.e., `doc(hidden)`)
 pub(crate) struct LibEmbargoVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    // Accessibility levels for reachable nodes
-    access_levels: &'a mut AccessLevels<DefId>,
-    // Previous accessibility level, None means unreachable
-    prev_level: Option<AccessLevel>,
+    // Effective visibilities for reachable nodes
+    effective_visibilities: &'a mut EffectiveVisibilities<DefId>,
+    // Previous level, None means unreachable
+    prev_level: Option<Level>,
     // Keeps track of already visited modules, in case a module re-exports its parent
     visited_mods: FxHashSet<DefId>,
 }
@@ -22,26 +22,26 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
     pub(crate) fn new(cx: &'a mut crate::core::DocContext<'tcx>) -> LibEmbargoVisitor<'a, 'tcx> {
         LibEmbargoVisitor {
             tcx: cx.tcx,
-            access_levels: &mut cx.cache.access_levels,
-            prev_level: Some(AccessLevel::Public),
+            effective_visibilities: &mut cx.cache.effective_visibilities,
+            prev_level: Some(Level::Direct),
             visited_mods: FxHashSet::default(),
         }
     }
 
     pub(crate) fn visit_lib(&mut self, cnum: CrateNum) {
         let did = cnum.as_def_id();
-        self.update(did, Some(AccessLevel::Public));
+        self.update(did, Some(Level::Direct));
         self.visit_mod(did);
     }
 
     // Updates node level and returns the updated level
-    fn update(&mut self, did: DefId, level: Option<AccessLevel>) -> Option<AccessLevel> {
+    fn update(&mut self, did: DefId, level: Option<Level>) -> Option<Level> {
         let is_hidden = self.tcx.is_doc_hidden(did);
 
-        let old_level = self.access_levels.get_access_level(did);
-        // Accessibility levels can only grow
+        let old_level = self.effective_visibilities.public_at_level(did);
+        // Visibility levels can only grow
         if level > old_level && !is_hidden {
-            self.access_levels.set_access_level(
+            self.effective_visibilities.set_public_at_level(
                 did,
                 || Visibility::Restricted(CRATE_DEF_ID),
                 level.unwrap(),

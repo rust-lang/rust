@@ -69,7 +69,9 @@ extern "C" void LLVMInitializePasses() {
   initializeAnalysis(Registry);
   initializeTransformUtils(Registry);
   initializeInstCombine(Registry);
+#if LLVM_VERSION_LT(16, 0)
   initializeInstrumentation(Registry);
+#endif
   initializeTarget(Registry);
 }
 

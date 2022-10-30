@@ -217,9 +217,9 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
     let crate_items = tcx.hir_crate_items(());
 
     for id in crate_items.items() {
-        collector.check_for_lang(Target::from_def_kind(tcx.def_kind(id.def_id)), id.hir_id());
+        collector.check_for_lang(Target::from_def_kind(tcx.def_kind(id.owner_id)), id.hir_id());
 
-        if matches!(tcx.def_kind(id.def_id), DefKind::Enum) {
+        if matches!(tcx.def_kind(id.owner_id), DefKind::Enum) {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::Enum(def, ..) = &item.kind {
                 for variant in def.variants {
