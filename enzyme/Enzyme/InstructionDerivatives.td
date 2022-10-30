@@ -83,7 +83,7 @@ def : CallPattern<(Op $y, $x),
                   ]
                   >;
 def : CallPattern<(Op $x),
-                  ["cbrt"],
+                  ["cbrt", "cbrtf", "cbrtl"],
                   [(FDiv (FMul (DiffeRet<"">), (Call<(SameFunc), [ReadNone,NoUnwind]> $x) ), (FMul (ConstantFP<"3.0"> $x), $x))]
                   >;
 
