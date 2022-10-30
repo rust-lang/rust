@@ -604,11 +604,11 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 }
             }
         }
-        hir::ItemKind::Enum(ref enum_definition, _) => {
+        hir::ItemKind::Enum(..) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
-            convert_enum_variant_types(tcx, def_id.to_def_id(), enum_definition.variants);
+            convert_enum_variant_types(tcx, def_id.to_def_id());
         }
         hir::ItemKind::Impl { .. } => {
             tcx.ensure().generics_of(def_id);
@@ -640,7 +640,8 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             }
 
             if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
-                convert_variant_ctor(tcx, ctor_hir_id);
+                let ctor_def_id = tcx.hir().local_def_id(ctor_hir_id);
+                convert_variant_ctor(tcx, ctor_def_id);
             }
         }
 
@@ -750,37 +751,34 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     }
 }
 
-fn convert_variant_ctor(tcx: TyCtxt<'_>, ctor_id: hir::HirId) {
-    let def_id = tcx.hir().local_def_id(ctor_id);
+fn convert_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     tcx.ensure().generics_of(def_id);
     tcx.ensure().type_of(def_id);
     tcx.ensure().predicates_of(def_id);
 }
 
-fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::Variant<'_>]) {
+fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr().discr_type();
     let initial = repr_type.initial_discriminant(tcx);
     let mut prev_discr = None::<Discr<'_>>;
 
     // fill the discriminant values and field types
-    for variant in variants {
+    for variant in def.variants() {
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
         prev_discr = Some(
-            if let Some(ref e) = variant.disr_expr {
-                let expr_did = tcx.hir().local_def_id(e.hir_id);
-                def.eval_explicit_discr(tcx, expr_did.to_def_id())
+            if let ty::VariantDiscr::Explicit(const_def_id) = variant.discr {
+                def.eval_explicit_discr(tcx, const_def_id)
             } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
                 Some(discr)
             } else {
-                struct_span_err!(tcx.sess, variant.span, E0370, "enum discriminant overflowed")
-                    .span_label(
-                        variant.span,
-                        format!("overflowed on value after {}", prev_discr.unwrap()),
-                    )
+                let span = tcx.def_span(variant.def_id);
+                struct_span_err!(tcx.sess, span, E0370, "enum discriminant overflowed")
+                    .span_label(span, format!("overflowed on value after {}", prev_discr.unwrap()))
                     .note(&format!(
                         "explicitly set `{} = {}` if that is desired outcome",
-                        variant.ident, wrapped_discr
+                        tcx.item_name(variant.def_id),
+                        wrapped_discr
                     ))
                     .emit();
                 None
@@ -788,17 +786,16 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::V
             .unwrap_or(wrapped_discr),
         );
 
-        for f in variant.data.fields() {
-            let def_id = tcx.hir().local_def_id(f.hir_id);
-            tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
-            tcx.ensure().predicates_of(def_id);
+        for f in &variant.fields {
+            tcx.ensure().generics_of(f.did);
+            tcx.ensure().type_of(f.did);
+            tcx.ensure().predicates_of(f.did);
         }
 
         // Convert the ctor, if any. This also registers the variant as
         // an item.
-        if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
-            convert_variant_ctor(tcx, ctor_hir_id);
+        if let Some(ctor_def_id) = variant.ctor_def_id {
+            convert_variant_ctor(tcx, ctor_def_id.expect_local());
         }
     }
 }
