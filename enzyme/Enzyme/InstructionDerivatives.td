@@ -148,6 +148,8 @@ def : CallPattern<(Op $x),
                   [(FMul (Intrinsic<"exp", [(TypeOf<""> $x)]> $x), (DiffeRet<"">))]
                   >;
 
+def : CallPattern<(Op $x), ["jl_rem2pi", "jl_rem2pif", "jl_rem2pil"],[(DiffeRet<"">)]>;
+
 // Unnormalized sinc(x) = sin(x)/x
 def : CallPattern<(Op $x),
                   ["sinc", "sincf", "sincl"],
