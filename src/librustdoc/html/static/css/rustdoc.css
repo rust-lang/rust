@@ -493,9 +493,7 @@ ul.block, .block li {
 .sidebar h2 {
 	overflow-wrap: anywhere;
 	padding: 0;
-	margin: 0;
-	margin-top: 0.7rem;
-	margin-bottom: 0.7rem;
+	margin: 0.7rem 0;
 }
 
 .sidebar h3 {
@@ -803,10 +801,8 @@ table,
 }
 #crate-search {
 	min-width: 115px;
-	padding: 0;
 	/* keep these two in sync with "@-moz-document url-prefix()" below */
-	padding-left: 4px;
-	padding-right: 23px;
+	padding: 0 23px 0 4px;
 	/* prevents the <select> from overflowing the containing div in case it's shrunk */
 	max-width: 100%;
 	/* contents can overflow because of max-width limit, then show ellipsis */
@@ -1719,7 +1715,6 @@ in storage.js
 		/* Hide the sidebar offscreen while not in use. Doing this instead of display: none means
 		   the sidebar stays visible for screen readers, which is useful for navigation. */
 		left: -1000px;
-		margin-left: 0;
 		margin: 0;
 		padding: 0;
 		z-index: 11;
@@ -1772,9 +1767,7 @@ in storage.js
 	.mobile-topbar .logo-container > img {
 		max-width: 35px;
 		max-height: 35px;
-		margin-left: 20px;
-		margin-top: 5px;
-		margin-bottom: 5px;
+		margin: 5px 0 5px 20px;
 	}
 
 	.mobile-topbar {
@@ -2023,45 +2016,36 @@ in storage.js
 	padding-bottom: 0;
 }
 
-.scraped-example .code-wrapper .prev {
-	position: absolute;
-	top: 0.25em;
-	right: 2.25em;
-	z-index: 100;
-	cursor: pointer;
-}
-
-.scraped-example .code-wrapper .next {
-	position: absolute;
-	top: 0.25em;
-	right: 1.25em;
-	z-index: 100;
-	cursor: pointer;
-}
-
+.scraped-example .code-wrapper .next,
+.scraped-example .code-wrapper .prev,
 .scraped-example .code-wrapper .expand {
 	position: absolute;
 	top: 0.25em;
-	right: 0.25em;
-	z-index: 100;
+	z-index: 1;
 	cursor: pointer;
 }
-
-.scraped-example:not(.expanded) .code-wrapper:before {
-	content: " ";
-	width: 100%;
-	height: 5px;
-	position: absolute;
-	z-index: 100;
-	top: 0;
+.scraped-example .code-wrapper .prev {
+	right: 2.25em;
+}
+.scraped-example .code-wrapper .next {
+	right: 1.25em;
+}
+.scraped-example .code-wrapper .expand {
+	right: 0.25em;
 }
 
+.scraped-example:not(.expanded) .code-wrapper:before,
 .scraped-example:not(.expanded) .code-wrapper:after {
 	content: " ";
 	width: 100%;
 	height: 5px;
 	position: absolute;
-	z-index: 100;
+	z-index: 1;
+}
+.scraped-example:not(.expanded) .code-wrapper:before {
+	top: 0;
+}
+.scraped-example:not(.expanded) .code-wrapper:after {
 	bottom: 0;
 }
 
