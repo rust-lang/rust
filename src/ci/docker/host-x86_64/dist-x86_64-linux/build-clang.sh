@@ -25,6 +25,7 @@ INC="/rustroot/include:/usr/include"
 # disable them. BOLT is used for optimizing LLVM.
 hide_output \
     cmake ../llvm \
+      -GNinja \
       -DCMAKE_C_COMPILER=/rustroot/bin/gcc \
       -DCMAKE_CXX_COMPILER=/rustroot/bin/g++ \
       -DCMAKE_BUILD_TYPE=Release \
@@ -39,8 +40,8 @@ hide_output \
       -DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt;bolt" \
       -DC_INCLUDE_DIRS="$INC"
 
-hide_output make -j$(nproc)
-hide_output make install
+hide_output ninja
+hide_output ninja install
 
 cd ../..
 rm -rf llvm-project
