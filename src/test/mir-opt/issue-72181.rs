@@ -12,14 +12,14 @@ union Foo {
 }
 
 
-// EMIT_MIR issue_72181.foo.mir_map.0.mir
+// EMIT_MIR issue_72181.foo.built.after.mir
 fn foo(xs: [(Never, u32); 1]) -> u32 { xs[0].1 }
 
-// EMIT_MIR issue_72181.bar.mir_map.0.mir
+// EMIT_MIR issue_72181.bar.built.after.mir
 fn bar([(_, x)]: [(Never, u32); 1]) -> u32 { x }
 
 
-// EMIT_MIR issue_72181.main.mir_map.0.mir
+// EMIT_MIR issue_72181.main.built.after.mir
 fn main() {
     let _ = mem::size_of::<Foo>();
 
