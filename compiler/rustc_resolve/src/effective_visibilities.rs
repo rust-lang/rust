@@ -88,6 +88,11 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
                                 // here, but `macro_use` imports always refer to external items,
                                 // so it doesn't matter and we can just do nothing.
                             }
+                            ImportKind::MacroExport => {
+                                // In theory we should reset the parent id to something public
+                                // here, but it has the same effect as leaving the previous parent,
+                                // so we can just do nothing.
+                            }
                         }
 
                         level = Level::Reexported;
@@ -150,13 +155,6 @@ impl<'r, 'ast> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r> {
             ast::ItemKind::ForeignMod(..) => {
                 let parent_id = self.r.local_parent(def_id);
                 self.update(def_id, Visibility::Public, parent_id, Level::Direct);
-            }
-
-            // Only exported `macro_rules!` items are public, but they always are
-            ast::ItemKind::MacroDef(ref macro_def) if macro_def.macro_rules => {
-                let parent_id = self.r.local_parent(def_id);
-                let vis = self.r.visibilities[&def_id];
-                self.update(def_id, vis, parent_id, Level::Direct);
             }
 
             ast::ItemKind::Mod(..) => {

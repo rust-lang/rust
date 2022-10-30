@@ -73,6 +73,7 @@ pub enum ImportKind<'a> {
         id: NodeId,
     },
     MacroUse,
+    MacroExport,
 }
 
 /// Manually implement `Debug` for `ImportKind` because the `source/target_bindings`
@@ -113,6 +114,7 @@ impl<'a> std::fmt::Debug for ImportKind<'a> {
                 .field("id", id)
                 .finish(),
             MacroUse => f.debug_struct("MacroUse").finish(),
+            MacroExport => f.debug_struct("MacroExport").finish(),
         }
     }
 }
@@ -177,7 +179,7 @@ impl<'a> Import<'a> {
             ImportKind::Single { id, .. }
             | ImportKind::Glob { id, .. }
             | ImportKind::ExternCrate { id, .. } => Some(id),
-            ImportKind::MacroUse => None,
+            ImportKind::MacroUse | ImportKind::MacroExport => None,
         }
     }
 }
@@ -883,7 +885,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                         match binding.kind {
                                             // Never suggest the name that has binding error
                                             // i.e., the name that cannot be previously resolved
-                                            NameBindingKind::Res(Res::Err, _) => None,
+                                            NameBindingKind::Res(Res::Err) => None,
                                             _ => Some(i.name),
                                         }
                                     }
@@ -1014,7 +1016,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     let mut err =
                         struct_span_err!(self.r.session, import.span, E0364, "{error_msg}");
                     match binding.kind {
-                        NameBindingKind::Res(Res::Def(DefKind::Macro(_), def_id), _)
+                        NameBindingKind::Res(Res::Def(DefKind::Macro(_), def_id))
                             // exclude decl_macro
                             if self.r.get_macro_by_def_id(def_id).macro_rules =>
                         {
@@ -1235,5 +1237,6 @@ fn import_kind_to_string(import_kind: &ImportKind<'_>) -> String {
         ImportKind::Glob { .. } => "*".to_string(),
         ImportKind::ExternCrate { .. } => "<extern crate>".to_string(),
         ImportKind::MacroUse => "#[macro_use]".to_string(),
+        ImportKind::MacroExport => "#[macro_export]".to_string(),
     }
 }
