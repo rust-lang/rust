@@ -120,11 +120,17 @@ macro_rules! query_helper_param_ty {
 }
 
 macro_rules! query_storage {
+    ([][LocalDefId, $V:ty]) => {
+        VecCache<LocalDefId, $V>
+    };
+    ([(arena_cache) $($rest:tt)*][LocalDefId, $V:ty]) => {
+        VecArenaCache<'tcx, LocalDefId, $V>
+    };
     ([][$K:ty, $V:ty]) => {
-        <DefaultCacheSelector as CacheSelector<$K, $V>>::Cache
+        DefaultCache<$K, $V>
     };
     ([(arena_cache) $($rest:tt)*][$K:ty, $V:ty]) => {
-        <ArenaCacheSelector<'tcx> as CacheSelector<$K, $V>>::Cache
+        ArenaCache<'tcx, $K, $V>
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         query_storage!([$($modifiers)*][$($args)*])
