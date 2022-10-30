@@ -1377,11 +1377,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             } else if let Some(body_id) = outermost_body {
                 let fn_id = self.tcx.hir().body_owner(body_id);
                 match self.tcx.hir().get(fn_id) {
-                    Node::Item(&hir::Item { kind: hir::ItemKind::Fn(..), .. })
-                    | Node::TraitItem(&hir::TraitItem {
+                    Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
+                    | Node::TraitItem(hir::TraitItem {
                         kind: hir::TraitItemKind::Fn(..), ..
                     })
-                    | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
+                    | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. })
+                    | Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
                         let scope = self.tcx.hir().local_def_id(fn_id);
                         def = Region::Free(scope.to_def_id(), def.id().unwrap());
                     }
