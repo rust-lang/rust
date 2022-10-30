@@ -155,6 +155,11 @@ than building it.
             continue;
         }
 
+        // Some environments don't want or need these tools, such as when testing Miri.
+        if env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some() {
+            continue;
+        }
+
         if !build.config.dry_run {
             cmd_finder.must_have(build.cc(*target));
             if let Some(ar) = build.ar(*target) {
@@ -210,6 +215,11 @@ than building it.
                             be specified in config.toml"
                 ),
             }
+        }
+
+        // Some environments don't want or need these tools, such as when testing Miri.
+        if env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some() {
+            continue;
         }
 
         if need_cmake && target.contains("msvc") {
