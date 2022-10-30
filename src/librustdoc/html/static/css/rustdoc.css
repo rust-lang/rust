@@ -869,7 +869,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results {
 	display: none;
-	padding-bottom: 2em;
 }
 
 .search-results.active {

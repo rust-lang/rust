@@ -219,6 +219,35 @@ pub fn assert_test_result<T: Termination>(result: T) -> Result<(), String> {
     }
 }
 
+struct FilteredTests {
+    tests: Vec<(TestId, TestDescAndFn)>,
+    benchs: Vec<(TestId, TestDescAndFn)>,
+    next_id: usize,
+}
+
+impl FilteredTests {
+    fn add_bench(&mut self, desc: TestDesc, testfn: TestFn) {
+        let test = TestDescAndFn { desc, testfn };
+        self.benchs.push((TestId(self.next_id), test));
+        self.next_id += 1;
+    }
+    fn add_test(&mut self, desc: TestDesc, testfn: TestFn) {
+        let test = TestDescAndFn { desc, testfn };
+        self.tests.push((TestId(self.next_id), test));
+        self.next_id += 1;
+    }
+    fn add_bench_as_test(
+        &mut self,
+        desc: TestDesc,
+        benchfn: impl Fn(&mut Bencher) -> Result<(), String> + Send + 'static,
+    ) {
+        let testfn = DynTestFn(Box::new(move || {
+            bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
+        }));
+        self.add_test(desc, testfn);
+    }
+}
+
 pub fn run_tests<F>(
     opts: &TestOpts,
     tests: Vec<TestDescAndFn>,
@@ -247,45 +276,51 @@ where
 
     let tests_len = tests.len();
 
-    let mut filtered_tests = filter_tests(opts, tests);
-    if !opts.bench_benchmarks {
-        filtered_tests = convert_benchmarks_to_tests(filtered_tests);
+    let mut filtered = FilteredTests { tests: Vec::new(), benchs: Vec::new(), next_id: 0 };
+
+    for test in filter_tests(opts, tests) {
+        let mut desc = test.desc;
+        desc.name = desc.name.with_padding(test.testfn.padding());
+
+        match test.testfn {
+            DynBenchFn(benchfn) => {
+                if opts.bench_benchmarks {
+                    filtered.add_bench(desc, DynBenchFn(benchfn));
+                } else {
+                    filtered.add_bench_as_test(desc, benchfn);
+                }
+            }
+            StaticBenchFn(benchfn) => {
+                if opts.bench_benchmarks {
+                    filtered.add_bench(desc, StaticBenchFn(benchfn));
+                } else {
+                    filtered.add_bench_as_test(desc, benchfn);
+                }
+            }
+            testfn => {
+                filtered.add_test(desc, testfn);
+            }
+        };
     }
 
-    let filtered_tests = {
-        let mut filtered_tests = filtered_tests;
-        for test in filtered_tests.iter_mut() {
-            test.desc.name = test.desc.name.with_padding(test.testfn.padding());
-        }
-
-        filtered_tests
-    };
-
-    let filtered_out = tests_len - filtered_tests.len();
+    let filtered_out = tests_len - filtered.tests.len();
     let event = TestEvent::TeFilteredOut(filtered_out);
     notify_about_test_event(event)?;
 
-    let filtered_descs = filtered_tests.iter().map(|t| t.desc.clone()).collect();
-
     let shuffle_seed = get_shuffle_seed(opts);
 
-    let event = TestEvent::TeFiltered(filtered_descs, shuffle_seed);
+    let event = TestEvent::TeFiltered(filtered.tests.len(), shuffle_seed);
     notify_about_test_event(event)?;
-
-    let (mut filtered_tests, filtered_benchs): (Vec<_>, _) = filtered_tests
-        .into_iter()
-        .enumerate()
-        .map(|(i, e)| (TestId(i), e))
-        .partition(|(_, e)| matches!(e.testfn, StaticTestFn(_) | DynTestFn(_)));
 
     let concurrency = opts.test_threads.unwrap_or_else(get_concurrency);
 
+    let mut remaining = filtered.tests;
     if let Some(shuffle_seed) = shuffle_seed {
-        shuffle_tests(shuffle_seed, &mut filtered_tests);
+        shuffle_tests(shuffle_seed, &mut remaining);
     }
     // Store the tests in a VecDeque so we can efficiently remove the first element to run the
     // tests in the order they were passed (unless shuffled).
-    let mut remaining = VecDeque::from(filtered_tests);
+    let mut remaining = VecDeque::from(remaining);
     let mut pending = 0;
 
     let (tx, rx) = channel::<CompletedTest>();
@@ -402,7 +437,7 @@ where
 
     if opts.bench_benchmarks {
         // All benchmarks run at the end, in serial.
-        for (id, b) in filtered_benchs {
+        for (id, b) in filtered.benchs {
             let event = TestEvent::TeWait(b.desc.clone());
             notify_about_test_event(event)?;
             run_test(opts, false, id, b, run_strategy, tx.clone(), Concurrent::No);
@@ -432,7 +467,9 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     }
 
     // Skip tests that match any of the skip filters
-    filtered.retain(|test| !opts.skip.iter().any(|sf| matches_filter(test, sf)));
+    if !opts.skip.is_empty() {
+        filtered.retain(|test| !opts.skip.iter().any(|sf| matches_filter(test, sf)));
+    }
 
     // Excludes #[should_panic] tests
     if opts.exclude_should_panic {
