@@ -47,9 +47,10 @@ The supported element types are as follows:
 * **Floating Point:** `f32`, `f64`
 * **Signed Integers:** `i8`, `i16`, `i32`, `i64`, `isize` (`i128` excluded)
 * **Unsigned Integers:** `u8`, `u16`, `u32`, `u64`, `usize` (`u128` excluded)
+* **Pointers:** `*const T` and `*mut T` (zero-sized metadata only)
 * **Masks:** 8-bit, 16-bit, 32-bit, 64-bit, and `usize`-sized masks
 
-Floating point, signed integers, and unsigned integers are the [primitive types](https://doc.rust-lang.org/core/primitive/index.html) you're already used to.
+Floating point, signed integers, unsigned integers, and pointers are the [primitive types](https://doc.rust-lang.org/core/primitive/index.html) you're already used to.
 The mask types have elements that are "truthy" values, like `bool`, but have an unspecified layout because different architectures prefer different layouts for mask types.
 
 [simd-guide]: ./beginners-guide.md
