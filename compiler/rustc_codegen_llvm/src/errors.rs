@@ -117,6 +117,17 @@ pub(crate) struct UnknownArchiveKind<'a> {
     pub kind: &'a str,
 }
 
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_dynamic_linking_with_lto)]
+#[note]
+pub(crate) struct DynamicLinkingWithLTO;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_fail_parsing_target_machine_config_to_target_machine)]
+pub(crate) struct FailParsingTargetMachineConfigToTargetMachine {
+    pub error: String,
+}
+
 pub(crate) struct TargetFeatureDisableOrEnable<'a> {
     pub features: &'a [&'a str],
     pub span: Option<Span>,
