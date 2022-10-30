@@ -1137,7 +1137,7 @@ pub trait PrettyPrinter<'tcx>:
         //
         // To avoid causing instabilities in compiletest
         // output, sort the auto-traits alphabetically.
-        auto_traits.sort_by_cached_key(|did| self.tcx().def_path_str(*did));
+        auto_traits.sort_by_cached_key(|did| with_no_trimmed_paths!(self.tcx().def_path_str(*did)));
 
         for def_id in auto_traits {
             if !first {
