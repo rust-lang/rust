@@ -1,4 +1,5 @@
 use crate::back::write::{self, save_temp_bitcode, DiagnosticHandlers};
+use crate::errors::DynamicLinkingWithLTO;
 use crate::llvm::{self, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm};
 use object::read::archive::ArchiveFile;
@@ -90,13 +91,7 @@ fn prepare_lto(
         }
 
         if cgcx.opts.cg.prefer_dynamic && !cgcx.opts.unstable_opts.dylib_lto {
-            diag_handler
-                .struct_err("cannot prefer dynamic linking when performing LTO")
-                .note(
-                    "only 'staticlib', 'bin', and 'cdylib' outputs are \
-                               supported with LTO",
-                )
-                .emit();
+            diag_handler.emit_err(DynamicLinkingWithLTO);
             return Err(FatalError);
         }
 

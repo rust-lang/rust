@@ -57,3 +57,10 @@ codegen_llvm_target_feature_disable_or_enable =
 
 codegen_llvm_missing_features =
     add the missing features in a `target_feature` attribute
+
+codegen_llvm_dynamic_linking_with_lto =
+    cannot prefer dynamic linking when performing LTO
+    .note = only 'staticlib', 'bin', and 'cdylib' outputs are supported with LTO
+
+codegen_llvm_fail_parsing_target_machine_config_to_target_machine =
+    failed to parse target machine config to target machine: {$error}
