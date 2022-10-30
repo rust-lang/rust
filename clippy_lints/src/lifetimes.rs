@@ -236,7 +236,6 @@ fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: 
     }
 }
 
-#[expect(clippy::too_many_lines)]
 fn could_use_elision<'tcx>(
     cx: &LateContext<'tcx>,
     func: &'tcx FnDecl<'_>,
@@ -331,50 +330,32 @@ fn could_use_elision<'tcx>(
         }
     }
 
-    // no input lifetimes? easy case!
-    if input_lts.is_empty() {
-        None
-    } else if output_lts.is_empty() {
-        // no output lifetimes, check distinctness of input lifetimes
-
-        // only unnamed and static, ok
-        let unnamed_and_static = input_lts.iter().all(|lt| *lt == RefLt::Unnamed || *lt == RefLt::Static);
-        if unnamed_and_static {
-            return None;
-        }
-        // we have no output reference, so we can elide explicit lifetimes that occur at most once
-        let elidable_lts = named_lifetime_occurrences(&input_lts)
-            .into_iter()
-            .filter_map(|(def_id, occurrences)| {
-                if occurrences <= 1 {
-                    Some((def_id, input_visitor.sample_generic_arg_span.get(&def_id).copied()))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        if elidable_lts.is_empty() {
-            None
-        } else {
-            Some(elidable_lts)
-        }
-    } else {
-        // we have output references, so we need one input reference,
-        // and all output lifetimes must be the same
-        if input_lts.len() == 1 {
-            match (&input_lts[0], &output_lts[0]) {
-                (&RefLt::Named(n1), &RefLt::Named(n2)) if n1 == n2 => {
-                    Some(vec![(n1, input_visitor.sample_generic_arg_span.get(&n1).copied())])
-                },
-                (&RefLt::Named(n), &RefLt::Unnamed) => {
-                    Some(vec![(n, input_visitor.sample_generic_arg_span.get(&n).copied())])
-                },
-                _ => None, /* already elided, different named lifetimes
-                            * or something static going on */
+    // A lifetime can be newly elided if:
+    // - It occurs only once among the inputs.
+    // - If there are multiple input lifetimes, then the newly elided lifetime does not occur among the
+    //   outputs (because eliding such an lifetime would create an ambiguity).
+    let elidable_lts = named_lifetime_occurrences(&input_lts)
+        .into_iter()
+        .filter_map(|(def_id, occurrences)| {
+            if occurrences <= 1 && (input_lts.len() <= 1 || !output_lts.contains(&RefLt::Named(def_id))) {
+                Some((
+                    def_id,
+                    input_visitor
+                        .lifetime_generic_arg_spans
+                        .get(&def_id)
+                        .or_else(|| output_visitor.lifetime_generic_arg_spans.get(&def_id))
+                        .copied(),
+                ))
+            } else {
+                None
             }
-        } else {
-            None
-        }
+        })
+        .collect::<Vec<_>>();
+
+    if elidable_lts.is_empty() {
+        None
+    } else {
+        Some(elidable_lts)
     }
 }
 
@@ -397,11 +378,11 @@ fn named_lifetime_occurrences(lts: &[RefLt]) -> Vec<(LocalDefId, usize)> {
     let mut occurrences = Vec::new();
     for lt in lts {
         if let &RefLt::Named(curr_def_id) = lt {
-            if let Some(i) = occurrences
-                .iter()
-                .position(|&(prev_def_id, _)| prev_def_id == curr_def_id)
+            if let Some(pair) = occurrences
+                .iter_mut()
+                .find(|(prev_def_id, _)| *prev_def_id == curr_def_id)
             {
-                occurrences[i].1 += 1;
+                pair.1 += 1;
             } else {
                 occurrences.push((curr_def_id, 1));
             }
@@ -416,7 +397,7 @@ const CLOSURE_TRAIT_BOUNDS: [LangItem; 3] = [LangItem::Fn, LangItem::FnMut, Lang
 struct RefVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     lts: Vec<RefLt>,
-    sample_generic_arg_span: FxHashMap<LocalDefId, Span>,
+    lifetime_generic_arg_spans: FxHashMap<LocalDefId, Span>,
     nested_elision_site_lts: Vec<RefLt>,
     unelided_trait_object_lifetime: bool,
 }
@@ -426,7 +407,7 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
         Self {
             cx,
             lts: Vec::new(),
-            sample_generic_arg_span: FxHashMap::default(),
+            lifetime_generic_arg_spans: FxHashMap::default(),
             nested_elision_site_lts: Vec::new(),
             unelided_trait_object_lifetime: false,
         }
@@ -525,7 +506,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
         if let GenericArg::Lifetime(l) = generic_arg
             && let LifetimeName::Param(def_id, _) = l.name
         {
-            self.sample_generic_arg_span.entry(def_id).or_insert(l.span);
+            self.lifetime_generic_arg_spans.entry(def_id).or_insert(l.span);
         }
         // Replace with `walk_generic_arg` if/when https://github.com/rust-lang/rust/pull/103692 lands.
         // walk_generic_arg(self, generic_arg);

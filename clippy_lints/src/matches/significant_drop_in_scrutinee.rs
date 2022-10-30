@@ -83,8 +83,8 @@ fn set_diagnostic<'tcx>(diag: &mut Diagnostic, cx: &LateContext<'tcx>, expr: &'t
 
 /// If the expression is an `ExprKind::Match`, check if the scrutinee has a significant drop that
 /// may have a surprising lifetime.
-fn has_significant_drop_in_scrutinee<'tcx, 'a>(
-    cx: &'a LateContext<'tcx>,
+fn has_significant_drop_in_scrutinee<'tcx>(
+    cx: &LateContext<'tcx>,
     scrutinee: &'tcx Expr<'tcx>,
     source: MatchSource,
 ) -> Option<(Vec<FoundSigDrop>, &'static str)> {
