@@ -112,15 +112,14 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
+use channel::GitInfo;
 use config::{DryRun, Target};
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
 
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
-use crate::util::{
-    check_run, exe, libdir, mtime, output, run, run_suppressed, try_run, try_run_suppressed, CiEnv,
-};
+use crate::util::{exe, libdir, mtime, output, run, run_suppressed, try_run_suppressed, CiEnv};
 
 mod bolt;
 mod builder;
@@ -133,6 +132,7 @@ mod compile;
 mod config;
 mod dist;
 mod doc;
+mod download;
 mod flags;
 mod format;
 mod install;
@@ -281,7 +281,6 @@ pub struct Build {
     src: PathBuf,
     out: PathBuf,
     bootstrap_out: PathBuf,
-    rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
     rust_analyzer_info: channel::GitInfo,
     clippy_info: channel::GitInfo,
@@ -396,6 +395,28 @@ pub enum CLang {
     Cxx,
 }
 
+macro_rules! forward {
+    ( $( $fn:ident( $($param:ident: $ty:ty),* ) $( -> $ret:ty)? ),+ $(,)? ) => {
+        impl Build {
+            $( fn $fn(&self, $($param: $ty),* ) $( -> $ret)? {
+                self.config.$fn( $($param),* )
+            } )+
+        }
+    }
+}
+
+forward! {
+    verbose(msg: &str),
+    is_verbose() -> bool,
+    create(path: &Path, s: &str),
+    remove(f: &Path),
+    tempdir() -> PathBuf,
+    try_run(cmd: &mut Command) -> bool,
+    llvm_link_shared() -> bool,
+    download_rustc() -> bool,
+    initial_rustfmt() -> Option<PathBuf>,
+}
+
 impl Build {
     /// Creates a new set of build configuration from the `flags` on the command
     /// line and the filesystem `config`.
@@ -499,7 +520,6 @@ impl Build {
             out,
             bootstrap_out,
 
-            rust_info,
             cargo_info,
             rust_analyzer_info,
             clippy_info,
@@ -570,7 +590,7 @@ impl Build {
             t!(std::fs::read_dir(dir)).next().is_none()
         }
 
-        if !self.config.submodules(&self.rust_info) {
+        if !self.config.submodules(&self.rust_info()) {
             return;
         }
 
@@ -636,7 +656,7 @@ impl Build {
     /// This avoids contributors checking in a submodule change by accident.
     pub fn maybe_update_submodules(&self) {
         // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules(&self.rust_info) {
+        if !self.config.submodules(&self.rust_info()) {
             return;
         }
         let output = output(
@@ -733,6 +753,10 @@ impl Build {
         t!(fs::create_dir_all(dir));
         t!(File::create(stamp));
         cleared
+    }
+
+    fn rust_info(&self) -> &GitInfo {
+        &self.config.rust_info
     }
 
     /// Gets the space-separated set of activated features for the standard
@@ -966,45 +990,12 @@ impl Build {
     /// Runs a command, printing out nice contextual information if it fails.
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
-    fn try_run(&self, cmd: &mut Command) -> bool {
-        if self.config.dry_run() {
-            return true;
-        }
-        self.verbose(&format!("running: {:?}", cmd));
-        try_run(cmd, self.is_verbose())
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    /// Exits if the command failed to execute at all, otherwise returns its
-    /// `status.success()`.
     fn try_run_quiet(&self, cmd: &mut Command) -> bool {
         if self.config.dry_run() {
             return true;
         }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_suppressed(cmd)
-    }
-
-    /// Runs a command, printing out nice contextual information if it fails.
-    /// Returns false if do not execute at all, otherwise returns its
-    /// `status.success()`.
-    fn check_run(&self, cmd: &mut Command) -> bool {
-        if self.config.dry_run() {
-            return true;
-        }
-        self.verbose(&format!("running: {:?}", cmd));
-        check_run(cmd, self.is_verbose())
-    }
-
-    pub fn is_verbose(&self) -> bool {
-        self.verbosity > 0
-    }
-
-    /// Prints a message if this build is configured in verbose mode.
-    fn verbose(&self, msg: &str) {
-        if self.is_verbose() {
-            println!("{}", msg);
-        }
     }
 
     pub fn is_verbose_than(&self, level: usize) -> bool {
@@ -1269,7 +1260,7 @@ impl Build {
         match &self.config.channel[..] {
             "stable" => num.to_string(),
             "beta" => {
-                if self.rust_info.is_managed_git_subrepository() && !self.config.ignore_git {
+                if self.rust_info().is_managed_git_subrepository() && !self.config.ignore_git {
                     format!("{}-beta.{}", num, self.beta_prerelease_version())
                 } else {
                     format!("{}-beta", num)
@@ -1329,7 +1320,7 @@ impl Build {
     /// Note that this is a descriptive string which includes the commit date,
     /// sha, version, etc.
     fn rust_version(&self) -> String {
-        let mut version = self.rust_info.version(self, &self.version);
+        let mut version = self.rust_info().version(self, &self.version);
         if let Some(ref s) = self.config.description {
             version.push_str(" (");
             version.push_str(s);
@@ -1340,7 +1331,7 @@ impl Build {
 
     /// Returns the full commit hash.
     fn rust_sha(&self) -> Option<&str> {
-        self.rust_info.sha()
+        self.rust_info().sha()
     }
 
     /// Returns the `a.b.c` version that the given package is at.
@@ -1424,16 +1415,6 @@ impl Build {
             paths.push((path, dependency_type));
         }
         paths
-    }
-
-    /// Create a temporary directory in `out` and return its path.
-    ///
-    /// NOTE: this temporary directory is shared between all steps;
-    /// if you need an empty directory, create a new subdirectory inside it.
-    fn tempdir(&self) -> PathBuf {
-        let tmp = self.out.join("tmp");
-        t!(fs::create_dir_all(&tmp));
-        tmp
     }
 
     /// Copies a file from `src` to `dst`
@@ -1545,13 +1526,6 @@ impl Build {
         chmod(&dst, perms);
     }
 
-    fn create(&self, path: &Path, s: &str) {
-        if self.config.dry_run() {
-            return;
-        }
-        t!(fs::write(path, s));
-    }
-
     fn read(&self, path: &Path) -> String {
         if self.config.dry_run() {
             return String::new();
@@ -1588,13 +1562,6 @@ impl Build {
         #[cfg(windows)]
         use std::os::windows::fs::symlink_file;
         if !self.config.dry_run() { symlink_file(src.as_ref(), link.as_ref()) } else { Ok(()) }
-    }
-
-    fn remove(&self, f: &Path) {
-        if self.config.dry_run() {
-            return;
-        }
-        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
     }
 
     /// Returns if config.ninja is enabled, and checks for ninja existence,
