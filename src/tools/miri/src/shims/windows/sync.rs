@@ -1,3 +1,7 @@
+use std::time::Duration;
+
+use rustc_target::abi::Size;
+
 use crate::concurrency::init_once::InitOnceStatus;
 use crate::concurrency::thread::MachineCallback;
 use crate::*;
@@ -6,7 +10,6 @@ const SRWLOCK_ID_OFFSET: u64 = 0;
 const INIT_ONCE_ID_OFFSET: u64 = 0;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-
 #[allow(non_snake_case)]
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn AcquireSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
@@ -220,5 +223,106 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         this.eval_windows("c", "TRUE")
+    }
+
+    fn WaitOnAddress(
+        &mut self,
+        ptr_op: &OpTy<'tcx, Provenance>,
+        compare_op: &OpTy<'tcx, Provenance>,
+        size_op: &OpTy<'tcx, Provenance>,
+        timeout_op: &OpTy<'tcx, Provenance>,
+        dest: &PlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let ptr = this.read_pointer(ptr_op)?;
+        let compare = this.read_pointer(compare_op)?;
+        let size = this.read_scalar(size_op)?.to_machine_usize(this)?;
+        let timeout_ms = this.read_scalar(timeout_op)?.to_u32()?;
+
+        let thread = this.get_active_thread();
+        let addr = ptr.addr().bytes();
+
+        if size > 8 || !size.is_power_of_two() {
+            let invalid_param = this.eval_windows("c", "ERROR_INVALID_PARAMETER")?;
+            this.set_last_error(invalid_param)?;
+            this.write_scalar(Scalar::from_i32(0), dest)?;
+            return Ok(());
+        };
+        let size = Size::from_bytes(size);
+
+        let timeout_time = if timeout_ms == this.eval_windows("c", "INFINITE")?.to_u32()? {
+            None
+        } else {
+            let duration = Duration::from_millis(timeout_ms.into());
+            Some(Time::Monotonic(this.machine.clock.now().checked_add(duration).unwrap()))
+        };
+
+        // See the Linux futex implementation for why this fence exists.
+        this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
+        let layout = this.machine.layouts.uint(size).unwrap();
+        let futex_val = this
+            .read_scalar_atomic(&MPlaceTy::from_aligned_ptr(ptr, layout), AtomicReadOrd::Relaxed)?;
+        let compare_val = this.read_scalar(&MPlaceTy::from_aligned_ptr(compare, layout).into())?;
+
+        if futex_val == compare_val {
+            // If the values are the same, we have to block.
+            this.block_thread(thread);
+            this.futex_wait(addr, thread, u32::MAX);
+
+            if let Some(timeout_time) = timeout_time {
+                struct Callback<'tcx> {
+                    thread: ThreadId,
+                    addr: u64,
+                    dest: PlaceTy<'tcx, Provenance>,
+                }
+
+                impl<'tcx> VisitTags for Callback<'tcx> {
+                    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+                        let Callback { thread: _, addr: _, dest } = self;
+                        dest.visit_tags(visit);
+                    }
+                }
+
+                impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
+                    fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+                        this.unblock_thread(self.thread);
+                        this.futex_remove_waiter(self.addr, self.thread);
+                        let error_timeout = this.eval_windows("c", "ERROR_TIMEOUT")?;
+                        this.set_last_error(error_timeout)?;
+                        this.write_scalar(Scalar::from_i32(0), &self.dest)?;
+
+                        Ok(())
+                    }
+                }
+
+                this.register_timeout_callback(
+                    thread,
+                    timeout_time,
+                    Box::new(Callback { thread, addr, dest: dest.clone() }),
+                );
+            }
+        }
+
+        this.write_scalar(Scalar::from_i32(1), dest)?;
+
+        Ok(())
+    }
+
+    fn WakeByAddressSingle(&mut self, ptr_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let ptr = this.read_pointer(ptr_op)?;
+
+        // See the Linux futex implementation for why this fence exists.
+        this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
+        if let Some(thread) = this.futex_wake(ptr.addr().bytes(), u32::MAX) {
+            this.unblock_thread(thread);
+            this.unregister_timeout_callback_if_exists(thread);
+        }
+
+        Ok(())
     }
 }

@@ -1,4 +1,3 @@
-//@ignore-target-windows: no threads nor sleep on Windows
 //@compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-isolation
 use std::sync::{Arc, Mutex};
 use std::thread;

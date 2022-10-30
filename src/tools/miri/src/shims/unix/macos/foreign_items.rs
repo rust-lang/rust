@@ -177,11 +177,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let thread = this.pthread_self()?;
                 let max_len = this.eval_libc("MAXTHREADNAMESIZE")?.to_machine_usize(this)?;
-                this.pthread_setname_np(
+                let res = this.pthread_setname_np(
                     thread,
                     this.read_scalar(name)?,
                     max_len.try_into().unwrap(),
                 )?;
+                // Contrary to the manpage, `pthread_setname_np` on macOS still
+                // returns an integer indicating success.
+                this.write_scalar(res, dest)?;
             }
             "pthread_getname_np" => {
                 let [thread, name, len] =

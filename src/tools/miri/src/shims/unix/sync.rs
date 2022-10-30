@@ -743,8 +743,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        this.check_no_isolation("`pthread_cond_timedwait`")?;
-
         let id = this.condvar_get_or_create_id(cond_op, CONDVAR_ID_OFFSET)?;
         let mutex_id = this.mutex_get_or_create_id(mutex_op, MUTEX_ID_OFFSET)?;
         let active_thread = this.get_active_thread();
@@ -761,6 +759,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
 
         let timeout_time = if clock_id == this.eval_libc_i32("CLOCK_REALTIME")? {
+            this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
             Time::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
         } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC")? {
             Time::Monotonic(this.machine.clock.anchor().checked_add(duration).unwrap())
