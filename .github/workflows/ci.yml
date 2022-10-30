@@ -30,11 +30,7 @@ jobs:
           sudo apt-get install -y build-essential curl wget xz-utils git python3
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: nightly
-            override: true
-            components: rustfmt, clippy
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Check out cargo-wasix
         uses: actions/checkout@v3
@@ -45,11 +41,10 @@ jobs:
           fetch-depth: 2
 
       - name: Print cargo-wasix info
-        shell: bash
         run: |
-          cd cargo-wasix
+          cd ./cargo-wasix
           echo "cargo-wasix commit:"
-          echo $(git rev-parse head)
+          git rev-parse HEAD
 
       - name: Build
         shell: bash
@@ -79,6 +74,8 @@ jobs:
         exclude:
           - os: windows-2019
             arch: aarch64
+          - os: self-hosted-windows
+            arch: aarch64
           - os: self-hosted-ubuntu
             arch: aarch64
           - os: ubuntu-latest
@@ -87,6 +84,11 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        if: matrix.os != 'self-hosted-windows'
+        with:
+            toolchain: stable
 
       - name: Download wasix-libc artifact
         uses: actions/download-artifact@v3
@@ -110,12 +112,9 @@ jobs:
           git fetch --unshallow origin $(git branch --show-current)
 
           echo "Branch history fetched!"
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: nightly
-            override: true
-            components: rustfmt, clippy
+
+      # - name: Install Rust
+      #   uses: dtolnay/rust-toolchain@stable
 
       - name: Check out cargo-wasix
         uses: actions/checkout@v3
@@ -215,22 +214,29 @@ jobs:
 
       # Windows
 
-      - name: Set up MinGW
-        if: (matrix.os == 'windows-2019' || matrix.os == 'self-hosted-windows' ) && matrix.arch == 'x86'
+      - name: Install chocolatey deps (Windows)
+        if: (matrix.os == 'self-hosted-windows') && matrix.arch == 'x86'
+        shell: bash
+        run:
+          choco install -y git python3 visualstudio2019community cmake 
+
+      - name: Set up MinGW (Windows)
+        if: (matrix.os == 'windows-2019') && matrix.arch == 'x86'
         uses: egor-tensin/setup-mingw@v2
-      
-      - name: Install ninja
-        if: (matrix.os == 'windows-2019' || matrix.os == 'self-hosted-windows' ) && matrix.arch == 'x86'
+
+      - name: Install ninja (Windows)
+        if: (matrix.os == 'windows-2019') && matrix.arch == 'x86'
         uses: seanmiddleditch/gha-setup-ninja@master
 
       - name: Build (Windows)
         if: (matrix.os == 'windows-2019' || matrix.os == 'self-hosted-windows' ) && matrix.arch == 'x86'
+        continue-on-error: true
         shell: bash
         env:
           WASIX_NO_UPDATE_REPOS: '1'
           WASIX_COMPONENTS: rust
-          # WASIX_RUST_HOST: x86_64-pc-windows-gnu
-          WASIX_RUST_HOST: x86_64-pc-windows-msvc
+          WASIX_RUST_HOST: x86_64-pc-windows-gnu
+          # WASIX_RUST_HOST: x86_64-pc-windows-msvc
         run: |
           cd cargo-wasix
           # NOTE: must unset GITHUB_ACTIONS env var, because Rst bootstrap checks for it.
@@ -241,7 +247,8 @@ jobs:
         if: (matrix.os == 'windows-2019' || matrix.os == 'self-hosted-windows' ) && matrix.arch == 'x86'
         uses: actions/upload-artifact@v3
         with:
-          name: rust-toolchain-x86_64-pc-windows-msvc
+          # name: rust-toolchain-x86_64-pc-windows-msvc
+          name: rust-toolchain-x86_64-pc-windows-gnu
           path: |
-            wasix-rust/build/x86_64-pc-windows-msvc/stage2
-            !wasix-rust/build/x86_64-pc-windows-msvc/stage2/lib/rustlib/src
+            wasix-rust/build/x86_64-pc-windows-gnu/stage2
+            !wasix-rust/build/x86_64-pc-windows-gnu/stage2/lib/rustlib/src
