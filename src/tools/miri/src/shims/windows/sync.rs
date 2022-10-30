@@ -3,6 +3,7 @@ use std::time::Duration;
 use rustc_target::abi::Size;
 
 use crate::concurrency::init_once::InitOnceStatus;
+use crate::concurrency::sync::{CondvarLock, RwLockMode};
 use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
@@ -18,23 +19,24 @@ pub trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tc
         &mut self,
         thread: ThreadId,
         lock: RwLockId,
-        shared: bool,
+        mode: RwLockMode,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.unblock_thread(thread);
 
-        if shared {
-            if this.rwlock_is_locked(lock) {
-                this.rwlock_enqueue_and_block_reader(lock, thread);
-            } else {
-                this.rwlock_reader_lock(lock, thread);
-            }
-        } else {
-            if this.rwlock_is_write_locked(lock) {
-                this.rwlock_enqueue_and_block_writer(lock, thread);
-            } else {
-                this.rwlock_writer_lock(lock, thread);
-            }
+        match mode {
+            RwLockMode::Read =>
+                if this.rwlock_is_locked(lock) {
+                    this.rwlock_enqueue_and_block_reader(lock, thread);
+                } else {
+                    this.rwlock_reader_lock(lock, thread);
+                },
+            RwLockMode::Write =>
+                if this.rwlock_is_write_locked(lock) {
+                    this.rwlock_enqueue_and_block_writer(lock, thread);
+                } else {
+                    this.rwlock_writer_lock(lock, thread);
+                },
         }
 
         Ok(())
@@ -383,14 +385,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
 
         let shared_mode = 0x1; // CONDITION_VARIABLE_LOCKMODE_SHARED is not in std
-        let shared = flags == shared_mode;
+        let mode = if flags == 0 {
+            RwLockMode::Write
+        } else if flags == shared_mode {
+            RwLockMode::Read
+        } else {
+            throw_unsup_format!("unsupported `Flags` {flags} in `SleepConditionVariableSRW`");
+        };
 
         let active_thread = this.get_active_thread();
 
-        let was_locked = if shared {
-            this.rwlock_reader_unlock(lock_id, active_thread)
-        } else {
-            this.rwlock_writer_unlock(lock_id, active_thread)
+        let was_locked = match mode {
+            RwLockMode::Read => this.rwlock_reader_unlock(lock_id, active_thread),
+            RwLockMode::Write => this.rwlock_writer_unlock(lock_id, active_thread),
         };
 
         if !was_locked {
@@ -400,27 +407,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         this.block_thread(active_thread);
-        this.condvar_wait(condvar_id, active_thread, lock_id.to_u32(), shared);
+        this.condvar_wait(condvar_id, active_thread, CondvarLock::RwLock { id: lock_id, mode });
 
         if let Some(timeout_time) = timeout_time {
             struct Callback<'tcx> {
                 thread: ThreadId,
                 condvar_id: CondvarId,
                 lock_id: RwLockId,
-                shared: bool,
+                mode: RwLockMode,
                 dest: PlaceTy<'tcx, Provenance>,
             }
 
             impl<'tcx> VisitTags for Callback<'tcx> {
                 fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
-                    let Callback { thread: _, condvar_id: _, lock_id: _, shared: _, dest } = self;
+                    let Callback { thread: _, condvar_id: _, lock_id: _, mode: _, dest } = self;
                     dest.visit_tags(visit);
                 }
             }
 
             impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
                 fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-                    this.reacquire_cond_lock(self.thread, self.lock_id, self.shared)?;
+                    this.reacquire_cond_lock(self.thread, self.lock_id, self.mode)?;
 
                     this.condvar_remove_waiter(self.condvar_id, self.thread);
 
@@ -438,7 +445,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     thread: active_thread,
                     condvar_id,
                     lock_id,
-                    shared,
+                    mode,
                     dest: dest.clone(),
                 }),
             );
@@ -451,9 +458,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let condvar_id = this.condvar_get_or_create_id(condvar_op, CONDVAR_ID_OFFSET)?;
 
-        if let Some((thread, lock, shared)) = this.condvar_signal(condvar_id) {
-            this.reacquire_cond_lock(thread, RwLockId::from_u32(lock), shared)?;
-            this.unregister_timeout_callback_if_exists(thread);
+        if let Some((thread, lock)) = this.condvar_signal(condvar_id) {
+            if let CondvarLock::RwLock { id, mode } = lock {
+                this.reacquire_cond_lock(thread, id, mode)?;
+                this.unregister_timeout_callback_if_exists(thread);
+            } else {
+                panic!("mutexes should not exist on windows");
+            }
         }
 
         Ok(())
@@ -466,9 +477,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let condvar_id = this.condvar_get_or_create_id(condvar_op, CONDVAR_ID_OFFSET)?;
 
-        while let Some((thread, lock, shared)) = this.condvar_signal(condvar_id) {
-            this.reacquire_cond_lock(thread, RwLockId::from_u32(lock), shared)?;
-            this.unregister_timeout_callback_if_exists(thread);
+        while let Some((thread, lock)) = this.condvar_signal(condvar_id) {
+            if let CondvarLock::RwLock { id, mode } = lock {
+                this.reacquire_cond_lock(thread, id, mode)?;
+                this.unregister_timeout_callback_if_exists(thread);
+            } else {
+                panic!("mutexes should not exist on windows");
+            }
         }
 
         Ok(())
