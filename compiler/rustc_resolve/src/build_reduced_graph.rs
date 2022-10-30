@@ -56,21 +56,7 @@ impl<'a, Id: Into<DefId>> ToNameBinding<'a>
 impl<'a, Id: Into<DefId>> ToNameBinding<'a> for (Res, ty::Visibility<Id>, Span, LocalExpnId) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Res(self.0, false),
-            ambiguity: None,
-            vis: self.1.to_def_id(),
-            span: self.2,
-            expansion: self.3,
-        })
-    }
-}
-
-struct IsMacroExport;
-
-impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, LocalExpnId, IsMacroExport) {
-    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
-        arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Res(self.0, true),
+            kind: NameBindingKind::Res(self.0),
             ambiguity: None,
             vis: self.1.to_def_id(),
             span: self.2,
@@ -1267,8 +1253,22 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             let binding = (res, vis, span, expansion).to_name_binding(self.r.arenas);
             self.r.set_binding_parent_module(binding, parent_scope.module);
             if is_macro_export {
-                let module = self.r.graph_root;
-                self.r.define(module, ident, MacroNS, (res, vis, span, expansion, IsMacroExport));
+                let import = self.r.arenas.alloc_import(Import {
+                    kind: ImportKind::MacroExport,
+                    root_id: item.id,
+                    parent_scope: self.parent_scope,
+                    imported_module: Cell::new(None),
+                    has_attributes: false,
+                    use_span_with_attributes: span,
+                    use_span: span,
+                    root_span: span,
+                    span: span,
+                    module_path: Vec::new(),
+                    vis: Cell::new(Some(vis)),
+                    used: Cell::new(true),
+                });
+                let import_binding = self.r.import(binding, import);
+                self.r.define(self.r.graph_root, ident, MacroNS, import_binding);
             } else {
                 self.r.check_reserved_macro_name(ident, res);
                 self.insert_unused_macro(ident, def_id, item.id, &rule_spans);
