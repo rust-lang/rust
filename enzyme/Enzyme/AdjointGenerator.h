@@ -2195,6 +2195,34 @@ public:
       }
       break;
     }
+    case Instruction::FRem: {
+      if (!constantval0) {
+        dif0 = idiff;
+      }
+      if (!constantval1) {
+        auto M = gutils->newFunc->getParent();
+        Value *lop0 = lookup(gutils->getNewFromOriginal(orig_op0), Builder2);
+        Value *lop1 = lookup(gutils->getNewFromOriginal(orig_op1), Builder2);
+        Value *div = Builder2.CreateFDiv(lop0, lop1);
+
+        Type *tys[] = {div->getType()};
+        Value *args[] = {div};
+        args[0] = Builder2.CreateCall(
+            Intrinsic::getDeclaration(M, Intrinsic::fabs, tys), args);
+        args[0] = Builder2.CreateCall(
+            Intrinsic::getDeclaration(M, Intrinsic::floor, tys), args);
+        Value *args2[] = {args[0], div};
+        args[0] = Builder2.CreateCall(
+            Intrinsic::getDeclaration(M, Intrinsic::copysign, tys), args2);
+        args[0] = Builder2.CreateFNeg(args[0]);
+
+        auto rule = [&](Value *idiff) {
+          return Builder2.CreateFMul(idiff, args[0]);
+        };
+        dif1 = applyChainRule(orig_op1->getType(), Builder2, rule, idiff);
+      }
+      break;
+    }
     case Instruction::LShr: {
       if (!constantval0) {
         if (auto ci = dyn_cast<ConstantInt>(orig_op1)) {
@@ -2646,6 +2674,46 @@ public:
       Value *idiff5 = applyChainRule(BO.getType(), Builder2, rule, idiff3);
       setDiffe(&BO, idiff5, Builder2);
 
+      break;
+    }
+    case Instruction::FRem: {
+      Value *round = nullptr;
+      if (!constantval1) {
+        auto M = gutils->newFunc->getParent();
+        Value *lop0 = gutils->getNewFromOriginal(orig_op0);
+        Value *lop1 = gutils->getNewFromOriginal(orig_op1);
+        Value *div = Builder2.CreateFDiv(lop0, lop1);
+
+        Type *tys[] = {div->getType()};
+        Value *args[] = {div};
+        args[0] = Builder2.CreateCall(
+            Intrinsic::getDeclaration(M, Intrinsic::fabs, tys), args);
+        args[0] = Builder2.CreateCall(
+            Intrinsic::getDeclaration(M, Intrinsic::floor, tys), args);
+        Value *args2[] = {args[0], div};
+        args[0] = Builder2.CreateCall(
+            Intrinsic::getDeclaration(M, Intrinsic::copysign, tys), args2);
+        round = Builder2.CreateFNeg(args[0]);
+      }
+
+      if (!constantval0 && !constantval1) {
+        auto rule = [&](Value *dif0, Value *dif1) {
+          return Builder2.CreateFAdd(dif0, Builder2.CreateFMul(dif1, round));
+        };
+        setDiffe(
+            &BO,
+            applyChainRule(orig_op1->getType(), Builder2, rule, dif[0], dif[1]),
+            Builder2);
+      } else if (!constantval0) {
+        setDiffe(&BO, dif[1], Builder2);
+      } else if (!constantval1) {
+        auto rule = [&](Value *dif1) {
+          return Builder2.CreateFMul(dif1, round);
+        };
+        setDiffe(&BO,
+                 applyChainRule(orig_op1->getType(), Builder2, rule, dif[1]),
+                 Builder2);
+      }
       break;
     }
     case Instruction::And: {
