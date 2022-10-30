@@ -354,3 +354,133 @@ impl IntoDiagnostic<'_> for LinkingFailed<'_> {
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_link_exe_unexpected_error)]
+pub struct LinkExeUnexpectedError;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_repair_vs_build_tools)]
+pub struct RepairVSBuildTools;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_missing_cpp_build_tool_component)]
+pub struct MissingCppBuildToolComponent;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_select_cpp_build_tool_workload)]
+pub struct SelectCppBuildToolWorkload;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_visual_studio_not_installed)]
+pub struct VisualStudioNotInstalled;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_linker_not_found)]
+#[note]
+pub struct LinkerNotFound {
+    pub linker_path: PathBuf,
+    pub error: Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unable_to_exe_linker)]
+#[note]
+#[note(command_note)]
+pub struct UnableToExeLinker {
+    pub linker_path: PathBuf,
+    pub error: Error,
+    pub command_formatted: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_msvc_missing_linker)]
+pub struct MsvcMissingLinker;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_check_installed_visual_studio)]
+pub struct CheckInstalledVisualStudio;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unsufficient_vs_code_product)]
+pub struct UnsufficientVSCodeProduct;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_processing_dymutil_failed)]
+#[note]
+pub struct ProcessingDymutilFailed {
+    pub status: ExitStatus,
+    pub output: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unable_to_run_dsymutil)]
+#[note]
+pub struct UnableToRunDsymutil {
+    pub error: Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_stripping_debu_info_failed)]
+#[note]
+pub struct StrippingDebuInfoFailed<'a> {
+    pub util: &'a str,
+    pub status: ExitStatus,
+    pub output: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unable_to_run)]
+pub struct UnableToRun<'a> {
+    pub util: &'a str,
+    pub error: Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_linker_file_stem)]
+pub struct LinkerFileStem;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_static_library_native_artifacts)]
+pub struct StaticLibraryNativeArtifacts;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_native_static_libs)]
+pub struct NativeStaticLibs {
+    pub arguments: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_link_script_unavailable)]
+pub struct LinkScriptUnavailable;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_link_script_write_failure)]
+pub struct LinkScriptWriteFailure {
+    pub path: PathBuf,
+    pub error: Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_failed_to_write)]
+pub struct FailedToWrite {
+    pub path: PathBuf,
+    pub error: Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unable_to_write_debugger_visualizer)]
+pub struct UnableToWriteDebuggerVisualizer {
+    pub path: PathBuf,
+    pub error: Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_rlib_archive_build_failure)]
+pub struct RlibArchiveBuildFailure {
+    pub error: Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_option_gcc_only)]
+pub struct OptionGccOnly;

@@ -13,6 +13,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
+use std::process::ExitStatus;
 
 pub struct DiagnosticArgFromDisplay<'a>(pub &'a dyn fmt::Display);
 
@@ -66,7 +67,8 @@ into_diagnostic_arg_using_display!(
     ParseIntError,
     StackProtector,
     &TargetTriple,
-    SplitDebuginfo
+    SplitDebuginfo,
+    ExitStatus,
 );
 
 impl IntoDiagnosticArg for bool {
