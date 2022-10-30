@@ -1,6 +1,6 @@
 //! A collection of utility functions for the `strip_*` passes.
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::privacy::EffectiveVisibilities;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
 use std::mem;
@@ -8,10 +8,12 @@ use std::mem;
 use crate::clean::{self, Item, ItemId, ItemIdSet, NestedAttributesExt};
 use crate::fold::{strip_item, DocFolder};
 use crate::formats::cache::Cache;
+use crate::visit_lib::RustdocEffectiveVisibilities;
 
-pub(crate) struct Stripper<'a> {
+pub(crate) struct Stripper<'a, 'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) retained: &'a mut ItemIdSet,
-    pub(crate) effective_visibilities: &'a EffectiveVisibilities<DefId>,
+    pub(crate) effective_visibilities: &'a RustdocEffectiveVisibilities,
     pub(crate) update_retained: bool,
     pub(crate) is_json_output: bool,
 }
@@ -21,18 +23,19 @@ pub(crate) struct Stripper<'a> {
 // are in the public API, which is not enough.
 #[inline]
 fn is_item_reachable(
+    tcx: TyCtxt<'_>,
     is_json_output: bool,
-    effective_visibilities: &EffectiveVisibilities<DefId>,
+    effective_visibilities: &RustdocEffectiveVisibilities,
     item_id: ItemId,
 ) -> bool {
     if is_json_output {
-        effective_visibilities.is_reachable(item_id.expect_def_id())
+        effective_visibilities.is_reachable(tcx, item_id.expect_def_id())
     } else {
-        effective_visibilities.is_exported(item_id.expect_def_id())
+        effective_visibilities.is_exported(tcx, item_id.expect_def_id())
     }
 }
 
-impl<'a> DocFolder for Stripper<'a> {
+impl<'a> DocFolder for Stripper<'a, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
             clean::StrippedItem(..) => {
@@ -66,7 +69,12 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::ForeignTypeItem => {
                 let item_id = i.item_id;
                 if item_id.is_local()
-                    && !is_item_reachable(self.is_json_output, self.effective_visibilities, item_id)
+                    && !is_item_reachable(
+                        self.tcx,
+                        self.is_json_output,
+                        self.effective_visibilities,
+                        item_id,
+                    )
                 {
                     debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
                     return None;
@@ -146,14 +154,15 @@ impl<'a> DocFolder for Stripper<'a> {
 }
 
 /// This stripper discards all impls which reference stripped items
-pub(crate) struct ImplStripper<'a> {
+pub(crate) struct ImplStripper<'a, 'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) retained: &'a ItemIdSet,
     pub(crate) cache: &'a Cache,
     pub(crate) is_json_output: bool,
     pub(crate) document_private: bool,
 }
 
-impl<'a> ImplStripper<'a> {
+impl<'a> ImplStripper<'a, '_> {
     #[inline]
     fn should_keep_impl(&self, item: &Item, for_def_id: DefId) -> bool {
         if !for_def_id.is_local() || self.retained.contains(&for_def_id.into()) {
@@ -161,7 +170,7 @@ impl<'a> ImplStripper<'a> {
         } else if self.is_json_output {
             // If the "for" item is exported and the impl block isn't `#[doc(hidden)]`, then we
             // need to keep it.
-            self.cache.effective_visibilities.is_exported(for_def_id)
+            self.cache.effective_visibilities.is_exported(self.tcx, for_def_id)
                 && !item.attrs.lists(sym::doc).has_word(sym::hidden)
         } else {
             false
@@ -169,7 +178,7 @@ impl<'a> ImplStripper<'a> {
     }
 }
 
-impl<'a> DocFolder for ImplStripper<'a> {
+impl<'a> DocFolder for ImplStripper<'a, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = *i.kind {
             // Impl blocks can be skipped if they are: empty; not a trait impl; and have no
@@ -185,6 +194,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
                         let item_id = i.item_id;
                         item_id.is_local()
                             && !is_item_reachable(
+                                self.tcx,
                                 self.is_json_output,
                                 &self.cache.effective_visibilities,
                                 item_id,
