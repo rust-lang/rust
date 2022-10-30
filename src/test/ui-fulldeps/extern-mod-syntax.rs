@@ -3,8 +3,8 @@
 #![allow(unused_imports)]
 #![feature(rustc_private)]
 
-extern crate rustc_serialize;
-use rustc_serialize::json::Object;
+extern crate libc;
+use libc::c_void;
 
 pub fn main() {
     println!("Hello world!");

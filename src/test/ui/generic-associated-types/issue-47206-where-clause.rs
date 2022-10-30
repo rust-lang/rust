@@ -1,7 +1,5 @@
 // Check that this program doesn't cause the compiler to error without output.
 
-#![feature(generic_associated_types)]
-
 trait Foo {
     type Assoc3<T>;
 }

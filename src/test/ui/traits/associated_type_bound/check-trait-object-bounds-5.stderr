@@ -1,8 +1,10 @@
 error[E0271]: type mismatch resolving `<i32 as Is>::T == i64`
-  --> $DIR/check-trait-object-bounds-5.rs:23:5
+  --> $DIR/check-trait-object-bounds-5.rs:23:12
    |
 LL |     is_obj(x)
-   |     ^^^^^^ type mismatch resolving `<i32 as Is>::T == i64`
+   |     ------ ^ type mismatch resolving `<i32 as Is>::T == i64`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: expected this to be `i64`
   --> $DIR/check-trait-object-bounds-5.rs:9:14

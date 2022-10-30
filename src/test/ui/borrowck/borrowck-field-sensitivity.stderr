@@ -108,23 +108,35 @@ LL |     let _z = A { a: 4, .. x };
    |
    = note: move occurs because `x.b` has type `Box<isize>`, which does not implement the `Copy` trait
 
-error[E0381]: assign to part of possibly-uninitialized variable: `x`
+error[E0381]: partially assigned binding `x` isn't fully initialized
   --> $DIR/borrowck-field-sensitivity.rs:81:5
    |
+LL |     let mut x: A;
+   |         ----- binding declared here but left uninitialized
 LL |     x.a = 1;
-   |     ^^^^^^^ use of possibly-uninitialized `x`
+   |     ^^^^^^^ `x` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: assign to part of possibly-uninitialized variable: `x`
+error[E0381]: partially assigned binding `x` isn't fully initialized
   --> $DIR/borrowck-field-sensitivity.rs:87:5
    |
+LL |     let mut x: A;
+   |         ----- binding declared here but left uninitialized
 LL |     x.a = 1;
-   |     ^^^^^^^ use of possibly-uninitialized `x`
+   |     ^^^^^^^ `x` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: assign to part of possibly-uninitialized variable: `x`
+error[E0381]: partially assigned binding `x` isn't fully initialized
   --> $DIR/borrowck-field-sensitivity.rs:94:5
    |
+LL |     let mut x: A;
+   |         ----- binding declared here but left uninitialized
 LL |     x.b = Box::new(1);
-   |     ^^^ use of possibly-uninitialized `x`
+   |     ^^^ `x` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error: aborting due to 14 previous errors
 

@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
             if let ExprKind::Path(path) = &func.kind;
             if let Some(did) = cx.qpath_res(path, func.hir_id).opt_def_id();
             if match_libc_symbol(cx, did, "strlen");
-            if let ExprKind::MethodCall(path, [self_arg], _) = recv.kind;
+            if let ExprKind::MethodCall(path, self_arg, [], _) = recv.kind;
             if !recv.span.from_expansion();
             if path.ident.name == sym::as_ptr;
             then {
@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
                     span,
                     "using `libc::strlen` on a `CString` or `CStr` value",
                     "try this",
-                    format!("{}.{}().len()", val_name, method_name),
+                    format!("{val_name}.{method_name}().len()"),
                     app,
                 );
             }

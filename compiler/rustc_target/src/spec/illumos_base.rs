@@ -1,10 +1,9 @@
-use crate::spec::{cvs, FramePointer, LinkArgs, LinkerFlavor, TargetOptions};
+use crate::spec::{cvs, Cc, FramePointer, LinkerFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let mut late_link_args = LinkArgs::new();
-    late_link_args.insert(
-        LinkerFlavor::Gcc,
-        vec![
+    let late_link_args = TargetOptions::link_args(
+        LinkerFlavor::Unix(Cc::Yes),
+        &[
             // The illumos libc contains a stack unwinding implementation, as
             // does libgcc_s.  The latter implementation includes several
             // additional symbols that are not always in base libc.  To force
@@ -15,24 +14,23 @@ pub fn opts() -> TargetOptions {
             // FIXME: This should be replaced by a more complete and generic
             // mechanism for controlling the order of library arguments passed
             // to the linker.
-            "-lc".into(),
+            "-lc",
             // LLVM will insert calls to the stack protector functions
             // "__stack_chk_fail" and "__stack_chk_guard" into code in native
             // object files.  Some platforms include these symbols directly in
             // libc, but at least historically these have been provided in
             // libssp.so on illumos and Solaris systems.
-            "-lssp".into(),
+            "-lssp",
         ],
     );
 
     TargetOptions {
         os: "illumos".into(),
         dynamic_linking: true,
-        executables: true,
         has_rpath: true,
         families: cvs!["unix"],
         is_like_solaris: true,
-        linker_is_gnu: false,
+        linker_flavor: LinkerFlavor::Unix(Cc::Yes),
         limit_rdylib_exports: false, // Linker doesn't support this
         frame_pointer: FramePointer::Always,
         eh_frame_header: false,

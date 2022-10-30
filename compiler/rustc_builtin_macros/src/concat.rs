@@ -39,7 +39,7 @@ pub fn expand_concat(
                 ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..) => {
                     cx.span_err(e.span, "cannot concatenate a byte string literal");
                 }
-                ast::LitKind::Err(_) => {
+                ast::LitKind::Err => {
                     has_errors = true;
                 }
             },

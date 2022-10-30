@@ -1,5 +1,6 @@
 #![allow(missing_docs, nonstandard_style)]
 
+use crate::ffi::CStr;
 use crate::io::ErrorKind;
 
 pub use self::rand::hashmap_random_keys;
@@ -43,12 +44,13 @@ pub mod thread_parker;
 pub mod time;
 
 #[cfg(target_os = "espidf")]
-pub fn init(argc: isize, argv: *const *const u8) {}
+pub fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {}
 
 #[cfg(not(target_os = "espidf"))]
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(argc: isize, argv: *const *const u8) {
+// See `fn init()` in `library/std/src/rt.rs` for docs on `sigpipe`.
+pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // The standard streams might be closed on application startup. To prevent
     // std::io::{stdin, stdout,stderr} objects from using other unrelated file
     // resources opened later, we reopen standards streams when they are closed.
@@ -60,42 +62,85 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     // want!
     //
     // Hence, we set SIGPIPE to ignore when the program starts up in order
-    // to prevent this problem.
-    reset_sigpipe();
+    // to prevent this problem. Add `#[unix_sigpipe = "..."]` above `fn main()` to
+    // alter this behavior.
+    reset_sigpipe(sigpipe);
 
     stack_overflow::init();
     args::init(argc, argv);
 
+    // Normally, `thread::spawn` will call `Thread::set_name` but since this thread
+    // already exists, we have to call it ourselves. We only do this on macos
+    // because some unix-like operating systems such as Linux share process-id and
+    // thread-id for the main thread and so renaming the main thread will rename the
+    // process and we only want to enable this on platforms we've tested.
+    if cfg!(target_os = "macos") {
+        thread::Thread::set_name(&CStr::from_bytes_with_nul_unchecked(b"main\0"));
+    }
+
     unsafe fn sanitize_standard_fds() {
-        #[cfg(not(miri))]
-        // The standard fds are always available in Miri.
-        cfg_if::cfg_if! {
-            if #[cfg(not(any(
-                target_os = "emscripten",
-                target_os = "fuchsia",
-                target_os = "vxworks",
-                // The poll on Darwin doesn't set POLLNVAL for closed fds.
-                target_os = "macos",
-                target_os = "ios",
-                target_os = "redox",
-                target_os = "l4re",
-            )))] {
-                use crate::sys::os::errno;
-                let pfds: &mut [_] = &mut [
-                    libc::pollfd { fd: 0, events: 0, revents: 0 },
-                    libc::pollfd { fd: 1, events: 0, revents: 0 },
-                    libc::pollfd { fd: 2, events: 0, revents: 0 },
-                ];
-                while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
-                    if errno() == libc::EINTR {
-                        continue;
+        // fast path with a single syscall for systems with poll()
+        #[cfg(not(any(
+            miri,
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            target_os = "vxworks",
+            // The poll on Darwin doesn't set POLLNVAL for closed fds.
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "watchos",
+            target_os = "redox",
+            target_os = "l4re",
+            target_os = "horizon",
+        )))]
+        'poll: {
+            use crate::sys::os::errno;
+            let pfds: &mut [_] = &mut [
+                libc::pollfd { fd: 0, events: 0, revents: 0 },
+                libc::pollfd { fd: 1, events: 0, revents: 0 },
+                libc::pollfd { fd: 2, events: 0, revents: 0 },
+            ];
+
+            while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
+                match errno() {
+                    libc::EINTR => continue,
+                    libc::EINVAL | libc::EAGAIN | libc::ENOMEM => {
+                        // RLIMIT_NOFILE or temporary allocation failures
+                        // may be preventing use of poll(), fall back to fcntl
+                        break 'poll;
                     }
+                    _ => libc::abort(),
+                }
+            }
+            for pfd in pfds {
+                if pfd.revents & libc::POLLNVAL == 0 {
+                    continue;
+                }
+                if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                    // If the stream is closed but we failed to reopen it, abort the
+                    // process. Otherwise we wouldn't preserve the safety of
+                    // operations on the corresponding Rust object Stdin, Stdout, or
+                    // Stderr.
                     libc::abort();
                 }
-                for pfd in pfds {
-                    if pfd.revents & libc::POLLNVAL == 0 {
-                        continue;
-                    }
+            }
+            return;
+        }
+
+        // fallback in case poll isn't available or limited by RLIMIT_NOFILE
+        #[cfg(not(any(
+            // The standard fds are always available in Miri.
+            miri,
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            target_os = "vxworks",
+            target_os = "l4re",
+            target_os = "horizon",
+        )))]
+        {
+            use crate::sys::os::errno;
+            for fd in 0..3 {
+                if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
                     if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
                         // If the stream is closed but we failed to reopen it, abort the
                         // process. Otherwise we wouldn't preserve the safety of
@@ -104,22 +149,35 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
                         libc::abort();
                     }
                 }
-            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "redox"))] {
-                use crate::sys::os::errno;
-                for fd in 0..3 {
-                    if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                        if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
-                            libc::abort();
-                        }
-                    }
-                }
             }
         }
     }
 
-    unsafe fn reset_sigpipe() {
-        #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia")))]
-        rtassert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
+    unsafe fn reset_sigpipe(#[allow(unused_variables)] sigpipe: u8) {
+        #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia", target_os = "horizon")))]
+        {
+            // We don't want to add this as a public type to libstd, nor do we
+            // want to `include!` a file from the compiler (which would break
+            // Miri and xargo for example), so we choose to duplicate these
+            // constants from `compiler/rustc_session/src/config/sigpipe.rs`.
+            // See the other file for docs. NOTE: Make sure to keep them in
+            // sync!
+            mod sigpipe {
+                pub const INHERIT: u8 = 1;
+                pub const SIG_IGN: u8 = 2;
+                pub const SIG_DFL: u8 = 3;
+            }
+
+            let handler = match sigpipe {
+                sigpipe::INHERIT => None,
+                sigpipe::SIG_IGN => Some(libc::SIG_IGN),
+                sigpipe::SIG_DFL => Some(libc::SIG_DFL),
+                _ => unreachable!(),
+            };
+            if let Some(handler) = handler {
+                rtassert!(signal(libc::SIGPIPE, handler) != libc::SIG_ERR);
+            }
+        }
     }
 }
 
@@ -235,8 +293,10 @@ pub fn abort_internal() -> ! {
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
-        #[link(name = "dl")]
-        #[link(name = "log")]
+        #[link(name = "dl", kind = "static", modifiers = "-bundle",
+            cfg(target_feature = "crt-static"))]
+        #[link(name = "dl", cfg(not(target_feature = "crt-static")))]
+        #[link(name = "log", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
     } else if #[cfg(target_os = "freebsd")] {
         #[link(name = "execinfo")]
@@ -270,7 +330,7 @@ cfg_if::cfg_if! {
         // See #41582 and https://blog.achernya.com/2013/03/os-x-has-silly-libsystem.html
         #[link(name = "resolv")]
         extern "C" {}
-    } else if #[cfg(target_os = "ios")] {
+    } else if #[cfg(any(target_os = "ios", target_os = "watchos"))] {
         #[link(name = "System")]
         #[link(name = "objc")]
         #[link(name = "Security", kind = "framework")]
@@ -287,7 +347,7 @@ cfg_if::cfg_if! {
     }
 }
 
-#[cfg(target_os = "espidf")]
+#[cfg(any(target_os = "espidf", target_os = "horizon"))]
 mod unsupported {
     use crate::io;
 

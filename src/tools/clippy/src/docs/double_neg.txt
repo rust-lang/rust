@@ -1,0 +1,12 @@
+### What it does
+Detects expressions of the form `--x`.
+
+### Why is this bad?
+It can mislead C/C++ programmers to think `x` was
+decremented.
+
+### Example
+```
+let mut x = 3;
+--x;
+```

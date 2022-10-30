@@ -3,8 +3,6 @@
 
 // check-pass
 
-#![feature(nll)]
-
 const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
 
 fn main() { }

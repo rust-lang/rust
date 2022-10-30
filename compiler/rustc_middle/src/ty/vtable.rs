@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt;
 
-use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar, ScalarMaybeUninit};
+use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar};
 use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 use rustc_ast::Mutability;
 
@@ -87,7 +87,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
                 let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
                 let fn_alloc_id = tcx.create_fn_alloc(instance);
                 let fn_ptr = Pointer::from(fn_alloc_id);
-                ScalarMaybeUninit::from_pointer(fn_ptr, &tcx)
+                Scalar::from_pointer(fn_ptr, &tcx)
             }
             VtblEntry::MetadataSize => Scalar::from_uint(size, ptr_size).into(),
             VtblEntry::MetadataAlign => Scalar::from_uint(align, ptr_size).into(),
@@ -97,14 +97,14 @@ pub(super) fn vtable_allocation_provider<'tcx>(
                 let instance = instance.polymorphize(tcx);
                 let fn_alloc_id = tcx.create_fn_alloc(instance);
                 let fn_ptr = Pointer::from(fn_alloc_id);
-                ScalarMaybeUninit::from_pointer(fn_ptr, &tcx)
+                Scalar::from_pointer(fn_ptr, &tcx)
             }
             VtblEntry::TraitVPtr(trait_ref) => {
                 let super_trait_ref = trait_ref
                     .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
                 let supertrait_alloc_id = tcx.vtable_allocation((ty, Some(super_trait_ref)));
                 let vptr = Pointer::from(supertrait_alloc_id);
-                ScalarMaybeUninit::from_pointer(vptr, &tcx)
+                Scalar::from_pointer(vptr, &tcx)
             }
         };
         vtable

@@ -30,22 +30,20 @@ const HEADER_FORMAT_VERSION: u16 = 0;
 /// the Git commit hash.
 const RUSTC_VERSION: Option<&str> = option_env!("CFG_VERSION");
 
-pub(crate) fn write_file_header(stream: &mut FileEncoder, nightly_build: bool) -> FileEncodeResult {
-    stream.emit_raw_bytes(FILE_MAGIC)?;
-    stream.emit_raw_bytes(&[
-        (HEADER_FORMAT_VERSION >> 0) as u8,
-        (HEADER_FORMAT_VERSION >> 8) as u8,
-    ])?;
+pub(crate) fn write_file_header(stream: &mut FileEncoder, nightly_build: bool) {
+    stream.emit_raw_bytes(FILE_MAGIC);
+    stream
+        .emit_raw_bytes(&[(HEADER_FORMAT_VERSION >> 0) as u8, (HEADER_FORMAT_VERSION >> 8) as u8]);
 
     let rustc_version = rustc_version(nightly_build);
     assert_eq!(rustc_version.len(), (rustc_version.len() as u8) as usize);
-    stream.emit_raw_bytes(&[rustc_version.len() as u8])?;
-    stream.emit_raw_bytes(rustc_version.as_bytes())
+    stream.emit_raw_bytes(&[rustc_version.len() as u8]);
+    stream.emit_raw_bytes(rustc_version.as_bytes());
 }
 
 pub(crate) fn save_in<F>(sess: &Session, path_buf: PathBuf, name: &str, encode: F)
 where
-    F: FnOnce(&mut FileEncoder) -> FileEncodeResult,
+    F: FnOnce(FileEncoder) -> FileEncodeResult,
 {
     debug!("save: storing data in {}", path_buf.display());
 
@@ -80,28 +78,21 @@ where
         }
     };
 
-    if let Err(err) = write_file_header(&mut encoder, sess.is_nightly_build()) {
-        sess.err(&format!("failed to write {} header to `{}`: {}", name, path_buf.display(), err));
-        return;
+    write_file_header(&mut encoder, sess.is_nightly_build());
+
+    match encode(encoder) {
+        Ok(position) => {
+            sess.prof.artifact_size(
+                &name.replace(' ', "_"),
+                path_buf.file_name().unwrap().to_string_lossy(),
+                position as u64,
+            );
+            debug!("save: data written to disk successfully");
+        }
+        Err(err) => {
+            sess.err(&format!("failed to write {} to `{}`: {}", name, path_buf.display(), err));
+        }
     }
-
-    if let Err(err) = encode(&mut encoder) {
-        sess.err(&format!("failed to write {} to `{}`: {}", name, path_buf.display(), err));
-        return;
-    }
-
-    if let Err(err) = encoder.flush() {
-        sess.err(&format!("failed to flush {} to `{}`: {}", name, path_buf.display(), err));
-        return;
-    }
-
-    sess.prof.artifact_size(
-        &name.replace(' ', "_"),
-        path_buf.file_name().unwrap().to_string_lossy(),
-        encoder.position() as u64,
-    );
-
-    debug!("save: data written to disk successfully");
 }
 
 /// Reads the contents of a file with a file header as defined in this module.

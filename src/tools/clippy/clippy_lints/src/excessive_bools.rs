@@ -18,7 +18,6 @@ declare_clippy_lint! {
     /// readability and API.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// struct S {
     ///     is_pending: bool,
@@ -27,7 +26,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// enum S {
     ///     Pending,
@@ -55,12 +54,11 @@ declare_clippy_lint! {
     /// API easier to use.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// fn f(is_round: bool, is_hot: bool) { ... }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// enum Shape {
     ///     Round,
@@ -96,7 +94,7 @@ impl ExcessiveBools {
 
     fn check_fn_sig(&self, cx: &EarlyContext<'_>, fn_sig: &FnSig, span: Span) {
         match fn_sig.header.ext {
-            Extern::Implicit | Extern::Explicit(_) => return,
+            Extern::Implicit(_) | Extern::Explicit(_, _) => return,
             Extern::None => (),
         }
 

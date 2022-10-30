@@ -55,7 +55,7 @@ fn add_moves_for_packed_drops_patch<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) 
     let mut patch = MirPatch::new(body);
     let param_env = tcx.param_env(def_id);
 
-    for (bb, data) in body.basic_blocks().iter_enumerated() {
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
         let loc = Location { block: bb, statement_index: data.statements.len() };
         let terminator = data.terminator();
 

@@ -79,7 +79,7 @@ error[E0382]: use of moved value: `a[..].0`
   --> $DIR/borrowck-move-out-from-array-match.rs:89:11
    |
 LL |         [_y @ .., _, _] => {}
-   |          ------- value moved here
+   |          -- value moved here
 ...
 LL |         [(_x, _), _, _] => {}
    |           ^^ value used here after move
@@ -90,7 +90,7 @@ error[E0382]: use of moved value: `a[..].0`
   --> $DIR/borrowck-move-out-from-array-match.rs:99:15
    |
 LL |         [_, _, _y @ ..] => {}
-   |                ------- value moved here
+   |                -- value moved here
 ...
 LL |         [.., (_x, _)] => {}
    |               ^^ value used here after move
@@ -101,7 +101,7 @@ error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-match.rs:110:11
    |
 LL |         [x @ .., _] => {}
-   |          ------ value partially moved here
+   |          - value partially moved here
 LL |     }
 LL |     match a {
    |           ^ value used here after partial move

@@ -66,13 +66,15 @@
 ///
 /// // And now we can use it!
 ///
-/// let counter = Counter::new();
+/// let mut counter = Counter::new();
 ///
 /// assert_eq!(5, counter.len());
+/// let _ = counter.next();
+/// assert_eq!(4, counter.len());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
-    /// Returns the exact length of the iterator.
+    /// Returns the exact remaining length of the iterator.
     ///
     /// The implementation ensures that the iterator will return exactly `len()`
     /// more times a [`Some(T)`] value, before returning [`None`].
@@ -93,9 +95,11 @@ pub trait ExactSizeIterator: Iterator {
     ///
     /// ```
     /// // a finite range knows exactly how many times it will iterate
-    /// let five = 0..5;
+    /// let mut range = 0..5;
     ///
-    /// assert_eq!(5, five.len());
+    /// assert_eq!(5, range.len());
+    /// let _ = range.next();
+    /// assert_eq!(4, range.len());
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]

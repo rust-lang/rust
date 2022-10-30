@@ -1,0 +1,17 @@
+### What it does
+
+Detects cases where a whole-number literal float is being rounded, using
+the `floor`, `ceil`, or `round` methods.
+
+### Why is this bad?
+
+This is unnecessary and confusing to the reader. Doing this is probably a mistake.
+
+### Example
+```
+let x = 1f32.ceil();
+```
+Use instead:
+```
+let x = 1f32;
+```

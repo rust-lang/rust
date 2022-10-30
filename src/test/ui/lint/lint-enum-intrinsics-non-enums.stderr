@@ -4,12 +4,12 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     discriminant(&());
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `#[deny(enum_intrinsics_non_enums)]` on by default
 note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `()`, which is not an enum.
   --> $DIR/lint-enum-intrinsics-non-enums.rs:26:18
    |
 LL |     discriminant(&());
    |                  ^^^
+   = note: `#[deny(enum_intrinsics_non_enums)]` on by default
 
 error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
   --> $DIR/lint-enum-intrinsics-non-enums.rs:29:5

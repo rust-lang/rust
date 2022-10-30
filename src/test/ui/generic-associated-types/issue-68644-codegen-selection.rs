@@ -1,7 +1,5 @@
 // Regression test for #68644
 
-#![feature(generic_associated_types)]
-
 trait Fun {
     type F<'a>: Fn() -> u32;
 

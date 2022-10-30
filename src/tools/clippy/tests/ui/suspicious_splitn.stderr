@@ -4,8 +4,8 @@ error: `splitn` called with `0` splits
 LL |     let _ = "a,b".splitn(0, ',');
    |             ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::suspicious-splitn` implied by `-D warnings`
    = note: the resulting iterator will always return `None`
+   = note: `-D clippy::suspicious-splitn` implied by `-D warnings`
 
 error: `rsplitn` called with `0` splits
   --> $DIR/suspicious_splitn.rs:11:13

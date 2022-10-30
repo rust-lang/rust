@@ -3,7 +3,6 @@
 
 // run-pass
 #![allow(dead_code)]
-#![feature(box_syntax)]
 
 // Tests for a previous bug that occurred due to an interaction
 // between struct field initialization and the auto-coercion
@@ -24,11 +23,11 @@ struct Thing2<'a> {
 pub fn main() {
     let _t1_fixed = Thing1 {
         baz: &[],
-        bar: box 32,
+        bar: Box::new(32),
     };
     Thing1 {
         baz: &Vec::new(),
-        bar: box 32,
+        bar: Box::new(32),
     };
     let _t2_fixed = Thing2 {
         baz: &[],

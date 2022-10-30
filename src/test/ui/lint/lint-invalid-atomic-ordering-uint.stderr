@@ -4,8 +4,8 @@ error: atomic loads cannot have `Release` or `AcqRel` ordering
 LL |     let _ = x.load(Ordering::Release);
    |                    ^^^^^^^^^^^^^^^^^
    |
-   = note: `#[deny(invalid_atomic_ordering)]` on by default
    = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+   = note: `#[deny(invalid_atomic_ordering)]` on by default
 
 error: atomic loads cannot have `Release` or `AcqRel` ordering
   --> $DIR/lint-invalid-atomic-ordering-uint.rs:21:20

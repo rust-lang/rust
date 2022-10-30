@@ -2,7 +2,6 @@ use std::error::Error;
 use std::fmt;
 
 use rustc_errors::Diagnostic;
-use rustc_hir as hir;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::{layout::LayoutError, query::TyCtxtAt, ConstInt};
 use rustc_span::{Span, Symbol};
@@ -10,12 +9,12 @@ use rustc_span::{Span, Symbol};
 use super::InterpCx;
 use crate::interpret::{
     struct_error, ErrorHandled, FrameInfo, InterpError, InterpErrorInfo, Machine, MachineStopType,
+    UnsupportedOpInfo,
 };
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
 pub enum ConstEvalErrKind {
-    NeedsRfc(String),
     ConstAccessesStatic,
     ModifiedGlobal,
     AssertFailure(AssertKind<ConstInt>),
@@ -23,11 +22,7 @@ pub enum ConstEvalErrKind {
     Abort(String),
 }
 
-impl MachineStopType for ConstEvalErrKind {
-    fn is_hard_err(&self) -> bool {
-        matches!(self, Self::Panic { .. })
-    }
-}
+impl MachineStopType for ConstEvalErrKind {}
 
 // The errors become `MachineStop` with plain strings when being raised.
 // `ConstEvalErr` (in `librustc_middle/mir/interpret/error.rs`) knows to
@@ -42,9 +37,6 @@ impl fmt::Display for ConstEvalErrKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::ConstEvalErrKind::*;
         match *self {
-            NeedsRfc(ref msg) => {
-                write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg)
-            }
             ConstAccessesStatic => write!(f, "constant accesses static"),
             ModifiedGlobal => {
                 write!(f, "modifying a static's initial value from another static's initializer")
@@ -82,54 +74,16 @@ impl<'tcx> ConstEvalErr<'tcx> {
         'tcx: 'mir,
     {
         error.print_backtrace();
-        let stacktrace = ecx.generate_stacktrace();
-        ConstEvalErr {
-            error: error.into_kind(),
-            stacktrace,
-            span: span.unwrap_or_else(|| ecx.cur_span()),
-        }
-    }
-
-    pub fn struct_error(
-        &self,
-        tcx: TyCtxtAt<'tcx>,
-        message: &str,
-        decorate: impl FnOnce(&mut Diagnostic),
-    ) -> ErrorHandled {
-        self.struct_generic(tcx, message, decorate, None)
+        let mut stacktrace = ecx.generate_stacktrace();
+        // Filter out `requires_caller_location` frames.
+        stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
+        // If `span` is missing, use topmost remaining frame, or else the "root" span from `ecx.tcx`.
+        let span = span.or_else(|| stacktrace.first().map(|f| f.span)).unwrap_or(ecx.tcx.span);
+        ConstEvalErr { error: error.into_kind(), stacktrace, span }
     }
 
     pub fn report_as_error(&self, tcx: TyCtxtAt<'tcx>, message: &str) -> ErrorHandled {
         self.struct_error(tcx, message, |_| {})
-    }
-
-    pub fn report_as_lint(
-        &self,
-        tcx: TyCtxtAt<'tcx>,
-        message: &str,
-        lint_root: hir::HirId,
-        span: Option<Span>,
-    ) -> ErrorHandled {
-        self.struct_generic(
-            tcx,
-            message,
-            |lint: &mut Diagnostic| {
-                // Apply the span.
-                if let Some(span) = span {
-                    let primary_spans = lint.span.primary_spans().to_vec();
-                    // point at the actual error as the primary span
-                    lint.replace_span_with(span);
-                    // point to the `const` statement as a secondary span
-                    // they don't have any label
-                    for sp in primary_spans {
-                        if sp != span {
-                            lint.span_label(sp, "");
-                        }
-                    }
-                }
-            },
-            Some(lint_root),
-        )
     }
 
     /// Create a diagnostic for this const eval error.
@@ -140,17 +94,29 @@ impl<'tcx> ConstEvalErr<'tcx> {
     ///
     /// If `lint_root.is_some()` report it as a lint, else report it as a hard error.
     /// (Except that for some errors, we ignore all that -- see `must_error` below.)
-    fn struct_generic(
+    #[instrument(skip(self, tcx, decorate), level = "debug")]
+    pub fn struct_error(
         &self,
         tcx: TyCtxtAt<'tcx>,
         message: &str,
         decorate: impl FnOnce(&mut Diagnostic),
-        lint_root: Option<hir::HirId>,
     ) -> ErrorHandled {
         let finish = |err: &mut Diagnostic, span_msg: Option<String>| {
             trace!("reporting const eval failure at {:?}", self.span);
             if let Some(span_msg) = span_msg {
                 err.span_label(self.span, span_msg);
+            }
+            // Add some more context for select error types.
+            match self.error {
+                InterpError::Unsupported(
+                    UnsupportedOpInfo::ReadPointerAsBytes
+                    | UnsupportedOpInfo::PartialPointerOverwrite(_)
+                    | UnsupportedOpInfo::PartialPointerCopy(_),
+                ) => {
+                    err.help("this code performed an operation that depends on the underlying bytes representing a pointer");
+                    err.help("the absolute address of a pointer is not known at compile-time, so such operations are not supported");
+                }
+                _ => {}
             }
             // Add spans for the stacktrace. Don't print a single-line backtrace though.
             if self.stacktrace.len() > 1 {
@@ -190,6 +156,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
             decorate(err);
         };
 
+        debug!("self.error: {:?}", self.error);
         // Special handling for certain errors
         match &self.error {
             // Don't emit a new diagnostic for these errors
@@ -213,27 +180,9 @@ impl<'tcx> ConstEvalErr<'tcx> {
 
         let err_msg = self.error.to_string();
 
-        // Regular case - emit a lint.
-        if let Some(lint_root) = lint_root {
-            // Report as lint.
-            let hir_id =
-                self.stacktrace.iter().rev().find_map(|frame| frame.lint_root).unwrap_or(lint_root);
-            tcx.struct_span_lint_hir(
-                rustc_session::lint::builtin::CONST_ERR,
-                hir_id,
-                tcx.span,
-                |lint| {
-                    let mut lint = lint.build(message);
-                    finish(&mut lint, Some(err_msg));
-                    lint.emit();
-                },
-            );
-            ErrorHandled::Linted
-        } else {
-            // Report as hard error.
-            let mut err = struct_error(tcx, message);
-            finish(&mut err, Some(err_msg));
-            ErrorHandled::Reported(err.emit())
-        }
+        // Report as hard error.
+        let mut err = struct_error(tcx, message);
+        finish(&mut err, Some(err_msg));
+        ErrorHandled::Reported(err.emit())
     }
 }

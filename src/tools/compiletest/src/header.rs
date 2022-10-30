@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use tracing::*;
 
-use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PanicStrategy, PassMode};
+use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PassMode};
 use crate::util;
 use crate::{extract_cdb_version, extract_gdb_version};
 
@@ -60,6 +60,8 @@ impl EarlyProps {
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String>,
+    // Regexes that should be expected, in order, on standard out
+    pub regex_error_patterns: Vec<String>,
     // Extra flags to pass to the compiler
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
@@ -163,6 +165,7 @@ pub struct TestProps {
 
 mod directives {
     pub const ERROR_PATTERN: &'static str = "error-pattern";
+    pub const REGEX_ERROR_PATTERN: &'static str = "regex-error-pattern";
     pub const COMPILE_FLAGS: &'static str = "compile-flags";
     pub const RUN_FLAGS: &'static str = "run-flags";
     pub const SHOULD_ICE: &'static str = "should-ice";
@@ -200,6 +203,7 @@ impl TestProps {
     pub fn new() -> Self {
         TestProps {
             error_patterns: vec![],
+            regex_error_patterns: vec![],
             compile_flags: vec![],
             run_flags: None,
             pp_exact: None,
@@ -244,6 +248,7 @@ impl TestProps {
 
         // copy over select properties to the aux build:
         props.incremental_dir = self.incremental_dir.clone();
+        props.ignore_pass = true;
         props.load_from(testfile, cfg, config);
 
         props
@@ -284,6 +289,12 @@ impl TestProps {
                     &mut self.error_patterns,
                     |r| r,
                 );
+                config.push_name_value_directive(
+                    ln,
+                    REGEX_ERROR_PATTERN,
+                    &mut self.regex_error_patterns,
+                    |r| r,
+                );
 
                 if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
                     self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
@@ -293,7 +304,7 @@ impl TestProps {
                 }
 
                 if let Some(edition) = config.parse_edition(ln) {
-                    self.compile_flags.push(format!("--edition={}", edition));
+                    self.compile_flags.push(format!("--edition={}", edition.trim()));
                     has_edition = true;
                 }
 
@@ -395,7 +406,29 @@ impl TestProps {
                 );
                 config.set_name_directive(ln, STDERR_PER_BITWIDTH, &mut self.stderr_per_bitwidth);
                 config.set_name_directive(ln, INCREMENTAL, &mut self.incremental);
-                config.set_name_directive(ln, KNOWN_BUG, &mut self.known_bug);
+
+                // Unlike the other `name_value_directive`s this needs to be handled manually,
+                // because it sets a `bool` flag.
+                if let Some(known_bug) = config.parse_name_value_directive(ln, KNOWN_BUG) {
+                    let known_bug = known_bug.trim();
+                    if known_bug == "unknown"
+                        || known_bug.split(',').all(|issue_ref| {
+                            issue_ref
+                                .trim()
+                                .split_once('#')
+                                .filter(|(_, number)| {
+                                    number.chars().all(|digit| digit.is_numeric())
+                                })
+                                .is_some()
+                        })
+                    {
+                        self.known_bug = true;
+                    } else {
+                        panic!(
+                            "Invalid known-bug value: {known_bug}\nIt requires comma-separated issue references (`#000` or `chalk#000`) or `unknown`."
+                        );
+                    }
+                }
                 config.set_name_value_directive(ln, MIR_UNIT_TEST, &mut self.mir_unit_test, |s| {
                     s.trim().to_string()
                 });
@@ -502,6 +535,29 @@ impl TestProps {
     }
 }
 
+pub fn line_directive<'line>(
+    comment: &str,
+    ln: &'line str,
+) -> Option<(Option<&'line str>, &'line str)> {
+    if ln.starts_with(comment) {
+        let ln = ln[comment.len()..].trim_start();
+        if ln.starts_with('[') {
+            // A comment like `//[foo]` is specific to revision `foo`
+            if let Some(close_brace) = ln.find(']') {
+                let lncfg = &ln[1..close_brace];
+
+                Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
+            } else {
+                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
+            }
+        } else {
+            Some((None, ln))
+        }
+    } else {
+        None
+    }
+}
+
 fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>, &str)) {
     if testfile.is_dir() {
         return;
@@ -524,17 +580,8 @@ fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
-        } else if ln.starts_with(comment) && ln[comment.len()..].trim_start().starts_with('[') {
-            // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find(']') {
-                let open_brace = ln.find('[').unwrap();
-                let lncfg = &ln[open_brace + 1..close_brace];
-                it(Some(lncfg), ln[(close_brace + 1)..].trim_start());
-            } else {
-                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
-            }
-        } else if ln.starts_with(comment) {
-            it(None, ln[comment.len()..].trim_start());
+        } else if let Some((lncfg, ln)) = line_directive(comment, ln) {
+            it(lncfg, ln);
         }
     }
 }
@@ -614,20 +661,38 @@ impl Config {
 
         let name = line[prefix.len() + 1..].split(&[':', ' '][..]).next().unwrap();
 
+        let matches_pointer_width = || {
+            name.strip_suffix("bit")
+                .and_then(|width| width.parse::<u32>().ok())
+                .map(|width| self.get_pointer_width() == width)
+                .unwrap_or(false)
+        };
+
+        // If something is ignored for emscripten, it likely also needs to be
+        // ignored for wasm32-unknown-unknown.
+        // `wasm32-bare` is an alias to refer to just wasm32-unknown-unknown
+        // (in contrast to `wasm32` which also matches non-bare targets like
+        // asmjs-unknown-emscripten).
+        let matches_wasm32_alias = || {
+            self.target == "wasm32-unknown-unknown" && matches!(name, "emscripten" | "wasm32-bare")
+        };
+
         let is_match = name == "test" ||
             self.target == name ||                              // triple
-            util::matches_os(&self.target, name) ||             // target
-            util::matches_env(&self.target, name) ||            // env
+            self.matches_os(name) ||
+            self.matches_env(name) ||
+            self.matches_abi(name) ||
+            self.matches_family(name) ||
             self.target.ends_with(name) ||                      // target and env
-            name == util::get_arch(&self.target) ||             // architecture
-            name == util::get_pointer_width(&self.target) ||    // pointer width
+            self.matches_arch(name) ||
+            matches_wasm32_alias() ||
+            matches_pointer_width() ||
             name == self.stage_id.split('-').next().unwrap() || // stage
             name == self.channel ||                             // channel
             (self.target != self.host && name == "cross-compile") ||
-            (name == "endian-big" && util::is_big_endian(&self.target)) ||
+            (name == "endian-big" && self.is_big_endian()) ||
             (self.remote_test_client.is_some() && name == "remote") ||
             match self.compare_mode {
-                Some(CompareMode::Nll) => name == "compare-mode-nll",
                 Some(CompareMode::Polonius) => name == "compare-mode-polonius",
                 Some(CompareMode::Chalk) => name == "compare-mode-chalk",
                 Some(CompareMode::SplitDwarf) => name == "compare-mode-split-dwarf",
@@ -823,22 +888,36 @@ pub fn make_test_description<R: Read>(
 
     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
     let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
-    let has_asm_support = util::has_asm_support(&config.target);
+    let has_asm_support = config.has_asm_support();
     let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_cfi = util::CFI_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_memtag = util::MEMTAG_SUPPORTED_TARGETS.contains(&&*config.target);
-    // for `-Z gcc-ld=lld`
+    let has_shadow_call_stack = util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(&&*config.target);
+
+    // For tests using the `needs-rust-lld` directive (e.g. for `-Zgcc-ld=lld`), we need to find
+    // whether `rust-lld` is present in the compiler under test.
+    //
+    // The --compile-lib-path is the path to host shared libraries, but depends on the OS. For
+    // example:
+    // - on linux, it can be <sysroot>/lib
+    // - on windows, it can be <sysroot>/bin
+    //
+    // However, `rust-lld` is only located under the lib path, so we look for it there.
     let has_rust_lld = config
         .compile_lib_path
+        .parent()
+        .expect("couldn't traverse to the parent of the specified --compile-lib-path")
+        .join("lib")
         .join("rustlib")
         .join(&config.target)
         .join("bin")
-        .join("gcc-ld")
-        .join(if config.host.contains("windows") { "ld.exe" } else { "ld" })
+        .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
         .exists();
+
     iter_header(path, src, &mut |revision, ln| {
         if revision.is_some() && revision != cfg {
             return;
@@ -862,13 +941,15 @@ pub fn make_test_description<R: Read>(
         ignore |= !rustc_has_sanitizer_support
             && config.parse_name_directive(ln, "needs-sanitizer-support");
         ignore |= !has_asan && config.parse_name_directive(ln, "needs-sanitizer-address");
+        ignore |= !has_cfi && config.parse_name_directive(ln, "needs-sanitizer-cfi");
         ignore |= !has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak");
         ignore |= !has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory");
         ignore |= !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread");
         ignore |= !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress");
         ignore |= !has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag");
-        ignore |= config.target_panic == PanicStrategy::Abort
-            && config.parse_name_directive(ln, "needs-unwind");
+        ignore |= !has_shadow_call_stack
+            && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack");
+        ignore |= !config.can_unwind() && config.parse_name_directive(ln, "needs-unwind");
         ignore |= config.target == "wasm32-unknown-unknown"
             && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS);
         ignore |= config.debugger == Some(Debugger::Cdb) && ignore_cdb(config, ln);

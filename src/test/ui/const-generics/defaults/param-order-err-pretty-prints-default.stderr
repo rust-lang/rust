@@ -1,4 +1,4 @@
-error: lifetime parameters must be declared prior to const parameters
+error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/param-order-err-pretty-prints-default.rs:1:33
    |
 LL | struct Foo<const M: usize = 10, 'a>(&'a u32);

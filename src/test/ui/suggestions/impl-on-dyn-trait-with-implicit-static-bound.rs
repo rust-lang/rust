@@ -1,9 +1,5 @@
-// FIXME(nll): On NLL stabilization, this should be replaced by
-// `impl-on-dyn-trait-with-implicit-static-bound-nll.rs`. Compiletest has
-// problems with rustfix and revisions.
-// ignore-compare-mode-nll
+// FIXME(#96332): We should be able to suggest a fix and automatically fix.
 
-// run-rustfix
 #![allow(dead_code)]
 
 mod foo {
@@ -22,7 +18,7 @@ mod foo {
     impl<T> Irrelevant for dyn ObjectTrait<T> {}
 
     fn use_it<'a, T>(val: &'a dyn ObjectTrait<T>) -> impl OtherTrait<'a> + 'a {
-        val.use_self::<T>() //~ ERROR E0759
+        val.use_self::<T>() //~ ERROR borrowed data escapes
     }
 }
 
@@ -39,7 +35,7 @@ mod bar {
     impl Irrelevant for dyn ObjectTrait {}
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> &'a () {
-        val.use_self() //~ ERROR E0772
+        val.use_self()
     }
 }
 
@@ -56,7 +52,7 @@ mod baz {
     impl Irrelevant for Box<dyn ObjectTrait> {}
 
     fn use_it<'a>(val: &'a Box<dyn ObjectTrait + 'a>) -> &'a () {
-        val.use_self() //~ ERROR E0772
+        val.use_self()
     }
 }
 
@@ -71,7 +67,8 @@ mod bat {
     }
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
-        val.use_self() //~ ERROR E0772
+        val.use_self()
+        //~^ ERROR borrowed data escapes
     }
 }
 
@@ -90,7 +87,7 @@ mod ban {
     impl MyTrait for dyn ObjectTrait {}
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> {
-        val.use_self() //~ ERROR E0759
+        val.use_self() //~ ERROR borrowed data escapes
     }
 }
 
@@ -110,7 +107,7 @@ mod bal {
     impl Irrelevant for dyn ObjectTrait {}
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
-        MyTrait::use_self(val) //~ ERROR E0759
+        MyTrait::use_self(val) //~ ERROR borrowed data escapes
     }
 }
 

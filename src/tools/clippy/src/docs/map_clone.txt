@@ -1,0 +1,22 @@
+### What it does
+Checks for usage of `map(|x| x.clone())` or
+dereferencing closures for `Copy` types, on `Iterator` or `Option`,
+and suggests `cloned()` or `copied()` instead
+
+### Why is this bad?
+Readability, this can be written more concisely
+
+### Example
+```
+let x = vec![42, 43];
+let y = x.iter();
+let z = y.map(|i| *i);
+```
+
+The correct use would be:
+
+```
+let x = vec![42, 43];
+let y = x.iter();
+let z = y.cloned();
+```

@@ -5,7 +5,7 @@
 // If you turn off deduplicate diagnostics (which rustc turns on by default but
 // compiletest turns off when it runs ui tests), then the errors are
 // (unfortunately) repeated here because the checking is done as we read in the
-// errors, and curretly that happens two or three different times, depending on
+// errors, and currently that happens two or three different times, depending on
 // compiler flags.
 //
 // I decided avoiding the redundant output was not worth the time in engineering

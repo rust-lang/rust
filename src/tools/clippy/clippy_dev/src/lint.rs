@@ -13,7 +13,7 @@ fn exit_if_err(status: io::Result<ExitStatus>) {
     }
 }
 
-pub fn run<'a>(path: &str, args: impl Iterator<Item = &'a str>) {
+pub fn run<'a>(path: &str, args: impl Iterator<Item = &'a String>) {
     let is_file = match fs::metadata(path) {
         Ok(metadata) => metadata.is_file(),
         Err(e) => {

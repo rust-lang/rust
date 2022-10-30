@@ -1,8 +1,7 @@
 // run-rustfix
-
 #![warn(clippy::or_fun_call)]
 #![allow(dead_code)]
-#![allow(clippy::unnecessary_wraps, clippy::borrow_as_ptr)]
+#![allow(clippy::borrow_as_ptr, clippy::uninlined_format_args, clippy::unnecessary_wraps)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -79,19 +78,19 @@ fn or_fun_call() {
     without_default.unwrap_or_else(Foo::new);
 
     let mut map = HashMap::<u64, String>::new();
-    map.entry(42).or_insert(String::new());
+    map.entry(42).or_default();
 
     let mut map_vec = HashMap::<u64, Vec<i32>>::new();
-    map_vec.entry(42).or_insert(vec![]);
+    map_vec.entry(42).or_default();
 
     let mut btree = BTreeMap::<u64, String>::new();
-    btree.entry(42).or_insert(String::new());
+    btree.entry(42).or_default();
 
     let mut btree_vec = BTreeMap::<u64, Vec<i32>>::new();
-    btree_vec.entry(42).or_insert(vec![]);
+    btree_vec.entry(42).or_default();
 
-    let stringy = Some(String::from(""));
-    let _ = stringy.unwrap_or_else(|| "".to_owned());
+    let stringy = Some(String::new());
+    let _ = stringy.unwrap_or_default();
 
     let opt = Some(1);
     let hello = "Hello";
@@ -210,7 +209,8 @@ mod issue8239 {
                 let _ = "";
                 acc.push_str(&f);
                 acc
-            }).unwrap_or_default();
+            })
+            .unwrap_or_default();
     }
 
     fn less_than_max_suggestion_highest_lines() {
@@ -220,7 +220,8 @@ mod issue8239 {
         map.reduce(|mut acc, f| {
             acc.push_str(&f);
             acc
-        }).unwrap_or_default();
+        })
+        .unwrap_or_default();
     }
 }
 

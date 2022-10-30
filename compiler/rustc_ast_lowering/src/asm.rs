@@ -1,17 +1,22 @@
-use crate::{ImplTraitContext, ImplTraitPosition, ParamMode};
+use crate::{ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt};
 
+use super::errors::{
+    AbiSpecifiedMultipleTimes, AttSyntaxOnlyX86, ClobberAbiNotSupported,
+    InlineAsmUnsupportedTarget, InvalidAbiClobberAbi, InvalidAsmTemplateModifierConst,
+    InvalidAsmTemplateModifierRegClass, InvalidAsmTemplateModifierRegClassSub,
+    InvalidAsmTemplateModifierSym, InvalidRegister, InvalidRegisterClass, RegisterClassOnlyClobber,
+    RegisterConflict,
+};
 use super::LoweringContext;
 
 use rustc_ast::ptr::P;
 use rustc_ast::*;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_set::FxHashSet;
-use rustc_errors::struct_span_err;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::definitions::DefPathData;
 use rustc_session::parse::feature_err;
-use rustc_span::{sym, ExpnId, Span};
+use rustc_span::{sym, Span};
 use rustc_target::asm;
 use std::collections::hash_map::Entry;
 use std::fmt::Write;
@@ -24,10 +29,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir hir::InlineAsm<'hir> {
         // Rustdoc needs to support asm! from foreign architectures: don't try
         // lowering the register constraints in this case.
-        let asm_arch = if self.sess.opts.actually_rustdoc { None } else { self.sess.asm_arch };
-        if asm_arch.is_none() && !self.sess.opts.actually_rustdoc {
-            struct_span_err!(self.sess, sp, E0472, "inline assembly is unsupported on this target")
-                .emit();
+        let asm_arch =
+            if self.tcx.sess.opts.actually_rustdoc { None } else { self.tcx.sess.asm_arch };
+        if asm_arch.is_none() && !self.tcx.sess.opts.actually_rustdoc {
+            self.tcx.sess.emit_err(InlineAsmUnsupportedTarget { span: sp });
         }
         if let Some(asm_arch) = asm_arch {
             // Inline assembly is currently only stable for these architectures.
@@ -40,9 +45,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     | asm::InlineAsmArch::RiscV32
                     | asm::InlineAsmArch::RiscV64
             );
-            if !is_stable && !self.sess.features_untracked().asm_experimental_arch {
+            if !is_stable && !self.tcx.features().asm_experimental_arch {
                 feature_err(
-                    &self.sess.parse_sess,
+                    &self.tcx.sess.parse_sess,
                     sym::asm_experimental_arch,
                     sp,
                     "inline assembly is not stable yet on this architecture",
@@ -52,17 +57,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
         if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
             && !matches!(asm_arch, Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64))
-            && !self.sess.opts.actually_rustdoc
+            && !self.tcx.sess.opts.actually_rustdoc
         {
-            self.sess
-                .struct_span_err(sp, "the `att_syntax` option is only supported on x86")
-                .emit();
+            self.tcx.sess.emit_err(AttSyntaxOnlyX86 { span: sp });
         }
-        if asm.options.contains(InlineAsmOptions::MAY_UNWIND)
-            && !self.sess.features_untracked().asm_unwind
-        {
+        if asm.options.contains(InlineAsmOptions::MAY_UNWIND) && !self.tcx.features().asm_unwind {
             feature_err(
-                &self.sess.parse_sess,
+                &self.tcx.sess.parse_sess,
                 sym::asm_unwind,
                 sp,
                 "the `may_unwind` option is unstable",
@@ -73,53 +74,42 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut clobber_abis = FxHashMap::default();
         if let Some(asm_arch) = asm_arch {
             for (abi_name, abi_span) in &asm.clobber_abis {
-                match asm::InlineAsmClobberAbi::parse(asm_arch, &self.sess.target, *abi_name) {
+                match asm::InlineAsmClobberAbi::parse(asm_arch, &self.tcx.sess.target, *abi_name) {
                     Ok(abi) => {
                         // If the abi was already in the list, emit an error
                         match clobber_abis.get(&abi) {
                             Some((prev_name, prev_sp)) => {
-                                let mut err = self.sess.struct_span_err(
-                                    *abi_span,
-                                    &format!("`{}` ABI specified multiple times", prev_name),
-                                );
-                                err.span_label(*prev_sp, "previously specified here");
-
                                 // Multiple different abi names may actually be the same ABI
                                 // If the specified ABIs are not the same name, alert the user that they resolve to the same ABI
-                                let source_map = self.sess.source_map();
-                                if source_map.span_to_snippet(*prev_sp)
-                                    != source_map.span_to_snippet(*abi_span)
-                                {
-                                    err.note("these ABIs are equivalent on the current target");
-                                }
+                                let source_map = self.tcx.sess.source_map();
+                                let equivalent = (source_map.span_to_snippet(*prev_sp)
+                                    != source_map.span_to_snippet(*abi_span))
+                                .then_some(());
 
-                                err.emit();
+                                self.tcx.sess.emit_err(AbiSpecifiedMultipleTimes {
+                                    abi_span: *abi_span,
+                                    prev_name: *prev_name,
+                                    prev_span: *prev_sp,
+                                    equivalent,
+                                });
                             }
                             None => {
-                                clobber_abis.insert(abi, (abi_name, *abi_span));
+                                clobber_abis.insert(abi, (*abi_name, *abi_span));
                             }
                         }
                     }
                     Err(&[]) => {
-                        self.sess
-                            .struct_span_err(
-                                *abi_span,
-                                "`clobber_abi` is not supported on this target",
-                            )
-                            .emit();
+                        self.tcx.sess.emit_err(ClobberAbiNotSupported { abi_span: *abi_span });
                     }
                     Err(supported_abis) => {
-                        let mut err =
-                            self.sess.struct_span_err(*abi_span, "invalid ABI for `clobber_abi`");
                         let mut abis = format!("`{}`", supported_abis[0]);
                         for m in &supported_abis[1..] {
                             let _ = write!(abis, ", `{}`", m);
                         }
-                        err.note(&format!(
-                            "the following ABIs are supported on this target: {}",
-                            abis
-                        ));
-                        err.emit();
+                        self.tcx.sess.emit_err(InvalidAbiClobberAbi {
+                            abi_span: *abi_span,
+                            supported_abis: abis,
+                        });
                     }
                 }
             }
@@ -128,30 +118,34 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Lower operands to HIR. We use dummy register classes if an error
         // occurs during lowering because we still need to be able to produce a
         // valid HIR.
-        let sess = self.sess;
+        let sess = self.tcx.sess;
         let mut operands: Vec<_> = asm
             .operands
             .iter()
             .map(|(op, op_sp)| {
                 let lower_reg = |reg| match reg {
-                    InlineAsmRegOrRegClass::Reg(s) => {
+                    InlineAsmRegOrRegClass::Reg(reg) => {
                         asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
-                            asm::InlineAsmReg::parse(asm_arch, s).unwrap_or_else(|e| {
-                                let msg = format!("invalid register `{}`: {}", s.as_str(), e);
-                                sess.struct_span_err(*op_sp, &msg).emit();
+                            asm::InlineAsmReg::parse(asm_arch, reg).unwrap_or_else(|error| {
+                                sess.emit_err(InvalidRegister { op_span: *op_sp, reg, error });
                                 asm::InlineAsmReg::Err
                             })
                         } else {
                             asm::InlineAsmReg::Err
                         })
                     }
-                    InlineAsmRegOrRegClass::RegClass(s) => {
+                    InlineAsmRegOrRegClass::RegClass(reg_class) => {
                         asm::InlineAsmRegOrRegClass::RegClass(if let Some(asm_arch) = asm_arch {
-                            asm::InlineAsmRegClass::parse(asm_arch, s).unwrap_or_else(|e| {
-                                let msg = format!("invalid register class `{}`: {}", s.as_str(), e);
-                                sess.struct_span_err(*op_sp, &msg).emit();
-                                asm::InlineAsmRegClass::Err
-                            })
+                            asm::InlineAsmRegClass::parse(asm_arch, reg_class).unwrap_or_else(
+                                |error| {
+                                    sess.emit_err(InvalidRegisterClass {
+                                        op_span: *op_sp,
+                                        reg_class,
+                                        error,
+                                    });
+                                    asm::InlineAsmRegClass::Err
+                                },
+                            )
                         } else {
                             asm::InlineAsmRegClass::Err
                         })
@@ -161,32 +155,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let op = match *op {
                     InlineAsmOperand::In { reg, ref expr } => hir::InlineAsmOperand::In {
                         reg: lower_reg(reg),
-                        expr: self.lower_expr_mut(expr),
+                        expr: self.lower_expr(expr),
                     },
                     InlineAsmOperand::Out { reg, late, ref expr } => hir::InlineAsmOperand::Out {
                         reg: lower_reg(reg),
                         late,
-                        expr: expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
+                        expr: expr.as_ref().map(|expr| self.lower_expr(expr)),
                     },
                     InlineAsmOperand::InOut { reg, late, ref expr } => {
                         hir::InlineAsmOperand::InOut {
                             reg: lower_reg(reg),
                             late,
-                            expr: self.lower_expr_mut(expr),
+                            expr: self.lower_expr(expr),
                         }
                     }
                     InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
                         hir::InlineAsmOperand::SplitInOut {
                             reg: lower_reg(reg),
                             late,
-                            in_expr: self.lower_expr_mut(in_expr),
-                            out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
+                            in_expr: self.lower_expr(in_expr),
+                            out_expr: out_expr.as_ref().map(|expr| self.lower_expr(expr)),
                         }
                     }
                     InlineAsmOperand::Const { ref anon_const } => {
-                        if !self.sess.features_untracked().asm_const {
+                        if !self.tcx.features().asm_const {
                             feature_err(
-                                &self.sess.parse_sess,
+                                &sess.parse_sess,
                                 sym::asm_const,
                                 *op_sp,
                                 "const operands for inline assembly are unstable",
@@ -198,9 +192,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                     InlineAsmOperand::Sym { ref sym } => {
-                        if !self.sess.features_untracked().asm_sym {
+                        if !self.tcx.features().asm_sym {
                             feature_err(
-                                &self.sess.parse_sess,
+                                &sess.parse_sess,
                                 sym::asm_sym,
                                 *op_sp,
                                 "sym operands for inline assembly are unstable",
@@ -211,13 +205,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let static_def_id = self
                             .resolver
                             .get_partial_res(sym.id)
-                            .filter(|res| res.unresolved_segments() == 0)
-                            .and_then(|res| {
-                                if let Res::Def(DefKind::Static(_), def_id) = res.base_res() {
-                                    Some(def_id)
-                                } else {
-                                    None
-                                }
+                            .and_then(|res| res.full_res())
+                            .and_then(|res| match res {
+                                Res::Def(DefKind::Static(_), def_id) => Some(def_id),
+                                _ => None,
                             });
 
                         if let Some(def_id) = static_def_id {
@@ -226,7 +217,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 &sym.qself,
                                 &sym.path,
                                 ParamMode::Optional,
-                                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                                &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             );
                             hir::InlineAsmOperand::SymStatic { path, def_id }
                         } else {
@@ -242,14 +233,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                             // Wrap the expression in an AnonConst.
                             let parent_def_id = self.current_hir_id_owner;
-                            let node_id = self.resolver.next_node_id();
-                            self.resolver.create_def(
-                                parent_def_id,
-                                node_id,
-                                DefPathData::AnonConst,
-                                ExpnId::root(),
-                                *op_sp,
-                            );
+                            let node_id = self.next_node_id();
+                            self.create_def(parent_def_id.def_id, node_id, DefPathData::AnonConst);
                             let anon_const = AnonConst { id: node_id, value: P(expr) };
                             hir::InlineAsmOperand::SymFn {
                                 anon_const: self.lower_anon_const(&anon_const),
@@ -281,50 +266,39 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                         let valid_modifiers = class.valid_modifiers(asm_arch.unwrap());
                         if !valid_modifiers.contains(&modifier) {
-                            let mut err = sess.struct_span_err(
-                                placeholder_span,
-                                "invalid asm template modifier for this register class",
-                            );
-                            err.span_label(placeholder_span, "template modifier");
-                            err.span_label(op_sp, "argument");
-                            if !valid_modifiers.is_empty() {
+                            let sub = if !valid_modifiers.is_empty() {
                                 let mut mods = format!("`{}`", valid_modifiers[0]);
                                 for m in &valid_modifiers[1..] {
                                     let _ = write!(mods, ", `{}`", m);
                                 }
-                                err.note(&format!(
-                                    "the `{}` register class supports \
-                                     the following template modifiers: {}",
-                                    class.name(),
-                                    mods
-                                ));
+                                InvalidAsmTemplateModifierRegClassSub::SupportModifier {
+                                    class_name: class.name(),
+                                    modifiers: mods,
+                                }
                             } else {
-                                err.note(&format!(
-                                    "the `{}` register class does not support template modifiers",
-                                    class.name()
-                                ));
-                            }
-                            err.emit();
+                                InvalidAsmTemplateModifierRegClassSub::DoesNotSupportModifier {
+                                    class_name: class.name(),
+                                }
+                            };
+                            sess.emit_err(InvalidAsmTemplateModifierRegClass {
+                                placeholder_span,
+                                op_span: op_sp,
+                                sub,
+                            });
                         }
                     }
                     hir::InlineAsmOperand::Const { .. } => {
-                        let mut err = sess.struct_span_err(
+                        sess.emit_err(InvalidAsmTemplateModifierConst {
                             placeholder_span,
-                            "asm template modifiers are not allowed for `const` arguments",
-                        );
-                        err.span_label(placeholder_span, "template modifier");
-                        err.span_label(op_sp, "argument");
-                        err.emit();
+                            op_span: op_sp,
+                        });
                     }
                     hir::InlineAsmOperand::SymFn { .. }
                     | hir::InlineAsmOperand::SymStatic { .. } => {
-                        let mut err = sess.struct_span_err(
+                        sess.emit_err(InvalidAsmTemplateModifierSym {
                             placeholder_span,
-                            "asm template modifiers are not allowed for `sym` arguments",
-                        );
-                        err.span_label(placeholder_span, "template modifier");
-                        err.span_label(op_sp, "argument");
-                        err.emit();
+                            op_span: op_sp,
+                        });
                     }
                 }
             }
@@ -345,12 +319,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // require that the operand name an explicit register, not a
                 // register class.
                 if reg_class.is_clobber_only(asm_arch.unwrap()) && !op.is_clobber() {
-                    let msg = format!(
-                        "register class `{}` can only be used as a clobber, \
-                             not as an input or output",
-                        reg_class.name()
-                    );
-                    sess.struct_span_err(op_sp, &msg).emit();
+                    sess.emit_err(RegisterClassOnlyClobber {
+                        op_span: op_sp,
+                        reg_class_name: reg_class.name(),
+                    });
                     continue;
                 }
 
@@ -390,16 +362,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                         unreachable!();
                                     };
 
-                                    let msg = format!(
-                                        "register `{}` conflicts with register `{}`",
-                                        reg.name(),
-                                        reg2.name()
-                                    );
-                                    let mut err = sess.struct_span_err(op_sp, &msg);
-                                    err.span_label(op_sp, &format!("register `{}`", reg.name()));
-                                    err.span_label(op_sp2, &format!("register `{}`", reg2.name()));
-
-                                    match (op, op2) {
+                                    let in_out = match (op, op2) {
                                         (
                                             hir::InlineAsmOperand::In { .. },
                                             hir::InlineAsmOperand::Out { late, .. },
@@ -410,14 +373,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                         ) => {
                                             assert!(!*late);
                                             let out_op_sp = if input { op_sp2 } else { op_sp };
-                                            let msg = "use `lateout` instead of \
-                                                       `out` to avoid conflict";
-                                            err.span_help(out_op_sp, msg);
-                                        }
-                                        _ => {}
-                                    }
+                                            Some(out_op_sp)
+                                        },
+                                        _ => None,
+                                    };
 
-                                    err.emit();
+                                    sess.emit_err(RegisterConflict {
+                                        op_span1: op_sp,
+                                        op_span2: op_sp2,
+                                        reg1_name: reg.name(),
+                                        reg2_name: reg2.name(),
+                                        in_out
+                                    });
                                 }
                                 Entry::Vacant(v) => {
                                     if r == reg {

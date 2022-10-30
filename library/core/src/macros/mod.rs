@@ -350,10 +350,12 @@ macro_rules! matches {
 
 /// Unwraps a result or propagates its error.
 ///
-/// The `?` operator was added to replace `try!` and should be used instead.
-/// Furthermore, `try` is a reserved word in Rust 2018, so if you must use
-/// it, you will need to use the [raw-identifier syntax][ris]: `r#try`.
+/// The [`?` operator][propagating-errors] was added to replace `try!`
+/// and should be used instead. Furthermore, `try` is a reserved word
+/// in Rust 2018, so if you must use it, you will need to use the
+/// [raw-identifier syntax][ris]: `r#try`.
 ///
+/// [propagating-errors]: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html#a-shortcut-for-propagating-errors-the--operator
 /// [ris]: https://doc.rust-lang.org/nightly/rust-by-example/compatibility/raw_identifiers.html
 ///
 /// `try!` matches the given [`Result`]. In case of the `Ok` variant, the
@@ -457,11 +459,12 @@ macro_rules! r#try {
 ///
 /// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
 /// implementing either, as objects do not typically implement both. However, the module must
-/// import the traits qualified so their names do not conflict:
+/// avoid conflict between the trait names, such as by importing them as `_` or otherwise renaming
+/// them:
 ///
 /// ```
-/// use std::fmt::Write as FmtWrite;
-/// use std::io::Write as IoWrite;
+/// use std::fmt::Write as _;
+/// use std::io::Write as _;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let mut s = String::new();
@@ -471,6 +474,23 @@ macro_rules! r#try {
 ///     write!(&mut v, "s = {:?}", s)?; // uses io::Write::write_fmt
 ///     assert_eq!(v, b"s = \"abc 123\"");
 ///     Ok(())
+/// }
+/// ```
+///
+/// If you also need the trait names themselves, such as to implement one or both on your types,
+/// import the containing module and then name them with a prefix:
+///
+/// ```
+/// # #![allow(unused_imports)]
+/// use std::fmt::{self, Write as _};
+/// use std::io::{self, Write as _};
+///
+/// struct Example;
+///
+/// impl fmt::Write for Example {
+///     fn write_str(&mut self, _s: &str) -> core::fmt::Result {
+///          unimplemented!();
+///     }
 /// }
 /// ```
 ///
@@ -496,10 +516,9 @@ macro_rules! r#try {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "write_macro")]
 macro_rules! write {
-    ($dst:expr, $($arg:tt)*) => {{
-        let result = $dst.write_fmt($crate::format_args!($($arg)*));
-        result
-    }};
+    ($dst:expr, $($arg:tt)*) => {
+        $dst.write_fmt($crate::format_args!($($arg)*))
+    };
 }
 
 /// Write formatted data into a buffer, with a newline appended.
@@ -527,25 +546,6 @@ macro_rules! write {
 ///     Ok(())
 /// }
 /// ```
-///
-/// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
-/// implementing either, as objects do not typically implement both. However, the module must
-/// import the traits qualified so their names do not conflict:
-///
-/// ```
-/// use std::fmt::Write as FmtWrite;
-/// use std::io::Write as IoWrite;
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let mut s = String::new();
-///     let mut v = Vec::new();
-///
-///     writeln!(&mut s, "{} {}", "abc", 123)?; // uses fmt::Write::write_fmt
-///     writeln!(&mut v, "s = {:?}", s)?; // uses io::Write::write_fmt
-///     assert_eq!(v, b"s = \"abc 123\\n\"\n");
-///     Ok(())
-/// }
-/// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "writeln_macro")]
@@ -554,10 +554,9 @@ macro_rules! writeln {
     ($dst:expr $(,)?) => {
         $crate::write!($dst, "\n")
     };
-    ($dst:expr, $($arg:tt)*) => {{
-        let result = $dst.write_fmt($crate::format_args_nl!($($arg)*));
-        result
-    }};
+    ($dst:expr, $($arg:tt)*) => {
+        $dst.write_fmt($crate::format_args_nl!($($arg)*))
+    };
 }
 
 /// Indicates unreachable code.
@@ -795,7 +794,7 @@ pub(crate) mod builtin {
     ///
     /// Two such examples are macros and `#[cfg]` environments.
     ///
-    /// Emit better compiler error if a macro is passed invalid values. Without the final branch,
+    /// Emit a better compiler error if a macro is passed invalid values. Without the final branch,
     /// the compiler would still emit an error, but the error's message would not mention the two
     /// valid values.
     ///
@@ -812,7 +811,7 @@ pub(crate) mod builtin {
     /// // ^ will fail at compile time with message "This macro only accepts `foo` or `bar`"
     /// ```
     ///
-    /// Emit compiler error if one of a number of features isn't available.
+    /// Emit a compiler error if one of a number of features isn't available.
     ///
     /// ```compile_fail
     /// #[cfg(not(any(feature = "foo", feature = "bar")))]
@@ -1017,7 +1016,7 @@ pub(crate) mod builtin {
     /// Concatenates literals into a byte slice.
     ///
     /// This macro takes any number of comma-separated literals, and concatenates them all into
-    /// one, yielding an expression of type `&[u8, _]`, which represents all of the literals
+    /// one, yielding an expression of type `&[u8; _]`, which represents all of the literals
     /// concatenated left-to-right. The literals passed can be any combination of:
     ///
     /// - byte literals (`b'r'`)
@@ -1537,7 +1536,7 @@ pub(crate) mod builtin {
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow_internal_unstable(core_intrinsics, libstd_sys_internals)]
+    #[allow_internal_unstable(core_intrinsics, libstd_sys_internals, rt)]
     #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
     #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
     pub macro RustcDecodable($item:item) {
@@ -1547,7 +1546,7 @@ pub(crate) mod builtin {
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow_internal_unstable(core_intrinsics)]
+    #[allow_internal_unstable(core_intrinsics, rt)]
     #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
     #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
     pub macro RustcEncodable($item:item) {

@@ -4,6 +4,7 @@ use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::ty;
+use rustc_span::symbol::kw;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// When given a `ConcreteFailure` for a function with parameters containing a named region and
@@ -67,7 +68,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let is_impl_item = region_info.is_impl_item;
 
         match br {
-            ty::BrAnon(_) => {}
+            ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(_) => {}
             _ => {
                 /* not an anonymous region */
                 debug!("try_report_named_anon_conflict: not an anonymous region");
@@ -106,7 +107,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         diag.span_suggestion(
             new_ty_span,
             &format!("add explicit lifetime `{}` to {}", named, span_label_var),
-            new_ty.to_string(),
+            new_ty,
             Applicability::Unspecified,
         );
 

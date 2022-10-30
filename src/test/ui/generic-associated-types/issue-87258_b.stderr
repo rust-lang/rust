@@ -1,5 +1,5 @@
 error: unconstrained opaque type
-  --> $DIR/issue-87258_b.rs:17:49
+  --> $DIR/issue-87258_b.rs:16:49
    |
 LL | type Helper<'xenon, 'yttrium, KABOOM: Trait2> = impl Trait1;
    |                                                 ^^^^^^^^^^^

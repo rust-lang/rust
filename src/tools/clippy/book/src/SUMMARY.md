@@ -1,0 +1,23 @@
+# Summary
+
+[Introduction](README.md)
+
+- [Installation](installation.md)
+- [Usage](usage.md)
+- [Configuration](configuration.md)
+- [Clippy's Lints](lints.md)
+- [Continuous Integration](continuous_integration/README.md)
+    - [GitHub Actions](continuous_integration/github_actions.md)
+    - [Travis CI](continuous_integration/travis.md)
+- [Development](development/README.md)
+    - [Basics](development/basics.md)
+    - [Adding Lints](development/adding_lints.md)
+    - [Common Tools](development/common_tools_writing_lints.md)
+    - [Infrastructure](development/infrastructure/README.md)
+        - [Syncing changes between Clippy and rust-lang/rust](development/infrastructure/sync.md)
+        - [Backporting Changes](development/infrastructure/backport.md)
+        - [Updating the Changelog](development/infrastructure/changelog_update.md)
+        - [Release a New Version](development/infrastructure/release.md)
+        - [The Clippy Book](development/infrastructure/book.md)
+    - [Proposals](development/proposals/README.md)
+        - [Roadmap 2021](development/proposals/roadmap-2021.md)

@@ -1,6 +1,7 @@
 // Test for std::panic::set_backtrace_style.
 
 // compile-flags: -O
+// compile-flags:-Cstrip=none
 // run-fail
 // check-run-results
 // exec-env:RUST_BACKTRACE=0
@@ -11,6 +12,7 @@
 // ignore-wasm no panic or subprocess support
 // ignore-emscripten no panic or subprocess support
 // ignore-sgx no subprocess support
+// ignore-fuchsia Backtrace not symbolized
 
 // NOTE(eddyb) output differs between symbol mangling schemes
 // revisions: legacy v0

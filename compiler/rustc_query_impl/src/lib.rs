@@ -1,22 +1,25 @@
 //! Support for serializing the dep-graph and reloading it.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(nll)]
+// this shouldn't be necessary, but the check for `&mut _` is too naive and denies returning a function pointer that takes a mut ref
+#![feature(const_mut_refs)]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
 #[macro_use]
 extern crate rustc_middle;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
-use rustc_middle::dep_graph::{self, DepKindStruct, SerializedDepNodeIndex};
+use rustc_middle::dep_graph::{self, DepKindStruct};
 use rustc_middle::ty::query::{query_keys, query_storage, query_stored, query_values};
 use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine};
 use rustc_middle::ty::{self, TyCtxt};
@@ -27,15 +30,14 @@ use rustc_span::Span;
 mod plumbing;
 pub use plumbing::QueryCtxt;
 use rustc_query_system::query::*;
+#[cfg(parallel_compiler)]
+pub use rustc_query_system::query::{deadlock, QueryContext};
 
 mod keys;
 use keys::Key;
 
-mod values;
-use self::values::Value;
-
 pub use rustc_query_system::query::QueryConfig;
-pub(crate) use rustc_query_system::query::{QueryDescription, QueryVtable};
+pub(crate) use rustc_query_system::query::{QueryDescription, QueryVTable};
 
 mod on_disk_cache;
 pub use on_disk_cache::OnDiskCache;
@@ -51,7 +53,7 @@ fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
     }
 }
 
-rustc_query_append! { [define_queries!][<'tcx>] }
+rustc_query_append! { define_queries! }
 
 impl<'tcx> Queries<'tcx> {
     // Force codegen in the dyn-trait transformation in this crate.

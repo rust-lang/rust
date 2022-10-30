@@ -216,7 +216,7 @@ pub fn expand_include_bytes(
         }
     };
     match cx.source_map().load_binary_file(&file) {
-        Ok(bytes) => base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(bytes.into()))),
+        Ok(bytes) => base::MacEager::expr(cx.expr_byte_str(sp, bytes)),
         Err(e) => {
             cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
             DummyResult::any(sp)

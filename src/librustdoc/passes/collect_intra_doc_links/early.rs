@@ -5,7 +5,6 @@ use crate::passes::collect_intra_doc_links::{Disambiguator, PreprocessedMarkdown
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, ItemKind};
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, Res};

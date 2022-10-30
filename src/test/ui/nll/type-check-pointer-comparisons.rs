@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // Check that we assert that pointers have a common subtype for comparisons
 
 fn compare_const<'a, 'b>(x: *const &mut &'a i32, y: *const &mut &'b i32) {

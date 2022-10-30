@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-52533-1.rs:9:18
+   |
+LL |     gimme(|x, y| y)
+   |            -  -  ^ closure was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |            |  |
+   |            |  has type `&Foo<'_, '1, u32>`
+   |            has type `&Foo<'_, '2, u32>`
+
+error: aborting due to previous error
+

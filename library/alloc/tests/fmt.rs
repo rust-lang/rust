@@ -207,7 +207,7 @@ fn test_format_macro_interface() {
     {
         let val = usize::MAX;
         let exp = format!("{val:#x}");
-        t!(format!("{:p}", val as *const isize), exp);
+        t!(format!("{:p}", std::ptr::invalid::<isize>(val)), exp);
     }
 
     // Escaping

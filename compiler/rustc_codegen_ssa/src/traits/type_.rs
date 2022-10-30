@@ -117,6 +117,13 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     ) -> Self::Type;
 }
 
+// For backends that support CFI using type membership (i.e., testing whether a given  pointer is
+// associated with a type identifier).
+pub trait TypeMembershipMethods<'tcx>: Backend<'tcx> {
+    fn set_type_metadata(&self, function: Self::Function, typeid: String);
+    fn typeid_metadata(&self, typeid: String) -> Self::Value;
+}
+
 pub trait ArgAbiMethods<'tcx>: HasCodegen<'tcx> {
     fn store_fn_arg(
         &mut self,
@@ -133,6 +140,12 @@ pub trait ArgAbiMethods<'tcx>: HasCodegen<'tcx> {
     fn arg_memory_ty(&self, arg_abi: &ArgAbi<'tcx, Ty<'tcx>>) -> Self::Type;
 }
 
-pub trait TypeMethods<'tcx>: DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> {}
+pub trait TypeMethods<'tcx>:
+    DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> + TypeMembershipMethods<'tcx>
+{
+}
 
-impl<'tcx, T> TypeMethods<'tcx> for T where Self: DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> {}
+impl<'tcx, T> TypeMethods<'tcx> for T where
+    Self: DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> + TypeMembershipMethods<'tcx>
+{
+}

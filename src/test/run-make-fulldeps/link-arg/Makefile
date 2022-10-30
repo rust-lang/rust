@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 RUSTC_FLAGS = -C link-arg="-lfoo" -C link-arg="-lbar" --print link-args
 
 all:

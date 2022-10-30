@@ -1,0 +1,33 @@
+### What it does
+Denies the configured types in clippy.toml.
+
+Note: Even though this lint is warn-by-default, it will only trigger if
+types are defined in the clippy.toml file.
+
+### Why is this bad?
+Some types are undesirable in certain contexts.
+
+### Example:
+An example clippy.toml configuration:
+```
+disallowed-types = [
+    # Can use a string as the path of the disallowed type.
+    "std::collections::BTreeMap",
+    # Can also use an inline table with a `path` key.
+    { path = "std::net::TcpListener" },
+    # When using an inline table, can add a `reason` for why the type
+    # is disallowed.
+    { path = "std::net::Ipv4Addr", reason = "no IPv4 allowed" },
+]
+```
+
+```
+use std::collections::BTreeMap;
+// or its use
+let x = std::collections::BTreeMap::new();
+```
+Use instead:
+```
+// A similar type that is allowed by the config
+use std::collections::HashMap;
+```

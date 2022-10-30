@@ -5,17 +5,18 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(hash_raw_entry)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(extern_types)]
 #![feature(once_cell)]
-#![feature(nll)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate rustc_macros;
+#[macro_use]
+extern crate tracing;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 
@@ -130,12 +131,6 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) -> TargetMachineFactoryFn<Self> {
         back::write::target_machine_factory(sess, optlvl, target_features)
     }
-    fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
-        llvm_util::target_cpu(sess)
-    }
-    fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str> {
-        llvm_util::tune_cpu(sess)
-    }
 
     fn spawn_thread<F, T>(time_trace: bool, f: F) -> std::thread::JoinHandle<T>
     where
@@ -169,7 +164,6 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
 impl WriteBackendMethods for LlvmCodegenBackend {
     type Module = ModuleLlvm;
     type ModuleBuffer = back::lto::ModuleBuffer;
-    type Context = llvm::Context;
     type TargetMachine = &'static mut llvm::TargetMachine;
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
@@ -324,8 +318,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::print_version();
     }
 
-    fn target_features(&self, sess: &Session) -> Vec<Symbol> {
-        target_features(sess)
+    fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+        target_features(sess, allow_unstable)
     }
 
     fn codegen_crate<'tcx>(
@@ -355,7 +349,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             .join(sess);
 
         sess.time("llvm_dump_timing_file", || {
-            if sess.opts.debugging_opts.llvm_time_trace {
+            if sess.opts.unstable_opts.llvm_time_trace {
                 let file_name = outputs.with_extension("llvm_timings.json");
                 llvm_util::time_trace_profiler_finish(&file_name);
             }
@@ -370,12 +364,12 @@ impl CodegenBackend for LlvmCodegenBackend {
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorGuaranteed> {
-        use crate::back::archive::LlvmArchiveBuilder;
+        use crate::back::archive::LlvmArchiveBuilderBuilder;
         use rustc_codegen_ssa::back::link::link_binary;
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        link_binary::<LlvmArchiveBuilder<'_>>(sess, &codegen_results, outputs)
+        link_binary(sess, &LlvmArchiveBuilderBuilder, &codegen_results, outputs)
     }
 }
 

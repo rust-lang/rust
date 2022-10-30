@@ -1,0 +1,24 @@
+error: Undefined Behavior: dereferencing pointer failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
+  --> RUSTLIB/core/src/../../portable-simd/crates/core_simd/src/vector.rs:LL:CC
+   |
+LL |             intrinsics::simd_scatter(self, ptrs, enable.to_int())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: ALLOC has size 9, so pointer to 1 byte starting at offset 9 is out-of-bounds
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `std::simd::Simd::<i8, 4>::scatter_select_unchecked` at RUSTLIB/core/src/../../portable-simd/crates/core_simd/src/vector.rs:LL:CC
+note: inside `main` at $DIR/simd-scatter.rs:LL:CC
+  --> $DIR/simd-scatter.rs:LL:CC
+   |
+LL | /         Simd::from_array([-27, 82, -41, 124]).scatter_select_unchecked(
+LL | |             &mut vec,
+LL | |             Mask::splat(true),
+LL | |             idxs,
+LL | |         );
+   | |_________^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

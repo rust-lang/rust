@@ -1,6 +1,6 @@
 // compile-flags: -C opt-level=0
 
-// Test that `nounwind` atributes are correctly applied to exported `cdecl` and
+// Test that `nounwind` attributes are correctly applied to exported `cdecl` and
 // `cdecl-unwind` extern functions. `cdecl-unwind` functions MUST NOT have this attribute. We
 // disable optimizations above to prevent LLVM from inferring the attribute.
 

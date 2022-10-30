@@ -3,15 +3,16 @@
 pub mod components;
 pub mod env;
 pub mod obligations;
+pub mod test_type_match;
 pub mod verify;
 
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty;
 
+#[instrument(level = "debug", skip(param_env), ret)]
 pub fn explicit_outlives_bounds<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> impl Iterator<Item = OutlivesBound<'tcx>> + 'tcx {
-    debug!("explicit_outlives_bounds()");
     param_env
         .caller_bounds()
         .into_iter()

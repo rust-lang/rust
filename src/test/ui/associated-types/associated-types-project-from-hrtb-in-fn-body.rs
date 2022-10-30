@@ -1,7 +1,3 @@
-// ignore-compare-mode-nll
-// revisions: base nll
-// [nll]compile-flags: -Zborrowck=mir
-
 // Check projection of an associated type out of a higher-ranked
 // trait-bound in the context of a function body.
 
@@ -24,9 +20,8 @@ fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
 {
     // x and y here have two distinct lifetimes:
     let z: I::A = if cond { x } else { y };
-    //[base]~^ ERROR lifetime mismatch
-    //[nll]~^^ ERROR lifetime may not live long enough
-    //[nll]~| ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR lifetime may not live long enough
 }
 
 pub fn main() {}

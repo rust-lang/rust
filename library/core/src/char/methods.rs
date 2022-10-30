@@ -746,10 +746,19 @@ impl char {
     /// assert!(!'中'.is_lowercase());
     /// assert!(!' '.is_lowercase());
     /// ```
+    ///
+    /// In a const context:
+    ///
+    /// ```
+    /// #![feature(const_unicode_case_lookup)]
+    /// const CAPITAL_DELTA_IS_LOWERCASE: bool = 'Δ'.is_lowercase();
+    /// assert!(!CAPITAL_DELTA_IS_LOWERCASE);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
     #[inline]
-    pub fn is_lowercase(self) -> bool {
+    pub const fn is_lowercase(self) -> bool {
         match self {
             'a'..='z' => true,
             c => c > '\x7f' && unicode::Lowercase(c),
@@ -779,10 +788,19 @@ impl char {
     /// assert!(!'中'.is_uppercase());
     /// assert!(!' '.is_uppercase());
     /// ```
+    ///
+    /// In a const context:
+    ///
+    /// ```
+    /// #![feature(const_unicode_case_lookup)]
+    /// const CAPITAL_DELTA_IS_UPPERCASE: bool = 'Δ'.is_uppercase();
+    /// assert!(CAPITAL_DELTA_IS_UPPERCASE);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
     #[inline]
-    pub fn is_uppercase(self) -> bool {
+    pub const fn is_uppercase(self) -> bool {
         match self {
             'A'..='Z' => true,
             c => c > '\x7f' && unicode::Uppercase(c),
@@ -894,6 +912,14 @@ impl char {
     /// characters, and `No` for other numeric characters) are specified in the [Unicode Character
     /// Database][ucd] [`UnicodeData.txt`].
     ///
+    /// This method doesn't cover everything that could be considered a number, e.g. ideographic numbers like '三'.
+    /// If you want everything including characters with overlapping purposes then you might want to use
+    /// a unicode or language-processing library that exposes the appropriate character properties instead
+    /// of looking at the unicode categories.
+    ///
+    /// If you want to parse ASCII decimal digits (0-9) or ASCII base-N, use
+    /// `is_ascii_digit` or `is_digit` instead.
+    ///
     /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
@@ -911,6 +937,7 @@ impl char {
     /// assert!(!'K'.is_numeric());
     /// assert!(!'و'.is_numeric());
     /// assert!(!'藏'.is_numeric());
+    /// assert!(!'三'.is_numeric());
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1415,6 +1442,38 @@ impl char {
     #[inline]
     pub const fn is_ascii_digit(&self) -> bool {
         matches!(*self, '0'..='9')
+    }
+
+    /// Checks if the value is an ASCII octal digit:
+    /// U+0030 '0' ..= U+0037 '7'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_ascii_octdigit)]
+    ///
+    /// let uppercase_a = 'A';
+    /// let a = 'a';
+    /// let zero = '0';
+    /// let seven = '7';
+    /// let nine = '9';
+    /// let percent = '%';
+    /// let lf = '\n';
+    ///
+    /// assert!(!uppercase_a.is_ascii_octdigit());
+    /// assert!(!a.is_ascii_octdigit());
+    /// assert!(zero.is_ascii_octdigit());
+    /// assert!(seven.is_ascii_octdigit());
+    /// assert!(!nine.is_ascii_octdigit());
+    /// assert!(!percent.is_ascii_octdigit());
+    /// assert!(!lf.is_ascii_octdigit());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[inline]
+    pub const fn is_ascii_octdigit(&self) -> bool {
+        matches!(*self, '0'..='7')
     }
 
     /// Checks if the value is an ASCII hexadecimal digit:

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_non_aggregate_primitive_type;
-use clippy_utils::{is_default_equivalent, is_lang_ctor, meets_msrv, msrvs};
+use clippy_utils::{is_default_equivalent, is_res_lang_ctor, meets_msrv, msrvs, path_res};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
@@ -102,40 +102,38 @@ impl_lint_pass!(MemReplace =>
     [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
 
 fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
-    if let ExprKind::Path(ref replacement_qpath) = src.kind {
-        // Check that second argument is `Option::None`
-        if is_lang_ctor(cx, replacement_qpath, OptionNone) {
-            // Since this is a late pass (already type-checked),
-            // and we already know that the second argument is an
-            // `Option`, we do not need to check the first
-            // argument's type. All that's left is to get
-            // replacee's path.
-            let replaced_path = match dest.kind {
-                ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, replaced) => {
-                    if let ExprKind::Path(QPath::Resolved(None, replaced_path)) = replaced.kind {
-                        replaced_path
-                    } else {
-                        return;
-                    }
-                },
-                ExprKind::Path(QPath::Resolved(None, replaced_path)) => replaced_path,
-                _ => return,
-            };
+    // Check that second argument is `Option::None`
+    if is_res_lang_ctor(cx, path_res(cx, src), OptionNone) {
+        // Since this is a late pass (already type-checked),
+        // and we already know that the second argument is an
+        // `Option`, we do not need to check the first
+        // argument's type. All that's left is to get
+        // replacee's path.
+        let replaced_path = match dest.kind {
+            ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, replaced) => {
+                if let ExprKind::Path(QPath::Resolved(None, replaced_path)) = replaced.kind {
+                    replaced_path
+                } else {
+                    return;
+                }
+            },
+            ExprKind::Path(QPath::Resolved(None, replaced_path)) => replaced_path,
+            _ => return,
+        };
 
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                MEM_REPLACE_OPTION_WITH_NONE,
-                expr_span,
-                "replacing an `Option` with `None`",
-                "consider `Option::take()` instead",
-                format!(
-                    "{}.take()",
-                    snippet_with_applicability(cx, replaced_path.span, "", &mut applicability)
-                ),
-                applicability,
-            );
-        }
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_sugg(
+            cx,
+            MEM_REPLACE_OPTION_WITH_NONE,
+            expr_span,
+            "replacing an `Option` with `None`",
+            "consider `Option::take()` instead",
+            format!(
+                "{}.take()",
+                snippet_with_applicability(cx, replaced_path.span, "", &mut applicability)
+            ),
+            applicability,
+        );
     }
 }
 
@@ -163,8 +161,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
     }
 
     if_chain! {
-        if let ExprKind::Call(repl_func, repl_args) = src.kind;
-        if repl_args.is_empty();
+        if let ExprKind::Call(repl_func, []) = src.kind;
         if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
         if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
         then {
@@ -204,10 +201,8 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
         return;
     }
     // disable lint for Option since it is covered in another lint
-    if let ExprKind::Path(q) = &src.kind {
-        if is_lang_ctor(cx, q, OptionNone) {
-            return;
-        }
+    if is_res_lang_ctor(cx, path_res(cx, src), OptionNone) {
+        return;
     }
     if is_default_equivalent(cx, src) && !in_external_macro(cx.tcx.sess, expr_span) {
         span_lint_and_then(
@@ -246,11 +241,10 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // Check that `expr` is a call to `mem::replace()`
-            if let ExprKind::Call(func, func_args) = expr.kind;
+            if let ExprKind::Call(func, [dest, src]) = expr.kind;
             if let ExprKind::Path(ref func_qpath) = func.kind;
             if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
             if cx.tcx.is_diagnostic_item(sym::mem_replace, def_id);
-            if let [dest, src] = func_args;
             then {
                 check_replace_option_with_none(cx, src, dest, expr.span);
                 check_replace_with_uninit(cx, src, dest, expr.span);

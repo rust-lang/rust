@@ -19,6 +19,11 @@ fn _if() {
 
     if let Range { start: _, end: _ } = (true..true) && false {}
     //~^ ERROR `let` expressions in this position are unstable [E0658]
+
+    if let 1 = 1 && let true = { true } && false {
+    //~^ ERROR `let` expressions in this position are unstable [E0658]
+    //~| ERROR `let` expressions in this position are unstable [E0658]
+    }
 }
 
 fn _while() {
@@ -39,6 +44,7 @@ fn _macros() {
 
     noop_expr!((let 0 = 1));
     //~^ ERROR `let` expressions in this position are unstable [E0658]
+    //~| ERROR expected expression, found `let` statement
 
     macro_rules! use_expr {
         ($e:expr) => {
@@ -48,9 +54,9 @@ fn _macros() {
     }
     #[cfg(FALSE)] (let 0 = 1);
     //~^ ERROR `let` expressions in this position are unstable [E0658]
+    //~| ERROR expected expression, found `let` statement
     use_expr!(let 0 = 1);
     //~^ ERROR no rules expected the token `let`
-    // ^--- FIXME(53667): Consider whether `Let` can be added to `ident_can_begin_expr`.
 }
 
 fn main() {}

@@ -1,0 +1,29 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+
+    "scopeName": "source.ra_syntax_tree",
+    "patterns": [
+        { "include": "#node_type" },
+        { "include": "#node_range_index" },
+        { "include": "#token_text" }
+    ],
+    "repository": {
+        "node_type": {
+            "match": "^\\s*([A-Z_][A-Z_0-9]*?)@",
+            "captures": {
+                "1": {
+                    "name": "entity.name.class"
+                }
+            }
+        },
+        "node_range_index": {
+            "match": "\\d+",
+            "name": "constant.numeric"
+        },
+        "token_text": {
+            "match": "\".+\"",
+            "name": "string"
+        }
+    },
+    "fileTypes": ["rast"]
+}

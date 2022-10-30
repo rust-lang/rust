@@ -18,12 +18,12 @@ fn reg_to_abi_param(reg: Reg) -> AbiParam {
     let clif_ty = match (reg.kind, reg.size.bytes()) {
         (RegKind::Integer, 1) => types::I8,
         (RegKind::Integer, 2) => types::I16,
-        (RegKind::Integer, 4) => types::I32,
-        (RegKind::Integer, 8) => types::I64,
-        (RegKind::Integer, 16) => types::I128,
+        (RegKind::Integer, 3..=4) => types::I32,
+        (RegKind::Integer, 5..=8) => types::I64,
+        (RegKind::Integer, 9..=16) => types::I128,
         (RegKind::Float, 4) => types::F32,
         (RegKind::Float, 8) => types::F64,
-        (RegKind::Vector, size) => types::I8.by(u16::try_from(size).unwrap()).unwrap(),
+        (RegKind::Vector, size) => types::I8.by(u32::try_from(size).unwrap()).unwrap(),
         _ => unreachable!("{:?}", reg),
     };
     AbiParam::new(clif_ty)
@@ -38,7 +38,7 @@ fn apply_arg_attrs_to_abi_param(mut param: AbiParam, arg_attrs: ArgAttributes) -
     param
 }
 
-fn cast_target_to_abi_params(cast: CastTarget) -> SmallVec<[AbiParam; 2]> {
+fn cast_target_to_abi_params(cast: &CastTarget) -> SmallVec<[AbiParam; 2]> {
     let (rest_count, rem_bytes) = if cast.rest.unit.size.bytes() == 0 {
         (0, 0)
     } else {
@@ -48,23 +48,9 @@ fn cast_target_to_abi_params(cast: CastTarget) -> SmallVec<[AbiParam; 2]> {
         )
     };
 
-    if cast.prefix.iter().all(|x| x.is_none()) {
-        // Simplify to a single unit when there is no prefix and size <= unit size
-        if cast.rest.total <= cast.rest.unit.size {
-            let clif_ty = match (cast.rest.unit.kind, cast.rest.unit.size.bytes()) {
-                (RegKind::Integer, 1) => types::I8,
-                (RegKind::Integer, 2) => types::I16,
-                (RegKind::Integer, 3..=4) => types::I32,
-                (RegKind::Integer, 5..=8) => types::I64,
-                (RegKind::Integer, 9..=16) => types::I128,
-                (RegKind::Float, 4) => types::F32,
-                (RegKind::Float, 8) => types::F64,
-                (RegKind::Vector, size) => types::I8.by(u16::try_from(size).unwrap()).unwrap(),
-                _ => unreachable!("{:?}", cast.rest.unit),
-            };
-            return smallvec![AbiParam::new(clif_ty)];
-        }
-    }
+    // Note: Unlike the LLVM equivalent of this code we don't have separate branches for when there
+    // is no prefix as a single unit, an array and a heterogeneous struct are not represented using
+    // different types in Cranelift IR. Instead a single array of primitive types is used.
 
     // Create list of fields in the main structure
     let mut args = cast
@@ -114,7 +100,10 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
-            PassMode::Cast(cast) => cast_target_to_abi_params(cast),
+            PassMode::Cast(ref cast, pad_i32) => {
+                assert!(!pad_i32, "padding support not yet implemented");
+                cast_target_to_abi_params(cast)
+            }
             PassMode::Indirect { attrs, extra_attrs: None, on_stack } => {
                 if on_stack {
                     // Abi requires aligning struct size to pointer size
@@ -159,7 +148,9 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
-            PassMode::Cast(cast) => (None, cast_target_to_abi_params(cast).into_iter().collect()),
+            PassMode::Cast(ref cast, _) => {
+                (None, cast_target_to_abi_params(cast).into_iter().collect())
+            }
             PassMode::Indirect { attrs: _, extra_attrs: None, on_stack } => {
                 assert!(!on_stack);
                 (Some(AbiParam::special(pointer_ty(tcx), ArgumentPurpose::StructReturn)), vec![])
@@ -174,7 +165,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
 pub(super) fn to_casted_value<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     arg: CValue<'tcx>,
-    cast: CastTarget,
+    cast: &CastTarget,
 ) -> SmallVec<[Value; 2]> {
     let (ptr, meta) = arg.force_stack(fx);
     assert!(meta.is_none());
@@ -193,12 +184,12 @@ pub(super) fn from_casted_value<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     block_params: &[Value],
     layout: TyAndLayout<'tcx>,
-    cast: CastTarget,
+    cast: &CastTarget,
 ) -> CValue<'tcx> {
     let abi_params = cast_target_to_abi_params(cast);
     let abi_param_size: u32 = abi_params.iter().map(|param| param.value_type.bytes()).sum();
     let layout_size = u32::try_from(layout.size.bytes()).unwrap();
-    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+    let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
         kind: StackSlotKind::ExplicitSlot,
         // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
         // specify stack slot alignment.
@@ -207,7 +198,7 @@ pub(super) fn from_casted_value<'tcx>(
         // larger alignment than the integer.
         size: (std::cmp::max(abi_param_size, layout_size) + 15) / 16 * 16,
     });
-    let ptr = Pointer::new(fx.bcx.ins().stack_addr(pointer_ty(fx.tcx), stack_slot, 0));
+    let ptr = Pointer::stack_slot(stack_slot);
     let mut offset = 0;
     let mut block_params_iter = block_params.iter().copied();
     for param in abi_params {
@@ -230,7 +221,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
     arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     is_owned: bool,
 ) -> SmallVec<[Value; 2]> {
-    assert_assignable(fx, arg.layout().ty, arg_abi.layout.ty);
+    assert_assignable(fx, arg.layout().ty, arg_abi.layout.ty, 16);
     match arg_abi.mode {
         PassMode::Ignore => smallvec![],
         PassMode::Direct(_) => smallvec![arg.load_scalar(fx)],
@@ -238,7 +229,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
             let (a, b) = arg.load_scalar_pair(fx);
             smallvec![a, b]
         }
-        PassMode::Cast(cast) => to_casted_value(fx, arg, cast),
+        PassMode::Cast(ref cast, _) => to_casted_value(fx, arg, cast),
         PassMode::Indirect { .. } => {
             if is_owned {
                 match arg.force_stack(fx) {
@@ -282,7 +273,7 @@ pub(super) fn cvalue_for_param<'tcx>(
         local,
         local_field,
         &block_params,
-        arg_abi.mode,
+        &arg_abi.mode,
         arg_abi.layout,
     );
 
@@ -296,7 +287,9 @@ pub(super) fn cvalue_for_param<'tcx>(
             assert_eq!(block_params.len(), 2, "{:?}", block_params);
             Some(CValue::by_val_pair(block_params[0], block_params[1], arg_abi.layout))
         }
-        PassMode::Cast(cast) => Some(from_casted_value(fx, &block_params, arg_abi.layout, cast)),
+        PassMode::Cast(ref cast, _) => {
+            Some(from_casted_value(fx, &block_params, arg_abi.layout, cast))
+        }
         PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
             assert_eq!(block_params.len(), 1, "{:?}", block_params);
             Some(CValue::by_ref(Pointer::new(block_params[0]), arg_abi.layout))

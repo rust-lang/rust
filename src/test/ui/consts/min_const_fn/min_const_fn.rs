@@ -34,7 +34,7 @@ const fn foo35(a: bool, b: bool) -> bool { a ^ b }
 struct Foo<T: ?Sized>(T);
 impl<T> Foo<T> {
     const fn new(t: T) -> Self { Foo(t) }
-    const fn into_inner(self) -> T { self.0 } //~ destructors cannot be evaluated
+    const fn into_inner(self) -> T { self.0 } //~ destructor of
     const fn get(&self) -> &T { &self.0 }
     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
     //~^ mutable references
@@ -43,7 +43,7 @@ impl<T> Foo<T> {
 }
 impl<'a, T> Foo<T> {
     const fn new_lt(t: T) -> Self { Foo(t) }
-    const fn into_inner_lt(self) -> T { self.0 } //~ destructors cannot be evaluated
+    const fn into_inner_lt(self) -> T { self.0 } //~ destructor of
     const fn get_lt(&'a self) -> &T { &self.0 }
     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
     //~^ mutable references
@@ -52,7 +52,7 @@ impl<'a, T> Foo<T> {
 }
 impl<T: Sized> Foo<T> {
     const fn new_s(t: T) -> Self { Foo(t) }
-    const fn into_inner_s(self) -> T { self.0 } //~ ERROR destructors
+    const fn into_inner_s(self) -> T { self.0 } //~ ERROR destructor
     const fn get_s(&self) -> &T { &self.0 }
     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
     //~^ mutable references

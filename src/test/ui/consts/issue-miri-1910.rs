@@ -1,4 +1,5 @@
 // error-pattern unable to turn pointer into raw bytes
+// normalize-stderr-test: "alloc[0-9]+\+0x[a-z0-9]+" -> "ALLOC"
 #![feature(const_ptr_read)]
 
 const C: () = unsafe {

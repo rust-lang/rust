@@ -1,3 +1,4 @@
+// unit-test
 // compile-flags: -O
 
 static FOO: u8 = 2;

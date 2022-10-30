@@ -1,4 +1,3 @@
-// min-llvm-version: 13.0.0
 // compile-flags: -O
 // only-x86_64
 

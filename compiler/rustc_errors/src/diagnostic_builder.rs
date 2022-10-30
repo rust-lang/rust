@@ -5,6 +5,7 @@ use crate::{
 };
 use crate::{Handler, Level, MultiSpan, StashKey};
 use rustc_lint_defs::Applicability;
+use rustc_span::source_map::Spanned;
 
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -12,7 +13,28 @@ use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
-use tracing::debug;
+
+/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
+#[cfg_attr(bootstrap, rustc_diagnostic_item = "SessionDiagnostic")]
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "IntoDiagnostic")]
+pub trait IntoDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
+    /// Write out as a diagnostic out of `Handler`.
+    #[must_use]
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, T>;
+}
+
+impl<'a, T, E> IntoDiagnostic<'a, E> for Spanned<T>
+where
+    T: IntoDiagnostic<'a, E>,
+    E: EmissionGuarantee,
+{
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, E> {
+        let mut diag = self.node.into_diagnostic(handler);
+        diag.set_span(self.span);
+        diag
+    }
+}
 
 /// Used for emitting structured error messages and other diagnostic information.
 ///
@@ -84,6 +106,13 @@ pub trait EmissionGuarantee: Sized {
     /// of `Self` without actually performing the emission.
     #[track_caller]
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self;
+
+    /// Creates a new `DiagnosticBuilder` that will return this type of guarantee.
+    #[track_caller]
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self>;
 }
 
 /// Private module for sealing the `IsError` helper trait.
@@ -166,6 +195,15 @@ impl EmissionGuarantee for ErrorGuaranteed {
             }
         }
     }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new_guaranteeing_error::<_, { Level::Error { lint: false } }>(
+            handler, msg,
+        )
+    }
 }
 
 impl<'a> DiagnosticBuilder<'a, ()> {
@@ -208,6 +246,13 @@ impl EmissionGuarantee for () {
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
         }
     }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new(handler, Level::Warning(None), msg)
+    }
 }
 
 impl<'a> DiagnosticBuilder<'a, !> {
@@ -246,6 +291,13 @@ impl EmissionGuarantee for ! {
         }
         // Then fatally error, returning `!`
         crate::FatalError.raise()
+    }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new_fatal(handler, msg)
     }
 }
 
@@ -461,6 +513,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     forward!(pub fn set_is_lint(&mut self,) -> &mut Self);
 
     forward!(pub fn disable_suggestions(&mut self,) -> &mut Self);
+    forward!(pub fn clear_suggestions(&mut self,) -> &mut Self);
 
     forward!(pub fn multipart_suggestion(
         &mut self,
@@ -529,7 +582,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         applicability: Applicability,
     ) -> &mut Self);
 
-    forward!(pub fn set_primary_message(&mut self, msg: impl Into<String>) -> &mut Self);
+    forward!(pub fn set_primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
     forward!(pub fn set_span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
     forward!(pub fn set_arg(
@@ -540,7 +593,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
     forward!(pub fn subdiagnostic(
         &mut self,
-        subdiagnostic: impl crate::AddSubdiagnostic
+        subdiagnostic: impl crate::AddToDiagnostic
     ) -> &mut Self);
 }
 
@@ -565,7 +618,7 @@ impl Drop for DiagnosticBuilderInner<'_> {
                         ),
                     ));
                     handler.emit_diagnostic(&mut self.diagnostic);
-                    panic!();
+                    panic!("error was constructed but not emitted");
                 }
             }
             // `.emit()` was previously called, or maybe we're during `.cancel()`.

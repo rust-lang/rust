@@ -1,6 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
 use std::marker::PhantomData;
 
 pub struct Id<'id>(PhantomData<fn(&'id ()) -> &'id ()>);

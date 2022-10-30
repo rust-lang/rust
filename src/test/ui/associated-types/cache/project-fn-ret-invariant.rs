@@ -7,11 +7,6 @@
 // revisions: ok oneuse transmute krisskross
 //[ok] check-pass
 
-// ignore-compare-mode-nll
-// FIXME(nll): When stabilizing, this test should be replaced with `project-fn-ret-invariant-nll.rs`
-// The two would normally be just revisions, but this test uses revisions heavily, so splitting into
-// a separate test is just easier.
-
 #![allow(dead_code, unused_variables)]
 
 use std::marker::PhantomData;
@@ -43,7 +38,9 @@ fn baz<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
 fn baz<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
     let f = foo; // <-- No consistent type can be inferred for `f` here.
     let a = bar(f, x);
-    let b = bar(f, y); //[oneuse]~ ERROR lifetime mismatch [E0623]
+    //[oneuse]~^ ERROR lifetime may not live long enough
+    //[oneuse]~| ERROR lifetime may not live long enough
+    let b = bar(f, y);
     (a, b)
 }
 
@@ -52,14 +49,16 @@ fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
     // Cannot instantiate `foo` with any lifetime other than `'a`,
     // since it is provided as input.
 
-    bar(foo, x) //[transmute]~ ERROR E0759
+    bar(foo, x) //[transmute]~ ERROR lifetime may not live long enough
 }
 
 #[cfg(krisskross)] // two instantiations, mixing and matching: BAD
 fn transmute<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
-    let a = bar(foo, y); //[krisskross]~ ERROR E0623
+    let a = bar(foo, y);
     let b = bar(foo, x);
-    (a, b) //[krisskross]~ ERROR E0623
+    (a, b)
+    //[krisskross]~^ ERROR lifetime may not live long enough
+    //[krisskross]~| ERROR lifetime may not live long enough
 }
 
 fn main() {}

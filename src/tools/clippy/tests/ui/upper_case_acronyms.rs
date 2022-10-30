@@ -38,4 +38,13 @@ enum ParseErrorPrivate<T> {
     Parse(T, String),
 }
 
+// do lint here
+struct JSON;
+
+// do lint here
+enum YAML {
+    Num(u32),
+    Str(String),
+}
+
 fn main() {}

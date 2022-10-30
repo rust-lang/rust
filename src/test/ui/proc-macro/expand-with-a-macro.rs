@@ -2,7 +2,6 @@
 // needs-unwind
 // aux-build:expand-with-a-macro.rs
 
-// ignore-wasm32-bare compiled with panic=abort by default
 
 #![deny(warnings)]
 

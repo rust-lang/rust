@@ -3,10 +3,6 @@
 // there might be other ways for the caller of `func` to show that
 // `T::Foo: 'x` holds (e.g., where-clause).
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 trait Trait1<'x> {
     type Foo;
 }

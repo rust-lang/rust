@@ -1,0 +1,18 @@
+### What it does
+
+Finds items imported through `std` when available through `alloc`.
+
+### Why is this bad?
+
+Crates which have `no_std` compatibility and require alloc may wish to ensure types are imported from
+alloc to ensure disabling `std` does not cause the crate to fail to compile. This lint is also useful
+for crates migrating to become `no_std` compatible.
+
+### Example
+```
+use std::vec::Vec;
+```
+Use instead:
+```
+use alloc::vec::Vec;
+```

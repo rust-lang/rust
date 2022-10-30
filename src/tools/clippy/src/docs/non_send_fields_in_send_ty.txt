@@ -1,0 +1,36 @@
+### What it does
+This lint warns about a `Send` implementation for a type that
+contains fields that are not safe to be sent across threads.
+It tries to detect fields that can cause a soundness issue
+when sent to another thread (e.g., `Rc`) while allowing `!Send` fields
+that are expected to exist in a `Send` type, such as raw pointers.
+
+### Why is this bad?
+Sending the struct to another thread effectively sends all of its fields,
+and the fields that do not implement `Send` can lead to soundness bugs
+such as data races when accessed in a thread
+that is different from the thread that created it.
+
+See:
+* [*The Rustonomicon* about *Send and Sync*](https://doc.rust-lang.org/nomicon/send-and-sync.html)
+* [The documentation of `Send`](https://doc.rust-lang.org/std/marker/trait.Send.html)
+
+### Known Problems
+This lint relies on heuristics to distinguish types that are actually
+unsafe to be sent across threads and `!Send` types that are expected to
+exist in  `Send` type. Its rule can filter out basic cases such as
+`Vec<*const T>`, but it's not perfect. Feel free to create an issue if
+you have a suggestion on how this heuristic can be improved.
+
+### Example
+```
+struct ExampleStruct<T> {
+    rc_is_not_send: Rc<String>,
+    unbounded_generic_field: T,
+}
+
+// This impl is unsound because it allows sending `!Send` types through `ExampleStruct`
+unsafe impl<T> Send for ExampleStruct<T> {}
+```
+Use thread-safe types like [`std::sync::Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
+or specify correct bounds on generic type parameters (`T: Send`).

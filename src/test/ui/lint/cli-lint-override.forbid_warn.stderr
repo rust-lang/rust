@@ -4,8 +4,8 @@ error: extern declarations without an explicit ABI are deprecated
 LL | extern fn foo() {}
    | ^^^^^^^^^^^^^^^ ABI should be specified here
    |
-   = note: requested on the command line with `-F missing-abi`
    = help: the default ABI is C
+   = note: requested on the command line with `-F missing-abi`
 
 error: aborting due to previous error
 

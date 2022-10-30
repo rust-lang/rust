@@ -45,13 +45,11 @@ declare_clippy_lint! {
     /// `std::mem::drop` conveys your intention better and is less error-prone.
     ///
     /// ### Example
-    ///
-    /// Bad:
     /// ```rust,ignore
     /// let _ = mutex.lock();
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// let _lock = mutex.lock();
     /// ```
@@ -75,24 +73,20 @@ declare_clippy_lint! {
     /// better and is less error-prone.
     ///
     /// ### Example
-    ///
-    /// Bad:
-    /// ```rust,ignore
-    /// struct Droppable;
-    /// impl Drop for Droppable {
-    ///     fn drop(&mut self) {}
-    /// }
+    /// ```rust
+    /// # struct DroppableItem;
     /// {
-    ///     let _ = Droppable;
-    ///     //               ^ dropped here
+    ///     let _ = DroppableItem;
+    ///     //                   ^ dropped here
     ///     /* more code */
     /// }
     /// ```
     ///
-    /// Good:
-    /// ```rust,ignore
+    /// Use instead:
+    /// ```rust
+    /// # struct DroppableItem;
     /// {
-    ///     let _droppable = Droppable;
+    ///     let _droppable = DroppableItem;
     ///     /* more code */
     ///     // dropped at end of scope
     /// }
@@ -105,12 +99,13 @@ declare_clippy_lint! {
 
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_DROP]);
 
-const SYNC_GUARD_PATHS: [&[&str]; 5] = [
+const SYNC_GUARD_PATHS: [&[&str]; 6] = [
     &paths::MUTEX_GUARD,
     &paths::RWLOCK_READ_GUARD,
     &paths::RWLOCK_WRITE_GUARD,
-    &paths::PARKING_LOT_RAWMUTEX,
-    &paths::PARKING_LOT_RAWRWLOCK,
+    &paths::PARKING_LOT_MUTEX_GUARD,
+    &paths::PARKING_LOT_RWLOCK_READ_GUARD,
+    &paths::PARKING_LOT_RWLOCK_WRITE_GUARD,
 ];
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {

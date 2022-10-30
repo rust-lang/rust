@@ -3,6 +3,8 @@ error[E0432]: unresolved import `not_existing_crate`
    |
 LL | use not_existing_crate::*;
    |     ^^^^^^^^^^^^^^^^^^ maybe a missing crate `not_existing_crate`?
+   |
+   = help: consider adding `extern crate not_existing_crate` to use the `not_existing_crate` crate
 
 error: aborting due to previous error
 

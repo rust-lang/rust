@@ -1,4 +1,4 @@
-error: lifetime parameters must be declared prior to type parameters
+error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/issue-59508-1.rs:10:25
    |
 LL |     pub fn do_things<T, 'a, 'b: 'a>() {

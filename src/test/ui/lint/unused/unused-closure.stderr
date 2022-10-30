@@ -6,12 +6,12 @@ LL | |         println!("Hello!");
 LL | |     };
    | |______^
    |
+   = note: closures are lazy and do nothing unless called
 note: the lint level is defined here
   --> $DIR/unused-closure.rs:6:9
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-   = note: closures are lazy and do nothing unless called
 
 error: unused implementer of `Future` that must be used
   --> $DIR/unused-closure.rs:13:5

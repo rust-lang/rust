@@ -158,4 +158,25 @@ enum Phase {
     PostLookup,
 }
 
+mod issue9018 {
+    enum DoLint {
+        _TypeCreate,
+        _TypeRead,
+        _TypeUpdate,
+        _TypeDestroy,
+    }
+
+    enum DoLintToo {
+        _CreateType,
+        _UpdateType,
+        _DeleteType,
+    }
+
+    enum DoNotLint {
+        _Foo,
+        _Bar,
+        _Baz,
+    }
+}
+
 fn main() {}

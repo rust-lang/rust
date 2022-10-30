@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// #[allow(clippy::crate_in_macro_def)]
     /// macro_rules! ok { ... crate::foo ... }
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub CRATE_IN_MACRO_DEF,
     suspicious,
     "using `crate` in a macro definition"
@@ -74,8 +74,8 @@ impl EarlyLintPass for CrateInMacroDef {
 
 fn is_macro_export(attr: &Attribute) -> bool {
     if_chain! {
-        if let AttrKind::Normal(attr_item, _) = &attr.kind;
-        if let [segment] = attr_item.path.segments.as_slice();
+        if let AttrKind::Normal(normal) = &attr.kind;
+        if let [segment] = normal.item.path.segments.as_slice();
         then {
             segment.ident.name == sym::macro_export
         } else {
@@ -90,7 +90,7 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
     while let Some(curr) = cursor.next() {
         if_chain! {
             if !prev_is_dollar;
-            if let Some(span) = is_crate_keyword(&curr);
+            if let Some(span) = is_crate_keyword(curr);
             if let Some(next) = cursor.look_ahead(0);
             if is_token(next, &TokenKind::ModSep);
             then {
@@ -103,21 +103,21 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
                 return span;
             }
         }
-        prev_is_dollar = is_token(&curr, &TokenKind::Dollar);
+        prev_is_dollar = is_token(curr, &TokenKind::Dollar);
     }
     None
 }
 
 fn is_crate_keyword(tt: &TokenTree) -> Option<Span> {
     if_chain! {
-        if let TokenTree::Token(Token { kind: TokenKind::Ident(symbol, _), span }) = tt;
+        if let TokenTree::Token(Token { kind: TokenKind::Ident(symbol, _), span }, _) = tt;
         if symbol.as_str() == "crate";
         then { Some(*span) } else { None }
     }
 }
 
 fn is_token(tt: &TokenTree, kind: &TokenKind) -> bool {
-    if let TokenTree::Token(Token { kind: other, .. }) = tt {
+    if let TokenTree::Token(Token { kind: other, .. }, _) = tt {
         kind == other
     } else {
         false

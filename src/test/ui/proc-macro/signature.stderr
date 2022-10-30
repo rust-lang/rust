@@ -10,7 +10,7 @@ LL | | }
    | |_call the function in a closure: `|| unsafe { /* code */ }`
    |   required by a bound introduced by this call
    |
-   = help: the trait `Fn<(proc_macro::TokenStream,)>` is not implemented for `unsafe extern "C" fn(i32, u32) -> u32 {foo}`
+   = help: the trait `Fn<(proc_macro::TokenStream,)>` is not implemented for fn item `unsafe extern "C" fn(i32, u32) -> u32 {foo}`
    = note: unsafe function cannot be called generically without an unsafe block
 note: required by a bound in `ProcMacro::custom_derive`
   --> $SRC_DIR/proc_macro/src/bridge/client.rs:LL:COL

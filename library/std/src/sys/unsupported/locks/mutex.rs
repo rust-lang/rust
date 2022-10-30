@@ -11,12 +11,11 @@ unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {} // no threads on this platform
 
 impl Mutex {
+    #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Mutex {
         Mutex { locked: Cell::new(false) }
     }
-
-    #[inline]
-    pub unsafe fn init(&mut self) {}
 
     #[inline]
     pub unsafe fn lock(&self) {
@@ -32,7 +31,4 @@ impl Mutex {
     pub unsafe fn try_lock(&self) -> bool {
         self.locked.replace(true) == false
     }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {}
 }

@@ -8,7 +8,7 @@ help: use `+= 1` instead
    |
 LL -     ++i;
 LL +     i += 1;
-   | 
+   |
 
 error: Rust has no prefix increment operator
   --> $DIR/increment-autofix.rs:11:11
@@ -33,7 +33,7 @@ help: use `+= 1` instead
    |
 LL -     ++tmp;
 LL +     tmp += 1;
-   | 
+   |
 
 error: Rust has no prefix increment operator
   --> $DIR/increment-autofix.rs:25:11

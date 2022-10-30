@@ -74,7 +74,7 @@ pub fn check(build: &mut Build) {
     let mut cmd_finder = Finder::new();
     // If we've got a git directory we're gonna need git to update
     // submodules and learn about various other aspects.
-    if build.rust_info.is_git() {
+    if build.rust_info.is_managed_git_subrepository() {
         cmd_finder.must_have("git");
     }
 
@@ -104,7 +104,7 @@ You should install cmake, or set `download-ci-llvm = true` in the
 than building it.
 "
             );
-            std::process::exit(1);
+            crate::detail_exit(1);
         }
     }
 

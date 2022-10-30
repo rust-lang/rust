@@ -9,10 +9,8 @@ use rustc_codegen_ssa::traits::{
     StaticMethods,
 };
 use rustc_middle::mir::Mutability;
-use rustc_middle::ty::ScalarInt;
 use rustc_middle::ty::layout::{TyAndLayout, LayoutOf};
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
-use rustc_span::Symbol;
 use rustc_target::abi::{self, HasDataLayout, Pointer, Size};
 
 use crate::consts::const_alloc_to_gcc;
@@ -121,16 +119,19 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn const_real(&self, _t: Type<'gcc>, _val: f64) -> RValue<'gcc> {
-        unimplemented!();
+    fn const_real(&self, typ: Type<'gcc>, val: f64) -> RValue<'gcc> {
+        self.context.new_rvalue_from_double(typ, val)
     }
 
-    fn const_str(&self, s: Symbol) -> (RValue<'gcc>, RValue<'gcc>) {
-        let s_str = s.as_str();
-        let str_global = *self.const_str_cache.borrow_mut().entry(s).or_insert_with(|| {
-            self.global_string(s_str)
-        });
-        let len = s_str.len();
+    fn const_str(&self, s: &str) -> (RValue<'gcc>, RValue<'gcc>) {
+        let str_global = *self
+            .const_str_cache
+            .borrow_mut()
+            .raw_entry_mut()
+            .from_key(s)
+            .or_insert_with(|| (s.to_owned(), self.global_string(s)))
+            .1;
+        let len = s.len();
         let cs = self.const_ptrcast(str_global.get_address(None),
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self, true)),
         );
@@ -160,10 +161,6 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Type<'gcc>) -> RValue<'gcc> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
-            Scalar::Int(ScalarInt::ZST) => {
-                assert_eq!(0, layout.size(self).bytes());
-                self.const_undef(self.type_ix(0))
-            }
             Scalar::Int(int) => {
                 let data = int.assert_bits(layout.size(self));
 
@@ -200,6 +197,11 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         GlobalAlloc::Function(fn_instance) => {
                             self.get_fn_addr(fn_instance)
                         },
+                        GlobalAlloc::VTable(ty, trait_ref) => {
+                            let alloc = self.tcx.global_alloc(self.tcx.vtable_allocation((ty, trait_ref))).unwrap_memory();
+                            let init = const_alloc_to_gcc(self, alloc);
+                            self.static_addr_of(init, alloc.inner().align, None)
+                        }
                         GlobalAlloc::Static(def_id) => {
                             assert!(self.tcx.is_static(def_id));
                             self.get_static(def_id).get_address(None)
@@ -279,6 +281,21 @@ impl<'gcc, 'tcx> SignType<'gcc, 'tcx> for Type<'gcc> {
         else if self.is_u128(cx) {
             cx.i128_type
         }
+        else if self.is_uchar(cx) {
+            cx.char_type
+        }
+        else if self.is_ushort(cx) {
+            cx.short_type
+        }
+        else if self.is_uint(cx) {
+            cx.int_type
+        }
+        else if self.is_ulong(cx) {
+            cx.long_type
+        }
+        else if self.is_ulonglong(cx) {
+            cx.longlong_type
+        }
         else {
             self.clone()
         }
@@ -300,6 +317,21 @@ impl<'gcc, 'tcx> SignType<'gcc, 'tcx> for Type<'gcc> {
         else if self.is_i128(cx) {
             cx.u128_type
         }
+        else if self.is_char(cx) {
+            cx.uchar_type
+        }
+        else if self.is_short(cx) {
+            cx.ushort_type
+        }
+        else if self.is_int(cx) {
+            cx.uint_type
+        }
+        else if self.is_long(cx) {
+            cx.ulong_type
+        }
+        else if self.is_longlong(cx) {
+            cx.ulonglong_type
+        }
         else {
             self.clone()
         }
@@ -312,6 +344,11 @@ pub trait TypeReflection<'gcc, 'tcx>  {
     fn is_uint(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_ulong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_ulonglong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_char(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_short(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_int(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_long(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+    fn is_longlong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
 
     fn is_i8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_u8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
@@ -326,15 +363,17 @@ pub trait TypeReflection<'gcc, 'tcx>  {
 
     fn is_f32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+
+    fn is_vector(&self) -> bool;
 }
 
 impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
     fn is_uchar(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.u8_type
+        self.unqualified() == cx.uchar_type
     }
 
     fn is_ushort(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.u16_type
+        self.unqualified() == cx.ushort_type
     }
 
     fn is_uint(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
@@ -347,6 +386,26 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
 
     fn is_ulonglong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
         self.unqualified() == cx.ulonglong_type
+    }
+
+    fn is_char(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.char_type
+    }
+
+    fn is_short(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.short_type
+    }
+
+    fn is_int(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.int_type
+    }
+
+    fn is_long(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.long_type
+    }
+
+    fn is_longlong(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
+        self.unqualified() == cx.longlong_type
     }
 
     fn is_i8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
@@ -395,5 +454,22 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
 
     fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
         self.unqualified() == cx.context.new_type::<f64>()
+    }
+
+    fn is_vector(&self) -> bool {
+        let mut typ = self.clone();
+        loop {
+            if typ.dyncast_vector().is_some() {
+                return true;
+            }
+
+            let old_type = typ;
+            typ = typ.unqualified();
+            if old_type == typ {
+                break;
+            }
+        }
+
+        false
     }
 }

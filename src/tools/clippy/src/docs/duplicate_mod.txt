@@ -1,0 +1,31 @@
+### What it does
+Checks for files that are included as modules multiple times.
+
+### Why is this bad?
+Loading a file as a module more than once causes it to be compiled
+multiple times, taking longer and putting duplicate content into the
+module tree.
+
+### Example
+```
+// lib.rs
+mod a;
+mod b;
+```
+```
+// a.rs
+#[path = "./b.rs"]
+mod b;
+```
+
+Use instead:
+
+```
+// lib.rs
+mod a;
+mod b;
+```
+```
+// a.rs
+use crate::b;
+```

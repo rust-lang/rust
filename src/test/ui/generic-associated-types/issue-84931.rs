@@ -1,4 +1,3 @@
-#![feature(generic_associated_types)]
 // check-fail
 
 trait StreamingIter {

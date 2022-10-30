@@ -28,7 +28,8 @@ LL +             v
 LL +         } else {
 LL +             v2
 LL +         }
- ...
+LL +     });
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:38:5
@@ -50,7 +51,8 @@ LL +             v
 LL +         } else {
 LL +             v2
 LL +         }
- ...
+LL +     });
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:47:5
@@ -72,7 +74,9 @@ LL +             e.insert(v);
 LL +         } else {
 LL +             e.insert(v2);
 LL +             return;
- ...
+LL +         }
+LL +     }
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:57:5
@@ -111,7 +115,11 @@ LL +             1 if true => {
 LL +                 v
 LL +             },
 LL +             _ => {
- ...
+LL +                 v2
+LL +             },
+LL +         }
+LL +     });
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:75:5
@@ -133,7 +141,9 @@ LL +             0 => foo(),
 LL +             _ => {
 LL +                 e.insert(v2);
 LL +             },
- ...
+LL +         };
+LL +     }
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:85:5
@@ -155,7 +165,26 @@ LL +         match 0 {
 LL +             0 if false => {
 LL +                 v
 LL +             },
- ...
+LL +             1 => {
+LL +                 foo();
+LL +                 v
+LL +             },
+LL +             2 | 3 => {
+LL +                 for _ in 0..2 {
+LL +                     foo();
+LL +                 }
+LL +                 if true {
+LL +                     v
+LL +                 } else {
+LL +                     v2
+LL +                 }
+LL +             },
+LL +             _ => {
+LL +                 v2
+LL +             },
+LL +         }
+LL +     });
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:119:5

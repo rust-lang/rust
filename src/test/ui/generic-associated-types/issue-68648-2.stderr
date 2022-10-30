@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-68648-2.rs:14:17
+  --> $DIR/issue-68648-2.rs:12:17
    |
 LL | fn bug<'a, T: Fun<F<'a> = T>>(t: T) -> T::F<'a> {
    |            - this type parameter
@@ -11,7 +11,7 @@ LL |     T::identity(())
    = note: expected type parameter `T`
                    found unit type `()`
 note: associated function defined here
-  --> $DIR/issue-68648-2.rs:6:8
+  --> $DIR/issue-68648-2.rs:4:8
    |
 LL |     fn identity<'a>(t: Self::F<'a>) -> Self::F<'a> { t }
    |        ^^^^^^^^     --------------

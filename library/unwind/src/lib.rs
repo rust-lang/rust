@@ -1,8 +1,6 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![feature(link_cfg)]
-#![feature(native_link_modifiers_bundle)]
-#![feature(nll)]
 #![feature(staged_api)]
 #![feature(c_unwind)]
 #![feature(cfg_target_abi)]
@@ -56,6 +54,26 @@ cfg_if::cfg_if! {
         extern "C" {}
     }
 }
+
+#[cfg(target_os = "android")]
+cfg_if::cfg_if! {
+    if #[cfg(feature = "llvm-libunwind")] {
+        compile_error!("`llvm-libunwind` is not supported for Android targets");
+    } else if #[cfg(feature = "system-llvm-libunwind")] {
+        #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+        #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
+        extern "C" {}
+    } else {
+        #[link(name = "gcc", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+        #[link(name = "gcc", cfg(not(target_feature = "crt-static")))]
+        extern "C" {}
+    }
+}
+// Android's unwinding library depends on dl_iterate_phdr in `libdl`.
+#[cfg(target_os = "android")]
+#[link(name = "dl", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+#[link(name = "dl", cfg(not(target_feature = "crt-static")))]
+extern "C" {}
 
 // When building with crt-static, we get `gcc_eh` from the `libc` crate, since
 // glibc needs it, and needs it listed later on the linker command line. We

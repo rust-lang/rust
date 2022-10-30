@@ -10,11 +10,13 @@ Otherwise, have a great day =^.^=
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="A collection of lints to catch common mistakes and improve your Rust code.">
 
     <title>Clippy Lints</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/styles/github.min.css"/>
+    <link id="githubLightHighlight" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/github.min.css" disabled="true" />
+    <link id="githubDarkHighlight" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/github-dark.min.css" disabled="true" />
 
     <!-- The files are not copied over into the Clippy project since they use the MPL-2.0 License -->
     <link rel="stylesheet" href="https://rust-lang.github.io/mdBook/css/variables.css"/>
@@ -205,6 +207,26 @@ Otherwise, have a great day =^.^=
             background-color: #777777;
             margin: auto 5px;
             font-family: monospace;
+        }
+
+        details {
+            border-radius: 4px;
+            padding: .5em .5em 0;
+        }
+
+        code {
+            white-space: pre !important;
+        }
+
+        summary {
+            font-weight: bold;
+            margin: -.5em -.5em 0;
+            padding: .5em;
+            display: revert;
+        }
+
+        details[open] {
+            padding: .5em;
         }
     </style>
     <style>
@@ -540,8 +562,8 @@ Otherwise, have a great day =^.^=
     </a>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/languages/rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/languages/rust.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.12/angular.min.js"></script>
     <script src="script.js"></script>
 </body>

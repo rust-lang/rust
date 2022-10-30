@@ -36,7 +36,7 @@ mod canonicalizer;
 pub mod query_response;
 mod substitute;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Creates a substitution S for the canonical value with fresh
     /// inference variables and applies it to the canonical value.
     /// Returns both the instantiated result *and* the substitution S.
@@ -144,13 +144,13 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 )
                 .into(),
 
-            CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }) => {
+            CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }, ty) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
                 self.tcx
                     .mk_const(ty::ConstS {
-                        val: ty::ConstKind::Placeholder(placeholder_mapped),
-                        ty: name.ty,
+                        kind: ty::ConstKind::Placeholder(placeholder_mapped),
+                        ty,
                     })
                     .into()
             }

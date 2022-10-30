@@ -12,7 +12,7 @@ help: for an inherent impl, drop this `for`
    |
 LL - impl for S { }
 LL + impl S { }
-   | 
+   |
 
 error: aborting due to previous error
 

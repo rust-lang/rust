@@ -114,10 +114,6 @@ function levenshtein(s1, s2) {
 function initSearch(rawSearchIndex) {
     const MAX_LEV_DISTANCE = 3;
     const MAX_RESULTS = 200;
-    const GENERICS_DATA = 2;
-    const NAME = 0;
-    const INPUTS_DATA = 0;
-    const OUTPUT_DATA = 1;
     const NO_TYPE_FILTER = -1;
     /**
      *  @type {Array<Row>}
@@ -433,9 +429,9 @@ function initSearch(rawSearchIndex) {
             }
             const posBefore = parserState.pos;
             getNextElem(query, parserState, elems, endChar === ">");
-            // This case can be encountered if `getNextElem` encounted a "stop character" right from
-            // the start. For example if you have `,,` or `<>`. In this case, we simply move up the
-            // current position to continue the parsing.
+            // This case can be encountered if `getNextElem` encountered a "stop character" right
+            // from the start. For example if you have `,,` or `<>`. In this case, we simply move up
+            // the current position to continue the parsing.
             if (posBefore === parserState.pos) {
                 parserState.pos += 1;
             }
@@ -585,7 +581,7 @@ function initSearch(rawSearchIndex) {
         const elem = document.getElementById("crate-search");
 
         if (elem &&
-            elem.value !== "All crates" &&
+            elem.value !== "all crates" &&
             hasOwnPropertyRustdoc(rawSearchIndex, elem.value)
         ) {
             return elem.value;
@@ -895,21 +891,18 @@ function initSearch(rawSearchIndex) {
          * @return {integer}           - Returns the best match (if any) or `MAX_LEV_DISTANCE + 1`.
          */
         function checkGenerics(row, elem, defaultLev) {
-            if (row.length <= GENERICS_DATA || row[GENERICS_DATA].length === 0) {
+            if (row.generics.length === 0) {
                 return elem.generics.length === 0 ? defaultLev : MAX_LEV_DISTANCE + 1;
-            } else if (row[GENERICS_DATA].length > 0 && row[GENERICS_DATA][0][NAME] === "") {
-                if (row.length > GENERICS_DATA) {
-                    return checkGenerics(row[GENERICS_DATA][0], elem, defaultLev);
-                }
-                return elem.generics.length === 0 ? defaultLev : MAX_LEV_DISTANCE + 1;
+            } else if (row.generics.length > 0 && row.generics[0].name === null) {
+                return checkGenerics(row.generics[0], elem, defaultLev);
             }
             // The names match, but we need to be sure that all generics kinda
             // match as well.
             let elem_name;
-            if (elem.generics.length > 0 && row[GENERICS_DATA].length >= elem.generics.length) {
+            if (elem.generics.length > 0 && row.generics.length >= elem.generics.length) {
                 const elems = Object.create(null);
-                for (const entry of row[GENERICS_DATA]) {
-                    elem_name = entry[NAME];
+                for (const entry of row.generics) {
+                    elem_name = entry.name;
                     if (elem_name === "") {
                         // Pure generic, needs to check into it.
                         if (checkGenerics(entry, elem, MAX_LEV_DISTANCE + 1) !== 0) {
@@ -963,7 +956,7 @@ function initSearch(rawSearchIndex) {
           */
         function checkIfInGenerics(row, elem) {
             let lev = MAX_LEV_DISTANCE + 1;
-            for (const entry of row[GENERICS_DATA]) {
+            for (const entry of row.generics) {
                 lev = Math.min(checkType(entry, elem, true), lev);
                 if (lev === 0) {
                     break;
@@ -984,23 +977,22 @@ function initSearch(rawSearchIndex) {
           *                     no match, returns `MAX_LEV_DISTANCE + 1`.
           */
         function checkType(row, elem, literalSearch) {
-            if (row[NAME].length === 0) {
+            if (row.name === null) {
                 // This is a pure "generic" search, no need to run other checks.
-                if (row.length > GENERICS_DATA) {
+                if (row.generics.length > 0) {
                     return checkIfInGenerics(row, elem);
                 }
                 return MAX_LEV_DISTANCE + 1;
             }
 
-            let lev = levenshtein(row[NAME], elem.name);
+            let lev = levenshtein(row.name, elem.name);
             if (literalSearch) {
                 if (lev !== 0) {
                     // The name didn't match, let's try to check if the generics do.
                     if (elem.generics.length === 0) {
-                        const checkGeneric = (row.length > GENERICS_DATA &&
-                            row[GENERICS_DATA].length > 0);
-                        if (checkGeneric && row[GENERICS_DATA]
-                            .findIndex(tmp_elem => tmp_elem[NAME] === elem.name) !== -1) {
+                        const checkGeneric = row.generics.length > 0;
+                        if (checkGeneric && row.generics
+                            .findIndex(tmp_elem => tmp_elem.name === elem.name) !== -1) {
                             return 0;
                         }
                     }
@@ -1009,7 +1001,7 @@ function initSearch(rawSearchIndex) {
                     return checkGenerics(row, elem, MAX_LEV_DISTANCE + 1);
                 }
                 return 0;
-            } else if (row.length > GENERICS_DATA) {
+            } else if (row.generics.length > 0) {
                 if (elem.generics.length === 0) {
                     if (lev === 0) {
                         return 0;
@@ -1059,9 +1051,9 @@ function initSearch(rawSearchIndex) {
         function findArg(row, elem, typeFilter) {
             let lev = MAX_LEV_DISTANCE + 1;
 
-            if (row && row.type && row.type[INPUTS_DATA] && row.type[INPUTS_DATA].length > 0) {
-                for (const input of row.type[INPUTS_DATA]) {
-                    if (!typePassesFilter(typeFilter, input[1])) {
+            if (row && row.type && row.type.inputs && row.type.inputs.length > 0) {
+                for (const input of row.type.inputs) {
+                    if (!typePassesFilter(typeFilter, input.ty)) {
                         continue;
                     }
                     lev = Math.min(lev, checkType(input, elem, parsedQuery.literalSearch));
@@ -1086,13 +1078,10 @@ function initSearch(rawSearchIndex) {
         function checkReturned(row, elem, typeFilter) {
             let lev = MAX_LEV_DISTANCE + 1;
 
-            if (row && row.type && row.type.length > OUTPUT_DATA) {
-                let ret = row.type[OUTPUT_DATA];
-                if (typeof ret[0] === "string") {
-                    ret = [ret];
-                }
+            if (row && row.type && row.type.output.length > 0) {
+                const ret = row.type.output;
                 for (const ret_ty of ret) {
-                    if (!typePassesFilter(typeFilter, ret_ty[1])) {
+                    if (!typePassesFilter(typeFilter, ret_ty.ty)) {
                         continue;
                     }
                     lev = Math.min(lev, checkType(ret_ty, elem, parsedQuery.literalSearch));
@@ -1333,10 +1322,7 @@ function initSearch(rawSearchIndex) {
             if (searchWord.indexOf(elem.pathLast) > -1 ||
                 row.normalizedName.indexOf(elem.pathLast) > -1
             ) {
-                // filter type: ... queries
-                if (!results_others[fullId] !== undefined) {
-                    index = row.normalizedName.indexOf(elem.pathLast);
-                }
+                index = row.normalizedName.indexOf(elem.pathLast);
             }
             lev = levenshtein(searchWord, elem.pathLast);
             if (lev > 0 && elem.pathLast.length > 2 && searchWord.indexOf(elem.pathLast) > -1) {
@@ -1565,12 +1551,6 @@ function initSearch(rawSearchIndex) {
         return [displayPath, href];
     }
 
-    function escape(content) {
-        const h1 = document.createElement("h1");
-        h1.textContent = content;
-        return h1.innerHTML;
-    }
-
     function pathSplitter(path) {
         const tmp = "<span>" + path.replace(/::/g, "::</span><span>");
         if (tmp.endsWith("<span>")) {
@@ -1722,23 +1702,17 @@ function initSearch(rawSearchIndex) {
         }
 
         let crates = "";
-        if (window.ALL_CRATES.length > 1) {
-            crates = " in <select id=\"crate-search\"><option value=\"All crates\">" +
-                "All crates</option>";
-            for (const c of window.ALL_CRATES) {
+        const crates_list = Object.keys(rawSearchIndex);
+        if (crates_list.length > 1) {
+            crates = " in&nbsp;<div id=\"crate-search-div\"><select id=\"crate-search\">" +
+                "<option value=\"all crates\">all crates</option>";
+            for (const c of crates_list) {
                 crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
             }
-            crates += "</select>";
+            crates += "</select></div>";
         }
 
-        let typeFilter = "";
-        if (results.query.typeFilter !== NO_TYPE_FILTER) {
-            typeFilter = " (type: " + escape(itemTypes[results.query.typeFilter]) + ")";
-        }
-
-        let output = "<div id=\"search-settings\">" +
-            `<h1 class="search-results-title">Results for ${escape(results.query.userQuery)}` +
-            `${typeFilter}</h1>${crates}</div>`;
+        let output = `<h1 class="search-results-title">Results${crates}</h1>`;
         if (results.query.error !== null) {
             output += `<h3>Query parser error: "${results.query.error}".</h3>`;
             output += "<div id=\"titles\">" +
@@ -1838,6 +1812,97 @@ function initSearch(rawSearchIndex) {
             filterCrates);
     }
 
+    /**
+     * Convert a list of RawFunctionType / ID to object-based FunctionType.
+     *
+     * Crates often have lots of functions in them, and it's common to have a large number of
+     * functions that operate on a small set of data types, so the search index compresses them
+     * by encoding function parameter and return types as indexes into an array of names.
+     *
+     * Even when a general-purpose compression algorithm is used, this is still a win. I checked.
+     * https://github.com/rust-lang/rust/pull/98475#issue-1284395985
+     *
+     * The format for individual function types is encoded in
+     * librustdoc/html/render/mod.rs: impl Serialize for RenderType
+     *
+     * @param {null|Array<RawFunctionType>} types
+     * @param {Array<{name: string, ty: number}>} lowercasePaths
+     *
+     * @return {Array<FunctionSearchType>}
+     */
+    function buildItemSearchTypeAll(types, lowercasePaths) {
+        const PATH_INDEX_DATA = 0;
+        const GENERICS_DATA = 1;
+        return types.map(type => {
+            let pathIndex, generics;
+            if (typeof type === "number") {
+                pathIndex = type;
+                generics = [];
+            } else {
+                pathIndex = type[PATH_INDEX_DATA];
+                generics = buildItemSearchTypeAll(type[GENERICS_DATA], lowercasePaths);
+            }
+            return {
+                // `0` is used as a sentinel because it's fewer bytes than `null`
+                name: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].name,
+                ty: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].ty,
+                generics: generics,
+            };
+        });
+    }
+
+    /**
+     * Convert from RawFunctionSearchType to FunctionSearchType.
+     *
+     * Crates often have lots of functions in them, and function signatures are sometimes complex,
+     * so rustdoc uses a pretty tight encoding for them. This function converts it to a simpler,
+     * object-based encoding so that the actual search code is more readable and easier to debug.
+     *
+     * The raw function search type format is generated using serde in
+     * librustdoc/html/render/mod.rs: impl Serialize for IndexItemFunctionType
+     *
+     * @param {RawFunctionSearchType} functionSearchType
+     * @param {Array<{name: string, ty: number}>} lowercasePaths
+     *
+     * @return {null|FunctionSearchType}
+     */
+    function buildFunctionSearchType(functionSearchType, lowercasePaths) {
+        const INPUTS_DATA = 0;
+        const OUTPUT_DATA = 1;
+        // `0` is used as a sentinel because it's fewer bytes than `null`
+        if (functionSearchType === 0) {
+            return null;
+        }
+        let inputs, output;
+        if (typeof functionSearchType[INPUTS_DATA] === "number") {
+            const pathIndex = functionSearchType[INPUTS_DATA];
+            inputs = [{
+                name: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].name,
+                ty: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].ty,
+                generics: [],
+            }];
+        } else {
+            inputs = buildItemSearchTypeAll(functionSearchType[INPUTS_DATA], lowercasePaths);
+        }
+        if (functionSearchType.length > 1) {
+            if (typeof functionSearchType[OUTPUT_DATA] === "number") {
+                const pathIndex = functionSearchType[OUTPUT_DATA];
+                output = [{
+                    name: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].name,
+                    ty: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].ty,
+                    generics: [],
+                }];
+            } else {
+                output = buildItemSearchTypeAll(functionSearchType[OUTPUT_DATA], lowercasePaths);
+            }
+        } else {
+            output = [];
+        }
+        return {
+            inputs, output,
+        };
+    }
+
     function buildIndex(rawSearchIndex) {
         searchIndex = [];
         /**
@@ -1864,14 +1929,22 @@ function initSearch(rawSearchIndex) {
              * q[i] contains the full path of the item, or an empty string indicating
              * "same as q[i-1]".
              *
-             * i[i], f[i] are a mystery.
+             * i[i] contains an item's parent, usually a module. For compactness,
+             * it is a set of indexes into the `p` array.
+             *
+             * f[i] contains function signatures, or `0` if the item isn't a function.
+             * Functions are themselves encoded as arrays. The first item is a list of
+             * types representing the function's inputs, and the second list item is a list
+             * of types representing the function's output. Tuples are flattened.
+             * Types are also represented as arrays; the first item is an index into the `p`
+             * array, while the second is a list of types representing any generic parameters.
              *
              * `a` defines aliases with an Array of pairs: [name, offset], where `offset`
              * points into the n/t/d/q/i/f arrays.
              *
              * `doc` contains the description of the crate.
              *
-             * `p` is a mystery and isn't the same length as n/t/d/q/i/f.
+             * `p` is a list of path/type pairs. It is used for parents and function parameters.
              *
              * @type {{
              *   doc: string,
@@ -1881,7 +1954,7 @@ function initSearch(rawSearchIndex) {
              *   d: Array<string>,
              *   q: Array<string>,
              *   i: Array<Number>,
-             *   f: Array<Array<?>>,
+             *   f: Array<RawFunctionSearchType>,
              *   p: Array<Object>,
              * }}
              */
@@ -1925,9 +1998,14 @@ function initSearch(rawSearchIndex) {
             //             [Number] index to items]
             const aliases = crateCorpus.a;
 
+            // an array of [{name: String, ty: Number}]
+            const lowercasePaths = [];
+
             // convert `rawPaths` entries into object form
+            // generate normalizedPaths for function search mode
             let len = paths.length;
             for (i = 0; i < len; ++i) {
+                lowercasePaths.push({ty: paths[i][0], name: paths[i][1].toLowerCase()});
                 paths[i] = {ty: paths[i][0], name: paths[i][1]};
             }
 
@@ -1957,7 +2035,7 @@ function initSearch(rawSearchIndex) {
                     path: itemPaths[i] ? itemPaths[i] : lastPath,
                     desc: itemDescs[i],
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
-                    type: itemFunctionSearchTypes[i],
+                    type: buildFunctionSearchType(itemFunctionSearchTypes[i], lowercasePaths),
                     id: id,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
                 };
@@ -2154,7 +2232,7 @@ function initSearch(rawSearchIndex) {
     }
 
     function updateCrate(ev) {
-        if (ev.target.value === "All crates") {
+        if (ev.target.value === "all crates") {
             // If we don't remove it from the URL, it'll be picked up again by the search.
             const params = searchState.getQueryStringParams();
             const query = searchState.input.value.trim();

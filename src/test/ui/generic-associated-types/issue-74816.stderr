@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `Self: Trait1` is not satisfied
-  --> $DIR/issue-74816.rs:9:31
+  --> $DIR/issue-74816.rs:8:31
    |
 LL |     type Associated: Trait1 = Self;
    |                               ^^^^ the trait `Trait1` is not implemented for `Self`
    |
 note: required by a bound in `Trait2::Associated`
-  --> $DIR/issue-74816.rs:9:22
+  --> $DIR/issue-74816.rs:8:22
    |
 LL |     type Associated: Trait1 = Self;
    |                      ^^^^^^ required by this bound in `Trait2::Associated`
@@ -15,13 +15,13 @@ LL | trait Trait2: Trait1 {
    |             ++++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/issue-74816.rs:9:31
+  --> $DIR/issue-74816.rs:8:31
    |
 LL |     type Associated: Trait1 = Self;
    |                               ^^^^ doesn't have a size known at compile-time
    |
 note: required by a bound in `Trait2::Associated`
-  --> $DIR/issue-74816.rs:9:5
+  --> $DIR/issue-74816.rs:8:5
    |
 LL |     type Associated: Trait1 = Self;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Trait2::Associated`

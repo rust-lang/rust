@@ -4,7 +4,7 @@
 // the same `'a` for which it implements `Trait`, which can only be the `'a`
 // from the function definition.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]

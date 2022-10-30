@@ -4,9 +4,9 @@ warning: the feature `specialization` is incomplete and may not be safe to use a
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^
    |
-   = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0277]: can't compare `&'static B` with `B`
   --> $DIR/default-associated-type-bound-2.rs:16:22
@@ -20,7 +20,7 @@ note: required by a bound in `X::U`
    |
 LL |     type U: PartialEq<T>;
    |             ^^^^^^^^^^^^ required by this bound in `X::U`
-help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
 LL | impl<B: 'static, T> X<B> for T where &'static B: PartialEq<B> {
    |                                ++++++++++++++++++++++++++++++

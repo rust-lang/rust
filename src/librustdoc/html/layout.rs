@@ -31,8 +31,6 @@ pub(crate) struct Page<'a> {
     pub(crate) description: &'a str,
     pub(crate) keywords: &'a str,
     pub(crate) resource_suffix: &'a str,
-    pub(crate) extra_scripts: &'a [&'a str],
-    pub(crate) static_extra_scripts: &'a [&'a str],
 }
 
 impl<'a> Page<'a> {

@@ -12,13 +12,14 @@
 // edition:2018
 // ignore-wasm32 issue #62807
 // ignore-asmjs issue #62807
+// needs-unwind Size of Closures change on panic=abort
 
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;
 
 const FOO_SIZE: usize = 1024;
-struct Foo([u8; FOO_SIZE]);
+struct Foo(#[allow(unused_tuple_struct_fields)] [u8; FOO_SIZE]);
 
 impl Drop for Foo {
     fn drop(&mut self) {}

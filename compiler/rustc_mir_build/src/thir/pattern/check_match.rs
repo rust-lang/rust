@@ -7,7 +7,7 @@ use super::{PatCtxt, PatternError};
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
 use rustc_errors::{
-    error_code, pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder,
+    error_code, pluralize, struct_span_err, Applicability, DelayDm, Diagnostic, DiagnosticBuilder,
     ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
@@ -21,12 +21,12 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_span::{BytePos, DesugaringKind, ExpnKind, Span};
+use rustc_span::{BytePos, Span};
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {
         None => return,
-        Some(id) => tcx.hir().body_owned_by(tcx.hir().local_def_id_to_hir_id(id)),
+        Some(def_id) => tcx.hir().body_owned_by(def_id),
     };
 
     let pattern_arena = TypedArena::default();
@@ -77,6 +77,10 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
 
     fn visit_local(&mut self, loc: &'tcx hir::Local<'tcx>) {
         intravisit::walk_local(self, loc);
+        let els = loc.els;
+        if let Some(init) = loc.init && els.is_some() {
+            self.check_let(&loc.pat, init, loc.span);
+        }
 
         let (msg, sp) = match loc.source {
             hir::LocalSource::Normal => ("local binding", Some(loc.span)),
@@ -84,7 +88,9 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
             hir::LocalSource::AssignDesugar(_) => ("destructuring assignment binding", None),
         };
-        self.check_irrefutable(&loc.pat, msg, sp);
+        if els.is_none() {
+            self.check_irrefutable(&loc.pat, msg, sp);
+        }
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -341,19 +347,23 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             let span_end = affix.last().unwrap().unwrap().0;
             let span = span_start.to(span_end);
             let cnt = affix.len();
-            cx.tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, top, span, |lint| {
-                let s = pluralize!(cnt);
-                let mut diag = lint.build(&format!("{kind} irrefutable pattern{s} in let chain"));
-                diag.note(&format!(
-                    "{these} pattern{s} will always match",
-                    these = pluralize!("this", cnt),
-                ));
-                diag.help(&format!(
-                    "consider moving {} {suggestion}",
-                    if cnt > 1 { "them" } else { "it" }
-                ));
-                diag.emit()
-            });
+            let s = pluralize!(cnt);
+            cx.tcx.struct_span_lint_hir(
+                IRREFUTABLE_LET_PATTERNS,
+                top,
+                span,
+                format!("{kind} irrefutable pattern{s} in let chain"),
+                |lint| {
+                    lint.note(format!(
+                        "{these} pattern{s} will always match",
+                        these = pluralize!("this", cnt),
+                    ))
+                    .help(format!(
+                        "consider moving {} {suggestion}",
+                        if cnt > 1 { "them" } else { "it" }
+                    ))
+                },
+            );
         };
         if let Some(until) = chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, false)))) && until > 0 {
             // The chain has a non-zero prefix of irrefutable `let` statements.
@@ -432,7 +442,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 "`let` bindings require an \"irrefutable pattern\", like a `struct` or \
                  an `enum` with only one variant",
             );
-            if self.tcx.sess.source_map().span_to_snippet(span).is_ok() {
+            if self.tcx.sess.source_map().is_span_accessible(span) {
                 let semi_span = span.shrink_to_hi().with_lo(span.hi() - BytePos(1));
                 let start_span = span.shrink_to_lo();
                 let end_span = semi_span.shrink_to_lo();
@@ -481,12 +491,12 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                     ],
                     Applicability::HasPlaceholders,
                 );
-                if !bindings.is_empty() && cx.tcx.sess.is_nightly_build() {
+                if !bindings.is_empty() {
                     err.span_suggestion_verbose(
                         semi_span.shrink_to_lo(),
                         &format!(
-                            "alternatively, on nightly, you might want to use \
-                             `#![feature(let_else)]` to handle the variant{} that {} matched",
+                            "alternatively, you might want to use \
+                             let else to handle the variant{} that {} matched",
                             pluralize!(witnesses.len()),
                             match witnesses.len() {
                                 1 => "isn't",
@@ -555,26 +565,28 @@ fn check_for_bindings_named_same_as_variants(
                 BINDINGS_WITH_VARIANT_NAME,
                 p.hir_id,
                 p.span,
+                DelayDm(|| format!(
+                    "pattern binding `{}` is named the same as one \
+                        of the variants of the type `{}`",
+                    ident, cx.tcx.def_path_str(edef.did())
+                )),
                 |lint| {
                     let ty_path = cx.tcx.def_path_str(edef.did());
-                    let mut err = lint.build(&format!(
-                        "pattern binding `{}` is named the same as one \
-                         of the variants of the type `{}`",
-                        ident, ty_path
-                    ));
-                    err.code(error_code!(E0170));
+                    lint.code(error_code!(E0170));
+
                     // If this is an irrefutable pattern, and there's > 1 variant,
                     // then we can't actually match on this. Applying the below
                     // suggestion would produce code that breaks on `check_irrefutable`.
                     if rf == Refutable || variant_count == 1 {
-                        err.span_suggestion(
+                        lint.span_suggestion(
                             p.span,
                             "to match on the variant, qualify the path",
                             format!("{}::{}", ty_path, ident),
                             Applicability::MachineApplicable,
                         );
                     }
-                    err.emit();
+
+                    lint
                 },
             )
         }
@@ -592,14 +604,13 @@ fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
 }
 
 fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<Span>) {
-    tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, |lint| {
-        let mut err = lint.build("unreachable pattern");
+    tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, "unreachable pattern", |lint| {
         if let Some(catchall) = catchall {
             // We had a catchall pattern, hint at that.
-            err.span_label(span, "unreachable pattern");
-            err.span_label(catchall, "matches any value");
+            lint.span_label(span, "unreachable pattern");
+            lint.span_label(catchall, "matches any value");
         }
-        err.emit();
+        lint
     });
 }
 
@@ -615,6 +626,11 @@ fn irrefutable_let_patterns(
     count: usize,
     span: Span,
 ) {
+    let span = match source {
+        LetSource::LetElse(span) => span,
+        _ => span,
+    };
+
     macro_rules! emit_diag {
         (
             $lint:expr,
@@ -624,18 +640,23 @@ fn irrefutable_let_patterns(
         ) => {{
             let s = pluralize!(count);
             let these = pluralize!("this", count);
-            let mut diag = $lint.build(&format!("irrefutable {} pattern{s}", $source_name));
-            diag.note(&format!("{these} pattern{s} will always match, so the {}", $note_sufix));
-            diag.help(concat!("consider ", $help_sufix));
-            diag.emit()
+            tcx.struct_span_lint_hir(
+                IRREFUTABLE_LET_PATTERNS,
+                id,
+                span,
+                format!("irrefutable {} pattern{s}", $source_name),
+                |lint| {
+                    lint.note(&format!(
+                        "{these} pattern{s} will always match, so the {}",
+                        $note_sufix
+                    ))
+                    .help(concat!("consider ", $help_sufix))
+                },
+            )
         }};
     }
 
-    let span = match source {
-        LetSource::LetElse(span) => span,
-        _ => span,
-    };
-    tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| match source {
+    match source {
         LetSource::GenericLet => {
             emit_diag!(lint, "`let`", "`let` is useless", "removing `let`");
         }
@@ -671,7 +692,7 @@ fn irrefutable_let_patterns(
                 "instead using a `loop { ... }` with a `let` inside it"
             );
         }
-    });
+    };
 }
 
 fn is_let_irrefutable<'p, 'tcx>(
@@ -803,7 +824,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     let mut suggestion = None;
     let sm = cx.tcx.sess.source_map();
     match arms {
-        [] if sp.ctxt() == expr_span.ctxt() => {
+        [] if sp.eq_ctxt(expr_span) => {
             // Get the span for the empty match body `{}`.
             let (indentation, more) = if let Some(snippet) = sm.indentation_before(sp) {
                 (format!("\n{}", snippet), "    ")
@@ -821,32 +842,44 @@ fn non_exhaustive_match<'p, 'tcx>(
             ));
         }
         [only] => {
-            let pre_indentation = if let (Some(snippet), true) = (
-                sm.indentation_before(only.span),
-                sm.is_multiline(sp.shrink_to_hi().with_hi(only.span.lo())),
-            ) {
-                format!("\n{}", snippet)
+            let (pre_indentation, is_multiline) = if let Some(snippet) = sm.indentation_before(only.span)
+                && let Ok(with_trailing) = sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
+                && sm.is_multiline(with_trailing)
+            {
+                (format!("\n{}", snippet), true)
             } else {
-                " ".to_string()
+                (" ".to_string(), false)
             };
-            let comma = if matches!(only.body.kind, hir::ExprKind::Block(..)) { "" } else { "," };
+            let comma = if matches!(only.body.kind, hir::ExprKind::Block(..))
+                && only.span.eq_ctxt(only.body.span)
+                && is_multiline
+            {
+                ""
+            } else {
+                ","
+            };
             suggestion = Some((
                 only.span.shrink_to_hi(),
                 format!("{}{}{} => todo!()", comma, pre_indentation, pattern),
             ));
         }
-        [.., prev, last] if prev.span.ctxt() == last.span.ctxt() => {
-            if let Ok(snippet) = sm.span_to_snippet(prev.span.between(last.span)) {
-                let comma =
-                    if matches!(last.body.kind, hir::ExprKind::Block(..)) { "" } else { "," };
+        [.., prev, last] if prev.span.eq_ctxt(last.span) => {
+            let comma = if matches!(last.body.kind, hir::ExprKind::Block(..))
+                && last.span.eq_ctxt(last.body.span)
+            {
+                ""
+            } else {
+                ","
+            };
+            let spacing = if sm.is_multiline(prev.span.between(last.span)) {
+                sm.indentation_before(last.span).map(|indent| format!("\n{indent}"))
+            } else {
+                Some(" ".to_string())
+            };
+            if let Some(spacing) = spacing {
                 suggestion = Some((
                     last.span.shrink_to_hi(),
-                    format!(
-                        "{}{}{} => todo!()",
-                        comma,
-                        snippet.strip_prefix(',').unwrap_or(&snippet),
-                        pattern
-                    ),
+                    format!("{}{}{} => todo!()", comma, spacing, pattern),
                 ));
             }
         }
@@ -933,9 +966,9 @@ fn adt_defined_here<'p, 'tcx>(
         let mut span: MultiSpan =
             if spans.is_empty() { def_span.into() } else { spans.clone().into() };
 
-        span.push_span_label(def_span, String::new());
+        span.push_span_label(def_span, "");
         for pat in spans {
-            span.push_span_label(pat, "not covered".to_string());
+            span.push_span_label(pat, "not covered");
         }
         err.span_note(span, &format!("`{}` defined here", ty));
     }
@@ -1113,17 +1146,16 @@ fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> L
         }) if Some(*hir_id) == pat_id => {
             return LetSource::IfLetGuard;
         }
-        hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Let(..), span, .. }) => {
-            let expn_data = span.ctxt().outer_expn_data();
-            if let ExpnKind::Desugaring(DesugaringKind::LetElse) = expn_data.kind {
-                return LetSource::LetElse(expn_data.call_site);
-            }
-        }
         _ => {}
     }
 
     let parent_parent = hir.get_parent_node(parent);
     let parent_parent_node = hir.get(parent_parent);
+    if let hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), span, .. }) =
+        parent_parent_node
+    {
+        return LetSource::LetElse(*span);
+    }
 
     let parent_parent_parent = hir.get_parent_node(parent_parent);
     let parent_parent_parent_parent = hir.get_parent_node(parent_parent_parent);

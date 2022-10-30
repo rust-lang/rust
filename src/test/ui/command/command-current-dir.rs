@@ -18,7 +18,7 @@ fn main() {
     let exe = me.file_name().unwrap();
     let cwd = me.parent().unwrap();
     eprintln!("cwd={:?}", cwd);
-    // Change directory to where the exectuable is located, since this test
+    // Change directory to where the executable is located, since this test
     // fundamentally needs to use relative paths. In some cases (like
     // remote-test-server), the current_dir can be somewhere else, so make
     // sure it is something we can use. We assume we can write to this

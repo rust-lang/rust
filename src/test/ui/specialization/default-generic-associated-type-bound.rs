@@ -1,8 +1,7 @@
 // Check that default generics associated types are validated.
 
 #![feature(specialization)]
-#![feature(generic_associated_types)]
-//~^^ WARNING `specialization` is incomplete
+//~^ WARNING `specialization` is incomplete
 
 trait X {
     type U<'a>: PartialEq<&'a Self> where Self: 'a;

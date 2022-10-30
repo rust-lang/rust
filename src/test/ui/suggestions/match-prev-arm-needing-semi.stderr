@@ -30,7 +30,7 @@ help: consider removing this semicolon
    |
 LL -             async_dummy();
 LL +             async_dummy()
-   | 
+   |
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-prev-arm-needing-semi.rs:48:18

@@ -3,7 +3,7 @@ error[E0255]: the name `Iter` is defined multiple times
    |
 LL | use std::slice::Iter;
    |     ---------------- previous import of the type `Iter` here
-LL | 
+LL |
 LL | struct Iter;
    | ^^^^^^^^^^^^ `Iter` redefined here
    |

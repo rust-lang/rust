@@ -3,7 +3,7 @@ error: unexpected closing delimiter: `}`
    |
 LL | fn main() {
    |           - this opening brace...
-LL | 
+LL |
 LL | }
    | - ...matches this closing brace
 LL |     let _ = ();

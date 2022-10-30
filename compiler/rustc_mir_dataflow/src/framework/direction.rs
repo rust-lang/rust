@@ -9,11 +9,9 @@ use super::{
 };
 
 pub trait Direction {
-    fn is_forward() -> bool;
+    const IS_FORWARD: bool;
 
-    fn is_backward() -> bool {
-        !Self::is_forward()
-    }
+    const IS_BACKWARD: bool = !Self::IS_FORWARD;
 
     /// Applies all effects between the given `EffectIndex`s.
     ///
@@ -68,9 +66,7 @@ pub trait Direction {
 pub struct Backward;
 
 impl Direction for Backward {
-    fn is_forward() -> bool {
-        false
-    }
+    const IS_FORWARD: bool = false;
 
     fn apply_effects_in_block<'tcx, A>(
         analysis: &A,
@@ -232,7 +228,7 @@ impl Direction for Backward {
     ) where
         A: Analysis<'tcx>,
     {
-        for pred in body.predecessors()[bb].iter().copied() {
+        for pred in body.basic_blocks.predecessors()[bb].iter().copied() {
             match body[pred].terminator().kind {
                 // Apply terminator-specific edge effects.
                 //
@@ -320,7 +316,7 @@ where
     fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
         assert!(!self.effects_applied);
 
-        let values = &self.body.switch_sources()[&(self.bb, self.pred)];
+        let values = &self.body.basic_blocks.switch_sources()[&(self.bb, self.pred)];
         let targets = values.iter().map(|&value| SwitchIntTarget { value, target: self.bb });
 
         let mut tmp = None;
@@ -338,9 +334,7 @@ where
 pub struct Forward;
 
 impl Direction for Forward {
-    fn is_forward() -> bool {
-        true
-    }
+    const IS_FORWARD: bool = true;
 
     fn apply_effects_in_block<'tcx, A>(
         analysis: &A,

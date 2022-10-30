@@ -3,7 +3,7 @@
 
 // rust-lang/rust#69798:
 //
-// This is analgous to cgu_invalidated_when_export_added, but it covers the
+// This is analogous to cgu_invalidated_when_export_added, but it covers the
 // other direction. This is analogous to cgu_invalidated_when_import_added: we
 // include it, because it may uncover bugs in variant implementation strategies.
 

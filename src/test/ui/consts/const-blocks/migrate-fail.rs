@@ -1,5 +1,3 @@
-// ignore-compare-mode-nll
-// compile-flags: -Z borrowck=migrate
 #![allow(warnings)]
 
 // Some type that is not copyable.

@@ -1,3 +1,4 @@
+// unit-test
 // EMIT_MIR ref_deref_project.main.PromoteTemps.diff
 // EMIT_MIR ref_deref_project.main.ConstProp.diff
 

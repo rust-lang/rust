@@ -4,7 +4,7 @@ type Foo = impl std::ops::FnOnce(String) -> usize;
 
 fn foo(b: bool) -> Foo {
     if b {
-        |x| x.len()
+        |x| x.len() //~ ERROR type annotations needed
     } else {
         panic!()
     }

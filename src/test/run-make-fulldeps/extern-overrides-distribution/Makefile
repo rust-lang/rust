@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) libc.rs -Cmetadata=foo

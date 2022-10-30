@@ -34,11 +34,11 @@ use super::InferCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::infer::unify_key::ToType;
 use rustc_middle::ty::fold::TypeFolder;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable};
 use std::collections::hash_map::Entry;
 
 pub struct TypeFreshener<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     ty_freshen_count: u32,
     const_freshen_count: u32,
     ty_freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
@@ -47,7 +47,7 @@ pub struct TypeFreshener<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>, keep_static: bool) -> TypeFreshener<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'tcx>, keep_static: bool) -> TypeFreshener<'a, 'tcx> {
         TypeFreshener {
             infcx,
             ty_freshen_count: 0,
@@ -126,7 +126,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::ReFree(_)
             | ty::ReVar(_)
             | ty::RePlaceholder(..)
-            | ty::ReEmpty(_)
             | ty::ReErased => {
                 // replace all free regions with 'erased
                 self.tcx().lifetimes.re_erased
@@ -218,7 +217,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
                 let opt_ct = self
                     .infcx
@@ -228,12 +227,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     .probe_value(v)
                     .val
                     .known();
-                return self.freshen_const(
-                    opt_ct,
-                    ty::InferConst::Var(v),
-                    ty::InferConst::Fresh,
-                    ct.ty(),
-                );
+                self.freshen_const(opt_ct, ty::InferConst::Var(v), ty::InferConst::Fresh, ct.ty())
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
@@ -244,7 +238,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                         self.const_freshen_count,
                     );
                 }
-                return ct;
+                ct
             }
 
             ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
@@ -254,9 +248,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::ConstKind::Param(_)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Unevaluated(..)
-            | ty::ConstKind::Error(_) => {}
+            | ty::ConstKind::Error(_) => ct.super_fold_with(self),
         }
-
-        ct.super_fold_with(self)
     }
 }

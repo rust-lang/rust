@@ -1,3 +1,4 @@
+use crate::move_paths::builder::MoveDat;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::*;
@@ -216,7 +217,7 @@ where
     fn new(body: &Body<'_>) -> Self {
         LocationMap {
             map: body
-                .basic_blocks()
+                .basic_blocks
                 .iter()
                 .map(|block| vec![T::default(); block.statements.len() + 1])
                 .collect(),
@@ -386,7 +387,7 @@ impl<'tcx> MoveData<'tcx> {
         body: &Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-    ) -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+    ) -> MoveDat<'tcx> {
         builder::gather_moves(body, tcx, param_env)
     }
 

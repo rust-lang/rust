@@ -48,6 +48,7 @@ mod t {
     pub struct HasConstDrop(pub ConstDrop);
     pub struct TrivialFields(pub u8, pub i8, pub usize, pub isize);
 
+    #[const_trait]
     pub trait SomeTrait {
         fn foo();
     }
@@ -96,7 +97,7 @@ implements_const_drop! {
 }
 
 fn main() {
-    struct HasDropGlue(Box<u8>);
+    struct HasDropGlue(#[allow(unused_tuple_struct_fields)] Box<u8>);
     struct HasDropImpl;
     impl Drop for HasDropImpl {
         fn drop(&mut self) {

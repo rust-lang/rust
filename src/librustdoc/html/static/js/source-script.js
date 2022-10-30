@@ -2,105 +2,124 @@
 /* global sourcesIndex */
 
 // Local js definitions:
-/* global addClass, getCurrentValue, hasClass, onEachLazy, removeClass, browserSupportsHistoryApi */
+/* global addClass, getCurrentValue, onEachLazy, removeClass, browserSupportsHistoryApi */
 /* global updateLocalStorage */
 
 "use strict";
 
 (function() {
 
-function getCurrentFilePath() {
-    const parts = window.location.pathname.split("/");
-    const rootPathParts = window.rootPath.split("/");
+const rootPath = document.getElementById("rustdoc-vars").attributes["data-root-path"].value;
+let oldScrollPosition = null;
 
-    for (const rootPathPart of rootPathParts) {
-        if (rootPathPart === "..") {
-            parts.pop();
-        }
+const NAME_OFFSET = 0;
+const DIRS_OFFSET = 1;
+const FILES_OFFSET = 2;
+
+function closeSidebarIfMobile() {
+    if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+        updateLocalStorage("source-sidebar-show", "false");
     }
-    let file = window.location.pathname.substring(parts.join("/").length);
-    if (file.startsWith("/")) {
-        file = file.substring(1);
-    }
-    return file.substring(0, file.length - 5);
 }
 
-function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
-    const name = document.createElement("div");
-    name.className = "name";
+function createDirEntry(elem, parent, fullPath, hasFoundFile) {
+    const dirEntry = document.createElement("details");
+    const summary = document.createElement("summary");
 
-    fullPath += elem["name"] + "/";
+    dirEntry.className = "dir-entry";
 
-    name.onclick = () => {
-        if (hasClass(this, "expand")) {
-            removeClass(this, "expand");
-        } else {
-            addClass(this, "expand");
-        }
-    };
-    name.innerText = elem["name"];
+    fullPath += elem[NAME_OFFSET] + "/";
 
-    const children = document.createElement("div");
-    children.className = "children";
+    summary.innerText = elem[NAME_OFFSET];
+    dirEntry.appendChild(summary);
+
     const folders = document.createElement("div");
     folders.className = "folders";
-    if (elem.dirs) {
-        for (const dir of elem.dirs) {
-            if (createDirEntry(dir, folders, fullPath, currentFile, hasFoundFile)) {
-                addClass(name, "expand");
+    if (elem[DIRS_OFFSET]) {
+        for (const dir of elem[DIRS_OFFSET]) {
+            if (createDirEntry(dir, folders, fullPath, false)) {
+                dirEntry.open = true;
                 hasFoundFile = true;
             }
         }
     }
-    children.appendChild(folders);
+    dirEntry.appendChild(folders);
 
     const files = document.createElement("div");
     files.className = "files";
-    if (elem.files) {
-        for (const file_text of elem.files) {
+    if (elem[FILES_OFFSET]) {
+        for (const file_text of elem[FILES_OFFSET]) {
             const file = document.createElement("a");
             file.innerText = file_text;
-            file.href = window.rootPath + "src/" + fullPath + file_text + ".html";
-            if (!hasFoundFile && currentFile === fullPath + file_text) {
+            file.href = rootPath + "src/" + fullPath + file_text + ".html";
+            file.addEventListener("click", closeSidebarIfMobile);
+            const w = window.location.href.split("#")[0];
+            if (!hasFoundFile && w === file.href) {
                 file.className = "selected";
-                addClass(name, "expand");
+                dirEntry.open = true;
                 hasFoundFile = true;
             }
             files.appendChild(file);
         }
     }
-    children.appendChild(files);
-    parent.appendChild(name);
-    parent.appendChild(children);
-    return hasFoundFile && currentFile.startsWith(fullPath);
+    dirEntry.appendChild(files);
+    parent.appendChild(dirEntry);
+    return hasFoundFile;
 }
 
 function toggleSidebar() {
-    const sidebar = document.querySelector("nav.sidebar");
-    const child = this.children[0];
+    const child = this.parentNode.children[0];
     if (child.innerText === ">") {
-        sidebar.classList.add("expanded");
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+            // This is to keep the scroll position on mobile.
+            oldScrollPosition = window.scrollY;
+            document.body.style.position = "fixed";
+            document.body.style.top = `-${oldScrollPosition}px`;
+        } else {
+            oldScrollPosition = null;
+        }
+        addClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = "<";
         updateLocalStorage("source-sidebar-show", "true");
     } else {
-        sidebar.classList.remove("expanded");
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT && oldScrollPosition !== null) {
+            // This is to keep the scroll position on mobile.
+            document.body.style.position = "";
+            document.body.style.top = "";
+            // The scroll position is lost when resetting the style, hence why we store it in
+            // `oldScrollPosition`.
+            window.scrollTo(0, oldScrollPosition);
+            oldScrollPosition = null;
+        }
+        removeClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = ">";
         updateLocalStorage("source-sidebar-show", "false");
     }
 }
 
+window.addEventListener("resize", () => {
+    if (window.innerWidth >= window.RUSTDOC_MOBILE_BREAKPOINT && oldScrollPosition !== null) {
+        // If the user opens the sidebar in "mobile" mode, and then grows the browser window,
+        // we need to switch away from mobile mode and make the main content area scrollable.
+        document.body.style.position = "";
+        document.body.style.top = "";
+        window.scrollTo(0, oldScrollPosition);
+        oldScrollPosition = null;
+    }
+});
+
 function createSidebarToggle() {
     const sidebarToggle = document.createElement("div");
     sidebarToggle.id = "sidebar-toggle";
-    sidebarToggle.onclick = toggleSidebar;
 
-    const inner = document.createElement("div");
+    const inner = document.createElement("button");
 
     if (getCurrentValue("source-sidebar-show") === "true") {
         inner.innerText = "<";
     } else {
         inner.innerText = ">";
     }
+    inner.onclick = toggleSidebar;
 
     sidebarToggle.appendChild(inner);
     return sidebarToggle;
@@ -109,9 +128,6 @@ function createSidebarToggle() {
 // This function is called from "source-files.js", generated in `html/render/mod.rs`.
 // eslint-disable-next-line no-unused-vars
 function createSourceSidebar() {
-    if (!window.rootPath.endsWith("/")) {
-        window.rootPath += "/";
-    }
     const container = document.querySelector("nav.sidebar");
 
     const sidebarToggle = createSidebarToggle();
@@ -119,13 +135,7 @@ function createSourceSidebar() {
 
     const sidebar = document.createElement("div");
     sidebar.id = "source-sidebar";
-    if (getCurrentValue("source-sidebar-show") !== "true") {
-        container.classList.remove("expanded");
-    } else {
-        container.classList.add("expanded");
-    }
 
-    const currentFile = getCurrentFilePath();
     let hasFoundFile = false;
 
     const title = document.createElement("div");
@@ -133,9 +143,9 @@ function createSourceSidebar() {
     title.innerText = "Files";
     sidebar.appendChild(title);
     Object.keys(sourcesIndex).forEach(key => {
-        sourcesIndex[key].name = key;
+        sourcesIndex[key][NAME_OFFSET] = key;
         hasFoundFile = createDirEntry(sourcesIndex[key], sidebar, "",
-                                      currentFile, hasFoundFile);
+            hasFoundFile);
     });
 
     container.appendChild(sidebar);
@@ -173,7 +183,7 @@ function highlightSourceLines(match) {
     if (x) {
         x.scrollIntoView();
     }
-    onEachLazy(document.getElementsByClassName("line-numbers"), e => {
+    onEachLazy(document.getElementsByClassName("src-line-numbers"), e => {
         onEachLazy(e.getElementsByTagName("span"), i_e => {
             removeClass(i_e, "line-highlighted");
         });
@@ -235,7 +245,7 @@ window.addEventListener("hashchange", () => {
     }
 });
 
-onEachLazy(document.getElementsByClassName("line-numbers"), el => {
+onEachLazy(document.getElementsByClassName("src-line-numbers"), el => {
     el.addEventListener("click", handleSourceHighlight);
 });
 

@@ -1,0 +1,23 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      CONST_PARAM
+        CONST_KW "const"
+        WHITESPACE " "
+        NAME
+          IDENT "N"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "u32"
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

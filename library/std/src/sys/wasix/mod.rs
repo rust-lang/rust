@@ -30,23 +30,29 @@ pub mod process;
 pub mod stdio;
 #[path = "../unsupported/thread_local_dtor.rs"]
 pub mod thread_local_dtor;
-#[path = "../unsupported/thread_local_key.rs"]
+#[path = "atomics/thread_local_key.rs"]
 pub mod thread_local_key;
 #[path = "../wasi/time.rs"]
 pub mod time;
 
 #[path = "../unix/locks"]
 pub mod locks {
+    // FIXME: still needed?
     #![allow(unsafe_op_in_unsafe_fn)]
-    mod futex;
+
+    mod futex_mutex;
     mod futex_rwlock;
-    pub use futex::{Mutex, MovableMutex, Condvar, MovableCondvar};
-    pub use futex_rwlock::{RwLock, MovableRwLock};
+    mod futex_condvar;
+    pub use futex_mutex::{Mutex, MovableMutex};
+    pub use futex_rwlock::MovableRwLock;
+    pub use futex_condvar::MovableCondvar;
 }
 #[path = "atomics/futex.rs"]
 pub mod futex;
 #[path = "atomics/thread.rs"]
 pub mod thread;
+#[path = "../unix/stack_overflow.rs"]
+pub mod stack_overflow;
 
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]

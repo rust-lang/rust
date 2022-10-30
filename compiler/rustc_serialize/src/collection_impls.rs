@@ -1,18 +1,17 @@
 //! Implementations of serialization for structures found in liballoc
 
-use std::hash::{BuildHasher, Hash};
-
 use crate::{Decodable, Decoder, Encodable, Encoder};
+use smallvec::{Array, SmallVec};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
+use std::hash::{BuildHasher, Hash};
 use std::rc::Rc;
 use std::sync::Arc;
-
-use smallvec::{Array, SmallVec};
+use thin_vec::ThinVec;
 
 impl<S: Encoder, A: Array<Item: Encodable<S>>> Encodable<S> for SmallVec<A> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) {
         let slice: &[A::Item] = self;
-        slice.encode(s)
+        slice.encode(s);
     }
 }
 
@@ -23,14 +22,25 @@ impl<D: Decoder, A: Array<Item: Decodable<D>>> Decodable<D> for SmallVec<A> {
     }
 }
 
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for ThinVec<T> {
+    fn encode(&self, s: &mut S) {
+        self.as_slice().encode(s);
+    }
+}
+
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for ThinVec<T> {
+    fn decode(d: &mut D) -> ThinVec<T> {
+        let len = d.read_usize();
+        (0..len).map(|_| Decodable::decode(d)).collect()
+    }
+}
+
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for LinkedList<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?;
-            }
-            Ok(())
-        })
+    fn encode(&self, s: &mut S) {
+        s.emit_usize(self.len());
+        for e in self.iter() {
+            e.encode(s);
+        }
     }
 }
 
@@ -42,13 +52,11 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for LinkedList<T> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for VecDeque<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?;
-            }
-            Ok(())
-        })
+    fn encode(&self, s: &mut S) {
+        s.emit_usize(self.len());
+        for e in self.iter() {
+            e.encode(s);
+        }
     }
 }
 
@@ -64,14 +72,12 @@ where
     K: Encodable<S> + PartialEq + Ord,
     V: Encodable<S>,
 {
-    fn encode(&self, e: &mut S) -> Result<(), S::Error> {
-        e.emit_map(self.len(), |e| {
-            for (i, (key, val)) in self.iter().enumerate() {
-                e.emit_map_elt_key(i, |e| key.encode(e))?;
-                e.emit_map_elt_val(|e| val.encode(e))?;
-            }
-            Ok(())
-        })
+    fn encode(&self, e: &mut S) {
+        e.emit_usize(self.len());
+        for (key, val) in self.iter() {
+            key.encode(e);
+            val.encode(e);
+        }
     }
 }
 
@@ -96,13 +102,11 @@ impl<S: Encoder, T> Encodable<S> for BTreeSet<T>
 where
     T: Encodable<S> + PartialEq + Ord,
 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?;
-            }
-            Ok(())
-        })
+    fn encode(&self, s: &mut S) {
+        s.emit_usize(self.len());
+        for e in self.iter() {
+            e.encode(s);
+        }
     }
 }
 
@@ -126,14 +130,12 @@ where
     V: Encodable<E>,
     S: BuildHasher,
 {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        e.emit_map(self.len(), |e| {
-            for (i, (key, val)) in self.iter().enumerate() {
-                e.emit_map_elt_key(i, |e| key.encode(e))?;
-                e.emit_map_elt_val(|e| val.encode(e))?;
-            }
-            Ok(())
-        })
+    fn encode(&self, e: &mut E) {
+        e.emit_usize(self.len());
+        for (key, val) in self.iter() {
+            key.encode(e);
+            val.encode(e);
+        }
     }
 }
 
@@ -161,13 +163,11 @@ where
     T: Encodable<E> + Eq,
     S: BuildHasher,
 {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?;
-            }
-            Ok(())
-        })
+    fn encode(&self, s: &mut E) {
+        s.emit_usize(self.len());
+        for e in self.iter() {
+            e.encode(s);
+        }
     }
 }
 
@@ -193,14 +193,12 @@ where
     V: Encodable<E>,
     S: BuildHasher,
 {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        e.emit_map(self.len(), |e| {
-            for (i, (key, val)) in self.iter().enumerate() {
-                e.emit_map_elt_key(i, |e| key.encode(e))?;
-                e.emit_map_elt_val(|e| val.encode(e))?;
-            }
-            Ok(())
-        })
+    fn encode(&self, e: &mut E) {
+        e.emit_usize(self.len());
+        for (key, val) in self.iter() {
+            key.encode(e);
+            val.encode(e);
+        }
     }
 }
 
@@ -228,13 +226,11 @@ where
     T: Encodable<E> + Hash + Eq,
     S: BuildHasher,
 {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?;
-            }
-            Ok(())
-        })
+    fn encode(&self, s: &mut E) {
+        s.emit_usize(self.len());
+        for e in self.iter() {
+            e.encode(s);
+        }
     }
 }
 
@@ -255,9 +251,9 @@ where
 }
 
 impl<E: Encoder, T: Encodable<E>> Encodable<E> for Rc<[T]> {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut E) {
         let slice: &[T] = self;
-        slice.encode(s)
+        slice.encode(s);
     }
 }
 
@@ -269,9 +265,9 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<[T]> {
 }
 
 impl<E: Encoder, T: Encodable<E>> Encodable<E> for Arc<[T]> {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut E) {
         let slice: &[T] = self;
-        slice.encode(s)
+        slice.encode(s);
     }
 }
 

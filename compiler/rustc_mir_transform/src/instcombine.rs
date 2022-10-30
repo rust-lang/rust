@@ -3,8 +3,8 @@
 use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::{
-    BinOp, Body, Constant, LocalDecls, Operand, Place, ProjectionElem, Rvalue, SourceInfo,
-    Statement, StatementKind, Terminator, TerminatorKind, UnOp,
+    BinOp, Body, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem, Rvalue,
+    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
 };
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -16,9 +16,8 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-        let ctx = InstCombineContext { tcx, local_decls };
-        for block in basic_blocks.iter_mut() {
+        let ctx = InstCombineContext { tcx, local_decls: &body.local_decls };
+        for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::Assign(box (_place, ref mut rvalue)) => {
@@ -129,8 +128,8 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
                     return;
                 }
 
-                let constant =
-                    Constant { span: source_info.span, literal: len.into(), user_ty: None };
+                let literal = ConstantKind::from_const(len, self.tcx);
+                let constant = Constant { span: source_info.span, literal, user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
         }

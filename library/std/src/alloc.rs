@@ -68,7 +68,10 @@ pub use alloc_crate::alloc::*;
 /// The default memory allocator provided by the operating system.
 ///
 /// This is based on `malloc` on Unix platforms and `HeapAlloc` on Windows,
-/// plus related functions.
+/// plus related functions. However, it is not valid to mix use of the backing
+/// system allocator with `System`, as this implementation may include extra
+/// work, such as to serve alignment requests greater than the alignment
+/// provided directly by the backing system allocator.
 ///
 /// This type implements the `GlobalAlloc` trait and Rust programs by default
 /// work as if they had this definition:
@@ -102,7 +105,7 @@ pub use alloc_crate::alloc::*;
 ///         if !ret.is_null() {
 ///             ALLOCATED.fetch_add(layout.size(), SeqCst);
 ///         }
-///         return ret
+///         ret
 ///     }
 ///
 ///     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -187,7 +190,7 @@ impl System {
             old_size => unsafe {
                 let new_ptr = self.alloc_impl(new_layout, zeroed)?;
                 ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), old_size);
-                Allocator::deallocate(&self, ptr, old_layout);
+                Allocator::deallocate(self, ptr, old_layout);
                 Ok(new_ptr)
             },
         }
@@ -254,7 +257,7 @@ unsafe impl Allocator for System {
         match new_layout.size() {
             // SAFETY: conditions must be upheld by the caller
             0 => unsafe {
-                Allocator::deallocate(&self, ptr, old_layout);
+                Allocator::deallocate(self, ptr, old_layout);
                 Ok(NonNull::slice_from_raw_parts(new_layout.dangling(), 0))
             },
 
@@ -274,9 +277,9 @@ unsafe impl Allocator for System {
             // `new_ptr`. Thus, the call to `copy_nonoverlapping` is safe. The safety contract
             // for `dealloc` must be upheld by the caller.
             new_size => unsafe {
-                let new_ptr = Allocator::allocate(&self, new_layout)?;
+                let new_ptr = Allocator::allocate(self, new_layout)?;
                 ptr::copy_nonoverlapping(ptr.as_ptr(), new_ptr.as_mut_ptr(), new_size);
-                Allocator::deallocate(&self, ptr, old_layout);
+                Allocator::deallocate(self, ptr, old_layout);
                 Ok(new_ptr)
             },
         }
@@ -296,6 +299,20 @@ static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 /// about the allocation that failed.
 ///
 /// The allocation error hook is a global resource.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(alloc_error_hook)]
+///
+/// use std::alloc::{Layout, set_alloc_error_hook};
+///
+/// fn custom_alloc_error_hook(layout: Layout) {
+///    panic!("memory allocation of {} bytes failed", layout.size());
+/// }
+///
+/// set_alloc_error_hook(custom_alloc_error_hook);
+/// ```
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn set_alloc_error_hook(hook: fn(Layout)) {
     HOOK.store(hook as *mut (), Ordering::SeqCst);

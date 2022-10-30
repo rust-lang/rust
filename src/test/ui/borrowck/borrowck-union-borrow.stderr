@@ -99,7 +99,7 @@ LL |             let ra = &mut u.a;
    |                      -------- borrow of `u.a` occurs here
 LL |             let b = u.b;
    |                     ^^^ use of borrowed `u.a`
-LL | 
+LL |
 LL |             drop(ra);
    |                  -- borrow later used here
 

@@ -151,7 +151,7 @@ impl IntoRawFd for UnixListener {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for UnixListener {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -159,7 +159,7 @@ impl AsFd for UnixListener {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for UnixListener {
     #[inline]
     fn from(fd: OwnedFd) -> UnixListener {
@@ -167,7 +167,7 @@ impl From<OwnedFd> for UnixListener {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixListener> for OwnedFd {
     #[inline]
     fn from(listener: UnixListener) -> OwnedFd {

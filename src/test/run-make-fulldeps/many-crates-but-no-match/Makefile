@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Modelled after ui/changing-crates.rs test, but this one puts
 # more than one (mismatching) candidate crate into the search path,

@@ -2,6 +2,7 @@
 // only-x86_64
 
 #![feature(const_eval_select)]
+#![feature(core_intrinsics)]
 use std::intrinsics::const_eval_select;
 use std::arch::x86_64::*;
 use std::mem::transmute;

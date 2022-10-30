@@ -1,6 +1,7 @@
 #![feature(const_trait_impl)]
 #![feature(associated_type_bounds)]
 
+#[const_trait]
 trait T {}
 struct S;
 impl T for S {}
@@ -15,12 +16,6 @@ fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
 //~^ ERROR `~const` is not allowed
 
 fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T>) {}
-//~^ ERROR `~const` is not allowed
-
-fn generic<P: ~const T>() {}
-//~^ ERROR `~const` is not allowed
-
-fn where_clause<P>() where P: ~const T {}
 //~^ ERROR `~const` is not allowed
 
 struct TildeQuestion<T: ~const ?Sized>(std::marker::PhantomData<T>);

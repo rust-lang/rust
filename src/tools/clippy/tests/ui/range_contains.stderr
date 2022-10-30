@@ -96,5 +96,29 @@ error: manual `RangeInclusive::contains` implementation
 LL |     y >= -3. && y <= 3.;
    |     ^^^^^^^^^^^^^^^^^^^ help: use: `(-3. ..=3.).contains(&y)`
 
-error: aborting due to 16 previous errors
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:55:30
+   |
+LL |     (x >= 0) && (x <= 10) && (z >= 0) && (z <= 10);
+   |                              ^^^^^^^^^^^^^^^^^^^^^ help: use: `(0..=10).contains(&z)`
+
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:55:5
+   |
+LL |     (x >= 0) && (x <= 10) && (z >= 0) && (z <= 10);
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: use: `(0..=10).contains(&x)`
+
+error: manual `!Range::contains` implementation
+  --> $DIR/range_contains.rs:56:29
+   |
+LL |     (x < 0) || (x >= 10) || (z < 0) || (z >= 10);
+   |                             ^^^^^^^^^^^^^^^^^^^^ help: use: `!(0..10).contains(&z)`
+
+error: manual `!Range::contains` implementation
+  --> $DIR/range_contains.rs:56:5
+   |
+LL |     (x < 0) || (x >= 10) || (z < 0) || (z >= 10);
+   |     ^^^^^^^^^^^^^^^^^^^^ help: use: `!(0..10).contains(&x)`
+
+error: aborting due to 20 previous errors
 

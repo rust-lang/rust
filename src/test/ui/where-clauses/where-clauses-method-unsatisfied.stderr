@@ -1,10 +1,8 @@
 error[E0277]: the trait bound `Bar: Eq` is not satisfied
-  --> $DIR/where-clauses-method-unsatisfied.rs:18:14
+  --> $DIR/where-clauses-method-unsatisfied.rs:18:7
    |
 LL |     x.equals(&x);
-   |       ------ ^^ the trait `Eq` is not implemented for `Bar`
-   |       |
-   |       required by a bound introduced by this call
+   |       ^^^^^^ the trait `Eq` is not implemented for `Bar`
    |
 note: required by a bound in `Foo::<T>::equals`
   --> $DIR/where-clauses-method-unsatisfied.rs:11:52

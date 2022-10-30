@@ -1,5 +1,5 @@
 error[E0658]: const trait impls are experimental
-  --> $DIR/feature-gate.rs:9:6
+  --> $DIR/feature-gate.rs:10:6
    |
 LL | impl const T for S {}
    |      ^^^^^
@@ -7,6 +7,15 @@ LL | impl const T for S {}
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0658]: `const_trait` is a temporary placeholder for marking a trait that is suitable for `const` `impls` and all default bodies as `const`, which may be removed or renamed in the future.
+  --> $DIR/feature-gate.rs:8:1
+   |
+LL | #[const_trait]
+   | ^^^^^^^^^^^^^^
+   |
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

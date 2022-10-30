@@ -53,34 +53,33 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.pop_stack_frame(/* unwinding */ true)?;
             return Ok(true);
         };
-        let basic_block = &self.body().basic_blocks()[loc.block];
-
-        let old_frames = self.frame_idx();
+        let basic_block = &self.body().basic_blocks[loc.block];
 
         if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
-            assert_eq!(old_frames, self.frame_idx());
+            let old_frames = self.frame_idx();
             self.statement(stmt)?;
+            // Make sure we are not updating `statement_index` of the wrong frame.
+            assert_eq!(old_frames, self.frame_idx());
+            // Advance the program counter.
+            self.frame_mut().loc.as_mut().unwrap().statement_index += 1;
             return Ok(true);
         }
 
         M::before_terminator(self)?;
 
         let terminator = basic_block.terminator();
-        assert_eq!(old_frames, self.frame_idx());
         self.terminator(terminator)?;
         Ok(true)
     }
 
     /// Runs the interpretation logic for the given `mir::Statement` at the current frame and
-    /// statement counter. This also moves the statement counter forward.
+    /// statement counter.
+    ///
+    /// This does NOT move the statement counter forward, the caller has to do that!
     pub fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
         use rustc_middle::mir::StatementKind::*;
-
-        // Some statements (e.g., box) push new stack frames.
-        // We have to record the stack frame number *before* executing the statement.
-        let frame_idx = self.frame_idx();
 
         match &stmt.kind {
             Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
@@ -115,13 +114,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 M::retag(self, *kind, &dest)?;
             }
 
-            // Call CopyNonOverlapping
-            CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { src, dst, count }) => {
-                let src = self.eval_operand(src, None)?;
-                let dst = self.eval_operand(dst, None)?;
-                let count = self.eval_operand(count, None)?;
-                self.copy_intrinsic(&src, &dst, &count, /* nonoverlapping */ true)?;
-            }
+            Intrinsic(box ref intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
 
             // Statements we do not track.
             AscribeUserType(..) => {}
@@ -144,7 +137,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Nop => {}
         }
 
-        self.stack_mut()[frame_idx].loc.as_mut().unwrap().statement_index += 1;
         Ok(())
     }
 
@@ -158,6 +150,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx> {
         let dest = self.eval_place(place)?;
+        // FIXME: ensure some kind of non-aliasing between LHS and RHS?
+        // Also see https://github.com/rust-lang/rust/issues/68364.
 
         use rustc_middle::mir::Rvalue::*;
         match *rvalue {
@@ -169,7 +163,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Use(ref operand) => {
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
-                self.copy_op(&op, &dest)?;
+                self.copy_op(&op, &dest, /*allow_transmute*/ false)?;
+            }
+
+            CopyForDeref(ref place) => {
+                let op = self.eval_place_to_op(*place, Some(dest.layout))?;
+                self.copy_op(&op, &dest, /* allow_transmute*/ false)?;
             }
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
@@ -185,7 +184,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let left = self.read_immediate(&self.eval_operand(left, None)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
-                self.binop_with_overflow(bin_op, &left, &right, &dest)?;
+                self.binop_with_overflow(
+                    bin_op, /*force_overflow_checks*/ false, &left, &right, &dest,
+                )?;
             }
 
             UnaryOp(un_op, ref operand) => {
@@ -202,7 +203,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 for (field_index, operand) in operands.iter().enumerate() {
                     let op = self.eval_operand(operand, None)?;
                     let field_dest = self.place_field(&dest, field_index)?;
-                    self.copy_op(&op, &field_dest)?;
+                    self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
                 }
             }
 
@@ -218,7 +219,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     // Write the src to the first element.
                     let first = self.mplace_field(&dest, 0)?;
-                    self.copy_op(&src, &first.into())?;
+                    self.copy_op(&src, &first.into(), /*allow_transmute*/ false)?;
 
                     // This is performance-sensitive code for big static/const arrays! So we
                     // avoid writing each operand individually and instead just make many copies
@@ -244,8 +245,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Len(place) => {
                 let src = self.eval_place(place)?;
-                let mplace = self.force_allocation(&src)?;
-                let len = mplace.len(self)?;
+                let op = self.place_to_op(&src)?;
+                let len = op.len(self)?;
                 self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
             }
 
@@ -298,6 +299,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
+    /// Evaluate the given terminator. Will also adjust the stack frame and statement position accordingly.
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
 

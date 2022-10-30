@@ -33,6 +33,7 @@ rm src/test/ui/test-attrs/test-fn-signature-verification-for-explicit-return-typ
 rm src/test/ui/async-await/async-fn-size-moved-locals.rs # -Cpanic=abort shrinks some generator by one byte
 rm src/test/ui/async-await/async-fn-size-uninit-locals.rs # same
 rm src/test/ui/generator/size-moved-locals.rs # same
+rm -r src/test/ui/macros/rfc-2011-nicer-assert-messages/
 
 # vendor intrinsics
 rm src/test/ui/sse2.rs # cpuid not supported, so sse2 not detected
@@ -65,11 +66,13 @@ rm src/test/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and n
 rm src/test/ui/target-feature/missing-plusminus.rs # error not implemented
 rm src/test/ui/fn/dyn-fn-alignment.rs # wants a 256 byte alignment
 rm -r src/test/run-make/emit-named-files # requires full --emit support
+rm src/test/ui/abi/stack-probes.rs # stack probes not yet implemented
 
 # optimization tests
 # ==================
-rm src/test/ui/issues/issue-28950.rs # depends on stack size optimizations
+rm src/test/ui/codegen/issue-28950.rs # depends on stack size optimizations
 rm src/test/ui/codegen/init-large-type.rs # same
+rm src/test/ui/issues/issue-40883.rs # same
 rm -r src/test/run-make/fmt-write-bloat/ # tests an optimization
 
 # backend specific tests
@@ -89,13 +92,12 @@ rm src/test/ui/consts/issue-33537.rs # same
 rm -r src/test/run-make/emit-shared-files # requires the rustdoc executable in build/bin/
 rm -r src/test/run-make/unstable-flag-required # same
 rm -r src/test/run-make/rustdoc-* # same
+rm -r src/test/run-make/issue-88756-default-output # same
+rm -r src/test/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 
 # genuine bugs
 # ============
 rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition
-
-rm -r src/test/ui/polymorphization/ # polymorphization not yet supported
-rm src/test/codegen-units/polymorphization/unused_type_parameters.rs # same
 
 rm src/test/incremental/spike-neg1.rs # errors out for some reason
 rm src/test/incremental/spike-neg2.rs # same
@@ -111,6 +113,8 @@ rm src/test/ui/backtrace.rs # TODO warning
 rm src/test/ui/empty_global_asm.rs # TODO add needs-asm-support
 rm src/test/ui/simple_global_asm.rs # TODO add needs-asm-support
 rm src/test/ui/test-attrs/test-type.rs # TODO panic message on stderr. correct stdout
+# not sure if this is actually a bug in the test suite, but the symbol list shows the function without leading _ for some reason
+rm -r src/test/run-make/native-link-modifier-bundle
 
 echo "[TEST] rustc test suite"
 RUST_TEST_NOCAPTURE=1 COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 src/test/{codegen-units,run-make,run-pass-valgrind,ui,incremental}

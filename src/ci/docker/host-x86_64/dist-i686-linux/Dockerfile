@@ -1,48 +1,40 @@
-# We need recent curl, OpenSSL and CA certificates, so we can download further
-# dependencies in the debian:6 image. We use an ubuntu 20.04 image download
-# those.
-FROM ubuntu:20.04
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-        ca-certificates
-WORKDIR /tmp
-COPY host-x86_64/dist-x86_64-linux/download-openssl-curl.sh /tmp/
-RUN ./download-openssl-curl.sh
-
-# We use Debian 6 (glibc 2.11, kernel 2.6.32) as a common base for other
-# distros that still need Rust support: RHEL 6 (glibc 2.12, kernel 2.6.32) and
-# SLES 11 SP4 (glibc 2.11, kernel 3.0).
-FROM debian:6
+# We document platform support for minimum glibc 2.17 and kernel 3.2.
+# CentOS 7 has headers for kernel 3.10, but that's fine as long as we don't
+# actually use newer APIs in rustc or std without a fallback. It's more
+# important that we match glibc for ELF symbol versioning.
+FROM centos:7
 
 WORKDIR /build
 
-# Debian 6 is EOL and no longer available from the usual mirrors,
-# so we'll need to switch to http://archive.debian.org/
-RUN sed -i '/updates/d' /etc/apt/sources.list && \
-    sed -i 's/httpredir/archive/' /etc/apt/sources.list
-
-RUN apt-get update && \
-    apt-get install --allow-unauthenticated -y --no-install-recommends \
+RUN yum upgrade -y && \
+    yum install -y epel-release && \
+    yum install -y \
       automake \
       bzip2 \
       file \
-      g++ \
-      g++-multilib \
+      cmake3 \
       gcc \
-      gcc-multilib \
+      gcc-c++ \
       git \
-      lib32z1-dev \
-      libedit-dev \
-      libncurses-dev \
+      glibc-devel.i686 \
+      glibc-devel.x86_64 \
+      libedit-devel \
+      libstdc++-devel.i686 \
+      libstdc++-devel.x86_64 \
       make \
+      ncurses-devel \
+      openssl-devel \
       patch \
       perl \
-      pkg-config \
+      pkgconfig \
+      python3 \
       unzip \
       wget \
-      xz-utils \
-      zlib1g-dev
+      xz \
+      zlib-devel.i686 \
+      zlib-devel.x86_64
+
+RUN mkdir -p /rustroot/bin && ln -s /usr/bin/cmake3 /rustroot/bin/cmake
 
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib32:/rustroot/lib
@@ -51,46 +43,9 @@ WORKDIR /tmp
 RUN mkdir /home/user
 COPY host-x86_64/dist-x86_64-linux/shared.sh /tmp/
 
-# We need a build of openssl which supports SNI to download artifacts from
-# static.rust-lang.org. This'll be used to link into libcurl below (and used
-# later as well), so build a copy of OpenSSL with dynamic libraries into our
-# generic root.
-COPY --from=0 /tmp/openssl.tar.gz /tmp/openssl.tar.gz
-COPY host-x86_64/dist-x86_64-linux/build-openssl.sh /tmp/
-RUN ./build-openssl.sh
-
-# The `curl` binary on Debian 6 doesn't support SNI which is needed for fetching
-# some https urls we have, so install a new version of libcurl + curl which is
-# using the openssl we just built previously.
-#
-# Note that we also disable a bunch of optional features of curl that we don't
-# really need.
-COPY --from=0 /tmp/curl.tar.xz /tmp/curl.tar.xz
-COPY host-x86_64/dist-x86_64-linux/build-curl.sh /tmp/
-RUN ./build-curl.sh
-
-# Use up-to-date curl CA bundle
-COPY --from=0 /tmp/cacert.pem /tmp/cacert.pem
-ENV CURL_CA_BUNDLE /tmp/cacert.pem
-
-# binutils < 2.22 has a bug where the 32-bit executables it generates
-# immediately segfault in Rust, so we need to install our own binutils.
-#
-# See https://github.com/rust-lang/rust/issues/20440 for more info
-COPY host-x86_64/dist-x86_64-linux/build-binutils.sh /tmp/
-RUN ./build-binutils.sh
-
 # Need at least GCC 5.1 to compile LLVM nowadays
 COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
-RUN ./build-gcc.sh && apt-get remove -y gcc g++
-
-COPY host-x86_64/dist-x86_64-linux/build-python.sh /tmp/
-# Build Python 3 needed for LLVM 12.
-RUN ./build-python.sh 3.9.1
-
-# LLVM needs cmake 3.13.4 or higher.
-COPY host-x86_64/dist-x86_64-linux/build-cmake.sh /tmp/
-RUN ./build-cmake.sh
+RUN ./build-gcc.sh && yum remove -y gcc gcc-c++
 
 # Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.

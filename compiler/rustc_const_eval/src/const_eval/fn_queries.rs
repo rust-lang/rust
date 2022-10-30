@@ -17,13 +17,14 @@ pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
 
 pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let parent_id = tcx.local_parent(def_id);
-    tcx.def_kind(parent_id) == DefKind::Impl
-        && tcx.impl_constness(parent_id) == hir::Constness::Const
+    tcx.def_kind(parent_id) == DefKind::Impl && tcx.constness(parent_id) == hir::Constness::Const
 }
 
-/// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
-/// said intrinsic has a `rustc_const_{un,}stable` attribute.
-fn impl_constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
+/// Checks whether an item is considered to be `const`. If it is a constructor, it is const. If
+/// it is a trait impl/function, return if it has a `const` modifier. If it is an intrinsic,
+/// report whether said intrinsic has a `rustc_const_{un,}stable` attribute. Otherwise, return
+/// `Constness::NotConst`.
+fn constness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Constness {
     let def_id = def_id.expect_local();
     let node = tcx.hir().get_by_def_id(def_id);
 
@@ -77,5 +78,5 @@ fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { impl_constness, is_promotable_const_fn, ..*providers };
+    *providers = Providers { constness, is_promotable_const_fn, ..*providers };
 }

@@ -1,5 +1,8 @@
+#![feature(fmt_helpers_for_derive)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate bitflags;
@@ -19,6 +22,9 @@ pub mod sty;
 
 pub use codec::*;
 pub use sty::*;
+
+/// Needed so we can use #[derive(HashStable_Generic)]
+pub trait HashStableContext {}
 
 pub trait Interner {
     type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
@@ -42,6 +48,12 @@ pub trait Interner {
     type DelaySpanBugEmitted: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type PredicateKind: Clone + Debug + Hash + PartialEq + Eq;
     type AllocId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+
+    type EarlyBoundRegion: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type BoundRegion: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type FreeRegion: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type RegionVid: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type PlaceholderRegion: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
 }
 
 pub trait InternAs<T: ?Sized, R> {
@@ -197,14 +209,6 @@ bitflags! {
                                           | TypeFlags::HAS_CT_INFER.bits
                                           | TypeFlags::HAS_TY_PLACEHOLDER.bits
                                           | TypeFlags::HAS_CT_PLACEHOLDER.bits
-                                          // The `evaluate_obligation` query does not return further
-                                          // obligations. If it evaluates an obligation with an opaque
-                                          // type, that opaque type may get compared to another type,
-                                          // constraining it. We would lose this information.
-                                          // FIXME: differentiate between crate-local opaque types
-                                          // and opaque types from other crates, as only opaque types
-                                          // from the local crate can possibly be a local name
-                                          | TypeFlags::HAS_TY_OPAQUE.bits
                                           // We consider 'freshened' types and constants
                                           // to depend on a particular fn.
                                           // The freshening process throws away information,
@@ -294,6 +298,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
+    #[derive(HashStable_Generic)]
     pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
         const INNERMOST = 0,
@@ -311,6 +316,7 @@ impl DebruijnIndex {
     ///    for<'a> fn(for<'b> fn(&'a x))
     ///
     /// you would need to shift the index for `'a` into a new binder.
+    #[inline]
     #[must_use]
     pub fn shifted_in(self, amount: u32) -> DebruijnIndex {
         DebruijnIndex::from_u32(self.as_u32() + amount)
@@ -318,18 +324,21 @@ impl DebruijnIndex {
 
     /// Update this index in place by shifting it "in" through
     /// `amount` number of binders.
+    #[inline]
     pub fn shift_in(&mut self, amount: u32) {
         *self = self.shifted_in(amount);
     }
 
     /// Returns the resulting index when this value is moved out from
     /// `amount` number of new binders.
+    #[inline]
     #[must_use]
     pub fn shifted_out(self, amount: u32) -> DebruijnIndex {
         DebruijnIndex::from_u32(self.as_u32() - amount)
     }
 
     /// Update in place by shifting out from `amount` binders.
+    #[inline]
     pub fn shift_out(&mut self, amount: u32) {
         *self = self.shifted_out(amount);
     }
@@ -354,13 +363,14 @@ impl DebruijnIndex {
     /// If we invoke `shift_out_to_binder` and the region is in fact
     /// bound by one of the binders we are shifting out of, that is an
     /// error (and should fail an assertion failure).
+    #[inline]
     pub fn shifted_out_to_binder(self, to_binder: DebruijnIndex) -> Self {
         self.shifted_out(to_binder.as_u32() - INNERMOST.as_u32())
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum IntTy {
     Isize,
     I8,
@@ -407,7 +417,7 @@ impl IntTy {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Debug)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum UintTy {
     Usize,
     U8,
@@ -454,7 +464,7 @@ impl UintTy {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum FloatTy {
     F32,
     F64,
@@ -591,7 +601,8 @@ impl UnifyKey for FloatVid {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Decodable, Encodable, Hash)]
+#[derive(Copy, Clone, PartialEq, Decodable, Encodable, Hash, HashStable_Generic)]
+#[rustc_pass_by_value]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -659,30 +670,6 @@ impl Variance {
     }
 }
 
-impl<CTX> HashStable<CTX> for DebruijnIndex {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.as_u32().hash_stable(ctx, hasher);
-    }
-}
-
-impl<CTX> HashStable<CTX> for IntTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        discriminant(self).hash_stable(ctx, hasher);
-    }
-}
-
-impl<CTX> HashStable<CTX> for UintTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        discriminant(self).hash_stable(ctx, hasher);
-    }
-}
-
-impl<CTX> HashStable<CTX> for FloatTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        discriminant(self).hash_stable(ctx, hasher);
-    }
-}
-
 impl<CTX> HashStable<CTX> for InferTy {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         use InferTy::*;
@@ -693,12 +680,6 @@ impl<CTX> HashStable<CTX> for InferTy {
             FloatVar(v) => v.index.hash_stable(ctx, hasher),
             FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
         }
-    }
-}
-
-impl<CTX> HashStable<CTX> for Variance {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        discriminant(self).hash_stable(ctx, hasher);
     }
 }
 
@@ -765,5 +746,82 @@ impl fmt::Display for InferTy {
             FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
             FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v),
         }
+    }
+}
+
+rustc_index::newtype_index! {
+    /// "Universes" are used during type- and trait-checking in the
+    /// presence of `for<..>` binders to control what sets of names are
+    /// visible. Universes are arranged into a tree: the root universe
+    /// contains names that are always visible. Each child then adds a new
+    /// set of names that are visible, in addition to those of its parent.
+    /// We say that the child universe "extends" the parent universe with
+    /// new names.
+    ///
+    /// To make this more concrete, consider this program:
+    ///
+    /// ```ignore (illustrative)
+    /// struct Foo { }
+    /// fn bar<T>(x: T) {
+    ///   let y: for<'a> fn(&'a u8, Foo) = ...;
+    /// }
+    /// ```
+    ///
+    /// The struct name `Foo` is in the root universe U0. But the type
+    /// parameter `T`, introduced on `bar`, is in an extended universe U1
+    /// -- i.e., within `bar`, we can name both `T` and `Foo`, but outside
+    /// of `bar`, we cannot name `T`. Then, within the type of `y`, the
+    /// region `'a` is in a universe U2 that extends U1, because we can
+    /// name it inside the fn type but not outside.
+    ///
+    /// Universes are used to do type- and trait-checking around these
+    /// "forall" binders (also called **universal quantification**). The
+    /// idea is that when, in the body of `bar`, we refer to `T` as a
+    /// type, we aren't referring to any type in particular, but rather a
+    /// kind of "fresh" type that is distinct from all other types we have
+    /// actually declared. This is called a **placeholder** type, and we
+    /// use universes to talk about this. In other words, a type name in
+    /// universe 0 always corresponds to some "ground" type that the user
+    /// declared, but a type name in a non-zero universe is a placeholder
+    /// type -- an idealized representative of "types in general" that we
+    /// use for checking generic functions.
+    #[derive(HashStable_Generic)]
+    pub struct UniverseIndex {
+        DEBUG_FORMAT = "U{}",
+    }
+}
+
+impl UniverseIndex {
+    pub const ROOT: UniverseIndex = UniverseIndex::from_u32(0);
+
+    /// Returns the "next" universe index in order -- this new index
+    /// is considered to extend all previous universes. This
+    /// corresponds to entering a `forall` quantifier. So, for
+    /// example, suppose we have this type in universe `U`:
+    ///
+    /// ```ignore (illustrative)
+    /// for<'a> fn(&'a u32)
+    /// ```
+    ///
+    /// Once we "enter" into this `for<'a>` quantifier, we are in a
+    /// new universe that extends `U` -- in this new universe, we can
+    /// name the region `'a`, but that region was not nameable from
+    /// `U` because it was not in scope there.
+    pub fn next_universe(self) -> UniverseIndex {
+        UniverseIndex::from_u32(self.private.checked_add(1).unwrap())
+    }
+
+    /// Returns `true` if `self` can name a name from `other` -- in other words,
+    /// if the set of names in `self` is a superset of those in
+    /// `other` (`self >= other`).
+    pub fn can_name(self, other: UniverseIndex) -> bool {
+        self.private >= other.private
+    }
+
+    /// Returns `true` if `self` cannot name some names from `other` -- in other
+    /// words, if the set of names in `self` is a strict subset of
+    /// those in `other` (`self < other`).
+    pub fn cannot_name(self, other: UniverseIndex) -> bool {
+        self.private < other.private
     }
 }

@@ -1,7 +1,7 @@
 // run-pass
 #[repr(u8)]
 enum Foo {
-    Foo(u8),
+    Foo(#[allow(unused_tuple_struct_fields)] u8),
 }
 
 fn main() {

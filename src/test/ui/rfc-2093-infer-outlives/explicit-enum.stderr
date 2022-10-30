@@ -1,10 +1,8 @@
 error: rustc_outlives
   --> $DIR/explicit-enum.rs:4:1
    |
-LL | / enum Foo<'a, U> {
-LL | |     One(Bar<'a, U>)
-LL | | }
-   | |_^
+LL | enum Foo<'a, U> {
+   | ^^^^^^^^^^^^^^^
    |
    = note: U: 'a
 

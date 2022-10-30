@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-76191.rs:13:9
    |
 LL | const RANGE: RangeInclusive<i32> = 0..=255;
-   | ------------------------------------------- constant defined here
+   | -------------------------------- constant defined here
 ...
 LL |     match n {
    |           - this expression has type `i32`
@@ -23,7 +23,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-76191.rs:15:9
    |
 LL | const RANGE2: RangeInclusive<i32> = panic!();
-   | --------------------------------------------- constant defined here
+   | --------------------------------- constant defined here
 ...
 LL |     match n {
    |           - this expression has type `i32`

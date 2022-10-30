@@ -35,43 +35,43 @@ enum E {
 
 fn by_val(e: E) {
     let e1 = e.clone();
-    match e1 { //~ ERROR non-exhaustive patterns: `B` and `C` not covered
-        //~^ NOTE patterns `B` and `C` not covered
+    match e1 { //~ ERROR non-exhaustive patterns: `E::B` and `E::C` not covered
+        //~^ NOTE patterns `E::B` and `E::C` not covered
         //~| NOTE the matched value is of type `E`
         E::A => {}
     }
 
-    let E::A = e; //~ ERROR refutable pattern in local binding: `B` and `C` not covered
-    //~^ NOTE patterns `B` and `C` not covered
+    let E::A = e; //~ ERROR refutable pattern in local binding: `E::B` and `E::C` not covered
+    //~^ NOTE patterns `E::B` and `E::C` not covered
     //~| NOTE `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with
     //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
     //~| NOTE the matched value is of type `E`
 }
 
 fn by_ref_once(e: &E) {
-    match e { //~ ERROR non-exhaustive patterns: `&B` and `&C` not covered
-    //~^ NOTE patterns `&B` and `&C` not covered
+    match e { //~ ERROR non-exhaustive patterns: `&E::B` and `&E::C` not covered
+    //~^ NOTE patterns `&E::B` and `&E::C` not covered
     //~| NOTE the matched value is of type `&E`
         E::A => {}
     }
 
-    let E::A = e; //~ ERROR refutable pattern in local binding: `&B` and `&C` not covered
-    //~^ NOTE patterns `&B` and `&C` not covered
+    let E::A = e; //~ ERROR refutable pattern in local binding: `&E::B` and `&E::C` not covered
+    //~^ NOTE patterns `&E::B` and `&E::C` not covered
     //~| NOTE `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with
     //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
     //~| NOTE the matched value is of type `&E`
 }
 
 fn by_ref_thrice(e: & &mut &E) {
-    match e { //~ ERROR non-exhaustive patterns: `&&mut &B` and `&&mut &C` not covered
-    //~^ NOTE patterns `&&mut &B` and `&&mut &C` not covered
+    match e { //~ ERROR non-exhaustive patterns: `&&mut &E::B` and `&&mut &E::C` not covered
+    //~^ NOTE patterns `&&mut &E::B` and `&&mut &E::C` not covered
     //~| NOTE the matched value is of type `&&mut &E`
         E::A => {}
     }
 
     let E::A = e;
-    //~^ ERROR refutable pattern in local binding: `&&mut &B` and `&&mut &C` not covered
-    //~| NOTE patterns `&&mut &B` and `&&mut &C` not covered
+    //~^ ERROR refutable pattern in local binding: `&&mut &E::B` and `&&mut &E::C` not covered
+    //~| NOTE patterns `&&mut &E::B` and `&&mut &E::C` not covered
     //~| NOTE `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with
     //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
     //~| NOTE the matched value is of type `&&mut &E`
@@ -89,15 +89,15 @@ enum Opt {
 }
 
 fn ref_pat(e: Opt) {
-    match e {//~ ERROR non-exhaustive patterns: `None` not covered
-        //~^ NOTE pattern `None` not covered
+    match e {//~ ERROR non-exhaustive patterns: `Opt::None` not covered
+        //~^ NOTE pattern `Opt::None` not covered
         //~| NOTE the matched value is of type `Opt`
         Opt::Some(ref _x) => {}
     }
 
-    let Opt::Some(ref _x) = e; //~ ERROR refutable pattern in local binding: `None` not covered
+    let Opt::Some(ref _x) = e; //~ ERROR refutable pattern in local binding: `Opt::None` not covered
     //~^ NOTE the matched value is of type `Opt`
-    //~| NOTE pattern `None` not covered
+    //~| NOTE pattern `Opt::None` not covered
     //~| NOTE `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with
     //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
 }

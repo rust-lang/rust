@@ -21,7 +21,7 @@ fn dogfood_clippy() {
 
     // "" is the root package
     for package in &["", "clippy_dev", "clippy_lints", "clippy_utils", "rustc_tools_util"] {
-        run_clippy_for_package(package, &[]);
+        run_clippy_for_package(package, &["-D", "clippy::all", "-D", "clippy::pedantic"]);
     }
 }
 
@@ -74,20 +74,24 @@ fn run_clippy_for_package(project: &str, args: &[&str]) {
         .env("CARGO_INCREMENTAL", "0")
         .arg("clippy")
         .arg("--all-targets")
-        .arg("--all-features")
-        .arg("--")
-        .args(args)
-        .args(&["-D", "clippy::all"])
-        .args(&["-D", "clippy::pedantic"])
-        .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
+        .arg("--all-features");
+
+    if let Ok(dogfood_args) = std::env::var("__CLIPPY_DOGFOOD_ARGS") {
+        for arg in dogfood_args.split_whitespace() {
+            command.arg(arg);
+        }
+    }
+
+    command.arg("--").args(args);
+    command.arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
 
     if cfg!(feature = "internal") {
         // internal lints only exist if we build with the internal feature
-        command.args(&["-D", "clippy::internal"]);
+        command.args(["-D", "clippy::internal"]);
     } else {
         // running a clippy built without internal lints on the clippy source
         // that contains e.g. `allow(clippy::invalid_paths)`
-        command.args(&["-A", "unknown_lints"]);
+        command.args(["-A", "unknown_lints"]);
     }
 
     let output = command.output().unwrap();

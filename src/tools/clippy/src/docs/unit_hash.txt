@@ -1,0 +1,20 @@
+### What it does
+Detects `().hash(_)`.
+
+### Why is this bad?
+Hashing a unit value doesn't do anything as the implementation of `Hash` for `()` is a no-op.
+
+### Example
+```
+match my_enum {
+	Empty => ().hash(&mut state),
+	WithValue(x) => x.hash(&mut state),
+}
+```
+Use instead:
+```
+match my_enum {
+	Empty => 0_u8.hash(&mut state),
+	WithValue(x) => x.hash(&mut state),
+}
+```

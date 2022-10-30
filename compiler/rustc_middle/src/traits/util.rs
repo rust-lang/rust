@@ -1,4 +1,4 @@
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 
 use crate::ty::{PolyTraitRef, TyCtxt};
 

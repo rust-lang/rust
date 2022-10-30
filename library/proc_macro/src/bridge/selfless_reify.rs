@@ -75,9 +75,10 @@ macro_rules! define_reify_functions {
 define_reify_functions! {
     fn _reify_to_extern_c_fn_unary<A, R> for extern "C" fn(arg: A) -> R;
 
-    // HACK(eddyb) this abstraction is used with `for<'a> fn(Bridge<'a>) -> T`
-    // but that doesn't work with just `reify_to_extern_c_fn_unary` because of
-    // the `fn` pointer type being "higher-ranked" (i.e. the `for<'a>` binder).
-    // FIXME(eddyb) try to remove the lifetime from `Bridge`, that'd help.
-    fn reify_to_extern_c_fn_hrt_bridge<R> for extern "C" fn(bridge: super::Bridge<'_>) -> R;
+    // HACK(eddyb) this abstraction is used with `for<'a> fn(BridgeConfig<'a>)
+    // -> T` but that doesn't work with just `reify_to_extern_c_fn_unary`
+    // because of the `fn` pointer type being "higher-ranked" (i.e. the
+    // `for<'a>` binder).
+    // FIXME(eddyb) try to remove the lifetime from `BridgeConfig`, that'd help.
+    fn reify_to_extern_c_fn_hrt_bridge<R> for extern "C" fn(bridge: super::BridgeConfig<'_>) -> R;
 }

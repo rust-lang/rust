@@ -12,6 +12,6 @@ impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Foo<'a, U>> for Foo<'
 //~^ ERROR the trait bound `&'a T: Unsize<&'a U>` is not satisfied
 //~| NOTE the trait `Unsize<&'a U>` is not implemented for `&'a T`
 //~| NOTE all implementations of `Unsize` are provided automatically by the compiler
-//~| NOTE required because of the requirements on the impl
+//~| NOTE required for
 
 fn main() {}

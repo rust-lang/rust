@@ -36,18 +36,25 @@ test = false
 
 [dependencies]
 cmake = "0.1.38"
+fd-lock = "3.0.6"
 filetime = "0.2"
 getopts = "0.2.19"
 cc = "1.0.69"
 libc = "0.2"
+hex = "0.4"
 serde = { version = "1.0.8", features = ["derive"] }
 serde_json = "1.0.2"
+sha2 = "0.10"
 tar = "0.4"
 toml = "0.5"
 ignore = "0.4.10"
 opener = "0.5"
 once_cell = "1.7.2"
 xz2 = "0.1"
+walkdir = "2"
+
+# Dependencies needed by the build-metrics feature
+sysinfo = { version = "0.24.1", optional = true }
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
@@ -60,7 +67,19 @@ features = [
     "psapi",
     "impl-default",
     "timezoneapi",
+    "winbase",
 ]
 
 [dev-dependencies]
 pretty_assertions = "0.7"
+
+[features]
+build-metrics = ["sysinfo"]
+
+# We care a lot about bootstrap's compile times, so don't include debuginfo for
+# dependencies, only bootstrap itself.
+[profile.dev]
+debug = 0
+[profile.dev.package]
+# Only use debuginfo=1 to further reduce compile times.
+bootstrap.debug = 1

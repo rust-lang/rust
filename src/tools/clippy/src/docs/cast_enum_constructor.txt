@@ -1,0 +1,11 @@
+### What it does
+Checks for casts from an enum tuple constructor to an integer.
+
+### Why is this bad?
+The cast is easily confused with casting a c-like enum value to an integer.
+
+### Example
+```
+enum E { X(i32) };
+let _ = E::X as usize;
+```

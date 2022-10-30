@@ -1,7 +1,7 @@
 // run-pass
 // issue #89688
 
-#![feature(let_else)]
+
 
 fn example_let_else(value: Option<String>) {
     let Some(inner) = value else {

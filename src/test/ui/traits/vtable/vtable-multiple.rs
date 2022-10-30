@@ -25,7 +25,9 @@ impl B for S {}
 impl C for S {}
 
 fn foo(c: &dyn C) {}
+fn bar(c: &dyn B) {}
 
 fn main() {
     foo(&S);
+    bar(&S);
 }

@@ -1,11 +1,11 @@
 //! Lazily compute the inverse of each `SwitchInt`'s switch targets. Modeled after
 //! `Predecessors`/`PredecessorCache`.
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::sync::OnceCell;
 use rustc_index::vec::IndexVec;
-use rustc_serialize as serialize;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
 use crate::mir::{BasicBlock, BasicBlockData, Terminator, TerminatorKind};
@@ -54,14 +54,12 @@ impl SwitchSourceCache {
     }
 }
 
-impl<S: serialize::Encoder> serialize::Encodable<S> for SwitchSourceCache {
+impl<S: Encoder> Encodable<S> for SwitchSourceCache {
     #[inline]
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
-    }
+    fn encode(&self, _s: &mut S) {}
 }
 
-impl<D: serialize::Decoder> serialize::Decodable<D> for SwitchSourceCache {
+impl<D: Decoder> Decodable<D> for SwitchSourceCache {
     #[inline]
     fn decode(_: &mut D) -> Self {
         Self::new()
@@ -75,6 +73,6 @@ impl<CTX> HashStable<CTX> for SwitchSourceCache {
     }
 }
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     SwitchSourceCache,
 }

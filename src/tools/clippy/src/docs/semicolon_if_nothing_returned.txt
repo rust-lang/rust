@@ -1,0 +1,20 @@
+### What it does
+Looks for blocks of expressions and fires if the last expression returns
+`()` but is not followed by a semicolon.
+
+### Why is this bad?
+The semicolon might be optional but when extending the block with new
+code, it doesn't require a change in previous last line.
+
+### Example
+```
+fn main() {
+    println!("Hello world")
+}
+```
+Use instead:
+```
+fn main() {
+    println!("Hello world");
+}
+```

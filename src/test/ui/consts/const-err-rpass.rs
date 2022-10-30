@@ -2,8 +2,6 @@
 #![allow(dead_code)]
 // check for const_err regressions
 
-#![deny(const_err)]
-
 const X: *const u8 = b"" as _;
 const Y: bool = 'A' == 'B';
 const Z: char = 'A';

@@ -7,16 +7,25 @@ cfg_if::cfg_if! {
         target_os = "openbsd",
         target_os = "dragonfly",
     ))] {
-        mod futex;
+        mod futex_mutex;
         mod futex_rwlock;
-        pub use futex::{Mutex, MovableMutex, Condvar, MovableCondvar};
-        pub use futex_rwlock::{RwLock, MovableRwLock};
+        mod futex_condvar;
+        pub(crate) use futex_mutex::{Mutex, MovableMutex};
+        pub(crate) use futex_rwlock::MovableRwLock;
+        pub(crate) use futex_condvar::MovableCondvar;
+    } else if #[cfg(target_os = "fuchsia")] {
+        mod fuchsia_mutex;
+        mod futex_rwlock;
+        mod futex_condvar;
+        pub(crate) use fuchsia_mutex::{Mutex, MovableMutex};
+        pub(crate) use futex_rwlock::MovableRwLock;
+        pub(crate) use futex_condvar::MovableCondvar;
     } else {
         mod pthread_mutex;
         mod pthread_rwlock;
         mod pthread_condvar;
-        pub use pthread_mutex::{Mutex, MovableMutex};
-        pub use pthread_rwlock::{RwLock, MovableRwLock};
-        pub use pthread_condvar::{Condvar, MovableCondvar};
+        pub(crate) use pthread_mutex::{Mutex, MovableMutex};
+        pub(crate) use pthread_rwlock::MovableRwLock;
+        pub(crate) use pthread_condvar::MovableCondvar;
     }
 }

@@ -1,5 +1,7 @@
-// compile-flags: -Cpanic=abort
-#![feature(core_intrinsics)]
+// unit-test: LowerIntrinsics
+// ignore-wasm32 compiled with panic=abort by default
+
+#![feature(core_intrinsics, intrinsics)]
 #![crate_type = "lib"]
 
 // EMIT_MIR lower_intrinsics.wrapping.LowerIntrinsics.diff
@@ -29,33 +31,6 @@ pub fn unreachable() -> ! {
     unsafe { core::intrinsics::unreachable() };
 }
 
-// EMIT_MIR lower_intrinsics.f_unit.PreCodegen.before.mir
-pub fn f_unit() {
-    f_dispatch(());
-}
-
-
-// EMIT_MIR lower_intrinsics.f_u64.PreCodegen.before.mir
-pub fn f_u64() {
-    f_dispatch(0u64);
-}
-
-#[inline(always)]
-pub fn f_dispatch<T>(t: T) {
-    if std::mem::size_of::<T>() == 0 {
-        f_zst(t);
-    } else {
-        f_non_zst(t);
-    }
-}
-
-#[inline(never)]
-pub fn f_zst<T>(_t: T) {
-}
-
-#[inline(never)]
-pub fn f_non_zst<T>(_t: T) {}
-
 // EMIT_MIR lower_intrinsics.non_const.LowerIntrinsics.diff
 pub fn non_const<T>() -> usize {
     // Check that lowering works with non-const operand as a func.
@@ -75,4 +50,25 @@ pub fn discriminant<T>(t: T) {
     core::intrinsics::discriminant_value(&0);
     core::intrinsics::discriminant_value(&());
     core::intrinsics::discriminant_value(&E::B);
+}
+
+extern "rust-intrinsic" {
+    // Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
+    fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+}
+
+// EMIT_MIR lower_intrinsics.f_copy_nonoverlapping.LowerIntrinsics.diff
+pub fn f_copy_nonoverlapping() {
+    let src = ();
+    let mut dst = ();
+    unsafe {
+        copy_nonoverlapping(&src as *const _ as *const i32, &mut dst as *mut _ as *mut i32, 0);
+    }
+}
+
+// EMIT_MIR lower_intrinsics.assume.LowerIntrinsics.diff
+pub fn assume() {
+    unsafe {
+        std::intrinsics::assume(true);
+    }
 }

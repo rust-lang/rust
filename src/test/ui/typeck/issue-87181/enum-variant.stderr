@@ -2,11 +2,9 @@ error[E0599]: no method named `foo` found for fn item `fn() -> Foo {Foo::Tup}` i
   --> $DIR/enum-variant.rs:14:15
    |
 LL |     thing.bar.foo();
-   |     --------- ^^^ method not found in `fn() -> Foo {Foo::Tup}`
-   |     |
-   |     this is the constructor of an enum variant
+   |               ^^^ method not found in `fn() -> Foo {Foo::Tup}`
    |
-help: call the constructor
+help: use parentheses to instantiate this tuple variant
    |
 LL |     (thing.bar)().foo();
    |     +         +++

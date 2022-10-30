@@ -3,7 +3,7 @@ error[E0259]: the name `alloc` is defined multiple times
    |
 LL | extern crate alloc;
    | ------------------- previous import of the extern crate `alloc` here
-LL | 
+LL |
 LL | extern crate libc as alloc;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `alloc` reimported here
    |

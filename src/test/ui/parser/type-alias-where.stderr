@@ -1,5 +1,5 @@
 error: where clauses are not allowed after the type for type aliases
-  --> $DIR/type-alias-where.rs:8:15
+  --> $DIR/type-alias-where.rs:6:15
    |
 LL | type Bar = () where u32: Copy;
    |               ^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | type Bar = () where u32: Copy;
    = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 
 error: where clauses are not allowed after the type for type aliases
-  --> $DIR/type-alias-where.rs:10:15
+  --> $DIR/type-alias-where.rs:8:15
    |
 LL | type Baz = () where;
    |               ^^^^^

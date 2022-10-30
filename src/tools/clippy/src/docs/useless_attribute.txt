@@ -1,0 +1,36 @@
+### What it does
+Checks for `extern crate` and `use` items annotated with
+lint attributes.
+
+This lint permits lint attributes for lints emitted on the items themself.
+For `use` items these lints are:
+* deprecated
+* unreachable_pub
+* unused_imports
+* clippy::enum_glob_use
+* clippy::macro_use_imports
+* clippy::wildcard_imports
+
+For `extern crate` items these lints are:
+* `unused_imports` on items with `#[macro_use]`
+
+### Why is this bad?
+Lint attributes have no effect on crate imports. Most
+likely a `!` was forgotten.
+
+### Example
+```
+#[deny(dead_code)]
+extern crate foo;
+#[forbid(dead_code)]
+use foo::bar;
+```
+
+Use instead:
+```
+#[allow(unused_imports)]
+use foo::baz;
+#[allow(unused_imports)]
+#[macro_use]
+extern crate baz;
+```

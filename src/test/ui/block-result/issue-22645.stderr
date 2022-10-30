@@ -5,7 +5,7 @@ LL |   b + 3
    |     ^ the trait `Scalar` is not implemented for `{integer}`
    |
    = help: the trait `Scalar` is implemented for `f64`
-note: required because of the requirements on the impl of `Add<{integer}>` for `Bob`
+note: required for `Bob` to implement `Add<{integer}>`
   --> $DIR/issue-22645.rs:8:19
    |
 LL | impl<RHS: Scalar> Add <RHS> for Bob {

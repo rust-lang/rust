@@ -1,8 +1,10 @@
 error[E0277]: the trait bound `Bar: Foo<usize>` is not satisfied
-  --> $DIR/issue-21659-show-relevant-trait-impls-2.rs:28:8
+  --> $DIR/issue-21659-show-relevant-trait-impls-2.rs:28:12
    |
 LL |     f1.foo(1usize);
-   |        ^^^ the trait `Foo<usize>` is not implemented for `Bar`
+   |        --- ^^^^^^ the trait `Foo<usize>` is not implemented for `Bar`
+   |        |
+   |        required by a bound introduced by this call
    |
    = help: the following other types implement trait `Foo<A>`:
              <Bar as Foo<i16>>

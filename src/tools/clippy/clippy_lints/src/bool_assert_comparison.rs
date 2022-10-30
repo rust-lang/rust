@@ -17,11 +17,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// assert_eq!("a".is_empty(), false);
     /// assert_ne!("a".is_empty(), true);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// assert!(!"a".is_empty());
     /// ```
     #[clippy::version = "1.53.0"]
@@ -97,9 +98,9 @@ impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
             cx,
             BOOL_ASSERT_COMPARISON,
             macro_call.span,
-            &format!("used `{}!` with a literal bool", macro_name),
+            &format!("used `{macro_name}!` with a literal bool"),
             "replace it with",
-            format!("{}!(..)", non_eq_mac),
+            format!("{non_eq_mac}!(..)"),
             Applicability::MaybeIncorrect,
         );
     }

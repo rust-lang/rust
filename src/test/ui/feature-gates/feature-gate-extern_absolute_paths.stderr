@@ -3,12 +3,16 @@ error[E0432]: unresolved import `core`
    |
 LL | use core::default;
    |     ^^^^ maybe a missing crate `core`?
+   |
+   = help: consider adding `extern crate core` to use the `core` crate
 
 error[E0433]: failed to resolve: maybe a missing crate `core`?
   --> $DIR/feature-gate-extern_absolute_paths.rs:4:19
    |
 LL |     let _: u8 = ::core::default::Default();
    |                   ^^^^ maybe a missing crate `core`?
+   |
+   = help: consider adding `extern crate core` to use the `core` crate
 
 error: aborting due to 2 previous errors
 

@@ -1,0 +1,65 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  MACRO_RULES
+    MACRO_RULES_KW "macro_rules"
+    BANG "!"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  MACRO_CALL
+    PATH
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "foo"
+      COLON2 "::"
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "bar"
+    BANG "!"
+    TOKEN_TREE
+      L_PAREN "("
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  MACRO_CALL
+    PATH
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            SUPER_KW "super"
+      COLON2 "::"
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "baz"
+    BANG "!"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    SEMICOLON ";"
+  WHITESPACE "\n"

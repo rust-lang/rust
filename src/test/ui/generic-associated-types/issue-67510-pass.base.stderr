@@ -1,11 +1,11 @@
 error[E0038]: the trait `X` cannot be made into an object
-  --> $DIR/issue-67510-pass.rs:13:23
+  --> $DIR/issue-67510-pass.rs:12:23
    |
 LL | fn _func1<'a>(_x: Box<dyn X<Y<'a>=&'a ()>>) {}
    |                       ^^^^^^^^^^^^^^^^^^^ `X` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/issue-67510-pass.rs:10:10
+  --> $DIR/issue-67510-pass.rs:9:10
    |
 LL | trait X {
    |       - this trait cannot be made into an object...

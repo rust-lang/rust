@@ -182,15 +182,6 @@ install!((self, builder, _config),
             .expect("missing cargo");
         install_sh(builder, "cargo", self.compiler.stage, Some(self.target), &tarball);
     };
-    Rls, alias = "rls", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::Rls { compiler: self.compiler, target: self.target }) {
-            install_sh(builder, "rls", self.compiler.stage, Some(self.target), &tarball);
-        } else {
-            builder.info(
-                &format!("skipping Install RLS stage{} ({})", self.compiler.stage, self.target),
-            );
-        }
-    };
     RustAnalyzer, alias = "rust-analyzer", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) =
             builder.ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target })
@@ -209,13 +200,10 @@ install!((self, builder, _config),
         install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };
     Miri, alias = "miri", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::Miri { compiler: self.compiler, target: self.target }) {
-            install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
-        } else {
-            builder.info(
-                &format!("skipping Install miri stage{} ({})", self.compiler.stage, self.target),
-            );
-        }
+        let tarball = builder
+            .ensure(dist::Miri { compiler: self.compiler, target: self.target })
+            .expect("missing miri");
+        install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
     };
     Rustfmt, alias = "rustfmt", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::Rustfmt {

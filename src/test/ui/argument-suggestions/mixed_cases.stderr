@@ -2,7 +2,7 @@ error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/mixed_cases.rs:10:3
    |
 LL |   two_args(1, "", X {});
-   |   ^^^^^^^^    --  ---- argument unexpected
+   |   ^^^^^^^^    --  ---- argument of type `X` unexpected
    |               |
    |               expected `f32`, found `&str`
    |
@@ -13,16 +13,16 @@ LL | fn two_args(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
 help: remove the extra argument
    |
-LL |   two_args(1, {f32});
-   |   ~~~~~~~~~~~~~~~~~~
+LL |   two_args(1, /* f32 */);
+   |           ~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 4 arguments were supplied
   --> $DIR/mixed_cases.rs:11:3
    |
 LL |   three_args(1, "", X {}, "");
-   |   ^^^^^^^^^^    --  ----  -- argument unexpected
+   |   ^^^^^^^^^^    --  ----  -- argument of type `&'static str` unexpected
    |                 |   |
-   |                 |   argument of type `&str` unexpected
+   |                 |   argument of type `X` unexpected
    |                 an argument of type `f32` is missing
    |
 note: function defined here
@@ -32,8 +32,8 @@ LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: did you mean
    |
-LL |   three_args(1, {f32}, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~
+LL |   three_args(1, /* f32 */, "");
+   |             ~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 2 arguments were supplied
   --> $DIR/mixed_cases.rs:14:3
@@ -51,14 +51,14 @@ LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: provide the argument
    |
-LL |   three_args(1, {f32}, {&str});
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |   three_args(1, /* f32 */, /* &str */);
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:17:3
    |
 LL |   three_args(1, "", X {});
-   |   ^^^^^^^^^^    --  ---- argument of type `&str` unexpected
+   |   ^^^^^^^^^^    --  ---- argument of type `X` unexpected
    |                 |
    |                 an argument of type `f32` is missing
    |
@@ -69,17 +69,17 @@ LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: did you mean
    |
-LL |   three_args(1, {f32}, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~
+LL |   three_args(1, /* f32 */, "");
+   |             ~~~~~~~~~~~~~~~~~~
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:20:3
    |
 LL |   three_args("", X {}, 1);
-   |   ^^^^^^^^^^ --  ----  - expected `&str`,found `{integer}`
+   |   ^^^^^^^^^^ --  ----  - expected `&str`, found `{integer}`
    |              |   |
    |              |   expected `f32`, found struct `X`
-   |              expected `i32`,found `&'static str`
+   |              expected `i32`, found `&'static str`
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
@@ -88,8 +88,8 @@ LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: swap these arguments
    |
-LL |   three_args(1, {f32}, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~
+LL |   three_args(1, /* f32 */, "");
+   |             ~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 2 arguments were supplied
   --> $DIR/mixed_cases.rs:23:3
@@ -98,8 +98,8 @@ LL |   three_args("", 1);
    |   ^^^^^^^^^^ --  -
    |              |   |
    |              |   an argument of type `f32` is missing
-   |              |   expected `&str`,found `{integer}`
-   |              expected `i32`,found `&'static str`
+   |              |   expected `&str`, found `{integer}`
+   |              expected `i32`, found `&'static str`
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
@@ -108,8 +108,8 @@ LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
    |    ^^^^^^^^^^ -------  -------  --------
 help: did you mean
    |
-LL |   three_args(1, {f32}, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~
+LL |   three_args(1, /* f32 */, "");
+   |             ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 6 previous errors
 

@@ -122,7 +122,14 @@ LL +         let a = 42;
 LL +         let b = 21;
 LL +         if a < b {
 LL +             let c = 21;
- ...
+LL +             let d = 42;
+LL +             if c < d {
+LL +                 let _ = 42;
+LL +             }
+LL +         }
+LL +         42
+LL +     }
+   |
 
 error: this function can be simplified using the `async fn` syntax
   --> $DIR/manual_async_fn.rs:92:1

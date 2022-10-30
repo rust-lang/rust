@@ -216,7 +216,7 @@ impl<'a> Parser<'a> {
                 .span_suggestion_short(
                     self.prev_token.span,
                     "use `->` instead",
-                    "->".to_string(),
+                    "->",
                     Applicability::MachineApplicable,
                 )
                 .emit();
@@ -312,13 +312,18 @@ impl<'a> Parser<'a> {
         };
 
         let span = lo.to(self.prev_token.span);
-        let ty = self.mk_ty(span, kind);
+        let mut ty = self.mk_ty(span, kind);
 
         // Try to recover from use of `+` with incorrect priority.
-        self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
-        self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
-        let ty = self.maybe_recover_from_question_mark(ty, recover_question_mark);
-        self.maybe_recover_from_bad_qpath(ty, allow_qpath_recovery)
+        if matches!(allow_plus, AllowPlus::Yes) {
+            self.maybe_recover_from_bad_type_plus(&ty)?;
+        } else {
+            self.maybe_report_ambiguous_plus(impl_dyn_multi, &ty);
+        }
+        if let RecoverQuestionMark::Yes = recover_question_mark {
+            ty = self.maybe_recover_from_question_mark(ty);
+        }
+        if allow_qpath_recovery { self.maybe_recover_from_bad_qpath(ty) } else { Ok(ty) }
     }
 
     /// Parses either:
@@ -392,10 +397,13 @@ impl<'a> Parser<'a> {
     fn parse_ty_ptr(&mut self) -> PResult<'a, TyKind> {
         let mutbl = self.parse_const_or_mut().unwrap_or_else(|| {
             let span = self.prev_token.span;
-            let msg = "expected mut or const in raw pointer type";
-            self.struct_span_err(span, msg)
-                .span_label(span, msg)
-                .help("use `*mut T` or `*const T` as appropriate")
+            self.struct_span_err(span, "expected `mut` or `const` keyword in raw pointer type")
+                .span_suggestions(
+                    span.shrink_to_hi(),
+                    "add `mut` or `const` here",
+                    ["mut ".to_string(), "const ".to_string()].into_iter(),
+                    Applicability::HasPlaceholders,
+                )
                 .emit();
             Mutability::Not
         });
@@ -474,7 +482,7 @@ impl<'a> Parser<'a> {
             err.span_suggestion(
                 span,
                 "place `mut` before `dyn`",
-                "&mut dyn".to_string(),
+                "&mut dyn",
                 Applicability::MachineApplicable,
             );
             err.emit();
@@ -543,7 +551,7 @@ impl<'a> Parser<'a> {
             .span_suggestion_short(
                 qual_span,
                 &format!("remove the `{}` qualifier", qual),
-                String::new(),
+                "",
                 Applicability::MaybeIncorrect,
             )
             .emit();
@@ -562,7 +570,8 @@ impl<'a> Parser<'a> {
         self.check_keyword(kw::Dyn)
             && (!self.token.uninterpolated_span().rust_2015()
                 || self.look_ahead(1, |t| {
-                    t.can_begin_bound() && !can_continue_type_after_non_fn_ident(t)
+                    (t.can_begin_bound() || t.kind == TokenKind::BinOp(token::Star))
+                        && !can_continue_type_after_non_fn_ident(t)
                 }))
     }
 
@@ -571,10 +580,18 @@ impl<'a> Parser<'a> {
     /// Note that this does *not* parse bare trait objects.
     fn parse_dyn_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
         self.bump(); // `dyn`
+
+        // parse dyn* types
+        let syntax = if self.eat(&TokenKind::BinOp(token::Star)) {
+            TraitObjectSyntax::DynStar
+        } else {
+            TraitObjectSyntax::Dyn
+        };
+
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds(None)?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
-        Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn))
+        Ok(TyKind::TraitObject(bounds, syntax))
     }
 
     /// Parses a type starting with a path.
@@ -593,11 +610,11 @@ impl<'a> Parser<'a> {
         let path = self.parse_path_inner(PathStyle::Type, ty_generics)?;
         if self.eat(&token::Not) {
             // Macro invocation in type position
-            Ok(TyKind::MacCall(MacCall {
+            Ok(TyKind::MacCall(P(MacCall {
                 path,
                 args: self.parse_mac_args()?,
                 prior_type_ascription: self.last_type_ascription,
-            }))
+            })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`
             self.parse_remaining_bounds_path(Vec::new(), path, lo, true)
@@ -635,7 +652,13 @@ impl<'a> Parser<'a> {
         let mut bounds = Vec::new();
         let mut negative_bounds = Vec::new();
 
-        while self.can_begin_bound() || self.token.is_keyword(kw::Dyn) {
+        while self.can_begin_bound()
+            // Continue even if we find a keyword.
+            // This is necessary for error recover on, for example, `impl fn()`.
+            //
+            // The only keyword that can go after generic bounds is `where`, so stop if it's it.
+            || (self.token.is_reserved_ident() && !self.token.is_keyword(kw::Where))
+        {
             if self.token.is_keyword(kw::Dyn) {
                 // Account for `&dyn Trait + dyn Other`.
                 self.struct_span_err(self.token.span, "invalid `dyn` keyword")
@@ -643,7 +666,7 @@ impl<'a> Parser<'a> {
                     .span_suggestion(
                         self.token.span,
                         "remove this keyword",
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     )
                     .emit();
@@ -798,6 +821,20 @@ impl<'a> Parser<'a> {
             self.expect_keyword(kw::Const)?;
             let span = tilde.to(self.prev_token.span);
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
+            Some(span)
+        } else if self.eat_keyword(kw::Const) {
+            let span = self.prev_token.span;
+            self.sess.gated_spans.gate(sym::const_trait_impl, span);
+
+            self.struct_span_err(span, "const bounds must start with `~`")
+                .span_suggestion(
+                    span.shrink_to_lo(),
+                    "add `~`",
+                    "~",
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+
             Some(span)
         } else {
             None

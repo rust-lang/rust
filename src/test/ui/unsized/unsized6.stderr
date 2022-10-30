@@ -13,7 +13,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f1<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized>(x: &X) {
 LL + fn f1<W: ?Sized, X: ?Sized, Y, Z: ?Sized>(x: &X) {
-   | 
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:7:12
@@ -29,7 +29,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f1<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized>(x: &X) {
 LL + fn f1<W: ?Sized, X, Y: ?Sized, Z: ?Sized>(x: &X) {
-   | 
+   |
 
 error[E0277]: the size for values of type `Z` cannot be known at compilation time
   --> $DIR/unsized6.rs:11:12
@@ -45,7 +45,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f1<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized>(x: &X) {
 LL + fn f1<W: ?Sized, X: ?Sized, Y: ?Sized, Z>(x: &X) {
-   | 
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:15:9
@@ -61,7 +61,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f2<X: ?Sized, Y: ?Sized>(x: &X) {
 LL + fn f2<X, Y: ?Sized>(x: &X) {
-   | 
+   |
 
 error[E0277]: the size for values of type `Y` cannot be known at compilation time
   --> $DIR/unsized6.rs:17:12
@@ -77,7 +77,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f2<X: ?Sized, Y: ?Sized>(x: &X) {
 LL + fn f2<X: ?Sized, Y>(x: &X) {
-   | 
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:22:9
@@ -93,7 +93,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
 LL + fn f3<X>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
-   | 
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:24:9
@@ -110,7 +110,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
 LL + fn f3<X>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
-   | 
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:26:10
@@ -127,7 +127,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
 LL + fn f3<X>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
-   | 
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:30:9
@@ -143,7 +143,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f4<X: ?Sized + T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
 LL + fn f4<X: T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
-   | 
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:32:9
@@ -160,7 +160,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f4<X: ?Sized + T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
 LL + fn f4<X: T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
-   | 
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:34:10
@@ -177,7 +177,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f4<X: ?Sized + T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
 LL + fn f4<X: T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
-   | 
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:38:18
@@ -192,7 +192,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn g1<X: ?Sized>(x: X) {}
 LL + fn g1<X>(x: X) {}
-   | 
+   |
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn g1<X: ?Sized>(x: &X) {}
@@ -211,7 +211,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn g2<X: ?Sized + T>(x: X) {}
 LL + fn g2<X: T>(x: X) {}
-   | 
+   |
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn g2<X: ?Sized + T>(x: &X) {}

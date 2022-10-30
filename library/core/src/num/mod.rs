@@ -3,6 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
+use crate::error::Error;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
@@ -57,6 +58,15 @@ pub use wrapping::Wrapping;
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
 
+#[cfg(not(no_fp_fmt_parse))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseFloatError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
 
@@ -101,6 +111,9 @@ macro_rules! widening_impl {
         /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
         /// of the result as two separate values, in that order.
         ///
+        /// If you also need to add a carry to the wide result, then you want
+        /// [`Self::carrying_mul`] instead.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -136,6 +149,8 @@ macro_rules! widening_impl {
         /// additional amount of overflow. This allows for chaining together multiple
         /// multiplications to create "big integers" which represent larger values.
         ///
+        /// If you don't need the `carry`, then you can use [`Self::widening_mul`] instead.
+        ///
         /// # Examples
         ///
         /// Basic usage:
@@ -153,6 +168,31 @@ macro_rules! widening_impl {
             stringify!($SelfT), "::MAX.carrying_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(0, ", stringify!($SelfT), "::MAX));"
         )]
+        /// ```
+        ///
+        /// This is the core operation needed for scalar multiplication when
+        /// implementing it for wider-than-native types.
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        /// fn scalar_mul_eq(little_endian_digits: &mut Vec<u16>, multiplicand: u16) {
+        ///     let mut carry = 0;
+        ///     for d in little_endian_digits.iter_mut() {
+        ///         (*d, carry) = d.carrying_mul(multiplicand, carry);
+        ///     }
+        ///     if carry != 0 {
+        ///         little_endian_digits.push(carry);
+        ///     }
+        /// }
+        ///
+        /// let mut v = vec![10, 20];
+        /// scalar_mul_eq(&mut v, 3);
+        /// assert_eq!(v, [30, 60]);
+        ///
+        /// assert_eq!(0x87654321_u64 * 0xFEED, 0x86D3D159E38D);
+        /// let mut v = vec![0x4321, 0x8765];
+        /// scalar_mul_eq(&mut v, 0xFEED);
+        /// assert_eq!(v, [0xE38D, 0xD159, 0x86D3]);
         /// ```
         ///
         /// If `carry` is zero, this is similar to [`overflowing_mul`](Self::overflowing_mul),
@@ -196,25 +236,25 @@ macro_rules! widening_impl {
 
 impl i8 {
     int_impl! { i8, i8, u8, 8, 7, -128, 127, 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
-    "[0x12]", "[0x12]", "", "" }
+    "[0x12]", "[0x12]", "", "", "" }
 }
 
 impl i16 {
     int_impl! { i16, i16, u16, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
-    "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
+    "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "", "" }
 }
 
 impl i32 {
     int_impl! { i32, i32, u32, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78]", "", "" }
+    "[0x12, 0x34, 0x56, 0x78]", "", "", "" }
 }
 
 impl i64 {
     int_impl! { i64, i64, u64, 64, 63, -9223372036854775808, 9223372036854775807, 12,
     "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
     "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "" }
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "", "" }
 }
 
 impl i128 {
@@ -225,14 +265,15 @@ impl i128 {
     "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
       0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
-      0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]", "", "" }
+      0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]", "", "", "" }
 }
 
 #[cfg(target_pointer_width = "16")]
 impl isize {
     int_impl! { isize, i16, usize, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234",
     "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
+    " on 16-bit targets" }
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -240,7 +281,8 @@ impl isize {
     int_impl! { isize, i32, usize, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
+    " on 32-bit targets" }
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -249,7 +291,8 @@ impl isize {
     12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
     "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
+    " on 64-bit targets" }
 }
 
 /// If 6th bit set ascii is upper case.
@@ -257,7 +300,7 @@ const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 impl u8 {
     uint_impl! { u8, u8, i8, NonZeroU8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
-    "[0x12]", "", "" }
+    "[0x12]", "", "", "" }
     widening_impl! { u8, u16, 8, unsigned }
 
     /// Checks if the value is within the ASCII range.
@@ -579,6 +622,38 @@ impl u8 {
         matches!(*self, b'0'..=b'9')
     }
 
+    /// Checks if the value is an ASCII octal digit:
+    /// U+0030 '0' ..= U+0037 '7'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_ascii_octdigit)]
+    ///
+    /// let uppercase_a = b'A';
+    /// let a = b'a';
+    /// let zero = b'0';
+    /// let seven = b'7';
+    /// let nine = b'9';
+    /// let percent = b'%';
+    /// let lf = b'\n';
+    ///
+    /// assert!(!uppercase_a.is_ascii_octdigit());
+    /// assert!(!a.is_ascii_octdigit());
+    /// assert!(zero.is_ascii_octdigit());
+    /// assert!(seven.is_ascii_octdigit());
+    /// assert!(!nine.is_ascii_octdigit());
+    /// assert!(!percent.is_ascii_octdigit());
+    /// assert!(!lf.is_ascii_octdigit());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[inline]
+    pub const fn is_ascii_octdigit(&self) -> bool {
+        matches!(*self, b'0'..=b'7')
+    }
+
     /// Checks if the value is an ASCII hexadecimal digit:
     ///
     /// - U+0030 '0' ..= U+0039 '9', or
@@ -620,7 +695,7 @@ impl u8 {
     ///
     /// - U+0021 ..= U+002F `! " # $ % & ' ( ) * + , - . /`, or
     /// - U+003A ..= U+0040 `: ; < = > ? @`, or
-    /// - U+005B ..= U+0060 ``[ \ ] ^ _ ` ``, or
+    /// - U+005B ..= U+0060 `` [ \ ] ^ _ ` ``, or
     /// - U+007B ..= U+007E `{ | } ~`
     ///
     /// # Examples
@@ -810,7 +885,7 @@ impl u8 {
 
 impl u16 {
     uint_impl! { u16, u16, i16, NonZeroU16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
-    "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
+    "[0x34, 0x12]", "[0x12, 0x34]", "", "", "" }
     widening_impl! { u16, u32, 16, unsigned }
 
     /// Checks if the value is a Unicode surrogate code point, which are disallowed values for [`char`].
@@ -841,7 +916,7 @@ impl u16 {
 
 impl u32 {
     uint_impl! { u32, u32, i32, NonZeroU32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
-    "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
+    "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "", "" }
     widening_impl! { u32, u64, 32, unsigned }
 }
 
@@ -850,7 +925,7 @@ impl u64 {
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-    "", ""}
+    "", "", ""}
     widening_impl! { u64, u128, 64, unsigned }
 }
 
@@ -862,21 +937,23 @@ impl u128 {
       0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
       0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
-     "", ""}
+     "", "", ""}
 }
 
 #[cfg(target_pointer_width = "16")]
 impl usize {
     uint_impl! { usize, u16, isize, NonZeroUsize, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
+    " on 16-bit targets" }
     widening_impl! { usize, u32, 16, unsigned }
 }
 #[cfg(target_pointer_width = "32")]
 impl usize {
     uint_impl! { usize, u32, isize, NonZeroUsize, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
+    " on 32-bit targets" }
     widening_impl! { usize, u64, 32, unsigned }
 }
 
@@ -886,7 +963,8 @@ impl usize {
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
+    " on 64-bit targets" }
     widening_impl! { usize, u128, 64, unsigned }
 }
 
@@ -930,8 +1008,8 @@ impl usize {
 /// assert_eq!(num.classify(), FpCategory::Normal);
 /// assert_eq!(inf.classify(), FpCategory::Infinite);
 /// assert_eq!(zero.classify(), FpCategory::Zero);
-/// assert_eq!(nan.classify(), FpCategory::Nan);
 /// assert_eq!(sub.classify(), FpCategory::Subnormal);
+/// assert_eq!(nan.classify(), FpCategory::Nan);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]

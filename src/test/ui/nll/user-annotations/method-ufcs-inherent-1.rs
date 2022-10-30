@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // Check that substitutions given on the self type (here, `A`) carry
 // through to NLL.
 

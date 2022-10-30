@@ -21,7 +21,6 @@ LL | struct S2<F: Fn(&i32, &i32) -> &i32>(F);
    |                 ----  ----     ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | struct S2<F: for<'a> Fn(&'a i32, &'a i32) -> &'a i32>(F);

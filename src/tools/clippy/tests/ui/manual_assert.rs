@@ -4,7 +4,8 @@
 // run-rustfix
 
 #![warn(clippy::manual_assert)]
-#![allow(clippy::nonminimal_bool)]
+#![allow(dead_code, unused_doc_comments)]
+#![allow(clippy::nonminimal_bool, clippy::uninlined_format_args)]
 
 macro_rules! one {
     () => {
@@ -17,7 +18,7 @@ fn main() {
     let c = Some(2);
     if !a.is_empty()
         && a.len() == 3
-        && c != None
+        && c.is_some()
         && !a.is_empty()
         && a.len() == 3
         && !a.is_empty()
@@ -64,5 +65,17 @@ fn main() {
     }
     if a.is_empty() {
         panic!("with expansion {}", one!())
+    }
+}
+
+fn issue7730(a: u8) {
+    // Suggestion should preserve comment
+    if a > 2 {
+        // comment
+        /* this is a
+        multiline
+        comment */
+        /// Doc comment
+        panic!("panic with comment") // comment after `panic!`
     }
 }

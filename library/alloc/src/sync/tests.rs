@@ -618,3 +618,22 @@ fn test_arc_cyclic_two_refs() {
     assert_eq!(Arc::strong_count(&two_refs), 3);
     assert_eq!(Arc::weak_count(&two_refs), 2);
 }
+
+/// Test for Arc::drop bug (https://github.com/rust-lang/rust/issues/55005)
+#[test]
+#[cfg(miri)] // relies on Stacked Borrows in Miri
+fn arc_drop_dereferenceable_race() {
+    // The bug seems to take up to 700 iterations to reproduce with most seeds (tested 0-9).
+    for _ in 0..750 {
+        let arc_1 = Arc::new(());
+        let arc_2 = arc_1.clone();
+        let thread = thread::spawn(|| drop(arc_2));
+        // Spin a bit; makes the race more likely to appear
+        let mut i = 0;
+        while i < 256 {
+            i += 1;
+        }
+        drop(arc_1);
+        thread.join().unwrap();
+    }
+}

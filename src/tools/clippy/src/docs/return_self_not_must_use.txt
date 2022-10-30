@@ -1,0 +1,46 @@
+### What it does
+This lint warns when a method returning `Self` doesn't have the `#[must_use]` attribute.
+
+### Why is this bad?
+Methods returning `Self` often create new values, having the `#[must_use]` attribute
+prevents users from "forgetting" to use the newly created value.
+
+The `#[must_use]` attribute can be added to the type itself to ensure that instances
+are never forgotten. Functions returning a type marked with `#[must_use]` will not be
+linted, as the usage is already enforced by the type attribute.
+
+### Limitations
+This lint is only applied on methods taking a `self` argument. It would be mostly noise
+if it was added on constructors for example.
+
+### Example
+```
+pub struct Bar;
+impl Bar {
+    // Missing attribute
+    pub fn bar(&self) -> Self {
+        Self
+    }
+}
+```
+
+Use instead:
+```
+// It's better to have the `#[must_use]` attribute on the method like this:
+pub struct Bar;
+impl Bar {
+    #[must_use]
+    pub fn bar(&self) -> Self {
+        Self
+    }
+}
+
+// Or on the type definition like this:
+#[must_use]
+pub struct Bar;
+impl Bar {
+    pub fn bar(&self) -> Self {
+        Self
+    }
+}
+```

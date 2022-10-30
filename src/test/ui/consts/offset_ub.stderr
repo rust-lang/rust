@@ -18,7 +18,7 @@ error[E0080]: evaluation of constant value failed
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  pointer arithmetic failed: allocN has size 1, so pointer to 2 bytes starting at offset 0 is out-of-bounds
+   |                  out-of-bounds pointer arithmetic: allocN has size 1, so pointer to 2 bytes starting at offset 0 is out-of-bounds
    |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:8:43
@@ -32,7 +32,7 @@ error[E0080]: evaluation of constant value failed
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  pointer arithmetic failed: allocN has size 100, so pointer to 101 bytes starting at offset 0 is out-of-bounds
+   |                  out-of-bounds pointer arithmetic: allocN has size 100, so pointer to 101 bytes starting at offset 0 is out-of-bounds
    |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:9:45
@@ -102,7 +102,7 @@ error[E0080]: evaluation of constant value failed
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  pointer arithmetic failed: allocN has size 1, so pointer to 2 bytes starting at offset -4 is out-of-bounds
+   |                  out-of-bounds pointer arithmetic: allocN has size 1, so pointer to 2 bytes starting at offset -4 is out-of-bounds
    |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:15:49
@@ -116,7 +116,7 @@ error[E0080]: evaluation of constant value failed
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  pointer arithmetic failed: allocN has size 0, so pointer to 1 byte starting at offset 0 is out-of-bounds
+   |                  out-of-bounds pointer arithmetic: allocN has size 0, so pointer to 1 byte starting at offset 0 is out-of-bounds
    |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:17:50
@@ -130,7 +130,7 @@ error[E0080]: evaluation of constant value failed
 LL |         unsafe { intrinsics::offset(self, count) as *mut T }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  pointer arithmetic failed: 0x1 is not a valid pointer
+   |                  out-of-bounds pointer arithmetic: 0x1[noalloc] is a dangling pointer (it has no provenance)
    |                  inside `ptr::mut_ptr::<impl *mut u8>::offset` at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:18:42
@@ -144,7 +144,7 @@ error[E0080]: evaluation of constant value failed
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  pointer arithmetic failed: null pointer is not a valid pointer
+   |                  out-of-bounds pointer arithmetic: null pointer is a dangling pointer (it has no provenance)
    |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:21:50
@@ -158,7 +158,7 @@ error[E0080]: evaluation of constant value failed
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  pointer arithmetic failed: 0x7f..f is not a valid pointer
+   |                  out-of-bounds pointer arithmetic: 0x7f..f[noalloc] is a dangling pointer (it has no provenance)
    |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:24:47

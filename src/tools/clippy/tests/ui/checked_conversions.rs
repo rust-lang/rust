@@ -71,4 +71,9 @@ pub fn i8_to_u8(value: i8) {
     let _ = value >= 0;
 }
 
+// Do not lint
+pub const fn issue_8898(i: u32) -> bool {
+    i <= i32::MAX as u32
+}
+
 fn main() {}

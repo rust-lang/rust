@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: $(call DYLIB,return1) $(call DYLIB,return2) $(call NATIVE_STATICLIB,return3)
 	ls $(TMPDIR)

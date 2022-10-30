@@ -1,4 +1,4 @@
-use crate::spec::{cvs, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{cvs, Cc, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -9,7 +9,6 @@ pub fn target() -> Target {
 
         options: TargetOptions {
             c_int_width: "16".into(),
-            executables: true,
 
             // The LLVM backend currently can't generate object files. To
             // workaround this LLVM generates assembly files which then we feed
@@ -17,7 +16,7 @@ pub fn target() -> Target {
             // dependency on this specific gcc.
             asm_args: cvs!["-mcpu=msp430"],
             linker: Some("msp430-elf-gcc".into()),
-            linker_is_gnu: false,
+            linker_flavor: LinkerFlavor::Unix(Cc::Yes),
 
             // There are no atomic CAS instructions available in the MSP430
             // instruction set, and the LLVM backend doesn't currently support

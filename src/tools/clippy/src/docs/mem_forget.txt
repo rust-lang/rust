@@ -1,0 +1,12 @@
+### What it does
+Checks for usage of `std::mem::forget(t)` where `t` is
+`Drop`.
+
+### Why is this bad?
+`std::mem::forget(t)` prevents `t` from running its
+destructor, possibly causing leaks.
+
+### Example
+```
+mem::forget(Rc::new(55))
+```

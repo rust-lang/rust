@@ -1,6 +1,6 @@
 # needs-profiler-support
 
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) -g -Z profile test.rs

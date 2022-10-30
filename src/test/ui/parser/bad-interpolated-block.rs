@@ -1,5 +1,3 @@
-#![feature(label_break_value)]
-
 fn main() {}
 
 macro_rules! m {

@@ -1,7 +1,6 @@
-// revisions: base nll
-//[nll]compile-flags: -Z borrowck=mir
+// revisions: base
 
-//[g2p]compile-flags: -Z borrowck=mir -Z two-phase-beyond-autoref
+//[g2p]compile-flags: -Z two-phase-beyond-autoref
 // the above revision is disabled until two-phase-beyond-autoref support is better
 
 // This is a test checking that when we limit two-phase borrows to
@@ -132,13 +131,13 @@ fn coerce_index_op() {
     let mut i = I(10);
     i[i[3]] = 4;
     //~^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
-    // Shoud be accepted with g2p
+    // Should be accepted with g2p
 
     i[3] = i[4];
 
     i[i[3]] = i[4];
     //~^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
-    // Shoud be accepted with g2p
+    // Should be accepted with g2p
 }
 
 fn main() {

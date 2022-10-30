@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	[ `$(RUSTC) --print crate-name crate.rs` = "foo" ]

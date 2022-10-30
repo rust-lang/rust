@@ -20,8 +20,8 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
         .current_dir(&cwd)
         .env("CARGO_TARGET_DIR", &target_dir)
         .arg("clean")
-        .args(&["-p", "subcrate"])
-        .args(&["-p", "path_dep"])
+        .args(["-p", "subcrate"])
+        .args(["-p", "path_dep"])
         .output()
         .unwrap();
 
@@ -32,11 +32,11 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
         .env("CARGO_INCREMENTAL", "0")
         .env("CARGO_TARGET_DIR", &target_dir)
         .arg("clippy")
-        .args(&["-p", "subcrate"])
+        .args(["-p", "subcrate"])
         .arg("--no-deps")
         .arg("--")
         .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
-        .args(&["--cfg", r#"feature="primary_package_test""#])
+        .args(["--cfg", r#"feature="primary_package_test""#])
         .output()
         .unwrap();
     println!("status: {}", output.status);
@@ -52,10 +52,10 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
             .env("CARGO_INCREMENTAL", "0")
             .env("CARGO_TARGET_DIR", &target_dir)
             .arg("clippy")
-            .args(&["-p", "subcrate"])
+            .args(["-p", "subcrate"])
             .arg("--")
             .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
-            .args(&["--cfg", r#"feature="primary_package_test""#])
+            .args(["--cfg", r#"feature="primary_package_test""#])
             .output()
             .unwrap();
         println!("status: {}", output.status);
@@ -79,7 +79,7 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
             .env("CARGO_INCREMENTAL", "0")
             .env("CARGO_TARGET_DIR", &target_dir)
             .arg("clippy")
-            .args(&["-p", "subcrate"])
+            .args(["-p", "subcrate"])
             .arg("--")
             .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
             .output()

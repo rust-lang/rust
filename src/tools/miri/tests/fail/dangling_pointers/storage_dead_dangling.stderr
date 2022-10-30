@@ -1,0 +1,20 @@
+error: Undefined Behavior: dereferencing pointer failed: $HEX[noalloc] is a dangling pointer (it has no provenance)
+  --> $DIR/storage_dead_dangling.rs:LL:CC
+   |
+LL |     unsafe { &mut *(LEAK as *mut i32) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: $HEX[noalloc] is a dangling pointer (it has no provenance)
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `evil` at $DIR/storage_dead_dangling.rs:LL:CC
+note: inside `main` at $DIR/storage_dead_dangling.rs:LL:CC
+  --> $DIR/storage_dead_dangling.rs:LL:CC
+   |
+LL |     evil();
+   |     ^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

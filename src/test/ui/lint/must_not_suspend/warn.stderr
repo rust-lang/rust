@@ -6,11 +6,6 @@ LL |     let _guard = bar();
 LL |     other().await;
    |            ------ the value is held across this suspend point
    |
-note: the lint level is defined here
-  --> $DIR/warn.rs:4:9
-   |
-LL | #![warn(must_not_suspend)]
-   |         ^^^^^^^^^^^^^^^^
 note: You gotta use Umm's, ya know?
   --> $DIR/warn.rs:21:9
    |
@@ -21,6 +16,11 @@ help: consider using a block (`{ ... }`) to shrink the value's scope, ending bef
    |
 LL |     let _guard = bar();
    |         ^^^^^^
+note: the lint level is defined here
+  --> $DIR/warn.rs:4:9
+   |
+LL | #![warn(must_not_suspend)]
+   |         ^^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 

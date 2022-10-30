@@ -13,23 +13,21 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// fn simple_double_parens() -> i32 {
     ///     ((0))
     /// }
     ///
-    /// // Good
+    /// # fn foo(bar: usize) {}
+    /// foo((0));
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
     /// fn simple_no_parens() -> i32 {
     ///     0
     /// }
     ///
-    /// // or
-    ///
     /// # fn foo(bar: usize) {}
-    /// // Bad
-    /// foo((0));
-    ///
-    /// // Good
     /// foo(0);
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -63,9 +61,8 @@ impl EarlyLintPass for DoubleParens {
                     }
                 }
             },
-            ExprKind::MethodCall(_, ref params, _) => {
-                if params.len() == 2 {
-                    let param = &params[1];
+            ExprKind::MethodCall(_, _, ref params, _) => {
+                if let [ref param] = params[..] {
                     if let ExprKind::Paren(_) = param.kind {
                         span_lint(cx, DOUBLE_PARENS, param.span, msg);
                     }

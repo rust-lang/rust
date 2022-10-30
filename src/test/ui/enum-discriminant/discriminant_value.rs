@@ -27,13 +27,14 @@ enum CLike3 {
     D
 }
 
+#[allow(unused_tuple_struct_fields)]
 enum ADT {
     First(u32, u32),
     Second(u64)
 }
 
 enum NullablePointer {
-    Something(&'static u32),
+    Something(#[allow(unused_tuple_struct_fields)] &'static u32),
     Nothing
 }
 

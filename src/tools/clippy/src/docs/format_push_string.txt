@@ -1,0 +1,26 @@
+### What it does
+Detects cases where the result of a `format!` call is
+appended to an existing `String`.
+
+### Why is this bad?
+Introduces an extra, avoidable heap allocation.
+
+### Known problems
+`format!` returns a `String` but `write!` returns a `Result`.
+Thus you are forced to ignore the `Err` variant to achieve the same API.
+
+While using `write!` in the suggested way should never fail, this isn't necessarily clear to the programmer.
+
+### Example
+```
+let mut s = String::new();
+s += &format!("0x{:X}", 1024);
+s.push_str(&format!("0x{:X}", 1024));
+```
+Use instead:
+```
+use std::fmt::Write as _; // import without risk of name clashing
+
+let mut s = String::new();
+let _ = write!(s, "0x{:X}", 1024);
+```

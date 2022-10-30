@@ -2,9 +2,8 @@
 
 fn main() {
     let value = if true && {
-    //~^ ERROR: this `if` expression has a condition, but no block
-    //~| HELP: maybe you forgot the right operand of the condition?
+    //~^ ERROR: this `if` expression is missing a block after the condition
+    //~| HELP: this binary operation is possibly unfinished
         3
-        //~^ ERROR: mismatched types [E0308]
     } else { 4 };
 }

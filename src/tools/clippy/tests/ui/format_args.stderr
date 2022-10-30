@@ -126,5 +126,17 @@ error: `to_string` applied to a type that implements `Display` in `println!` arg
 LL |     println!("{foo}{bar}", bar = "bar", foo = "foo".to_string());
    |                                                    ^^^^^^^^^^^^ help: remove this
 
-error: aborting due to 21 previous errors
+error: `to_string` applied to a type that implements `Display` in `format!` args
+  --> $DIR/format_args.rs:144:38
+   |
+LL |         let x = format!("{} {}", a, b.to_string());
+   |                                      ^^^^^^^^^^^^ help: remove this
+
+error: `to_string` applied to a type that implements `Display` in `println!` args
+  --> $DIR/format_args.rs:158:24
+   |
+LL |         println!("{}", original[..10].to_string());
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use this: `&original[..10]`
+
+error: aborting due to 23 previous errors
 

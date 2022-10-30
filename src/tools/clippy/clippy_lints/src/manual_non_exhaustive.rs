@@ -1,6 +1,6 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{is_doc_hidden, is_lint_allowed, meets_msrv, msrvs};
+use clippy_utils::{is_doc_hidden, meets_msrv, msrvs};
 use rustc_ast::ast::{self, VisibilityKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -113,7 +113,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
             let mut iter = fields.iter().filter_map(|f| match f.vis.kind {
                 VisibilityKind::Public => None,
                 VisibilityKind::Inherited => Some(Ok(f)),
-                _ => Some(Err(())),
+                VisibilityKind::Restricted { .. } => Some(Err(())),
             });
             if let Some(Ok(field)) = iter.next()
                 && iter.next().is_none()
@@ -133,7 +133,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
                             diag.span_suggestion(
                                 header_span,
                                 "add the attribute",
-                                format!("#[non_exhaustive] {}", snippet),
+                                format!("#[non_exhaustive] {snippet}"),
                                 Applicability::Unspecified,
                             );
                         }
@@ -161,12 +161,12 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                 (matches!(v.data, hir::VariantData::Unit(_))
                     && v.ident.as_str().starts_with('_')
                     && is_doc_hidden(cx.tcx.hir().attrs(v.id)))
-                .then(|| (id, v.span))
+                .then_some((id, v.span))
             });
             if let Some((id, span)) = iter.next()
                 && iter.next().is_none()
             {
-                self.potential_enums.push((item.def_id, id, item.span, span));
+                self.potential_enums.push((item.def_id.def_id, id, item.span, span));
             }
         }
     }
@@ -190,12 +190,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                 !self
                     .constructed_enum_variants
                     .contains(&(enum_id.to_def_id(), variant_id.to_def_id()))
-                    && !is_lint_allowed(cx, MANUAL_NON_EXHAUSTIVE, cx.tcx.hir().local_def_id_to_hir_id(enum_id))
             })
         {
-            span_lint_and_then(
+            let hir_id = cx.tcx.hir().local_def_id_to_hir_id(enum_id);
+            span_lint_hir_and_then(
                 cx,
                 MANUAL_NON_EXHAUSTIVE,
+                hir_id,
                 enum_span,
                 "this seems like a manual implementation of the non-exhaustive pattern",
                 |diag| {
@@ -206,7 +207,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                             diag.span_suggestion(
                                 header_span,
                                 "add the attribute",
-                                format!("#[non_exhaustive] {}", snippet),
+                                format!("#[non_exhaustive] {snippet}"),
                                 Applicability::Unspecified,
                             );
                     }

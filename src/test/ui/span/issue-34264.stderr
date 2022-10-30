@@ -54,7 +54,7 @@ error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/issue-34264.rs:7:5
    |
 LL |     foo(Some(42), 2, "");
-   |     ^^^              -- argument unexpected
+   |     ^^^              -- argument of type `&'static str` unexpected
    |
 note: function defined here
   --> $DIR/issue-34264.rs:1:4
@@ -64,7 +64,7 @@ LL | fn foo(Option<i32>, String) {}
 help: remove the extra argument
    |
 LL |     foo(Some(42), 2);
-   |     ~~~~~~~~~~~~~~~~
+   |        ~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/issue-34264.rs:8:13
@@ -78,13 +78,13 @@ note: function defined here
   --> $DIR/issue-34264.rs:3:4
    |
 LL | fn bar(x, y: usize) {}
-   |    ^^^ -  --------
+   |    ^^^    --------
 
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/issue-34264.rs:10:5
    |
 LL |     bar(1, 2, 3);
-   |     ^^^       - argument unexpected
+   |     ^^^       - argument of type `{integer}` unexpected
    |
 note: function defined here
   --> $DIR/issue-34264.rs:3:4
@@ -94,7 +94,7 @@ LL | fn bar(x, y: usize) {}
 help: remove the extra argument
    |
 LL |     bar(1, 2);
-   |     ~~~~~~~~~
+   |        ~~~~~~
 
 error: aborting due to 6 previous errors
 

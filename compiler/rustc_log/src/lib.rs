@@ -38,6 +38,9 @@
 //! debugging, you can make changes inside those crates and quickly run main.rs
 //! to read the debug logs.
 
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use std::env::{self, VarError};
 use std::fmt::{self, Display};
 use std::io;

@@ -8,7 +8,7 @@ struct A;
 
 impl A {
     pub fn do_things<'a, 'b: 'a, T>() {
-    //~^ ERROR lifetime parameters must be declared prior to type parameters
+    //~^ ERROR lifetime parameters must be declared prior to type and const parameters
         println!("panic");
     }
 }

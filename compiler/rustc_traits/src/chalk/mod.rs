@@ -14,7 +14,7 @@ use rustc_middle::infer::canonical::{CanonicalTyVarKind, CanonicalVarKind};
 use rustc_middle::traits::ChalkRustInterner;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, BoundVar, ParamTy, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, BoundVar, ParamTy, TyCtxt, TypeFoldable, TypeVisitable};
 
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalVarValues, Certainty, QueryRegionConstraints, QueryResponse,
@@ -76,7 +76,7 @@ pub(crate) fn evaluate_goal<'tcx>(
                         chalk_ir::UniverseIndex { counter: ui.index() },
                     ),
                     CanonicalVarKind::Const(_ui, _ty) => unimplemented!(),
-                    CanonicalVarKind::PlaceholderConst(_pc) => unimplemented!(),
+                    CanonicalVarKind::PlaceholderConst(_pc, _ty) => unimplemented!(),
                 }),
             ),
             value: obligation.value.lower_into(interner),

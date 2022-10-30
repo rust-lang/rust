@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_lazy_eval;
-use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_macro_callsite};
+use clippy_utils::source::{snippet, snippet_with_macro_callsite};
 use clippy_utils::ty::{implements_trait, match_type};
 use clippy_utils::{contains_return, is_trait_item, last_path_segment, paths};
 use if_chain::if_chain;
-use rustc_errors::emitter::MAX_SUGGESTION_HIGHLIGHT_LINES;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -21,15 +20,16 @@ pub(super) fn check<'tcx>(
     expr: &hir::Expr<'_>,
     method_span: Span,
     name: &str,
+    receiver: &'tcx hir::Expr<'_>,
     args: &'tcx [hir::Expr<'_>],
 ) {
-    /// Checks for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
+    /// Checks for `unwrap_or(T::new())`, `unwrap_or(T::default())`,
+    /// `or_insert(T::new())` or `or_insert(T::default())`.
     #[allow(clippy::too_many_arguments)]
     fn check_unwrap_or_default(
         cx: &LateContext<'_>,
         name: &str,
         fun: &hir::Expr<'_>,
-        self_expr: &hir::Expr<'_>,
         arg: &hir::Expr<'_>,
         or_has_args: bool,
         span: Span,
@@ -44,7 +44,11 @@ pub(super) fn check<'tcx>(
 
         if_chain! {
             if !or_has_args;
-            if name == "unwrap_or";
+            if let Some(sugg) = match name {
+                "unwrap_or" => Some("unwrap_or_default"),
+                "or_insert" => Some("or_default"),
+                _ => None,
+            };
             if let hir::ExprKind::Path(ref qpath) = fun.kind;
             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default);
             let path = last_path_segment(qpath).ident.name;
@@ -54,29 +58,14 @@ pub(super) fn check<'tcx>(
                 || (matches!(path, sym::new) && implements_default(arg, default_trait_id));
 
             then {
-                let mut applicability = Applicability::MachineApplicable;
-                let hint = "unwrap_or_default()";
-                let mut sugg_span = span;
-
-                let mut sugg: String = format!(
-                    "{}.{}",
-                    snippet_with_applicability(cx, self_expr.span, "..", &mut applicability),
-                    hint
-                );
-
-                if sugg.lines().count() > MAX_SUGGESTION_HIGHLIGHT_LINES {
-                    sugg_span = method_span.with_hi(span.hi());
-                    sugg = hint.to_string();
-                }
-
                 span_lint_and_sugg(
                     cx,
                     OR_FUN_CALL,
-                    sugg_span,
-                    &format!("use of `{}` followed by a call to `{}`", name, path),
+                    method_span.with_hi(span.hi()),
+                    &format!("use of `{name}` followed by a call to `{path}`"),
                     "try this",
-                    sugg,
-                    applicability,
+                    format!("{sugg}()"),
+                    Applicability::MachineApplicable,
                 );
 
                 true
@@ -99,7 +88,7 @@ pub(super) fn check<'tcx>(
         fun_span: Option<Span>,
     ) {
         // (path, fn_has_argument, methods, suffix)
-        static KNOW_TYPES: [(&[&str], bool, &[&str], &str); 4] = [
+        const KNOW_TYPES: [(&[&str], bool, &[&str], &str); 4] = [
             (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
             (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
             (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
@@ -142,7 +131,7 @@ pub(super) fn check<'tcx>(
 
                     if use_lambda {
                         let l_arg = if fn_has_arguments { "_" } else { "" };
-                        format!("|{}| {}", l_arg, snippet).into()
+                        format!("|{l_arg}| {snippet}").into()
                     } else {
                         snippet
                     }
@@ -152,16 +141,16 @@ pub(super) fn check<'tcx>(
                     cx,
                     OR_FUN_CALL,
                     span_replace_word,
-                    &format!("use of `{}` followed by a function call", name),
+                    &format!("use of `{name}` followed by a function call"),
                     "try this",
-                    format!("{}_{}({})", name, suffix, sugg),
+                    format!("{name}_{suffix}({sugg})"),
                     Applicability::HasPlaceholders,
                 );
             }
         }
     }
 
-    if let [self_arg, arg] = args {
+    if let [arg] = args {
         let inner_arg = if let hir::ExprKind::Block(
             hir::Block {
                 stmts: [],
@@ -178,13 +167,13 @@ pub(super) fn check<'tcx>(
         match inner_arg.kind {
             hir::ExprKind::Call(fun, or_args) => {
                 let or_has_args = !or_args.is_empty();
-                if !check_unwrap_or_default(cx, name, fun, self_arg, arg, or_has_args, expr.span, method_span) {
+                if !check_unwrap_or_default(cx, name, fun, arg, or_has_args, expr.span, method_span) {
                     let fun_span = if or_has_args { None } else { Some(fun.span) };
-                    check_general_case(cx, name, method_span, self_arg, arg, expr.span, fun_span);
+                    check_general_case(cx, name, method_span, receiver, arg, expr.span, fun_span);
                 }
             },
             hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
-                check_general_case(cx, name, method_span, self_arg, arg, expr.span, None);
+                check_general_case(cx, name, method_span, receiver, arg, expr.span, None);
             },
             _ => (),
         }

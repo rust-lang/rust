@@ -1,10 +1,9 @@
-use crate::spec::{LinkerFlavor, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target};
 
 pub fn target() -> Target {
     let mut base = super::windows_gnullvm_base::opts();
     base.cpu = "x86-64".into();
-    let gcc_pre_link_args = base.pre_link_args.entry(LinkerFlavor::Gcc).or_default();
-    gcc_pre_link_args.push("-m64".into());
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.max_atomic_width = Some(64);
     base.linker = Some("x86_64-w64-mingw32-clang".into());
 

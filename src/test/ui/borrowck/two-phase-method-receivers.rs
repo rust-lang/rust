@@ -1,5 +1,3 @@
-// compile-flags: -Z borrowck=mir
-
 // run-pass
 
 struct Foo<'a> {

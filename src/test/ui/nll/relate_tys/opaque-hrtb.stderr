@@ -1,5 +1,5 @@
 error: implementation of `MyTrait` is not general enough
-  --> $DIR/opaque-hrtb.rs:13:5
+  --> $DIR/opaque-hrtb.rs:11:5
    |
 LL |     bar()
    |     ^^^^^ implementation of `MyTrait` is not general enough

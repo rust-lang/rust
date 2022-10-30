@@ -1,7 +1,3 @@
-// ignore-compare-mode-nll
-// revisions: base nll
-// [nll]compile-flags: -Zborrowck=mir
-
 // edition:2018
 
 // Test that a feature gate is needed to use `impl Trait` as the
@@ -12,8 +8,7 @@ impl<T> Trait<'_> for T { }
 
 // Fails to recognize that both 'a and 'b are mentioned and should thus be accepted
 async fn async_ret_impl_trait3<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + 'b {
-    //[base]~^ ERROR lifetime mismatch
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
     (a, b)
 }
 

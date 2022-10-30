@@ -6,7 +6,6 @@
 
 use tidy::*;
 
-use crossbeam_utils::thread::{scope, ScopedJoinHandle};
 use std::collections::VecDeque;
 use std::env;
 use std::num::NonZeroUsize;
@@ -14,6 +13,7 @@ use std::path::PathBuf;
 use std::process;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::{scope, ScopedJoinHandle};
 
 fn main() {
     let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
@@ -44,7 +44,7 @@ fn main() {
                     handles.pop_front().unwrap().join().unwrap();
                 }
 
-                let handle = s.spawn(|_| {
+                let handle = s.spawn(|| {
                     let mut flag = false;
                     $p::check($($args),* , &mut flag);
                     if (flag) {
@@ -78,13 +78,8 @@ fn main() {
         check!(unit_tests, &compiler_path);
         check!(unit_tests, &library_path);
 
-        if bins::check_filesystem_support(
-            &[&src_path, &compiler_path, &library_path],
-            &output_directory,
-        ) {
-            check!(bins, &src_path);
-            check!(bins, &compiler_path);
-            check!(bins, &library_path);
+        if bins::check_filesystem_support(&[&root_path], &output_directory) {
+            check!(bins, &root_path);
         }
 
         check!(style, &src_path);
@@ -107,8 +102,7 @@ fn main() {
             r
         };
         check!(unstable_book, &src_path, collected);
-    })
-    .unwrap();
+    });
 
     if bad.load(Ordering::Relaxed) {
         eprintln!("some tidy checks failed");

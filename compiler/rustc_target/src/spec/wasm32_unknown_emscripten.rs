@@ -1,44 +1,28 @@
 use super::{cvs, wasm_base};
-use super::{LinkArgs, LinkerFlavor, PanicStrategy, Target, TargetOptions};
+use super::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut options = wasm_base::options();
-
-    let clang_args = options.pre_link_args.entry(LinkerFlavor::Gcc).or_default();
-
-    // Rust really needs a way for users to specify exports and imports in
-    // the source code. --export-dynamic isn't the right tool for this job,
-    // however it does have the side effect of automatically exporting a lot
-    // of symbols, which approximates what people want when compiling for
-    // wasm32-unknown-unknown expect, so use it for now.
-    clang_args.push("--export-dynamic".into());
-
-    let mut post_link_args = LinkArgs::new();
-    post_link_args.insert(
-        LinkerFlavor::Em,
-        vec![
-            "-s".into(),
-            "ERROR_ON_UNDEFINED_SYMBOLS=1".into(),
-            "-s".into(),
-            "ASSERTIONS=1".into(),
-            "-s".into(),
-            "ABORTING_MALLOC=0".into(),
-            "-Wl,--fatal-warnings".into(),
-        ],
+    // Reset flags for non-Em flavors back to empty to satisfy sanity checking tests.
+    let pre_link_args = LinkArgs::new();
+    let post_link_args = TargetOptions::link_args(
+        LinkerFlavor::EmCc,
+        &["-sABORTING_MALLOC=0", "-Wl,--fatal-warnings"],
     );
 
     let opts = TargetOptions {
         os: "emscripten".into(),
-        linker_flavor: LinkerFlavor::Em,
+        linker_flavor: LinkerFlavor::EmCc,
         // emcc emits two files - a .js file to instantiate the wasm and supply platform
         // functionality, and a .wasm file.
         exe_suffix: ".js".into(),
         linker: None,
-        is_like_emscripten: true,
-        panic_strategy: PanicStrategy::Unwind,
+        pre_link_args,
         post_link_args,
+        relocation_model: RelocModel::Pic,
+        panic_strategy: PanicStrategy::Unwind,
+        no_default_libraries: false,
         families: cvs!["unix", "wasm"],
-        ..options
+        ..wasm_base::options()
     };
     Target {
         llvm_target: "wasm32-unknown-emscripten".into(),

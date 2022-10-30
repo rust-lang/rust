@@ -11,7 +11,7 @@ LL | trait Tr {
    |       -- this trait cannot be made into an object...
 LL |     fn foo();
    |        ^^^ ...because associated function `foo` has no `self` parameter
-   = note: required because of the requirements on the impl of `CoerceUnsized<&dyn Tr>` for `&St`
+   = note: required for `&St` to implement `CoerceUnsized<&dyn Tr>`
    = note: required by cast to type `&dyn Tr`
 help: consider turning `foo` into a method by giving it a `&self` argument
    |

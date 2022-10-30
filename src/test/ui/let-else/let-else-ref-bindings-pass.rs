@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(let_else)]
+
 #![allow(unused_variables)]
 
 fn ref_() {

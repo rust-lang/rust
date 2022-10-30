@@ -1,5 +1,3 @@
-#![feature(let_else)]
-
 #![deny(unreachable_patterns)]
 
 fn main() {

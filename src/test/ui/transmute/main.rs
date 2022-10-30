@@ -10,7 +10,7 @@ pub trait TypeConstructor<'a> {
 unsafe fn transmute_lifetime<'a, 'b, C>(x: <C as TypeConstructor<'a>>::T)
                                         -> <C as TypeConstructor<'b>>::T
 where for<'z> C: TypeConstructor<'z> {
-    transmute(x) //~ ERROR cannot transmute between types of different sizes
+    transmute(x)
 }
 
 unsafe fn sizes() {

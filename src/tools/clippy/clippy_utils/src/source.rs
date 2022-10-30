@@ -8,26 +8,8 @@ use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::hygiene;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Pos, Span, SyntaxContext};
+use rustc_span::{BytePos, Pos, Span, SpanData, SyntaxContext};
 use std::borrow::Cow;
-
-/// Checks if the span starts with the given text. This will return false if the span crosses
-/// multiple files or if source is not available.
-///
-/// This is used to check for proc macros giving unhelpful spans to things.
-pub fn span_starts_with<T: LintContext>(cx: &T, span: Span, text: &str) -> bool {
-    fn helper(sm: &SourceMap, span: Span, text: &str) -> bool {
-        let pos = sm.lookup_byte_offset(span.lo());
-        let Some(ref src) = pos.sf.src else {
-            return false;
-        };
-        let end = span.hi() - pos.sf.start_pos;
-        src.get(pos.pos.0 as usize..end.0 as usize)
-            // Expression spans can include wrapping parenthesis. Remove them first.
-            .map_or(false, |s| s.trim_start_matches('(').starts_with(text))
-    }
-    helper(cx.sess().source_map(), span, text)
-}
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
 /// Also takes an `Option<String>` which can be put inside the braces.
@@ -43,11 +25,11 @@ pub fn expr_block<'a, T: LintContext>(
     if expr.span.from_expansion() {
         Cow::Owned(format!("{{ {} }}", snippet_with_macro_callsite(cx, expr.span, default)))
     } else if let ExprKind::Block(_, _) = expr.kind {
-        Cow::Owned(format!("{}{}", code, string))
+        Cow::Owned(format!("{code}{string}"))
     } else if string.is_empty() {
-        Cow::Owned(format!("{{ {} }}", code))
+        Cow::Owned(format!("{{ {code} }}"))
     } else {
-        Cow::Owned(format!("{{\n{};\n{}\n}}", code, string))
+        Cow::Owned(format!("{{\n{code};\n{string}\n}}"))
     }
 }
 
@@ -353,7 +335,7 @@ pub fn snippet_with_context<'a>(
 /// span containing `m!(0)`.
 pub fn walk_span_to_context(span: Span, outer: SyntaxContext) -> Option<Span> {
     let outer_span = hygiene::walk_chain(span, outer);
-    (outer_span.ctxt() == outer).then(|| outer_span)
+    (outer_span.ctxt() == outer).then_some(outer_span)
 }
 
 /// Removes block comments from the given `Vec` of lines.
@@ -387,6 +369,37 @@ pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
     }
 
     without
+}
+
+/// Trims the whitespace from the start and the end of the span.
+pub fn trim_span(sm: &SourceMap, span: Span) -> Span {
+    let data = span.data();
+    let sf: &_ = &sm.lookup_source_file(data.lo);
+    let Some(src) = sf.src.as_deref() else {
+        return span;
+    };
+    let Some(snip) = &src.get((data.lo - sf.start_pos).to_usize()..(data.hi - sf.start_pos).to_usize()) else {
+        return span;
+    };
+    let trim_start = snip.len() - snip.trim_start().len();
+    let trim_end = snip.len() - snip.trim_end().len();
+    SpanData {
+        lo: data.lo + BytePos::from_usize(trim_start),
+        hi: data.hi - BytePos::from_usize(trim_end),
+        ctxt: data.ctxt,
+        parent: data.parent,
+    }
+    .span()
+}
+
+/// Expand a span to include a preceding comma
+/// ```rust,ignore
+/// writeln!(o, "")   ->   writeln!(o, "")
+///             ^^                   ^^^^
+/// ```
+pub fn expand_past_previous_comma(cx: &LateContext<'_>, span: Span) -> Span {
+    let extended = cx.sess().source_map().span_extend_to_prev_char(span, ',', true);
+    extended.with_lo(extended.lo() - BytePos(1))
 }
 
 #[cfg(test)]
@@ -463,7 +476,7 @@ mod test {
     #[test]
     fn test_without_block_comments_lines_without_block_comments() {
         let result = without_block_comments(vec!["/*", "", "*/"]);
-        println!("result: {:?}", result);
+        println!("result: {result:?}");
         assert!(result.is_empty());
 
         let result = without_block_comments(vec!["", "/*", "", "*/", "#[crate_type = \"lib\"]", "/*", "", "*/", ""]);

@@ -79,7 +79,7 @@ error[E0382]: borrow of moved value: `a[..]`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:89:11
    |
 LL |         [_y @ .., _, _] => {}
-   |          ------- value moved here
+   |          -- value moved here
 ...
 LL |         [(ref _x, _), _, _] => {}
    |           ^^^^^^ value borrowed here after move
@@ -90,7 +90,7 @@ error[E0382]: borrow of moved value: `a[..]`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:99:15
    |
 LL |         [_, _, _y @ ..] => {}
-   |                ------- value moved here
+   |                -- value moved here
 ...
 LL |         [.., (ref _x, _)] => {}
    |               ^^^^^^ value borrowed here after move
@@ -101,7 +101,7 @@ error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:110:11
    |
 LL |         [x @ .., _] => {}
-   |          ------ value partially moved here
+   |          - value partially moved here
 LL |     }
 LL |     match a {
    |           ^ value used here after partial move
@@ -134,7 +134,7 @@ error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:139:5
    |
 LL |         [_, _, _x @ ..] => {}
-   |                ------- value partially moved here
+   |                -- value partially moved here
 LL |     }
 LL |     a[0] = Default::default();
    |     ^^^^ value used here after partial move
@@ -145,7 +145,7 @@ error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:147:5
    |
 LL |         [_, _, _x @ ..] => {}
-   |                ------- value partially moved here
+   |                -- value partially moved here
 LL |     }
 LL |     a[0].1 = Default::default();
    |     ^^^^ value used here after partial move

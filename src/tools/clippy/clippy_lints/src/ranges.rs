@@ -1,44 +1,19 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::higher;
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{get_parent_expr, in_constant, is_integer_const, meets_msrv, msrvs, path_to_local};
-use clippy_utils::{higher, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, PathSegment, QPath};
+use rustc_hir::{BinOpKind, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
-use rustc_span::sym;
 use std::cmp::Ordering;
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for zipping a collection with the range of
-    /// `0.._.len()`.
-    ///
-    /// ### Why is this bad?
-    /// The code is better expressed with `.enumerate()`.
-    ///
-    /// ### Example
-    /// ```rust
-    /// # let x = vec![1];
-    /// x.iter().zip(0..x.len());
-    /// ```
-    /// Could be written as
-    /// ```rust
-    /// # let x = vec![1];
-    /// x.iter().enumerate();
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub RANGE_ZIP_WITH_LEN,
-    complexity,
-    "zipping iterator with a range when `enumerate()` would do"
-}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -65,12 +40,21 @@ declare_clippy_lint! {
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// for x..(y+1) { .. }
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..(y+1) {
+    ///     // ..
+    /// }
     /// ```
-    /// Could be written as
-    /// ```rust,ignore
-    /// for x..=y { .. }
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..=y {
+    ///     // ..
+    /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub RANGE_PLUS_ONE,
@@ -94,12 +78,21 @@ declare_clippy_lint! {
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// for x..=(y-1) { .. }
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..=(y-1) {
+    ///     // ..
+    /// }
     /// ```
-    /// Could be written as
-    /// ```rust,ignore
-    /// for x..y { .. }
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..y {
+    ///     // ..
+    /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub RANGE_MINUS_ONE,
@@ -179,7 +172,6 @@ impl Ranges {
 }
 
 impl_lint_pass!(Ranges => [
-    RANGE_ZIP_WITH_LEN,
     RANGE_PLUS_ONE,
     RANGE_MINUS_ONE,
     REVERSED_EMPTY_RANGES,
@@ -188,16 +180,10 @@ impl_lint_pass!(Ranges => [
 
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        match expr.kind {
-            ExprKind::MethodCall(path, args, _) => {
-                check_range_zip_with_len(cx, path, args, expr.span);
-            },
-            ExprKind::Binary(ref op, l, r) => {
-                if meets_msrv(self.msrv, msrvs::RANGE_CONTAINS) {
-                    check_possible_range_contains(cx, op.node, l, r, expr);
-                }
-            },
-            _ => {},
+        if let ExprKind::Binary(ref op, l, r) = expr.kind {
+            if meets_msrv(self.msrv, msrvs::RANGE_CONTAINS) {
+                check_possible_range_contains(cx, op.node, l, r, expr, expr.span);
+            }
         }
 
         check_exclusive_range_plus_one(cx, expr);
@@ -213,12 +199,12 @@ fn check_possible_range_contains(
     left: &Expr<'_>,
     right: &Expr<'_>,
     expr: &Expr<'_>,
+    span: Span,
 ) {
     if in_constant(cx, expr.hir_id) {
         return;
     }
 
-    let span = expr.span;
     let combine_and = match op {
         BinOpKind::And | BinOpKind::BitAnd => true,
         BinOpKind::Or | BinOpKind::BitOr => false,
@@ -257,9 +243,9 @@ fn check_possible_range_contains(
                 cx,
                 MANUAL_RANGE_CONTAINS,
                 span,
-                &format!("manual `{}::contains` implementation", range_type),
+                &format!("manual `{range_type}::contains` implementation"),
                 "use",
-                format!("({}{}{}{}).contains(&{})", lo, space, range_op, hi, name),
+                format!("({lo}{space}{range_op}{hi}).contains(&{name})"),
                 applicability,
             );
         } else if !combine_and && ord == Some(l.ord) {
@@ -287,11 +273,25 @@ fn check_possible_range_contains(
                 cx,
                 MANUAL_RANGE_CONTAINS,
                 span,
-                &format!("manual `!{}::contains` implementation", range_type),
+                &format!("manual `!{range_type}::contains` implementation"),
                 "use",
-                format!("!({}{}{}{}).contains(&{})", lo, space, range_op, hi, name),
+                format!("!({lo}{space}{range_op}{hi}).contains(&{name})"),
                 applicability,
             );
+        }
+    }
+
+    // If the LHS is the same operator, we have to recurse to get the "real" RHS, since they have
+    // the same operator precedence
+    if_chain! {
+        if let ExprKind::Binary(ref lhs_op, _left, new_lhs) = left.kind;
+        if op == lhs_op.node;
+        let new_span = Span::new(new_lhs.span.lo(), right.span.hi(), expr.span.ctxt(), expr.span.parent());
+        if let Some(snip) = &snippet_opt(cx, new_span);
+        // Do not continue if we have mismatched number of parens, otherwise the suggestion is wrong
+        if snip.matches('(').count() == snip.matches(')').count();
+        then {
+            check_possible_range_contains(cx, op, new_lhs, right, expr, new_span);
         }
     }
 }
@@ -347,37 +347,10 @@ fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<R
     None
 }
 
-fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: &[Expr<'_>], span: Span) {
-    if_chain! {
-        if path.ident.as_str() == "zip";
-        if let [iter, zip_arg] = args;
-        // `.iter()` call
-        if let ExprKind::MethodCall(iter_path, iter_args, _) = iter.kind;
-        if iter_path.ident.name == sym::iter;
-        // range expression in `.zip()` call: `0..x.len()`
-        if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(zip_arg);
-        if is_integer_const(cx, start, 0);
-        // `.len()` call
-        if let ExprKind::MethodCall(len_path, len_args, _) = end.kind;
-        if len_path.ident.name == sym::len && len_args.len() == 1;
-        // `.iter()` and `.len()` called on same `Path`
-        if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_args[0].kind;
-        if let ExprKind::Path(QPath::Resolved(_, len_path)) = len_args[0].kind;
-        if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
-        then {
-            span_lint(cx,
-                RANGE_ZIP_WITH_LEN,
-                span,
-                &format!("it is more idiomatic to use `{}.iter().enumerate()`",
-                    snippet(cx, iter_args[0].span, "_"))
-            );
-        }
-    }
-}
-
 // exclusive range plus one: `x..(y+1)`
 fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
+        if expr.span.can_be_used_for_suggestions();
         if let Some(higher::Range {
             start,
             end: Some(end),
@@ -385,14 +358,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
         }) = higher::Range::hir(expr);
         if let Some(y) = y_plus_one(cx, end);
         then {
-            let span = if expr.span.from_expansion() {
-                expr.span
-                    .ctxt()
-                    .outer_expn_data()
-                    .call_site
-            } else {
-                expr.span
-            };
+            let span = expr.span;
             span_lint_and_then(
                 cx,
                 RANGE_PLUS_ONE,
@@ -406,14 +372,14 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
                             diag.span_suggestion(
                                 span,
                                 "use",
-                                format!("({}..={})", start, end),
+                                format!("({start}..={end})"),
                                 Applicability::MaybeIncorrect,
                             );
                         } else {
                             diag.span_suggestion(
                                 span,
                                 "use",
-                                format!("{}..={}", start, end),
+                                format!("{start}..={end}"),
                                 Applicability::MachineApplicable, // snippet
                             );
                         }
@@ -427,6 +393,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
 // inclusive range minus one: `x..=(y-1)`
 fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
+        if expr.span.can_be_used_for_suggestions();
         if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::Range::hir(expr);
         if let Some(y) = y_minus_one(cx, end);
         then {
@@ -441,7 +408,7 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
                     diag.span_suggestion(
                         expr.span,
                         "use",
-                        format!("{}..{}", start, end),
+                        format!("{start}..{end}"),
                         Applicability::MachineApplicable, // snippet
                     );
                 },
@@ -519,7 +486,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
                                 expr.span,
                                 "consider using the following if you are attempting to iterate over this \
                                  range in reverse",
-                                format!("({}{}{}).rev()", end_snippet, dots, start_snippet),
+                                format!("({end_snippet}{dots}{start_snippet}).rev()"),
                                 Applicability::MaybeIncorrect,
                             );
                         }

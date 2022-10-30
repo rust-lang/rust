@@ -11,9 +11,9 @@ mod versions;
 use crate::checksum::Checksums;
 use crate::manifest::{Component, Manifest, Package, Rename, Target};
 use crate::versions::{PkgType, Versions};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::env;
-use std::fs::{self, File};
+use std::fs;
 use std::path::{Path, PathBuf};
 
 static HOSTS: &[&str] = &[
@@ -186,13 +186,19 @@ static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"
 
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
-static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rust-analyzer-preview"];
+static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rust-docs-json-preview"];
 
 macro_rules! t {
     ($e:expr) => {
         match $e {
             Ok(e) => e,
             Err(e) => panic!("{} failed with {}", stringify!($e), e),
+        }
+    };
+    ($e:expr, $extra:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with {}: {}", stringify!($e), e, $extra),
         }
     };
 }
@@ -241,7 +247,6 @@ fn main() {
 
 impl Builder {
     fn build(&mut self) {
-        self.check_toolstate();
         let manifest = self.build_manifest();
 
         let channel = self.versions.channel().to_string();
@@ -261,29 +266,6 @@ impl Builder {
         }
 
         t!(self.checksums.store_cache());
-    }
-
-    /// If a tool does not pass its tests on *any* of Linux and Windows, don't ship
-    /// it on *all* targets, because tools like Miri can "cross-run" programs for
-    /// different targets, for example, run a program for `x86_64-pc-windows-msvc`
-    /// on `x86_64-unknown-linux-gnu`.
-    /// Right now, we do this only for Miri.
-    fn check_toolstate(&mut self) {
-        for file in &["toolstates-linux.json", "toolstates-windows.json"] {
-            let toolstates: Option<HashMap<String, String>> = File::open(self.input.join(file))
-                .ok()
-                .and_then(|f| serde_json::from_reader(&f).ok());
-            let toolstates = toolstates.unwrap_or_else(|| {
-                println!("WARNING: `{}` missing/malformed; assuming all tools failed", file);
-                HashMap::default() // Use empty map if anything went wrong.
-            });
-            // Mark some tools as missing based on toolstate.
-            if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
-                println!("Miri tests are not passing, removing component");
-                self.versions.disable_version(&PkgType::Miri);
-                break;
-            }
-        }
     }
 
     fn build_manifest(&mut self) -> Manifest {
@@ -320,6 +302,7 @@ impl Builder {
         package!("rust-mingw", MINGW);
         package!("rust-std", TARGETS);
         self.package("rust-docs", &mut manifest.pkg, HOSTS, DOCS_FALLBACK);
+        self.package("rust-docs-json-preview", &mut manifest.pkg, HOSTS, DOCS_FALLBACK);
         package!("rust-src", &["*"]);
         package!("rls-preview", HOSTS);
         package!("rust-analyzer-preview", HOSTS);
@@ -405,6 +388,8 @@ impl Builder {
         rename("rustfmt", "rustfmt-preview");
         rename("clippy", "clippy-preview");
         rename("miri", "miri-preview");
+        rename("rust-docs-json", "rust-docs-json-preview");
+        rename("rust-analyzer", "rust-analyzer-preview");
     }
 
     fn rust_package(&mut self, manifest: &Manifest) -> Package {
@@ -460,6 +445,7 @@ impl Builder {
             host_component("rustfmt-preview"),
             host_component("llvm-tools-preview"),
             host_component("rust-analysis"),
+            host_component("rust-docs-json-preview"),
         ]);
 
         extensions.extend(
@@ -544,8 +530,18 @@ impl Builder {
             for (substr, fallback_target) in fallback {
                 if target_name.contains(substr) {
                     let t = Target::from_compressed_tar(self, &tarball_name!(fallback_target));
-                    // Fallbacks must always be available.
-                    assert!(t.available);
+                    // Fallbacks should typically be available on 'production' builds
+                    // but may not be available for try builds, which only build one target by
+                    // default. Ideally we'd gate this being a hard error on whether we're in a
+                    // production build or not, but it's not information that's readily available
+                    // here.
+                    if !t.available {
+                        eprintln!(
+                            "{:?} not available for fallback",
+                            tarball_name!(fallback_target)
+                        );
+                        continue;
+                    }
                     return t;
                 }
             }
@@ -596,7 +592,7 @@ impl Builder {
         self.shipped_files.insert(name.clone());
 
         let dst = self.output.join(name);
-        t!(fs::write(&dst, contents));
+        t!(fs::write(&dst, contents), format!("failed to create manifest {}", dst.display()));
     }
 
     fn write_shipped_files(&self, path: &Path) {

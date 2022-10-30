@@ -12,7 +12,7 @@ help: if you import `A`, refer to it directly
    |
 LL -     let _ = namespaced_enums::A;
 LL +     let _ = A;
-   | 
+   |
 
 error[E0425]: cannot find function, tuple struct or tuple variant `B` in crate `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:7:31
@@ -28,7 +28,7 @@ help: if you import `B`, refer to it directly
    |
 LL -     let _ = namespaced_enums::B(10);
 LL +     let _ = B(10);
-   | 
+   |
 
 error[E0422]: cannot find struct, variant or union type `C` in crate `namespaced_enums`
   --> $DIR/enums-are-namespaced-xc.rs:9:31
@@ -44,7 +44,7 @@ help: if you import `C`, refer to it directly
    |
 LL -     let _ = namespaced_enums::C { a: 10 };
 LL +     let _ = C { a: 10 };
-   | 
+   |
 
 error: aborting due to 3 previous errors
 

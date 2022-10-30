@@ -2,7 +2,7 @@
 
 // check-pass
 
-#![feature(generators, nll)]
+#![feature(generators)]
 #![deny(unused_mut)]
 
 fn ref_argument(ref _y: i32) {}

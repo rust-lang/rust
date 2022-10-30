@@ -2,7 +2,7 @@ use super::{ForceCollect, Parser, TrailingToken};
 
 use rustc_ast::token;
 use rustc_ast::{
-    self as ast, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause,
+    self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, TyKind, WhereClause,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::kw;
@@ -26,24 +26,54 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?`.
-    fn parse_ty_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, GenericParam> {
+    fn parse_ty_param(&mut self, preceding_attrs: AttrVec) -> PResult<'a, GenericParam> {
         let ident = self.parse_ident()?;
 
         // Parse optional colon and param bounds.
         let mut colon_span = None;
         let bounds = if self.eat(&token::Colon) {
             colon_span = Some(self.prev_token.span);
+            // recover from `impl Trait` in type param bound
+            if self.token.is_keyword(kw::Impl) {
+                let impl_span = self.token.span;
+                let snapshot = self.create_snapshot_for_diagnostic();
+                match self.parse_ty() {
+                    Ok(p) => {
+                        if let TyKind::ImplTrait(_, bounds) = &(*p).kind {
+                            let span = impl_span.to(self.token.span.shrink_to_lo());
+                            let mut err = self.struct_span_err(
+                                span,
+                                "expected trait bound, found `impl Trait` type",
+                            );
+                            err.span_label(span, "not a trait");
+                            if let [bound, ..] = &bounds[..] {
+                                err.span_suggestion_verbose(
+                                    impl_span.until(bound.span()),
+                                    "use the trait bounds directly",
+                                    String::new(),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            err.emit();
+                            return Err(err);
+                        }
+                    }
+                    Err(err) => {
+                        err.cancel();
+                    }
+                }
+                self.restore_snapshot(snapshot);
+            }
             self.parse_generic_bounds(colon_span)?
         } else {
             Vec::new()
         };
 
         let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
-
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
-            attrs: preceding_attrs.into(),
+            attrs: preceding_attrs,
             bounds,
             kind: GenericParamKind::Type { default },
             is_placeholder: false,
@@ -53,7 +83,7 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_const_param(
         &mut self,
-        preceding_attrs: Vec<Attribute>,
+        preceding_attrs: AttrVec,
     ) -> PResult<'a, GenericParam> {
         let const_span = self.token.span;
 
@@ -68,7 +98,7 @@ impl<'a> Parser<'a> {
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
-            attrs: preceding_attrs.into(),
+            attrs: preceding_attrs,
             bounds: Vec::new(),
             kind: GenericParamKind::Const { ty, kw_span: const_span, default },
             is_placeholder: false,
@@ -109,7 +139,7 @@ impl<'a> Parser<'a> {
                         Some(ast::GenericParam {
                             ident: lifetime.ident,
                             id: lifetime.id,
-                            attrs: attrs.into(),
+                            attrs,
                             bounds,
                             kind: ast::GenericParamKind::Lifetime,
                             is_placeholder: false,
@@ -271,7 +301,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_verbose(
                     prev_token.shrink_to_hi().to(self.prev_token.span),
                     "consider joining the two `where` clauses into one",
-                    ",".to_owned(),
+                    ",",
                     Applicability::MaybeIncorrect,
                 );
                 err.emit();
@@ -314,7 +344,6 @@ impl<'a> Parser<'a> {
                 span: lo.to(self.prev_token.span),
                 lhs_ty: ty,
                 rhs_ty,
-                id: ast::DUMMY_NODE_ID,
             }))
         } else {
             self.maybe_recover_bounds_doubled_colon(&ty)?;

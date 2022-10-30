@@ -88,4 +88,11 @@ pub async fn foo2(_a: i32, _b: i64) {
     let _b = _a;
 }
 
+fn ice_8748() {
+    let _ = [0; {
+        let x = 1;
+        if let Some(x) = Some(1) { x } else { 1 }
+    }];
+}
+
 fn main() {}

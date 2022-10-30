@@ -15,7 +15,7 @@ impl<'tcx> MirPass<'tcx> for RemoveNoopLandingPads {
         sess.panic_strategy() != PanicStrategy::Abort
     }
 
-    fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("remove_noop_landing_pads({:?})", body);
         self.remove_nop_landing_pads(body)
     }
@@ -51,7 +51,7 @@ impl RemoveNoopLandingPads {
                 StatementKind::Assign { .. }
                 | StatementKind::SetDiscriminant { .. }
                 | StatementKind::Deinit(..)
-                | StatementKind::CopyNonOverlapping(..)
+                | StatementKind::Intrinsic(..)
                 | StatementKind::Retag { .. } => {
                     return false;
                 }
@@ -81,9 +81,11 @@ impl RemoveNoopLandingPads {
     }
 
     fn remove_nop_landing_pads(&self, body: &mut Body<'_>) {
-        // make sure there's a single resume block
+        debug!("body: {:#?}", body);
+
+        // make sure there's a resume block
         let resume_block = {
-            let patch = MirPatch::new(body);
+            let mut patch = MirPatch::new(body);
             let resume_block = patch.resume_block();
             patch.apply(body);
             resume_block
@@ -92,7 +94,7 @@ impl RemoveNoopLandingPads {
 
         let mut jumps_folded = 0;
         let mut landing_pads_removed = 0;
-        let mut nop_landing_pads = BitSet::new_empty(body.basic_blocks().len());
+        let mut nop_landing_pads = BitSet::new_empty(body.basic_blocks.len());
 
         // This is a post-order traversal, so that if A post-dominates B
         // then A will be visited before B.

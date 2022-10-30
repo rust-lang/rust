@@ -1,8 +1,6 @@
 // only-x86_64
 // only-windows
 // compile-flags: --crate-type lib --emit link
-#![allow(incomplete_features)]
-#![feature(raw_dylib)]
 #[link(name = "foo", kind = "raw-dylib")]
 extern "stdcall" {
     fn f(x: i32);

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 tracing = "0.1"
-unicode-security = "0.0.5"
+unicode-security = "0.1.0"
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_attr = { path = "../rustc_attr" }
@@ -22,3 +22,4 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_parse_format = { path = "../rustc_parse_format" }
 rustc_infer = { path = "../rustc_infer" }
 rustc_type_ir = { path = "../rustc_type_ir" }
+rustc_macros = { path = "../rustc_macros" }

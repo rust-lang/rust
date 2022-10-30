@@ -14,7 +14,7 @@ help: consider removing the borrow
    |
 LL -     &panic!()
 LL +     panic!()
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/diverging-tuple-parts-39485.rs:12:5

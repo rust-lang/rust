@@ -32,7 +32,7 @@ declare_clippy_lint! {
     ///     BattenbergCake,
     /// }
     /// ```
-    /// Could be written as:
+    /// Use instead:
     /// ```rust
     /// enum Cake {
     ///     BlackForest,
@@ -60,7 +60,8 @@ declare_clippy_lint! {
     ///     struct BlackForestCake;
     /// }
     /// ```
-    /// Could be written as:
+    ///
+    /// Use instead:
     /// ```rust
     /// mod cake {
     ///     struct BlackForest;
@@ -189,7 +190,7 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
             .map(|e| *e.0)
             .collect();
     }
-    let (what, value) = match (pre.is_empty(), post.is_empty()) {
+    let (what, value) = match (have_no_extra_prefix(&pre), post.is_empty()) {
         (true, true) => return,
         (false, _) => ("pre", pre.join("")),
         (true, false) => {
@@ -201,14 +202,18 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         cx,
         ENUM_VARIANT_NAMES,
         span,
-        &format!("all variants have the same {}fix: `{}`", what, value),
+        &format!("all variants have the same {what}fix: `{value}`"),
         None,
         &format!(
-            "remove the {}fixes and use full paths to \
-             the variants instead of glob imports",
-            what
+            "remove the {what}fixes and use full paths to \
+             the variants instead of glob imports"
         ),
     );
+}
+
+#[must_use]
+fn have_no_extra_prefix(prefixes: &[&str]) -> bool {
+    prefixes.iter().all(|p| p == &"" || p == &"_")
 }
 
 #[must_use]
@@ -291,7 +296,7 @@ impl LateLintPass<'_> for EnumVariantNames {
             }
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
-            if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.def_id)) {
+            if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.def_id.def_id)) {
                 check_variant(cx, self.threshold, def, item_name, item.span);
             }
         }

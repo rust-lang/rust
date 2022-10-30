@@ -6,17 +6,28 @@
  * TODO(antoyo): remove the patches.
  */
 
-#![feature(rustc_private, decl_macro, associated_type_bounds, never_type, trusted_len)]
+#![feature(
+    rustc_private,
+    decl_macro,
+    associated_type_bounds,
+    never_type,
+    trusted_len,
+    hash_raw_entry
+)]
 #![allow(broken_intra_doc_links)]
 #![recursion_limit="256"]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
+extern crate rustc_apfloat;
 extern crate rustc_ast;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
+extern crate rustc_macros;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
@@ -42,6 +53,7 @@ mod context;
 mod coverageinfo;
 mod debuginfo;
 mod declare;
+mod errors;
 mod int;
 mod intrinsic;
 mod mono_item;
@@ -51,6 +63,7 @@ mod type_of;
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 
+use crate::errors::LTONotSupported;
 use gccjit::{Context, OptimizationLevel, CType};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
@@ -89,7 +102,7 @@ pub struct GccCodegenBackend {
 impl CodegenBackend for GccCodegenBackend {
     fn init(&self, sess: &Session) {
         if sess.lto() != Lto::No {
-            sess.warn("LTO is not supported. You may get a linker error.");
+            sess.emit_warning(LTONotSupported {});
         }
 
         let temp_dir = TempDir::new().expect("cannot create temporary directory");
@@ -126,15 +139,16 @@ impl CodegenBackend for GccCodegenBackend {
     fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        link_binary::<crate::archive::ArArchiveBuilder<'_>>(
+        link_binary(
             sess,
+            &crate::archive::ArArchiveBuilderBuilder,
             &codegen_results,
             outputs,
         )
     }
 
-    fn target_features(&self, sess: &Session) -> Vec<Symbol> {
-        target_features(sess)
+    fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+        target_features(sess, allow_unstable)
     }
 }
 
@@ -156,15 +170,6 @@ impl ExtraBackendMethods for GccCodegenBackend {
         Arc::new(|_| {
             Ok(())
         })
-    }
-
-    fn target_cpu<'b>(&self, _sess: &'b Session) -> &'b str {
-        unimplemented!();
-    }
-
-    fn tune_cpu<'b>(&self, _sess: &'b Session) -> Option<&'b str> {
-        None
-        // TODO(antoyo)
     }
 }
 
@@ -196,14 +201,13 @@ impl WriteBackendMethods for GccCodegenBackend {
     type Module = GccContext;
     type TargetMachine = ();
     type ModuleBuffer = ModuleBuffer;
-    type Context = ();
     type ThinData = ();
     type ThinBuffer = ThinBuffer;
 
     fn run_fat_lto(_cgcx: &CodegenContext<Self>, mut modules: Vec<FatLTOInput<Self>>, _cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>) -> Result<LtoModuleCodegen<Self>, FatalError> {
         // TODO(antoyo): implement LTO by sending -flto to libgccjit and adding the appropriate gcc linker plugins.
         // NOTE: implemented elsewhere.
-        // TODO: what is implemented elsewhere ^ ?
+        // TODO(antoyo): what is implemented elsewhere ^ ?
         let module =
             match modules.remove(0) {
                 FatLTOInput::InMemory(module) => module,
@@ -291,17 +295,32 @@ pub fn target_cpu(sess: &Session) -> &str {
     }
 }
 
-pub fn target_features(sess: &Session) -> Vec<Symbol> {
+pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     supported_target_features(sess)
         .iter()
         .filter_map(
             |&(feature, gate)| {
-                if sess.is_nightly_build() || gate.is_none() { Some(feature) } else { None }
+                if sess.is_nightly_build() || allow_unstable || gate.is_none() { Some(feature) } else { None }
             },
         )
         .filter(|_feature| {
             // TODO(antoyo): implement a way to get enabled feature in libgccjit.
-            false
+            // Probably using the equivalent of __builtin_cpu_supports.
+            #[cfg(feature="master")]
+            {
+                _feature.contains("sse") || _feature.contains("avx")
+            }
+            #[cfg(not(feature="master"))]
+            {
+                false
+            }
+            /*
+               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512gfni,
+               avx512ifma, avx512pf, avx512vaes, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpclmulqdq,
+               avx512vpopcntdq, bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
+               sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, xsave, xsavec, xsaveopt, xsaves
+             */
+            //false
         })
         .map(|feature| Symbol::intern(feature))
         .collect()

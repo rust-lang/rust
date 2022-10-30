@@ -730,6 +730,10 @@ impl<'a> CommentRewrite<'a> {
                     {
                         let mut config = self.fmt.config.clone();
                         config.set().wrap_comments(false);
+                        let comment_max_width = config
+                            .doc_comment_code_block_width()
+                            .min(config.max_width());
+                        config.set().max_width(comment_max_width);
                         if let Some(s) =
                             crate::format_code_block(&self.code_block_buffer, &config, false)
                         {
@@ -796,7 +800,7 @@ impl<'a> CommentRewrite<'a> {
         // 1) wrap_comments = true is configured
         // 2) The comment is not the start of a markdown header doc comment
         // 3) The comment width exceeds the shape's width
-        // 4) No URLS were found in the commnet
+        // 4) No URLS were found in the comment
         let should_wrap_comment = self.fmt.config.wrap_comments()
             && !is_markdown_header_doc_comment
             && unicode_str_width(line) > self.fmt.shape.width

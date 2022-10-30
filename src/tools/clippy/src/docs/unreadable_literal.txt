@@ -1,0 +1,16 @@
+### What it does
+Warns if a long integral or floating-point constant does
+not contain underscores.
+
+### Why is this bad?
+Reading long numbers is difficult without separators.
+
+### Example
+```
+61864918973511
+```
+
+Use instead:
+```
+61_864_918_973_511
+```

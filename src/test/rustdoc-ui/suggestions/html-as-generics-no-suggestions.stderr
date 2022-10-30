@@ -1,8 +1,8 @@
-error: unclosed HTML tag `i32`
-  --> $DIR/html-as-generics-no-suggestions.rs:11:13
+error: unclosed HTML tag `Item`
+  --> $DIR/html-as-generics-no-suggestions.rs:11:28
    |
-LL | /// This Vec<i32 class="test"> thing!
-   |             ^^^^
+LL | /// This <[u32] as Iterator<Item>> thing!
+   |                            ^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/html-as-generics-no-suggestions.rs:1:9
@@ -10,29 +10,59 @@ note: the lint level is defined here
 LL | #![deny(rustdoc::invalid_html_tags)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: unclosed HTML tag `Vec`
+  --> $DIR/html-as-generics-no-suggestions.rs:25:10
+   |
+LL | /// This <Vec as IntoIter>::Iter thing!
+   |          ^^^^
+
+error: unclosed HTML tag `Vec`
+  --> $DIR/html-as-generics-no-suggestions.rs:32:13
+   |
+LL | /// This Vec<Vec as IntoIter>::Iter thing!
+   |             ^^^^
+
+error: unclosed HTML tag `Vec`
+  --> $DIR/html-as-generics-no-suggestions.rs:39:13
+   |
+LL | /// This Vec<Vec as IntoIter> thing!
+   |             ^^^^
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics-no-suggestions.rs:46:17
+   |
+LL | /// This Vec<Vec<i32> as IntoIter> thing!
+   |                 ^^^^^
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics-no-suggestions.rs:53:13
+   |
+LL | /// This Vec<i32 class="test"> thing!
+   |             ^^^^
+
 error: unopened HTML tag `i32`
-  --> $DIR/html-as-generics-no-suggestions.rs:20:13
+  --> $DIR/html-as-generics-no-suggestions.rs:62:13
    |
 LL | /// This Vec</i32> thing!
    |             ^^^^^^
 
 error: unclosed HTML tag `i32`
-  --> $DIR/html-as-generics-no-suggestions.rs:25:13
+  --> $DIR/html-as-generics-no-suggestions.rs:67:13
    |
 LL | /// This 123<i32> thing!
    |             ^^^^^
 
 error: unclosed HTML tag `i32`
-  --> $DIR/html-as-generics-no-suggestions.rs:30:14
+  --> $DIR/html-as-generics-no-suggestions.rs:72:14
    |
 LL | /// This Vec:<i32> thing!
    |              ^^^^^
 
 error: unclosed HTML tag `i32`
-  --> $DIR/html-as-generics-no-suggestions.rs:35:39
+  --> $DIR/html-as-generics-no-suggestions.rs:77:39
    |
 LL | /// This [link](https://rust-lang.org)<i32> thing!
    |                                       ^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 10 previous errors
 

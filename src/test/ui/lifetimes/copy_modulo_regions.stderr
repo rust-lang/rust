@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/copy_modulo_regions.rs:14:5
+  --> $DIR/copy_modulo_regions.rs:12:5
    |
 LL | fn foo<'a>() -> [Foo<'a>; 100] {
    |        -- lifetime `'a` defined here

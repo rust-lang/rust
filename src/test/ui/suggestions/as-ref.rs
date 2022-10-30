@@ -17,4 +17,11 @@ fn main() {
     // note: do not suggest because of `E: usize`
     let x: &Result<usize, usize> = &Ok(3);
     let y: Result<&usize, usize> = x; //~ ERROR mismatched types [E0308]
+
+    let multiple_ref_opt = &&Some(Foo);
+    multiple_ref_opt.map(|arg| takes_ref(arg)); //~ ERROR mismatched types [E0308]
+    multiple_ref_opt.and_then(|arg| Some(takes_ref(arg))); //~ ERROR mismatched types [E0308]
+    let multiple_ref_result = &&Ok(Foo);
+    multiple_ref_result.map(|arg| takes_ref(arg)); //~ ERROR mismatched types [E0308]
+    multiple_ref_result.and_then(|arg| Ok(takes_ref(arg))); //~ ERROR mismatched types [E0308]
 }

@@ -217,7 +217,7 @@ impl RefUnwindSafe for crate::sync::atomic::AtomicI32 {}
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for crate::sync::atomic::AtomicI64 {}
 #[cfg(target_has_atomic_load_store = "128")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[unstable(feature = "integer_atomics", issue = "99069")]
 impl RefUnwindSafe for crate::sync::atomic::AtomicI128 {}
 
 #[cfg(target_has_atomic_load_store = "ptr")]
@@ -236,7 +236,7 @@ impl RefUnwindSafe for crate::sync::atomic::AtomicU32 {}
 #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for crate::sync::atomic::AtomicU64 {}
 #[cfg(target_has_atomic_load_store = "128")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[unstable(feature = "integer_atomics", issue = "99069")]
 impl RefUnwindSafe for crate::sync::atomic::AtomicU128 {}
 
 #[cfg(target_has_atomic_load_store = "8")]

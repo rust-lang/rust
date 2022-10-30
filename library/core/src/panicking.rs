@@ -190,11 +190,11 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
     right: &str,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
-    // Use the Display implementation to display the pattern.
+    // The pattern is a string so it can be displayed directly.
     struct Pattern<'a>(&'a str);
     impl fmt::Debug for Pattern<'_> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt::Display::fmt(self.0, f)
+            f.write_str(self.0)
         }
     }
     assert_failed_inner(AssertKind::Match, &left, &Pattern(right), args);

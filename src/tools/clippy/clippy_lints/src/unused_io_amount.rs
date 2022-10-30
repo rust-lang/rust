@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::{is_try, match_trait_method, paths};
+use clippy_utils::{is_trait_method, is_try, match_trait_method, paths};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -64,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
                     check_map_error(cx, res, expr);
                 }
             },
-            hir::ExprKind::MethodCall(path, [ref arg_0, ..], _) => match path.ident.as_str() {
+            hir::ExprKind::MethodCall(path, arg_0, ..) => match path.ident.as_str() {
                 "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
                     check_map_error(cx, arg_0, expr);
                 },
@@ -94,9 +95,9 @@ fn try_remove_await<'a>(expr: &'a hir::Expr<'a>) -> Option<&hir::Expr<'a>> {
 
 fn check_map_error(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
     let mut call = call;
-    while let hir::ExprKind::MethodCall(path, args, _) = call.kind {
+    while let hir::ExprKind::MethodCall(path, receiver, ..) = call.kind {
         if matches!(path.ident.as_str(), "or" | "or_else" | "ok") {
-            call = &args[0];
+            call = receiver;
         } else {
             break;
         }
@@ -110,19 +111,19 @@ fn check_map_error(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<
 }
 
 fn check_method_call(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>, is_await: bool) {
-    if let hir::ExprKind::MethodCall(path, _, _) = call.kind {
+    if let hir::ExprKind::MethodCall(path, ..) = call.kind {
         let symbol = path.ident.as_str();
         let read_trait = if is_await {
             match_trait_method(cx, call, &paths::FUTURES_IO_ASYNCREADEXT)
                 || match_trait_method(cx, call, &paths::TOKIO_IO_ASYNCREADEXT)
         } else {
-            match_trait_method(cx, call, &paths::IO_READ)
+            is_trait_method(cx, call, sym::IoRead)
         };
         let write_trait = if is_await {
             match_trait_method(cx, call, &paths::FUTURES_IO_ASYNCWRITEEXT)
                 || match_trait_method(cx, call, &paths::TOKIO_IO_ASYNCWRITEEXT)
         } else {
-            match_trait_method(cx, call, &paths::IO_WRITE)
+            is_trait_method(cx, call, sym::IoWrite)
         };
 
         match (read_trait, write_trait, symbol, is_await) {

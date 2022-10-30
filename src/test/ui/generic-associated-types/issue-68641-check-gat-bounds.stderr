@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/issue-68641-check-gat-bounds.rs:14:21
+  --> $DIR/issue-68641-check-gat-bounds.rs:12:21
    |
 LL |     type Item<'a> = T;
    |                     ^ the trait `Copy` is not implemented for `T`
    |
 note: required by a bound in `UnsafeCopy::Item`
-  --> $DIR/issue-68641-check-gat-bounds.rs:6:20
+  --> $DIR/issue-68641-check-gat-bounds.rs:4:20
    |
 LL |     type Item<'a>: Copy;
    |                    ^^^^ required by this bound in `UnsafeCopy::Item`

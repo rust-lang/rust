@@ -7,7 +7,7 @@ macro_rules! foo {
 
 // @has macro_by_example/macros/index.html
 pub mod macros {
-    // @!has - 'pub use foo as bar;'
+    // @!hasraw - 'pub use foo as bar;'
     // @has macro_by_example/macros/macro.bar.html
     // @has - '//*[@class="docblock"]' 'docs for foo'
     // @has - '//*[@class="stab deprecated"]' 'Deprecated since 1.2.3: text'

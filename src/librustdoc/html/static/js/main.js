@@ -4,40 +4,6 @@
 
 "use strict";
 
-if (!String.prototype.startsWith) {
-    String.prototype.startsWith = function(searchString, position) {
-        position = position || 0;
-        return this.indexOf(searchString, position) === position;
-    };
-}
-if (!String.prototype.endsWith) {
-    String.prototype.endsWith = function(suffix, length) {
-        const l = length || this.length;
-        return this.indexOf(suffix, l - suffix.length) !== -1;
-    };
-}
-
-if (!DOMTokenList.prototype.add) {
-    DOMTokenList.prototype.add = function(className) {
-        if (className && !hasClass(this, className)) {
-            if (this.className && this.className.length > 0) {
-                this.className += " " + className;
-            } else {
-                this.className = className;
-            }
-        }
-    };
-}
-
-if (!DOMTokenList.prototype.remove) {
-    DOMTokenList.prototype.remove = function(className) {
-        if (className && this.className) {
-            this.className = (" " + this.className + " ").replace(" " + className + " ", " ")
-                                                         .trim();
-        }
-    };
-}
-
 // Get a value from the rustdoc-vars div, which is used to convey data from
 // Rust to the JS. If there is no such element, return null.
 function getVar(name) {
@@ -63,28 +29,38 @@ function showMain() {
     removeClass(document.getElementById(MAIN_ID), "hidden");
 }
 
+function elemIsInParent(elem, parent) {
+    while (elem && elem !== document.body) {
+        if (elem === parent) {
+            return true;
+        }
+        elem = elem.parentElement;
+    }
+    return false;
+}
+
+function blurHandler(event, parentElem, hideCallback) {
+    if (!elemIsInParent(document.activeElement, parentElem) &&
+        !elemIsInParent(event.relatedTarget, parentElem)
+    ) {
+        hideCallback();
+    }
+}
+
 (function() {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
-    window.searchJS =  resourcePath("search", ".js");
-    window.searchIndexJS = resourcePath("search-index", ".js");
-    window.settingsJS = resourcePath("settings", ".js");
-    const sidebarVars = document.getElementById("sidebar-vars");
-    if (sidebarVars) {
-        window.sidebarCurrent = {
-            name: sidebarVars.attributes["data-name"].value,
-            ty: sidebarVars.attributes["data-ty"].value,
-            relpath: sidebarVars.attributes["data-relpath"].value,
-        };
-        // FIXME: It would be nicer to generate this text content directly in HTML,
-        // but with the current code it's hard to get the right information in the right place.
-        const mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
-        const locationTitle = document.querySelector(".sidebar h2.location");
-        if (mobileLocationTitle && locationTitle) {
-            mobileLocationTitle.innerHTML = locationTitle.innerHTML;
-        }
-    }
 }());
+
+function setMobileTopbar() {
+    // FIXME: It would be nicer to generate this text content directly in HTML,
+    // but with the current code it's hard to get the right information in the right place.
+    const mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
+    const locationTitle = document.querySelector(".sidebar h2.location");
+    if (mobileLocationTitle && locationTitle) {
+        mobileLocationTitle.innerHTML = locationTitle.innerHTML;
+    }
+}
 
 // Gets the human-readable string for the virtual-key code of the
 // given KeyboardEvent, ev.
@@ -112,19 +88,20 @@ const MAIN_ID = "main-content";
 const SETTINGS_BUTTON_ID = "settings-menu";
 const ALTERNATIVE_DISPLAY_ID = "alternative-display";
 const NOT_DISPLAYED_ID = "not-displayed";
+const HELP_BUTTON_ID = "help-button";
 
 function getSettingsButton() {
     return document.getElementById(SETTINGS_BUTTON_ID);
+}
+
+function getHelpButton() {
+    return document.getElementById(HELP_BUTTON_ID);
 }
 
 // Returns the current URL without any query parameter or hash.
 function getNakedUrl() {
     return window.location.href.split("?")[0].split("#")[0];
 }
-
-window.hideSettings = () => {
-    // Does nothing by default.
-};
 
 /**
  * This function inserts `newNode` after `referenceNode`. It doesn't work if `referenceNode`
@@ -227,7 +204,7 @@ function loadCss(cssFileName) {
         // Sending request for the CSS and the JS files at the same time so it will
         // hopefully be loaded when the JS will generate the settings content.
         loadCss("settings");
-        loadScript(window.settingsJS);
+        loadScript(resourcePath("settings", ".js"));
     };
 
     window.searchState = {
@@ -304,8 +281,8 @@ function loadCss(cssFileName) {
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
-                    loadScript(window.searchJS);
-                    loadScript(window.searchIndexJS);
+                    loadScript(resourcePath("search", ".js"));
+                    loadScript(resourcePath("search-index", ".js"));
                 }
             }
 
@@ -371,8 +348,7 @@ function loadCss(cssFileName) {
 
     function onHashChange(ev) {
         // If we're in mobile mode, we should hide the sidebar in any case.
-        const sidebar = document.getElementsByClassName("sidebar")[0];
-        removeClass(sidebar, "shown");
+        hideSidebar();
         handleHashes(ev);
     }
 
@@ -389,65 +365,27 @@ function loadCss(cssFileName) {
         openParentDetails(document.getElementById(id));
     }
 
-    function getHelpElement(build) {
-        if (build) {
-            buildHelperPopup();
-        }
-        return document.getElementById("help");
-    }
-
-    /**
-     * Show the help popup.
-     *
-     * @param {boolean} display    - Whether to show or hide the popup
-     * @param {Event}   ev         - The event that triggered this call
-     * @param {Element} [help]     - The help element if it already exists
-     */
-    function displayHelp(display, ev, help) {
-        if (display) {
-            help = help ? help : getHelpElement(true);
-            if (hasClass(help, "hidden")) {
-                ev.preventDefault();
-                removeClass(help, "hidden");
-                addClass(document.body, "blur");
-            }
-        } else {
-            // No need to build the help popup if we want to hide it in case it hasn't been
-            // built yet...
-            help = help ? help : getHelpElement(false);
-            if (help && !hasClass(help, "hidden")) {
-                ev.preventDefault();
-                addClass(help, "hidden");
-                removeClass(document.body, "blur");
-            }
-        }
-    }
-
     function handleEscape(ev) {
         searchState.clearInputTimeout();
-        const help = getHelpElement(false);
-        if (help && !hasClass(help, "hidden")) {
-            displayHelp(false, ev, help);
-        } else {
-            switchDisplayedElement(null);
-            if (browserSupportsHistoryApi()) {
-                history.replaceState(null, window.currentCrate + " - Rust",
-                    getNakedUrl() + window.location.hash);
-            }
-            ev.preventDefault();
+        switchDisplayedElement(null);
+        if (browserSupportsHistoryApi()) {
+            history.replaceState(null, window.currentCrate + " - Rust",
+                getNakedUrl() + window.location.hash);
         }
+        ev.preventDefault();
         searchState.defocus();
-        window.hideSettings();
+        window.hidePopoverMenus();
     }
 
-    const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
+        const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
         if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts) {
             return;
         }
 
-        if (document.activeElement.tagName === "INPUT") {
+        if (document.activeElement.tagName === "INPUT" &&
+            document.activeElement.type !== "checkbox") {
             switch (getVirtualKey(ev)) {
             case "Escape":
                 handleEscape(ev);
@@ -461,7 +399,6 @@ function loadCss(cssFileName) {
 
             case "s":
             case "S":
-                displayHelp(false, ev);
                 ev.preventDefault();
                 searchState.focus();
                 break;
@@ -473,7 +410,7 @@ function loadCss(cssFileName) {
                 break;
 
             case "?":
-                displayHelp(true, ev);
+                showHelp();
                 break;
 
             default:
@@ -485,40 +422,11 @@ function loadCss(cssFileName) {
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
 
-    // delayed sidebar rendering.
-    window.initSidebarItems = items => {
-        const sidebar = document.getElementsByClassName("sidebar-elems")[0];
-        let others;
-        const current = window.sidebarCurrent;
-
-        function addSidebarCrates(crates) {
-            if (!hasClass(document.body, "crate")) {
-                // We only want to list crates on the crate page.
-                return;
-            }
-            // Draw a convenient sidebar of known crates if we have a listing
-            const div = document.createElement("div");
-            div.className = "block crate";
-            div.innerHTML = "<h3>Crates</h3>";
-            const ul = document.createElement("ul");
-            div.appendChild(ul);
-
-            for (const crate of crates) {
-                let klass = "crate";
-                if (window.rootPath !== "./" && crate === window.currentCrate) {
-                    klass += " current";
-                }
-                const link = document.createElement("a");
-                link.href = window.rootPath + crate + "/index.html";
-                link.className = klass;
-                link.textContent = crate;
-
-                const li = document.createElement("li");
-                li.appendChild(link);
-                ul.appendChild(li);
-            }
-            others.appendChild(div);
+    function addSidebarItems() {
+        if (!window.SIDEBAR_ITEMS) {
+            return;
         }
+        const sidebar = document.getElementsByClassName("sidebar-elems")[0];
 
         /**
          * Append to the sidebar a "block" of links - a heading along with a list (`<ul>`) of items.
@@ -529,34 +437,33 @@ function loadCss(cssFileName) {
          *                          "Modules", or "Macros".
          */
         function block(shortty, id, longty) {
-            const filtered = items[shortty];
+            const filtered = window.SIDEBAR_ITEMS[shortty];
             if (!filtered) {
                 return;
             }
 
-            const div = document.createElement("div");
-            div.className = "block " + shortty;
             const h3 = document.createElement("h3");
             h3.innerHTML = `<a href="index.html#${id}">${longty}</a>`;
-            div.appendChild(h3);
             const ul = document.createElement("ul");
+            ul.className = "block " + shortty;
 
             for (const item of filtered) {
                 const name = item[0];
                 const desc = item[1]; // can be null
 
                 let klass = shortty;
-                if (name === current.name && shortty === current.ty) {
-                    klass += " current";
-                }
                 let path;
                 if (shortty === "mod") {
                     path = name + "/index.html";
                 } else {
                     path = shortty + "." + name + ".html";
                 }
+                const current_page = document.location.href.split("/").pop();
+                if (path === current_page) {
+                    klass += " current";
+                }
                 const link = document.createElement("a");
-                link.href = current.relpath + path;
+                link.href = path;
                 link.title = desc;
                 link.className = klass;
                 link.textContent = name;
@@ -564,43 +471,36 @@ function loadCss(cssFileName) {
                 li.appendChild(link);
                 ul.appendChild(li);
             }
-            div.appendChild(ul);
-            others.appendChild(div);
+            sidebar.appendChild(h3);
+            sidebar.appendChild(ul);
         }
 
         if (sidebar) {
-            others = document.createElement("div");
-            others.className = "others";
-            sidebar.appendChild(others);
-
-            const isModule = hasClass(document.body, "mod");
-            if (!isModule) {
-                block("primitive", "primitives", "Primitive Types");
-                block("mod", "modules", "Modules");
-                block("macro", "macros", "Macros");
-                block("struct", "structs", "Structs");
-                block("enum", "enums", "Enums");
-                block("union", "unions", "Unions");
-                block("constant", "constants", "Constants");
-                block("static", "static", "Statics");
-                block("trait", "traits", "Traits");
-                block("fn", "functions", "Functions");
-                block("type", "types", "Type Definitions");
-                block("foreigntype", "foreign-types", "Foreign Types");
-                block("keyword", "keywords", "Keywords");
-                block("traitalias", "trait-aliases", "Trait Aliases");
-            }
-
-            // `crates{version}.js` should always be loaded before this script, so we can use
-            // it safely.
-            addSidebarCrates(window.ALL_CRATES);
+            block("primitive", "primitives", "Primitive Types");
+            block("mod", "modules", "Modules");
+            block("macro", "macros", "Macros");
+            block("struct", "structs", "Structs");
+            block("enum", "enums", "Enums");
+            block("union", "unions", "Unions");
+            block("constant", "constants", "Constants");
+            block("static", "static", "Statics");
+            block("trait", "traits", "Traits");
+            block("fn", "functions", "Functions");
+            block("type", "types", "Type Definitions");
+            block("foreigntype", "foreign-types", "Foreign Types");
+            block("keyword", "keywords", "Keywords");
+            block("traitalias", "trait-aliases", "Trait Aliases");
         }
-    };
+    }
 
     window.register_implementors = imp => {
         const implementors = document.getElementById("implementors-list");
         const synthetic_implementors = document.getElementById("synthetic-implementors-list");
         const inlined_types = new Set();
+
+        const TEXT_IDX = 0;
+        const SYNTHETIC_IDX = 1;
+        const TYPES_IDX = 2;
 
         if (synthetic_implementors) {
             // This `inlined_types` variable is used to avoid having the same implementation
@@ -620,15 +520,15 @@ function loadCss(cssFileName) {
         }
 
         let currentNbImpls = implementors.getElementsByClassName("impl").length;
-        const traitName = document.querySelector("h1.fqn > .in-band > .trait").textContent;
+        const traitName = document.querySelector("h1.fqn > .trait").textContent;
         const baseIdName = "impl-" + traitName + "-";
         const libs = Object.getOwnPropertyNames(imp);
         // We don't want to include impls from this JS file, when the HTML already has them.
         // The current crate should always be ignored. Other crates that should also be
         // ignored are included in the attribute `data-ignore-extern-crates`.
-        const ignoreExternCrates = document
-            .querySelector("script[data-ignore-extern-crates]")
-            .getAttribute("data-ignore-extern-crates");
+        const script = document
+            .querySelector("script[data-ignore-extern-crates]");
+        const ignoreExternCrates = script ? script.getAttribute("data-ignore-extern-crates") : "";
         for (const lib of libs) {
             if (lib === window.currentCrate || ignoreExternCrates.indexOf(lib) !== -1) {
                 continue;
@@ -637,10 +537,12 @@ function loadCss(cssFileName) {
 
             struct_loop:
             for (const struct of structs) {
-                const list = struct.synthetic ? synthetic_implementors : implementors;
+                const list = struct[SYNTHETIC_IDX] ? synthetic_implementors : implementors;
 
-                if (struct.synthetic) {
-                    for (const struct_type of struct.types) {
+                // The types list is only used for synthetic impls.
+                // If this changes, `main.js` and `write_shared.rs` both need changed.
+                if (struct[SYNTHETIC_IDX]) {
+                    for (const struct_type of struct[TYPES_IDX]) {
                         if (inlined_types.has(struct_type)) {
                             continue struct_loop;
                         }
@@ -649,9 +551,8 @@ function loadCss(cssFileName) {
                 }
 
                 const code = document.createElement("h3");
-                code.innerHTML = struct.text;
+                code.innerHTML = struct[TEXT_IDX];
                 addClass(code, "code-header");
-                addClass(code, "in-band");
 
                 onEachLazy(code.getElementsByTagName("a"), elem => {
                     const href = elem.getAttribute("href");
@@ -679,6 +580,37 @@ function loadCss(cssFileName) {
     if (window.pending_implementors) {
         window.register_implementors(window.pending_implementors);
     }
+
+    function addSidebarCrates() {
+        if (!window.ALL_CRATES) {
+            return;
+        }
+        const sidebarElems = document.getElementsByClassName("sidebar-elems")[0];
+        if (!sidebarElems) {
+            return;
+        }
+        // Draw a convenient sidebar of known crates if we have a listing
+        const h3 = document.createElement("h3");
+        h3.innerHTML = "Crates";
+        const ul = document.createElement("ul");
+        ul.className = "block crate";
+
+        for (const crate of window.ALL_CRATES) {
+            const link = document.createElement("a");
+            link.href = window.rootPath + crate + "/index.html";
+            if (window.rootPath !== "./" && crate === window.currentCrate) {
+                link.className = "current";
+            }
+            link.textContent = crate;
+
+            const li = document.createElement("li");
+            li.appendChild(link);
+            ul.appendChild(li);
+        }
+        sidebarElems.appendChild(h3);
+        sidebarElems.appendChild(ul);
+    }
+
 
     function labelForToggleButton(sectionIsCollapsed) {
         if (sectionIsCollapsed) {
@@ -760,46 +692,87 @@ function loadCss(cssFileName) {
         }
     }());
 
+    window.rustdoc_add_line_numbers_to_examples = () => {
+        onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
+            const parent = x.parentNode;
+            const line_numbers = parent.querySelectorAll(".example-line-numbers");
+            if (line_numbers.length > 0) {
+                return;
+            }
+            const count = x.textContent.split("\n").length;
+            const elems = [];
+            for (let i = 0; i < count; ++i) {
+                elems.push(i + 1);
+            }
+            const node = document.createElement("pre");
+            addClass(node, "example-line-numbers");
+            node.innerHTML = elems.join("\n");
+            parent.insertBefore(node, x);
+        });
+    };
+
+    window.rustdoc_remove_line_numbers_from_examples = () => {
+        onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
+            const parent = x.parentNode;
+            const line_numbers = parent.querySelectorAll(".example-line-numbers");
+            for (const node of line_numbers) {
+                parent.removeChild(node);
+            }
+        });
+    };
+
     (function() {
         // To avoid checking on "rustdoc-line-numbers" value on every loop...
-        let lineNumbersFunc = () => {};
         if (getSettingValue("line-numbers") === "true") {
-            lineNumbersFunc = x => {
-                const count = x.textContent.split("\n").length;
-                const elems = [];
-                for (let i = 0; i < count; ++i) {
-                    elems.push(i + 1);
-                }
-                const node = document.createElement("pre");
-                addClass(node, "line-number");
-                node.innerHTML = elems.join("\n");
-                x.parentNode.insertBefore(node, x);
-            };
+            window.rustdoc_add_line_numbers_to_examples();
         }
-        onEachLazy(document.getElementsByClassName("rust-example-rendered"), e => {
-            if (hasClass(e, "compile_fail")) {
-                e.addEventListener("mouseover", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
-                });
-                e.addEventListener("mouseout", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "";
-                });
-            } else if (hasClass(e, "ignore")) {
-                e.addEventListener("mouseover", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "#ff9200";
-                });
-                e.addEventListener("mouseout", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "";
-                });
-            }
-            lineNumbersFunc(e);
-        });
     }());
 
+    let oldSidebarScrollPosition = null;
+
+    function showSidebar() {
+        const mobile_topbar = document.querySelector(".mobile-topbar");
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT && mobile_topbar) {
+            // This is to keep the scroll position on mobile.
+            oldSidebarScrollPosition = window.scrollY;
+            document.body.style.width = `${document.body.offsetWidth}px`;
+            document.body.style.position = "fixed";
+            document.body.style.top = `-${oldSidebarScrollPosition}px`;
+            mobile_topbar.style.top = `${oldSidebarScrollPosition}px`;
+            mobile_topbar.style.position = "relative";
+        } else {
+            oldSidebarScrollPosition = null;
+        }
+        const sidebar = document.getElementsByClassName("sidebar")[0];
+        addClass(sidebar, "shown");
+    }
+
     function hideSidebar() {
+        const mobile_topbar = document.querySelector(".mobile-topbar");
+        if (oldSidebarScrollPosition !== null && mobile_topbar) {
+            // This is to keep the scroll position on mobile.
+            document.body.style.width = "";
+            document.body.style.position = "";
+            document.body.style.top = "";
+            mobile_topbar.style.top = "";
+            mobile_topbar.style.position = "";
+            // The scroll position is lost when resetting the style, hence why we store it in
+            // `oldSidebarScrollPosition`.
+            window.scrollTo(0, oldSidebarScrollPosition);
+            oldSidebarScrollPosition = null;
+        }
         const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
     }
+
+    window.addEventListener("resize", () => {
+        if (window.innerWidth >= window.RUSTDOC_MOBILE_BREAKPOINT &&
+            oldSidebarScrollPosition !== null) {
+            // If the user opens the sidebar in "mobile" mode, and then grows the browser window,
+            // we need to switch away from mobile mode and make the main content area scrollable.
+            hideSidebar();
+        }
+    });
 
     function handleClick(id, f) {
         const elem = document.getElementById(id);
@@ -807,9 +780,6 @@ function loadCss(cssFileName) {
             elem.addEventListener("click", f);
         }
     }
-    handleClick("help-button", ev => {
-        displayHelp(true, ev);
-    });
     handleClick(MAIN_ID, () => {
         hideSidebar();
     });
@@ -846,31 +816,23 @@ function loadCss(cssFileName) {
         sidebar_menu_toggle.addEventListener("click", () => {
             const sidebar = document.getElementsByClassName("sidebar")[0];
             if (!hasClass(sidebar, "shown")) {
-                addClass(sidebar, "shown");
+                showSidebar();
             } else {
-                removeClass(sidebar, "shown");
+                hideSidebar();
             }
         });
     }
 
-    let buildHelperPopup = () => {
-        const popup = document.createElement("aside");
-        addClass(popup, "hidden");
-        popup.id = "help";
+    function helpBlurHandler(event) {
+        blurHandler(event, getHelpButton(), window.hidePopoverMenus);
+    }
 
-        popup.addEventListener("click", ev => {
-            if (ev.target === popup) {
-                // Clicked the blurred zone outside the help popup; dismiss help.
-                displayHelp(false, ev);
-            }
-        });
-
+    function buildHelpMenu() {
         const book_info = document.createElement("span");
         book_info.className = "top";
         book_info.innerHTML = "You can find more information in \
             <a href=\"https://doc.rust-lang.org/rustdoc/\">the rustdoc book</a>.";
 
-        const container = document.createElement("div");
         const shortcuts = [
             ["?", "Show this help dialog"],
             ["S", "Focus the search field"],
@@ -882,7 +844,7 @@ function loadCss(cssFileName) {
             ["-", "Collapse all sections"],
         ].map(x => "<dt>" +
             x[0].split(" ")
-                .map((y, index) => (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " ")
+                .map((y, index) => ((index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " "))
                 .join("") + "</dt><dd>" + x[1] + "</dd>").join("");
         const div_shortcuts = document.createElement("div");
         addClass(div_shortcuts, "shortcuts");
@@ -895,7 +857,7 @@ function loadCss(cssFileName) {
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
              and <code>const</code>.",
             "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
-             <code>* -&gt; vec</code>)",
+             <code>-&gt; vec</code>)",
             "Search multiple things at once by splitting your query with comma (e.g., \
              <code>str,u8</code> or <code>String,struct:Vec,test</code>)",
             "You can look for items with an exact name by putting double quotes around \
@@ -906,24 +868,91 @@ function loadCss(cssFileName) {
         addClass(div_infos, "infos");
         div_infos.innerHTML = "<h2>Search Tricks</h2>" + infos;
 
-        container.appendChild(book_info);
-        container.appendChild(div_shortcuts);
-        container.appendChild(div_infos);
-
         const rustdoc_version = document.createElement("span");
         rustdoc_version.className = "bottom";
         const rustdoc_version_code = document.createElement("code");
         rustdoc_version_code.innerText = "rustdoc " + getVar("rustdoc-version");
         rustdoc_version.appendChild(rustdoc_version_code);
 
+        const container = document.createElement("div");
+        container.className = "popover";
+        container.style.display = "none";
+
+        const side_by_side = document.createElement("div");
+        side_by_side.className = "side-by-side";
+        side_by_side.appendChild(div_shortcuts);
+        side_by_side.appendChild(div_infos);
+
+        container.appendChild(book_info);
+        container.appendChild(side_by_side);
         container.appendChild(rustdoc_version);
 
-        popup.appendChild(container);
-        insertAfter(popup, document.querySelector("main"));
-        // So that it's only built once and then it'll do nothing when called!
-        buildHelperPopup = () => {};
+        const help_button = getHelpButton();
+        help_button.appendChild(container);
+
+        container.onblur = helpBlurHandler;
+        container.onclick = event => {
+            event.preventDefault();
+        };
+        help_button.onblur = helpBlurHandler;
+        help_button.children[0].onblur = helpBlurHandler;
+
+        return container;
+    }
+
+    /**
+     * Hide all the popover menus.
+     */
+    window.hidePopoverMenus = function() {
+        onEachLazy(document.querySelectorAll(".search-container .popover"), elem => {
+            elem.style.display = "none";
+        });
     };
 
+    /**
+     * Returns the help menu element (not the button).
+     *
+     * @param {boolean} buildNeeded - If this argument is `false`, the help menu element won't be
+     *                                built if it doesn't exist.
+     *
+     * @return {HTMLElement}
+     */
+    function getHelpMenu(buildNeeded) {
+        let menu = getHelpButton().querySelector(".popover");
+        if (!menu && buildNeeded) {
+            menu = buildHelpMenu();
+        }
+        return menu;
+    }
+
+    /**
+     * Show the help popup menu.
+     */
+    function showHelp() {
+        const menu = getHelpMenu(true);
+        if (menu.style.display === "none") {
+            window.hidePopoverMenus();
+            menu.style.display = "";
+        }
+    }
+
+    document.querySelector(`#${HELP_BUTTON_ID} > button`).addEventListener("click", event => {
+        const target = event.target;
+        if (target.tagName !== "BUTTON" || target.parentElement.id !== HELP_BUTTON_ID) {
+            return;
+        }
+        const menu = getHelpMenu(true);
+        const shouldShowHelp = menu.style.display === "none";
+        if (shouldShowHelp) {
+            showHelp();
+        } else {
+            window.hidePopoverMenus();
+        }
+    });
+
+    setMobileTopbar();
+    addSidebarItems();
+    addSidebarCrates();
     onHashChange(null);
     window.addEventListener("hashchange", onHashChange);
     searchState.setup();

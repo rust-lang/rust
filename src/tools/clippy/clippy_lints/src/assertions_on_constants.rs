@@ -14,9 +14,6 @@ declare_clippy_lint! {
     /// Will be optimized out by the compiler or should probably be replaced by a
     /// `panic!()` or `unreachable!()`
     ///
-    /// ### Known problems
-    /// None
-    ///
     /// ### Example
     /// ```rust,ignore
     /// assert!(false)
@@ -63,9 +60,9 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
                 cx,
                 ASSERTIONS_ON_CONSTANTS,
                 macro_call.span,
-                &format!("`assert!(false{})` should probably be replaced", assert_arg),
+                &format!("`assert!(false{assert_arg})` should probably be replaced"),
                 None,
-                &format!("use `panic!({})` or `unreachable!({0})`", panic_arg),
+                &format!("use `panic!({panic_arg})` or `unreachable!({panic_arg})`"),
             );
         }
     }

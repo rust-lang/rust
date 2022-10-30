@@ -1,0 +1,13 @@
+error: deadlock: the evaluated program deadlocked
+  --> $DIR/windows_join_main.rs:LL:CC
+   |
+LL |             assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program deadlocked
+   |
+   = note: inside closure at RUSTLIB/core/src/macros/mod.rs:LL:CC
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

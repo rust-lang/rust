@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// ```rust
     /// struct S;
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub EMPTY_DROP,
     restriction,
     "empty `Drop` implementations"

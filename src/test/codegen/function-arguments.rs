@@ -5,6 +5,7 @@
 
 use std::mem::MaybeUninit;
 use std::num::NonZeroU64;
+use std::marker::PhantomPinned;
 
 pub struct S {
   _field: [i32; 8],
@@ -12,6 +13,11 @@ pub struct S {
 
 pub struct UnsafeInner {
   _field: std::cell::UnsafeCell<i16>,
+}
+
+pub struct NotUnpin {
+  _field: i32,
+  _marker: PhantomPinned,
 }
 
 pub enum MyBool {
@@ -91,7 +97,7 @@ pub fn static_borrow(_: &'static i32) {
 pub fn named_borrow<'r>(_: &'r i32) {
 }
 
-// CHECK: @unsafe_borrow({{i16\*|ptr}} noundef align 2 dereferenceable(2) %_1)
+// CHECK: @unsafe_borrow({{i16\*|ptr}} noundef nonnull align 2 %_1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_borrow(_: &UnsafeInner) {
@@ -107,6 +113,18 @@ pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {
+}
+
+#[no_mangle]
+// CHECK: @mutable_notunpin_borrow({{i32\*|ptr}} noundef align 4 dereferenceable(4) %_1)
+// This one is *not* `noalias` because it might be self-referential.
+pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {
+}
+
+// CHECK: @notunpin_borrow({{i32\*|ptr}} noalias noundef readonly align 4 dereferenceable(4) %_1)
+// But `&NotUnpin` behaves perfectly normal.
+#[no_mangle]
+pub fn notunpin_borrow(_: &NotUnpin) {
 }
 
 // CHECK: @indirect_struct({{%S\*|ptr}} noalias nocapture noundef dereferenceable(32) %_1)
@@ -214,11 +232,4 @@ pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
 #[no_mangle]
 pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
   x
-}
-
-// CHECK: noalias {{i8\*|ptr}} @allocator()
-#[no_mangle]
-#[rustc_allocator]
-pub fn allocator() -> *const i8 {
-  std::ptr::null()
 }

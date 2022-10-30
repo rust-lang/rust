@@ -3,7 +3,7 @@
 
 #![allow(unused)]
 
-// If the closures can handle such precison we should be able to read one path in the closure
+// If the closures can handle such precision we should be able to read one path in the closure
 // while being able mutate another path outside the closure, where the two paths are disjoint
 // after applying two projections on the root variable.
 

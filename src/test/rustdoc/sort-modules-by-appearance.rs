@@ -9,5 +9,5 @@ pub mod module_c {}
 
 pub mod module_a {}
 
-// @matches 'sort_modules_by_appearance/index.html' '(?s)module_b.*module_c.*module_a'
-// @matches 'sort_modules_by_appearance/sidebar-items.js' '"module_b".*"module_c".*"module_a"'
+// @matchesraw 'sort_modules_by_appearance/index.html' '(?s)module_b.*module_c.*module_a'
+// @matchesraw 'sort_modules_by_appearance/sidebar-items.js' '"module_b".*"module_c".*"module_a"'

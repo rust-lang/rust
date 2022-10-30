@@ -8,7 +8,7 @@ help: consider importing the module directly
    |
 LL - use std::fmt::self;
 LL + use std::fmt;
-   | 
+   |
 help: alternatively, use the multi-path `use` syntax to import `self`
    |
 LL | use std::fmt::{self};

@@ -26,7 +26,7 @@ pub(crate) fn analyze(fx: &FunctionCx<'_, '_, '_>) -> IndexVec<Local, SsaKind> {
         })
         .collect::<IndexVec<Local, SsaKind>>();
 
-    for bb in fx.mir.basic_blocks().iter() {
+    for bb in fx.mir.basic_blocks.iter() {
         for stmt in bb.statements.iter() {
             match &stmt.kind {
                 Assign(place_and_rval) => match &place_and_rval.1 {

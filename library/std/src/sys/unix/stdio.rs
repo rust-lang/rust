@@ -92,7 +92,7 @@ pub fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for io::Stdin {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -100,7 +100,7 @@ impl AsFd for io::Stdin {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsFd for io::StdinLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -108,7 +108,7 @@ impl<'a> AsFd for io::StdinLock<'a> {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for io::Stdout {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -116,7 +116,7 @@ impl AsFd for io::Stdout {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsFd for io::StdoutLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -124,7 +124,7 @@ impl<'a> AsFd for io::StdoutLock<'a> {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for io::Stderr {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -132,7 +132,7 @@ impl AsFd for io::Stderr {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsFd for io::StderrLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {

@@ -43,7 +43,7 @@ pub(super) fn render_macro_matcher(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Stri
         TokenTree::Delimited(_span, _delim, tts) => print_tts(&mut printer, tts),
         // Matcher which is not a Delimited is unexpected and should've failed
         // to compile, but we render whatever it is wrapped in parens.
-        TokenTree::Token(_) => print_tt(&mut printer, matcher),
+        TokenTree::Token(..) => print_tt(&mut printer, matcher),
     }
     printer.end();
     printer.break_offset_if_not_bol(0, -4);
@@ -93,7 +93,7 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
 
 fn print_tt(printer: &mut Printer<'_>, tt: &TokenTree) {
     match tt {
-        TokenTree::Token(token) => {
+        TokenTree::Token(token, _) => {
             let token_str = printer.token_to_string(token);
             printer.word(token_str);
             if let token::DocComment(..) = token.kind {
@@ -138,7 +138,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
     let mut state = Start;
     for tt in tts.trees() {
         let (needs_space, next_state) = match &tt {
-            TokenTree::Token(tt) => match (state, &tt.kind) {
+            TokenTree::Token(tt, _) => match (state, &tt.kind) {
                 (Dollar, token::Ident(..)) => (false, DollarIdent),
                 (DollarIdent, token::Colon) => (false, DollarIdentColon),
                 (DollarIdentColon, token::Ident(..)) => (false, Other),

@@ -74,7 +74,7 @@ fn __rustc_plugin_registrar(reg: &mut Registry) {
         &CRATE_NOT_GREY,
         &CRATE_NOT_GREEN,
     ]);
-    reg.lint_store.register_late_pass(|| Box::new(PassOkay));
-    reg.lint_store.register_late_pass(|| Box::new(PassRedBlue));
-    reg.lint_store.register_late_pass(|| Box::new(PassGreyGreen));
+    reg.lint_store.register_late_pass(|_| Box::new(PassOkay));
+    reg.lint_store.register_late_pass(|_| Box::new(PassRedBlue));
+    reg.lint_store.register_late_pass(|_| Box::new(PassGreyGreen));
 }

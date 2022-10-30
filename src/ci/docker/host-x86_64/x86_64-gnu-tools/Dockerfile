@@ -1,5 +1,6 @@
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
@@ -27,6 +28,7 @@ RUN apt-get install -y \
   libdbus-1-3 \
   libexpat1 \
   libfontconfig1 \
+  libgbm1 \
   libgcc1 \
   libgconf-2-4 \
   libgdk-pixbuf2.0-0 \
@@ -59,13 +61,10 @@ RUN apt-get install -y \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
-
 COPY host-x86_64/x86_64-gnu-tools/checktools.sh /tmp/
 
-RUN curl -sL https://nodejs.org/dist/v14.4.0/node-v14.4.0-linux-x64.tar.xz | tar -xJ
-ENV NODE_FOLDER=/node-v14.4.0-linux-x64/bin
+RUN curl -sL https://nodejs.org/dist/v14.20.0/node-v14.20.0-linux-x64.tar.xz | tar -xJ
+ENV NODE_FOLDER=/node-v14.20.0-linux-x64/bin
 ENV PATH="$NODE_FOLDER:${PATH}"
 
 COPY host-x86_64/x86_64-gnu-tools/browser-ui-test.version /tmp/
@@ -85,4 +84,5 @@ ENV RUST_CONFIGURE_ARGS \
   --save-toolstates=/tmp/toolstate/toolstates.json
 
 ENV SCRIPT /tmp/checktools.sh ../x.py && \
-  NODE_PATH=`npm root -g` python3 ../x.py test src/test/rustdoc-gui --stage 2
+  NODE_PATH=`npm root -g` python3 ../x.py test src/test/rustdoc-gui --stage 2 \
+    --test-args "'--no-sandbox --jobs 1'"

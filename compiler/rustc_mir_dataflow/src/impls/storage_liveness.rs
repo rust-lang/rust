@@ -1,6 +1,5 @@
 pub use super::*;
 
-use crate::storage::AlwaysLiveLocals;
 use crate::{CallReturnPlaces, GenKill, Results, ResultsRefCursor};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -8,11 +7,11 @@ use std::cell::RefCell;
 
 #[derive(Clone)]
 pub struct MaybeStorageLive {
-    always_live_locals: AlwaysLiveLocals,
+    always_live_locals: BitSet<Local>,
 }
 
 impl MaybeStorageLive {
-    pub fn new(always_live_locals: AlwaysLiveLocals) -> Self {
+    pub fn new(always_live_locals: BitSet<Local>) -> Self {
         MaybeStorageLive { always_live_locals }
     }
 }
@@ -143,7 +142,7 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
             | StatementKind::FakeRead(..)
             | StatementKind::Nop
             | StatementKind::Retag(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::StorageLive(..) => {}
         }
     }
@@ -154,7 +153,7 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
         _: &mir::Statement<'tcx>,
         loc: Location,
     ) {
-        // If we move from a place then only stops needing storage *after*
+        // If we move from a place then it only stops needing storage *after*
         // that statement.
         self.check_for_move(trans, loc);
     }
@@ -289,12 +288,12 @@ impl<'a, 'mir, 'tcx, T> Visitor<'tcx> for MoveVisitor<'a, 'mir, 'tcx, T>
 where
     T: GenKill<Local>,
 {
-    fn visit_local(&mut self, local: &Local, context: PlaceContext, loc: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, loc: Location) {
         if PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) == context {
             let mut borrowed_locals = self.borrowed_locals.borrow_mut();
             borrowed_locals.seek_before_primary_effect(loc);
-            if !borrowed_locals.contains(*local) {
-                self.trans.kill(*local);
+            if !borrowed_locals.contains(local) {
+                self.trans.kill(local);
             }
         }
     }

@@ -59,11 +59,11 @@ error: expected `while`, `for`, `loop` or `{` after a label
 LL |     let _ = f<'_, i8>();
    |                 ^ expected `while`, `for`, `loop` or `{` after a label
 
-error: expected one of `.`, `:`, `;`, `?`, `else`, `for`, `loop`, `while`, `{`, or an operator, found `,`
+error: expected one of `.`, `:`, `;`, `?`, `else`, `for`, `loop`, `while`, or an operator, found `,`
   --> $DIR/require-parens-for-chained-comparison.rs:22:17
    |
 LL |     let _ = f<'_, i8>();
-   |                 ^ expected one of 10 possible tokens
+   |                 ^ expected one of 9 possible tokens
    |
 help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |

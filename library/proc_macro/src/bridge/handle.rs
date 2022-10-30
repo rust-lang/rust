@@ -1,10 +1,12 @@
 //! Server-side handles and storage for per-handle data.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::hash::Hash;
 use std::num::NonZeroU32;
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+use super::fxhash::FxHashMap;
 
 pub(super) type Handle = NonZeroU32;
 
@@ -54,12 +56,12 @@ impl<T> IndexMut<Handle> for OwnedStore<T> {
 /// Like `OwnedStore`, but avoids storing any value more than once.
 pub(super) struct InternedStore<T: 'static> {
     owned: OwnedStore<T>,
-    interner: HashMap<T, Handle>,
+    interner: FxHashMap<T, Handle>,
 }
 
 impl<T: Copy + Eq + Hash> InternedStore<T> {
     pub(super) fn new(counter: &'static AtomicUsize) -> Self {
-        InternedStore { owned: OwnedStore::new(counter), interner: HashMap::new() }
+        InternedStore { owned: OwnedStore::new(counter), interner: FxHashMap::default() }
     }
 
     pub(super) fn alloc(&mut self, x: T) -> Handle {

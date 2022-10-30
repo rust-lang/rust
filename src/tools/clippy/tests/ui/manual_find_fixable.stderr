@@ -1,0 +1,142 @@
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:11:5
+   |
+LL | /     for &v in ARRAY {
+LL | |         if v == n {
+LL | |             return Some(v);
+LL | |         }
+LL | |     }
+LL | |     None
+   | |________^ help: replace with an iterator: `ARRAY.iter().find(|&&v| v == n).copied()`
+   |
+   = note: `-D clippy::manual-find` implied by `-D warnings`
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:20:5
+   |
+LL | /     for (a, _) in arr {
+LL | |         if a % 2 == 0 {
+LL | |             return Some(a);
+LL | |         }
+LL | |     }
+LL | |     None
+   | |________^ help: replace with an iterator: `arr.into_iter().map(|(a, _)| a).find(|&a| a % 2 == 0)`
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:33:5
+   |
+LL | /     for el in arr {
+LL | |         if el.name.len() == 10 {
+LL | |             return Some(el);
+LL | |         }
+LL | |     }
+LL | |     None
+   | |________^ help: replace with an iterator: `arr.into_iter().find(|el| el.name.len() == 10)`
+   |
+   = note: you may need to dereference some variables
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:43:5
+   |
+LL | /     for Tuple(a, _) in arr {
+LL | |         if a >= 3 {
+LL | |             return Some(a);
+LL | |         }
+LL | |     }
+LL | |     None
+   | |________^ help: replace with an iterator: `arr.into_iter().map(|Tuple(a, _)| a).find(|&a| a >= 3)`
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:58:5
+   |
+LL | /     for el in arr {
+LL | |         if el.should_keep() {
+LL | |             return Some(el);
+LL | |         }
+LL | |     }
+LL | |     None
+   | |________^ help: replace with an iterator: `arr.into_iter().find(|el| el.should_keep())`
+   |
+   = note: you may need to dereference some variables
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:68:5
+   |
+LL | /     for el in arr {
+LL | |         if f(el) == 20 {
+LL | |             return Some(el);
+LL | |         }
+LL | |     }
+LL | |     None
+   | |________^ help: replace with an iterator: `arr.into_iter().find(|&el| f(el) == 20)`
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:78:5
+   |
+LL | /     for &el in arr.values() {
+LL | |         if f(el) {
+LL | |             return Some(el);
+LL | |         }
+LL | |     }
+LL | |     None
+   | |________^ help: replace with an iterator: `arr.values().find(|&&el| f(el)).copied()`
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:87:5
+   |
+LL | /     for el in arr {
+LL | |         if el.is_true {
+LL | |             return Some(el);
+LL | |         }
+LL | |     }
+LL | |     None
+   | |________^ help: replace with an iterator: `arr.into_iter().find(|el| el.is_true)`
+   |
+   = note: you may need to dereference some variables
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:117:5
+   |
+LL | /     for (_, &x) in v {
+LL | |         if x > 10 {
+LL | |             return Some(x);
+LL | |         }
+LL | |     }
+LL | |     None
+   | |________^ help: replace with an iterator: `v.into_iter().map(|(_, &x)| x).find(|&x| x > 10)`
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:126:5
+   |
+LL | /     for &(_, &x) in v {
+LL | |         if x > 10 {
+LL | |             return Some(x);
+LL | |         }
+LL | |     }
+LL | |     None
+   | |________^ help: replace with an iterator: `v.iter().map(|&(_, &x)| x).find(|&x| x > 10)`
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:135:5
+   |
+LL | /     for x in arr {
+LL | |         if x >= 5 {
+LL | |             return Some(x);
+LL | |         }
+LL | |     }
+LL | |     return None;
+   | |________________^ help: replace with an iterator: `arr.into_iter().find(|&x| x >= 5)`
+
+error: manual implementation of `Iterator::find`
+  --> $DIR/manual_find_fixable.rs:190:9
+   |
+LL | /         for x in arr {
+LL | |             if x < 1 {
+LL | |                 return Some(x);
+LL | |             }
+LL | |         }
+LL | |         None
+   | |____________^ help: replace with an iterator: `arr.into_iter().find(|&x| x < 1)`
+
+error: aborting due to 12 previous errors
+

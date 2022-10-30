@@ -4,13 +4,13 @@ error: leading irrefutable pattern in let chain
 LL |     if let first = &opt && let Some(ref second) = first && let None = second.start {}
    |        ^^^^^^^^^^^^^^^^
    |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
 note: the lint level is defined here
   --> $DIR/irrefutable-lets.rs:6:30
    |
 LL | #![cfg_attr(disallowed, deny(irrefutable_let_patterns))]
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this pattern will always match
-   = help: consider moving it outside of the construct
 
 error: irrefutable `if let` patterns
   --> $DIR/irrefutable-lets.rs:19:8

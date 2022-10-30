@@ -12,10 +12,10 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
 
-use crate::region_infer::BlameConstraint;
+use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::{
     borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
     WriteKind,
@@ -38,6 +38,7 @@ pub(crate) enum BorrowExplanation<'tcx> {
         span: Span,
         region_name: RegionName,
         opt_place_desc: Option<String>,
+        extra_info: Vec<ExtraConstraintInfo>,
     },
     Unexplained,
 }
@@ -212,7 +213,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                         "consider adding semicolon after the expression so its \
                                         temporaries are dropped sooner, before the local variables \
                                         declared by the block are dropped",
-                                        ";".to_string(),
+                                        ";",
                                         Applicability::MaybeIncorrect,
                                     );
                                 }
@@ -243,6 +244,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 ref region_name,
                 ref opt_place_desc,
                 from_closure: _,
+                ref extra_info,
             } => {
                 region_name.highlight_region_name(err);
 
@@ -268,21 +270,33 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     );
                 };
 
+                for extra in extra_info {
+                    match extra {
+                        ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
+                            err.span_note(*span, format!("due to current limitations in the borrow checker, this implies a `'static` lifetime"));
+                        }
+                    }
+                }
+
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
             }
             _ => {}
         }
     }
-    pub(crate) fn add_lifetime_bound_suggestion_to_diagnostic(
+
+    fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
         err: &mut Diagnostic,
         category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
     ) {
+        if !span.is_desugaring(DesugaringKind::OpaqueTy) {
+            return;
+        }
         if let ConstraintCategory::OpaqueType = category {
             let suggestable_name =
-                if region_name.was_named() { region_name.to_string() } else { "'_".to_string() };
+                if region_name.was_named() { region_name.name } else { kw::UnderscoreLifetime };
 
             let msg = format!(
                 "you can add a bound to the {}to make it last less than `'static` and match `{}`",
@@ -305,18 +319,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
-    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>) {
-        let BlameConstraint { category, from_closure, cause, variance_info: _ } =
-            self.regioncx.best_blame_constraint(
-                &self.body,
-                borrow_region,
-                NllRegionVariableOrigin::FreeRegion,
-                |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
-            );
+    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>, Vec<ExtraConstraintInfo>) {
+        let (blame_constraint, extra_info) = self.regioncx.best_blame_constraint(
+            borrow_region,
+            NllRegionVariableOrigin::FreeRegion,
+            |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
+        );
+        let BlameConstraint { category, from_closure, cause, .. } = blame_constraint;
 
         let outlived_fr_name = self.give_region_a_name(outlived_region);
 
-        (category, from_closure, cause.span, outlived_fr_name)
+        (category, from_closure, cause.span, outlived_fr_name, extra_info)
     }
 
     /// Returns structured explanation for *why* the borrow contains the
@@ -332,26 +345,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ///   - second half is the place being accessed
     ///
     /// [d]: https://rust-lang.github.io/rfcs/2094-nll.html#leveraging-intuition-framing-errors-in-terms-of-points
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn explain_why_borrow_contains_point(
         &self,
         location: Location,
         borrow: &BorrowData<'tcx>,
         kind_place: Option<(WriteKind, Place<'tcx>)>,
     ) -> BorrowExplanation<'tcx> {
-        debug!(
-            "explain_why_borrow_contains_point(location={:?}, borrow={:?}, kind_place={:?})",
-            location, borrow, kind_place
-        );
-
         let regioncx = &self.regioncx;
         let body: &Body<'_> = &self.body;
         let tcx = self.infcx.tcx;
 
         let borrow_region_vid = borrow.region;
-        debug!("explain_why_borrow_contains_point: borrow_region_vid={:?}", borrow_region_vid);
+        debug!(?borrow_region_vid);
 
         let region_sub = self.regioncx.find_sub_region_live_at(borrow_region_vid, location);
-        debug!("explain_why_borrow_contains_point: region_sub={:?}", region_sub);
+        debug!(?region_sub);
 
         match find_use::find(body, regioncx, tcx, region_sub, location) {
             Some(Cause::LiveVar(local, location)) => {
@@ -392,7 +401,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             None => {
                 if let Some(region) = self.to_error_region_vid(borrow_region_vid) {
-                    let (category, from_closure, span, region_name) =
+                    let (category, from_closure, span, region_name, extra_info) =
                         self.free_region_constraint_info(borrow_region_vid, region);
                     if let Some(region_name) = region_name {
                         let opt_place_desc = self.describe_place(borrow.borrowed_place.as_ref());
@@ -402,19 +411,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             span,
                             region_name,
                             opt_place_desc,
+                            extra_info,
                         }
                     } else {
-                        debug!(
-                            "explain_why_borrow_contains_point: \
-                             Could not generate a region name"
-                        );
+                        debug!("Could not generate a region name");
                         BorrowExplanation::Unexplained
                     }
                 } else {
-                    debug!(
-                        "explain_why_borrow_contains_point: \
-                         Could not generate an error region vid"
-                    );
+                    debug!("Could not generate an error region vid");
                     BorrowExplanation::Unexplained
                 }
             }
@@ -455,7 +459,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return outmost_back_edge;
             }
 
-            let block = &self.body.basic_blocks()[location.block];
+            let block = &self.body.basic_blocks[location.block];
 
             if location.statement_index < block.statements.len() {
                 let successor = location.successor_within_block();
@@ -514,7 +518,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         if loop_head.dominates(from, &self.dominators) {
-            let block = &self.body.basic_blocks()[from.block];
+            let block = &self.body.basic_blocks[from.block];
 
             if from.statement_index < block.statements.len() {
                 let successor = from.successor_within_block();
@@ -564,7 +568,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             UseSpans::PatUse(span)
             | UseSpans::OtherUse(span)
             | UseSpans::FnSelfUse { var_span: span, .. } => {
-                let block = &self.body.basic_blocks()[location.block];
+                let block = &self.body.basic_blocks[location.block];
 
                 let kind = if let Some(&Statement {
                     kind: StatementKind::FakeRead(box (FakeReadCause::ForLet(_), _)),

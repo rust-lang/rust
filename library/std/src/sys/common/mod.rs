@@ -13,3 +13,7 @@
 pub mod alloc;
 
 pub mod cvt;
+pub mod small_c_string;
+
+#[cfg(test)]
+mod tests;

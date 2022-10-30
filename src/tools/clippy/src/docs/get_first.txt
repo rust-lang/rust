@@ -1,0 +1,19 @@
+### What it does
+Checks for using `x.get(0)` instead of
+`x.first()`.
+
+### Why is this bad?
+Using `x.first()` is easier to read and has the same
+result.
+
+### Example
+```
+let x = vec![2, 3, 5];
+let first_element = x.get(0);
+```
+
+Use instead:
+```
+let x = vec![2, 3, 5];
+let first_element = x.first();
+```

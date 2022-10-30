@@ -1,7 +1,7 @@
 # needs-sanitizer-support
 # needs-sanitizer-address
 
--include ../tools.mk
+include ../tools.mk
 
 LOG := $(TMPDIR)/log.txt
 

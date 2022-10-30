@@ -6,7 +6,7 @@
 trait FooBar {
     fn dummy(&self) { }
 }
-struct Bar(i32);
+struct Bar(#[allow(unused_tuple_struct_fields)] i32);
 struct Foo { bar: Bar }
 
 impl FooBar for Bar {}

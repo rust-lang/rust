@@ -4,12 +4,12 @@ error: value assigned to `x` is never read
 LL |     let mut x: isize = 3;
    |             ^
    |
+   = help: maybe it is overwritten before being read?
 note: the lint level is defined here
   --> $DIR/liveness-dead.rs:2:9
    |
 LL | #![deny(unused_assignments)]
    |         ^^^^^^^^^^^^^^^^^^
-   = help: maybe it is overwritten before being read?
 
 error: value assigned to `x` is never read
   --> $DIR/liveness-dead.rs:17:5

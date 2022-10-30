@@ -1,0 +1,16 @@
+### What it does
+Checks for transmutes that could be a pointer cast.
+
+### Why is this bad?
+Readability. The code tricks people into thinking that
+something complex is going on.
+
+### Example
+
+```
+unsafe { std::mem::transmute::<*const [i32], *const [u16]>(p) };
+```
+Use instead:
+```
+p as *const [u16];
+```

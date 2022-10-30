@@ -1,6 +1,5 @@
 use rustc_ast as ast;
 use rustc_ast::{ptr::P, tokenstream::TokenStream};
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::Applicability;
 use rustc_expand::base::{self, DummyResult};
 
@@ -43,7 +42,7 @@ fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_ne
         ast::LitKind::Bool(_) => {
             cx.span_err(expr.span, "cannot concatenate boolean literals");
         }
-        ast::LitKind::Err(_) => {}
+        ast::LitKind::Err => {}
         ast::LitKind::Int(_, _) if !is_nested => {
             let mut err = cx.struct_span_err(expr.span, "cannot concatenate numeric literals");
             if let Ok(snippet) = cx.sess.source_map().span_to_snippet(expr.span) {
@@ -185,5 +184,5 @@ pub fn expand_concat_bytes(
         return base::MacEager::expr(DummyResult::raw_expr(sp, true));
     }
     let sp = cx.with_def_site_ctxt(sp);
-    base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::from(accumulator))))
+    base::MacEager::expr(cx.expr_byte_str(sp, accumulator))
 }

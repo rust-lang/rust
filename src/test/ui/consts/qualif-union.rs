@@ -1,18 +1,19 @@
 // Checks that unions use type based qualification. Regression test for issue #90268.
-#![feature(untagged_unions)]
+
 use std::cell::Cell;
+use std::mem::ManuallyDrop;
 
-union U { i: u32, c: Cell<u32> }
+union U { i: u32, c: ManuallyDrop<Cell<u32>> }
 
-const C1: Cell<u32> = {
-    unsafe { U { c: Cell::new(0) }.c }
+const C1: ManuallyDrop<Cell<u32>> = {
+    unsafe { U { c: ManuallyDrop::new(Cell::new(0)) }.c }
 };
 
-const C2: Cell<u32> = {
+const C2: ManuallyDrop<Cell<u32>> = {
     unsafe { U { i : 0 }.c }
 };
 
-const C3: Cell<u32> = {
+const C3: ManuallyDrop<Cell<u32>> = {
     let mut u = U { i: 0 };
     u.i = 1;
     unsafe { u.c }

@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, cenum_impl_drop_cast)]
 
 // check dtor calling order when casting enums.
 
@@ -30,5 +30,5 @@ fn main() {
         assert_eq!(e as u32, 2);
         assert_eq!(FLAG.load(Ordering::SeqCst), 0);
     }
-    assert_eq!(FLAG.load(Ordering::SeqCst), 0);
+    assert_eq!(FLAG.load(Ordering::SeqCst), 1);
 }

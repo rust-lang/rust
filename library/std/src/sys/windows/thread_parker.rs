@@ -197,19 +197,17 @@ impl Parker {
         // purpose, to make sure every unpark() has a release-acquire ordering
         // with park().
         if self.state.swap(NOTIFIED, Release) == PARKED {
-            if let Some(wake_by_address_single) = c::WakeByAddressSingle::option() {
-                unsafe {
+            unsafe {
+                if let Some(wake_by_address_single) = c::WakeByAddressSingle::option() {
                     wake_by_address_single(self.ptr());
-                }
-            } else {
-                // If we run NtReleaseKeyedEvent before the waiting thread runs
-                // NtWaitForKeyedEvent, this (shortly) blocks until we can wake it up.
-                // If the waiting thread wakes up before we run NtReleaseKeyedEvent
-                // (e.g. due to a timeout), this blocks until we do wake up a thread.
-                // To prevent this thread from blocking indefinitely in that case,
-                // park_impl() will, after seeing the state set to NOTIFIED after
-                // waking up, call NtWaitForKeyedEvent again to unblock us.
-                unsafe {
+                } else {
+                    // If we run NtReleaseKeyedEvent before the waiting thread runs
+                    // NtWaitForKeyedEvent, this (shortly) blocks until we can wake it up.
+                    // If the waiting thread wakes up before we run NtReleaseKeyedEvent
+                    // (e.g. due to a timeout), this blocks until we do wake up a thread.
+                    // To prevent this thread from blocking indefinitely in that case,
+                    // park_impl() will, after seeing the state set to NOTIFIED after
+                    // waking up, call NtWaitForKeyedEvent again to unblock us.
                     c::NtReleaseKeyedEvent(keyed_event_handle(), self.ptr(), 0, ptr::null_mut());
                 }
             }

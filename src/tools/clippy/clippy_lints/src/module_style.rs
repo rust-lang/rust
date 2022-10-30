@@ -2,7 +2,7 @@ use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{FileName, RealFileName, SourceFile, Span, SyntaxContext};
+use rustc_span::{FileName, SourceFile, Span, SyntaxContext};
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 
@@ -79,7 +79,7 @@ impl EarlyLintPass for ModStyle {
 
         let files = cx.sess().source_map().files();
 
-        let RealFileName::LocalPath(trim_to_src) = &cx.sess().opts.working_dir else { return };
+        let Some(trim_to_src) = cx.sess().opts.working_dir.local_path() else { return };
 
         // `folder_segments` is all unique folder path segments `path/to/foo.rs` gives
         // `[path, to]` but not foo
@@ -90,7 +90,7 @@ impl EarlyLintPass for ModStyle {
         // `{ foo => path/to/foo.rs, .. }
         let mut file_map = FxHashMap::default();
         for file in files.iter() {
-            if let FileName::Real(RealFileName::LocalPath(lp)) = &file.name {
+            if let FileName::Real(name) = &file.name && let Some(lp) = name.local_path() {
                 let path = if lp.is_relative() {
                     lp
                 } else if let Ok(relative) = lp.strip_prefix(trim_to_src) {
@@ -117,12 +117,8 @@ impl EarlyLintPass for ModStyle {
                     cx.struct_span_lint(
                         SELF_NAMED_MODULE_FILES,
                         Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
-                        |build| {
-                            let mut lint =
-                                build.build(&format!("`mod.rs` files are required, found `{}`", path.display()));
-                            lint.help(&format!("move `{}` to `{}`", path.display(), correct.display(),));
-                            lint.emit();
-                        },
+                        format!("`mod.rs` files are required, found `{}`", path.display()),
+                        |lint| lint.help(format!("move `{}` to `{}`", path.display(), correct.display(),)),
                     );
                 }
             }
@@ -156,11 +152,8 @@ fn check_self_named_mod_exists(cx: &EarlyContext<'_>, path: &Path, file: &Source
         cx.struct_span_lint(
             MOD_MODULE_FILES,
             Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
-            |build| {
-                let mut lint = build.build(&format!("`mod.rs` files are not allowed, found `{}`", path.display()));
-                lint.help(&format!("move `{}` to `{}`", path.display(), mod_file.display(),));
-                lint.emit();
-            },
+            format!("`mod.rs` files are not allowed, found `{}`", path.display()),
+            |lint| lint.help(format!("move `{}` to `{}`", path.display(), mod_file.display())),
         );
     }
 }

@@ -1,9 +1,3 @@
-error[E0425]: cannot find function `log` in this scope
-  --> $DIR/bad-expr-path.rs:4:5
-   |
-LL |     log(debug, m1::arguments);
-   |     ^^^ not found in this scope
-
 error[E0425]: cannot find value `debug` in this scope
   --> $DIR/bad-expr-path.rs:4:9
    |
@@ -15,6 +9,12 @@ error[E0425]: cannot find value `arguments` in module `m1`
    |
 LL |     log(debug, m1::arguments);
    |                    ^^^^^^^^^ not found in `m1`
+
+error[E0425]: cannot find function `log` in this scope
+  --> $DIR/bad-expr-path.rs:4:5
+   |
+LL |     log(debug, m1::arguments);
+   |     ^^^ not found in this scope
 
 error[E0580]: `main` function has wrong type
   --> $DIR/bad-expr-path.rs:3:1

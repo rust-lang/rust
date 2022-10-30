@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
 pub trait Fooey: Sized {
     type Context<'c> where Self: 'c;
 }

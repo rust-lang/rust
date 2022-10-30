@@ -25,10 +25,11 @@ use std::time::Instant;
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
+    let arg = |name| args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
-    let target = args.windows(2).find(|w| &*w[0] == "--target").and_then(|w| w[1].to_str());
+    let target = arg("--target");
     let version = args.iter().find(|w| &**w == "-vV");
 
     let verbose = match env::var("RUSTC_VERBOSE") {
@@ -59,15 +60,14 @@ fn main() {
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
     // Get the name of the crate we're compiling, if any.
-    let crate_name =
-        args.windows(2).find(|args| args[0] == "--crate-name").and_then(|args| args[1].to_str());
+    let crate_name = arg("--crate-name");
 
     if let Some(crate_name) = crate_name {
         if let Some(target) = env::var_os("RUSTC_TIME") {
             if target == "all"
                 || target.into_string().unwrap().split(',').any(|c| c.trim() == crate_name)
             {
-                cmd.arg("-Ztime");
+                cmd.arg("-Ztime-passes");
             }
         }
     }
@@ -106,6 +106,15 @@ fn main() {
         {
             cmd.arg("-C").arg("panic=abort");
         }
+
+        // `-Ztls-model=initial-exec` must not be applied to proc-macros, see
+        // issue https://github.com/rust-lang/rust/issues/100530
+        if env::var("RUSTC_TLS_MODEL_INITIAL_EXEC").is_ok()
+            && arg("--crate-type") != Some("proc-macro")
+            && !matches!(crate_name, Some("proc_macro2" | "quote" | "syn" | "synstructure"))
+        {
+            cmd.arg("-Ztls-model=initial-exec");
+        }
     } else {
         // FIXME(rust-lang/cargo#5754) we shouldn't be using special env vars
         // here, but rather Cargo should know what flags to pass rustc itself.
@@ -127,12 +136,16 @@ fn main() {
             }
         }
 
+        // Cargo doesn't pass RUSTFLAGS to proc_macros:
+        // https://github.com/rust-lang/cargo/issues/4423
+        // Thus, if we are on stage 0, we explicitly set `--cfg=bootstrap`.
+        // We also declare that the flag is expected, which we need to do to not
+        // get warnings about it being unexpected.
         if stage == "0" {
-            // Cargo doesn't pass RUSTFLAGS to proc_macros:
-            // https://github.com/rust-lang/cargo/issues/4423
-            // Set `--cfg=bootstrap` explicitly instead.
             cmd.arg("--cfg=bootstrap");
         }
+        cmd.arg("-Zunstable-options");
+        cmd.arg("--check-cfg=values(bootstrap)");
     }
 
     if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {

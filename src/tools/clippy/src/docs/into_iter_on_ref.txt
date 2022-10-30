@@ -1,0 +1,18 @@
+### What it does
+Checks for `into_iter` calls on references which should be replaced by `iter`
+or `iter_mut`.
+
+### Why is this bad?
+Readability. Calling `into_iter` on a reference will not move out its
+content into the resulting iterator, which is confusing. It is better just call `iter` or
+`iter_mut` directly.
+
+### Example
+```
+(&vec).into_iter();
+```
+
+Use instead:
+```
+(&vec).iter();
+```

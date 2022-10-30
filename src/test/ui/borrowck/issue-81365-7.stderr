@@ -13,7 +13,7 @@ note: deref defined here
   --> $DIR/issue-81365-7.rs:12:5
    |
 LL |     type Target = DerefTarget;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -2,7 +2,6 @@
 
 #![allow(incomplete_features)]
 #![feature(associated_type_bounds)]
-#![feature(generic_associated_types)]
 
 trait MP {
     type T<'a>;

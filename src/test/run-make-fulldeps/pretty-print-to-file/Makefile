@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) -o $(TMPDIR)/input.out -Zunpretty=normal input.rs

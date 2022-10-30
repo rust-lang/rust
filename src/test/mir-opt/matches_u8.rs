@@ -1,4 +1,6 @@
-// EMIT_MIR_FOR_EACH_BIT_WIDTH
+// unit-test: MatchBranchSimplification
+
+
 // EMIT_MIR matches_u8.exhaustive_match.MatchBranchSimplification.diff
 // EMIT_MIR matches_u8.exhaustive_match_i8.MatchBranchSimplification.diff
 

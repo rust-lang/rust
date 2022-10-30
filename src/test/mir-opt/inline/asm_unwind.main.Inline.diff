@@ -1,0 +1,45 @@
+- // MIR for `main` before Inline
++ // MIR for `main` after Inline
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/asm-unwind.rs:+0:15: +0:15
+      let _1: ();                          // in scope 0 at $DIR/asm-unwind.rs:+1:5: +1:10
++     scope 1 (inlined foo) {              // at $DIR/asm-unwind.rs:21:5: 21:10
++         let _2: D;                       // in scope 1 at $DIR/asm-unwind.rs:15:9: 15:11
++         scope 2 {
++             debug _d => _2;              // in scope 2 at $DIR/asm-unwind.rs:15:9: 15:11
++             scope 3 {
++             }
++         }
++     }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/asm-unwind.rs:+1:5: +1:10
+-         _1 = foo() -> bb1;               // scope 0 at $DIR/asm-unwind.rs:+1:5: +1:10
+-                                          // mir::Constant
+-                                          // + span: $DIR/asm-unwind.rs:21:5: 21:8
+-                                          // + literal: Const { ty: fn() {foo}, val: Value(<ZST>) }
++         StorageLive(_2);                 // scope 1 at $DIR/asm-unwind.rs:15:9: 15:11
++         asm!("", options(MAY_UNWIND)) -> [return: bb1, unwind: bb3]; // scope 3 at $DIR/asm-unwind.rs:16:14: 16:54
+      }
+  
+      bb1: {
++         drop(_2) -> bb2;                 // scope 1 at $DIR/asm-unwind.rs:17:1: 17:2
++     }
++ 
++     bb2: {
++         StorageDead(_2);                 // scope 1 at $DIR/asm-unwind.rs:17:1: 17:2
+          StorageDead(_1);                 // scope 0 at $DIR/asm-unwind.rs:+1:10: +1:11
+          _0 = const ();                   // scope 0 at $DIR/asm-unwind.rs:+0:15: +2:2
+          return;                          // scope 0 at $DIR/asm-unwind.rs:+2:2: +2:2
++     }
++ 
++     bb3 (cleanup): {
++         drop(_2) -> bb4;                 // scope 1 at $DIR/asm-unwind.rs:17:1: 17:2
++     }
++ 
++     bb4 (cleanup): {
++         resume;                          // scope 1 at $DIR/asm-unwind.rs:14:1: 17:2
+      }
+  }
+  

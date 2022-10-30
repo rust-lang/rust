@@ -24,8 +24,8 @@ struct FindLocalAssignmentVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for FindLocalAssignmentVisitor {
-    fn visit_local(&mut self, local: &Local, place_context: PlaceContext, location: Location) {
-        if self.needle != *local {
+    fn visit_local(&mut self, local: Local, place_context: PlaceContext, location: Location) {
+        if self.needle != local {
             return;
         }
 

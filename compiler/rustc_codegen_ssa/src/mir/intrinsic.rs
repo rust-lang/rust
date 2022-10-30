@@ -3,12 +3,16 @@ use super::place::PlaceRef;
 use super::FunctionCx;
 use crate::common::{span_invalid_monomorphization_error, IntPredicate};
 use crate::glue;
+use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{sym, Span};
-use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_target::abi::{
+    call::{FnAbi, PassMode},
+    WrappingRange,
+};
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -73,10 +77,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let llval = match name {
-            sym::assume => {
-                bx.assume(args[0].immediate());
-                return;
-            }
             sym::abort => {
                 bx.abort();
                 return;
@@ -101,6 +101,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
                 }
+            }
+            sym::vtable_size | sym::vtable_align => {
+                let vtable = args[0].immediate();
+                let idx = match name {
+                    sym::vtable_size => ty::COMMON_VTABLE_ENTRIES_SIZE,
+                    sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
+                    _ => bug!(),
+                };
+                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
+                if name == sym::vtable_align {
+                    // Alignment is always nonzero.
+                    bx.range_metadata(value, WrappingRange { start: 1, end: !0 });
+                };
+                value
             }
             sym::pref_align_of
             | sym::needs_drop
@@ -376,32 +390,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             // This requires that atomic intrinsics follow a specific naming pattern:
-            // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
-            name if name_str.starts_with("atomic_") => {
+            // "atomic_<operation>[_<ordering>]"
+            name if let Some(atomic) = name_str.strip_prefix("atomic_") => {
                 use crate::common::AtomicOrdering::*;
                 use crate::common::{AtomicRmwBinOp, SynchronizationScope};
 
-                let split: Vec<_> = name_str.split('_').collect();
+                let Some((instruction, ordering)) = atomic.split_once('_') else {
+                    bx.sess().fatal("Atomic intrinsic missing memory ordering");
+                };
 
-                let is_cxchg = split[1] == "cxchg" || split[1] == "cxchgweak";
-                let (order, failorder) = match split.len() {
-                    2 => (SequentiallyConsistent, SequentiallyConsistent),
-                    3 => match split[2] {
-                        "unordered" => (Unordered, Unordered),
-                        "relaxed" => (Relaxed, Relaxed),
-                        "acq" => (Acquire, Acquire),
-                        "rel" => (Release, Relaxed),
-                        "acqrel" => (AcquireRelease, Acquire),
-                        "failrelaxed" if is_cxchg => (SequentiallyConsistent, Relaxed),
-                        "failacq" if is_cxchg => (SequentiallyConsistent, Acquire),
-                        _ => bx.sess().fatal("unknown ordering in atomic intrinsic"),
-                    },
-                    4 => match (split[2], split[3]) {
-                        ("acq", "failrelaxed") if is_cxchg => (Acquire, Relaxed),
-                        ("acqrel", "failrelaxed") if is_cxchg => (AcquireRelease, Relaxed),
-                        _ => bx.sess().fatal("unknown ordering in atomic intrinsic"),
-                    },
-                    _ => bx.sess().fatal("Atomic intrinsic not in correct format"),
+                let parse_ordering = |bx: &Bx, s| match s {
+                    "unordered" => Unordered,
+                    "relaxed" => Relaxed,
+                    "acquire" => Acquire,
+                    "release" => Release,
+                    "acqrel" => AcquireRelease,
+                    "seqcst" => SequentiallyConsistent,
+                    _ => bx.sess().fatal("unknown ordering in atomic intrinsic"),
                 };
 
                 let invalid_monomorphization = |ty| {
@@ -416,11 +421,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     );
                 };
 
-                match split[1] {
+                match instruction {
                     "cxchg" | "cxchgweak" => {
+                        let Some((success, failure)) = ordering.split_once('_') else {
+                            bx.sess().fatal("Atomic compare-exchange intrinsic missing failure memory ordering");
+                        };
                         let ty = substs.type_at(0);
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
-                            let weak = split[1] == "cxchgweak";
+                            let weak = instruction == "cxchgweak";
                             let mut dst = args[0].immediate();
                             let mut cmp = args[1].immediate();
                             let mut src = args[2].immediate();
@@ -432,7 +440,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 cmp = bx.ptrtoint(cmp, bx.type_isize());
                                 src = bx.ptrtoint(src, bx.type_isize());
                             }
-                            let pair = bx.atomic_cmpxchg(dst, cmp, src, order, failorder, weak);
+                            let pair = bx.atomic_cmpxchg(dst, cmp, src, parse_ordering(bx, success), parse_ordering(bx, failure), weak);
                             let val = bx.extract_value(pair, 0);
                             let success = bx.extract_value(pair, 1);
                             let val = bx.from_immediate(val);
@@ -460,11 +468,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 let llty = bx.type_isize();
                                 let ptr_llty = bx.type_ptr_to(llty);
                                 source = bx.pointercast(source, ptr_llty);
-                                let result = bx.atomic_load(llty, source, order, size);
+                                let result = bx.atomic_load(llty, source, parse_ordering(bx, ordering), size);
                                 // ... and then cast the result back to a pointer
                                 bx.inttoptr(result, bx.backend_type(layout))
                             } else {
-                                bx.atomic_load(bx.backend_type(layout), source, order, size)
+                                bx.atomic_load(bx.backend_type(layout), source, parse_ordering(bx, ordering), size)
                             }
                         } else {
                             return invalid_monomorphization(ty);
@@ -484,7 +492,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 ptr = bx.pointercast(ptr, ptr_llty);
                                 val = bx.ptrtoint(val, bx.type_isize());
                             }
-                            bx.atomic_store(val, ptr, order, size);
+                            bx.atomic_store(val, ptr, parse_ordering(bx, ordering), size);
                             return;
                         } else {
                             return invalid_monomorphization(ty);
@@ -492,12 +500,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
 
                     "fence" => {
-                        bx.atomic_fence(order, SynchronizationScope::CrossThread);
+                        bx.atomic_fence(parse_ordering(bx, ordering), SynchronizationScope::CrossThread);
                         return;
                     }
 
                     "singlethreadfence" => {
-                        bx.atomic_fence(order, SynchronizationScope::SingleThread);
+                        bx.atomic_fence(parse_ordering(bx, ordering), SynchronizationScope::SingleThread);
                         return;
                     }
 
@@ -519,9 +527,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         };
 
                         let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some()
-                            || (ty.is_unsafe_ptr() && op == "xchg")
-                        {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let mut ptr = args[0].immediate();
                             let mut val = args[1].immediate();
                             if ty.is_unsafe_ptr() {
@@ -531,7 +537,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 ptr = bx.pointercast(ptr, ptr_llty);
                                 val = bx.ptrtoint(val, bx.type_isize());
                             }
-                            bx.atomic_rmw(atom_op, ptr, val, order)
+                            bx.atomic_rmw(atom_op, ptr, val, parse_ordering(bx, ordering))
                         } else {
                             return invalid_monomorphization(ty);
                         }
@@ -545,14 +551,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 return;
             }
 
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
+            sym::ptr_guaranteed_cmp => {
                 let a = args[0].immediate();
                 let b = args[1].immediate();
-                if name == sym::ptr_guaranteed_eq {
-                    bx.icmp(IntPredicate::IntEQ, a, b)
-                } else {
-                    bx.icmp(IntPredicate::IntNE, a, b)
-                }
+                bx.icmp(IntPredicate::IntEQ, a, b)
             }
 
             sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
@@ -587,8 +589,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(ty) = fn_abi.ret.mode {
-                let ptr_llty = bx.type_ptr_to(bx.cast_backend_type(&ty));
+            if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
+                let ptr_llty = bx.type_ptr_to(bx.cast_backend_type(ty));
                 let ptr = bx.pointercast(result.llval, ptr_llty);
                 bx.store(llval, ptr, result.align);
             } else {

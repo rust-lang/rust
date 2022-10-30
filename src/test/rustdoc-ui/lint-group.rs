@@ -1,3 +1,5 @@
+#![feature(rustdoc_missing_doc_code_examples)]
+
 //! Documenting the kinds of lints emitted by rustdoc.
 //!
 //! ```

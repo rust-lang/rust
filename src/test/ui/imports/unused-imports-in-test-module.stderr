@@ -22,113 +22,41 @@ help: consider adding a `#[cfg(test)]` to the containing module
 LL | mod test {
    | ^^^^^^^^
 
-error: unused import: `crate::b`
-  --> $DIR/unused-imports-in-test-module.rs:12:13
-   |
-LL |         use crate::b;
-   |             ^^^^^^^^
-   |
-help: consider adding a `#[cfg(test)]` to the containing module
-  --> $DIR/unused-imports-in-test-module.rs:8:1
-   |
-LL | mod test {
-   | ^^^^^^^^
-
 error: unused import: `super::a`
-  --> $DIR/unused-imports-in-test-module.rs:17:9
+  --> $DIR/unused-imports-in-test-module.rs:19:9
    |
 LL |     use super::a;
    |         ^^^^^^^^
    |
 help: consider adding a `#[cfg(test)]` to the containing module
-  --> $DIR/unused-imports-in-test-module.rs:16:1
-   |
-LL | mod tests {
-   | ^^^^^^^^^
-
-error: unused import: `crate::b`
-  --> $DIR/unused-imports-in-test-module.rs:20:13
-   |
-LL |         use crate::b;
-   |             ^^^^^^^^
-   |
-help: consider adding a `#[cfg(test)]` to the containing module
-  --> $DIR/unused-imports-in-test-module.rs:16:1
+  --> $DIR/unused-imports-in-test-module.rs:18:1
    |
 LL | mod tests {
    | ^^^^^^^^^
 
 error: unused import: `super::a`
-  --> $DIR/unused-imports-in-test-module.rs:25:9
+  --> $DIR/unused-imports-in-test-module.rs:29:9
    |
 LL |     use super::a;
    |         ^^^^^^^^
    |
 help: consider adding a `#[cfg(test)]` to the containing module
-  --> $DIR/unused-imports-in-test-module.rs:24:1
-   |
-LL | mod test_a {
-   | ^^^^^^^^^^
-
-error: unused import: `crate::b`
-  --> $DIR/unused-imports-in-test-module.rs:28:13
-   |
-LL |         use crate::b;
-   |             ^^^^^^^^
-   |
-help: consider adding a `#[cfg(test)]` to the containing module
-  --> $DIR/unused-imports-in-test-module.rs:24:1
+  --> $DIR/unused-imports-in-test-module.rs:28:1
    |
 LL | mod test_a {
    | ^^^^^^^^^^
 
 error: unused import: `super::a`
-  --> $DIR/unused-imports-in-test-module.rs:33:9
+  --> $DIR/unused-imports-in-test-module.rs:39:9
    |
 LL |     use super::a;
    |         ^^^^^^^^
    |
 help: consider adding a `#[cfg(test)]` to the containing module
-  --> $DIR/unused-imports-in-test-module.rs:32:1
+  --> $DIR/unused-imports-in-test-module.rs:38:1
    |
 LL | mod a_test {
    | ^^^^^^^^^^
-
-error: unused import: `crate::b`
-  --> $DIR/unused-imports-in-test-module.rs:36:13
-   |
-LL |         use crate::b;
-   |             ^^^^^^^^
-   |
-help: consider adding a `#[cfg(test)]` to the containing module
-  --> $DIR/unused-imports-in-test-module.rs:32:1
-   |
-LL | mod a_test {
-   | ^^^^^^^^^^
-
-error: unused import: `super::a`
-  --> $DIR/unused-imports-in-test-module.rs:41:9
-   |
-LL |     use super::a;
-   |         ^^^^^^^^
-   |
-help: consider adding a `#[cfg(test)]` to the containing module
-  --> $DIR/unused-imports-in-test-module.rs:40:1
-   |
-LL | mod tests_a {
-   | ^^^^^^^^^^^
-
-error: unused import: `crate::b`
-  --> $DIR/unused-imports-in-test-module.rs:44:13
-   |
-LL |         use crate::b;
-   |             ^^^^^^^^
-   |
-help: consider adding a `#[cfg(test)]` to the containing module
-  --> $DIR/unused-imports-in-test-module.rs:40:1
-   |
-LL | mod tests_a {
-   | ^^^^^^^^^^^
 
 error: unused import: `super::a`
   --> $DIR/unused-imports-in-test-module.rs:49:9
@@ -139,32 +67,26 @@ LL |     use super::a;
 help: consider adding a `#[cfg(test)]` to the containing module
   --> $DIR/unused-imports-in-test-module.rs:48:1
    |
-LL | mod a_tests {
+LL | mod tests_a {
    | ^^^^^^^^^^^
 
-error: unused import: `crate::b`
-  --> $DIR/unused-imports-in-test-module.rs:52:13
+error: unused import: `super::a`
+  --> $DIR/unused-imports-in-test-module.rs:59:9
    |
-LL |         use crate::b;
-   |             ^^^^^^^^
+LL |     use super::a;
+   |         ^^^^^^^^
    |
 help: consider adding a `#[cfg(test)]` to the containing module
-  --> $DIR/unused-imports-in-test-module.rs:48:1
+  --> $DIR/unused-imports-in-test-module.rs:58:1
    |
 LL | mod a_tests {
    | ^^^^^^^^^^^
 
 error: unused import: `super::a`
-  --> $DIR/unused-imports-in-test-module.rs:57:9
+  --> $DIR/unused-imports-in-test-module.rs:69:9
    |
 LL |     use super::a;
    |         ^^^^^^^^
 
-error: unused import: `crate::b`
-  --> $DIR/unused-imports-in-test-module.rs:60:13
-   |
-LL |         use crate::b;
-   |             ^^^^^^^^
-
-error: aborting due to 15 previous errors
+error: aborting due to 8 previous errors
 

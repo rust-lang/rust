@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::same_type_and_consts;
-use clippy_utils::{meets_msrv, msrvs};
+use clippy_utils::{is_from_proc_macro, meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -12,11 +12,11 @@ use rustc_hir::{
     Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath,
     TyKind,
 };
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
-use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -87,7 +87,7 @@ impl_lint_pass!(UseSelf => [USE_SELF]);
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
-    fn check_item(&mut self, _cx: &LateContext<'_>, item: &Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
         if matches!(item.kind, ItemKind::OpaqueTy(_)) {
             // skip over `ItemKind::OpaqueTy` in order to lint `foo() -> impl <..>`
             return;
@@ -103,9 +103,10 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if parameters.as_ref().map_or(true, |params| {
                 !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
             });
+            if !is_from_proc_macro(cx, item); // expensive, should be last check
             then {
                 StackItem::Check {
-                    impl_id: item.def_id,
+                    impl_id: item.def_id.def_id,
                     in_body: 0,
                     types_to_skip: std::iter::once(self_ty.hir_id).collect(),
                 }
@@ -205,7 +206,12 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 ref types_to_skip,
             }) = self.stack.last();
             if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
-            if !matches!(path.res, Res::SelfTy { .. } | Res::Def(DefKind::TyParam, _));
+            if !matches!(
+                path.res,
+                Res::SelfTyParam { .. }
+                | Res::SelfTyAlias { .. }
+                | Res::Def(DefKind::TyParam, _)
+            );
             if !types_to_skip.contains(&hir_ty.hir_id);
             let ty = if in_body > 0 {
                 cx.typeck_results().node_type(hir_ty.hir_id)
@@ -213,9 +219,6 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 hir_ty_to_ty(cx.tcx, hir_ty)
             };
             if same_type_and_consts(ty, cx.tcx.type_of(impl_id));
-            let hir = cx.tcx.hir();
-            // prevents false positive on `#[derive(serde::Deserialize)]`
-            if !hir.span(hir.get_parent_node(hir_ty.hir_id)).in_derive_expansion();
             then {
                 span_lint(cx, hir_ty.span);
             }
@@ -232,7 +235,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         }
         match expr.kind {
             ExprKind::Struct(QPath::Resolved(_, path), ..) => match path.res {
-                Res::SelfTy { .. } => (),
+                Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => (),
                 Res::Def(DefKind::Variant, _) => lint_path_to_variant(cx, path),
                 _ => span_lint(cx, path.span),
             },
@@ -258,13 +261,21 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !pat.span.from_expansion();
             if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
-            if let PatKind::Path(QPath::Resolved(_, path)) = pat.kind;
-            if !matches!(path.res, Res::SelfTy { .. } | Res::Def(DefKind::TyParam, _));
+            // get the path from the pattern
+            if let PatKind::Path(QPath::Resolved(_, path))
+                 | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
+                 | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind;
             if cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id);
-            if let [first, ..] = path.segments;
-            if let Some(hir_id) = first.hir_id;
             then {
-                span_lint(cx, cx.tcx.hir().span(hir_id));
+                match path.res {
+                    Res::Def(DefKind::Ctor(ctor_of, _), ..) => match ctor_of {
+                            CtorOf::Variant => lint_path_to_variant(cx, path),
+                            CtorOf::Struct => span_lint(cx, path.span),
+                    },
+                    Res::Def(DefKind::Variant, ..) => lint_path_to_variant(cx, path),
+                    Res::Def(DefKind::Struct, ..) => span_lint(cx, path.span),
+                    _ => ()
+                }
             }
         }
     }

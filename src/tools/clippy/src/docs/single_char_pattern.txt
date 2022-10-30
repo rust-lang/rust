@@ -1,0 +1,20 @@
+### What it does
+Checks for string methods that receive a single-character
+`str` as an argument, e.g., `_.split("x")`.
+
+### Why is this bad?
+Performing these methods using a `char` is faster than
+using a `str`.
+
+### Known problems
+Does not catch multi-byte unicode characters.
+
+### Example
+```
+_.split("x");
+```
+
+Use instead:
+```
+_.split('x');
+```

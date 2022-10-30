@@ -2,8 +2,9 @@ use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
-    inline, Clean, Crate, ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item,
-    ItemKind, Lifetime, Path, PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
+    clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline, Crate,
+    ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path,
+    PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -11,16 +12,17 @@ use crate::visit_lib::LibEmbargoVisitor;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
 use std::mem;
+use thin_vec::ThinVec;
 
 #[cfg(test)]
 mod tests;
@@ -35,7 +37,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
-    let mut module = module.clean(cx);
+    let mut module = clean_doc_module(&module, cx);
 
     match *module.kind {
         ItemKind::ModuleItem(ref module) => {
@@ -68,7 +70,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
             )
         }));
         m.items.extend(keywords.into_iter().map(|(def_id, kw)| {
-            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem(kw), cx)
+            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx)
         }));
     }
 
@@ -83,18 +85,15 @@ pub(crate) fn substs_to_args<'tcx>(
     let mut ret_val =
         Vec::with_capacity(substs.len().saturating_sub(if skip_first { 1 } else { 0 }));
     ret_val.extend(substs.iter().filter_map(|kind| match kind.unpack() {
-        GenericArgKind::Lifetime(lt) => match *lt {
-            ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
-                Some(GenericArg::Lifetime(Lifetime::elided()))
-            }
-            _ => lt.clean(cx).map(GenericArg::Lifetime),
-        },
+        GenericArgKind::Lifetime(lt) => {
+            Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
+        }
         GenericArgKind::Type(_) if skip_first => {
             skip_first = false;
             None
         }
-        GenericArgKind::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
-        GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(ct.clean(cx)))),
+        GenericArgKind::Type(ty) => Some(GenericArg::Type(clean_middle_ty(ty, cx, None))),
+        GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(clean_middle_const(ct, cx)))),
     }));
     ret_val
 }
@@ -103,7 +102,7 @@ fn external_generic_args<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    bindings: Vec<TypeBinding>,
+    bindings: ThinVec<TypeBinding>,
     substs: SubstsRef<'tcx>,
 ) -> GenericArgs {
     let args = substs_to_args(cx, substs, has_self);
@@ -112,8 +111,8 @@ fn external_generic_args<'tcx>(
         let inputs =
             // The trait's first substitution is the one after self, if there is one.
             match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| t.clean(cx)).collect::<Vec<_>>().into(),
-                _ => return GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() },
+                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(t, cx, None)).collect::<Vec<_>>().into(),
+                _ => return GenericArgs::AngleBracketed { args: args.into(), bindings },
             };
         let output = None;
         // FIXME(#20299) return type comes from a projection now
@@ -131,7 +130,7 @@ pub(super) fn external_path<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    bindings: Vec<TypeBinding>,
+    bindings: ThinVec<TypeBinding>,
     substs: SubstsRef<'tcx>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
@@ -234,17 +233,14 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 }
 
 pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
-    match n.val() {
-        ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) => {
-            let mut s = if let Some(def) = def.as_local() {
-                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def.did);
-                print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(hir_id))
+    match n.kind() {
+        ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs: _ }) => {
+            let s = if let Some(def) = def.as_local() {
+                print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(def.did))
             } else {
                 inline::print_inlined_const(cx.tcx, def.did)
             };
-            if let Some(promoted) = promoted {
-                s.push_str(&format!("::{:?}", promoted))
-            }
+
             s
         }
         _ => {
@@ -263,15 +259,19 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     }
 }
 
-pub(crate) fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<String> {
+pub(crate) fn print_evaluated_const(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    underscores_and_type: bool,
+) -> Option<String> {
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = tcx.type_of(def_id);
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
             (ConstValue::Scalar(_), _) => {
-                let const_ = ty::Const::from_value(tcx, val, ty);
-                Some(print_const_with_custom_print_scalar(tcx, const_))
+                let const_ = mir::ConstantKind::from_value(val, ty);
+                Some(print_const_with_custom_print_scalar(tcx, const_, underscores_and_type))
             }
             _ => None,
         }
@@ -304,24 +304,35 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: ty::Const<'_>) -> String {
+fn print_const_with_custom_print_scalar<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ct: mir::ConstantKind<'tcx>,
+    underscores_and_type: bool,
+) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
-    match (ct.val(), ct.ty().kind()) {
-        (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Uint(ui)) => {
-            format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
+    match (ct, ct.ty().kind()) {
+        (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Uint(ui)) => {
+            if underscores_and_type {
+                format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
+            } else {
+                int.to_string()
+            }
         }
-        (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Int(i)) => {
-            let ty = tcx.lift(ct.ty()).unwrap();
+        (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Int(i)) => {
+            let ty = ct.ty();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
-
-            format!(
-                "{}{}",
-                format_integer_with_underscore_sep(&sign_extended_data.to_string()),
-                i.name_str()
-            )
+            if underscores_and_type {
+                format!(
+                    "{}{}",
+                    format_integer_with_underscore_sep(&sign_extended_data.to_string()),
+                    i.name_str()
+                )
+            } else {
+                sign_extended_data.to_string()
+            }
         }
         _ => ct.to_string(),
     }
@@ -343,17 +354,98 @@ pub(crate) fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
     false
 }
 
+/// Build a textual representation of an unevaluated constant expression.
+///
+/// If the const expression is too complex, an underscore `_` is returned.
+/// For const arguments, it's `{ _ }` to be precise.
+/// This means that the output is not necessarily valid Rust code.
+///
+/// Currently, only
+///
+/// * literals (optionally with a leading `-`)
+/// * unit `()`
+/// * blocks (`{ … }`) around simple expressions and
+/// * paths without arguments
+///
+/// are considered simple enough. Simple blocks are included since they are
+/// necessary to disambiguate unit from the unit type.
+/// This list might get extended in the future.
+///
+/// Without this censoring, in a lot of cases the output would get too large
+/// and verbose. Consider `match` expressions, blocks and deeply nested ADTs.
+/// Further, private and `doc(hidden)` fields of structs would get leaked
+/// since HIR datatypes like the `body` parameter do not contain enough
+/// semantic information for this function to be able to hide them –
+/// at least not without significant performance overhead.
+///
+/// Whenever possible, prefer to evaluate the constant first and try to
+/// use a different method for pretty-printing. Ideally this function
+/// should only ever be used as a fallback.
 pub(crate) fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
     let hir = tcx.hir();
     let value = &hir.body(body).value;
 
-    let snippet = if !value.span.from_expansion() {
-        tcx.sess.source_map().span_to_snippet(value.span).ok()
-    } else {
-        None
-    };
+    #[derive(PartialEq, Eq)]
+    enum Classification {
+        Literal,
+        Simple,
+        Complex,
+    }
 
-    snippet.unwrap_or_else(|| rustc_hir_pretty::id_to_string(&hir, body.hir_id))
+    use Classification::*;
+
+    fn classify(expr: &hir::Expr<'_>) -> Classification {
+        match &expr.kind {
+            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
+                if matches!(expr.kind, hir::ExprKind::Lit(_)) { Literal } else { Complex }
+            }
+            hir::ExprKind::Lit(_) => Literal,
+            hir::ExprKind::Tup([]) => Simple,
+            hir::ExprKind::Block(hir::Block { stmts: [], expr: Some(expr), .. }, _) => {
+                if classify(expr) == Complex { Complex } else { Simple }
+            }
+            // Paths with a self-type or arguments are too “complex” following our measure since
+            // they may leak private fields of structs (with feature `adt_const_params`).
+            // Consider: `<Self as Trait<{ Struct { private: () } }>>::CONSTANT`.
+            // Paths without arguments are definitely harmless though.
+            hir::ExprKind::Path(hir::QPath::Resolved(_, hir::Path { segments, .. })) => {
+                if segments.iter().all(|segment| segment.args.is_none()) { Simple } else { Complex }
+            }
+            // FIXME: Claiming that those kinds of QPaths are simple is probably not true if the Ty
+            //        contains const arguments. Is there a *concise* way to check for this?
+            hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => Simple,
+            // FIXME: Can they contain const arguments and thus leak private struct fields?
+            hir::ExprKind::Path(hir::QPath::LangItem(..)) => Simple,
+            _ => Complex,
+        }
+    }
+
+    let classification = classify(value);
+
+    if classification == Literal
+    && !value.span.from_expansion()
+    && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span) {
+        // For literals, we avoid invoking the pretty-printer and use the source snippet instead to
+        // preserve certain stylistic choices the user likely made for the sake legibility like
+        //
+        // * hexadecimal notation
+        // * underscores
+        // * character escapes
+        //
+        // FIXME: This passes through `-/*spacer*/0` verbatim.
+        snippet
+    } else if classification == Simple {
+        // Otherwise we prefer pretty-printing to get rid of extraneous whitespace, comments and
+        // other formatting artifacts.
+        rustc_hir_pretty::id_to_string(&hir, body.hir_id)
+    } else if tcx.def_kind(hir.body_owner_def_id(body).to_def_id()) == DefKind::AnonConst {
+        // FIXME: Omit the curly braces if the enclosing expression is an array literal
+        //        with a repeated element (an `ExprKind::Repeat`) as in such case it
+        //        would not actually need any disambiguation.
+        "{ _ }".to_owned()
+    } else {
+        "_".to_owned()
+    }
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
@@ -362,7 +454,9 @@ pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
 
     match path.res {
         Res::PrimTy(p) => Primitive(PrimitiveType::from(p)),
-        Res::SelfTy { .. } if path.segments.len() == 1 => Generic(kw::SelfUpper),
+        Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } if path.segments.len() == 1 => {
+            Generic(kw::SelfUpper)
+        }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => Generic(path.segments[0].name),
         _ => {
             let _ = register_res(cx, path.res);
@@ -397,30 +491,14 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     use DefKind::*;
     debug!("register_res({:?})", res);
 
-    let (did, kind) = match res {
-        // These should be added to the cache using `record_extern_fqn`.
+    let (kind, did) = match res {
         Res::Def(
             kind @ (AssocTy | AssocFn | AssocConst | Variant | Fn | TyAlias | Enum | Trait | Struct
             | Union | Mod | ForeignTy | Const | Static(_) | Macro(..) | TraitAlias),
-            i,
-        ) => (i, kind.into()),
-        // This is part of a trait definition or trait impl; document the trait.
-        Res::SelfTy { trait_: Some(trait_def_id), alias_to: _ } => (trait_def_id, ItemType::Trait),
-        // This is an inherent impl or a type definition; it doesn't have its own page.
-        Res::SelfTy { trait_: None, alias_to: Some((item_def_id, _)) } => return item_def_id,
-        Res::SelfTy { trait_: None, alias_to: None }
-        | Res::PrimTy(_)
-        | Res::ToolMod
-        | Res::SelfCtor(_)
-        | Res::Local(_)
-        | Res::NonMacroAttr(_)
-        | Res::Err => return res.def_id(),
-        Res::Def(
-            TyParam | ConstParam | Ctor(..) | ExternCrate | Use | ForeignMod | AnonConst
-            | InlineConst | OpaqueTy | Field | LifetimeParam | GlobalAsm | Impl | Closure
-            | Generator,
-            id,
-        ) => return id,
+            did,
+        ) => (kind.into(), did),
+
+        _ => panic!("register_res: unexpected {:?}", res),
     };
     if did.is_local() {
         return did;

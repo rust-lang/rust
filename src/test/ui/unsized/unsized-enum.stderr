@@ -22,7 +22,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
 LL + fn foo2<T>() { not_sized::<Foo<T>>() }
-   | 
+   |
 
 error: aborting due to previous error
 

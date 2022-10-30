@@ -48,19 +48,13 @@ error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found
 LL | fn m(){print!("",(c for&g
    |                     ^^^ expected one of 8 possible tokens
 
-error: expected `;`, found `e`
-  --> $DIR/issue-88770.rs:10:2
+error: expected one of `!`, `)`, `,`, `.`, `::`, `;`, `?`, `{`, or an operator, found `e`
+  --> $DIR/issue-88770.rs:11:1
    |
 LL | e
-   |  ^ help: add `;` here
+   |  - expected one of 9 possible tokens
 LL | e
-   | - unexpected token
+   | ^ unexpected token
 
-error: expected one of `!`, `,`, `.`, `::`, `?`, `{`, or an operator, found `)`
-  --> $DIR/issue-88770.rs:11:3
-   |
-LL | e
-   |   ^ expected one of 7 possible tokens
-
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 

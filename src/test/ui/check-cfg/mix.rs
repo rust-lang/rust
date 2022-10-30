@@ -1,9 +1,9 @@
-// This test checks the combination of well known names, their activation via names(), the usage of
-// partial values() with a --cfg and test that we also correctly lint on the `cfg!` macro and
-// `cfg_attr` attribute.
+// This test checks the combination of well known names, their activation via names(),
+// the usage of values(), and that no implicit is done with --cfg while also testing that
+// we correctly lint on the `cfg!` macro and `cfg_attr` attribute.
 //
 // check-pass
-// compile-flags: --check-cfg=names() --check-cfg=values(feature,"foo") --cfg feature="bar" -Z unstable-options
+// compile-flags: --check-cfg=names() --check-cfg=values(feature,"foo") --cfg feature="bar" --cfg unknown_name -Z unstable-options
 
 #[cfg(windows)]
 fn do_windows_stuff() {}
@@ -16,6 +16,7 @@ fn do_windows_stuff() {}
 fn use_foo() {}
 
 #[cfg(feature = "bar")]
+//~^ WARNING unexpected `cfg` condition value
 fn use_bar() {}
 
 #[cfg(feature = "zebra")]
@@ -35,6 +36,7 @@ fn test_cfg_macro() {
     //~^ WARNING unexpected `cfg` condition name
     cfg!(feature = "foo");
     cfg!(feature = "bar");
+    //~^ WARNING unexpected `cfg` condition value
     cfg!(feature = "zebra");
     //~^ WARNING unexpected `cfg` condition value
     cfg!(xxx = "foo");

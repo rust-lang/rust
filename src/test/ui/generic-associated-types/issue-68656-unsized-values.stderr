@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<T as Deref>::Target == T`
-  --> $DIR/issue-68656-unsized-values.rs:15:21
+  --> $DIR/issue-68656-unsized-values.rs:13:21
    |
 LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<T> for T {
    |      - this type parameter
@@ -9,7 +9,7 @@ LL |     type Item<'a> = T;
    = note: expected type parameter `T`
              found associated type `<T as Deref>::Target`
 note: required by a bound in `UnsafeCopy::Item`
-  --> $DIR/issue-68656-unsized-values.rs:6:36
+  --> $DIR/issue-68656-unsized-values.rs:4:36
    |
 LL |     type Item<'a>: std::ops::Deref<Target = T>;
    |                                    ^^^^^^^^^^ required by this bound in `UnsafeCopy::Item`

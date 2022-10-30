@@ -1,0 +1,15 @@
+### What it does
+Checks for calls to `std::mem::drop` with a value
+that derives the Copy trait
+
+### Why is this bad?
+Calling `std::mem::drop` [does nothing for types that
+implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html), since the
+value will be copied and moved into the function on invocation.
+
+### Example
+```
+let x: i32 = 42; // i32 implements Copy
+std::mem::drop(x) // A copy of x is passed to the function, leaving the
+                  // original unaffected
+```

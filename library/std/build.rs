@@ -15,6 +15,7 @@ fn main() {
         || target.contains("illumos")
         || target.contains("apple-darwin")
         || target.contains("apple-ios")
+        || target.contains("apple-watchos")
         || target.contains("uwp")
         || target.contains("windows")
         || target.contains("fuchsia")
@@ -29,6 +30,7 @@ fn main() {
         || target.contains("asmjs")
         || target.contains("espidf")
         || target.contains("solid")
+        || target.contains("nintendo-3ds")
     {
         // These platforms don't have any special requirements.
     } else {

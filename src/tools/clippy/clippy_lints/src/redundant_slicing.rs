@@ -11,6 +11,8 @@ use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::subst::GenericArg;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
+use std::iter;
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for redundant slicing expressions which use the full range, and
@@ -60,7 +62,7 @@ declare_clippy_lint! {
     /// let vec = vec![1, 2, 3];
     /// let slice = &*vec;
     /// ```
-    #[clippy::version = "1.60.0"]
+    #[clippy::version = "1.61.0"]
     pub DEREF_BY_SLICING,
     restriction,
     "slicing instead of dereferencing"
@@ -125,23 +127,23 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
 
                     let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;
                     let sugg = if (deref_count != 0 || !reborrow_str.is_empty()) && needs_parens_for_prefix {
-                        format!("({}{}{})", reborrow_str, "*".repeat(deref_count), snip)
+                        format!("({reborrow_str}{}{snip})", "*".repeat(deref_count))
                     } else {
-                        format!("{}{}{}", reborrow_str, "*".repeat(deref_count), snip)
+                        format!("{reborrow_str}{}{snip}", "*".repeat(deref_count))
                     };
 
                     (lint, help_str, sugg)
                 } else if let Some(target_id) = cx.tcx.lang_items().deref_target() {
                     if let Ok(deref_ty) = cx.tcx.try_normalize_erasing_regions(
                         cx.param_env,
-                        cx.tcx.mk_projection(target_id, cx.tcx.mk_substs([GenericArg::from(indexed_ty)].into_iter())),
+                        cx.tcx.mk_projection(target_id, cx.tcx.mk_substs(iter::once(GenericArg::from(indexed_ty)))),
                     ) {
                         if deref_ty == expr_ty {
                             let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;
                             let sugg = if needs_parens_for_prefix {
-                                format!("(&{}{}*{})", mutability.prefix_str(), "*".repeat(indexed_ref_count), snip)
+                                format!("(&{}{}*{snip})", mutability.prefix_str(), "*".repeat(indexed_ref_count))
                             } else {
-                                format!("&{}{}*{}", mutability.prefix_str(), "*".repeat(indexed_ref_count), snip)
+                                format!("&{}{}*{snip}", mutability.prefix_str(), "*".repeat(indexed_ref_count))
                             };
                             (DEREF_BY_SLICING_LINT, "dereference the original value instead", sugg)
                         } else {

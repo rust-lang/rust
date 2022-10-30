@@ -1,5 +1,5 @@
 error: fatal error triggered by #[rustc_error]
-  --> $DIR/feature-gate.rs:13:1
+  --> $DIR/feature-gate.rs:14:1
    |
 LL | fn main() {}
    | ^^^^^^^^^

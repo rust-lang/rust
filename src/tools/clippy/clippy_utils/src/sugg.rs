@@ -2,27 +2,27 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite};
+use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{ast, token};
 use rustc_ast_pretty::pprust::token_kind_to_string;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{ExprKind, HirId, MutTy, TyKind};
+use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
+use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::{FakeReadCause, Mutability};
 use rustc_middle::ty;
 use rustc_span::source_map::{BytePos, CharPos, Pos, Span, SyntaxContext};
-use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::borrow::Cow;
 use std::fmt::{Display, Write as _};
-use std::iter;
 use std::ops::{Add, Neg, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parentheses.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Sugg<'a> {
     /// An expression that never needs parentheses such as `1337` or `[0; 42]`.
     NonParen(Cow<'a, str>),
@@ -134,7 +134,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Box(..)
             | hir::ExprKind::If(..)
             | hir::ExprKind::Let(..)
-            | hir::ExprKind::Closure(..)
+            | hir::ExprKind::Closure { .. }
             | hir::ExprKind::Unary(..)
             | hir::ExprKind::Match(..) => Sugg::MaybeParen(get_snippet(expr.span)),
             hir::ExprKind::Continue(..)
@@ -155,8 +155,8 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Ret(..)
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Tup(..)
-            | hir::ExprKind::DropTemps(_)
             | hir::ExprKind::Err => Sugg::NonParen(get_snippet(expr.span)),
+            hir::ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
             hir::ExprKind::Assign(lhs, rhs, _) => {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
             },
@@ -177,22 +177,22 @@ impl<'a> Sugg<'a> {
     pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
         use rustc_ast::ast::RangeLimits;
 
-        let get_whole_snippet = || {
-            if expr.span.from_expansion() {
-                snippet_with_macro_callsite(cx, expr.span, default)
+        let snippet_without_expansion = |cx, span: Span, default| {
+            if span.from_expansion() {
+                snippet_with_macro_callsite(cx, span, default)
             } else {
-                snippet(cx, expr.span, default)
+                snippet(cx, span, default)
             }
         };
 
         match expr.kind {
             ast::ExprKind::AddrOf(..)
             | ast::ExprKind::Box(..)
-            | ast::ExprKind::Closure(..)
+            | ast::ExprKind::Closure { .. }
             | ast::ExprKind::If(..)
             | ast::ExprKind::Let(..)
             | ast::ExprKind::Unary(..)
-            | ast::ExprKind::Match(..) => Sugg::MaybeParen(get_whole_snippet()),
+            | ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet_without_expansion(cx, expr.span, default)),
             ast::ExprKind::Async(..)
             | ast::ExprKind::Block(..)
             | ast::ExprKind::Break(..)
@@ -221,41 +221,45 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
-            | ast::ExprKind::Err => Sugg::NonParen(get_whole_snippet()),
+            | ast::ExprKind::Err => Sugg::NonParen(snippet_without_expansion(cx, expr.span, default)),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::HalfOpen) => Sugg::BinOp(
                 AssocOp::DotDot,
-                lhs.as_ref().map_or("".into(), |lhs| snippet(cx, lhs.span, default)),
-                rhs.as_ref().map_or("".into(), |rhs| snippet(cx, rhs.span, default)),
+                lhs.as_ref()
+                    .map_or("".into(), |lhs| snippet_without_expansion(cx, lhs.span, default)),
+                rhs.as_ref()
+                    .map_or("".into(), |rhs| snippet_without_expansion(cx, rhs.span, default)),
             ),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::Closed) => Sugg::BinOp(
                 AssocOp::DotDotEq,
-                lhs.as_ref().map_or("".into(), |lhs| snippet(cx, lhs.span, default)),
-                rhs.as_ref().map_or("".into(), |rhs| snippet(cx, rhs.span, default)),
+                lhs.as_ref()
+                    .map_or("".into(), |lhs| snippet_without_expansion(cx, lhs.span, default)),
+                rhs.as_ref()
+                    .map_or("".into(), |rhs| snippet_without_expansion(cx, rhs.span, default)),
             ),
             ast::ExprKind::Assign(ref lhs, ref rhs, _) => Sugg::BinOp(
                 AssocOp::Assign,
-                snippet(cx, lhs.span, default),
-                snippet(cx, rhs.span, default),
+                snippet_without_expansion(cx, lhs.span, default),
+                snippet_without_expansion(cx, rhs.span, default),
             ),
             ast::ExprKind::AssignOp(op, ref lhs, ref rhs) => Sugg::BinOp(
                 astbinop2assignop(op),
-                snippet(cx, lhs.span, default),
-                snippet(cx, rhs.span, default),
+                snippet_without_expansion(cx, lhs.span, default),
+                snippet_without_expansion(cx, rhs.span, default),
             ),
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => Sugg::BinOp(
                 AssocOp::from_ast_binop(op.node),
-                snippet(cx, lhs.span, default),
-                snippet(cx, rhs.span, default),
+                snippet_without_expansion(cx, lhs.span, default),
+                snippet_without_expansion(cx, rhs.span, default),
             ),
             ast::ExprKind::Cast(ref lhs, ref ty) => Sugg::BinOp(
                 AssocOp::As,
-                snippet(cx, lhs.span, default),
-                snippet(cx, ty.span, default),
+                snippet_without_expansion(cx, lhs.span, default),
+                snippet_without_expansion(cx, ty.span, default),
             ),
             ast::ExprKind::Type(ref lhs, ref ty) => Sugg::BinOp(
                 AssocOp::Colon,
-                snippet(cx, lhs.span, default),
-                snippet(cx, ty.span, default),
+                snippet_without_expansion(cx, lhs.span, default),
+                snippet_without_expansion(cx, ty.span, default),
             ),
         }
     }
@@ -306,13 +310,19 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to transform suggestion into a return call
     pub fn make_return(self) -> Sugg<'static> {
-        Sugg::NonParen(Cow::Owned(format!("return {}", self)))
+        Sugg::NonParen(Cow::Owned(format!("return {self}")))
     }
 
     /// Convenience method to transform suggestion into a block
     /// where the suggestion is a trailing expression
     pub fn blockify(self) -> Sugg<'static> {
-        Sugg::NonParen(Cow::Owned(format!("{{ {} }}", self)))
+        Sugg::NonParen(Cow::Owned(format!("{{ {self} }}")))
+    }
+
+    /// Convenience method to prefix the expression with the `async` keyword.
+    /// Can be used after `blockify` to create an async block.
+    pub fn asyncify(self) -> Sugg<'static> {
+        Sugg::NonParen(Cow::Owned(format!("async {self}")))
     }
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
@@ -336,12 +346,12 @@ impl<'a> Sugg<'a> {
                 if has_enclosing_paren(&sugg) {
                     Sugg::MaybeParen(sugg)
                 } else {
-                    Sugg::NonParen(format!("({})", sugg).into())
+                    Sugg::NonParen(format!("({sugg})").into())
                 }
             },
             Sugg::BinOp(op, lhs, rhs) => {
                 let sugg = binop_to_string(op, &lhs, &rhs);
-                Sugg::NonParen(format!("({})", sugg).into())
+                Sugg::NonParen(format!("({sugg})").into())
             },
         }
     }
@@ -367,20 +377,20 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
         | AssocOp::LessEqual
         | AssocOp::NotEqual
         | AssocOp::Greater
-        | AssocOp::GreaterEqual => format!(
-            "{} {} {}",
-            lhs,
-            op.to_ast_binop().expect("Those are AST ops").to_string(),
-            rhs
-        ),
-        AssocOp::Assign => format!("{} = {}", lhs, rhs),
-        AssocOp::AssignOp(op) => {
-            format!("{} {}= {}", lhs, token_kind_to_string(&token::BinOp(op)), rhs)
+        | AssocOp::GreaterEqual => {
+            format!(
+                "{lhs} {} {rhs}",
+                op.to_ast_binop().expect("Those are AST ops").to_string()
+            )
         },
-        AssocOp::As => format!("{} as {}", lhs, rhs),
-        AssocOp::DotDot => format!("{}..{}", lhs, rhs),
-        AssocOp::DotDotEq => format!("{}..={}", lhs, rhs),
-        AssocOp::Colon => format!("{}: {}", lhs, rhs),
+        AssocOp::Assign => format!("{lhs} = {rhs}"),
+        AssocOp::AssignOp(op) => {
+            format!("{lhs} {}= {rhs}", token_kind_to_string(&token::BinOp(op)))
+        },
+        AssocOp::As => format!("{lhs} as {rhs}"),
+        AssocOp::DotDot => format!("{lhs}..{rhs}"),
+        AssocOp::DotDotEq => format!("{lhs}..={rhs}"),
+        AssocOp::Colon => format!("{lhs}: {rhs}"),
     }
 }
 
@@ -511,7 +521,7 @@ impl<T: Display> Display for ParenHelper<T> {
 /// operators have the same
 /// precedence.
 pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
-    Sugg::MaybeParen(format!("{}{}", op, expr.maybe_par()).into())
+    Sugg::MaybeParen(format!("{op}{}", expr.maybe_par()).into())
 }
 
 /// Builds the string for `<lhs> <op> <rhs>` adding parenthesis when necessary.
@@ -732,7 +742,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
         if let Some(indent) = indentation(cx, item) {
             let span = item.with_hi(item.lo());
 
-            self.span_suggestion(span, msg, format!("{}\n{}", attr, indent), applicability);
+            self.span_suggestion(span, msg, format!("{attr}\n{indent}"), applicability);
         }
     }
 
@@ -746,14 +756,14 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
                 .map(|l| {
                     if first {
                         first = false;
-                        format!("{}\n", l)
+                        format!("{l}\n")
                     } else {
-                        format!("{}{}\n", indent, l)
+                        format!("{indent}{l}\n")
                     }
                 })
                 .collect::<String>();
 
-            self.span_suggestion(span, msg, format!("{}\n{}", new_item, indent), applicability);
+            self.span_suggestion(span, msg, format!("{new_item}\n{indent}"), applicability);
         }
     }
 
@@ -771,7 +781,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
             }
         }
 
-        self.span_suggestion(remove_span, msg, String::new(), applicability);
+        self.span_suggestion(remove_span, msg, "", applicability);
     }
 }
 
@@ -790,8 +800,8 @@ pub struct DerefClosure {
 ///
 /// note: this only works on single line immutable closures with exactly one input parameter.
 pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'_>) -> Option<DerefClosure> {
-    if let hir::ExprKind::Closure(_, fn_decl, body_id, ..) = closure.kind {
-        let closure_body = cx.tcx.hir().body(body_id);
+    if let hir::ExprKind::Closure(&Closure { fn_decl, body, .. }) = closure.kind {
+        let closure_body = cx.tcx.hir().body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
         // a type annotation is present if param `kind` is different from `TyKind::Infer`
         let closure_arg_is_type_annotated_double_ref = if let TyKind::Rptr(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind
@@ -811,10 +821,9 @@ pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'
         };
 
         let fn_def_id = cx.tcx.hir().local_def_id(closure.hir_id);
-        cx.tcx.infer_ctxt().enter(|infcx| {
-            ExprUseVisitor::new(&mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results())
-                .consume_body(closure_body);
-        });
+        let infcx = cx.tcx.infer_ctxt().build();
+        ExprUseVisitor::new(&mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results())
+            .consume_body(closure_body);
 
         if !visitor.suggestion_start.is_empty() {
             return Some(DerefClosure {
@@ -851,7 +860,7 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
     pub fn finish(&mut self) -> String {
         let end_span = Span::new(self.next_pos, self.closure_span.hi(), self.closure_span.ctxt(), None);
         let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
-        let sugg = format!("{}{}", self.suggestion_start, end_snip);
+        let sugg = format!("{}{end_snip}", self.suggestion_start);
         if self.closure_arg_is_type_annotated_double_ref {
             sugg.replacen('&', "", 1)
         } else {
@@ -861,23 +870,37 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
 
     /// indicates whether the function from `parent_expr` takes its args by double reference
     fn func_takes_arg_by_double_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
-        let (call_args, inputs) = match parent_expr.kind {
-            ExprKind::MethodCall(_, call_args, _) => {
-                if let Some(method_did) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
-                    (call_args, self.cx.tcx.fn_sig(method_did).skip_binder().inputs())
+        let ty = match parent_expr.kind {
+            ExprKind::MethodCall(_, receiver, call_args, _) => {
+                if let Some(sig) = self
+                    .cx
+                    .typeck_results()
+                    .type_dependent_def_id(parent_expr.hir_id)
+                    .map(|did| self.cx.tcx.fn_sig(did).skip_binder())
+                {
+                    std::iter::once(receiver)
+                        .chain(call_args.iter())
+                        .position(|arg| arg.hir_id == cmt_hir_id)
+                        .map(|i| sig.inputs()[i])
                 } else {
                     return false;
                 }
             },
             ExprKind::Call(func, call_args) => {
-                let typ = self.cx.typeck_results().expr_ty(func);
-                (call_args, typ.fn_sig(self.cx.tcx).skip_binder().inputs())
+                if let Some(sig) = expr_sig(self.cx, func) {
+                    call_args
+                        .iter()
+                        .position(|arg| arg.hir_id == cmt_hir_id)
+                        .and_then(|i| sig.input(i))
+                        .map(ty::Binder::skip_binder)
+                } else {
+                    return false;
+                }
             },
             _ => return false,
         };
 
-        iter::zip(call_args, inputs)
-            .any(|(arg, ty)| arg.hir_id == cmt_hir_id && matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
+        ty.map_or(false, |ty| matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
     }
 }
 
@@ -899,7 +922,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             if cmt.place.projections.is_empty() {
                 // handle item without any projection, that needs an explicit borrowing
                 // i.e.: suggest `&x` instead of `x`
-                let _ = write!(self.suggestion_start, "{}&{}", start_snip, ident_str);
+                let _ = write!(self.suggestion_start, "{start_snip}&{ident_str}");
             } else {
                 // cases where a parent `Call` or `MethodCall` is using the item
                 // i.e.: suggest `.contains(&x)` for `.find(|x| [1, 2, 3].contains(x)).is_none()`
@@ -913,14 +936,14 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     match &parent_expr.kind {
                         // given expression is the self argument and will be handled completely by the compiler
                         // i.e.: `|x| x.is_something()`
-                        ExprKind::MethodCall(_, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
-                            let _ = write!(self.suggestion_start, "{}{}", start_snip, ident_str_with_proj);
+                        ExprKind::MethodCall(_, self_expr, ..) if self_expr.hir_id == cmt.hir_id => {
+                            let _ = write!(self.suggestion_start, "{start_snip}{ident_str_with_proj}");
                             self.next_pos = span.hi();
                             return;
                         },
                         // item is used in a call
                         // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
-                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, [_, call_args @ ..], _) => {
+                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, _, [call_args @ ..], _) => {
                             let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
                             let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 
@@ -947,9 +970,9 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                                     } else {
                                         ident_str
                                     };
-                                    format!("{}{}", start_snip, ident)
+                                    format!("{start_snip}{ident}")
                                 } else {
-                                    format!("{}&{}", start_snip, ident_str)
+                                    format!("{start_snip}&{ident_str}")
                                 };
                                 self.suggestion_start.push_str(&ident_sugg);
                                 self.next_pos = span.hi();
@@ -1016,13 +1039,13 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
                         for item in projections {
                             if item.kind == ProjectionKind::Deref {
-                                replacement_str = format!("*{}", replacement_str);
+                                replacement_str = format!("*{replacement_str}");
                             }
                         }
                     }
                 }
 
-                let _ = write!(self.suggestion_start, "{}{}", start_snip, replacement_str);
+                let _ = write!(self.suggestion_start, "{start_snip}{replacement_str}");
             }
             self.next_pos = span.hi();
         }
@@ -1030,7 +1053,13 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
     fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn fake_read(&mut self, _: &rustc_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(
+        &mut self,
+        _: &rustc_hir_analysis::expr_use_visitor::PlaceWithHirId<'tcx>,
+        _: FakeReadCause,
+        _: HirId,
+    ) {
+    }
 }
 
 #[cfg(test)]

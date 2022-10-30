@@ -16,8 +16,7 @@ fn main() {
             //~| exclusive range pattern syntax is experimental
             y @ -5.. => range_from.push(y),
             y @ ..-7 => assert_eq!(y, -8),
-            //~^ half-open range patterns are unstable
-            //~| exclusive range pattern syntax is experimental
+            //~^ exclusive range pattern syntax is experimental
             y => bottom.push(y),
         }
     }

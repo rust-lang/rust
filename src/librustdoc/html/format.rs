@@ -8,20 +8,24 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
-use std::iter;
+use std::iter::{self, once};
 
+use rustc_ast as ast;
 use rustc_attr::{ConstStability, StabilityLevel};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty;
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
+
+use itertools::Itertools;
 
 use crate::clean::{
     self, types::ExternalLocation, utils::find_nearest_parent_module, ExternalCrate, ItemId,
@@ -142,9 +146,13 @@ impl Buffer {
     pub(crate) fn reserve(&mut self, additional: usize) {
         self.buffer.reserve(additional)
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.buffer.len()
+    }
 }
 
-fn comma_sep<T: fmt::Display>(
+pub(crate) fn comma_sep<T: fmt::Display>(
     items: impl Iterator<Item = T>,
     space_after_comma: bool,
 ) -> impl fmt::Display {
@@ -260,6 +268,12 @@ impl clean::Generics {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Ending {
+    Newline,
+    NoNewline,
+}
+
 /// * The Generics from which to emit a where-clause.
 /// * The number of spaces to indent each line with.
 /// * Whether the where-clause needs to add a comma and newline after the last bound.
@@ -267,7 +281,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     gens: &'a clean::Generics,
     cx: &'a Context<'tcx>,
     indent: usize,
-    end_newline: bool,
+    ending: Ending,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
     use fmt::Write;
 
@@ -317,7 +331,8 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                         bounds_display.truncate(bounds_display.len() - " + ".len());
                         write!(f, "{}: {bounds_display}", lifetime.print())
                     }
-                    clean::WherePredicate::EqPredicate { lhs, rhs } => {
+                    // FIXME(fmease): Render bound params.
+                    clean::WherePredicate::EqPredicate { lhs, rhs, bound_params: _ } => {
                         if f.alternate() {
                             write!(f, "{:#} == {:#}", lhs.print(cx), rhs.print(cx))
                         } else {
@@ -334,9 +349,8 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
 
         let where_preds = comma_sep(where_predicates, false);
         let clause = if f.alternate() {
-            if end_newline {
-                // add a space so stripping <br> tags and breaking spaces still renders properly
-                format!(" where{where_preds}, ")
+            if ending == Ending::Newline {
+                format!(" where{where_preds},")
             } else {
                 format!(" where{where_preds}")
             }
@@ -348,22 +362,18 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             }
             let where_preds = where_preds.to_string().replace("<br>", &br_with_padding);
 
-            if end_newline {
+            if ending == Ending::Newline {
                 let mut clause = "&nbsp;".repeat(indent.saturating_sub(1));
-                // add a space so stripping <br> tags and breaking spaces still renders properly
-                write!(
-                    clause,
-                    " <span class=\"where fmt-newline\">where{where_preds},&nbsp;</span>"
-                )?;
+                write!(clause, "<span class=\"where fmt-newline\">where{where_preds},</span>")?;
                 clause
             } else {
                 // insert a <br> tag after a single space but before multiple spaces at the start
                 if indent == 0 {
-                    format!(" <br><span class=\"where\">where{where_preds}</span>")
+                    format!("<br><span class=\"where\">where{where_preds}</span>")
                 } else {
                     let mut clause = br_with_padding;
-                    clause.truncate(clause.len() - 5 * "&nbsp;".len());
-                    write!(clause, " <span class=\"where\">where{where_preds}</span>")?;
+                    clause.truncate(clause.len() - 4 * "&nbsp;".len());
+                    write!(clause, "<span class=\"where\">where{where_preds}</span>")?;
                     clause
                 }
             }
@@ -517,6 +527,7 @@ impl clean::GenericArgs {
 }
 
 // Possible errors when computing href link source for a `DefId`
+#[derive(PartialEq, Eq)]
 pub(crate) enum HrefError {
     /// This item is known to rustdoc, but from a crate that does not have documentation generated.
     ///
@@ -552,6 +563,79 @@ pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
         s.push_str(sym.as_str());
     }
     s
+}
+
+/// This function is to get the external macro path because they are not in the cache used in
+/// `href_with_root_path`.
+fn generate_macro_def_id_path(
+    def_id: DefId,
+    cx: &Context<'_>,
+    root_path: Option<&str>,
+) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+    let tcx = cx.shared.tcx;
+    let crate_name = tcx.crate_name(def_id.krate).to_string();
+    let cache = cx.cache();
+
+    let fqp: Vec<Symbol> = tcx
+        .def_path(def_id)
+        .data
+        .into_iter()
+        .filter_map(|elem| {
+            // extern blocks (and a few others things) have an empty name.
+            match elem.data.get_opt_name() {
+                Some(s) if !s.is_empty() => Some(s),
+                _ => None,
+            }
+        })
+        .collect();
+    let mut relative = fqp.iter().map(|elem| elem.to_string());
+    let cstore = CStore::from_tcx(tcx);
+    // We need this to prevent a `panic` when this function is used from intra doc links...
+    if !cstore.has_crate_data(def_id.krate) {
+        debug!("No data for crate {}", crate_name);
+        return Err(HrefError::NotInExternalCache);
+    }
+    // Check to see if it is a macro 2.0 or built-in macro.
+    // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
+    let is_macro_2 = match cstore.load_macro_untracked(def_id, tcx.sess) {
+        LoadedMacro::MacroDef(def, _) => {
+            // If `ast_def.macro_rules` is `true`, then it's not a macro 2.0.
+            matches!(&def.kind, ast::ItemKind::MacroDef(ast_def) if !ast_def.macro_rules)
+        }
+        _ => false,
+    };
+
+    let mut path = if is_macro_2 {
+        once(crate_name.clone()).chain(relative).collect()
+    } else {
+        vec![crate_name.clone(), relative.next_back().unwrap()]
+    };
+    if path.len() < 2 {
+        // The minimum we can have is the crate name followed by the macro name. If shorter, then
+        // it means that that `relative` was empty, which is an error.
+        debug!("macro path cannot be empty!");
+        return Err(HrefError::NotInExternalCache);
+    }
+
+    if let Some(last) = path.last_mut() {
+        *last = format!("macro.{}.html", last);
+    }
+
+    let url = match cache.extern_locations[&def_id.krate] {
+        ExternalLocation::Remote(ref s) => {
+            // `ExternalLocation::Remote` always end with a `/`.
+            format!("{}{}", s, path.join("/"))
+        }
+        ExternalLocation::Local => {
+            // `root_path` always end with a `/`.
+            format!("{}{}/{}", root_path.unwrap_or(""), crate_name, path.join("/"))
+        }
+        ExternalLocation::Unknown => {
+            debug!("crate {} not in cache when linkifying macros", crate_name);
+            return Err(HrefError::NotInExternalCache);
+        }
+    };
+    Ok((url, ItemType::Macro, fqp))
 }
 
 pub(crate) fn href_with_root_path(
@@ -609,6 +693,8 @@ pub(crate) fn href_with_root_path(
                         ExternalLocation::Unknown => return Err(HrefError::DocumentationNotBuilt),
                     },
                 )
+            } else if matches!(def_kind, DefKind::Macro(_)) {
+                return generate_macro_def_id_path(did, cx, root_path);
             } else {
                 return Err(HrefError::NotInExternalCache);
             }
@@ -653,21 +739,23 @@ pub(crate) fn href_relative_parts<'fqp>(
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = &fqp[i..fqp.len()];
-            return box iter::repeat(sym::dotdot)
-                .take(dissimilar_part_count)
-                .chain(fqp_module.iter().copied());
+            return Box::new(
+                iter::repeat(sym::dotdot)
+                    .take(dissimilar_part_count)
+                    .chain(fqp_module.iter().copied()),
+            );
         }
     }
     // e.g. linking to std::sync::atomic from std::sync
     if relative_to_fqp.len() < fqp.len() {
-        box fqp[relative_to_fqp.len()..fqp.len()].iter().copied()
+        Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
     // e.g. linking to std::sync from std::sync::atomic
     } else if fqp.len() < relative_to_fqp.len() {
         let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-        box iter::repeat(sym::dotdot).take(dissimilar_part_count)
+        Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
     // linking to the same module
     } else {
-        box iter::empty()
+        Box::new(iter::empty())
     }
 }
 
@@ -714,6 +802,16 @@ fn primitive_link(
     name: &str,
     cx: &Context<'_>,
 ) -> fmt::Result {
+    primitive_link_fragment(f, prim, name, "", cx)
+}
+
+fn primitive_link_fragment(
+    f: &mut fmt::Formatter<'_>,
+    prim: clean::PrimitiveType,
+    name: &str,
+    fragment: &str,
+    cx: &Context<'_>,
+) -> fmt::Result {
     let m = &cx.cache();
     let mut needs_termination = false;
     if !f.alternate() {
@@ -723,7 +821,7 @@ fn primitive_link(
                 let len = if len == 0 { 0 } else { len - 1 };
                 write!(
                     f,
-                    "<a class=\"primitive\" href=\"{}primitive.{}.html\">",
+                    "<a class=\"primitive\" href=\"{}primitive.{}.html{fragment}\">",
                     "../".repeat(len),
                     prim.as_sym()
                 )?;
@@ -754,7 +852,7 @@ fn primitive_link(
                 };
                 if let Some(mut loc) = loc {
                     loc.push_fmt(format_args!("primitive.{}.html", prim.as_sym()));
-                    write!(f, "<a class=\"primitive\" href=\"{}\">", loc.finish())?;
+                    write!(f, "<a class=\"primitive\" href=\"{}{fragment}\">", loc.finish())?;
                     needs_termination = true;
                 }
             }
@@ -864,37 +962,74 @@ fn fmt_type<'cx>(
             match &typs[..] {
                 &[] => primitive_link(f, PrimitiveType::Unit, "()", cx),
                 &[ref one] => {
-                    primitive_link(f, PrimitiveType::Tuple, "(", cx)?;
-                    // Carry `f.alternate()` into this display w/o branching manually.
-                    fmt::Display::fmt(&one.print(cx), f)?;
-                    primitive_link(f, PrimitiveType::Tuple, ",)", cx)
+                    if let clean::Generic(name) = one {
+                        primitive_link(f, PrimitiveType::Tuple, &format!("({name},)"), cx)
+                    } else {
+                        write!(f, "(")?;
+                        // Carry `f.alternate()` into this display w/o branching manually.
+                        fmt::Display::fmt(&one.print(cx), f)?;
+                        write!(f, ",)")
+                    }
                 }
                 many => {
-                    primitive_link(f, PrimitiveType::Tuple, "(", cx)?;
-                    for (i, item) in many.iter().enumerate() {
-                        if i != 0 {
-                            write!(f, ", ")?;
+                    let generic_names: Vec<Symbol> = many
+                        .iter()
+                        .filter_map(|t| match t {
+                            clean::Generic(name) => Some(*name),
+                            _ => None,
+                        })
+                        .collect();
+                    let is_generic = generic_names.len() == many.len();
+                    if is_generic {
+                        primitive_link(
+                            f,
+                            PrimitiveType::Tuple,
+                            &format!("({})", generic_names.iter().map(|s| s.as_str()).join(", ")),
+                            cx,
+                        )
+                    } else {
+                        write!(f, "(")?;
+                        for (i, item) in many.iter().enumerate() {
+                            if i != 0 {
+                                write!(f, ", ")?;
+                            }
+                            // Carry `f.alternate()` into this display w/o branching manually.
+                            fmt::Display::fmt(&item.print(cx), f)?;
                         }
-                        fmt::Display::fmt(&item.print(cx), f)?;
+                        write!(f, ")")
                     }
-                    primitive_link(f, PrimitiveType::Tuple, ")", cx)
                 }
             }
         }
-        clean::Slice(ref t) => {
-            primitive_link(f, PrimitiveType::Slice, "[", cx)?;
-            fmt::Display::fmt(&t.print(cx), f)?;
-            primitive_link(f, PrimitiveType::Slice, "]", cx)
-        }
-        clean::Array(ref t, ref n) => {
-            primitive_link(f, PrimitiveType::Array, "[", cx)?;
-            fmt::Display::fmt(&t.print(cx), f)?;
-            if f.alternate() {
-                primitive_link(f, PrimitiveType::Array, &format!("; {}]", n), cx)
-            } else {
-                primitive_link(f, PrimitiveType::Array, &format!("; {}]", Escape(n)), cx)
+        clean::Slice(ref t) => match **t {
+            clean::Generic(name) => {
+                primitive_link(f, PrimitiveType::Slice, &format!("[{name}]"), cx)
             }
-        }
+            _ => {
+                write!(f, "[")?;
+                fmt::Display::fmt(&t.print(cx), f)?;
+                write!(f, "]")
+            }
+        },
+        clean::Array(ref t, ref n) => match **t {
+            clean::Generic(name) if !f.alternate() => primitive_link(
+                f,
+                PrimitiveType::Array,
+                &format!("[{name}; {n}]", n = Escape(n)),
+                cx,
+            ),
+            _ => {
+                write!(f, "[")?;
+                fmt::Display::fmt(&t.print(cx), f)?;
+                if f.alternate() {
+                    write!(f, "; {n}")?;
+                } else {
+                    write!(f, "; ")?;
+                    primitive_link(f, PrimitiveType::Array, &format!("{n}", n = Escape(n)), cx)?;
+                }
+                write!(f, "]")
+            }
+        },
         clean::RawPointer(m, ref t) => {
             let m = match m {
                 hir::Mutability::Mut => "mut",
@@ -921,42 +1056,6 @@ fn fmt_type<'cx>(
             let m = mutability.print_with_space();
             let amp = if f.alternate() { "&".to_string() } else { "&amp;".to_string() };
             match **ty {
-                clean::Slice(ref bt) => {
-                    // `BorrowedRef{ ... Slice(T) }` is `&[T]`
-                    match **bt {
-                        clean::Generic(_) => {
-                            if f.alternate() {
-                                primitive_link(
-                                    f,
-                                    PrimitiveType::Slice,
-                                    &format!("{}{}{}[{:#}]", amp, lt, m, bt.print(cx)),
-                                    cx,
-                                )
-                            } else {
-                                primitive_link(
-                                    f,
-                                    PrimitiveType::Slice,
-                                    &format!("{}{}{}[{}]", amp, lt, m, bt.print(cx)),
-                                    cx,
-                                )
-                            }
-                        }
-                        _ => {
-                            primitive_link(
-                                f,
-                                PrimitiveType::Slice,
-                                &format!("{}{}{}[", amp, lt, m),
-                                cx,
-                            )?;
-                            if f.alternate() {
-                                write!(f, "{:#}", bt.print(cx))?;
-                            } else {
-                                write!(f, "{}", bt.print(cx))?;
-                            }
-                            primitive_link(f, PrimitiveType::Slice, "]", cx)
-                        }
-                    }
-                }
                 clean::DynTrait(ref bounds, ref trait_lt)
                     if bounds.len() > 1 || trait_lt.is_some() =>
                 {
@@ -986,7 +1085,12 @@ fn fmt_type<'cx>(
                 write!(f, "impl {}", print_generic_bounds(bounds, cx))
             }
         }
-        clean::QPath { ref assoc, ref self_type, ref trait_, should_show_cast } => {
+        clean::QPath(box clean::QPathData {
+            ref assoc,
+            ref self_type,
+            ref trait_,
+            should_show_cast,
+        }) => {
             if f.alternate() {
                 if should_show_cast {
                     write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
@@ -1070,13 +1174,52 @@ impl clean::Impl {
                 write!(f, " for ")?;
             }
 
-            if let Some(ty) = self.kind.as_blanket_ty() {
+            if let clean::Type::Tuple(types) = &self.for_ &&
+                let [clean::Type::Generic(name)] = &types[..] &&
+                (self.kind.is_fake_variadic() || self.kind.is_auto())
+            {
+                // Hardcoded anchor library/core/src/primitive_docs.rs
+                // Link should match `# Trait implementations`
+                primitive_link_fragment(f, PrimitiveType::Tuple, &format!("({name}₁, {name}₂, …, {name}ₙ)"), "#trait-implementations-1", cx)?;
+            } else if let clean::BareFunction(bare_fn) = &self.for_ &&
+                let [clean::Argument { type_: clean::Type::Generic(name), .. }] = &bare_fn.decl.inputs.values[..] &&
+                (self.kind.is_fake_variadic() || self.kind.is_auto())
+            {
+                // Hardcoded anchor library/core/src/primitive_docs.rs
+                // Link should match `# Trait implementations`
+
+                let hrtb = bare_fn.print_hrtb_with_space(cx);
+                let unsafety = bare_fn.unsafety.print_with_space();
+                let abi = print_abi_with_space(bare_fn.abi);
+                if f.alternate() {
+                    write!(
+                        f,
+                        "{hrtb:#}{unsafety}{abi:#}",
+                    )?;
+                } else {
+                    write!(
+                        f,
+                        "{hrtb}{unsafety}{abi}",
+                    )?;
+                }
+                let ellipsis = if bare_fn.decl.c_variadic {
+                    ", ..."
+                } else {
+                    ""
+                };
+                primitive_link_fragment(f, PrimitiveType::Tuple, &format!("fn ({name}₁, {name}₂, …, {name}ₙ{ellipsis})"), "#trait-implementations-1", cx)?;
+                // Write output.
+                if let clean::FnRetTy::Return(ty) = &bare_fn.decl.output {
+                    write!(f, " -> ")?;
+                    fmt_type(ty, f, use_absolute, cx)?;
+                }
+            } else if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
                 fmt_type(&self.for_, f, use_absolute, cx)?;
             }
 
-            fmt::Display::fmt(&print_where_clause(&self.generics, cx, 0, true), f)?;
+            fmt::Display::fmt(&print_where_clause(&self.generics, cx, 0, Ending::Newline), f)?;
             Ok(())
         })
     }
@@ -1173,22 +1316,19 @@ impl clean::FnDecl {
     ///   <br>Used to determine line-wrapping.
     /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
     ///   necessary.
-    /// * `asyncness`: Whether the function is async or not.
     pub(crate) fn full_print<'a, 'tcx: 'a>(
         &'a self,
         header_len: usize,
         indent: usize,
-        asyncness: hir::IsAsync,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        display_fn(move |f| self.inner_full_print(header_len, indent, asyncness, f, cx))
+        display_fn(move |f| self.inner_full_print(header_len, indent, f, cx))
     }
 
     fn inner_full_print(
         &self,
         header_len: usize,
         indent: usize,
-        asyncness: hir::IsAsync,
         f: &mut fmt::Formatter<'_>,
         cx: &Context<'_>,
     ) -> fmt::Result {
@@ -1196,10 +1336,6 @@ impl clean::FnDecl {
         let mut args = Buffer::html();
         let mut args_plain = Buffer::new();
         for (i, input) in self.inputs.values.iter().enumerate() {
-            if i == 0 {
-                args.push_str("<br>");
-            }
-
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => {
@@ -1225,8 +1361,7 @@ impl clean::FnDecl {
                 }
             } else {
                 if i > 0 {
-                    args.push_str(" <br>");
-                    args_plain.push_str(" ");
+                    args.push_str("<br>");
                 }
                 if input.is_const {
                     args.push_str("const ");
@@ -1258,28 +1393,23 @@ impl clean::FnDecl {
             args_plain.push_str(", ...");
         }
 
-        let arrow_plain;
-        let arrow = if let hir::IsAsync::Async = asyncness {
-            let output = self.sugared_async_return_type();
-            arrow_plain = format!("{:#}", output.print(cx));
-            if f.alternate() { arrow_plain.clone() } else { format!("{}", output.print(cx)) }
-        } else {
-            arrow_plain = format!("{:#}", self.output.print(cx));
-            if f.alternate() { arrow_plain.clone() } else { format!("{}", self.output.print(cx)) }
-        };
+        let arrow_plain = format!("{:#}", self.output.print(cx));
+        let arrow =
+            if f.alternate() { arrow_plain.clone() } else { format!("{}", self.output.print(cx)) };
 
         let declaration_len = header_len + args_plain.len() + arrow_plain.len();
         let output = if declaration_len > 80 {
             let full_pad = format!("<br>{}", "&nbsp;".repeat(indent + 4));
             let close_pad = format!("<br>{}", "&nbsp;".repeat(indent));
             format!(
-                "({args}{close}){arrow}",
+                "({pad}{args}{close}){arrow}",
+                pad = if self.inputs.values.is_empty() { "" } else { &full_pad },
                 args = args.replace("<br>", &full_pad),
                 close = close_pad,
                 arrow = arrow
             )
         } else {
-            format!("({args}){arrow}", args = args.replace("<br>", ""), arrow = arrow)
+            format!("({args}){arrow}", args = args.replace("<br>", " "), arrow = arrow)
         };
 
         if f.alternate() {

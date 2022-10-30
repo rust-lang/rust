@@ -1,8 +1,8 @@
 # Running Rustfmt from Atom
 
-## RLS
+## rust-analyzer
 
-Rustfmt is included with the Rust Language Server, itself provided by [ide-rust](https://atom.io/packages/ide-rust).
+Rustfmt can be utilized from [rust-analyzer](https://rust-analyzer.github.io/) which is provided by [ide-rust](https://atom.io/packages/ide-rust).
 
 `apm install ide-rust`
 

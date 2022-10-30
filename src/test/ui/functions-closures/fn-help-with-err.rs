@@ -1,16 +1,28 @@
 // This test case checks the behavior of typeck::check::method::suggest::is_fn on Ty::Error.
+
+struct Foo;
+
+trait Bar {
+    //~^ NOTE `Bar` defines an item `bar`, perhaps you need to implement it
+    //~| NOTE `Bar` defines an item `bar`, perhaps you need to implement it
+    fn bar(&self) {}
+}
+
+impl Bar for Foo {}
+
 fn main() {
     let arc = std::sync::Arc::new(oops);
     //~^ ERROR cannot find value `oops` in this scope
     //~| NOTE not found
-    // The error "note: this is a function, perhaps you wish to call it" MUST NOT appear.
-    arc.blablabla();
-    //~^ ERROR no method named `blablabla`
+    arc.bar();
+    //~^ ERROR no method named `bar`
     //~| NOTE method not found
-    let arc2 = std::sync::Arc::new(|| 1);
-    // The error "note: this is a function, perhaps you wish to call it" SHOULD appear
-    arc2.blablabla();
-    //~^ ERROR no method named `blablabla`
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
+
+    let arc2 = std::sync::Arc::new(|| Foo);
+    arc2.bar();
+    //~^ ERROR no method named `bar`
     //~| NOTE method not found
-    //~| NOTE this is a function, perhaps you wish to call it
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
+    //~| HELP use parentheses to call this closure
 }

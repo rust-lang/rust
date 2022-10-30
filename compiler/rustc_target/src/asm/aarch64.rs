@@ -1,6 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::{RelocModel, Target};
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
@@ -74,7 +74,7 @@ impl AArch64InlineAsmRegClass {
 }
 
 pub fn target_reserves_x18(target: &Target) -> bool {
-    target.os == "android" || target.is_like_fuchsia || target.is_like_osx || target.is_like_windows
+    target.os == "android" || target.os == "fuchsia" || target.is_like_osx || target.is_like_windows
 }
 
 fn reserved_x18(

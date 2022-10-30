@@ -1,7 +1,7 @@
 // compile-flags: -O
 // build-pass
 
-#![feature(allocator_api, bench_black_box)]
+#![feature(allocator_api)]
 
 #[inline(never)]
 pub fn by_ref(node: &mut Box<[u8; 1], &std::alloc::Global>) {

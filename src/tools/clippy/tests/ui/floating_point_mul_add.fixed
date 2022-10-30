@@ -19,7 +19,9 @@ fn main() {
     let d: f64 = 0.0001;
 
     let _ = a.mul_add(b, c);
+    let _ = a.mul_add(b, -c);
     let _ = a.mul_add(b, c);
+    let _ = a.mul_add(-b, c);
     let _ = 2.0f64.mul_add(4.0, a);
     let _ = 2.0f64.mul_add(4., a);
 

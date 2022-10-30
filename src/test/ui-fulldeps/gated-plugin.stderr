@@ -1,5 +1,5 @@
 error[E0658]: compiler plugins are deprecated
-  --> $DIR/gated-plugin.rs:3:1
+  --> $DIR/gated-plugin.rs:4:1
    |
 LL | #![plugin(empty_plugin)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![plugin(empty_plugin)]
    = help: add `#![feature(plugin)]` to the crate attributes to enable
 
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
-  --> $DIR/gated-plugin.rs:3:1
+  --> $DIR/gated-plugin.rs:4:1
    |
 LL | #![plugin(empty_plugin)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version

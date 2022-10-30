@@ -31,16 +31,16 @@ LL | static mut D;
    |             help: provide a definition for the static: `= <expr>;`
 
 error: missing type for `static` item
-  --> $DIR/item-free-static-no-body-semantic-fail.rs:6:8
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:6:9
    |
 LL | static B;
-   |        ^ help: provide a type for the item: `B: <type>`
+   |         ^ help: provide a type for the item: `: <type>`
 
 error: missing type for `static mut` item
-  --> $DIR/item-free-static-no-body-semantic-fail.rs:10:12
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:10:13
    |
 LL | static mut D;
-   |            ^ help: provide a type for the item: `D: <type>`
+   |             ^ help: provide a type for the item: `: <type>`
 
 error: aborting due to 6 previous errors
 

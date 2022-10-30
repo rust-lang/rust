@@ -6,8 +6,8 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
-    Body, CastKind, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
+    Terminator, TerminatorKind,
 };
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
@@ -33,10 +33,10 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
-                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {:#?}", predicate),
+                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {predicate:#?}"),
+                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {predicate:#?}"),
             }
         }
         match predicates.parent {
@@ -55,7 +55,7 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
         body.local_decls.iter().next().unwrap().source_info.span,
     )?;
 
-    for bb in body.basic_blocks() {
+    for bb in body.basic_blocks.iter() {
         check_terminator(tcx, body, bb.terminator(), msrv)?;
         for stmt in &bb.statements {
             check_statement(tcx, body, def_id, stmt)?;
@@ -82,7 +82,7 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()));
             },
-            ty::Dynamic(preds, _) => {
+            ty::Dynamic(preds, _, _) => {
                 for pred in preds.iter() {
                     match pred.skip_binder() {
                         ty::ExistentialPredicate::AutoTrait(_) | ty::ExistentialPredicate::Projection(_) => {
@@ -121,24 +121,24 @@ fn check_rvalue<'tcx>(
 ) -> McfResult {
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
-        Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => check_operand(tcx, operand, span, body),
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
             check_place(tcx, *place, span, body)
         },
-        Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
-            use rustc_middle::ty::cast::CastTy;
-            let cast_in = CastTy::from_ty(operand.ty(body, tcx)).expect("bad input type for cast");
-            let cast_out = CastTy::from_ty(*cast_ty).expect("bad output type for cast");
-            match (cast_in, cast_out) {
-                (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
-                    Err((span, "casting pointers to ints is unstable in const fn".into()))
-                },
-                _ => check_operand(tcx, operand, span, body),
-            }
-        },
-        Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer), operand, _) => {
-            check_operand(tcx, operand, span, body)
-        },
+        Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body),
+        Rvalue::Repeat(operand, _)
+        | Rvalue::Use(operand)
+        | Rvalue::Cast(
+            CastKind::PointerFromExposedAddress
+            | CastKind::IntToInt
+            | CastKind::FloatToInt
+            | CastKind::IntToFloat
+            | CastKind::FloatToFloat
+            | CastKind::FnPtrToPtr
+            | CastKind::PtrToPtr
+            | CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
+            operand,
+            _,
+        ) => check_operand(tcx, operand, span, body),
         Rvalue::Cast(
             CastKind::Pointer(
                 PointerCast::UnsafeFnPointer | PointerCast::ClosureFnPointer(_) | PointerCast::ReifyFnPointer,
@@ -162,6 +162,13 @@ fn check_rvalue<'tcx>(
                 // We just can't allow trait objects until we have figured out trait method calls.
                 Err((span, "unsizing casts are not allowed in const fn".into()))
             }
+        },
+        Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
+            Err((span, "casting pointers to ints is unstable in const fn".into()))
+        },
+        Rvalue::Cast(CastKind::DynStar, _, _) => {
+            // FIXME(dyn-star)
+            unimplemented!()
         },
         // binops are fine on integers
         Rvalue::BinaryOp(_, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(_, box (lhs, rhs)) => {
@@ -214,7 +221,11 @@ fn check_statement<'tcx>(
             check_place(tcx, **place, span, body)
         },
 
-        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(tcx, op, span, body),
+
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+            rustc_middle::mir::CopyNonOverlapping { dst, src, count },
+        )) => {
             check_operand(tcx, dst, span, body)?;
             check_operand(tcx, src, span, body)?;
             check_operand(tcx, count, span, body)
@@ -254,6 +265,7 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
                 }
             },
             ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::OpaqueCast(..)
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Deref
@@ -312,8 +324,7 @@ fn check_terminator<'a, 'tcx>(
                         span,
                         format!(
                             "can only call other `const fn` within a `const fn`, \
-                             but `{:?}` is not stable as `const fn`",
-                            func,
+                             but `{func:?}` is not stable as `const fn`",
                         )
                         .into(),
                     ));
@@ -356,14 +367,27 @@ fn check_terminator<'a, 'tcx>(
 fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<RustcVersion>) -> bool {
     tcx.is_const_fn(def_id)
         && tcx.lookup_const_stability(def_id).map_or(true, |const_stab| {
-            if let rustc_attr::StabilityLevel::Stable { since } = const_stab.level {
+            if let rustc_attr::StabilityLevel::Stable { since, .. } = const_stab.level {
                 // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                 // function could be removed if `rustc` provided a MSRV-aware version of `is_const_fn`.
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
+
+                // HACK(nilstrieb): CURRENT_RUSTC_VERSION can return versions like 1.66.0-dev. `rustc-semver`
+                // doesn't accept                  the `-dev` version number so we have to strip it
+                // off.
+                let short_version = since
+                    .as_str()
+                    .split('-')
+                    .next()
+                    .expect("rustc_attr::StabilityLevel::Stable::since` is empty");
+
+                let since = rustc_span::Symbol::intern(short_version);
+
                 crate::meets_msrv(
                     msrv,
-                    RustcVersion::parse(since.as_str())
-                        .expect("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted"),
+                    RustcVersion::parse(since.as_str()).unwrap_or_else(|err| {
+                        panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{since}`, {err:?}")
+                    }),
                 )
             } else {
                 // Unstable const fn with the feature enabled.

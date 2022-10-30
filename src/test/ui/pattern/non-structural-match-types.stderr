@@ -1,4 +1,4 @@
-error: `[closure@$DIR/non-structural-match-types.rs:9:17: 9:22]` cannot be used in patterns
+error: `[closure@$DIR/non-structural-match-types.rs:9:17: 9:19]` cannot be used in patterns
   --> $DIR/non-structural-match-types.rs:9:9
    |
 LL |         const { || {} } => {},

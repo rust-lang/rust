@@ -4,7 +4,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{sym, Symbol};
+use rustc_span::Symbol;
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate, ItemId, PrimitiveType};
 use crate::core::DocContext;
@@ -62,7 +62,7 @@ pub(crate) struct Cache {
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods
     /// should show up in documentation about trait implementations.
-    pub(crate) traits: FxHashMap<DefId, clean::TraitWithExtraInfo>,
+    pub(crate) traits: FxHashMap<DefId, clean::Trait>,
 
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
@@ -225,12 +225,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Propagate a trait method's documentation to all implementors of the
         // trait.
         if let clean::TraitItem(ref t) = *item.kind {
-            self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| {
-                clean::TraitWithExtraInfo {
-                    trait_: t.clone(),
-                    is_notable: item.attrs.has_doc_flag(sym::notable_trait),
-                }
-            });
+            self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| (**t).clone());
         }
 
         // Collect all the implementors of traits.
@@ -413,7 +408,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::TyAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
-            | clean::KeywordItem(..) => {
+            | clean::KeywordItem => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
                 // So would rather leave them to an expert,
@@ -536,7 +531,7 @@ enum ParentStackItem {
 impl ParentStackItem {
     fn new(item: &clean::Item) -> Self {
         match &*item.kind {
-            clean::ItemKind::ImplItem(clean::Impl { for_, trait_, generics, kind, .. }) => {
+            clean::ItemKind::ImplItem(box clean::Impl { for_, trait_, generics, kind, .. }) => {
                 ParentStackItem::Impl {
                     for_: for_.clone(),
                     trait_: trait_.clone(),

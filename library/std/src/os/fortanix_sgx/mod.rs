@@ -26,10 +26,13 @@ pub mod usercalls {
             free, insecure_time, launch_thread, read, read_alloc, send, wait, write,
         };
         pub use crate::sys::abi::usercalls::raw::{do_usercall, Usercalls as UsercallNrs};
+        pub use crate::sys::abi::usercalls::raw::{Register, RegisterArgument, ReturnValue};
 
         // fortanix-sgx-abi re-exports
         pub use crate::sys::abi::usercalls::raw::Error;
-        pub use crate::sys::abi::usercalls::raw::{ByteBuffer, FifoDescriptor, Return, Usercall};
+        pub use crate::sys::abi::usercalls::raw::{
+            ByteBuffer, Cancel, FifoDescriptor, Return, Usercall,
+        };
         pub use crate::sys::abi::usercalls::raw::{Fd, Result, Tcs};
         pub use crate::sys::abi::usercalls::raw::{
             EV_RETURNQ_NOT_EMPTY, EV_UNPARK, EV_USERCALLQ_NOT_FULL, FD_STDERR, FD_STDIN, FD_STDOUT,

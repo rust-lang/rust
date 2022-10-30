@@ -9,6 +9,6 @@ fn main() {
     [(); { for _ in 0usize.. {}; 0}];
     //~^ ERROR `for` is not allowed in a `const`
     //~| ERROR cannot convert
-    //~| ERROR mutable references are not allowed in constants
-    //~| ERROR cannot call non-const fn
+    //~| ERROR mutable references
+    //~| ERROR cannot call
 }

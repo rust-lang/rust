@@ -1,9 +1,7 @@
 // check-fail
-// known-bug
+// known-bug: #88382
 
 // This should pass, but has a missed normalization due to HRTB.
-
-#![feature(generic_associated_types)]
 
 trait Iterable {
     type Iterator<'a> where Self: 'a;

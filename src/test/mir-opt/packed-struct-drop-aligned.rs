@@ -1,6 +1,6 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 
-// EMIT_MIR_FOR_EACH_BIT_WIDTH
+
 // EMIT_MIR packed_struct_drop_aligned.main.SimplifyCfg-elaborate-drops.after.mir
 fn main() {
     let mut x = Packed(Aligned(Droppy(0)));

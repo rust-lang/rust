@@ -1,7 +1,6 @@
-#![feature(generic_associated_types)]
-
 trait Document {
     type Cursor<'a>: DocCursor<'a>;
+    //~^ ERROR: missing required bound on `Cursor`
 
     fn cursor(&self) -> Self::Cursor<'_>;
 }
@@ -45,7 +44,7 @@ where
 }
 
 fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
-    //~^ ERROR: missing lifetime specifier
+    //~^ ERROR `'_` cannot be used here [E0637]
     //~| ERROR: missing lifetime specifier
     DocumentImpl {}
 }

@@ -1,5 +1,5 @@
 // This test checks that the source code pages sidebar toggle is working as expected.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 click: ".srclink"
 wait-for: "#sidebar-toggle"
 click: "#sidebar-toggle"

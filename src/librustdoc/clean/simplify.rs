@@ -14,7 +14,6 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
-use rustc_span::Symbol;
 
 use crate::clean;
 use crate::clean::GenericArgs as PP;
@@ -26,38 +25,37 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     //
     // We use `FxIndexMap` so that the insertion order is preserved to prevent messing up to
     // the order of the generated bounds.
-    let mut params: FxIndexMap<Symbol, (Vec<_>, Vec<_>)> = FxIndexMap::default();
+    let mut tybounds = FxIndexMap::default();
     let mut lifetimes = Vec::new();
     let mut equalities = Vec::new();
-    let mut tybounds = Vec::new();
 
     for clause in clauses {
         match clause {
-            WP::BoundPredicate { ty, bounds, bound_params } => match ty {
-                clean::Generic(s) => {
-                    let (b, p) = params.entry(s).or_default();
-                    b.extend(bounds);
-                    p.extend(bound_params);
-                }
-                t => tybounds.push((t, (bounds, bound_params))),
-            },
+            WP::BoundPredicate { ty, bounds, bound_params } => {
+                let (b, p): &mut (Vec<_>, Vec<_>) = tybounds.entry(ty).or_default();
+                b.extend(bounds);
+                p.extend(bound_params);
+            }
             WP::RegionPredicate { lifetime, bounds } => {
                 lifetimes.push((lifetime, bounds));
             }
-            WP::EqPredicate { lhs, rhs } => equalities.push((lhs, rhs)),
+            WP::EqPredicate { lhs, rhs, bound_params } => equalities.push((lhs, rhs, bound_params)),
         }
     }
 
     // Look for equality predicates on associated types that can be merged into
-    // general bound predicates
-    equalities.retain(|&(ref lhs, ref rhs)| {
-        let Some((self_, trait_did, name)) = lhs.projection() else {
-            return true;
-        };
-        let clean::Generic(generic) = self_ else { return true };
-        let Some((bounds, _)) = params.get_mut(generic) else { return true };
-
-        merge_bounds(cx, bounds, trait_did, name, rhs)
+    // general bound predicates.
+    equalities.retain(|&(ref lhs, ref rhs, ref bound_params)| {
+        let Some((ty, trait_did, name)) = lhs.projection() else { return true; };
+        let Some((bounds, _)) = tybounds.get_mut(ty) else { return true };
+        let bound_params = bound_params
+            .into_iter()
+            .map(|param| clean::GenericParamDef {
+                name: param.0,
+                kind: clean::GenericParamDefKind::Lifetime { outlives: Vec::new() },
+            })
+            .collect();
+        merge_bounds(cx, bounds, bound_params, trait_did, name, rhs)
     });
 
     // And finally, let's reassemble everything
@@ -65,23 +63,23 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     clauses.extend(
         lifetimes.into_iter().map(|(lt, bounds)| WP::RegionPredicate { lifetime: lt, bounds }),
     );
-    clauses.extend(params.into_iter().map(|(k, (bounds, params))| WP::BoundPredicate {
-        ty: clean::Generic(k),
-        bounds,
-        bound_params: params,
-    }));
     clauses.extend(tybounds.into_iter().map(|(ty, (bounds, bound_params))| WP::BoundPredicate {
         ty,
         bounds,
         bound_params,
     }));
-    clauses.extend(equalities.into_iter().map(|(lhs, rhs)| WP::EqPredicate { lhs, rhs }));
+    clauses.extend(equalities.into_iter().map(|(lhs, rhs, bound_params)| WP::EqPredicate {
+        lhs,
+        rhs,
+        bound_params,
+    }));
     clauses
 }
 
 pub(crate) fn merge_bounds(
     cx: &clean::DocContext<'_>,
     bounds: &mut Vec<clean::GenericBound>,
+    mut bound_params: Vec<clean::GenericParamDef>,
     trait_did: DefId,
     assoc: clean::PathSegment,
     rhs: &clean::Term,
@@ -98,6 +96,14 @@ pub(crate) fn merge_bounds(
             return false;
         }
         let last = trait_ref.trait_.segments.last_mut().expect("segments were empty");
+
+        trait_ref.generic_params.append(&mut bound_params);
+        // Since the parameters (probably) originate from `tcx.collect_*_late_bound_regions` which
+        // returns a hash set, sort them alphabetically to guarantee a stable and deterministic
+        // output (and to fully deduplicate them).
+        trait_ref.generic_params.sort_unstable_by(|p, q| p.name.as_str().cmp(q.name.as_str()));
+        trait_ref.generic_params.dedup_by_key(|p| p.name);
+
         match last.args {
             PP::AngleBracketed { ref mut bindings, .. } => {
                 bindings.push(clean::TypeBinding {

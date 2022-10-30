@@ -95,7 +95,6 @@ use crate::marker::Destruct;
 ///
 /// * Function item types (i.e., the distinct types defined for each function)
 /// * Function pointer types (e.g., `fn() -> i32`)
-/// * Tuple types, if each component also implements `Clone` (e.g., `()`, `(i32, bool)`)
 /// * Closure types, if they capture no value from the environment
 ///   or if all such captured values implement `Clone` themselves.
 ///   Note that variables captured by shared reference always implement `Clone`
@@ -107,7 +106,7 @@ use crate::marker::Destruct;
 #[lang = "clone"]
 #[rustc_diagnostic_item = "Clone"]
 #[rustc_trivial_field_reads]
-#[cfg_attr(not(bootstrap), const_trait)]
+#[const_trait]
 pub trait Clone: Sized {
     /// Returns a copy of the value.
     ///
@@ -130,7 +129,6 @@ pub trait Clone: Sized {
     /// allocations.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(bootstrap, default_method_body_is_const)]
     fn clone_from(&mut self, source: &Self)
     where
         Self: ~const Destruct,

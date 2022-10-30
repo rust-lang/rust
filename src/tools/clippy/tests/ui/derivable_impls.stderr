@@ -1,5 +1,5 @@
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:18:1
+  --> $DIR/derivable_impls.rs:22:1
    |
 LL | / impl std::default::Default for FooDefault<'_> {
 LL | |     fn default() -> Self {
@@ -11,10 +11,14 @@ LL | | }
    | |_^
    |
    = note: `-D clippy::derivable-impls` implied by `-D warnings`
-   = help: try annotating `FooDefault` with `#[derive(Default)]`
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:39:1
+  --> $DIR/derivable_impls.rs:43:1
    |
 LL | / impl std::default::Default for TupleDefault {
 LL | |     fn default() -> Self {
@@ -23,10 +27,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: try annotating `TupleDefault` with `#[derive(Default)]`
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:91:1
+  --> $DIR/derivable_impls.rs:95:1
    |
 LL | / impl Default for StrDefault<'_> {
 LL | |     fn default() -> Self {
@@ -35,10 +43,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: try annotating `StrDefault` with `#[derive(Default)]`
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:117:1
+  --> $DIR/derivable_impls.rs:121:1
    |
 LL | / impl Default for Y {
 LL | |     fn default() -> Self {
@@ -47,10 +59,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: try annotating `Y` with `#[derive(Default)]`
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:156:1
+  --> $DIR/derivable_impls.rs:160:1
    |
 LL | / impl Default for WithoutSelfCurly {
 LL | |     fn default() -> Self {
@@ -59,10 +75,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: try annotating `WithoutSelfCurly` with `#[derive(Default)]`
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:164:1
+  --> $DIR/derivable_impls.rs:168:1
    |
 LL | / impl Default for WithoutSelfParan {
 LL | |     fn default() -> Self {
@@ -71,10 +91,14 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: try annotating `WithoutSelfParan` with `#[derive(Default)]`
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
 
 error: this `impl` can be derived
-  --> $DIR/derivable_impls.rs:214:1
+  --> $DIR/derivable_impls.rs:218:1
    |
 LL | / impl Default for RepeatDefault1 {
 LL | |     fn default() -> Self {
@@ -83,7 +107,11 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: try annotating `RepeatDefault1` with `#[derive(Default)]`
+   = help: remove the manual implementation...
+help: ...and instead derive it
+   |
+LL | #[derive(Default)]
+   |
 
 error: aborting due to 7 previous errors
 

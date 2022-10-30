@@ -1,0 +1,18 @@
+error: deref on an immutable reference
+  --> $DIR/borrow_deref_ref_unfixable.rs:8:23
+   |
+LL |         let x: &str = &*s;
+   |                       ^^^
+   |
+   = note: `-D clippy::borrow-deref-ref` implied by `-D warnings`
+help: if you would like to reborrow, try removing `&*`
+   |
+LL |         let x: &str = s;
+   |                       ~
+help: if you would like to deref, try using `&**`
+   |
+LL |         let x: &str = &**s;
+   |                       ~~~~
+
+error: aborting due to previous error
+

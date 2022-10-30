@@ -1,0 +1,12 @@
+### What it does
+Checks for string literals that contain Unicode in a form
+that is not equal to its
+[NFC-recomposition](http://www.unicode.org/reports/tr15/#Norm_Forms).
+
+### Why is this bad?
+If such a string is compared to another, the results
+may be surprising.
+
+### Example
+You may not see it, but "à"" and "à"" aren't the same string. The
+former when escaped is actually `"a\u{300}"` while the latter is `"\u{e0}"`.

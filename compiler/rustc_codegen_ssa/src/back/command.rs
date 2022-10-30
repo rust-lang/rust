@@ -7,7 +7,6 @@ use std::io;
 use std::mem;
 use std::process::{self, Output};
 
-use rustc_span::symbol::Symbol;
 use rustc_target::spec::LldFlavor;
 
 #[derive(Clone)]
@@ -44,11 +43,6 @@ impl Command {
 
     pub fn arg<P: AsRef<OsStr>>(&mut self, arg: P) -> &mut Command {
         self._arg(arg.as_ref());
-        self
-    }
-
-    pub fn sym_arg(&mut self, arg: Symbol) -> &mut Command {
-        self.arg(arg.as_str());
         self
     }
 

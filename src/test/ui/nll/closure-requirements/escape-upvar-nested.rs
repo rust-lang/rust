@@ -5,7 +5,7 @@
 //
 // except that the closure does so via a second closure.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![feature(rustc_attrs)]
 

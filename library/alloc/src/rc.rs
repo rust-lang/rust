@@ -907,8 +907,7 @@ impl<T: ?Sized> Rc<T> {
         let offset = unsafe { data_offset(ptr) };
 
         // Reverse the offset to find the original RcBox.
-        let rc_ptr =
-            unsafe { (ptr as *mut u8).offset(-offset).with_metadata_of(ptr as *mut RcBox<T>) };
+        let rc_ptr = unsafe { ptr.byte_sub(offset) as *mut RcBox<T> };
 
         unsafe { Self::from_ptr(rc_ptr) }
     }
@@ -1143,7 +1142,7 @@ impl<T: Clone> Rc<T> {
     /// be cloned.
     ///
     /// See also [`get_mut`], which will fail rather than cloning the inner value
-    /// or diassociating [`Weak`] pointers.
+    /// or disassociating [`Weak`] pointers.
     ///
     /// [`clone`]: Clone::clone
     /// [`get_mut`]: Rc::get_mut
@@ -1254,8 +1253,6 @@ impl<T: Clone> Rc<T> {
 }
 
 impl Rc<dyn Any> {
-    #[inline]
-    #[stable(feature = "rc_downcast", since = "1.29.0")]
     /// Attempt to downcast the `Rc<dyn Any>` to a concrete type.
     ///
     /// # Examples
@@ -1274,6 +1271,8 @@ impl Rc<dyn Any> {
     /// print_if_string(Rc::new(my_string));
     /// print_if_string(Rc::new(0i8));
     /// ```
+    #[inline]
+    #[stable(feature = "rc_downcast", since = "1.29.0")]
     pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
         if (*self).is::<T>() {
             unsafe {
@@ -1283,6 +1282,42 @@ impl Rc<dyn Any> {
             }
         } else {
             Err(self)
+        }
+    }
+
+    /// Downcasts the `Rc<dyn Any>` to a concrete type.
+    ///
+    /// For a safe alternative see [`downcast`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(downcast_unchecked)]
+    ///
+    /// use std::any::Any;
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<dyn Any> = Rc::new(1_usize);
+    ///
+    /// unsafe {
+    ///     assert_eq!(*x.downcast_unchecked::<usize>(), 1);
+    /// }
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// The contained value must be of type `T`. Calling this method
+    /// with the incorrect type is *undefined behavior*.
+    ///
+    ///
+    /// [`downcast`]: Self::downcast
+    #[inline]
+    #[unstable(feature = "downcast_unchecked", issue = "90850")]
+    pub unsafe fn downcast_unchecked<T: Any>(self) -> Rc<T> {
+        unsafe {
+            let ptr = self.ptr.cast::<RcBox<T>>();
+            mem::forget(self);
+            Rc::from_inner(ptr)
         }
     }
 }
@@ -2295,7 +2330,7 @@ impl<T: ?Sized> Weak<T> {
             let offset = unsafe { data_offset(ptr) };
             // Thus, we reverse the offset to get the whole RcBox.
             // SAFETY: the pointer originated from a Weak, so this offset is safe.
-            unsafe { (ptr as *mut u8).offset(-offset).with_metadata_of(ptr as *mut RcBox<T>) }
+            unsafe { ptr.byte_sub(offset) as *mut RcBox<T> }
         };
 
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
@@ -2648,7 +2683,7 @@ impl<T: ?Sized> Unpin for Rc<T> {}
 ///
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
-unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
+unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
     // Align the unsized value to the end of the RcBox.
     // Because RcBox is repr(C), it will always be the last field in memory.
     // SAFETY: since the only unsized types possible are slices, trait objects,
@@ -2659,7 +2694,7 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
 }
 
 #[inline]
-fn data_offset_align(align: usize) -> isize {
+fn data_offset_align(align: usize) -> usize {
     let layout = Layout::new::<RcBox<()>>();
-    (layout.size() + layout.padding_needed_for(align)) as isize
+    layout.size() + layout.padding_needed_for(align)
 }

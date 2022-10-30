@@ -32,7 +32,8 @@ impl MultiItemModifier for Expander {
             ecx.resolver.resolve_derives(ecx.current_expansion.id, ecx.force_mode, &|| {
                 let template =
                     AttributeTemplate { list: Some("Trait1, Trait2, ..."), ..Default::default() };
-                let attr = attr::mk_attr_outer(meta_item.clone());
+                let attr =
+                    attr::mk_attr_outer(&sess.parse_sess.attr_id_generator, meta_item.clone());
                 validate_attr::check_builtin_attribute(
                     &sess.parse_sess,
                     &attr,
@@ -126,9 +127,9 @@ fn report_bad_target(sess: &Session, item: &Annotatable, span: Span) -> bool {
 }
 
 fn report_unexpected_literal(sess: &Session, lit: &ast::Lit) {
-    let help_msg = match lit.token.kind {
-        token::Str if rustc_lexer::is_ident(lit.token.symbol.as_str()) => {
-            format!("try using `#[derive({})]`", lit.token.symbol)
+    let help_msg = match lit.token_lit.kind {
+        token::Str if rustc_lexer::is_ident(lit.token_lit.symbol.as_str()) => {
+            format!("try using `#[derive({})]`", lit.token_lit.symbol)
         }
         _ => "for example, write `#[derive(Debug)]` for `Debug`".to_string(),
     };
@@ -142,7 +143,7 @@ fn report_path_args(sess: &Session, meta: &ast::MetaItem) {
     let report_error = |title, action| {
         let span = meta.span.with_lo(meta.path.span.hi());
         sess.struct_span_err(span, title)
-            .span_suggestion(span, action, String::new(), Applicability::MachineApplicable)
+            .span_suggestion(span, action, "", Applicability::MachineApplicable)
             .emit();
     };
     match meta.kind {

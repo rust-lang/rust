@@ -1,0 +1,35 @@
+error[E0552]: unrecognized representation hint
+  --> $DIR/invalid_repr_list_help.rs:3:8
+   |
+LL | #[repr(uwu)]
+   |        ^^^
+   |
+   = help: valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+
+error[E0552]: unrecognized representation hint
+  --> $DIR/invalid_repr_list_help.rs:6:8
+   |
+LL | #[repr(uwu = "a")]
+   |        ^^^^^^^^^
+   |
+   = help: valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+
+error[E0552]: unrecognized representation hint
+  --> $DIR/invalid_repr_list_help.rs:9:8
+   |
+LL | #[repr(uwu(4))]
+   |        ^^^^^^
+   |
+   = help: valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+
+error[E0552]: unrecognized representation hint
+  --> $DIR/invalid_repr_list_help.rs:14:8
+   |
+LL | #[repr(uwu, u8)]
+   |        ^^^
+   |
+   = help: valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0552`.

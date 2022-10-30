@@ -44,7 +44,7 @@ impl EarlyLintPass for EmptyStructsWithBrackets {
                     diagnostic.span_suggestion_hidden(
                         span_after_ident,
                         "remove the brackets",
-                        ";".to_string(),
+                        ";",
                         Applicability::MachineApplicable);
                     },
             );

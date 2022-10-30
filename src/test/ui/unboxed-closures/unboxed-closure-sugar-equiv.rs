@@ -42,7 +42,7 @@ fn test<'a,'b>() {
     // Errors expected:
     eq::< dyn Foo<(),Output=()>,
           dyn Foo(char)                                               >();
-    //~^^ ERROR E0277
+    //~^ ERROR E0277
 }
 
 fn main() { }

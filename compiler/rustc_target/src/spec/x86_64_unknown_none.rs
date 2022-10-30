@@ -4,27 +4,22 @@
 // `target-cpu` compiler flags to opt-in more hardware-specific
 // features.
 
-use super::{
-    CodeModel, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, RelroLevel, StackProbeType,
-    Target, TargetOptions,
-};
+use super::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy};
+use super::{RelroLevel, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let opts = TargetOptions {
         cpu: "x86-64".into(),
         max_atomic_width: Some(64),
-        // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-        stack_probes: StackProbeType::Call,
+        stack_probes: StackProbeType::X86,
         position_independent_executables: true,
         static_position_independent_executables: true,
         relro_level: RelroLevel::Full,
-        relocation_model: RelocModel::Pic,
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+        linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         features:
             "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float"
                 .into(),
-        executables: true,
         disable_redzone: true,
         panic_strategy: PanicStrategy::Abort,
         code_model: Some(CodeModel::Kernel),

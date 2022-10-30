@@ -18,6 +18,9 @@ check cfg specification is parsed using the Rust metadata syntax, just as the `-
 These two options are independent. `names` checks only the namespace of condition names
 while `values` checks only the namespace of the values of list-valued conditions.
 
+NOTE: No implicit expectation is added when using `--cfg` for both forms. Users are expected to
+pass all expected names and values using `names(...)` and `values(...)`.
+
 ## The `names(...)` form
 
 The `names(...)` form enables checking the names. This form uses a named list:
@@ -52,27 +55,6 @@ Note that `--check-cfg 'names()'` is _not_ equivalent to omitting the option ent
 The first form enables checking condition names, while specifying that there are no valid
 condition names (outside of the set of well-known names defined by `rustc`). Omitting the
 `--check-cfg 'names(...)'` option does not enable checking condition names.
-
-Conditions that are enabled are implicitly valid; it is unnecessary (but legal) to specify a
-condition name as both enabled and valid. For example, the following invocations are equivalent:
-
-```bash
-# condition names will be checked, and 'has_time_travel' is valid
-rustc --cfg 'has_time_travel' --check-cfg 'names()'
-
-# condition names will be checked, and 'has_time_travel' is valid
-rustc --cfg 'has_time_travel' --check-cfg 'names(has_time_travel)'
-```
-
-In contrast, the following two invocations are _not_ equivalent:
-
-```bash
-# condition names will not be checked (because there is no --check-cfg names(...))
-rustc --cfg 'has_time_travel'
-
-# condition names will be checked, and 'has_time_travel' is both valid and enabled.
-rustc --cfg 'has_time_travel' --check-cfg 'names(has_time_travel)'
-```
 
 ## The `values(...)` form
 
@@ -149,7 +131,7 @@ fn tame_lion() {}
 ```bash
 # This turns on checking for condition names, but not values, such as 'feature' values.
 rustc --check-cfg 'names(is_embedded, has_feathers)' \
-      --cfg has_feathers --cfg 'feature = "zapping"' -Z unstable-options
+      --cfg has_feathers -Z unstable-options
 ```
 
 ```rust
@@ -159,13 +141,14 @@ fn do_embedded() {}
 #[cfg(has_feathers)]        // This is expected as "has_feathers" was provided in names()
 fn do_features() {}
 
+#[cfg(has_feathers = "zapping")] // This is expected as "has_feathers" was provided in names()
+                                 // and because no value checking was enable for "has_feathers"
+                                 // no warning is emitted for the value "zapping"
+fn do_zapping() {}
+
 #[cfg(has_mumble_frotz)]    // This is UNEXPECTED because names checking is enable and
                             // "has_mumble_frotz" was not provided in names()
 fn do_mumble_frotz() {}
-
-#[cfg(feature = "lasers")]  // This doesn't raise a warning, because values checking for "feature"
-                            // was never used
-fn shoot_lasers() {}
 ```
 
 ### Example: Checking feature values, but not condition names

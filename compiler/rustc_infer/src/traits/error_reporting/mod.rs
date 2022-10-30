@@ -10,7 +10,7 @@ use rustc_span::Span;
 use std::fmt;
 use std::iter;
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     pub fn report_extra_impl_obligation(
         &self,
         error_span: Span,
@@ -18,18 +18,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         trait_item_def_id: DefId,
         requirement: &dyn fmt::Display,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let msg = "impl has stricter requirements than trait";
-        let sp = self.tcx.sess.source_map().guess_head_span(error_span);
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            error_span,
+            E0276,
+            "impl has stricter requirements than trait"
+        );
 
-        let mut err = struct_span_err!(self.tcx.sess, sp, E0276, "{}", msg);
-
-        if let Some(trait_item_span) = self.tcx.hir().span_if_local(trait_item_def_id) {
-            let span = self.tcx.sess.source_map().guess_head_span(trait_item_span);
+        if let Some(span) = self.tcx.hir().span_if_local(trait_item_def_id) {
             let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
             err.span_label(span, format!("definition of `{}` from trait", item_name));
         }
 
-        err.span_label(sp, format!("impl has extra requirement {}", requirement));
+        err.span_label(error_span, format!("impl has extra requirement {}", requirement));
 
         err
     }
@@ -46,7 +47,6 @@ pub fn report_object_safety_error<'tcx>(
         hir::Node::Item(item) => Some(item.ident.span),
         _ => None,
     });
-    let span = tcx.sess.source_map().guess_head_span(span);
     let mut err = struct_span_err!(
         tcx.sess,
         span,
@@ -85,8 +85,7 @@ pub fn report_object_safety_error<'tcx>(
     let has_multi_span = !multi_span.is_empty();
     let mut note_span = MultiSpan::from_spans(multi_span.clone());
     if let (Some(trait_span), true) = (trait_span, has_multi_span) {
-        note_span
-            .push_span_label(trait_span, "this trait cannot be made into an object...".to_string());
+        note_span.push_span_label(trait_span, "this trait cannot be made into an object...");
     }
     for (span, msg) in iter::zip(multi_span, messages) {
         note_span.push_span_label(span, msg);

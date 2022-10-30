@@ -1,5 +1,4 @@
 #![feature(type_alias_impl_trait)]
-#![feature(generic_associated_types)]
 
 // See https://github.com/rust-lang/rust/issues/87258#issuecomment-883293367
 

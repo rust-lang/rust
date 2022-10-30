@@ -14,12 +14,10 @@ unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
 impl Condvar {
+    #[inline]
     pub const fn new() -> Condvar {
         Condvar { inner: UnsafeCell::new(c::CONDITION_VARIABLE_INIT) }
     }
-
-    #[inline]
-    pub unsafe fn init(&mut self) {}
 
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
@@ -50,9 +48,5 @@ impl Condvar {
     #[inline]
     pub unsafe fn notify_all(&self) {
         c::WakeAllConditionVariable(self.inner.get())
-    }
-
-    pub unsafe fn destroy(&self) {
-        // ...
     }
 }

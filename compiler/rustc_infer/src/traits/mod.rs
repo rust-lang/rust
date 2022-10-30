@@ -67,6 +67,14 @@ impl<'tcx> PredicateObligation<'tcx> {
             recursion_depth: self.recursion_depth,
         })
     }
+
+    pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> PredicateObligation<'tcx> {
+        self.param_env = self.param_env.without_const();
+        if let ty::PredicateKind::Trait(trait_pred) = self.predicate.kind().skip_binder() && trait_pred.is_const_if_const() {
+            self.predicate = tcx.mk_predicate(self.predicate.kind().map_bound(|_| ty::PredicateKind::Trait(trait_pred.without_const())));
+        }
+        self
+    }
 }
 
 impl<'tcx> TraitObligation<'tcx> {
@@ -105,6 +113,8 @@ pub struct FulfillmentError<'tcx> {
 
 #[derive(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
+    /// Inherently impossible to fulfill; this trait is implemented if and only if it is already implemented.
+    CodeCycle(Vec<Obligation<'tcx, ty::Predicate<'tcx>>>),
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate

@@ -1,4 +1,5 @@
 use crate::sys::locks::Mutex;
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 use crate::time::Duration;
 
 use super::waitqueue::{SpinMutex, WaitQueue, WaitVariable};
@@ -7,15 +8,18 @@ pub struct Condvar {
     inner: SpinMutex<WaitVariable<()>>,
 }
 
-pub type MovableCondvar = Box<Condvar>;
+pub(crate) type MovableCondvar = LazyBox<Condvar>;
+
+impl LazyInit for Condvar {
+    fn init() -> Box<Self> {
+        Box::new(Self::new())
+    }
+}
 
 impl Condvar {
     pub const fn new() -> Condvar {
         Condvar { inner: SpinMutex::new(WaitVariable::new(())) }
     }
-
-    #[inline]
-    pub unsafe fn init(&mut self) {}
 
     #[inline]
     pub unsafe fn notify_one(&self) {
@@ -38,7 +42,4 @@ impl Condvar {
         unsafe { mutex.lock() };
         success
     }
-
-    #[inline]
-    pub unsafe fn destroy(&self) {}
 }

@@ -19,3 +19,8 @@ extern "C" fn __rust_drop_panic() -> ! {
 extern "C" fn __rust_foreign_exception() -> ! {
     loop {}
 }
+
+#[lang = "eh_personality"]
+fn eh_personality() {
+    loop {}
+}

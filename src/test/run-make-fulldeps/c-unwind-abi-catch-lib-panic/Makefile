@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: archive
 	# Compile `main.rs`, which will link into our library, and run it.

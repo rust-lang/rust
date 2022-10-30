@@ -7,7 +7,6 @@ pub trait Tr {
     fn b(&self) {
         ().a()
         //~^ ERROR the trait bound
-        //~| ERROR cannot call
     }
 }
 

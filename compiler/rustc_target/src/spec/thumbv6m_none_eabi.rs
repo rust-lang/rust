@@ -13,7 +13,9 @@ pub fn target() -> Target {
             abi: "eabi".into(),
             // The ARMv6-M architecture doesn't support unaligned loads/stores so we disable them
             // with +strict-align.
-            features: "+strict-align".into(),
+            // Also force-enable 32-bit atomics, which allows the use of atomic load/store only.
+            // The resulting atomics are ABI incompatible with atomics backed by libatomic.
+            features: "+strict-align,+atomics-32".into(),
             // There are no atomic CAS instructions available in the instruction set of the ARMv6-M
             // architecture
             atomic_cas: false,

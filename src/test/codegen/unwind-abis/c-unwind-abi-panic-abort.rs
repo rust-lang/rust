@@ -1,6 +1,6 @@
 // compile-flags: -C panic=abort
 
-// Test that `nounwind` atributes are also applied to extern `C-unwind` Rust functions
+// Test that `nounwind` attributes are also applied to extern `C-unwind` Rust functions
 // when the code is compiled with `panic=abort`.
 
 #![crate_type = "lib"]

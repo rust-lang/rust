@@ -14,7 +14,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
-use tracing::debug;
+use thin_vec::thin_vec;
 
 use std::{iter, mem};
 
@@ -51,7 +51,7 @@ pub fn inject(sess: &Session, resolver: &mut dyn ResolverExpand, krate: &mut ast
     let test_runner = get_test_runner(sess, span_diagnostic, &krate);
 
     if sess.opts.test {
-        let panic_strategy = match (panic_strategy, sess.opts.debugging_opts.panic_abort_tests) {
+        let panic_strategy = match (panic_strategy, sess.opts.unstable_opts.panic_abort_tests) {
             (PanicStrategy::Abort, true) => PanicStrategy::Abort,
             (PanicStrategy::Abort, false) => {
                 if panic_strategy == platform_panic_strategy {
@@ -147,7 +147,7 @@ fn entry_point_type(sess: &Session, item: &ast::Item, depth: usize) -> EntryPoin
             if sess.contains_name(&item.attrs, sym::start) {
                 EntryPointType::Start
             } else if sess.contains_name(&item.attrs, sym::rustc_main) {
-                EntryPointType::MainAttr
+                EntryPointType::RustcMainAttr
             } else if item.ident.name == sym::main {
                 if depth == 0 {
                     // This is a top-level function so can be 'main'
@@ -177,17 +177,20 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         let item = noop_flat_map_item(i, self).expect_one("noop did something");
         self.depth -= 1;
 
-        // Remove any #[main] or #[start] from the AST so it doesn't
+        // Remove any #[rustc_main] or #[start] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
         let item = match entry_point_type(self.sess, &item, self.depth) {
-            EntryPointType::MainNamed | EntryPointType::MainAttr | EntryPointType::Start => item
-                .map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
+            EntryPointType::MainNamed | EntryPointType::RustcMainAttr | EntryPointType::Start => {
+                item.map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
                     let allow_ident = Ident::new(sym::allow, self.def_site);
                     let dc_nested =
                         attr::mk_nested_word_item(Ident::new(sym::dead_code, self.def_site));
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
-                    let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
+                    let allow_dead_code = attr::mk_attr_outer(
+                        &self.sess.parse_sess.attr_id_generator,
+                        allow_dead_code_item,
+                    );
                     let attrs = attrs
                         .into_iter()
                         .filter(|attr| {
@@ -197,7 +200,8 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                         .collect();
 
                     ast::Item { id, ident, attrs, kind, vis, span, tokens }
-                }),
+                })
+            }
             EntryPointType::None | EntryPointType::OtherMain => item,
         };
 
@@ -297,8 +301,10 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let call_test_main = ecx.stmt_expr(call_test_main);
 
     // extern crate test
-    let test_extern_stmt =
-        ecx.stmt_item(sp, ecx.item(sp, test_id, vec![], ast::ItemKind::ExternCrate(None)));
+    let test_extern_stmt = ecx.stmt_item(
+        sp,
+        ecx.item(sp, test_id, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None)),
+    );
 
     // #[rustc_main]
     let main_meta = ecx.meta_word(sp, sym::rustc_main);
@@ -332,7 +338,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let main = P(ast::Item {
         ident: main_id,
-        attrs: vec![main_attr],
+        attrs: thin_vec![main_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
         vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },
@@ -351,7 +357,7 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ecx = &cx.ext_cx;
 
-    ecx.expr_vec_slice(
+    ecx.expr_array_ref(
         sp,
         cx.test_cases
             .iter()

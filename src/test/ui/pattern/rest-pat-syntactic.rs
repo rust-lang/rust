@@ -19,6 +19,8 @@ fn rest_patterns() {
 
     // Box patterns:
     let box ..;
+    //~^ WARN box pattern syntax is experimental
+    //~| WARN unstable syntax
 
     // In or-patterns:
     match x {
@@ -57,7 +59,7 @@ fn rest_patterns() {
         .. |
         [
             (
-                box ..,
+                box .., //~ WARN box pattern syntax is experimental
                 &(..),
                 &mut ..,
                 x @ ..
@@ -67,4 +69,5 @@ fn rest_patterns() {
         ref mut x @ ..
         => {}
     }
+    //~| WARN unstable syntax
 }

@@ -4,8 +4,8 @@ error: missing `#[must_use]` attribute on a method returning `Self`
 LL |     fn what(&self) -> Self;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::return-self-not-must-use` implied by `-D warnings`
    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = note: `-D clippy::return-self-not-must-use` implied by `-D warnings`
 
 error: missing `#[must_use]` attribute on a method returning `Self`
   --> $DIR/return_self_not_must_use.rs:18:5

@@ -1,0 +1,24 @@
+### What it does
+Checks for `#[cfg_attr(rustfmt, rustfmt_skip)]` and suggests to replace it
+with `#[rustfmt::skip]`.
+
+### Why is this bad?
+Since tool_attributes ([rust-lang/rust#44690](https://github.com/rust-lang/rust/issues/44690))
+are stable now, they should be used instead of the old `cfg_attr(rustfmt)` attributes.
+
+### Known problems
+This lint doesn't detect crate level inner attributes, because they get
+processed before the PreExpansionPass lints get executed. See
+[#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
+
+### Example
+```
+#[cfg_attr(rustfmt, rustfmt_skip)]
+fn main() { }
+```
+
+Use instead:
+```
+#[rustfmt::skip]
+fn main() { }
+```

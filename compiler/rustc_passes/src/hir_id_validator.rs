@@ -1,9 +1,8 @@
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lock;
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit;
 use rustc_hir::{HirId, ItemLocalId};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
@@ -11,36 +10,39 @@ use rustc_middle::ty::TyCtxt;
 pub fn check_crate(tcx: TyCtxt<'_>) {
     tcx.dep_graph.assert_ignored();
 
-    if tcx.sess.opts.debugging_opts.hir_stats {
+    if tcx.sess.opts.unstable_opts.hir_stats {
         crate::hir_stats::print_hir_stats(tcx);
     }
 
-    let errors = Lock::new(Vec::new());
-    let hir_map = tcx.hir();
+    #[cfg(debug_assertions)]
+    {
+        let errors = Lock::new(Vec::new());
+        let hir_map = tcx.hir();
 
-    hir_map.par_for_each_module(|module_id| {
-        let mut v = HirIdValidator {
-            hir_map,
-            owner: None,
-            hir_ids_seen: Default::default(),
-            errors: &errors,
-        };
+        hir_map.par_for_each_module(|module_id| {
+            let mut v = HirIdValidator {
+                hir_map,
+                owner: None,
+                hir_ids_seen: Default::default(),
+                errors: &errors,
+            };
 
-        tcx.hir().deep_visit_item_likes_in_module(module_id, &mut v);
-    });
+            tcx.hir().visit_item_likes_in_module(module_id, &mut v);
+        });
 
-    let errors = errors.into_inner();
+        let errors = errors.into_inner();
 
-    if !errors.is_empty() {
-        let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
-        tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
+        if !errors.is_empty() {
+            let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
+            tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
+        }
     }
 }
 
 struct HirIdValidator<'a, 'hir> {
     hir_map: Map<'hir>,
-    owner: Option<LocalDefId>,
-    hir_ids_seen: FxHashSet<ItemLocalId>,
+    owner: Option<hir::OwnerId>,
+    hir_ids_seen: GrowableBitSet<ItemLocalId>,
     errors: &'a Lock<Vec<String>>,
 }
 
@@ -60,12 +62,12 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
         self.errors.lock().push(f());
     }
 
-    fn check<F: FnOnce(&mut HirIdValidator<'a, 'hir>)>(&mut self, owner: LocalDefId, walk: F) {
+    fn check<F: FnOnce(&mut HirIdValidator<'a, 'hir>)>(&mut self, owner: hir::OwnerId, walk: F) {
         assert!(self.owner.is_none());
         self.owner = Some(owner);
         walk(self);
 
-        if owner == CRATE_DEF_ID {
+        if owner == hir::CRATE_OWNER_ID {
             return;
         }
 
@@ -80,7 +82,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
         if max != self.hir_ids_seen.len() - 1 {
             // Collect the missing ItemLocalIds
             let missing: Vec<_> = (0..=max as u32)
-                .filter(|&i| !self.hir_ids_seen.contains(&ItemLocalId::from_u32(i)))
+                .filter(|&i| !self.hir_ids_seen.contains(ItemLocalId::from_u32(i)))
                 .collect();
 
             // Try to map those to something more useful
@@ -94,19 +96,19 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
                 missing_items.push(format!(
                     "[local_id: {}, owner: {}]",
                     local_id,
-                    self.hir_map.def_path(owner).to_string_no_crate_verbose()
+                    self.hir_map.def_path(owner.def_id).to_string_no_crate_verbose()
                 ));
             }
             self.error(|| {
                 format!(
                     "ItemLocalIds not assigned densely in {}. \
-                Max ItemLocalId = {}, missing IDs = {:?}; seens IDs = {:?}",
-                    self.hir_map.def_path(owner).to_string_no_crate_verbose(),
+                Max ItemLocalId = {}, missing IDs = {:#?}; seens IDs = {:#?}",
+                    self.hir_map.def_path(owner.def_id).to_string_no_crate_verbose(),
                     max,
                     missing_items,
                     self.hir_ids_seen
                         .iter()
-                        .map(|&local_id| HirId { owner, local_id })
+                        .map(|local_id| HirId { owner, local_id })
                         .map(|h| format!("({:?} {})", h, self.hir_map.node_to_string(h)))
                         .collect::<Vec<_>>()
                 )
@@ -135,8 +137,8 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
                 format!(
                     "HirIdValidator: The recorded owner of {} is {} instead of {}",
                     self.hir_map.node_to_string(hir_id),
-                    self.hir_map.def_path(hir_id.owner).to_string_no_crate_verbose(),
-                    self.hir_map.def_path(owner).to_string_no_crate_verbose()
+                    self.hir_map.def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
+                    self.hir_map.def_path(owner.def_id).to_string_no_crate_verbose()
                 )
             });
         }

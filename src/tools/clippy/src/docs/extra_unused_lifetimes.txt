@@ -1,0 +1,23 @@
+### What it does
+Checks for lifetimes in generics that are never used
+anywhere else.
+
+### Why is this bad?
+The additional lifetimes make the code look more
+complicated, while there is nothing out of the ordinary going on. Removing
+them leads to more readable code.
+
+### Example
+```
+// unnecessary lifetimes
+fn unused_lifetime<'a>(x: u8) {
+    // ..
+}
+```
+
+Use instead:
+```
+fn no_lifetime(x: u8) {
+    // ...
+}
+```

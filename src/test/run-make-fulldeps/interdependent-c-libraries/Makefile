@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # The rust crate foo will link to the native library foo, while the rust crate
 # bar will link to the native library bar. There is also a dependency between

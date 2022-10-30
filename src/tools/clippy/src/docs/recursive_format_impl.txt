@@ -1,0 +1,32 @@
+### What it does
+Checks for format trait implementations (e.g. `Display`) with a recursive call to itself
+which uses `self` as a parameter.
+This is typically done indirectly with the `write!` macro or with `to_string()`.
+
+### Why is this bad?
+This will lead to infinite recursion and a stack overflow.
+
+### Example
+
+```
+use std::fmt;
+
+struct Structure(i32);
+impl fmt::Display for Structure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+```
+Use instead:
+```
+use std::fmt;
+
+struct Structure(i32);
+impl fmt::Display for Structure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+```

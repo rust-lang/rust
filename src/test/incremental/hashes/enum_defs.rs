@@ -504,9 +504,9 @@ enum EnumAddLifetimeBoundToParameter<'a, T> {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,predicates_of")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,generics_of,predicates_of")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,predicates_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumAddLifetimeBoundToParameter<'a, T: 'a> {
     Variant1(T),
@@ -559,9 +559,9 @@ enum EnumAddLifetimeBoundToParameterWhere<'a, T> {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,predicates_of")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,generics_of,predicates_of")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,predicates_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumAddLifetimeBoundToParameterWhere<'a, T> where T: 'a {
     Variant1(T),

@@ -6,8 +6,8 @@ LL | #[cfg(test = "value")]
    |           |
    |           help: remove the value
    |
-   = note: `#[warn(unexpected_cfgs)]` on by default
    = note: no expected value for `test`
+   = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: 1 warning emitted
 

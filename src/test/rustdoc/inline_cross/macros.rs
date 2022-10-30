@@ -15,5 +15,5 @@ extern crate macros;
 // @has - '//*[@class="docblock"]' 'docs for my_macro'
 // @has - '//*[@class="stab deprecated"]' 'Deprecated since 1.2.3: text'
 // @has - '//*[@class="stab unstable"]' 'macro_test'
-// @has - '//a/@href' '../src/macros/macros.rs.html#8-10'
+// @has - '//a/@href' '../src/macros/macros.rs.html#8'
 pub use macros::my_macro;

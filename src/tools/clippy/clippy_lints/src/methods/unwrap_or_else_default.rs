@@ -5,10 +5,11 @@ use clippy_utils::{
     diagnostics::span_lint_and_sugg, is_default_equivalent_call, source::snippet_with_applicability,
     ty::is_type_diagnostic_item,
 };
+use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::sym;
+use rustc_span::{sym, symbol};
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -25,7 +26,7 @@ pub(super) fn check<'tcx>(
 
     if_chain! {
         if is_option || is_result;
-        if is_default_equivalent_call(cx, u_arg);
+        if closure_body_returns_empty_to_string(cx, u_arg) || is_default_equivalent_call(cx, u_arg);
         then {
             let mut applicability = Applicability::MachineApplicable;
 
@@ -43,4 +44,23 @@ pub(super) fn check<'tcx>(
             );
         }
     }
+}
+
+fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
+    if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = e.kind {
+        let body = cx.tcx.hir().body(body);
+
+        if body.params.is_empty()
+            && let hir::Expr{ kind, .. } = &body.value
+            && let hir::ExprKind::MethodCall(hir::PathSegment {ident, ..}, self_arg, _, _) = kind
+            && ident == &symbol::Ident::from_str("to_string")
+            && let hir::Expr{ kind, .. } = self_arg
+            && let hir::ExprKind::Lit(lit) = kind
+            && let LitKind::Str(symbol::kw::Empty, _) = lit.node
+        {
+            return true;
+        }
+    }
+
+    false
 }

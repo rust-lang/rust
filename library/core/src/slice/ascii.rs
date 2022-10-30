@@ -215,8 +215,6 @@ impl<'a> iter::DoubleEndedIterator for EscapeAscii<'a> {
     }
 }
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
-impl<'a> iter::ExactSizeIterator for EscapeAscii<'a> {}
-#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::FusedIterator for EscapeAscii<'a> {}
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> fmt::Display for EscapeAscii<'a> {

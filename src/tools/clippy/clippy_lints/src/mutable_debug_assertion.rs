@@ -22,9 +22,12 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// debug_assert_eq!(vec![3].pop(), Some(3));
+    ///
     /// // or
-    /// fn take_a_mut_parameter(_: &mut u32) -> bool { unimplemented!() }
-    /// debug_assert!(take_a_mut_parameter(&mut 5));
+    ///
+    /// # let mut x = 5;
+    /// # fn takes_a_mut_parameter(_: &mut u32) -> bool { unimplemented!() }
+    /// debug_assert!(takes_a_mut_parameter(&mut x));
     /// ```
     #[clippy::version = "1.40.0"]
     pub DEBUG_ASSERT_WITH_MUT_CALL,
@@ -53,10 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for DebugAssertWithMutCall {
                     cx,
                     DEBUG_ASSERT_WITH_MUT_CALL,
                     span,
-                    &format!(
-                        "do not call a function with mutable arguments inside of `{}!`",
-                        macro_name
-                    ),
+                    &format!("do not call a function with mutable arguments inside of `{macro_name}!`"),
                 );
             }
         }

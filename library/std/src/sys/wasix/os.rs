@@ -1,6 +1,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use crate::sync::{Mutex, MutexGuard};
+use crate::sync::{Mutex, MutexGuard, LazyLock};
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
@@ -12,13 +12,12 @@ use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sys::memchr;
 use crate::vec;
-use crate::lazy::SyncLazy;
 
 use super::err2io;
 
 const PATH_SEPARATOR: u8 = b':';
 
-static ENV_LOCK: SyncLazy<Mutex<()>> = SyncLazy::new(|| Mutex::new(()));
+static ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 pub fn env_lock<'a>() -> MutexGuard<'a, ()> {
     ENV_LOCK.lock().unwrap()
@@ -231,6 +230,11 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     }
 }
 
+#[allow(dead_code)]
+pub fn page_size() -> usize {
+    unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
+}
+
 pub fn temp_dir() -> PathBuf {
     crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
         PathBuf::from("/tmp")
@@ -247,7 +251,7 @@ pub fn exit(code: i32) -> ! {
 
 pub fn getpid() -> u32 {
     unsafe {
-        wasi::getpid()
+        wasi::proc_id()
             .map(|a| a as u32)
             .map_err(err2io)
             .unwrap_or_else(|_| 0u32)

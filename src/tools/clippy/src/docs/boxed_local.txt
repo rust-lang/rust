@@ -1,0 +1,18 @@
+### What it does
+Checks for usage of `Box<T>` where an unboxed `T` would
+work fine.
+
+### Why is this bad?
+This is an unnecessary allocation, and bad for
+performance. It is only necessary to allocate if you wish to move the box
+into something.
+
+### Example
+```
+fn foo(x: Box<u32>) {}
+```
+
+Use instead:
+```
+fn foo(x: u32) {}
+```

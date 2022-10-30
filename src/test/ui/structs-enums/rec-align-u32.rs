@@ -10,6 +10,7 @@ use std::mem;
 mod rusti {
     extern "rust-intrinsic" {
         pub fn pref_align_of<T>() -> usize;
+        #[rustc_safe_intrinsic]
         pub fn min_align_of<T>() -> usize;
     }
 }

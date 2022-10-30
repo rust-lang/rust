@@ -7,8 +7,8 @@ use std::path::Path;
 
 const ENTRY_LIMIT: usize = 1000;
 // FIXME: The following limits should be reduced eventually.
-const ROOT_ENTRY_LIMIT: usize = 971;
-const ISSUES_ENTRY_LIMIT: usize = 2234;
+const ROOT_ENTRY_LIMIT: usize = 950;
+const ISSUES_ENTRY_LIMIT: usize = 2141;
 
 fn check_entries(path: &Path, bad: &mut bool) {
     let dirs = walkdir::WalkDir::new(&path.join("test/ui"))
@@ -47,7 +47,7 @@ fn check_entries(path: &Path, bad: &mut bool) {
 pub fn check(path: &Path, bad: &mut bool) {
     check_entries(&path, bad);
     for path in &[&path.join("test/ui"), &path.join("test/ui-fulldeps")] {
-        super::walk_no_read(path, &mut |_| false, &mut |entry| {
+        crate::walk::walk_no_read(path, &mut |_| false, &mut |entry| {
             let file_path = entry.path();
             if let Some(ext) = file_path.extension() {
                 if ext == "stderr" || ext == "stdout" {

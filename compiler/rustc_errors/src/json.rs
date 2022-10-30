@@ -13,6 +13,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
+use crate::translation::Translate;
 use crate::DiagnosticId;
 use crate::{
     CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, SubDiagnostic,
@@ -28,7 +29,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::vec;
 
-use rustc_serialize::json::{as_json, as_pretty_json};
+use serde::Serialize;
 
 #[cfg(test)]
 mod tests;
@@ -42,7 +43,7 @@ pub struct JsonEmitter {
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
-    terminal_width: Option<usize>,
+    diagnostic_width: Option<usize>,
     macro_backtrace: bool,
 }
 
@@ -54,7 +55,7 @@ impl JsonEmitter {
         fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        terminal_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
@@ -66,7 +67,7 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
-            terminal_width,
+            diagnostic_width,
             macro_backtrace,
         }
     }
@@ -76,7 +77,7 @@ impl JsonEmitter {
         json_rendered: HumanReadableErrorType,
         fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
-        terminal_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
@@ -87,7 +88,7 @@ impl JsonEmitter {
             fallback_bundle,
             pretty,
             json_rendered,
-            terminal_width,
+            diagnostic_width,
             macro_backtrace,
         )
     }
@@ -100,7 +101,7 @@ impl JsonEmitter {
         fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        terminal_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
@@ -112,7 +113,7 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
-            terminal_width,
+            diagnostic_width,
             macro_backtrace,
         }
     }
@@ -122,13 +123,23 @@ impl JsonEmitter {
     }
 }
 
+impl Translate for JsonEmitter {
+    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+        self.fluent_bundle.as_ref()
+    }
+
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
+        &**self.fallback_bundle
+    }
+}
+
 impl Emitter for JsonEmitter {
     fn emit_diagnostic(&mut self, diag: &crate::Diagnostic) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
         } else {
-            writeln!(&mut self.dst, "{}", as_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
@@ -139,9 +150,9 @@ impl Emitter for JsonEmitter {
     fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
         let data = ArtifactNotification { artifact: path, emit: artifact_type };
         let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
         } else {
-            writeln!(&mut self.dst, "{}", as_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
@@ -154,16 +165,16 @@ impl Emitter for JsonEmitter {
             .into_iter()
             .map(|mut diag| {
                 if diag.level == crate::Level::Allow {
-                    diag.level = crate::Level::Warning;
+                    diag.level = crate::Level::Warning(None);
                 }
                 FutureBreakageItem { diagnostic: Diagnostic::from_errors_diagnostic(&diag, self) }
             })
             .collect();
         let report = FutureIncompatReport { future_incompat_report: data };
         let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", as_pretty_json(&report))
+            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&report).unwrap())
         } else {
-            writeln!(&mut self.dst, "{}", as_json(&report))
+            writeln!(&mut self.dst, "{}", serde_json::to_string(&report).unwrap())
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
@@ -175,9 +186,9 @@ impl Emitter for JsonEmitter {
         let lint_level = lint_level.as_str();
         let data = UnusedExterns { lint_level, unused_extern_names: unused_externs };
         let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string_pretty(&data).unwrap())
         } else {
-            writeln!(&mut self.dst, "{}", as_json(&data))
+            writeln!(&mut self.dst, "{}", serde_json::to_string(&data).unwrap())
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
@@ -189,14 +200,6 @@ impl Emitter for JsonEmitter {
         Some(&self.sm)
     }
 
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        self.fluent_bundle.as_ref()
-    }
-
-    fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &**self.fallback_bundle
-    }
-
     fn should_show_explain(&self) -> bool {
         !matches!(self.json_rendered, HumanReadableErrorType::Short(_))
     }
@@ -204,7 +207,7 @@ impl Emitter for JsonEmitter {
 
 // The following data types are provided just for serialisation.
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct Diagnostic {
     /// The primary error message.
     message: String,
@@ -218,7 +221,7 @@ struct Diagnostic {
     rendered: Option<String>,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,
@@ -245,7 +248,7 @@ struct DiagnosticSpan {
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct DiagnosticSpanLine {
     text: String,
 
@@ -255,7 +258,7 @@ struct DiagnosticSpanLine {
     highlight_end: usize,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct DiagnosticSpanMacroExpansion {
     /// span where macro was applied to generate this code; note that
     /// this may itself derive from a macro (if
@@ -269,7 +272,7 @@ struct DiagnosticSpanMacroExpansion {
     def_site_span: DiagnosticSpan,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct DiagnosticCode {
     /// The code itself.
     code: String,
@@ -277,7 +280,7 @@ struct DiagnosticCode {
     explanation: Option<&'static str>,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct ArtifactNotification<'a> {
     /// The path of the artifact.
     artifact: &'a Path,
@@ -285,12 +288,12 @@ struct ArtifactNotification<'a> {
     emit: &'a str,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct FutureBreakageItem {
     diagnostic: Diagnostic,
 }
 
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct FutureIncompatReport {
     future_incompat_report: Vec<FutureBreakageItem>,
 }
@@ -299,7 +302,7 @@ struct FutureIncompatReport {
 // doctest component (as well as cargo).
 // We could unify this struct the one in rustdoc but they have different
 // ownership semantics, so doing so would create wasteful allocations.
-#[derive(Encodable)]
+#[derive(Serialize)]
 struct UnusedExterns<'a, 'b, 'c> {
     /// The severity level of the unused dependencies lint
     lint_level: &'a str,
@@ -345,7 +348,7 @@ impl Diagnostic {
                 je.fluent_bundle.clone(),
                 je.fallback_bundle.clone(),
                 false,
-                je.terminal_width,
+                je.diagnostic_width,
                 je.macro_backtrace,
             )
             .ui_testing(je.ui_testing)

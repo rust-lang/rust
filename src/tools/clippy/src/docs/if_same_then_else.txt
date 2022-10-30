@@ -1,0 +1,15 @@
+### What it does
+Checks for `if/else` with the same body as the *then* part
+and the *else* part.
+
+### Why is this bad?
+This is probably a copy & paste error.
+
+### Example
+```
+let foo = if … {
+    42
+} else {
+    42
+};
+```

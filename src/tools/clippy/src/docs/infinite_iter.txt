@@ -1,0 +1,13 @@
+### What it does
+Checks for iteration that is guaranteed to be infinite.
+
+### Why is this bad?
+While there may be places where this is acceptable
+(e.g., in event streams), in most cases this is simply an error.
+
+### Example
+```
+use std::iter;
+
+iter::repeat(1_u8).collect::<Vec<_>>();
+```

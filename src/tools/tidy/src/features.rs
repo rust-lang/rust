@@ -9,6 +9,7 @@
 //! * All unstable lang features have tests to ensure they are actually unstable.
 //! * Language features in a group are sorted by feature name.
 
+use crate::walk::{filter_dirs, walk, walk_many};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
@@ -92,14 +93,14 @@ pub fn check(
     let lib_features = get_and_check_lib_features(lib_path, bad, &features);
     assert!(!lib_features.is_empty());
 
-    super::walk_many(
+    walk_many(
         &[
             &src_path.join("test/ui"),
             &src_path.join("test/ui-fulldeps"),
             &src_path.join("test/rustdoc-ui"),
             &src_path.join("test/rustdoc"),
         ],
-        &mut |path| super::filter_dirs(path),
+        &mut filter_dirs,
         &mut |entry, contents| {
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();
@@ -175,6 +176,35 @@ pub fn check(
         tidy_error!(bad, "Found {} features without a gate test.", gate_untested.len());
     }
 
+    let (version, channel) = get_version_and_channel(src_path);
+
+    let all_features_iter = features
+        .iter()
+        .map(|feat| (feat, "lang"))
+        .chain(lib_features.iter().map(|feat| (feat, "lib")));
+    for ((feature_name, feature), kind) in all_features_iter {
+        let since = if let Some(since) = feature.since { since } else { continue };
+        if since > version && since != Version::CurrentPlaceholder {
+            tidy_error!(
+                bad,
+                "The stabilization version {since} of {kind} feature `{feature_name}` is newer than the current {version}"
+            );
+        }
+        if channel == "nightly" && since == version {
+            tidy_error!(
+                bad,
+                "The stabilization version {since} of {kind} feature `{feature_name}` is written out but should be {}",
+                version::VERSION_PLACEHOLDER
+            );
+        }
+        if channel != "nightly" && since == Version::CurrentPlaceholder {
+            tidy_error!(
+                bad,
+                "The placeholder use of {kind} feature `{feature_name}` is not allowed on the {channel} channel",
+            );
+        }
+    }
+
     if *bad {
         return CollectedFeatures { lib: lib_features, lang: features };
     }
@@ -193,6 +223,14 @@ pub fn check(
     }
 
     CollectedFeatures { lib: lib_features, lang: features }
+}
+
+fn get_version_and_channel(src_path: &Path) -> (Version, String) {
+    let version_str = t!(std::fs::read_to_string(src_path.join("version")));
+    let version_str = version_str.trim();
+    let version = t!(std::str::FromStr::from_str(&version_str).map_err(|e| format!("{e:?}")));
+    let channel_str = t!(std::fs::read_to_string(src_path.join("ci").join("channel")));
+    (version, channel_str.trim().to_owned())
 }
 
 fn format_features<'a>(
@@ -429,9 +467,9 @@ fn map_lib_features(
     base_src_path: &Path,
     mf: &mut dyn FnMut(Result<(&str, Feature), &str>, &Path, usize),
 ) {
-    super::walk(
+    walk(
         base_src_path,
-        &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
+        &mut |path| filter_dirs(path) || path.ends_with("src/test"),
         &mut |entry, contents| {
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();
@@ -500,7 +538,9 @@ fn map_lib_features(
                 becoming_feature = None;
                 if line.contains("rustc_const_unstable(") {
                     // `const fn` features are handled specially.
-                    let feature_name = match find_attr_val(line, "feature") {
+                    let feature_name = match find_attr_val(line, "feature").or_else(|| {
+                        iter_lines.peek().and_then(|next| find_attr_val(next.1, "feature"))
+                    }) {
                         Some(name) => name,
                         None => err!("malformed stability attribute: missing `feature` key"),
                     };

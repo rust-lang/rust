@@ -1,23 +1,23 @@
 error: expected non-macro inner attribute, found attribute macro `print_attr`
-  --> $DIR/inner-attrs.rs:63:12
+  --> $DIR/inner-attrs.rs:64:12
    |
 LL |         #![print_attr]
    |            ^^^^^^^^^^ not a non-macro inner attribute
 
 error: expected non-macro inner attribute, found attribute macro `print_attr`
-  --> $DIR/inner-attrs.rs:67:12
+  --> $DIR/inner-attrs.rs:68:12
    |
 LL |         #![print_attr]
    |            ^^^^^^^^^^ not a non-macro inner attribute
 
 error: expected non-macro inner attribute, found attribute macro `print_attr`
-  --> $DIR/inner-attrs.rs:71:12
+  --> $DIR/inner-attrs.rs:72:12
    |
 LL |         #![print_attr]
    |            ^^^^^^^^^^ not a non-macro inner attribute
 
 error: expected non-macro inner attribute, found attribute macro `print_attr`
-  --> $DIR/inner-attrs.rs:75:12
+  --> $DIR/inner-attrs.rs:76:12
    |
 LL |         #![print_attr]
    |            ^^^^^^^^^^ not a non-macro inner attribute

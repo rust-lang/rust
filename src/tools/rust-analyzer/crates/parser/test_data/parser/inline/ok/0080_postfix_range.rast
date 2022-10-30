@@ -1,0 +1,96 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "x"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          RANGE_EXPR
+            LITERAL
+              INT_NUMBER "1"
+            DOT2 ".."
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            RANGE_EXPR
+              LITERAL
+                INT_NUMBER "1"
+              DOT2 ".."
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              MATCH_ARM
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            RANGE_EXPR
+              METHOD_CALL_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "a"
+                DOT "."
+                NAME_REF
+                  IDENT "b"
+                ARG_LIST
+                  L_PAREN "("
+                  R_PAREN ")"
+              DOT2 ".."
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "S"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              MATCH_ARM
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

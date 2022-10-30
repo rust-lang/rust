@@ -1,0 +1,12 @@
+### What it does
+Checks for usage of disallowed names for variables, such
+as `foo`.
+
+### Why is this bad?
+These names are usually placeholder names and should be
+avoided.
+
+### Example
+```
+let foo = 3.14;
+```

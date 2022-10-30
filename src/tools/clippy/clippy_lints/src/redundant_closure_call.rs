@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_ast::visit as ast_visit;
@@ -23,12 +23,13 @@ declare_clippy_lint! {
     /// complexity.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// // Bad
-    /// let a = (|| 42)()
+    /// ```rust
+    /// let a = (|| 42)();
+    /// ```
     ///
-    /// // Good
-    /// let a = 42
+    /// Use instead:
+    /// ```rust
+    /// let a = 42;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub REDUNDANT_CLOSURE_CALL,
@@ -68,7 +69,7 @@ impl EarlyLintPass for RedundantClosureCall {
         if_chain! {
             if let ast::ExprKind::Call(ref paren, _) = expr.kind;
             if let ast::ExprKind::Paren(ref closure) = paren.kind;
-            if let ast::ExprKind::Closure(_, _, _, ref decl, ref block, _) = closure.kind;
+            if let ast::ExprKind::Closure(_, _, ref r#async, _, ref decl, ref block, _) = closure.kind;
             then {
                 let mut visitor = ReturnVisitor::new();
                 visitor.visit_expr(block);
@@ -80,10 +81,19 @@ impl EarlyLintPass for RedundantClosureCall {
                         "try not to call a closure in the expression where it is declared",
                         |diag| {
                             if decl.inputs.is_empty() {
-                                let mut app = Applicability::MachineApplicable;
-                                let hint =
-                                    snippet_with_applicability(cx, block.span, "..", &mut app).into_owned();
-                                diag.span_suggestion(expr.span, "try doing something like", hint, app);
+                                let app = Applicability::MachineApplicable;
+                                let mut hint = Sugg::ast(cx, block, "..");
+
+                                if r#async.is_async() {
+                                    // `async x` is a syntax error, so it becomes `async { x }`
+                                    if !matches!(block.kind, ast::ExprKind::Block(_, _)) {
+                                        hint = hint.blockify();
+                                    }
+
+                                    hint = hint.asyncify();
+                                }
+
+                                diag.span_suggestion(expr.span, "try doing something like", hint.to_string(), app);
                             }
                         },
                     );
@@ -134,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
             if_chain! {
                 if let hir::StmtKind::Local(local) = w[0].kind;
                 if let Option::Some(t) = local.init;
-                if let hir::ExprKind::Closure(..) = t.kind;
+                if let hir::ExprKind::Closure { .. } = t.kind;
                 if let hir::PatKind::Binding(_, _, ident, _) = local.pat.kind;
                 if let hir::StmtKind::Semi(second) = w[1].kind;
                 if let hir::ExprKind::Assign(_, call, _) = second.kind;

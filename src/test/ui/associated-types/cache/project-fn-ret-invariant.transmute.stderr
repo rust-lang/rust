@@ -1,21 +1,15 @@
-error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/project-fn-ret-invariant.rs:55:9
+error: lifetime may not live long enough
+  --> $DIR/project-fn-ret-invariant.rs:52:5
    |
 LL | fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
-   |                   -------- this data with lifetime `'a`...
+   |        -- lifetime `'a` defined here
 ...
 LL |     bar(foo, x)
-   |         ^^^  - ...is used and required to live as long as `'static` here
+   |     ^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
    |
-note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/project-fn-ret-invariant.rs:51:37
-   |
-LL | fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
-   |                                     ^^^^^^^ `'static` requirement introduced here
-...
-LL |     bar(foo, x)
-   |     ----------- because of this returned expression
+   = note: requirement occurs because of the type `Type<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Type<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0759`.

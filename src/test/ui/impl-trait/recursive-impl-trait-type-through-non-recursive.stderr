@@ -3,7 +3,7 @@ error[E0720]: cannot resolve opaque type
    |
 LL | fn id<T>(t: T) -> impl Sized { t }
    |                   ---------- returning this opaque type `impl Sized`
-LL | 
+LL |
 LL | fn recursive_id() -> impl Sized {
    |                      ^^^^^^^^^^ recursive opaque type
 LL |     id(recursive_id2())
@@ -25,7 +25,7 @@ error[E0720]: cannot resolve opaque type
    |
 LL | fn wrap<T>(t: T) -> impl Sized { (t,) }
    |                     ---------- returning this opaque type `impl Sized`
-LL | 
+LL |
 LL | fn recursive_wrap() -> impl Sized {
    |                        ^^^^^^^^^^ recursive opaque type
 LL |     wrap(recursive_wrap2())

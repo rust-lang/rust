@@ -59,8 +59,8 @@ pub fn get_attr<'a>(
     name: &'static str,
 ) -> impl Iterator<Item = &'a ast::Attribute> {
     attrs.iter().filter(move |attr| {
-        let attr = if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
-            attr
+        let attr = if let ast::AttrKind::Normal(ref normal) = attr.kind {
+            &normal.item
         } else {
             return false;
         };
@@ -92,7 +92,7 @@ pub fn get_attr<'a>(
                                 diag.span_suggestion(
                                     attr_segments[1].ident.span,
                                     "consider using",
-                                    new_name.to_string(),
+                                    new_name,
                                     Applicability::MachineApplicable,
                                 );
                                 diag.emit();
@@ -131,12 +131,12 @@ pub fn get_unique_inner_attr(sess: &Session, attrs: &[ast::Attribute], name: &'s
         match attr.style {
             ast::AttrStyle::Inner if unique_attr.is_none() => unique_attr = Some(attr.clone()),
             ast::AttrStyle::Inner => {
-                sess.struct_span_err(attr.span, &format!("`{}` is defined multiple times", name))
+                sess.struct_span_err(attr.span, &format!("`{name}` is defined multiple times"))
                     .span_note(unique_attr.as_ref().unwrap().span, "first definition found here")
                     .emit();
             },
             ast::AttrStyle::Outer => {
-                sess.span_err(attr.span, &format!("`{}` cannot be an outer attribute", name));
+                sess.span_err(attr.span, &format!("`{name}` cannot be an outer attribute"));
             },
         }
     }

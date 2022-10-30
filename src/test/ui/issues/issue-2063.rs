@@ -3,7 +3,7 @@
 // cause compiler to loop.  Note that no instances
 // of such a type could ever be constructed.
 
-struct T(Box<T>);
+struct T(#[allow(unused_tuple_struct_fields)] Box<T>);
 
 trait ToStr2 {
     fn my_to_string(&self) -> String;

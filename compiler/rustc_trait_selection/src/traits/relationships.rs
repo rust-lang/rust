@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, ToPredicate};
 
 pub(crate) fn update<'tcx, T>(
     engine: &mut T,
-    infcx: &InferCtxt<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     obligation: &PredicateObligation<'tcx>,
 ) where
     T: TraitEngine<'tcx>,
@@ -31,14 +31,14 @@ pub(crate) fn update<'tcx, T>(
             obligation
                 .predicate
                 .kind()
-                .map_bound(|_| {
+                .rebind(
                     // (*) binder moved here
                     ty::PredicateKind::Trait(ty::TraitPredicate {
                         trait_ref,
                         constness: tpred.constness,
                         polarity: tpred.polarity,
                     })
-                })
+                )
                 .to_predicate(infcx.tcx),
         );
         // Don't report overflow errors. Otherwise equivalent to may_hold.

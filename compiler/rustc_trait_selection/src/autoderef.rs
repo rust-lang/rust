@@ -1,10 +1,10 @@
+use crate::errors::AutoDerefReachedRecursionLimit;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, TraitEngine};
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
-use rustc_middle::ty::{ToPredicate, TypeFoldable};
+use rustc_middle::ty::{ToPredicate, TypeVisitable};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Span;
@@ -25,7 +25,7 @@ struct AutoderefSnapshot<'tcx> {
 
 pub struct Autoderef<'a, 'tcx> {
     // Meta infos:
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     span: Span,
     overloaded_span: Span,
     body_id: hir::HirId,
@@ -94,7 +94,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
 
 impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     pub fn new(
-        infcx: &'a InferCtxt<'a, 'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_id: hir::HirId,
         span: Span,
@@ -222,19 +222,10 @@ pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Spa
         Limit(0) => Limit(2),
         limit => limit * 2,
     };
-    struct_span_err!(
-        tcx.sess,
+    tcx.sess.emit_err(AutoDerefReachedRecursionLimit {
         span,
-        E0055,
-        "reached the recursion limit while auto-dereferencing `{:?}`",
-        ty
-    )
-    .span_label(span, "deref recursion limit reached")
-    .help(&format!(
-        "consider increasing the recursion limit by adding a \
-             `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
+        ty,
         suggested_limit,
-        tcx.crate_name(LOCAL_CRATE),
-    ))
-    .emit();
+        crate_name: tcx.crate_name(LOCAL_CRATE),
+    });
 }

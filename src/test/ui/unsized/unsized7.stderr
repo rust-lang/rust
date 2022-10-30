@@ -15,7 +15,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<X: ?Sized + T> T1<X> for S3<X> {
 LL + impl<X: T> T1<X> for S3<X> {
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait T1<Z: T + ?Sized> {

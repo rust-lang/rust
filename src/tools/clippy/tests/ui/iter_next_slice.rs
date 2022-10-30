@@ -7,7 +7,7 @@ fn main() {
     let v = vec![1, 2, 3];
 
     let _ = s.iter().next();
-    // Should be replaced by s.get(0)
+    // Should be replaced by s.first()
 
     let _ = s[2..].iter().next();
     // Should be replaced by s.get(2)
@@ -16,7 +16,7 @@ fn main() {
     // Should be replaced by v.get(5)
 
     let _ = v.iter().next();
-    // Should be replaced by v.get(0)
+    // Should be replaced by v.first()
 
     let o = Some(5);
     o.iter().next();

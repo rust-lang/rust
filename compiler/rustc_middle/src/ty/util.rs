@@ -1,11 +1,13 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::fold::{FallibleTypeFolder, TypeFolder};
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
-use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
-use crate::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{
+    self, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitable,
+};
+use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
@@ -140,16 +142,16 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
-        let mut hasher = StableHasher::new();
-        let mut hcx = self.create_stable_hashing_context();
-
         // We want the type_id be independent of the types free regions, so we
         // erase them. The erase_regions() call will also anonymize bound
         // regions, which is desirable too.
         let ty = self.erase_regions(ty);
 
-        hcx.while_hashing_spans(false, |hcx| ty.hash_stable(hcx, &mut hasher));
-        hasher.finish()
+        self.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
+            hcx.while_hashing_spans(false, |hcx| ty.hash_stable(hcx, &mut hasher));
+            hasher.finish()
+        })
     }
 
     pub fn res_generics_def_id(self, res: Res) -> Option<DefId> {
@@ -375,7 +377,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let (did, constness) = self.find_map_relevant_impl(drop_trait, ty, |impl_did| {
             if let Some(item_id) = self.associated_item_def_ids(impl_did).first() {
                 if validate(self, impl_did).is_ok() {
-                    return Some((*item_id, self.impl_constness(impl_did)));
+                    return Some((*item_id, self.constness(impl_did)));
                 }
             }
             None
@@ -400,7 +402,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(dtor) => dtor.did,
         };
 
-        let impl_def_id = self.associated_item(dtor).container.id();
+        let impl_def_id = self.parent(dtor);
         let impl_generics = self.generics_of(impl_def_id);
 
         // We have a destructor - all the parameters that are not
@@ -449,7 +451,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         // Error: not a type param
                         _ => false,
                     },
-                    GenericArgKind::Const(ct) => match ct.val() {
+                    GenericArgKind::Const(ct) => match ct.kind() {
                         ty::ConstKind::Param(ref pc) => {
                             !impl_generics.const_param(pc, self).pure_wrt_drop
                         }
@@ -491,7 +493,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     _ => return Err(NotUniqueParam::NotParam(t.into())),
                 },
-                GenericArgKind::Const(c) => match c.val() {
+                GenericArgKind::Const(c) => match c.kind() {
                     ty::ConstKind::Param(p) => {
                         if !seen.insert(p.index) {
                             return Err(NotUniqueParam::DuplicateParam(c.into()));
@@ -573,7 +575,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         closure_def_id: DefId,
         closure_substs: SubstsRef<'tcx>,
-        env_region: ty::RegionKind,
+        env_region: ty::RegionKind<'tcx>,
     ) -> Option<Ty<'tcx>> {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);
         let closure_kind_ty = closure_substs.as_closure().kind_ty();
@@ -625,7 +627,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     pub fn try_expand_impl_trait_type(
         self,
         def_id: DefId,
@@ -642,12 +644,18 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let expanded_type = visitor.expand_opaque_ty(def_id, substs).unwrap();
-        trace!(?expanded_type);
         if visitor.found_recursion { Err(expanded_type) } else { Ok(expanded_type) }
     }
 
     pub fn bound_type_of(self, def_id: DefId) -> ty::EarlyBinder<Ty<'tcx>> {
         ty::EarlyBinder(self.type_of(def_id))
+    }
+
+    pub fn bound_trait_impl_trait_tys(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>> {
+        ty::EarlyBinder(self.collect_trait_impl_trait_tys(def_id))
     }
 
     pub fn bound_fn_sig(self, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'tcx>> {
@@ -673,6 +681,28 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<&'tcx ty::List<ty::Predicate<'tcx>>> {
         ty::EarlyBinder(self.item_bounds(def_id))
+    }
+
+    pub fn bound_const_param_default(self, def_id: DefId) -> ty::EarlyBinder<ty::Const<'tcx>> {
+        ty::EarlyBinder(self.const_param_default(def_id))
+    }
+
+    pub fn bound_predicates_of(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<ty::generics::GenericPredicates<'tcx>> {
+        ty::EarlyBinder(self.predicates_of(def_id))
+    }
+
+    pub fn bound_explicit_predicates_of(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<ty::generics::GenericPredicates<'tcx>> {
+        ty::EarlyBinder(self.explicit_predicates_of(def_id))
+    }
+
+    pub fn bound_impl_subject(self, def_id: DefId) -> ty::EarlyBinder<ty::ImplSubject<'tcx>> {
+        ty::EarlyBinder(self.impl_subject(def_id))
     }
 }
 
@@ -1040,6 +1070,7 @@ impl<'tcx> Ty<'tcx> {
         ty
     }
 
+    #[inline]
     pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {
         self.0.outer_exclusive_binder
     }
@@ -1126,7 +1157,7 @@ pub fn needs_drop_components<'tcx>(
         ty::Array(elem_ty, size) => {
             match needs_drop_components(*elem_ty, target_layout) {
                 Ok(v) if v.is_empty() => Ok(v),
-                res => match size.val().try_to_bits(target_layout.pointer_size) {
+                res => match size.kind().try_to_bits(target_layout.pointer_size) {
                     // Arrays of size zero don't need drop, even if their element
                     // type does.
                     Some(0) => Ok(SmallVec::new()),
@@ -1258,12 +1289,24 @@ pub fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
 }
 
+/// Determines whether an item is annotated with `doc(notable_trait)`.
+pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    tcx.get_attrs(def_id, sym::doc)
+        .filter_map(|attr| attr.meta_item_list())
+        .any(|items| items.iter().any(|item| item.has_name(sym::notable_trait)))
+}
+
 /// Determines whether an item is an intrinsic by Abi.
 pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     matches!(tcx.fn_sig(def_id).abi(), Abi::RustIntrinsic | Abi::PlatformIntrinsic)
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers =
-        ty::query::Providers { normalize_opaque_types, is_doc_hidden, is_intrinsic, ..*providers }
+    *providers = ty::query::Providers {
+        normalize_opaque_types,
+        is_doc_hidden,
+        is_doc_notable_trait,
+        is_intrinsic,
+        ..*providers
+    }
 }

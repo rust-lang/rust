@@ -4,7 +4,7 @@
 #![crate_type = "proc-macro"]
 #![feature(repr128, proc_macro_hygiene, proc_macro_quote, box_patterns)]
 #![allow(incomplete_features)]
-#![allow(clippy::useless_conversion)]
+#![allow(clippy::useless_conversion, clippy::uninlined_format_args)]
 
 extern crate proc_macro;
 extern crate quote;
@@ -18,6 +18,11 @@ use syn::token::Star;
 use syn::{
     parse_quote, FnArg, ImplItem, ItemImpl, ItemTrait, Lifetime, Pat, PatIdent, PatType, Signature, TraitItem, Type,
 };
+
+#[proc_macro_attribute]
+pub fn dummy(_args: TokenStream, input: TokenStream) -> TokenStream {
+    input
+}
 
 #[proc_macro_attribute]
 pub fn fake_async_trait(_args: TokenStream, input: TokenStream) -> TokenStream {

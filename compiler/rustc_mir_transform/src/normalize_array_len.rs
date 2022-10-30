@@ -21,10 +21,10 @@ impl<'tcx> MirPass<'tcx> for NormalizeArrayLen {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // early returns for edge cases of highly unrolled functions
-        if body.basic_blocks().len() > MAX_NUM_BLOCKS {
+        if body.basic_blocks.len() > MAX_NUM_BLOCKS {
             return;
         }
-        if body.local_decls().len() > MAX_NUM_LOCALS {
+        if body.local_decls.len() > MAX_NUM_LOCALS {
             return;
         }
         normalize_array_len_calls(tcx, body)
@@ -32,7 +32,9 @@ impl<'tcx> MirPass<'tcx> for NormalizeArrayLen {
 }
 
 pub fn normalize_array_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+    // We don't ever touch terminators, so no need to invalidate the CFG cache
+    let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
+    let local_decls = &mut body.local_decls;
 
     // do a preliminary analysis to see if we ever have locals of type `[T;N]` or `&[T;N]`
     let mut interesting_locals = BitSet::new_empty(local_decls.len());

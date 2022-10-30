@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # The following command will:
 #  1. dump the symbols of a library using `nm`

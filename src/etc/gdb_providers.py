@@ -231,6 +231,17 @@ class StdRefCellProvider:
         yield "borrow", self.borrow
 
 
+class StdNonZeroNumberProvider:
+    def __init__(self, valobj):
+        fields = valobj.type.fields()
+        assert len(fields) == 1
+        field = list(fields)[0]
+        self.value = str(valobj[field.name])
+
+    def to_string(self):
+        return self.value
+
+
 # Yields children (in a provider's sense of the word) for a BTreeMap.
 def children_of_btree_map(map):
     # Yields each key/value pair in the node and in any child nodes.

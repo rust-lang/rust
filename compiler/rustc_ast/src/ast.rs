@@ -24,25 +24,19 @@ pub use UnsafeSource::*;
 
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
-use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream};
-
+use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{self, Decoder, Encoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-
-use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
-
-#[cfg(test)]
-mod tests;
+use thin_vec::ThinVec;
 
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:
@@ -67,7 +61,7 @@ impl fmt::Debug for Label {
 
 /// A "Lifetime" is an annotation of the scope in which variable
 /// can be used, e.g. `'a` in `&'a i32`.
-#[derive(Clone, Encodable, Decodable, Copy)]
+#[derive(Clone, Encodable, Decodable, Copy, PartialEq, Eq)]
 pub struct Lifetime {
     pub id: NodeId,
     pub ident: Ident,
@@ -97,7 +91,7 @@ pub struct Path {
     /// The segments in the path: the things separated by `::`.
     /// Global paths begin with `kw::PathRoot`.
     pub segments: Vec<PathSegment>,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl PartialEq<Symbol> for Path {
@@ -329,46 +323,17 @@ pub type GenericBounds = Vec<GenericBound>;
 /// Specifies the enforced ordering for generic parameters. In the future,
 /// if we wanted to relax this order, we could override `PartialEq` and
 /// `PartialOrd`, to allow the kinds to be unordered.
-#[derive(Hash, Clone, Copy)]
+#[derive(Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ParamKindOrd {
     Lifetime,
-    Type,
-    Const,
-    // `Infer` is not actually constructed directly from the AST, but is implicitly constructed
-    // during HIR lowering, and `ParamKindOrd` will implicitly order inferred variables last.
-    Infer,
+    TypeOrConst,
 }
-
-impl Ord for ParamKindOrd {
-    fn cmp(&self, other: &Self) -> Ordering {
-        use ParamKindOrd::*;
-        let to_int = |v| match v {
-            Lifetime => 0,
-            Infer | Type | Const => 1,
-        };
-
-        to_int(*self).cmp(&to_int(*other))
-    }
-}
-impl PartialOrd for ParamKindOrd {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl PartialEq for ParamKindOrd {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
-    }
-}
-impl Eq for ParamKindOrd {}
 
 impl fmt::Display for ParamKindOrd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ParamKindOrd::Lifetime => "lifetime".fmt(f),
-            ParamKindOrd::Type => "type".fmt(f),
-            ParamKindOrd::Const { .. } => "const".fmt(f),
-            ParamKindOrd::Infer => "infer".fmt(f),
+            ParamKindOrd::TypeOrConst => "type and const".fmt(f),
         }
     }
 }
@@ -500,7 +465,6 @@ pub struct WhereRegionPredicate {
 /// E.g., `T = int`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct WhereEqPredicate {
-    pub id: NodeId,
     pub span: Span,
     pub lhs_ty: P<Ty>,
     pub rhs_ty: P<Ty>,
@@ -508,7 +472,7 @@ pub struct WhereEqPredicate {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Crate {
-    pub attrs: Vec<Attribute>,
+    pub attrs: AttrVec,
     pub items: Vec<P<Item>>,
     pub spans: ModSpans,
     /// Must be equal to `CRATE_NODE_ID` after the crate root is expanded, but may hold
@@ -570,7 +534,7 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
     /// The following *isn't* a parse error, but will cause multiple errors in following stages.
     /// ```compile_fail
     /// let x = {
@@ -589,7 +553,7 @@ pub struct Pat {
     pub id: NodeId,
     pub kind: PatKind,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Pat {
@@ -600,7 +564,7 @@ impl Pat {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
             // An IDENT pattern with no binding mode would be valid as path to a type. E.g. `u32`.
-            PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None) => {
+            PatKind::Ident(BindingAnnotation::NONE, ident, None) => {
                 TyKind::Path(None, Path::from_ident(*ident))
             }
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
@@ -687,10 +651,43 @@ pub struct PatField {
     pub is_placeholder: bool,
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy)]
-pub enum BindingMode {
-    ByRef(Mutability),
-    ByValue(Mutability),
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum ByRef {
+    Yes,
+    No,
+}
+
+impl From<bool> for ByRef {
+    fn from(b: bool) -> ByRef {
+        match b {
+            false => ByRef::No,
+            true => ByRef::Yes,
+        }
+    }
+}
+
+/// Explicit binding annotations given in the HIR for a binding. Note
+/// that this is not the final binding *mode* that we infer after type
+/// inference.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub struct BindingAnnotation(pub ByRef, pub Mutability);
+
+impl BindingAnnotation {
+    pub const NONE: Self = Self(ByRef::No, Mutability::Not);
+    pub const REF: Self = Self(ByRef::Yes, Mutability::Not);
+    pub const MUT: Self = Self(ByRef::No, Mutability::Mut);
+    pub const REF_MUT: Self = Self(ByRef::Yes, Mutability::Mut);
+
+    pub fn prefix_str(self) -> &'static str {
+        match self {
+            Self::NONE => "",
+            Self::REF => "ref ",
+            Self::MUT => "mut ",
+            Self::REF_MUT => "ref mut ",
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -719,7 +716,7 @@ pub enum PatKind {
     /// or a unit struct/variant pattern, or a const pattern (in the last two cases the third
     /// field must be `None`). Disambiguation cannot be done with parser alone, so it happens
     /// during name resolution.
-    Ident(BindingMode, Ident, Option<P<Pat>>),
+    Ident(BindingAnnotation, Ident, Option<P<Pat>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
@@ -774,7 +771,7 @@ pub enum PatKind {
     Paren(P<Pat>),
 
     /// A macro pattern; pre-expansion.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
@@ -940,8 +937,8 @@ impl Stmt {
     /// a trailing semicolon.
     ///
     /// This only modifies the parsed AST struct, not the attached
-    /// `LazyTokenStream`. The parser is responsible for calling
-    /// `CreateTokenStream::add_trailing_semi` when there is actually
+    /// `LazyAttrTokenStream`. The parser is responsible for calling
+    /// `ToAttrTokenStream::add_trailing_semi` when there is actually
     /// a semicolon in the tokenstream.
     pub fn add_trailing_semicolon(mut self) -> Self {
         self.kind = match self.kind {
@@ -984,10 +981,10 @@ pub enum StmtKind {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct MacCallStmt {
-    pub mac: MacCall,
+    pub mac: P<MacCall>,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug)]
@@ -1012,7 +1009,7 @@ pub struct Local {
     pub kind: LocalKind,
     pub span: Span,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -1111,12 +1108,8 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
-
-// `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr, 104);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
@@ -1276,10 +1269,26 @@ impl Expr {
                 id: DUMMY_NODE_ID,
                 kind: ExprKind::Err,
                 span: DUMMY_SP,
-                attrs: ThinVec::new(),
+                attrs: AttrVec::new(),
                 tokens: None,
             },
         )
+    }
+
+    // To a first-order approximation, is this a pattern
+    pub fn is_approximately_pattern(&self) -> bool {
+        match &self.peel_parens().kind {
+            ExprKind::Box(_)
+            | ExprKind::Array(_)
+            | ExprKind::Call(_, _)
+            | ExprKind::Tup(_)
+            | ExprKind::Lit(_)
+            | ExprKind::Range(_, _, _)
+            | ExprKind::Underscore
+            | ExprKind::Path(_, _)
+            | ExprKind::Struct(_) => true,
+            _ => false,
+        }
     }
 }
 
@@ -1329,14 +1338,13 @@ pub enum ExprKind {
     ///
     /// The `PathSegment` represents the method name and its generic arguments
     /// (within the angle brackets).
-    /// The first element of the vector of an `Expr` is the expression that evaluates
-    /// to the object on which the method is being called on (the receiver),
-    /// and the remaining elements are the rest of the arguments.
-    /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
+    /// The standalone `Expr` is the receiver expression.
+    /// The vector of `Expr` is the arguments.
+    /// `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
+    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, x, [a, b, c, d])`.
     /// This `Span` is the span of the function, without the dot and receiver
     /// (e.g. `foo(a, b)` in `x.foo(a, b)`
-    MethodCall(PathSegment, Vec<P<Expr>>, Span),
+    MethodCall(PathSegment, P<Expr>, Vec<P<Expr>>, Span),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(Vec<P<Expr>>),
     /// A binary operation (e.g., `a + b`, `a * b`).
@@ -1377,7 +1385,7 @@ pub enum ExprKind {
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     ///
     /// The final span is the span of the argument block `|...|`.
-    Closure(CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(ClosureBinder, CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An async block (`async move { ... }`).
@@ -1430,7 +1438,7 @@ pub enum ExprKind {
     InlineAsm(P<InlineAsm>),
 
     /// A macro invocation; pre-expansion.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 
     /// A struct literal expression.
     ///
@@ -1503,6 +1511,31 @@ pub enum Movability {
     Static,
     /// Must not contain self-references, `Unpin`.
     Movable,
+}
+
+/// Closure lifetime binder, `for<'a, 'b>` in `for<'a, 'b> |_: &'a (), _: &'b ()|`.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum ClosureBinder {
+    /// The binder is not present, all closure lifetimes are inferred.
+    NotPresent,
+    /// The binder is present.
+    For {
+        /// Span of the whole `for<>` clause
+        ///
+        /// ```text
+        /// for<'a, 'b> |_: &'a (), _: &'b ()| { ... }
+        /// ^^^^^^^^^^^ -- this
+        /// ```
+        span: Span,
+
+        /// Lifetimes in the `for<>` closure
+        ///
+        /// ```text
+        /// for<'a, 'b> |_: &'a (), _: &'b ()| { ... }
+        ///     ^^^^^^ -- this
+        /// ```
+        generic_params: P<[GenericParam]>,
+    },
 }
 
 /// Represents a macro invocation. The `path` indicates which macro
@@ -1657,7 +1690,7 @@ pub enum StrStyle {
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Lit {
     /// The original literal token as written in source code.
-    pub token: token::Lit,
+    pub token_lit: token::Lit,
     /// The "semantic" representation of the literal lowered from the original tokens.
     /// Strings are unescaped, hexadecimal forms are eliminated, etc.
     /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
@@ -1685,7 +1718,7 @@ impl StrLit {
             StrStyle::Raw(n) => token::StrRaw(n),
         };
         Lit {
-            token: token::Lit::new(token_kind, self.symbol, self.suffix),
+            token_lit: token::Lit::new(token_kind, self.symbol, self.suffix),
             span: self.span,
             kind: LitKind::Str(self.symbol_unescaped, self.style),
         }
@@ -1719,7 +1752,8 @@ pub enum LitFloatType {
 /// E.g., `"foo"`, `42`, `12.34`, or `bool`.
 #[derive(Clone, Encodable, Decodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
 pub enum LitKind {
-    /// A string literal (`"foo"`).
+    /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
+    /// from the original token's symbol.
     Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`).
     ByteStr(Lrc<[u8]>),
@@ -1729,12 +1763,13 @@ pub enum LitKind {
     Char(char),
     /// An integer literal (`1`).
     Int(u128, LitIntType),
-    /// A float literal (`1f64` or `1E10f64`).
+    /// A float literal (`1f64` or `1E10f64`). Stored as a symbol rather than
+    /// `f64` so that `LitKind` can impl `Eq` and `Hash`.
     Float(Symbol, LitFloatType),
     /// A boolean literal.
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
-    Err(Symbol),
+    Err,
 }
 
 impl LitKind {
@@ -1773,7 +1808,7 @@ impl LitKind {
             | LitKind::Int(_, LitIntType::Unsuffixed)
             | LitKind::Float(_, LitFloatType::Unsuffixed)
             | LitKind::Bool(..)
-            | LitKind::Err(..) => false,
+            | LitKind::Err => false,
         }
     }
 }
@@ -1932,7 +1967,7 @@ pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Clone for Ty {
@@ -2008,7 +2043,7 @@ pub enum TyKind {
     /// Inferred type of a `self` or `&self` argument in a method.
     ImplicitSelf,
     /// A macro in the type position.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
     /// Placeholder for a kind that has failed to be defined.
     Err,
     /// Placeholder for a `va_list`.
@@ -2023,12 +2058,21 @@ impl TyKind {
     pub fn is_unit(&self) -> bool {
         matches!(self, TyKind::Tup(tys) if tys.is_empty())
     }
+
+    pub fn is_simple_path(&self) -> Option<Symbol> {
+        if let TyKind::Path(None, Path { segments, .. }) = &self && segments.len() == 1 {
+            Some(segments[0].ident.name)
+        } else {
+            None
+        }
+    }
 }
 
 /// Syntax used to declare a trait object.
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TraitObjectSyntax {
     Dyn,
+    DynStar,
     None,
 }
 
@@ -2044,15 +2088,15 @@ pub enum InlineAsmRegOrRegClass {
 bitflags::bitflags! {
     #[derive(Encodable, Decodable, HashStable_Generic)]
     pub struct InlineAsmOptions: u16 {
-        const PURE = 1 << 0;
-        const NOMEM = 1 << 1;
-        const READONLY = 1 << 2;
+        const PURE            = 1 << 0;
+        const NOMEM           = 1 << 1;
+        const READONLY        = 1 << 2;
         const PRESERVES_FLAGS = 1 << 3;
-        const NORETURN = 1 << 4;
-        const NOSTACK = 1 << 5;
-        const ATT_SYNTAX = 1 << 6;
-        const RAW = 1 << 7;
-        const MAY_UNWIND = 1 << 8;
+        const NORETURN        = 1 << 4;
+        const NOSTACK         = 1 << 5;
+        const ATT_SYNTAX      = 1 << 6;
+        const RAW             = 1 << 7;
+        const MAY_UNWIND      = 1 << 8;
     }
 }
 
@@ -2188,7 +2232,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 impl Param {
     /// Attempts to cast parameter to `ExplicitSelf`.
     pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.kind {
+        if let PatKind::Ident(BindingAnnotation(ByRef::No, mutbl), ident, _) = self.pat.kind {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
@@ -2218,23 +2262,10 @@ impl Param {
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span, tokens: None });
-        let param = |mutbl, ty| Param {
-            attrs,
-            pat: P(Pat {
-                id: DUMMY_NODE_ID,
-                kind: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
-                span,
-                tokens: None,
-            }),
-            span,
-            ty,
-            id: DUMMY_NODE_ID,
-            is_placeholder: false,
-        };
-        match eself.node {
-            SelfKind::Explicit(ty, mutbl) => param(mutbl, ty),
-            SelfKind::Value(mutbl) => param(mutbl, infer_ty),
-            SelfKind::Region(lt, mutbl) => param(
+        let (mutbl, ty) = match eself.node {
+            SelfKind::Explicit(ty, mutbl) => (mutbl, ty),
+            SelfKind::Value(mutbl) => (mutbl, infer_ty),
+            SelfKind::Region(lt, mutbl) => (
                 Mutability::Not,
                 P(Ty {
                     id: DUMMY_NODE_ID,
@@ -2243,6 +2274,19 @@ impl Param {
                     tokens: None,
                 }),
             ),
+        };
+        Param {
+            attrs,
+            pat: P(Pat {
+                id: DUMMY_NODE_ID,
+                kind: PatKind::Ident(BindingAnnotation(ByRef::No, mutbl), eself_ident, None),
+                span,
+                tokens: None,
+            }),
+            span,
+            ty,
+            id: DUMMY_NODE_ID,
+            is_placeholder: false,
         }
     }
 }
@@ -2294,9 +2338,9 @@ impl Async {
     }
 
     /// In this case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
-    pub fn opt_return_id(self) -> Option<NodeId> {
+    pub fn opt_return_id(self) -> Option<(NodeId, Span)> {
         match self {
-            Async::Yes { return_impl_trait_id, .. } => Some(return_impl_trait_id),
+            Async::Yes { return_impl_trait_id, span, .. } => Some((return_impl_trait_id, span)),
             Async::No => None,
         }
     }
@@ -2475,15 +2519,13 @@ rustc_index::newtype_index! {
     }
 }
 
-impl<S: Encoder> rustc_serialize::Encodable<S> for AttrId {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
-    }
+impl<S: Encoder> Encodable<S> for AttrId {
+    fn encode(&self, _s: &mut S) {}
 }
 
-impl<D: Decoder> rustc_serialize::Decodable<D> for AttrId {
-    fn decode(_: &mut D) -> AttrId {
-        crate::attr::mk_attr_id()
+impl<D: Decoder> Decodable<D> for AttrId {
+    default fn decode(_: &mut D) -> AttrId {
+        panic!("cannot decode `AttrId` with `{}`", std::any::type_name::<D>());
     }
 }
 
@@ -2491,7 +2533,7 @@ impl<D: Decoder> rustc_serialize::Decodable<D> for AttrId {
 pub struct AttrItem {
     pub path: Path,
     pub args: MacArgs,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 /// A list of attributes.
@@ -2509,9 +2551,15 @@ pub struct Attribute {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct NormalAttr {
+    pub item: AttrItem,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AttrKind {
     /// A normal attribute.
-    Normal(AttrItem, Option<LazyTokenStream>),
+    Normal(P<NormalAttr>),
 
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
@@ -2556,13 +2604,13 @@ impl PolyTraitRef {
 pub struct Visibility {
     pub kind: VisibilityKind,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum VisibilityKind {
     Public,
-    Restricted { path: P<Path>, id: NodeId },
+    Restricted { path: P<Path>, id: NodeId, shorthand: bool },
     Inherited,
 }
 
@@ -2625,7 +2673,7 @@ impl VariantData {
 /// An item definition.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Item<K = ItemKind> {
-    pub attrs: Vec<Attribute>,
+    pub attrs: AttrVec,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
@@ -2642,7 +2690,7 @@ pub struct Item<K = ItemKind> {
     ///
     /// Note that the tokens here do not include the outer attributes, but will
     /// include inner attributes.
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Item {
@@ -2656,13 +2704,16 @@ impl Item {
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub enum Extern {
     None,
-    Implicit,
-    Explicit(StrLit),
+    Implicit(Span),
+    Explicit(StrLit, Span),
 }
 
 impl Extern {
-    pub fn from_abi(abi: Option<StrLit>) -> Extern {
-        abi.map_or(Extern::Implicit, Extern::Explicit)
+    pub fn from_abi(abi: Option<StrLit>, span: Span) -> Extern {
+        match abi {
+            Some(name) => Extern::Explicit(name, span),
+            None => Extern::Implicit(span),
+        }
     }
 }
 
@@ -2830,14 +2881,11 @@ pub enum ItemKind {
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 
     /// A macro definition.
     MacroDef(MacroDef),
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(ItemKind, 112);
 
 impl ItemKind {
     pub fn article(&self) -> &str {
@@ -2905,20 +2953,17 @@ pub enum AssocItemKind {
     /// An associated function.
     Fn(Box<Fn>),
     /// An associated type.
-    TyAlias(Box<TyAlias>),
+    Type(Box<TyAlias>),
     /// A macro expanding to associated items.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(AssocItemKind, 72);
 
 impl AssocItemKind {
     pub fn defaultness(&self) -> Defaultness {
         match *self {
             Self::Const(defaultness, ..)
             | Self::Fn(box Fn { defaultness, .. })
-            | Self::TyAlias(box TyAlias { defaultness, .. }) => defaultness,
+            | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) => Defaultness::Final,
         }
     }
@@ -2929,7 +2974,7 @@ impl From<AssocItemKind> for ItemKind {
         match assoc_item_kind {
             AssocItemKind::Const(a, b, c) => ItemKind::Const(a, b, c),
             AssocItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
-            AssocItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
+            AssocItemKind::Type(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
         }
     }
@@ -2942,7 +2987,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
         Ok(match item_kind {
             ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
             ItemKind::Fn(fn_kind) => AssocItemKind::Fn(fn_kind),
-            ItemKind::TyAlias(ty_alias_kind) => AssocItemKind::TyAlias(ty_alias_kind),
+            ItemKind::TyAlias(ty_kind) => AssocItemKind::Type(ty_kind),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
             _ => return Err(item_kind),
         })
@@ -2959,11 +3004,8 @@ pub enum ForeignItemKind {
     /// An foreign type.
     TyAlias(Box<TyAlias>),
     /// A macro expanding to foreign items.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
 
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
@@ -2991,3 +3033,38 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 }
 
 pub type ForeignItem = Item<ForeignItemKind>;
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(AssocItem, 104);
+    static_assert_size!(AssocItemKind, 32);
+    static_assert_size!(Attribute, 32);
+    static_assert_size!(Block, 48);
+    static_assert_size!(Expr, 104);
+    static_assert_size!(ExprKind, 72);
+    static_assert_size!(Fn, 184);
+    static_assert_size!(ForeignItem, 96);
+    static_assert_size!(ForeignItemKind, 24);
+    static_assert_size!(GenericArg, 24);
+    static_assert_size!(GenericBound, 88);
+    static_assert_size!(Generics, 72);
+    static_assert_size!(Impl, 200);
+    static_assert_size!(Item, 184);
+    static_assert_size!(ItemKind, 112);
+    static_assert_size!(Lit, 48);
+    static_assert_size!(LitKind, 24);
+    static_assert_size!(Local, 72);
+    static_assert_size!(Param, 40);
+    static_assert_size!(Pat, 120);
+    static_assert_size!(PatKind, 96);
+    static_assert_size!(Path, 40);
+    static_assert_size!(PathSegment, 24);
+    static_assert_size!(Stmt, 32);
+    static_assert_size!(StmtKind, 16);
+    static_assert_size!(Ty, 96);
+    static_assert_size!(TyKind, 72);
+}

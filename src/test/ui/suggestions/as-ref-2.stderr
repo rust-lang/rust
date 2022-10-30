@@ -1,10 +1,12 @@
 error[E0382]: use of moved value: `foo`
-  --> $DIR/as-ref-2.rs:12:14
+  --> $DIR/as-ref-2.rs:10:14
    |
 LL |     let foo = Some(Struct);
    |         --- move occurs because `foo` has type `Option<Struct>`, which does not implement the `Copy` trait
 LL |     let _x: Option<Struct> = foo.map(|s| bar(&s));
-   |                                  ---------------- `foo` moved due to this method call
+   |                              --- ---------------- `foo` moved due to this method call
+   |                              |
+   |                              help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
 LL |     let _y = foo;
    |              ^^^ value used here after move
    |
@@ -13,10 +15,6 @@ note: this function takes ownership of the receiver `self`, which moves `foo`
    |
 LL |     pub const fn map<U, F>(self, f: F) -> Option<U>
    |                            ^^^^
-help: consider calling `.as_ref()` to borrow the type's contents
-   |
-LL |     let _x: Option<Struct> = foo.as_ref().map(|s| bar(&s));
-   |                                  +++++++++
 
 error: aborting due to previous error
 

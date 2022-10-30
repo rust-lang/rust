@@ -1,0 +1,59 @@
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:21:32
+   |
+LL |     let _string: Box<String> = Box::new(Default::default());
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `Box::default()` instead
+   = note: `-D clippy::box-default` implied by `-D warnings`
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:22:17
+   |
+LL |     let _byte = Box::new(u8::default());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `Box::default()` instead
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:23:16
+   |
+LL |     let _vec = Box::new(Vec::<u8>::new());
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `Box::default()` instead
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:24:17
+   |
+LL |     let _impl = Box::new(ImplementsDefault::default());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `Box::default()` instead
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:25:18
+   |
+LL |     let _impl2 = Box::new(<ImplementsDefault as Default>::default());
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `Box::default()` instead
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:26:42
+   |
+LL |     let _impl3: Box<ImplementsDefault> = Box::new(Default::default());
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `Box::default()` instead
+
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:28:28
+   |
+LL |     let _in_macro = outer!(Box::new(String::new()));
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `Box::default()` instead
+
+error: aborting due to 7 previous errors
+

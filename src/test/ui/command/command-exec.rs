@@ -5,6 +5,7 @@
 // ignore-pretty issue #37199
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-fuchsia no execvp syscall provided
 
 #![feature(process_exec)]
 

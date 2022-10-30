@@ -3,7 +3,7 @@ error: unreachable statement
    |
 LL |   loop{}
    |   ------ any code following this expression is unreachable
-LL | 
+LL |
 LL |   let a = 3;
    |   ^^^^^^^^^^ unreachable statement
    |

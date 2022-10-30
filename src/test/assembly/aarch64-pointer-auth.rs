@@ -1,6 +1,5 @@
 // Test that PAC instructions are emitted when branch-protection is specified.
 
-// min-llvm-version: 10.0.1
 // assembly-output: emit-asm
 // compile-flags: --target aarch64-unknown-linux-gnu
 // compile-flags: -Z branch-protection=pac-ret,leaf

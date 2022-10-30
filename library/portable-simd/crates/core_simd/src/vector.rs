@@ -9,8 +9,9 @@ pub use uint::*;
 // Vectors of pointers are not for public use at the current time.
 pub(crate) mod ptr;
 
-use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Mask, MaskElement, SupportedLaneCount};
+use crate::simd::{
+    intrinsics, LaneCount, Mask, MaskElement, SimdPartialOrd, SupportedLaneCount, Swizzle,
+};
 
 /// A SIMD vector of `LANES` elements of type `T`. `Simd<T, N>` has the same shape as [`[T; N]`](array), but operates like `T`.
 ///
@@ -99,17 +100,50 @@ where
     /// Number of lanes in this vector.
     pub const LANES: usize = LANES;
 
-    /// Get the number of lanes in this vector.
+    /// Returns the number of lanes in this SIMD vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # use core::simd::u32x4;
+    /// let v = u32x4::splat(0);
+    /// assert_eq!(v.lanes(), 4);
+    /// ```
     pub const fn lanes(&self) -> usize {
         LANES
     }
 
-    /// Construct a SIMD vector by setting all lanes to the given value.
-    pub const fn splat(value: T) -> Self {
-        Self([value; LANES])
+    /// Constructs a new SIMD vector with all lanes set to the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # use core::simd::u32x4;
+    /// let v = u32x4::splat(8);
+    /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
+    /// ```
+    pub fn splat(value: T) -> Self {
+        // This is preferred over `[value; LANES]`, since it's explicitly a splat:
+        // https://github.com/rust-lang/rust/issues/97804
+        struct Splat;
+        impl<const LANES: usize> Swizzle<1, LANES> for Splat {
+            const INDEX: [usize; LANES] = [0; LANES];
+        }
+        Splat::swizzle(Simd::<T, 1>::from([value]))
     }
 
     /// Returns an array reference containing the entire SIMD vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # use core::simd::{Simd, u64x4};
+    /// let v: u64x4 = Simd::from_array([0, 1, 2, 3]);
+    /// assert_eq!(v.as_array(), &[0, 1, 2, 3]);
+    /// ```
     pub const fn as_array(&self) -> &[T; LANES] {
         &self.0
     }
@@ -129,9 +163,21 @@ where
         self.0
     }
 
-    /// Converts a slice to a SIMD vector containing `slice[..LANES]`
+    /// Converts a slice to a SIMD vector containing `slice[..LANES]`.
+    ///
     /// # Panics
-    /// `from_slice` will panic if the slice's `len` is less than the vector's `Simd::LANES`.
+    ///
+    /// Panics if the slice's length is less than the vector's `Simd::LANES`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # use core::simd::u32x4;
+    /// let source = vec![1, 2, 3, 4, 5, 6];
+    /// let v = u32x4::from_slice(&source);
+    /// assert_eq!(v.as_array(), &[1, 2, 3, 4]);
+    /// ```
     #[must_use]
     pub const fn from_slice(slice: &[T]) -> Self {
         assert!(slice.len() >= LANES, "slice length must be at least the number of lanes");
@@ -145,6 +191,7 @@ where
     }
 
     /// Performs lanewise conversion of a SIMD vector's elements to another SIMD-valid type.
+    ///
     /// This follows the semantics of Rust's `as` conversion for casting
     /// integers to unsigned integers (interpreting as the other type, so `-1` to `MAX`),
     /// and from floats to integers (truncating, or saturating at the limits) for each lane,
@@ -169,8 +216,33 @@ where
     #[must_use]
     #[inline]
     pub fn cast<U: SimdElement>(self) -> Simd<U, LANES> {
-        // Safety: The input argument is a vector of a known SIMD type.
+        // Safety: The input argument is a vector of a valid SIMD element type.
         unsafe { intrinsics::simd_as(self) }
+    }
+
+    /// Rounds toward zero and converts to the same-width integer type, assuming that
+    /// the value is finite and fits in that type.
+    ///
+    /// # Safety
+    /// The value must:
+    ///
+    /// * Not be NaN
+    /// * Not be infinite
+    /// * Be representable in the return type, after truncating off its fractional part
+    ///
+    /// If these requirements are infeasible or costly, consider using the safe function [cast],
+    /// which saturates on conversion.
+    ///
+    /// [cast]: Simd::cast
+    #[inline]
+    pub unsafe fn to_int_unchecked<I>(self) -> Simd<I, LANES>
+    where
+        T: core::convert::FloatToInt<I>,
+        I: SimdElement,
+    {
+        // Safety: `self` is a vector, and `FloatToInt` ensures the type can be casted to
+        // an integer.
+        unsafe { intrinsics::simd_cast(self) }
     }
 
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
@@ -239,7 +311,7 @@ where
         idxs: Simd<usize, LANES>,
         or: Self,
     ) -> Self {
-        let enable: Mask<isize, LANES> = enable & idxs.lanes_lt(Simd::splat(slice.len()));
+        let enable: Mask<isize, LANES> = enable & idxs.simd_lt(Simd::splat(slice.len()));
         // Safety: We have masked-off out-of-bounds lanes.
         unsafe { Self::gather_select_unchecked(slice, enable, idxs, or) }
     }
@@ -256,13 +328,15 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::{Simd, Mask};
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdPartialOrd, Mask};
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
     /// let enable = Mask::from_array([true, true, true, false]); // Note the final mask lane.
     /// // If this mask was used to gather, it would be unsound. Let's fix that.
-    /// let enable = enable & idxs.lanes_lt(Simd::splat(vec.len()));
+    /// let enable = enable & idxs.simd_lt(Simd::splat(vec.len()));
     ///
     /// // We have masked the OOB lane, so it's safe to gather now.
     /// let result = unsafe { Simd::gather_select_unchecked(&vec, enable, idxs, alt) };
@@ -313,7 +387,9 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::{Simd, Mask};
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
@@ -329,7 +405,7 @@ where
         enable: Mask<isize, LANES>,
         idxs: Simd<usize, LANES>,
     ) {
-        let enable: Mask<isize, LANES> = enable & idxs.lanes_lt(Simd::splat(slice.len()));
+        let enable: Mask<isize, LANES> = enable & idxs.simd_lt(Simd::splat(slice.len()));
         // Safety: We have masked-off out-of-bounds lanes.
         unsafe { self.scatter_select_unchecked(slice, enable, idxs) }
     }
@@ -347,13 +423,15 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::{Simd, Mask};
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdPartialOrd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
     /// let enable = Mask::from_array([true, true, true, false]); // Note the mask of the last lane.
     /// // If this mask was used to scatter, it would be unsound. Let's fix that.
-    /// let enable = enable & idxs.lanes_lt(Simd::splat(vec.len()));
+    /// let enable = enable & idxs.simd_lt(Simd::splat(vec.len()));
     ///
     /// // We have masked the OOB lane, so it's safe to scatter now.
     /// unsafe { vals.scatter_select_unchecked(&mut vec, enable, idxs); }
@@ -425,8 +503,27 @@ where
 {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        // TODO use SIMD equality
-        self.to_array() == other.to_array()
+        // Safety: All SIMD vectors are SimdPartialEq, and the comparison produces a valid mask.
+        let mask = unsafe {
+            let tfvec: Simd<<T as SimdElement>::Mask, LANES> = intrinsics::simd_eq(*self, *other);
+            Mask::from_int_unchecked(tfvec)
+        };
+
+        // Two vectors are equal if all lanes tested true for vertical equality.
+        mask.all()
+    }
+
+    #[allow(clippy::partialeq_ne_impl)]
+    #[inline]
+    fn ne(&self, other: &Self) -> bool {
+        // Safety: All SIMD vectors are SimdPartialEq, and the comparison produces a valid mask.
+        let mask = unsafe {
+            let tfvec: Simd<<T as SimdElement>::Mask, LANES> = intrinsics::simd_ne(*self, *other);
+            Mask::from_int_unchecked(tfvec)
+        };
+
+        // Two vectors are non-equal if any lane tested true for vertical non-equality.
+        mask.any()
     }
 }
 
@@ -561,61 +658,85 @@ pub unsafe trait SimdElement: Sealed + Copy {
 }
 
 impl Sealed for u8 {}
+
+// Safety: u8 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for u8 {
     type Mask = i8;
 }
 
 impl Sealed for u16 {}
+
+// Safety: u16 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for u16 {
     type Mask = i16;
 }
 
 impl Sealed for u32 {}
+
+// Safety: u32 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for u32 {
     type Mask = i32;
 }
 
 impl Sealed for u64 {}
+
+// Safety: u64 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for u64 {
     type Mask = i64;
 }
 
 impl Sealed for usize {}
+
+// Safety: usize is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for usize {
     type Mask = isize;
 }
 
 impl Sealed for i8 {}
+
+// Safety: i8 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for i8 {
     type Mask = i8;
 }
 
 impl Sealed for i16 {}
+
+// Safety: i16 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for i16 {
     type Mask = i16;
 }
 
 impl Sealed for i32 {}
+
+// Safety: i32 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for i32 {
     type Mask = i32;
 }
 
 impl Sealed for i64 {}
+
+// Safety: i64 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for i64 {
     type Mask = i64;
 }
 
 impl Sealed for isize {}
+
+// Safety: isize is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for isize {
     type Mask = isize;
 }
 
 impl Sealed for f32 {}
+
+// Safety: f32 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for f32 {
     type Mask = i32;
 }
 
 impl Sealed for f64 {}
+
+// Safety: f64 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for f64 {
     type Mask = i64;
 }

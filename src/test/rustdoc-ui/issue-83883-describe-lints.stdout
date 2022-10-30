@@ -20,6 +20,5 @@ Lint checks provided by plugins loaded by this crate:
 
 Lint groups provided by plugins loaded by this crate:
 
-    rustdoc::all  $GROUPS
-
+    $NAMES  $SUB_LINTS
 

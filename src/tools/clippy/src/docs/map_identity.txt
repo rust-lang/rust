@@ -1,0 +1,16 @@
+### What it does
+Checks for instances of `map(f)` where `f` is the identity function.
+
+### Why is this bad?
+It can be written more concisely without the call to `map`.
+
+### Example
+```
+let x = [1, 2, 3];
+let y: Vec<_> = x.iter().map(|x| x).map(|x| 2*x).collect();
+```
+Use instead:
+```
+let x = [1, 2, 3];
+let y: Vec<_> = x.iter().map(|x| 2*x).collect();
+```

@@ -1,6 +1,6 @@
 use crate::mir::Mutability;
 use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, Ty, TyCtxt, TypeVisitable};
 use rustc_hir::def_id::DefId;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -132,7 +132,7 @@ pub fn simplify_type<'tcx>(
             // don't unify with anything else as long as they are fully normalized.
             //
             // We will have to be careful with lazy normalization here.
-            TreatParams::AsPlaceholder if !ty.has_infer_types_or_consts() => {
+            TreatParams::AsPlaceholder if !ty.has_non_region_infer() => {
                 debug!("treating `{}` as a placeholder", ty);
                 Some(PlaceholderSimplifiedType)
             }
@@ -363,7 +363,7 @@ impl DeepRejectCtxt {
     }
 
     pub fn consts_may_unify(self, obligation_ct: ty::Const<'_>, impl_ct: ty::Const<'_>) -> bool {
-        match impl_ct.val() {
+        match impl_ct.kind() {
             ty::ConstKind::Param(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
                 return true;
             }
@@ -373,8 +373,8 @@ impl DeepRejectCtxt {
             }
         }
 
-        let k = impl_ct.val();
-        match obligation_ct.val() {
+        let k = impl_ct.kind();
+        match obligation_ct.kind() {
             ty::ConstKind::Param(_) => match self.treat_obligation_params {
                 TreatParams::AsPlaceholder => false,
                 TreatParams::AsInfer => true,
@@ -384,14 +384,7 @@ impl DeepRejectCtxt {
             // they might unify with any value.
             ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => true,
             ty::ConstKind::Value(obl) => match k {
-                ty::ConstKind::Value(imp) => {
-                    // FIXME(valtrees): Once we have valtrees, we can just
-                    // compare them directly here.
-                    match (obl.try_to_scalar_int(), imp.try_to_scalar_int()) {
-                        (Some(obl), Some(imp)) => obl == imp,
-                        _ => true,
-                    }
-                }
+                ty::ConstKind::Value(imp) => obl == imp,
                 _ => true,
             },
 

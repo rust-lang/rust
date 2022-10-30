@@ -4,7 +4,7 @@ struct Bar<T> {
 
 struct Foo();
 impl Foo {
-    fn foo() { }
+    fn foo(&self) { }
 }
 
 fn main() {

@@ -1,0 +1,16 @@
+### What it does
+Checks for overlapping match arms.
+
+### Why is this bad?
+It is likely to be an error and if not, makes the code
+less obvious.
+
+### Example
+```
+let x = 5;
+match x {
+    1..=10 => println!("1 ... 10"),
+    5..=15 => println!("5 ... 15"),
+    _ => (),
+}
+```

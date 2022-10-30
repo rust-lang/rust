@@ -52,6 +52,8 @@ bitflags! {
         /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
         /// (i.e., this flag is never set unless this ADT is an enum).
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
+        /// Indicates whether the type is `UnsafeCell`.
+        const IS_UNSAFE_CELL              = 1 << 9;
     }
 }
 
@@ -165,22 +167,27 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
 pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
 
 impl<'tcx> AdtDef<'tcx> {
+    #[inline]
     pub fn did(self) -> DefId {
         self.0.0.did
     }
 
+    #[inline]
     pub fn variants(self) -> &'tcx IndexVec<VariantIdx, VariantDef> {
         &self.0.0.variants
     }
 
+    #[inline]
     pub fn variant(self, idx: VariantIdx) -> &'tcx VariantDef {
         &self.0.0.variants[idx]
     }
 
+    #[inline]
     pub fn flags(self) -> AdtFlags {
         self.0.0.flags
     }
 
+    #[inline]
     pub fn repr(self) -> ReprOptions {
         self.0.0.repr
     }
@@ -241,6 +248,9 @@ impl AdtDefData {
         }
         if Some(did) == tcx.lang_items().manually_drop() {
             flags |= AdtFlags::IS_MANUALLY_DROP;
+        }
+        if Some(did) == tcx.lang_items().unsafe_cell_type() {
+            flags |= AdtFlags::IS_UNSAFE_CELL;
         }
 
         AdtDefData { did, variants, flags, repr }
@@ -322,10 +332,16 @@ impl<'tcx> AdtDef<'tcx> {
         self.flags().contains(AdtFlags::IS_PHANTOM_DATA)
     }
 
-    /// Returns `true` if this is Box<T>.
+    /// Returns `true` if this is `Box<T>`.
     #[inline]
     pub fn is_box(self) -> bool {
         self.flags().contains(AdtFlags::IS_BOX)
+    }
+
+    /// Returns `true` if this is `UnsafeCell<T>`.
+    #[inline]
+    pub fn is_unsafe_cell(self) -> bool {
+        self.flags().contains(AdtFlags::IS_UNSAFE_CELL)
     }
 
     /// Returns `true` if this is `ManuallyDrop<T>`.
@@ -422,7 +438,8 @@ impl<'tcx> AdtDef<'tcx> {
             | Res::Def(DefKind::Union, _)
             | Res::Def(DefKind::TyAlias, _)
             | Res::Def(DefKind::AssocTy, _)
-            | Res::SelfTy { .. }
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..) => self.non_enum_variant(),
             _ => bug!("unexpected res {:?} in variant_of_res", res),
         }
@@ -441,11 +458,9 @@ impl<'tcx> AdtDef<'tcx> {
                     Some(Discr { val: b, ty })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
-                    crate::mir::interpret::struct_error(
-                        tcx.at(tcx.def_span(expr_did)),
-                        "constant evaluation of enum discriminant resulted in non-integer",
-                    )
-                    .emit();
+                    tcx.sess.emit_err(crate::error::ConstEvalNonIntError {
+                        span: tcx.def_span(expr_did),
+                    });
                     None
                 }
             }
@@ -547,7 +562,14 @@ impl<'tcx> AdtDef<'tcx> {
     ///
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer (e.g., issue #31299).
-    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> &'tcx [Ty<'tcx>] {
-        tcx.adt_sized_constraint(self.did()).0
+    pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx [Ty<'tcx>]> {
+        ty::EarlyBinder(tcx.adt_sized_constraint(self.did()).0)
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+#[derive(HashStable)]
+pub enum Representability {
+    Representable,
+    Infinite,
 }

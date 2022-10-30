@@ -1,0 +1,13 @@
+error: expected one of `!` or `::`, found keyword `struct`
+  --> $DIR/public-instead-of-pub.rs:4:8
+   |
+LL | public struct X;
+   |        ^^^^^^ expected one of `!` or `::`
+   |
+help: write `pub` instead of `public` to make the item public
+   |
+LL | pub struct X;
+   | ~~~
+
+error: aborting due to previous error
+

@@ -28,7 +28,7 @@ pub(super) fn derefs_to_slice<'tcx>(
         }
     }
 
-    if let hir::ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind {
+    if let hir::ExprKind::MethodCall(path, self_arg, ..) = &expr.kind {
         if path.ident.name == sym::iter && may_slice(cx, cx.typeck_results().expr_ty(self_arg)) {
             Some(self_arg)
         } else {
@@ -139,9 +139,9 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
                         self.addr_of_exprs.push(parent);
                         return;
                     },
-                    ExprKind::MethodCall(_, args, _) => {
+                    ExprKind::MethodCall(.., args, _) => {
                         if_chain! {
-                            if args.iter().skip(1).all(|arg| !self.is_binding(arg));
+                            if args.iter().all(|arg| !self.is_binding(arg));
                             if let Some(method_def_id) = self.cx.typeck_results().type_dependent_def_id(parent.hir_id);
                             let method_ty = self.cx.tcx.type_of(method_def_id);
                             let self_ty = method_ty.fn_sig(self.cx.tcx).input(0).skip_binder();

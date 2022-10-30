@@ -24,7 +24,7 @@ pub(super) fn add_arg_comment<'tcx>(
     local: Option<mir::Local>,
     local_field: Option<usize>,
     params: &[Value],
-    arg_abi_mode: PassMode,
+    arg_abi_mode: &PassMode,
     arg_layout: TyAndLayout<'tcx>,
 ) {
     if !fx.clif_comments.enabled() {

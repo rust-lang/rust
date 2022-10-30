@@ -1,0 +1,48 @@
+SOURCE_FILE
+  ERROR
+    UNSAFE_KW "unsafe"
+  WHITESPACE " "
+  FN
+    ASYNC_KW "async"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  CONST
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    CONST_KW "const"
+    WHITESPACE " "
+    ERROR
+      FN_KW "fn"
+  WHITESPACE " "
+  MACRO_CALL
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "bar"
+    TOKEN_TREE
+      L_PAREN "("
+      R_PAREN ")"
+  WHITESPACE " "
+  ERROR
+    L_CURLY "{"
+    R_CURLY "}"
+  WHITESPACE "\n"
+error 6: expected existential, fn, trait or impl
+error 38: expected a name
+error 40: missing type for `const` or `static`
+error 40: expected SEMICOLON
+error 44: expected BANG
+error 46: expected SEMICOLON
+error 47: expected an item

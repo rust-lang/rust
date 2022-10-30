@@ -1,0 +1,24 @@
+### What it does
+Checks for cfg attributes having operating systems used in target family position.
+
+### Why is this bad?
+The configuration option will not be recognised and the related item will not be included
+by the conditional compilation engine.
+
+### Example
+```
+#[cfg(linux)]
+fn conditional() { }
+```
+
+Use instead:
+```
+#[cfg(target_os = "linux")]
+fn conditional() { }
+
+// or
+
+#[cfg(unix)]
+fn conditional() { }
+```
+Check the [Rust Reference](https://doc.rust-lang.org/reference/conditional-compilation.html#target_os) for more details.

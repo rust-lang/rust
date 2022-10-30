@@ -14,6 +14,7 @@ use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRan
 
 use crate::base;
 use crate::context::CodegenCx;
+use crate::errors::LinkageConstOrMutType;
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -25,7 +26,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 }
             }
         }
-        self.context.new_bitcast(None, value, typ)
+        // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
+        // SIMD builtins require a constant value.
+        self.bitcast_if_needed(value, typ)
     }
 }
 
@@ -45,7 +48,10 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             }
         }
         let global_value = self.static_addr_of_mut(cv, align, kind);
-        // TODO(antoyo): set global constant.
+        #[cfg(feature = "master")]
+        self.global_lvalues.borrow().get(&global_value)
+            .expect("`static_addr_of_mut` did not add the global to `self.global_lvalues`")
+            .global_set_readonly();
         self.const_globals.borrow_mut().insert(cv, global_value);
         global_value
     }
@@ -79,20 +85,15 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
         // TODO(antoyo): set alignment.
 
-        let value =
-            if value.get_type() != gcc_type {
-                self.context.new_bitcast(None, value, gcc_type)
-            }
-            else {
-                value
-            };
+        let value = self.bitcast_if_needed(value, gcc_type);
         global.global_set_initializer_rvalue(value);
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
         if !is_mutable {
             if self.type_is_freeze(ty) {
-                // TODO(antoyo): set global constant.
+                #[cfg(feature = "master")]
+                global.global_set_readonly();
             }
         }
 
@@ -127,7 +128,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             //
             // We could remove this hack whenever we decide to drop macOS 10.10 support.
             if self.tcx.sess.target.options.is_like_osx {
-                // The `inspect` method is okay here because we checked relocations, and
+                // The `inspect` method is okay here because we checked for provenance, and
                 // because we are doing this access to inspect the final interpreter state
                 // (not as part of the interpreter execution).
                 //
@@ -171,8 +172,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 Some(kind) if !self.tcx.sess.fewer_names() => {
                     let name = self.generate_local_symbol_name(kind);
                     // TODO(antoyo): check if it's okay that no link_section is set.
-                    // TODO(antoyo): set alignment here as well.
-                    let global = self.declare_private_global(&name[..], self.val_ty(cv));
+
+                    let typ = self.val_ty(cv).get_aligned(align.bytes());
+                    let global = self.declare_private_global(&name[..], typ);
                     global
                 }
                 _ => {
@@ -295,17 +297,17 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
 pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAllocation<'tcx>) -> RValue<'gcc> {
     let alloc = alloc.inner();
-    let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
+    let mut llvals = Vec::with_capacity(alloc.provenance().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
 
     let mut next_offset = 0;
-    for &(offset, alloc_id) in alloc.relocations().iter() {
+    for &(offset, alloc_id) in alloc.provenance().iter() {
         let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            // This `inspect` is okay since we have checked that it is not within a relocation, it
+            // This `inspect` is okay since we have checked that it is not within a pointer with provenance, it
             // is within the bounds of the allocation, and it doesn't affect interpreter execution
             // (we inspect the result after interpreter execution). Any undef byte is replaced with
             // some arbitrary byte value.
@@ -318,7 +320,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
             read_target_uint( dl.endian,
                 // This `inspect` is okay since it is within the bounds of the allocation, it doesn't
                 // affect interpreter execution (we inspect the result after interpreter execution),
-                // and we properly interpret the relocation as a relocation pointer offset.
+                // and we properly interpret the provenance as a relocation pointer offset.
                 alloc.inspect_with_uninit_and_ptr_outside_interpreter(offset..(offset + pointer_size)),
             )
             .expect("const_alloc_to_llvm: could not read relocation pointer")
@@ -335,7 +337,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
     }
     if alloc.len() >= next_offset {
         let range = next_offset..alloc.len();
-        // This `inspect` is okay since we have check that it is after all relocations, it is
+        // This `inspect` is okay since we have check that it is after all provenance, it is
         // within the bounds of the allocation, and it doesn't affect interpreter execution (we
         // inspect the result after interpreter execution). Any undef byte is replaced with some
         // arbitrary byte value.
@@ -367,10 +369,7 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
                 cx.layout_of(mt.ty).gcc_type(cx, true)
             }
             else {
-                cx.sess().span_fatal(
-                    span,
-                    "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
-                )
+                cx.sess().emit_fatal(LinkageConstOrMutType { span: span })
             };
         // Declare a symbol `foo` with the desired linkage.
         let global1 = cx.declare_global_with_linkage(&sym, llty2, base::global_linkage_to_gcc(linkage));

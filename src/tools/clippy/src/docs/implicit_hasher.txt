@@ -1,0 +1,26 @@
+### What it does
+Checks for public `impl` or `fn` missing generalization
+over different hashers and implicitly defaulting to the default hashing
+algorithm (`SipHash`).
+
+### Why is this bad?
+`HashMap` or `HashSet` with custom hashers cannot be
+used with them.
+
+### Known problems
+Suggestions for replacing constructors can contain
+false-positives. Also applying suggestions can require modification of other
+pieces of code, possibly including external crates.
+
+### Example
+```
+impl<K: Hash + Eq, V> Serialize for HashMap<K, V> { }
+
+pub fn foo(map: &mut HashMap<i32, i32>) { }
+```
+could be rewritten as
+```
+impl<K: Hash + Eq, V, S: BuildHasher> Serialize for HashMap<K, V, S> { }
+
+pub fn foo<S: BuildHasher>(map: &mut HashMap<i32, i32, S>) { }
+```

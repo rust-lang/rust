@@ -9,7 +9,7 @@ impl Trait for () {
 }
 
 type Used = ();
-type Unused = (); //~ ERROR type alias is never used
+type Unused = (); //~ ERROR type alias `Unused` is never used
 
 fn foo() -> impl Trait<Type = Used> {}
 

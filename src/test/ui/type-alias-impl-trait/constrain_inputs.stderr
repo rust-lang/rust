@@ -1,0 +1,58 @@
+error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
+  --> $DIR/constrain_inputs.rs:6:31
+   |
+LL |     fn execute(ty: Ty<'_>) -> &str { todo!() }
+   |                               ^^^^
+   |
+   = note: lifetimes appearing in an associated or opaque type are not considered constrained
+   = note: consider introducing a named lifetime parameter
+
+error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
+  --> $DIR/constrain_inputs.rs:9:35
+   |
+LL |     type BadFnSig = fn(Ty<'_>) -> &str;
+   |                                   ^^^^
+   |
+   = note: lifetimes appearing in an associated or opaque type are not considered constrained
+   = note: consider introducing a named lifetime parameter
+
+error[E0582]: binding for associated type `Output` references an anonymous lifetime, which does not appear in the trait input types
+  --> $DIR/constrain_inputs.rs:11:42
+   |
+LL |     type BadTraitRef = dyn Fn(Ty<'_>) -> &str;
+   |                                          ^^^^
+   |
+   = note: lifetimes appearing in an associated or opaque type are not considered constrained
+   = note: consider introducing a named lifetime parameter
+
+error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
+  --> $DIR/constrain_inputs.rs:18:31
+   |
+LL |     fn execute(ty: Ty<'_>) -> &str { ty() }
+   |                               ^^^^
+   |
+   = note: lifetimes appearing in an associated or opaque type are not considered constrained
+   = note: consider introducing a named lifetime parameter
+
+error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
+  --> $DIR/constrain_inputs.rs:27:37
+   |
+LL |     type BadFnSig = fn(Ty<&str>) -> &str;
+   |                                     ^^^^
+   |
+   = note: lifetimes appearing in an associated or opaque type are not considered constrained
+   = note: consider introducing a named lifetime parameter
+
+error[E0582]: binding for associated type `Output` references an anonymous lifetime, which does not appear in the trait input types
+  --> $DIR/constrain_inputs.rs:29:44
+   |
+LL |     type BadTraitRef = dyn Fn(Ty<&str>) -> &str;
+   |                                            ^^^^
+   |
+   = note: lifetimes appearing in an associated or opaque type are not considered constrained
+   = note: consider introducing a named lifetime parameter
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0581, E0582.
+For more information about an error, try `rustc --explain E0581`.

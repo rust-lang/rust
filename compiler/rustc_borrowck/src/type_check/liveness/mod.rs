@@ -1,11 +1,11 @@
+use itertools::{Either, Itertools};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::{RegionVid, TyCtxt};
-use std::rc::Rc;
-
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
+use std::rc::Rc;
 
 use crate::{
     constraints::OutlivesConstraintSet,
@@ -46,7 +46,8 @@ pub(super) fn generate<'mir, 'tcx>(
         &typeck.borrowck_context.universal_regions,
         &typeck.borrowck_context.constraints.outlives_constraints,
     );
-    let live_locals = compute_live_locals(typeck.tcx(), &free_regions, &body);
+    let (relevant_live_locals, boring_locals) =
+        compute_relevant_live_locals(typeck.tcx(), &free_regions, &body);
     let facts_enabled = use_polonius || AllFacts::enabled(typeck.tcx());
 
     let polonius_drop_used = if facts_enabled {
@@ -57,48 +58,44 @@ pub(super) fn generate<'mir, 'tcx>(
         None
     };
 
-    if !live_locals.is_empty() || facts_enabled {
-        trace::trace(
-            typeck,
-            body,
-            elements,
-            flow_inits,
-            move_data,
-            live_locals,
-            polonius_drop_used,
-        );
-    }
+    trace::trace(
+        typeck,
+        body,
+        elements,
+        flow_inits,
+        move_data,
+        relevant_live_locals,
+        boring_locals,
+        polonius_drop_used,
+    );
 }
 
-// The purpose of `compute_live_locals` is to define the subset of `Local`
+// The purpose of `compute_relevant_live_locals` is to define the subset of `Local`
 // variables for which we need to do a liveness computation. We only need
 // to compute whether a variable `X` is live if that variable contains
 // some region `R` in its type where `R` is not known to outlive a free
 // region (i.e., where `R` may be valid for just a subset of the fn body).
-fn compute_live_locals<'tcx>(
+fn compute_relevant_live_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
     free_regions: &FxHashSet<RegionVid>,
     body: &Body<'tcx>,
-) -> Vec<Local> {
-    let live_locals: Vec<Local> = body
-        .local_decls
-        .iter_enumerated()
-        .filter_map(|(local, local_decl)| {
+) -> (Vec<Local>, Vec<Local>) {
+    let (boring_locals, relevant_live_locals): (Vec<_>, Vec<_>) =
+        body.local_decls.iter_enumerated().partition_map(|(local, local_decl)| {
             if tcx.all_free_regions_meet(&local_decl.ty, |r| {
                 free_regions.contains(&r.to_region_vid())
             }) {
-                None
+                Either::Left(local)
             } else {
-                Some(local)
+                Either::Right(local)
             }
-        })
-        .collect();
+        });
 
     debug!("{} total variables", body.local_decls.len());
-    debug!("{} variables need liveness", live_locals.len());
+    debug!("{} variables need liveness", relevant_live_locals.len());
     debug!("{} regions outlive free regions", free_regions.len());
 
-    live_locals
+    (relevant_live_locals, boring_locals)
 }
 
 /// Computes all regions that are (currently) known to outlive free

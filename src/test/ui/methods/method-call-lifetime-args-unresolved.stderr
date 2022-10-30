@@ -17,9 +17,9 @@ LL |     0.clone::<'a>();
 LL |     fn clone(&self) -> Self;
    |              - the late bound lifetime parameter is introduced here
    |
-   = note: `#[warn(late_bound_lifetime_arguments)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: `#[warn(late_bound_lifetime_arguments)]` on by default
 
 error: aborting due to previous error; 1 warning emitted
 

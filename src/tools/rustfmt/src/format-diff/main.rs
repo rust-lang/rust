@@ -19,8 +19,7 @@ use std::process;
 
 use regex::Regex;
 
-use structopt::clap::AppSettings;
-use structopt::StructOpt;
+use clap::{CommandFactory, Parser};
 
 /// The default pattern of files to format.
 ///
@@ -37,16 +36,16 @@ enum FormatDiffError {
     IoError(#[from] io::Error),
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(
+#[derive(Parser, Debug)]
+#[clap(
     name = "rustfmt-format-diff",
-    setting = AppSettings::DisableVersion,
-    setting = AppSettings::NextLineHelp
+    disable_version_flag = true,
+    next_line_help = true
 )]
 pub struct Opts {
     /// Skip the smallest prefix containing NUMBER slashes
-    #[structopt(
-        short = "p",
+    #[clap(
+        short = 'p',
         long = "skip-prefix",
         value_name = "NUMBER",
         default_value = "0"
@@ -54,8 +53,8 @@ pub struct Opts {
     skip_prefix: u32,
 
     /// Custom pattern selecting file paths to reformat
-    #[structopt(
-        short = "f",
+    #[clap(
+        short = 'f',
         long = "filter",
         value_name = "PATTERN",
         default_value = DEFAULT_PATTERN
@@ -65,10 +64,12 @@ pub struct Opts {
 
 fn main() {
     env_logger::Builder::from_env("RUSTFMT_LOG").init();
-    let opts = Opts::from_args();
+    let opts = Opts::parse();
     if let Err(e) = run(opts) {
         println!("{}", e);
-        Opts::clap().print_help().expect("cannot write to stdout");
+        Opts::command()
+            .print_help()
+            .expect("cannot write to stdout");
         process::exit(1);
     }
 }
@@ -230,14 +231,14 @@ mod cmd_line_tests {
     #[test]
     fn default_options() {
         let empty: Vec<String> = vec![];
-        let o = Opts::from_iter(&empty);
+        let o = Opts::parse_from(&empty);
         assert_eq!(DEFAULT_PATTERN, o.filter);
         assert_eq!(0, o.skip_prefix);
     }
 
     #[test]
     fn good_options() {
-        let o = Opts::from_iter(&["test", "-p", "10", "-f", r".*\.hs"]);
+        let o = Opts::parse_from(&["test", "-p", "10", "-f", r".*\.hs"]);
         assert_eq!(r".*\.hs", o.filter);
         assert_eq!(10, o.skip_prefix);
     }
@@ -245,8 +246,8 @@ mod cmd_line_tests {
     #[test]
     fn unexpected_option() {
         assert!(
-            Opts::clap()
-                .get_matches_from_safe(&["test", "unexpected"])
+            Opts::command()
+                .try_get_matches_from(&["test", "unexpected"])
                 .is_err()
         );
     }
@@ -254,8 +255,8 @@ mod cmd_line_tests {
     #[test]
     fn unexpected_flag() {
         assert!(
-            Opts::clap()
-                .get_matches_from_safe(&["test", "--flag"])
+            Opts::command()
+                .try_get_matches_from(&["test", "--flag"])
                 .is_err()
         );
     }
@@ -263,8 +264,8 @@ mod cmd_line_tests {
     #[test]
     fn overridden_option() {
         assert!(
-            Opts::clap()
-                .get_matches_from_safe(&["test", "-p", "10", "-p", "20"])
+            Opts::command()
+                .try_get_matches_from(&["test", "-p", "10", "-p", "20"])
                 .is_err()
         );
     }
@@ -272,8 +273,8 @@ mod cmd_line_tests {
     #[test]
     fn negative_filter() {
         assert!(
-            Opts::clap()
-                .get_matches_from_safe(&["test", "-p", "-1"])
+            Opts::command()
+                .try_get_matches_from(&["test", "-p", "-1"])
                 .is_err()
         );
     }

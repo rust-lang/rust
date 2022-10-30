@@ -2,7 +2,7 @@ error[E0618]: expected function, found `usize`
   --> $DIR/const-as-fn.rs:4:5
    |
 LL | const FOO: usize = 0;
-   | --------------------- `FOO` defined here
+   | ---------------- `FOO` defined here
 ...
 LL |     FOO();
    |     ^^^--

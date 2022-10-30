@@ -4,7 +4,7 @@ mod simd;
 use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
-use rustc_codegen_ssa::common::{IntPredicate, span_invalid_monomorphization_error};
+use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
@@ -20,6 +20,7 @@ use crate::abi::GccType;
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
+use crate::errors::InvalidMonomorphizationBasicInteger;
 use crate::type_of::LayoutGccExt;
 use crate::intrinsic::simd::generic_simd_intrinsic;
 
@@ -99,7 +100,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 _ if simple.is_some() => {
                     // FIXME(antoyo): remove this cast when the API supports function.
                     let func = unsafe { std::mem::transmute(simple.expect("simple")) };
-                    self.call(self.type_void(), func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
+                    self.call(self.type_void(), None, func, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None)
                 },
                 sym::likely => {
                     self.expect(args[0].immediate(), true)
@@ -130,7 +131,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 sym::volatile_load | sym::unaligned_volatile_load => {
                     let tp_ty = substs.type_at(0);
                     let mut ptr = args[0].immediate();
-                    if let PassMode::Cast(ty) = fn_abi.ret.mode {
+                    if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                         ptr = self.pointercast(ptr, self.type_ptr_to(ty.gcc_type(self)));
                     }
                     let load = self.volatile_load(ptr.get_type(), ptr);
@@ -242,15 +243,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                 _ => bug!(),
                             },
                             None => {
-                                span_invalid_monomorphization_error(
-                                    tcx.sess,
-                                    span,
-                                    &format!(
-                                        "invalid monomorphization of `{}` intrinsic: \
-                                      expected basic integer type, found `{}`",
-                                      name, ty
-                                    ),
-                                );
+                                tcx.sess.emit_err(InvalidMonomorphizationBasicInteger { span, name, ty });
                                 return;
                             }
                         }
@@ -309,6 +302,18 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     return;
                 }
 
+                sym::ptr_mask => {
+                    let usize_type = self.context.new_type::<usize>();
+                    let void_ptr_type = self.context.new_type::<*const ()>();
+
+                    let ptr = args[0].immediate();
+                    let mask = args[1].immediate();
+
+                    let addr = self.bitcast(ptr, usize_type);
+                    let masked = self.and(addr, mask);
+                    self.bitcast(masked, void_ptr_type)
+                },
+                
                 _ if name_str.starts_with("simd_") => {
                     match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                         Ok(llval) => llval,
@@ -320,7 +325,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(ty) = fn_abi.ret.mode {
+            if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
                 let ptr = self.pointercast(result.llval, ptr_llty);
                 self.store(llval, ptr, result.align);
@@ -336,7 +341,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn abort(&mut self) {
         let func = self.context.get_builtin_function("abort");
         let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
-        self.call(self.type_void(), func, &[], None);
+        self.call(self.type_void(), None, func, &[], None);
     }
 
     fn assume(&mut self, value: Self::Value) {
@@ -352,6 +357,16 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn type_test(&mut self, _pointer: Self::Value, _typeid: Self::Value) -> Self::Value {
+        // Unsupported.
+        self.context.new_rvalue_from_int(self.int_type, 0)
+    }
+
+    fn type_checked_load(
+        &mut self,
+        _llvtable: Self::Value,
+        _vtable_byte_offset: u64,
+        _typeid: Self::Value,
+    ) -> Self::Value {
         // Unsupported.
         self.context.new_rvalue_from_int(self.int_type, 0)
     }
@@ -406,7 +421,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
         }
-        else if let PassMode::Cast(cast) = self.mode {
+        else if let PassMode::Cast(ref cast, _) = self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
@@ -471,7 +486,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { extra_attrs: Some(_), .. } => {
                 OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
             },
-            PassMode::Direct(_) | PassMode::Indirect { extra_attrs: None, .. } | PassMode::Cast(_) => {
+            PassMode::Direct(_) | PassMode::Indirect { extra_attrs: None, .. } | PassMode::Cast(..) => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
             },
@@ -967,34 +982,55 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     fn saturating_add(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>, signed: bool, width: u64) -> RValue<'gcc> {
-        let func = self.current_func.borrow().expect("func");
-
+        let result_type = lhs.get_type();
         if signed {
-            // Algorithm from: https://stackoverflow.com/a/56531252/389119
-            let after_block = func.new_block("after");
-            let func_name =
-                match width {
-                    8 => "__builtin_add_overflow",
-                    16 => "__builtin_add_overflow",
-                    32 => "__builtin_sadd_overflow",
-                    64 => "__builtin_saddll_overflow",
-                    128 => "__builtin_add_overflow",
-                    _ => unreachable!(),
-                };
-            let overflow_func = self.context.get_builtin_function(func_name);
-            let result_type = lhs.get_type();
+            // Based on algorithm from: https://stackoverflow.com/a/56531252/389119
+            let func = self.current_func.borrow().expect("func");
             let res = func.new_local(None, result_type, "saturating_sum");
-            let overflow = self.overflow_call(overflow_func, &[lhs, rhs, res.get_address(None)], None);
+            let supports_native_type = self.is_native_int_type(result_type);
+            let overflow =
+                if supports_native_type {
+                    let func_name =
+                        match width {
+                            8 => "__builtin_add_overflow",
+                            16 => "__builtin_add_overflow",
+                            32 => "__builtin_sadd_overflow",
+                            64 => "__builtin_saddll_overflow",
+                            128 => "__builtin_add_overflow",
+                            _ => unreachable!(),
+                        };
+                    let overflow_func = self.context.get_builtin_function(func_name);
+                    self.overflow_call(overflow_func, &[lhs, rhs, res.get_address(None)], None)
+                }
+                else {
+                    let func_name =
+                        match width {
+                            128 => "__rust_i128_addo",
+                            _ => unreachable!(),
+                        };
+                    let param_a = self.context.new_parameter(None, result_type, "a");
+                    let param_b = self.context.new_parameter(None, result_type, "b");
+                    let result_field = self.context.new_field(None, result_type, "result");
+                    let overflow_field = self.context.new_field(None, self.bool_type, "overflow");
+                    let return_type = self.context.new_struct_type(None, "result_overflow", &[result_field, overflow_field]);
+                    let func = self.context.new_function(None, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
+                    let result = self.context.new_call(None, func, &[lhs, rhs]);
+                    let overflow = result.access_field(None, overflow_field);
+                    let int_result = result.access_field(None, result_field);
+                    self.llbb().add_assignment(None, res, int_result);
+                    overflow
+                };
 
             let then_block = func.new_block("then");
+            let after_block = func.new_block("after");
 
-            let unsigned_type = self.context.new_int_type(width as i32 / 8, false);
-            let shifted = self.context.new_cast(None, lhs, unsigned_type) >> self.context.new_rvalue_from_int(unsigned_type, width as i32 - 1);
-            let uint_max = self.context.new_unary_op(None, UnaryOp::BitwiseNegate, unsigned_type,
-                self.context.new_rvalue_from_int(unsigned_type, 0)
-            );
-            let int_max = uint_max >> self.context.new_rvalue_one(unsigned_type);
-            then_block.add_assignment(None, res, self.context.new_cast(None, shifted + int_max, result_type));
+            // Return `result_type`'s maximum or minimum value on overflow
+            // NOTE: convert the type to unsigned to have an unsigned shift.
+            let unsigned_type = result_type.to_unsigned(&self.cx);
+            let shifted = self.gcc_lshr(self.gcc_int_cast(lhs, unsigned_type), self.gcc_int(unsigned_type, width as i64 - 1));
+            let uint_max = self.gcc_not(self.gcc_int(unsigned_type, 0));
+            let int_max = self.gcc_lshr(uint_max, self.gcc_int(unsigned_type, 1));
+            then_block.add_assignment(None, res, self.gcc_int_cast(self.gcc_add(shifted, int_max), result_type));
             then_block.end_with_jump(None, after_block);
 
             self.llbb().end_with_conditional(None, overflow, then_block, after_block);
@@ -1007,19 +1043,18 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         }
         else {
             // Algorithm from: http://locklessinc.com/articles/sat_arithmetic/
-            let res = lhs + rhs;
-            let res_type = res.get_type();
-            let cond = self.context.new_comparison(None, ComparisonOp::LessThan, res, lhs);
-            let value = self.context.new_unary_op(None, UnaryOp::Minus, res_type, self.context.new_cast(None, cond, res_type));
-            res | value
+            let res = self.gcc_add(lhs, rhs);
+            let cond = self.gcc_icmp(IntPredicate::IntULT, res, lhs);
+            let value = self.gcc_neg(self.gcc_int_cast(cond, result_type));
+            self.gcc_or(res, value)
         }
     }
 
     // Algorithm from: https://locklessinc.com/articles/sat_arithmetic/
     fn saturating_sub(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>, signed: bool, width: u64) -> RValue<'gcc> {
+        let result_type = lhs.get_type();
         if signed {
-            // Also based on algorithm from: https://stackoverflow.com/a/56531252/389119
-            let result_type = lhs.get_type();
+            // Based on algorithm from: https://stackoverflow.com/a/56531252/389119
             let func = self.current_func.borrow().expect("func");
             let res = func.new_local(None, result_type, "saturating_diff");
             let supports_native_type = self.is_native_int_type(result_type);
@@ -1059,6 +1094,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let then_block = func.new_block("then");
             let after_block = func.new_block("after");
 
+            // Return `result_type`'s maximum or minimum value on overflow
             // NOTE: convert the type to unsigned to have an unsigned shift.
             let unsigned_type = result_type.to_unsigned(&self.cx);
             let shifted = self.gcc_lshr(self.gcc_int_cast(lhs, unsigned_type), self.gcc_int(unsigned_type, width as i64 - 1));
@@ -1076,11 +1112,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             res.to_rvalue()
         }
         else {
-            let res = lhs - rhs;
-            let comparison = self.context.new_comparison(None, ComparisonOp::LessThanEquals, res, lhs);
-            let comparison = self.context.new_cast(None, comparison, lhs.get_type());
-            let unary_op = self.context.new_unary_op(None, UnaryOp::Minus, comparison.get_type(), comparison);
-            self.and(res, unary_op)
+            let res = self.gcc_sub(lhs, rhs);
+            let comparison = self.gcc_icmp(IntPredicate::IntULE, res, lhs);
+            let value = self.gcc_neg(self.gcc_int_cast(comparison, result_type));
+            self.gcc_and(res, value)
         }
     }
 }
@@ -1089,7 +1124,7 @@ fn try_intrinsic<'gcc, 'tcx>(bx: &mut Builder<'_, 'gcc, 'tcx>, try_func: RValue<
     // NOTE: the `|| true` here is to use the panic=abort strategy with panic=unwind too
     if bx.sess().panic_strategy() == PanicStrategy::Abort || true {
         // TODO(bjorn3): Properly implement unwinding and remove the `|| true` once this is done.
-        bx.call(bx.type_void(), try_func, &[data], None);
+        bx.call(bx.type_void(), None, try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         let ret_align = bx.tcx.data_layout.i32_align.abi;

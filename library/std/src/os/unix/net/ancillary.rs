@@ -583,8 +583,8 @@ impl<'a> SocketAncillary<'a> {
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     ///     ancillary.add_fds(&[sock.as_raw_fd()][..]);
     ///
-    ///     let mut buf = [1; 8];
-    ///     let mut bufs = &mut [IoSlice::new(&mut buf[..])][..];
+    ///     let buf = [1; 8];
+    ///     let mut bufs = &mut [IoSlice::new(&buf[..])][..];
     ///     sock.send_vectored_with_ancillary(bufs, &mut ancillary)?;
     ///     Ok(())
     /// }

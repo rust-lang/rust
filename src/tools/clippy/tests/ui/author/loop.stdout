@@ -1,6 +1,6 @@
 if_chain! {
     if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr);
-    if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = pat.kind;
+    if let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = pat.kind;
     if name.as_str() == "y";
     if let ExprKind::Struct(qpath, fields, None) = arg.kind;
     if matches!(qpath, QPath::LangItem(LangItem::Range, _));
@@ -17,7 +17,7 @@ if_chain! {
     if let Some(init) = local.init;
     if let ExprKind::Path(ref qpath1) = init.kind;
     if match_qpath(qpath1, &["y"]);
-    if let PatKind::Binding(BindingAnnotation::Unannotated, _, name1, None) = local.pat.kind;
+    if let PatKind::Binding(BindingAnnotation::NONE, _, name1, None) = local.pat.kind;
     if name1.as_str() == "z";
     if block.expr.is_none();
     then {

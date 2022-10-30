@@ -4,8 +4,8 @@ error: the function has a cognitive complexity of (28/25)
 LL | fn main() {
    |    ^^^^
    |
-   = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
    = help: you could split it up into multiple smaller functions
+   = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
 
 error: the function has a cognitive complexity of (7/1)
   --> $DIR/cognitive_complexity.rs:91:4

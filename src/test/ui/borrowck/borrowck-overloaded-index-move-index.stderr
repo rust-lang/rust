@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `s` because it is borrowed
    |
 LL |     let rs = &mut s;
    |              ------ borrow of `s` occurs here
-LL | 
+LL |
 LL |     println!("{}", f[s]);
    |                      ^ move out of `s` occurs here
 ...

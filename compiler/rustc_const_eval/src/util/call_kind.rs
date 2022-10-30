@@ -66,9 +66,12 @@ pub fn call_kind<'tcx>(
     from_hir_call: bool,
     self_arg: Option<Ident>,
 ) -> CallKind<'tcx> {
-    let parent = tcx.opt_associated_item(method_did).and_then(|assoc| match assoc.container {
-        AssocItemContainer::ImplContainer(impl_did) => tcx.trait_id_of_impl(impl_did),
-        AssocItemContainer::TraitContainer(trait_did) => Some(trait_did),
+    let parent = tcx.opt_associated_item(method_did).and_then(|assoc| {
+        let container_id = assoc.container_id(tcx);
+        match assoc.container {
+            AssocItemContainer::ImplContainer => tcx.trait_id_of_impl(container_id),
+            AssocItemContainer::TraitContainer => Some(container_id),
+        }
     });
 
     let fn_call = parent

@@ -28,4 +28,4 @@ pub unsafe fn g() {
     f();
 }
 
-// CHECK: attributes [[ATTR]] = { naked noinline{{.*}} }
+// CHECK: attributes [[ATTR]] = { naked{{.*}}noinline{{.*}} }

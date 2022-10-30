@@ -1,0 +1,14 @@
+error: unsupported operation: can't call foreign function: foo
+  --> $DIR/unsupported_foreign_function.rs:LL:CC
+   |
+LL |         foo();
+   |         ^^^^^ can't call foreign function: foo
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/unsupported_foreign_function.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

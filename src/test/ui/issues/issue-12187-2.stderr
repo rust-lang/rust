@@ -1,11 +1,13 @@
 error[E0282]: type annotations needed for `&T`
-  --> $DIR/issue-12187-2.rs:6:10
+  --> $DIR/issue-12187-2.rs:6:9
    |
 LL |     let &v = new();
-   |         -^
-   |         ||
-   |         |cannot infer type
-   |         consider giving this pattern the explicit type `&T`, with the type parameters specified
+   |         ^^
+   |
+help: consider giving this pattern a type, where the placeholders `_` are specified
+   |
+LL |     let &v: &T = new();
+   |           ++++
 
 error: aborting due to previous error
 

@@ -1,5 +1,5 @@
 error[E0658]: the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable
-  --> $DIR/feature-gate-generic_associated_types_extended.rs:5:1
+  --> $DIR/feature-gate-generic_associated_types_extended.rs:3:1
    |
 LL | #[rustc_error]
    | ^^^^^^^^^^^^^^

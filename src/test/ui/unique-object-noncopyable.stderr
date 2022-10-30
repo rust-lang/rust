@@ -16,7 +16,7 @@ LL | / pub struct Box<
 LL | |     T: ?Sized,
 LL | |     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 LL | | >(Unique<T>, A);
-   | |________________- doesn't satisfy `Box<dyn Foo>: Clone`
+   | |_- doesn't satisfy `Box<dyn Foo>: Clone`
    |
    = note: the following trait bounds were not satisfied:
            `dyn Foo: Sized`

@@ -1,6 +1,8 @@
 error: expected `:`, found `Bad`
   --> $DIR/recover-struct.rs:4:9
    |
+LL |     struct Test {
+   |            ---- while parsing this struct
 LL |         Very
    |             - expected `:`
 LL |         Bad

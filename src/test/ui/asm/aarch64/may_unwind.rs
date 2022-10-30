@@ -1,4 +1,3 @@
-// min-llvm-version: 13.0.0
 // only-aarch64
 // run-pass
 // needs-asm-support

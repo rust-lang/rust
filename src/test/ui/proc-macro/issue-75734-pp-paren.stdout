@@ -96,7 +96,6 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-BANG INPUT (DISPLAY): 1 + 1 * 2
-PRINT-BANG RE-COLLECTED (DISPLAY): /*«*/ 1 + 1 /*»*/ * 2
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,

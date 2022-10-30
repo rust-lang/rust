@@ -48,7 +48,6 @@ pub(crate) enum ItemType {
     ProcAttribute = 23,
     ProcDerive = 24,
     TraitAlias = 25,
-    Generic = 26,
 }
 
 impl Serialize for ItemType {
@@ -92,7 +91,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::TyAssocConstItem(..) | clean::AssocConstItem(..) => ItemType::AssocConst,
             clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
             clean::ForeignTypeItem => ItemType::ForeignType,
-            clean::KeywordItem(..) => ItemType::Keyword,
+            clean::KeywordItem => ItemType::Keyword,
             clean::TraitAliasItem(..) => ItemType::TraitAlias,
             clean::ProcMacroItem(ref mac) => match mac.kind {
                 MacroKind::Bang => ItemType::Macro,
@@ -136,6 +135,7 @@ impl From<DefKind> for ItemType {
             | DefKind::AnonConst
             | DefKind::InlineConst
             | DefKind::OpaqueTy
+            | DefKind::ImplTraitPlaceholder
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
@@ -175,7 +175,6 @@ impl ItemType {
             ItemType::ProcAttribute => "attr",
             ItemType::ProcDerive => "derive",
             ItemType::TraitAlias => "traitalias",
-            ItemType::Generic => "generic",
         }
     }
 }

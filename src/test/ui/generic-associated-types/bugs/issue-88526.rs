@@ -1,9 +1,7 @@
 // check-fail
-// known-bug
+// known-bug: #88526
 
 // This should pass, but requires more logic.
-
-#![feature(generic_associated_types)]
 
 trait A {
     type I<'a>;

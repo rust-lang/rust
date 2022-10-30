@@ -1,8 +1,7 @@
 // run-rustfix
-
 #![warn(clippy::or_fun_call)]
 #![allow(dead_code)]
-#![allow(clippy::unnecessary_wraps, clippy::borrow_as_ptr)]
+#![allow(clippy::borrow_as_ptr, clippy::uninlined_format_args, clippy::unnecessary_wraps)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -90,8 +89,8 @@ fn or_fun_call() {
     let mut btree_vec = BTreeMap::<u64, Vec<i32>>::new();
     btree_vec.entry(42).or_insert(vec![]);
 
-    let stringy = Some(String::from(""));
-    let _ = stringy.unwrap_or("".to_owned());
+    let stringy = Some(String::new());
+    let _ = stringy.unwrap_or(String::new());
 
     let opt = Some(1);
     let hello = "Hello";

@@ -129,8 +129,7 @@ impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceConstDestructData<N> {
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
 
-TrivialTypeFoldableAndLiftImpls! {
-    super::IfExpressionCause,
+TrivialTypeTraversalAndLiftImpls! {
     super::ImplSourceDiscriminantKindData,
     super::ImplSourcePointeeData,
 }

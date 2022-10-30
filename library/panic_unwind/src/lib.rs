@@ -16,7 +16,6 @@
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
-#![feature(nll)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(std_internals)]
@@ -53,9 +52,6 @@ cfg_if::cfg_if! {
         all(target_family = "unix", not(target_os = "espidf")),
         all(target_vendor = "fortanix", target_env = "sgx"),
     ))] {
-        // Rust runtime's startup objects depend on these symbols, so make them public.
-        #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
-        pub use real_imp::eh_frame_registry::*;
         #[path = "gcc.rs"]
         mod real_imp;
     } else {
@@ -92,8 +88,6 @@ extern "C" {
     /// Handler in libstd called when a foreign exception is caught.
     fn __rust_foreign_exception() -> !;
 }
-
-mod dwarf;
 
 #[rustc_std_internal_symbol]
 #[allow(improper_ctypes_definitions)]

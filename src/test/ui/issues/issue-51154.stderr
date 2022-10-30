@@ -9,7 +9,7 @@ LL |     let _: Box<F> = Box::new(|| ());
    |                     arguments to this function are incorrect
    |
    = note: expected type parameter `F`
-                     found closure `[closure@$DIR/issue-51154.rs:2:30: 2:35]`
+                     found closure `[closure@$DIR/issue-51154.rs:2:30: 2:32]`
    = help: every closure has a distinct type and so could not always match the caller-chosen type of parameter `F`
 note: associated function defined here
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL

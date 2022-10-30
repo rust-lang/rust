@@ -3,7 +3,7 @@ const DATA: [u16; 2] = [u16::from_ne_bytes([0x01, 0x23]), u16::from_ne_bytes([0x
 
 const fn unaligned_ptr() -> *const u16 {
     // Since DATA.as_ptr() is aligned to two bytes, adding 1 byte to that produces an unaligned *const u16
-    unsafe { (DATA.as_ptr() as *const u8).add(1) as *const u16 }
+    unsafe { DATA.as_ptr().byte_add(1) }
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn write() {
     const fn write_unaligned() -> [u16; 2] {
         let mut two_aligned = [0u16; 2];
         unsafe {
-            let unaligned_ptr = (two_aligned.as_mut_ptr() as *mut u8).add(1) as *mut u16;
+            let unaligned_ptr = two_aligned.as_mut_ptr().byte_add(1);
             ptr::write_unaligned(unaligned_ptr, u16::from_ne_bytes([0x23, 0x45]));
         }
         two_aligned
@@ -91,7 +91,7 @@ fn mut_ptr_write() {
     const fn write_unaligned() -> [u16; 2] {
         let mut two_aligned = [0u16; 2];
         unsafe {
-            let unaligned_ptr = (two_aligned.as_mut_ptr() as *mut u8).add(1) as *mut u16;
+            let unaligned_ptr = two_aligned.as_mut_ptr().byte_add(1);
             unaligned_ptr.write_unaligned(u16::from_ne_bytes([0x23, 0x45]));
         }
         two_aligned

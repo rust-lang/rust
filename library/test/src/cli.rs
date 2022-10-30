@@ -196,6 +196,7 @@ Test Attributes:
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Parse matches.
     let opts = optgroups();
+    let binary = args.get(0).map(|c| &**c).unwrap_or("...");
     let args = args.get(1..).unwrap_or(args);
     let matches = match opts.parse(args) {
         Ok(m) => m,
@@ -205,7 +206,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Check if help was requested.
     if matches.opt_present("h") {
         // Show help and do nothing more.
-        usage(&args[0], &opts);
+        usage(binary, &opts);
         return None;
     }
 

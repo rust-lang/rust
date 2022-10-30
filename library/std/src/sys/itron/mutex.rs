@@ -26,14 +26,9 @@ fn new_mtx() -> Result<abi::ID, ItronError> {
 }
 
 impl Mutex {
+    #[inline]
     pub const fn new() -> Mutex {
         Mutex { mtx: SpinIdOnceCell::new() }
-    }
-
-    pub unsafe fn init(&mut self) {
-        // Initialize `self.mtx` eagerly
-        let id = new_mtx().unwrap_or_else(|e| fail(e, &"acre_mtx"));
-        unsafe { self.mtx.set_unchecked((id, ())) };
     }
 
     /// Get the inner mutex's ID, which is lazily created.
@@ -64,8 +59,10 @@ impl Mutex {
             }
         }
     }
+}
 
-    pub unsafe fn destroy(&self) {
+impl Drop for Mutex {
+    fn drop(&mut self) {
         if let Some(mtx) = self.mtx.get().map(|x| x.0) {
             expect_success_aborting(unsafe { abi::del_mtx(mtx) }, &"del_mtx");
         }

@@ -22,6 +22,10 @@ enum D {
     Unit,
 }
 
+enum E {
+    TupleWithFields(()),
+}
+
 fn main() {
     // Only variants without fields are suggested (and others mentioned in a note) where an enum
     // is used rather than a variant.
@@ -34,6 +38,8 @@ fn main() {
     //~^ ERROR expected value, found enum `C`
     D.foo();
     //~^ ERROR expected value, found enum `D`
+    E.foo();
+    //~^ ERROR expected value, found enum `E`
 
     // Only tuple variants are suggested in calls or tuple struct pattern matching.
 

@@ -11,13 +11,10 @@
 // choose to make this always in error in the future - we perform the leak check
 // after coercing a function pointer.
 
-// revisions: baseleak basenoleak nllleak nllnoleak
-// ignore-compare-mode-nll
-//[nllleak] compile-flags: -Zborrowck=mir
-//[nllnoleak] compile-flags: -Zborrowck=mir -Zno-leak-check
-//[basenoleak] compile-flags:-Zno-leak-check
+// revisions: leak noleak
+//[noleak] compile-flags: -Zno-leak-check
 
-//[nllnoleak] check-pass
+//[noleak] check-pass
 
 fn foo(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &'a u8) -> &'a u8) {
     // The two types above are not equivalent. With the older LUB/GLB
@@ -26,9 +23,7 @@ fn foo(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &'a u8
     let z = match 22 {
         0 => y,
         _ => x,
-        //[baseleak]~^ ERROR `match` arms have incompatible types
-        //[nllleak]~^^ ERROR `match` arms have incompatible types
-        //[basenoleak]~^^^ ERROR `match` arms have incompatible types
+        //[leak]~^ ERROR `match` arms have incompatible types
     };
 }
 

@@ -2,8 +2,8 @@ use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
-    Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
-    ScalarMaybeUninit, StackPopCleanup,
+    Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy,
+    RefTracking, StackPopCleanup,
 };
 
 use rustc_hir::def::DefKind;
@@ -13,17 +13,15 @@ use rustc_middle::mir::pretty::display_allocation;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, subst::Subst, EarlyBinder, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::source_map::Span;
 use rustc_target::abi::{self, Abi};
 use std::borrow::Cow;
 use std::convert::TryInto;
 
-pub fn note_on_undefined_behavior_error() -> &'static str {
-    "The rules on what exactly is undefined behavior aren't clear, \
+const NOTE_ON_UNDEFINED_BEHAVIOR_ERROR: &str = "The rules on what exactly is undefined behavior aren't clear, \
      so this check might be overzealous. Please open an issue on the rustc \
-     repository if you believe it should not be considered undefined behavior."
-}
+     repository if you believe it should not be considered undefined behavior.";
 
 // Returns a pointer to where the result lives
 fn eval_body_using_ecx<'mir, 'tcx>(
@@ -47,7 +45,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         "Unexpected DefKind: {:?}",
         ecx.tcx.def_kind(cid.instance.def_id())
     );
-    let layout = ecx.layout_of(EarlyBinder(body.return_ty()).subst(tcx, cid.instance.substs))?;
+    let layout = ecx.layout_of(body.bound_return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack)?;
 
@@ -76,14 +74,16 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
+    ecx.machine.check_alignment = false; // interning doesn't need to respect alignment
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
+    // we leave alignment checks off, since this `ecx` will not be used for further evaluation anyway
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
 }
 
 /// The `InterpCx` is only meant to be used to do field and index projections into constants for
-/// `simd_shuffle` and const patterns in match arms.
+/// `simd_shuffle` and const patterns in match arms. It never performs alignment checks.
 ///
 /// The function containing the `match` that is currently being analyzed may have generic bounds
 /// that inform us about the generic bounds of the constant. E.g., using an associated constant
@@ -100,7 +100,11 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
         tcx,
         root_span,
         param_env,
-        CompileTimeInterpreter::new(tcx.const_eval_limit(), can_access_statics),
+        CompileTimeInterpreter::new(
+            tcx.const_eval_limit(),
+            can_access_statics,
+            /*check_alignment:*/ false,
+        ),
     )
 }
 
@@ -159,7 +163,7 @@ pub(super) fn op_to_const<'tcx>(
                     "this MPlaceTy must come from a validated constant, thus we can assume the \
                 alignment is correct",
                 );
-                ConstValue::Scalar(Scalar::ZST)
+                ConstValue::ZeroSized
             }
         }
     };
@@ -167,36 +171,34 @@ pub(super) fn op_to_const<'tcx>(
         Ok(ref mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
         Err(imm) => match *imm {
-            Immediate::Scalar(x) => match x {
-                ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
-                ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place()),
-            },
+            _ if imm.layout.is_zst() => ConstValue::ZeroSized,
+            Immediate::Scalar(x) => ConstValue::Scalar(x),
             Immediate::ScalarPair(a, b) => {
                 debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
                 // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                let (data, start) =
-                    match ecx.scalar_to_ptr(a.check_init().unwrap()).unwrap().into_parts() {
-                        (Some(alloc_id), offset) => {
-                            (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
-                        }
-                        (None, _offset) => (
-                            ecx.tcx.intern_const_alloc(
-                                Allocation::from_bytes_byte_aligned_immutable(b"" as &[u8]),
-                            ),
-                            0,
-                        ),
-                    };
+                let (data, start) = match a.to_pointer(ecx).unwrap().into_parts() {
+                    (Some(alloc_id), offset) => {
+                        (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
+                    }
+                    (None, _offset) => (
+                        ecx.tcx.intern_const_alloc(Allocation::from_bytes_byte_aligned_immutable(
+                            b"" as &[u8],
+                        )),
+                        0,
+                    ),
+                };
                 let len = b.to_machine_usize(ecx).unwrap();
                 let start = start.try_into().unwrap();
                 let len: usize = len.try_into().unwrap();
                 ConstValue::Slice { data, start, end: start + len }
             }
+            Immediate::Uninit => to_const_value(&op.assert_mem_place()),
         },
     }
 }
 
-#[instrument(skip(tcx), level = "debug")]
-fn turn_into_const_value<'tcx>(
+#[instrument(skip(tcx), level = "debug", ret)]
+pub(crate) fn turn_into_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: ConstAlloc<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
@@ -204,7 +206,13 @@ fn turn_into_const_value<'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
-    let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env, is_static);
+    // This is just accessing an already computed constant, so no need to check alginment here.
+    let ecx = mk_eval_cx(
+        tcx,
+        tcx.def_span(key.value.instance.def_id()),
+        key.param_env,
+        /*can_access_statics:*/ is_static,
+    );
 
     let mplace = ecx.raw_const_to_mplace(constant).expect(
         "can only fail if layout computation failed, \
@@ -216,12 +224,10 @@ fn turn_into_const_value<'tcx>(
     );
 
     // Turn this into a proper constant.
-    let const_val = op_to_const(&ecx, &mplace.into());
-    debug!(?const_val);
-
-    const_val
+    op_to_const(&ecx, &mplace.into())
 }
 
+#[instrument(skip(tcx), level = "debug")]
 pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
@@ -256,6 +262,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx.eval_to_allocation_raw(key).map(|val| turn_into_const_value(tcx, val, key))
 }
 
+#[instrument(skip(tcx), level = "debug")]
 pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
@@ -299,52 +306,34 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         key.param_env,
         // Statics (and promoteds inside statics) may access other statics, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
-        CompileTimeInterpreter::new(tcx.const_eval_limit(), /*can_access_statics:*/ is_static),
+        CompileTimeInterpreter::new(
+            tcx.const_eval_limit(),
+            /*can_access_statics:*/ is_static,
+            /*check_alignment:*/ tcx.sess.opts.unstable_opts.extra_const_ub_checks,
+        ),
     );
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
         Err(error) => {
             let err = ConstEvalErr::new(&ecx, error, None);
-            // Some CTFE errors raise just a lint, not a hard error; see
-            // <https://github.com/rust-lang/rust/issues/71800>.
-            let is_hard_err = if let Some(def) = def.as_local() {
-                // (Associated) consts only emit a lint, since they might be unused.
-                !matches!(tcx.def_kind(def.did.to_def_id()), DefKind::Const | DefKind::AssocConst)
-                    // check if the inner InterpError is hard
-                    || err.error.is_hard_err()
+            let msg = if is_static {
+                Cow::from("could not evaluate static initializer")
             } else {
-                // use of broken constant from other crate: always an error
-                true
+                // If the current item has generics, we'd like to enrich the message with the
+                // instance and its substs: to show the actual compile-time values, in addition to
+                // the expression, leading to the const eval error.
+                let instance = &key.value.instance;
+                if !instance.substs.is_empty() {
+                    let instance = with_no_trimmed_paths!(instance.to_string());
+                    let msg = format!("evaluation of `{}` failed", instance);
+                    Cow::from(msg)
+                } else {
+                    Cow::from("evaluation of constant value failed")
+                }
             };
 
-            if is_hard_err {
-                let msg = if is_static {
-                    Cow::from("could not evaluate static initializer")
-                } else {
-                    // If the current item has generics, we'd like to enrich the message with the
-                    // instance and its substs: to show the actual compile-time values, in addition to
-                    // the expression, leading to the const eval error.
-                    let instance = &key.value.instance;
-                    if !instance.substs.is_empty() {
-                        let instance = with_no_trimmed_paths!(instance.to_string());
-                        let msg = format!("evaluation of `{}` failed", instance);
-                        Cow::from(msg)
-                    } else {
-                        Cow::from("evaluation of constant value failed")
-                    }
-                };
-
-                Err(err.report_as_error(ecx.tcx.at(ecx.cur_span()), &msg))
-            } else {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def.as_local().unwrap().did);
-                Err(err.report_as_lint(
-                    tcx.at(tcx.def_span(def.did)),
-                    "any use of this value will cause an error",
-                    hir_id,
-                    Some(err.span),
-                ))
-            }
+            Err(err.report_as_error(ecx.tcx.at(err.span), &msg))
         }
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.
@@ -373,7 +362,9 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     ecx.tcx,
                     "it is undefined behavior to use this value",
                     |diag| {
-                        diag.note(note_on_undefined_behavior_error());
+                        if matches!(err.error, InterpError::UndefinedBehavior(_)) {
+                            diag.note(NOTE_ON_UNDEFINED_BEHAVIOR_ERROR);
+                        }
                         diag.note(&format!(
                             "the raw bytes of the constant ({}",
                             display_allocation(

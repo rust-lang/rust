@@ -6,7 +6,7 @@ LL |     type IntoIter = std::iter::Flatten<std::slice::Iter<'a, T>>;
    |
    = help: the trait `Iterator` is not implemented for `&T`
    = help: the trait `Iterator` is implemented for `&mut I`
-   = note: required because of the requirements on the impl of `IntoIterator` for `&T`
+   = note: required for `&T` to implement `IntoIterator`
 note: required by a bound in `Flatten`
   --> $SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL
    |
@@ -21,7 +21,7 @@ LL |     fn into_iter(self) -> Self::IntoIter {
    |
    = help: the trait `Iterator` is not implemented for `&T`
    = help: the trait `Iterator` is implemented for `&mut I`
-   = note: required because of the requirements on the impl of `IntoIterator` for `&T`
+   = note: required for `&T` to implement `IntoIterator`
 note: required by a bound in `Flatten`
   --> $SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL
    |

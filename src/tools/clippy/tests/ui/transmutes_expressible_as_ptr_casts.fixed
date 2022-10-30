@@ -1,6 +1,6 @@
 // run-rustfix
 #![warn(clippy::transmutes_expressible_as_ptr_casts)]
-// These two warnings currrently cover the cases transmutes_expressible_as_ptr_casts
+// These two warnings currently cover the cases transmutes_expressible_as_ptr_casts
 // would otherwise be responsible for
 #![warn(clippy::useless_transmute)]
 #![warn(clippy::transmute_ptr_to_ptr)]
@@ -8,7 +8,7 @@
 
 use std::mem::{size_of, transmute};
 
-// rustc_typeck::check::cast contains documentation about when a cast `e as U` is
+// rustc_hir_analysis::check::cast contains documentation about when a cast `e as U` is
 // valid, which we quote from below.
 fn main() {
     // We should see an error message for each transmute, and no error messages for

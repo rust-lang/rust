@@ -4,12 +4,12 @@ error: implementing `LintPass` by hand
 LL | impl LintPass for Foo {
    |      ^^^^^^^^
    |
+   = help: try using `declare_lint_pass!` or `impl_lint_pass!` instead
 note: the lint level is defined here
   --> $DIR/lint_pass_impl_without_macro.rs:4:9
    |
 LL | #![deny(rustc::lint_pass_impl_without_macro)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
 error: implementing `LintPass` by hand
   --> $DIR/lint_pass_impl_without_macro.rs:30:14

@@ -1,5 +1,5 @@
 error: associated type in `impl` without body
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:8:5
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:6:5
    |
 LL |     type Y;
    |     ^^^^^^-
@@ -7,7 +7,7 @@ LL |     type Y;
    |           help: provide a definition for the type: `= <type>;`
 
 error: associated type in `impl` without body
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:11:5
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:5
    |
 LL |     type Z: Ord;
    |     ^^^^^^^^^^^-
@@ -15,13 +15,13 @@ LL |     type Z: Ord;
    |                help: provide a definition for the type: `= <type>;`
 
 error: bounds on `type`s in `impl`s have no effect
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:11:13
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:13
    |
 LL |     type Z: Ord;
    |             ^^^
 
 error: associated type in `impl` without body
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:15:5
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:5
    |
 LL |     type W: Ord where Self: Eq;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -29,13 +29,13 @@ LL |     type W: Ord where Self: Eq;
    |                               help: provide a definition for the type: `= <type>;`
 
 error: bounds on `type`s in `impl`s have no effect
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:15:13
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:13
    |
 LL |     type W: Ord where Self: Eq;
    |             ^^^
 
 error: associated type in `impl` without body
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:19:5
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:17:5
    |
 LL |     type W where Self: Eq;
    |     ^^^^^^^^^^^^^^^^^^^^^-
@@ -43,7 +43,7 @@ LL |     type W where Self: Eq;
    |                          help: provide a definition for the type: `= <type>;`
 
 error[E0658]: inherent associated types are unstable
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:8:5
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:6:5
    |
 LL |     type Y;
    |     ^^^^^^^
@@ -52,7 +52,7 @@ LL |     type Y;
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
 error[E0658]: inherent associated types are unstable
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:11:5
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:5
    |
 LL |     type Z: Ord;
    |     ^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL |     type Z: Ord;
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
 error[E0658]: inherent associated types are unstable
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:15:5
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:5
    |
 LL |     type W: Ord where Self: Eq;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL |     type W: Ord where Self: Eq;
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
 error[E0658]: inherent associated types are unstable
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:19:5
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:17:5
    |
 LL |     type W where Self: Eq;
    |     ^^^^^^^^^^^^^^^^^^^^^^

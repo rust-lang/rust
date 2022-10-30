@@ -1,8 +1,8 @@
-error: expected one of `,`, `:`, `=`, or `>`, found `;`
+error: expected one of `,` or `>`, found `;`
   --> $DIR/lifetime-semicolon.rs:7:31
    |
 LL | fn foo<'a, 'b>(_x: &mut Foo<'a; 'b>) {}
-   |                               ^ expected one of `,`, `:`, `=`, or `>`
+   |                               ^ expected one of `,` or `>`
    |
 help: use a comma to separate type parameters
    |

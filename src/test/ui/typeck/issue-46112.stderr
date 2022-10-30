@@ -8,6 +8,11 @@ LL | fn main() { test(Ok(())); }
    |
    = note:   expected enum `Option<()>`
            found unit type `()`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^
 help: try wrapping the expression in `Some`
    |
 LL | fn main() { test(Ok(Some(()))); }

@@ -13,15 +13,17 @@ error[E0107]: this trait takes 0 generic arguments but 1 generic argument was su
   --> $DIR/issue-87493.rs:8:8
    |
 LL |     T: MyTrait<Assoc == S::Assoc>,
-   |        ^^^^^^^ ----------------- help: replace the generic bound with the associated type: `Assoc = Assoc == S::Assoc`
-   |        |
-   |        expected 0 generic arguments
+   |        ^^^^^^^ expected 0 generic arguments
    |
 note: trait defined here, with 0 generic parameters
   --> $DIR/issue-87493.rs:1:11
    |
 LL | pub trait MyTrait {
    |           ^^^^^^^
+help: replace the generic bound with the associated type
+   |
+LL |     T: MyTrait<Assoc = Assoc == S::Assoc>,
+   |                +++++++
 
 error: aborting due to 2 previous errors
 

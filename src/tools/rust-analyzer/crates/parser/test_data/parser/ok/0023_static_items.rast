@@ -1,0 +1,41 @@
+SOURCE_FILE
+  STATIC
+    STATIC_KW "static"
+    WHITESPACE " "
+    NAME
+      IDENT "FOO"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "u32"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "1"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STATIC
+    STATIC_KW "static"
+    WHITESPACE " "
+    MUT_KW "mut"
+    WHITESPACE " "
+    NAME
+      IDENT "BAR"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "i32"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "92"
+    SEMICOLON ";"
+  WHITESPACE "\n"

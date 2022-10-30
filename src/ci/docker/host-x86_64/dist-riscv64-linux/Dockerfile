@@ -1,10 +1,10 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY host-x86_64/dist-riscv64-linux/crosstool-ng.sh /scripts/
-RUN sh /scripts/crosstool-ng.sh
+COPY scripts/crosstool-ng-1.24.sh /scripts/
+RUN sh /scripts/crosstool-ng-1.24.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
@@ -18,9 +18,6 @@ USER root
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 ENV PATH=$PATH:/x-tools/riscv64-unknown-linux-gnu/bin
 

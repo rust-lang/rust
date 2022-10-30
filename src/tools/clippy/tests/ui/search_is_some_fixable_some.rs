@@ -1,5 +1,5 @@
 // run-rustfix
-#![allow(dead_code)]
+#![allow(dead_code, clippy::explicit_auto_deref)]
 #![warn(clippy::search_is_some)]
 
 fn main() {
@@ -217,5 +217,35 @@ mod issue7392 {
         let _ = v.iter().find(|fp| fp.field.is_power_of_two()).is_some();
         let _ = v.iter().find(|fp| test_u32_1(fp.field)).is_some();
         let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_some();
+    }
+}
+
+mod issue9120 {
+    fn make_arg_no_deref_impl() -> impl Fn(&&u32) -> bool {
+        move |x: &&u32| **x == 78
+    }
+
+    fn make_arg_no_deref_dyn() -> Box<dyn Fn(&&u32) -> bool> {
+        Box::new(move |x: &&u32| **x == 78)
+    }
+
+    fn wrapper<T: Fn(&&u32) -> bool>(v: Vec<u32>, func: T) -> bool {
+        #[allow(clippy::redundant_closure)]
+        v.iter().find(|x: &&u32| func(x)).is_some()
+    }
+
+    fn do_tests() {
+        let v = vec![3, 2, 1, 0];
+        let arg_no_deref_impl = make_arg_no_deref_impl();
+        let arg_no_deref_dyn = make_arg_no_deref_dyn();
+
+        #[allow(clippy::redundant_closure)]
+        let _ = v.iter().find(|x: &&u32| arg_no_deref_impl(x)).is_some();
+
+        #[allow(clippy::redundant_closure)]
+        let _ = v.iter().find(|x: &&u32| arg_no_deref_dyn(x)).is_some();
+
+        #[allow(clippy::redundant_closure)]
+        let _ = v.iter().find(|x: &&u32| (*arg_no_deref_dyn)(x)).is_some();
     }
 }

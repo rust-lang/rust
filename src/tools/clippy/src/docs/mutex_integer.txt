@@ -1,0 +1,22 @@
+### What it does
+Checks for usages of `Mutex<X>` where `X` is an integral
+type.
+
+### Why is this bad?
+Using a mutex just to make access to a plain integer
+sequential is
+shooting flies with cannons. `std::sync::atomic::AtomicUsize` is leaner and faster.
+
+### Known problems
+This lint cannot detect if the mutex is actually used
+for waiting before a critical section.
+
+### Example
+```
+let x = Mutex::new(0usize);
+```
+
+Use instead:
+```
+let x = AtomicUsize::new(0usize);
+```

@@ -1,4 +1,3 @@
-#![feature(generic_associated_types)]
 #![allow(unused)]
 
 pub trait Trait  {

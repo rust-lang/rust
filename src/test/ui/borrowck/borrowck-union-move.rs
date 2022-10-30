@@ -1,12 +1,12 @@
-#![feature(untagged_unions)]
+use std::mem::ManuallyDrop;
 
 #[derive(Clone, Copy)]
 struct Copy;
 struct NonCopy;
 
 union Unn {
-    n1: NonCopy,
-    n2: NonCopy,
+    n1: ManuallyDrop<NonCopy>,
+    n2: ManuallyDrop<NonCopy>,
 }
 union Ucc {
     c1: Copy,
@@ -14,24 +14,24 @@ union Ucc {
 }
 union Ucn {
     c: Copy,
-    n: NonCopy,
+    n: ManuallyDrop<NonCopy>,
 }
 
 fn main() {
     unsafe {
         // 2 NonCopy
         {
-            let mut u = Unn { n1: NonCopy };
+            let mut u = Unn { n1: ManuallyDrop::new(NonCopy) };
             let a = u.n1;
             let a = u.n1; //~ ERROR use of moved value: `u`
         }
         {
-            let mut u = Unn { n1: NonCopy };
+            let mut u = Unn { n1: ManuallyDrop::new(NonCopy) };
             let a = u.n1;
             let a = u; //~ ERROR use of moved value: `u`
         }
         {
-            let mut u = Unn { n1: NonCopy };
+            let mut u = Unn { n1: ManuallyDrop::new(NonCopy) };
             let a = u.n1;
             let a = u.n2; //~ ERROR use of moved value: `u`
         }

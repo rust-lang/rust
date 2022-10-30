@@ -10,8 +10,7 @@
 use crate::mir;
 use crate::traits::query::NoSolution;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
-use crate::ty::subst::{Subst, SubstsRef};
-use crate::ty::{self, EarlyBinder, Ty, TyCtxt};
+use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt};
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
 pub enum NormalizationError<'tcx> {
@@ -36,6 +35,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// This should only be used outside of type inference. For example,
     /// it assumes that normalization will succeed.
+    #[tracing::instrument(level = "debug", skip(self, param_env))]
     pub fn normalize_erasing_regions<T>(self, param_env: ty::ParamEnv<'tcx>, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -100,6 +100,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// N.B., currently, higher-ranked type bounds inhibit
     /// normalization. Therefore, each time we erase them in
     /// codegen, we need to normalize the contents.
+    #[tracing::instrument(level = "debug", skip(self, param_env))]
     pub fn normalize_erasing_late_bound_regions<T>(
         self,
         param_env: ty::ParamEnv<'tcx>,
@@ -110,6 +111,26 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         let value = self.erase_late_bound_regions(value);
         self.normalize_erasing_regions(param_env, value)
+    }
+
+    /// If you have a `Binder<'tcx, T>`, you can do this to strip out the
+    /// late-bound regions and then normalize the result, yielding up
+    /// a `T` (with regions erased). This is appropriate when the
+    /// binder is being instantiated at the call site.
+    ///
+    /// N.B., currently, higher-ranked type bounds inhibit
+    /// normalization. Therefore, each time we erase them in
+    /// codegen, we need to normalize the contents.
+    pub fn try_normalize_erasing_late_bound_regions<T>(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        value: ty::Binder<'tcx, T>,
+    ) -> Result<T, NormalizationError<'tcx>>
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        let value = self.erase_late_bound_regions(value);
+        self.try_normalize_erasing_regions(param_env, value)
     }
 
     /// Monomorphizes a type from the AST by first applying the
@@ -168,13 +189,11 @@ struct NormalizeAfterErasingRegionsFolder<'tcx> {
 }
 
 impl<'tcx> NormalizeAfterErasingRegionsFolder<'tcx> {
-    #[instrument(skip(self), level = "debug")]
     fn normalize_generic_arg_after_erasing_regions(
         &self,
         arg: ty::GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx> {
         let arg = self.param_env.and(arg);
-        debug!(?arg);
 
         self.tcx.try_normalize_generic_arg_after_erasing_regions(arg).unwrap_or_else(|_| bug!(
                 "Failed to normalize {:?}, maybe try to call `try_normalize_erasing_regions` instead",
@@ -228,15 +247,13 @@ impl<'tcx> TryNormalizeAfterErasingRegionsFolder<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
+impl<'tcx> FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
     type Error = NormalizationError<'tcx>;
 
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
-}
 
-impl<'tcx> FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match self.try_normalize_generic_arg_after_erasing_regions(ty.into()) {
             Ok(t) => Ok(t.expect_ty()),

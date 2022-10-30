@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-coercions.rs:4:5
+  --> $DIR/type-check-pointer-coercions.rs:2:5
    |
 LL | fn shared_to_const<'a, 'b>(x: &&'a i32) -> *const &'b i32 {
    |                    --  -- lifetime `'b` defined here
@@ -11,7 +11,7 @@ LL |     x
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-coercions.rs:8:5
+  --> $DIR/type-check-pointer-coercions.rs:6:5
    |
 LL | fn unique_to_const<'a, 'b>(x: &mut &'a i32) -> *const &'b i32 {
    |                    --  -- lifetime `'b` defined here
@@ -23,7 +23,7 @@ LL |     x
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-coercions.rs:13:5
+  --> $DIR/type-check-pointer-coercions.rs:11:5
    |
 LL | fn unique_to_mut<'a, 'b>(x: &mut &'a i32) -> *mut &'b i32 {
    |                  --  -- lifetime `'b` defined here
@@ -39,7 +39,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-coercions.rs:13:5
+  --> $DIR/type-check-pointer-coercions.rs:11:5
    |
 LL | fn unique_to_mut<'a, 'b>(x: &mut &'a i32) -> *mut &'b i32 {
    |                  --  -- lifetime `'b` defined here
@@ -57,7 +57,7 @@ LL |     x
 help: `'b` and `'a` must be the same: replace one with the other
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-coercions.rs:18:5
+  --> $DIR/type-check-pointer-coercions.rs:16:5
    |
 LL | fn mut_to_const<'a, 'b>(x: *mut &'a i32) -> *const &'b i32 {
    |                 --  -- lifetime `'b` defined here
@@ -69,7 +69,7 @@ LL |     x
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-coercions.rs:24:5
+  --> $DIR/type-check-pointer-coercions.rs:22:5
    |
 LL | fn array_elem<'a, 'b>(x: &'a i32) -> *const &'b i32 {
    |               --  -- lifetime `'b` defined here
@@ -82,7 +82,7 @@ LL |     y
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-coercions.rs:30:5
+  --> $DIR/type-check-pointer-coercions.rs:28:5
    |
 LL | fn array_coerce<'a, 'b>(x: &'a i32) -> *const [&'b i32; 3] {
    |                 --  -- lifetime `'b` defined here
@@ -95,7 +95,7 @@ LL |     y
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-coercions.rs:36:5
+  --> $DIR/type-check-pointer-coercions.rs:34:5
    |
 LL | fn nested_array<'a, 'b>(x: &'a i32) -> *const [&'b i32; 2] {
    |                 --  -- lifetime `'b` defined here

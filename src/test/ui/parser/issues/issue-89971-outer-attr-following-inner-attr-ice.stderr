@@ -12,7 +12,7 @@ help: to annotate the struct, change the attribute from inner to outer style
    |
 LL - #![deny(missing_docs)]
 LL + #[deny(missing_docs)]
-   | 
+   |
 
 error: aborting due to previous error
 

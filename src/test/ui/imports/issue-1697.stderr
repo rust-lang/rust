@@ -3,6 +3,8 @@ error[E0432]: unresolved import `unresolved`
    |
 LL | use unresolved::*;
    |     ^^^^^^^^^^ maybe a missing crate `unresolved`?
+   |
+   = help: consider adding `extern crate unresolved` to use the `unresolved` crate
 
 error: aborting due to previous error
 

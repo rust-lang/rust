@@ -19,11 +19,10 @@ help: you might have meant to write a `struct` literal
    |
 LL ~ fn e() { SomeStruct {
 LL |     p:a<p:p<e=6>>
-LL |
-LL |
-LL |
-LL |
  ...
+LL |
+LL ~ }}
+   |
 help: maybe you meant to write a path separator here
    |
 LL |     p::a<p:p<e=6>>

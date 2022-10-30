@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Test that if we build `b` against a version of `a` that has one set
 # of types, it will not run with a dylib that has a different set of

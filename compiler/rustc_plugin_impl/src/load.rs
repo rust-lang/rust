@@ -1,28 +1,20 @@
 //! Used by `rustc` when loading a plugin.
 
+use crate::errors::{LoadPluginError, MalformedPluginAttribute};
 use crate::Registry;
 use libloading::Library;
 use rustc_ast::Crate;
-use rustc_errors::struct_span_err;
 use rustc_metadata::locator;
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::Span;
 
-use std::borrow::ToOwned;
 use std::env;
 use std::mem;
 use std::path::PathBuf;
 
 /// Pointer to a registrar function.
 type PluginRegistrarFn = fn(&mut Registry<'_>);
-
-fn call_malformed_plugin_attribute(sess: &Session, span: Span) {
-    struct_span_err!(sess, span, E0498, "malformed `plugin` attribute")
-        .span_label(span, "malformed attribute")
-        .emit();
-}
 
 /// Read plugin metadata and dynamically load registrar functions.
 pub fn load_plugins(
@@ -42,7 +34,9 @@ pub fn load_plugins(
                 Some(ident) if plugin.is_word() => {
                     load_plugin(&mut plugins, sess, metadata_loader, ident)
                 }
-                _ => call_malformed_plugin_attribute(sess, plugin.span()),
+                _ => {
+                    sess.emit_err(MalformedPluginAttribute { span: plugin.span() });
+                }
             }
         }
     }
@@ -60,7 +54,7 @@ fn load_plugin(
     let fun = dylink_registrar(lib).unwrap_or_else(|err| {
         // This is fatal: there are almost certainly macros we need inside this crate, so
         // continuing would spew "macro undefined" errors.
-        sess.span_fatal(ident.span, &err.to_string());
+        sess.emit_fatal(LoadPluginError { span: ident.span, msg: err.to_string() });
     });
     plugins.push(fun);
 }

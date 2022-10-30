@@ -60,8 +60,8 @@ pub struct IndexVec<I: Idx, T> {
 unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
 
 impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexVec<I, T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        Encodable::encode(&self.raw, s)
+    fn encode(&self, s: &mut S) {
+        Encodable::encode(&self.raw, s);
     }
 }
 
@@ -172,7 +172,9 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn indices(&self) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + 'static {
+    pub fn indices(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
         (0..self.len()).map(|n| I::new(n))
     }
 
@@ -234,7 +236,9 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw.get_mut(index.index())
     }
 
-    /// Returns mutable references to two distinct elements, a and b. Panics if a == b.
+    /// Returns mutable references to two distinct elements, `a` and `b`.
+    ///
+    /// Panics if `a == b`.
     #[inline]
     pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
         let (ai, bi) = (a.index(), b.index());
@@ -249,7 +253,9 @@ impl<I: Idx, T> IndexVec<I, T> {
         }
     }
 
-    /// Returns mutable references to three distinct elements or panics otherwise.
+    /// Returns mutable references to three distinct elements.
+    ///
+    /// Panics if the elements are not distinct.
     #[inline]
     pub fn pick3_mut(&mut self, a: I, b: I, c: I) -> (&mut T, &mut T, &mut T) {
         let (ai, bi, ci) = (a.index(), b.index(), c.index());

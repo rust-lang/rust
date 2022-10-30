@@ -1,0 +1,25 @@
+### What it does
+* Checks for [push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push)
+calls on `PathBuf` that can cause overwrites.
+
+### Why is this bad?
+Calling `push` with a root path at the start can overwrite the
+previous defined path.
+
+### Example
+```
+use std::path::PathBuf;
+
+let mut x = PathBuf::from("/foo");
+x.push("/bar");
+assert_eq!(x, PathBuf::from("/bar"));
+```
+Could be written:
+
+```
+use std::path::PathBuf;
+
+let mut x = PathBuf::from("/foo");
+x.push("bar");
+assert_eq!(x, PathBuf::from("/foo/bar"));
+```

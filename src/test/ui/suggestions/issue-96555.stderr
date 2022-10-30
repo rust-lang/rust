@@ -8,12 +8,12 @@ LL |     m::f1().await;
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
-   = note: required because of the requirements on the impl of `IntoFuture` for `()`
+   = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     m::f1().await;
 LL +     m::f1();
-   | 
+   |
 help: alternatively, consider making `fn f1` asynchronous
    |
 LL |     pub async fn f1() {}
@@ -29,12 +29,12 @@ LL |     m::f2().await;
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
-   = note: required because of the requirements on the impl of `IntoFuture` for `()`
+   = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     m::f2().await;
 LL +     m::f2();
-   | 
+   |
 help: alternatively, consider making `fn f2` asynchronous
    |
 LL |     pub(crate) async fn f2() {}
@@ -50,12 +50,12 @@ LL |     m::f3().await;
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
-   = note: required because of the requirements on the impl of `IntoFuture` for `()`
+   = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     m::f3().await;
 LL +     m::f3();
-   | 
+   |
 help: alternatively, consider making `fn f3` asynchronous
    |
 LL |     pub async

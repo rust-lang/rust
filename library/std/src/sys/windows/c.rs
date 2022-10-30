@@ -4,6 +4,7 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
 
+use crate::ffi::CStr;
 use crate::mem;
 use crate::os::raw::{c_char, c_int, c_long, c_longlong, c_uint, c_ulong, c_ushort};
 use crate::os::windows::io::{BorrowedHandle, HandleOrInvalid, HandleOrNull};
@@ -65,6 +66,7 @@ pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
 pub type LPWSABUF = *mut WSABUF;
 pub type LPWSAOVERLAPPED = *mut c_void;
 pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE = *mut c_void;
+pub type BCRYPT_ALG_HANDLE = LPVOID;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
@@ -276,6 +278,7 @@ pub const STATUS_INVALID_PARAMETER: NTSTATUS = 0xc000000d_u32 as _;
 
 pub const STATUS_PENDING: NTSTATUS = 0x103 as _;
 pub const STATUS_END_OF_FILE: NTSTATUS = 0xC0000011_u32 as _;
+pub const STATUS_NOT_IMPLEMENTED: NTSTATUS = 0xC0000002_u32 as _;
 
 // Equivalent to the `NT_SUCCESS` C preprocessor macro.
 // See: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/using-ntstatus-values
@@ -283,6 +286,8 @@ pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
 }
 
+// "RNG\0"
+pub const BCRYPT_RNG_ALGORITHM: &[u16] = &[b'R' as u16, b'N' as u16, b'G' as u16, 0];
 pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
 
 #[repr(C)]
@@ -325,7 +330,9 @@ union IO_STATUS_BLOCK_union {
 }
 impl Default for IO_STATUS_BLOCK_union {
     fn default() -> Self {
-        Self { Pointer: ptr::null_mut() }
+        let mut this = Self { Pointer: ptr::null_mut() };
+        this.Status = STATUS_PENDING;
+        this
     }
 }
 #[repr(C)]
@@ -333,6 +340,16 @@ impl Default for IO_STATUS_BLOCK_union {
 pub struct IO_STATUS_BLOCK {
     u: IO_STATUS_BLOCK_union,
     pub Information: usize,
+}
+impl IO_STATUS_BLOCK {
+    pub fn status(&self) -> NTSTATUS {
+        // SAFETY: If `self.u.Status` was set then this is obviously safe.
+        // If `self.u.Pointer` was set then this is the equivalent to converting
+        // the pointer to an integer, which is also safe.
+        // Currently the only safe way to construct `IO_STATUS_BLOCK` outside of
+        // this module is to call the `default` method, which sets the `Status`.
+        unsafe { self.u.Status }
+    }
 }
 
 pub type LPOVERLAPPED_COMPLETION_ROUTINE = unsafe extern "system" fn(
@@ -441,6 +458,12 @@ pub enum FILE_INFO_BY_HANDLE_CLASS {
 }
 
 #[repr(C)]
+pub struct FILE_ATTRIBUTE_TAG_INFO {
+    pub FileAttributes: DWORD,
+    pub ReparseTag: DWORD,
+}
+
+#[repr(C)]
 pub struct FILE_DISPOSITION_INFO {
     pub DeleteFile: BOOLEAN,
 }
@@ -487,6 +510,8 @@ pub struct FILE_END_OF_FILE_INFO {
     pub EndOfFile: LARGE_INTEGER,
 }
 
+/// NB: Use carefully! In general using this as a reference is likely to get the
+/// provenance wrong for the `rest` field!
 #[repr(C)]
 pub struct REPARSE_DATA_BUFFER {
     pub ReparseTag: c_uint,
@@ -495,6 +520,8 @@ pub struct REPARSE_DATA_BUFFER {
     pub rest: (),
 }
 
+/// NB: Use carefully! In general using this as a reference is likely to get the
+/// provenance wrong for the `PathBuffer` field!
 #[repr(C)]
 pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
     pub SubstituteNameOffset: c_ushort,
@@ -505,6 +532,8 @@ pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
     pub PathBuffer: WCHAR,
 }
 
+/// NB: Use carefully! In general using this as a reference is likely to get the
+/// provenance wrong for the `PathBuffer` field!
 #[repr(C)]
 pub struct MOUNT_POINT_REPARSE_BUFFER {
     pub SubstituteNameOffset: c_ushort,
@@ -606,7 +635,7 @@ pub struct SOCKADDR {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct FILETIME {
     pub dwLowDateTime: DWORD,
     pub dwHighDateTime: DWORD,
@@ -788,10 +817,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     #[link(name = "advapi32")]
     extern "system" {
-        // Forbidden when targeting UWP
-        #[link_name = "SystemFunction036"]
-        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
-
         // Allowed but unused by UWP
         pub fn OpenProcessToken(
             ProcessHandle: HANDLE,
@@ -874,6 +899,12 @@ extern "system" {
     pub fn GetSystemDirectoryW(lpBuffer: LPWSTR, uSize: UINT) -> UINT;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
     pub fn SetFileAttributesW(lpFileName: LPCWSTR, dwFileAttributes: DWORD) -> BOOL;
+    pub fn SetFileTime(
+        hFile: BorrowedHandle<'_>,
+        lpCreationTime: Option<&FILETIME>,
+        lpLastAccessTime: Option<&FILETIME>,
+        lpLastWriteTime: Option<&FILETIME>,
+    ) -> BOOL;
     pub fn SetLastError(dwErrCode: DWORD);
     pub fn GetCommandLineW() -> LPWSTR;
     pub fn GetTempPathW(nBufferLength: DWORD, lpBuffer: LPCWSTR) -> DWORD;
@@ -1197,17 +1228,24 @@ extern "system" {
     // >= Vista / Server 2008
     // https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
     pub fn BCryptGenRandom(
-        hAlgorithm: LPVOID,
+        hAlgorithm: BCRYPT_ALG_HANDLE,
         pBuffer: *mut u8,
         cbBuffer: ULONG,
         dwFlags: ULONG,
     ) -> NTSTATUS;
+    pub fn BCryptOpenAlgorithmProvider(
+        phalgorithm: *mut BCRYPT_ALG_HANDLE,
+        pszAlgId: LPCWSTR,
+        pszimplementation: LPCWSTR,
+        dwflags: ULONG,
+    ) -> NTSTATUS;
+    pub fn BCryptCloseAlgorithmProvider(hAlgorithm: BCRYPT_ALG_HANDLE, dwFlags: ULONG) -> NTSTATUS;
 }
 
 // Functions that aren't available on every version of Windows that we support,
 // but we still use them and just provide some form of a fallback implementation.
-compat_fn! {
-    "kernel32":
+compat_fn_with_fallback! {
+    pub static KERNEL32: &CStr = ansi_str!("kernel32");
 
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
@@ -1230,27 +1268,20 @@ compat_fn! {
     }
 }
 
-compat_fn! {
-    "api-ms-win-core-synch-l1-2-0":
-
-    // >= Windows 8 / Server 2012
-    // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitonaddress
+compat_fn_optional! {
+    crate::sys::compat::load_synch_functions();
     pub fn WaitOnAddress(
         Address: LPVOID,
         CompareAddress: LPVOID,
         AddressSize: SIZE_T,
         dwMilliseconds: DWORD
-    ) -> BOOL {
-        panic!("WaitOnAddress not available")
-    }
-    pub fn WakeByAddressSingle(Address: LPVOID) -> () {
-        // If this api is unavailable, there cannot be anything waiting, because
-        // WaitOnAddress would've panicked. So it's fine to do nothing here.
-    }
+    );
+    pub fn WakeByAddressSingle(Address: LPVOID);
 }
 
-compat_fn! {
-    "ntdll":
+compat_fn_with_fallback! {
+    pub static NTDLL: &CStr = ansi_str!("ntdll");
+
     pub fn NtCreateFile(
         FileHandle: *mut HANDLE,
         DesiredAccess: ACCESS_MASK,
@@ -1264,7 +1295,7 @@ compat_fn! {
         EaBuffer: *mut c_void,
         EaLength: ULONG
     ) -> NTSTATUS {
-        panic!("`NtCreateFile` not available");
+        STATUS_NOT_IMPLEMENTED
     }
     pub fn NtReadFile(
         FileHandle: BorrowedHandle<'_>,
@@ -1277,7 +1308,7 @@ compat_fn! {
         ByteOffset: Option<&LARGE_INTEGER>,
         Key: Option<&ULONG>
     ) -> NTSTATUS {
-        panic!("`NtReadFile` not available");
+        STATUS_NOT_IMPLEMENTED
     }
     pub fn NtWriteFile(
         FileHandle: BorrowedHandle<'_>,
@@ -1290,12 +1321,12 @@ compat_fn! {
         ByteOffset: Option<&LARGE_INTEGER>,
         Key: Option<&ULONG>
     ) -> NTSTATUS {
-        panic!("`NtWriteFile` not available");
+        STATUS_NOT_IMPLEMENTED
     }
     pub fn RtlNtStatusToDosError(
         Status: NTSTATUS
     ) -> ULONG {
-        panic!("`RtlNtStatusToDosError` not available");
+        Status as ULONG
     }
     pub fn NtCreateKeyedEvent(
         KeyedEventHandle: LPHANDLE,

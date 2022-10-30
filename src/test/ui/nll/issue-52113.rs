@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 trait Bazinga {}
 impl<F> Bazinga for F {}
 

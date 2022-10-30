@@ -1,12 +1,12 @@
 error[E0271]: type mismatch resolving `<dyn Trait<B = B, A = A> as SuperTrait>::A == B`
-  --> $DIR/enforce-supertrait-projection.rs:9:5
+  --> $DIR/enforce-supertrait-projection.rs:9:17
    |
 LL | fn transmute<A, B>(x: A) -> B {
    |              -  - expected type parameter
    |              |
    |              found type parameter
 LL |     foo::<A, B, dyn Trait<A = A, B = B>>(x)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `B`, found type parameter `A`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `B`, found type parameter `A`
    |
    = note: expected type parameter `B`
               found type parameter `A`

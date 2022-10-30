@@ -85,7 +85,7 @@ pub(crate) trait BindInsteadOfMap {
 
                 let closure_args_snip = snippet(cx, closure_args_span, "..");
                 let option_snip = snippet(cx, recv.span, "..");
-                let note = format!("{}.{}({} {})", option_snip, Self::GOOD_METHOD_NAME, closure_args_snip, some_inner_snip);
+                let note = format!("{option_snip}.{}({closure_args_snip} {some_inner_snip})", Self::GOOD_METHOD_NAME);
                 span_lint_and_sugg(
                     cx,
                     BIND_INSTEAD_OF_MAP,
@@ -150,11 +150,11 @@ pub(crate) trait BindInsteadOfMap {
         }
 
         match arg.kind {
-            hir::ExprKind::Closure(_, _, body_id, closure_args_span, _) => {
-                let closure_body = cx.tcx.hir().body(body_id);
-                let closure_expr = peel_blocks(&closure_body.value);
+            hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) => {
+                let closure_body = cx.tcx.hir().body(body);
+                let closure_expr = peel_blocks(closure_body.value);
 
-                if Self::lint_closure_autofixable(cx, expr, recv, closure_expr, closure_args_span) {
+                if Self::lint_closure_autofixable(cx, expr, recv, closure_expr, fn_decl_span) {
                     true
                 } else {
                     Self::lint_closure(cx, expr, closure_expr)

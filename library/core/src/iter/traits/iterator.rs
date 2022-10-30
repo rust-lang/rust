@@ -1,10 +1,11 @@
+use crate::array;
 use crate::cmp::{self, Ordering};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::try_process;
 use super::super::ByRefSized;
 use super::super::TrustedRandomAccessNoCoerce;
-use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
+use super::super::{ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
 use super::super::{
@@ -40,6 +41,10 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
     ),
     on(_Self = "&[]", label = "`{Self}` is not an iterator; try calling `.iter()`"),
+    on(
+        _Self = "std::vec::Vec<T, A>",
+        label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
+    ),
     on(
         _Self = "&str",
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
@@ -98,6 +103,47 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next(&mut self) -> Option<Self::Item>;
 
+    /// Advances the iterator and returns an array containing the next `N` values.
+    ///
+    /// If there are not enough elements to fill the array then `Err` is returned
+    /// containing an iterator over the remaining elements.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_next_chunk)]
+    ///
+    /// let mut iter = "lorem".chars();
+    ///
+    /// assert_eq!(iter.next_chunk().unwrap(), ['l', 'o']);              // N is inferred as 2
+    /// assert_eq!(iter.next_chunk().unwrap(), ['r', 'e', 'm']);         // N is inferred as 3
+    /// assert_eq!(iter.next_chunk::<4>().unwrap_err().as_slice(), &[]); // N is explicitly 4
+    /// ```
+    ///
+    /// Split a string and get the first three items.
+    ///
+    /// ```
+    /// #![feature(iter_next_chunk)]
+    ///
+    /// let quote = "not all those who wander are lost";
+    /// let [first, second, third] = quote.split_whitespace().next_chunk().unwrap();
+    /// assert_eq!(first, "not");
+    /// assert_eq!(second, "all");
+    /// assert_eq!(third, "those");
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_next_chunk", reason = "recently added", issue = "98326")]
+    fn next_chunk<const N: usize>(
+        &mut self,
+    ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>>
+    where
+        Self: Sized,
+    {
+        array::iter_next_chunk(self)
+    }
+
     /// Returns the bounds on the remaining length of the iterator.
     ///
     /// Specifically, `size_hint()` returns a tuple where the first element
@@ -131,9 +177,11 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3];
-    /// let iter = a.iter();
+    /// let mut iter = a.iter();
     ///
     /// assert_eq!((3, Some(3)), iter.size_hint());
+    /// let _ = iter.next();
+    /// assert_eq!((2, Some(2)), iter.size_hint());
     /// ```
     ///
     /// A more complex example:
@@ -2383,22 +2431,13 @@ pub trait Iterator {
     ///
     /// # Example
     ///
-    /// Find the maximum value:
-    ///
     /// ```
-    /// fn find_max<I>(iter: I) -> Option<I::Item>
-    ///     where I: Iterator,
-    ///           I::Item: Ord,
-    /// {
-    ///     iter.reduce(|accum, item| {
-    ///         if accum >= item { accum } else { item }
-    ///     })
-    /// }
-    /// let a = [10, 20, 5, -23, 0];
-    /// let b: [u32; 0] = [];
+    /// let reduced: i32 = (1..10).reduce(|acc, e| acc + e).unwrap();
+    /// assert_eq!(reduced, 45);
     ///
-    /// assert_eq!(find_max(a.iter()), Some(&20));
-    /// assert_eq!(find_max(b.iter()), None);
+    /// // Which is equivalent to doing it with `fold`:
+    /// let folded: i32 = (1..10).fold(0, |acc, e| acc + e);
+    /// assert_eq!(reduced, folded);
     /// ```
     #[inline]
     #[stable(feature = "iterator_fold_self", since = "1.51.0")]
@@ -2858,14 +2897,14 @@ pub trait Iterator {
     /// Stopping at the first `true`:
     ///
     /// ```
-    /// let a = [1, 2, 3];
+    /// let a = [-1, 2, 3, 4];
     ///
     /// let mut iter = a.iter();
     ///
-    /// assert_eq!(iter.rposition(|&x| x == 2), Some(1));
+    /// assert_eq!(iter.rposition(|&x| x >= 2), Some(3));
     ///
     /// // we can still use `iter`, as there are more elements.
-    /// assert_eq!(iter.next(), Some(&1));
+    /// assert_eq!(iter.next(), Some(&-1));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -3268,6 +3307,49 @@ pub trait Iterator {
         Cycle::new(self)
     }
 
+    /// Returns an iterator over `N` elements of the iterator at a time.
+    ///
+    /// The chunks do not overlap. If `N` does not divide the length of the
+    /// iterator, then the last up to `N-1` elements will be omitted and can be
+    /// retrieved from the [`.into_remainder()`][ArrayChunks::into_remainder]
+    /// function of the iterator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is 0.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_array_chunks)]
+    ///
+    /// let mut iter = "lorem".chars().array_chunks();
+    /// assert_eq!(iter.next(), Some(['l', 'o']));
+    /// assert_eq!(iter.next(), Some(['r', 'e']));
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.into_remainder().unwrap().as_slice(), &['m']);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(iter_array_chunks)]
+    ///
+    /// let data = [1, 1, 2, -2, 6, 0, 3, 1];
+    /// //          ^-----^  ^------^
+    /// for [x, y, z] in data.iter().array_chunks() {
+    ///     assert_eq!(x + y + z, 4);
+    /// }
+    /// ```
+    #[track_caller]
+    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+    fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
+    where
+        Self: Sized,
+    {
+        ArrayChunks::new(self)
+    }
+
     /// Sums the elements of an iterator.
     ///
     /// Takes each element, adds them together, and returns the result.
@@ -3370,35 +3452,26 @@ pub trait Iterator {
     /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (2 * x).cmp(&y)), Ordering::Greater);
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn cmp_by<I, F>(mut self, other: I, mut cmp: F) -> Ordering
+    fn cmp_by<I, F>(self, other: I, cmp: F) -> Ordering
     where
         Self: Sized,
         I: IntoIterator,
         F: FnMut(Self::Item, I::Item) -> Ordering,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => {
-                    if other.next().is_none() {
-                        return Ordering::Equal;
-                    } else {
-                        return Ordering::Less;
-                    }
-                }
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return Ordering::Greater,
-                Some(val) => val,
-            };
-
-            match cmp(x, y) {
-                Ordering::Equal => (),
-                non_eq => return non_eq,
+        #[inline]
+        fn compare<X, Y, F>(mut cmp: F) -> impl FnMut(X, Y) -> ControlFlow<Ordering>
+        where
+            F: FnMut(X, Y) -> Ordering,
+        {
+            move |x, y| match cmp(x, y) {
+                Ordering::Equal => ControlFlow::CONTINUE,
+                non_eq => ControlFlow::Break(non_eq),
             }
+        }
+
+        match iter_compare(self, other.into_iter(), compare(cmp)) {
+            ControlFlow::Continue(ord) => ord,
+            ControlFlow::Break(ord) => ord,
         }
     }
 
@@ -3455,35 +3528,26 @@ pub trait Iterator {
     /// );
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn partial_cmp_by<I, F>(mut self, other: I, mut partial_cmp: F) -> Option<Ordering>
+    fn partial_cmp_by<I, F>(self, other: I, partial_cmp: F) -> Option<Ordering>
     where
         Self: Sized,
         I: IntoIterator,
         F: FnMut(Self::Item, I::Item) -> Option<Ordering>,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => {
-                    if other.next().is_none() {
-                        return Some(Ordering::Equal);
-                    } else {
-                        return Some(Ordering::Less);
-                    }
-                }
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return Some(Ordering::Greater),
-                Some(val) => val,
-            };
-
-            match partial_cmp(x, y) {
-                Some(Ordering::Equal) => (),
-                non_eq => return non_eq,
+        #[inline]
+        fn compare<X, Y, F>(mut partial_cmp: F) -> impl FnMut(X, Y) -> ControlFlow<Option<Ordering>>
+        where
+            F: FnMut(X, Y) -> Option<Ordering>,
+        {
+            move |x, y| match partial_cmp(x, y) {
+                Some(Ordering::Equal) => ControlFlow::CONTINUE,
+                non_eq => ControlFlow::Break(non_eq),
             }
+        }
+
+        match iter_compare(self, other.into_iter(), compare(partial_cmp)) {
+            ControlFlow::Continue(ord) => Some(ord),
+            ControlFlow::Break(ord) => ord,
         }
     }
 
@@ -3522,28 +3586,25 @@ pub trait Iterator {
     /// assert!(xs.iter().eq_by(&ys, |&x, &y| x * x == y));
     /// ```
     #[unstable(feature = "iter_order_by", issue = "64295")]
-    fn eq_by<I, F>(mut self, other: I, mut eq: F) -> bool
+    fn eq_by<I, F>(self, other: I, eq: F) -> bool
     where
         Self: Sized,
         I: IntoIterator,
         F: FnMut(Self::Item, I::Item) -> bool,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => return other.next().is_none(),
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return false,
-                Some(val) => val,
-            };
-
-            if !eq(x, y) {
-                return false;
+        #[inline]
+        fn compare<X, Y, F>(mut eq: F) -> impl FnMut(X, Y) -> ControlFlow<()>
+        where
+            F: FnMut(X, Y) -> bool,
+        {
+            move |x, y| {
+                if eq(x, y) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
             }
+        }
+
+        match iter_compare(self, other.into_iter(), compare(eq)) {
+            ControlFlow::Continue(ord) => ord == Ordering::Equal,
+            ControlFlow::Break(()) => false,
         }
     }
 
@@ -3766,6 +3827,46 @@ pub trait Iterator {
         Self: TrustedRandomAccessNoCoerce,
     {
         unreachable!("Always specialized");
+    }
+}
+
+/// Compares two iterators element-wise using the given function.
+///
+/// If `ControlFlow::CONTINUE` is returned from the function, the comparison moves on to the next
+/// elements of both iterators. Returning `ControlFlow::Break(x)` short-circuits the iteration and
+/// returns `ControlFlow::Break(x)`. If one of the iterators runs out of elements,
+/// `ControlFlow::Continue(ord)` is returned where `ord` is the result of comparing the lengths of
+/// the iterators.
+///
+/// Isolates the logic shared by ['cmp_by'](Iterator::cmp_by),
+/// ['partial_cmp_by'](Iterator::partial_cmp_by), and ['eq_by'](Iterator::eq_by).
+#[inline]
+fn iter_compare<A, B, F, T>(mut a: A, mut b: B, f: F) -> ControlFlow<T, Ordering>
+where
+    A: Iterator,
+    B: Iterator,
+    F: FnMut(A::Item, B::Item) -> ControlFlow<T>,
+{
+    #[inline]
+    fn compare<'a, B, X, T>(
+        b: &'a mut B,
+        mut f: impl FnMut(X, B::Item) -> ControlFlow<T> + 'a,
+    ) -> impl FnMut(X) -> ControlFlow<ControlFlow<T, Ordering>> + 'a
+    where
+        B: Iterator,
+    {
+        move |x| match b.next() {
+            None => ControlFlow::Break(ControlFlow::Continue(Ordering::Greater)),
+            Some(y) => f(x, y).map_break(ControlFlow::Break),
+        }
+    }
+
+    match a.try_for_each(compare(&mut b, f)) {
+        ControlFlow::Continue(()) => ControlFlow::Continue(match b.next() {
+            None => Ordering::Equal,
+            Some(_) => Ordering::Less,
+        }),
+        ControlFlow::Break(x) => x,
     }
 }
 

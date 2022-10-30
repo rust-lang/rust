@@ -22,6 +22,7 @@ use crate::config::{Config, TargetSelection};
 ///
 /// This is currently used judiciously throughout the build system rather than
 /// using a `Result` with `try!`, but this may change one day...
+#[macro_export]
 macro_rules! t {
     ($e:expr) => {
         match $e {
@@ -37,7 +38,7 @@ macro_rules! t {
         }
     };
 }
-pub(crate) use t;
+pub use t;
 
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
@@ -196,9 +197,11 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
                 ptr::null_mut(),
             );
 
-            let mut data = [0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize];
-            let db = data.as_mut_ptr() as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
-            let buf = &mut (*db).ReparseTarget as *mut u16;
+            #[repr(C, align(8))]
+            struct Align8<T>(T);
+            let mut data = Align8([0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
+            let db = data.0.as_mut_ptr() as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
+            let buf = core::ptr::addr_of_mut!((*db).ReparseTarget) as *mut u16;
             let mut i = 0;
             // FIXME: this conversion is very hacky
             let v = br"\??\";
@@ -218,7 +221,7 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
             let res = DeviceIoControl(
                 h as *mut _,
                 FSCTL_SET_REPARSE_POINT,
-                data.as_ptr() as *mut _,
+                db.cast(),
                 (*db).ReparseDataLength + 8,
                 ptr::null_mut(),
                 0,
@@ -255,6 +258,10 @@ impl CiEnv {
         } else {
             CiEnv::None
         }
+    }
+
+    pub fn is_ci() -> bool {
+        Self::current() != CiEnv::None
     }
 
     /// If in a CI environment, forces the command to run with colors.
@@ -297,7 +304,8 @@ pub fn use_host_linker(target: TargetSelection) -> bool {
         || target.contains("nvptx")
         || target.contains("fortanix")
         || target.contains("fuchsia")
-        || target.contains("bpf"))
+        || target.contains("bpf")
+        || target.contains("switch"))
 }
 
 pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
@@ -335,7 +343,7 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
 
 pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
     if !try_run(cmd, print_cmd_on_fail) {
-        std::process::exit(1);
+        crate::detail_exit(1);
     }
 }
 
@@ -374,7 +382,7 @@ pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
 
 pub fn run_suppressed(cmd: &mut Command) {
     if !try_run_suppressed(cmd) {
-        std::process::exit(1);
+        crate::detail_exit(1);
     }
 }
 
@@ -464,7 +472,7 @@ fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
 
 fn fail(s: &str) -> ! {
     eprintln!("\n\n{}\n\n", s);
-    std::process::exit(1);
+    crate::detail_exit(1);
 }
 
 /// Copied from `std::path::absolute` until it stabilizes.
@@ -574,4 +582,28 @@ fn absolute_windows(path: &std::path::Path) -> std::io::Result<std::path::PathBu
             }
         }
     }
+}
+
+/// Adapted from https://github.com/llvm/llvm-project/blob/782e91224601e461c019e0a4573bbccc6094fbcd/llvm/cmake/modules/HandleLLVMOptions.cmake#L1058-L1079
+///
+/// When `clang-cl` is used with instrumentation, we need to add clang's runtime library resource
+/// directory to the linker flags, otherwise there will be linker errors about the profiler runtime
+/// missing. This function returns the path to that directory.
+pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
+    // Similar to how LLVM does it, to find clang's library runtime directory:
+    // - we ask `clang-cl` to locate the `clang_rt.builtins` lib.
+    let mut builtins_locator = Command::new(clang_cl_path);
+    builtins_locator.args(&["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
+
+    let clang_rt_builtins = output(&mut builtins_locator);
+    let clang_rt_builtins = Path::new(clang_rt_builtins.trim());
+    assert!(
+        clang_rt_builtins.exists(),
+        "`clang-cl` must correctly locate the library runtime directory"
+    );
+
+    // - the profiler runtime will be located in the same directory as the builtins lib, like
+    // `$LLVM_DISTRO_ROOT/lib/clang/$LLVM_VERSION/lib/windows`.
+    let clang_rt_dir = clang_rt_builtins.parent().expect("The clang lib folder should exist");
+    clang_rt_dir.to_path_buf()
 }

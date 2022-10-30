@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-comparisons.rs:6:5
+  --> $DIR/type-check-pointer-comparisons.rs:4:5
    |
 LL | fn compare_const<'a, 'b>(x: *const &mut &'a i32, y: *const &mut &'b i32) {
    |                  --  -- lifetime `'b` defined here
@@ -14,7 +14,7 @@ LL |     x == y;
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-comparisons.rs:6:10
+  --> $DIR/type-check-pointer-comparisons.rs:4:10
    |
 LL | fn compare_const<'a, 'b>(x: *const &mut &'a i32, y: *const &mut &'b i32) {
    |                  --  -- lifetime `'b` defined here
@@ -31,7 +31,7 @@ LL |     x == y;
 help: `'a` and `'b` must be the same: replace one with the other
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-comparisons.rs:12:5
+  --> $DIR/type-check-pointer-comparisons.rs:10:5
    |
 LL | fn compare_mut<'a, 'b>(x: *mut &'a i32, y: *mut &'b i32) {
    |                --  -- lifetime `'b` defined here
@@ -46,7 +46,7 @@ LL |     x == y;
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-comparisons.rs:12:10
+  --> $DIR/type-check-pointer-comparisons.rs:10:10
    |
 LL | fn compare_mut<'a, 'b>(x: *mut &'a i32, y: *mut &'b i32) {
    |                --  -- lifetime `'b` defined here
@@ -63,7 +63,7 @@ LL |     x == y;
 help: `'a` and `'b` must be the same: replace one with the other
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-comparisons.rs:18:5
+  --> $DIR/type-check-pointer-comparisons.rs:16:5
    |
 LL | fn compare_fn_ptr<'a, 'b, 'c>(f: fn(&'c mut &'a i32), g: fn(&'c mut &'b i32)) {
    |                   --  -- lifetime `'b` defined here
@@ -78,7 +78,7 @@ LL |     f == g;
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/type-check-pointer-comparisons.rs:18:10
+  --> $DIR/type-check-pointer-comparisons.rs:16:10
    |
 LL | fn compare_fn_ptr<'a, 'b, 'c>(f: fn(&'c mut &'a i32), g: fn(&'c mut &'b i32)) {
    |                   --  -- lifetime `'b` defined here

@@ -24,5 +24,5 @@ enum Foo {
 
 fn main() {
     let x: Foo = Foo::D(123, 456);
-    let Foo::D(_y, _z) = x; //~ ERROR refutable pattern in local binding: `A(_)` not covered
+    let Foo::D(_y, _z) = x; //~ ERROR refutable pattern in local binding: `Foo::A(_)` not covered
 }

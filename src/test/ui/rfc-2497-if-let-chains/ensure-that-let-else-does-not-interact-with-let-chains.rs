@@ -1,4 +1,4 @@
-#![feature(let_chains, let_else)]
+#![feature(let_chains)]
 
 fn main() {
     let opt = Some(1i32);
@@ -17,19 +17,20 @@ fn main() {
     //~| ERROR `let` expressions are not supported here
     //~| ERROR mismatched types
     //~| ERROR mismatched types
+    //~| ERROR expected expression, found `let` statement
         return;
     };
 
     if let Some(n) = opt else {
-    //~^ ERROR missing condition for `if` expression
+    //~^ ERROR this `if` expression is missing a block after the condition
         return;
     };
     if let Some(n) = opt && n == 1 else {
-    //~^ ERROR missing condition for `if` expression
+    //~^ ERROR this `if` expression is missing a block after the condition
         return;
     };
     if let Some(n) = opt && let another = n else {
-    //~^ ERROR missing condition for `if` expression
+    //~^ ERROR this `if` expression is missing a block after the condition
         return;
     };
 

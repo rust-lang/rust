@@ -65,9 +65,8 @@ pub(super) fn check<'tcx>(
             "map_or(<a>, <f>)"
         };
         let msg = &format!(
-            "called `map(<f>).unwrap_or({})` on an `Option` value. \
-            This can be done more directly by calling `{}` instead",
-            arg, suggest
+            "called `map(<f>).unwrap_or({arg})` on an `Option` value. \
+            This can be done more directly by calling `{suggest}` instead"
         );
 
         span_lint_and_then(cx, MAP_UNWRAP_OR, expr.span, msg, |diag| {
@@ -78,14 +77,14 @@ pub(super) fn check<'tcx>(
                     map_span,
                     String::from(if unwrap_snippet_none { "and_then" } else { "map_or" }),
                 ),
-                (expr.span.with_lo(unwrap_recv.span.hi()), String::from("")),
+                (expr.span.with_lo(unwrap_recv.span.hi()), String::new()),
             ];
 
             if !unwrap_snippet_none {
-                suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{}, ", unwrap_snippet)));
+                suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{unwrap_snippet}, ")));
             }
 
-            diag.multipart_suggestion(&format!("use `{}` instead", suggest), suggestion, applicability);
+            diag.multipart_suggestion(&format!("use `{suggest}` instead"), suggestion, applicability);
         });
     }
 }

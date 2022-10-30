@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `{integer}: Foo` is not satisfied
+  --> $DIR/error.rs:10:27
+   |
+LL |     let dyn_i: dyn* Foo = i as dyn* Foo;
+   |                           ^ the trait `Foo` is not implemented for `{integer}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

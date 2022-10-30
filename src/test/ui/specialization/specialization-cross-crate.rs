@@ -14,7 +14,7 @@ struct NotClone;
 struct MarkedAndClone;
 impl MyMarker for MarkedAndClone {}
 
-struct MyType<T>(T);
+struct MyType<T>(#[allow(unused_tuple_struct_fields)] T);
 impl<T> Foo for MyType<T> {
     default fn foo(&self) -> &'static str {
         "generic MyType"

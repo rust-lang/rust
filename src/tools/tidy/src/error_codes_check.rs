@@ -1,6 +1,7 @@
 //! Checks that all error codes have at least one test to prevent having error
 //! codes that are silently not thrown by the compiler anymore.
 
+use crate::walk::{filter_dirs, walk};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs::read_to_string;
@@ -10,8 +11,8 @@ use regex::Regex;
 
 // A few of those error codes can't be tested but all the others can and *should* be tested!
 const EXEMPTED_FROM_TEST: &[&str] = &[
-    "E0279", "E0313", "E0377", "E0461", "E0462", "E0465", "E0476", "E0514", "E0519", "E0523",
-    "E0554", "E0640", "E0717", "E0729",
+    "E0313", "E0377", "E0461", "E0462", "E0465", "E0476", "E0490", "E0514", "E0519", "E0523",
+    "E0554", "E0640", "E0717", "E0729", "E0789",
 ];
 
 // Some error codes don't have any tests apparently...
@@ -217,7 +218,7 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     println!("Checking which error codes lack tests...");
 
     for path in paths {
-        super::walk(path, &mut |path| super::filter_dirs(path), &mut |entry, contents| {
+        walk(path, &mut filter_dirs, &mut |entry, contents| {
             let file_name = entry.file_name();
             let entry_path = entry.path();
 

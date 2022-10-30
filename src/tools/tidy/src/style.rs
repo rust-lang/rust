@@ -16,6 +16,7 @@
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
 
+use crate::walk::{filter_dirs, walk};
 use regex::Regex;
 use std::path::Path;
 
@@ -125,16 +126,13 @@ fn should_ignore(line: &str) -> bool {
 
 /// Returns `true` if `line` is allowed to be longer than the normal limit.
 fn long_line_is_ok(extension: &str, is_error_code: bool, max_columns: usize, line: &str) -> bool {
-    if extension != "md" || is_error_code {
-        if line_is_url(is_error_code, max_columns, line) || should_ignore(line) {
-            return true;
-        }
-    } else if extension == "md" {
+    match extension {
+        // fluent files are allowed to be any length
+        "ftl" => true,
         // non-error code markdown is allowed to be any length
-        return true;
+        "md" if !is_error_code => true,
+        _ => line_is_url(is_error_code, max_columns, line) || should_ignore(line),
     }
-
-    false
 }
 
 enum Directive {
@@ -221,16 +219,16 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
 
 pub fn check(path: &Path, bad: &mut bool) {
     fn skip(path: &Path) -> bool {
-        super::filter_dirs(path) || skip_markdown_path(path)
+        filter_dirs(path) || skip_markdown_path(path)
     }
     let problematic_consts_strings: Vec<String> = (PROBLEMATIC_CONSTS.iter().map(u32::to_string))
         .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:x}", v)))
         .chain(PROBLEMATIC_CONSTS.iter().map(|v| format!("{:X}", v)))
         .collect();
-    super::walk(path, &mut skip, &mut |entry, contents| {
+    walk(path, &mut skip, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
-        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md", ".css"];
+        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md", ".css", ".ftl"];
         if extensions.iter().all(|e| !filename.ends_with(e)) || filename.starts_with(".#") {
             return;
         }
@@ -395,9 +393,6 @@ pub fn check(path: &Path, bad: &mut bool) {
                 );
             };
             suppressible_tidy_err!(err, skip_file_length, "");
-        } else if lines > (LINES * 7) / 10 {
-            // Just set it to something that doesn't trigger the "unnecessarily ignored" warning.
-            skip_file_length = Directive::Ignore(true);
         }
 
         if let Directive::Ignore(false) = skip_cr {
@@ -405,12 +400,6 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
         if let Directive::Ignore(false) = skip_tab {
             tidy_error!(bad, "{}: ignoring tab characters unnecessarily", file.display());
-        }
-        if let Directive::Ignore(false) = skip_line_length {
-            tidy_error!(bad, "{}: ignoring line length unnecessarily", file.display());
-        }
-        if let Directive::Ignore(false) = skip_file_length {
-            tidy_error!(bad, "{}: ignoring file length unnecessarily", file.display());
         }
         if let Directive::Ignore(false) = skip_end_whitespace {
             tidy_error!(bad, "{}: ignoring trailing whitespace unnecessarily", file.display());
@@ -424,5 +413,9 @@ pub fn check(path: &Path, bad: &mut bool) {
         if let Directive::Ignore(false) = skip_copyright {
             tidy_error!(bad, "{}: ignoring copyright unnecessarily", file.display());
         }
+        // We deliberately do not warn about these being unnecessary,
+        // that would just lead to annoying churn.
+        let _unused = skip_line_length;
+        let _unused = skip_file_length;
     })
 }

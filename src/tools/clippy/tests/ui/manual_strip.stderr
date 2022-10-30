@@ -4,12 +4,12 @@ error: stripping a prefix manually
 LL |         str::to_string(&s["ab".len()..]);
    |                        ^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::manual-strip` implied by `-D warnings`
 note: the prefix was tested here
   --> $DIR/manual_strip.rs:6:5
    |
 LL |     if s.starts_with("ab") {
    |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::manual-strip` implied by `-D warnings`
 help: try using the `strip_prefix` method
    |
 LL ~     if let Some(<stripped>) = s.strip_prefix("ab") {

@@ -4,8 +4,8 @@ error: called `ok().expect()` on a `Result` value
 LL |     res.ok().expect("disaster!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::ok-expect` implied by `-D warnings`
    = help: you can call `expect()` directly on the `Result`
+   = note: `-D clippy::ok-expect` implied by `-D warnings`
 
 error: called `ok().expect()` on a `Result` value
   --> $DIR/ok_expect.rs:20:5

@@ -575,6 +575,15 @@ fn iter_try_collect_uses_try_fold_not_next() {
     // validation is just that it didn't panic.
 }
 
+#[test]
+fn test_next_chunk() {
+    let mut it = 0..12;
+    assert_eq!(it.next_chunk().unwrap(), [0, 1, 2, 3]);
+    assert_eq!(it.next_chunk().unwrap(), []);
+    assert_eq!(it.next_chunk().unwrap(), [4, 5, 6, 7, 8, 9]);
+    assert_eq!(it.next_chunk::<4>().unwrap_err().as_slice(), &[10, 11]);
+}
+
 // just tests by whether or not this compiles
 fn _empty_impl_all_auto_traits<T>() {
     use std::panic::{RefUnwindSafe, UnwindSafe};

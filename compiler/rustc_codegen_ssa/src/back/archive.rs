@@ -1,63 +1,71 @@
-use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::memmap::Mmap;
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
+use object::read::archive::ArchiveFile;
+
+use std::fmt::Display;
+use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
 
-pub(super) fn find_library(
-    name: Symbol,
-    verbatim: bool,
-    search_paths: &[PathBuf],
-    sess: &Session,
-) -> PathBuf {
-    // On Windows, static libraries sometimes show up as libfoo.a and other
-    // times show up as foo.lib
-    let oslibname = if verbatim {
-        name.to_string()
-    } else {
-        format!("{}{}{}", sess.target.staticlib_prefix, name, sess.target.staticlib_suffix)
-    };
-    let unixlibname = format!("lib{}.a", name);
+pub trait ArchiveBuilderBuilder {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a>;
 
-    for path in search_paths {
-        debug!("looking for {} inside {:?}", name, path);
-        let test = path.join(&oslibname);
-        if test.exists() {
-            return test;
-        }
-        if oslibname != unixlibname {
-            let test = path.join(&unixlibname);
-            if test.exists() {
-                return test;
+    /// Creates a DLL Import Library <https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation#creating-an-import-library>.
+    /// and returns the path on disk to that import library.
+    /// This functions doesn't take `self` so that it can be called from
+    /// `linker_with_args`, which is specialized on `ArchiveBuilder` but
+    /// doesn't take or create an instance of that type.
+    fn create_dll_import_lib(
+        &self,
+        sess: &Session,
+        lib_name: &str,
+        dll_imports: &[DllImport],
+        tmpdir: &Path,
+    ) -> PathBuf;
+
+    fn extract_bundled_libs(
+        &self,
+        rlib: &Path,
+        outdir: &Path,
+        bundled_lib_file_names: &FxHashSet<Symbol>,
+    ) -> Result<(), String> {
+        let message = |msg: &str, e: &dyn Display| format!("{} '{}': {}", msg, &rlib.display(), e);
+        let archive_map = unsafe {
+            Mmap::map(File::open(rlib).map_err(|e| message("failed to open file", &e))?)
+                .map_err(|e| message("failed to mmap file", &e))?
+        };
+        let archive = ArchiveFile::parse(&*archive_map)
+            .map_err(|e| message("failed to parse archive", &e))?;
+
+        for entry in archive.members() {
+            let entry = entry.map_err(|e| message("failed to read entry", &e))?;
+            let data = entry
+                .data(&*archive_map)
+                .map_err(|e| message("failed to get data from archive member", &e))?;
+            let name = std::str::from_utf8(entry.name())
+                .map_err(|e| message("failed to convert name", &e))?;
+            if !bundled_lib_file_names.contains(&Symbol::intern(name)) {
+                continue; // We need to extract only native libraries.
             }
+            std::fs::write(&outdir.join(&name), data)
+                .map_err(|e| message("failed to write file", &e))?;
         }
+        Ok(())
     }
-    sess.fatal(&format!(
-        "could not find native static library `{}`, \
-                         perhaps an -L flag is missing?",
-        name
-    ));
 }
 
 pub trait ArchiveBuilder<'a> {
-    fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self;
-
     fn add_file(&mut self, path: &Path);
-    fn remove_file(&mut self, name: &str);
-    fn src_files(&mut self) -> Vec<String>;
 
-    fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
-    where
-        F: FnMut(&str) -> bool + 'static;
-
-    fn build(self);
-
-    fn inject_dll_import_lib(
+    fn add_archive(
         &mut self,
-        lib_name: &str,
-        dll_imports: &[DllImport],
-        tmpdir: &MaybeTempDir,
-    );
+        archive: &Path,
+        skip: Box<dyn FnMut(&str) -> bool + 'static>,
+    ) -> io::Result<()>;
+
+    fn build(self: Box<Self>, output: &Path) -> bool;
 }

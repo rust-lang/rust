@@ -15,11 +15,8 @@
 //
 // cdb-command:dx r
 // cdb-check:r                [Type: std::sync::rwlock::RwLockReadGuard<i32>]
-// cdb-check:    [...] lock             : [...] [Type: std::sync::rwlock::RwLock<i32> *]
-//
-// cdb-command:dx r.lock->data,d
-// cdb-check:r.lock->data,d   : 0 [Type: core::cell::UnsafeCell<i32>]
-// cdb-check:    [<Raw View>]     [Type: core::cell::UnsafeCell<i32>]
+// cdb-check:    [...] data             : NonNull([...]: 0) [Type: core::ptr::non_null::NonNull<i32>]
+// cdb-check:    [...] inner_lock       : [...] [Type: std::sys_common::rwlock::MovableRwLock *]
 
 #[allow(unused_variables)]
 

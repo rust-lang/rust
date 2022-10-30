@@ -1,3 +1,4 @@
+use info;
 use libloading::Library;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -10,7 +11,7 @@ use rustc_errors::registry::Registry;
 use rustc_middle::ty::tls;
 use rustc_parse::validate_attr;
 #[cfg(parallel_compiler)]
-use rustc_query_impl::QueryCtxt;
+use rustc_query_impl::{QueryContext, QueryCtxt};
 use rustc_session as session;
 use rustc_session::config::CheckCfg;
 use rustc_session::config::{self, CrateType};
@@ -24,14 +25,13 @@ use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::{sym, Symbol};
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
-use std::lazy::SyncOnceCell;
 use std::mem;
 #[cfg(not(parallel_compiler))]
 use std::panic;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::OnceLock;
 use std::thread;
-use tracing::info;
 
 /// Function pointer type that constructs a new CodegenBackend.
 pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
@@ -48,7 +48,10 @@ pub fn add_configuration(
 ) {
     let tf = sym::target_feature;
 
-    let target_features = codegen_backend.target_features(sess);
+    let unstable_target_features = codegen_backend.target_features(sess, true);
+    sess.unstable_target_features.extend(unstable_target_features.iter().cloned());
+
+    let target_features = codegen_backend.target_features(sess, false);
     sess.target_features.extend(target_features.iter().cloned());
 
     cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
@@ -76,7 +79,7 @@ pub fn create_session(
     } else {
         get_codegen_backend(
             &sopts.maybe_sysroot,
-            sopts.debugging_opts.codegen_backend.as_ref().map(|name| &name[..]),
+            sopts.unstable_opts.codegen_backend.as_ref().map(|name| &name[..]),
         )
     };
 
@@ -86,9 +89,9 @@ pub fn create_session(
     let bundle = match rustc_errors::fluent_bundle(
         sopts.maybe_sysroot.clone(),
         sysroot_candidates(),
-        sopts.debugging_opts.translate_lang.clone(),
-        sopts.debugging_opts.translate_additional_ftl.as_deref(),
-        sopts.debugging_opts.translate_directionality_markers,
+        sopts.unstable_opts.translate_lang.clone(),
+        sopts.unstable_opts.translate_additional_ftl.as_deref(),
+        sopts.unstable_opts.translate_directionality_markers,
     ) {
         Ok(bundle) => bundle,
         Err(e) => {
@@ -114,7 +117,6 @@ pub fn create_session(
 
     let mut check_cfg = config::to_crate_check_config(check_cfg);
     check_cfg.fill_well_known();
-    check_cfg.fill_actual(&cfg);
 
     sess.parse_sess.config = cfg;
     sess.parse_sess.check_config = check_cfg;
@@ -166,20 +168,12 @@ pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 unsafe fn handle_deadlock() {
     let registry = rustc_rayon_core::Registry::current();
 
-    let context = tls::get_tlv();
-    assert!(context != 0);
-    rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_, '_>>();
-    let icx: &tls::ImplicitCtxt<'_, '_> = &*(context as *const tls::ImplicitCtxt<'_, '_>);
-
-    let session_globals = rustc_span::with_session_globals(|sg| sg as *const _);
-    let session_globals = &*session_globals;
-    thread::spawn(move || {
-        tls::enter_context(icx, |_| {
-            rustc_span::set_session_globals_then(session_globals, || {
-                tls::with(|tcx| QueryCtxt::from_tcx(tcx).deadlock(&registry))
-            })
-        });
+    let query_map = tls::with(|tcx| {
+        QueryCtxt::from_tcx(tcx)
+            .try_collect_active_jobs()
+            .expect("active jobs shouldn't be locked in deadlock handler")
     });
+    thread::spawn(move || rustc_query_impl::deadlock(query_map, &registry));
 }
 
 #[cfg(parallel_compiler)]
@@ -242,7 +236,7 @@ pub fn get_codegen_backend(
     maybe_sysroot: &Option<PathBuf>,
     backend_name: Option<&str>,
 ) -> Box<dyn CodegenBackend> {
-    static LOAD: SyncOnceCell<unsafe fn() -> Box<dyn CodegenBackend>> = SyncOnceCell::new();
+    static LOAD: OnceLock<unsafe fn() -> Box<dyn CodegenBackend>> = OnceLock::new();
 
     let load = LOAD.get_or_init(|| {
         let default_codegen_backend = option_env!("CFG_DEFAULT_CODEGEN_BACKEND").unwrap_or("llvm");
@@ -265,7 +259,7 @@ pub fn get_codegen_backend(
 // loading, so we leave the code here. It is potentially useful for other tools
 // that want to invoke the rustc binary while linking to rustc as well.
 pub fn rustc_path<'a>() -> Option<&'a Path> {
-    static RUSTC_PATH: SyncOnceCell<Option<PathBuf>> = SyncOnceCell::new();
+    static RUSTC_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
     const BIN_PATH: &str = env!("RUSTC_INSTALL_BINDIR");
 
@@ -564,6 +558,8 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     // Only check command line flags if present. If no types are specified by
     // command line, then reuse the empty `base` Vec to hold the types that
     // will be found in crate attributes.
+    // JUSTIFICATION: before wrapper fn is available
+    #[allow(rustc::bad_opt_access)]
     let mut base = session.opts.crate_types.clone();
     if base.is_empty() {
         base.extend(attr_types);
@@ -653,24 +649,6 @@ pub fn build_output_filenames(
             )
         }
     }
-}
-
-#[cfg(not(target_os = "linux"))]
-pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
-    std::fs::rename(src, dst)
-}
-
-/// This function attempts to bypass the auto_da_alloc heuristic implemented by some filesystems
-/// such as btrfs and ext4. When renaming over a file that already exists then they will "helpfully"
-/// write back the source file before committing the rename in case a developer forgot some of
-/// the fsyncs in the open/write/fsync(file)/rename/fsync(dir) dance for atomic file updates.
-///
-/// To avoid triggering this heuristic we delete the destination first, if it exists.
-/// The cost of an extra syscall is much lower than getting descheduled for the sync IO.
-#[cfg(target_os = "linux")]
-pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
-    let _ = std::fs::remove_file(dst);
-    std::fs::rename(src, dst)
 }
 
 /// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)"

@@ -3,14 +3,15 @@
 //! This ensures that error codes are used at most once and also prints out some
 //! statistics about the error codes.
 
+use crate::walk::{filter_dirs, walk};
 use std::collections::HashMap;
 use std::path::Path;
 
 pub fn check(path: &Path, bad: &mut bool) {
     let mut map: HashMap<_, Vec<_>> = HashMap::new();
-    super::walk(
+    walk(
         path,
-        &mut |path| super::filter_dirs(path) || path.ends_with("src/test"),
+        &mut |path| filter_dirs(path) || path.ends_with("src/test"),
         &mut |entry, contents| {
             let file = entry.path();
             let filename = file.file_name().unwrap().to_string_lossy();

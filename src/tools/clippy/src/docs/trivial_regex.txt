@@ -1,0 +1,18 @@
+### What it does
+Checks for trivial [regex](https://crates.io/crates/regex)
+creation (with `Regex::new`, `RegexBuilder::new`, or `RegexSet::new`).
+
+### Why is this bad?
+Matching the regex can likely be replaced by `==` or
+`str::starts_with`, `str::ends_with` or `std::contains` or other `str`
+methods.
+
+### Known problems
+If the same regex is going to be applied to multiple
+inputs, the precomputations done by `Regex` construction can give
+significantly better performance than any of the `str`-based methods.
+
+### Example
+```
+Regex::new("^foobar")
+```

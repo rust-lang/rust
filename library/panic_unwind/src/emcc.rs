@@ -12,7 +12,6 @@ use core::intrinsics;
 use core::mem;
 use core::ptr;
 use core::sync::atomic::{AtomicBool, Ordering};
-use libc::{self, c_int};
 use unwind as uw;
 
 // This matches the layout of std::type_info in C++
@@ -105,17 +104,6 @@ extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> *mut libc::c_void {
     }
 }
 
-#[lang = "eh_personality"]
-unsafe extern "C" fn rust_eh_personality(
-    version: c_int,
-    actions: uw::_Unwind_Action,
-    exception_class: uw::_Unwind_Exception_Class,
-    exception_object: *mut uw::_Unwind_Exception,
-    context: *mut uw::_Unwind_Context,
-) -> uw::_Unwind_Reason_Code {
-    __gxx_personality_v0(version, actions, exception_class, exception_object, context)
-}
-
 extern "C" {
     fn __cxa_allocate_exception(thrown_size: libc::size_t) -> *mut libc::c_void;
     fn __cxa_begin_catch(thrown_exception: *mut libc::c_void) -> *mut libc::c_void;
@@ -125,11 +113,4 @@ extern "C" {
         tinfo: *const TypeInfo,
         dest: extern "C" fn(*mut libc::c_void) -> *mut libc::c_void,
     ) -> !;
-    fn __gxx_personality_v0(
-        version: c_int,
-        actions: uw::_Unwind_Action,
-        exception_class: uw::_Unwind_Exception_Class,
-        exception_object: *mut uw::_Unwind_Exception,
-        context: *mut uw::_Unwind_Context,
-    ) -> uw::_Unwind_Reason_Code;
 }

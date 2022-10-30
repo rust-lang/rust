@@ -28,24 +28,14 @@ impl<'buf, 'state> PadAdapter<'buf, 'state> {
 }
 
 impl fmt::Write for PadAdapter<'_, '_> {
-    fn write_str(&mut self, mut s: &str) -> fmt::Result {
-        while !s.is_empty() {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for s in s.split_inclusive('\n') {
             if self.state.on_newline {
                 self.buf.write_str("    ")?;
             }
 
-            let split = match s.find('\n') {
-                Some(pos) => {
-                    self.state.on_newline = true;
-                    pos + 1
-                }
-                None => {
-                    self.state.on_newline = false;
-                    s.len()
-                }
-            };
-            self.buf.write_str(&s[..split])?;
-            s = &s[split..];
+            self.state.on_newline = s.ends_with('\n');
+            self.buf.write_str(s)?;
         }
 
         Ok(())

@@ -41,8 +41,8 @@ impl fmt::Display for CrateNum {
 /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
 /// Therefore, make sure to include the context when encode a `CrateNum`.
 impl<E: Encoder> Encodable<E> for CrateNum {
-    default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_u32(self.as_u32())
+    default fn encode(&self, s: &mut E) {
+        s.emit_u32(self.as_u32());
     }
 }
 
@@ -203,7 +203,7 @@ rustc_index::newtype_index! {
 }
 
 impl<E: Encoder> Encodable<E> for DefIndex {
-    default fn encode(&self, _: &mut E) -> Result<(), E::Error> {
+    default fn encode(&self, _: &mut E) {
         panic!("cannot encode `DefIndex` with `{}`", std::any::type_name::<E>());
     }
 }
@@ -218,7 +218,9 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 /// index and a def index.
 ///
 /// You can create a `DefId` from a `LocalDefId` using `local_def_id.to_def_id()`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Copy)]
+#[derive(Clone, PartialEq, Eq, Copy)]
+// Don't derive order on 64-bit big-endian, so we can be consistent regardless of field order.
+#[cfg_attr(not(all(target_pointer_width = "64", target_endian = "big")), derive(PartialOrd, Ord))]
 // On below-64 bit systems we can simply use the derived `Hash` impl
 #[cfg_attr(not(target_pointer_width = "64"), derive(Hash))]
 #[repr(C)]
@@ -257,6 +259,22 @@ pub struct DefId {
 impl Hash for DefId {
     fn hash<H: Hasher>(&self, h: &mut H) {
         (((self.krate.as_u32() as u64) << 32) | (self.index.as_u32() as u64)).hash(h)
+    }
+}
+
+// Implement the same comparison as derived with the other field order.
+#[cfg(all(target_pointer_width = "64", target_endian = "big"))]
+impl Ord for DefId {
+    #[inline]
+    fn cmp(&self, other: &DefId) -> std::cmp::Ordering {
+        Ord::cmp(&(self.index, self.krate), &(other.index, other.krate))
+    }
+}
+#[cfg(all(target_pointer_width = "64", target_endian = "big"))]
+impl PartialOrd for DefId {
+    #[inline]
+    fn partial_cmp(&self, other: &DefId) -> Option<std::cmp::Ordering> {
+        Some(Ord::cmp(self, other))
     }
 }
 
@@ -305,13 +323,16 @@ impl DefId {
     }
 }
 
-impl<E: Encoder> Encodable<E> for DefId {
-    default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_struct(false, |s| {
-            s.emit_struct_field("krate", true, |s| self.krate.encode(s))?;
+impl From<LocalDefId> for DefId {
+    fn from(local: LocalDefId) -> DefId {
+        local.to_def_id()
+    }
+}
 
-            s.emit_struct_field("index", false, |s| self.index.encode(s))
-        })
+impl<E: Encoder> Encodable<E> for DefId {
+    default fn encode(&self, s: &mut E) {
+        self.krate.encode(s);
+        self.index.encode(s);
     }
 }
 
@@ -334,7 +355,7 @@ impl fmt::Debug for DefId {
     }
 }
 
-rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefId);
+rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefIdMapEntry, DefId);
 
 /// A `LocalDefId` is equivalent to a `DefId` with `krate == LOCAL_CRATE`. Since
 /// we encode this information in the type, we can ensure at compile time that
@@ -385,8 +406,8 @@ impl fmt::Debug for LocalDefId {
 }
 
 impl<E: Encoder> Encodable<E> for LocalDefId {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        self.to_def_id().encode(s)
+    fn encode(&self, s: &mut E) {
+        self.to_def_id().encode(s);
     }
 }
 
@@ -396,7 +417,12 @@ impl<D: Decoder> Decodable<D> for LocalDefId {
     }
 }
 
-rustc_data_structures::define_id_collections!(LocalDefIdMap, LocalDefIdSet, LocalDefId);
+rustc_data_structures::define_id_collections!(
+    LocalDefIdMap,
+    LocalDefIdSet,
+    LocalDefIdMapEntry,
+    LocalDefId
+);
 
 impl<CTX: HashStableContext> HashStable<CTX> for DefId {
     #[inline]

@@ -11,6 +11,16 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
     export HOME=/home/user
     unset LOCAL_USER_ID
+
+    # Ensure that runners are able to execute git commands in the worktree,
+    # overriding the typical git protections. In our docker container we're running
+    # as root, while the user owning the checkout is not root.
+    # This is only necessary when we change the user, otherwise we should
+    # already be running with the right user.
+    #
+    # For NO_CHANGE_USER done in the small number of Dockerfiles affected.
+    echo -e '[safe]\n\tdirectory = *' > /home/user/gitconfig
+
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
   fi
 fi
@@ -43,8 +53,9 @@ else
     PYTHON="python2"
 fi
 
-if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try; then
+if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
 fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
@@ -57,6 +68,11 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-units-std=1"
 # process by recompressing the existing xz ones. This decreases the storage
 # space required for CI artifacts.
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --dist-compression-formats=xz"
+
+# Enable the `c` feature for compiler_builtins, but only when the `compiler-rt` source is available.
+if [ "$EXTERNAL_LLVM" = "" ]; then
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.optimized-compiler-builtins"
+fi
 
 if [ "$DIST_SRC" = "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
@@ -101,6 +117,18 @@ else
   fi
 
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
+
+  # We enable this for non-dist builders, since those aren't trying to produce
+  # fresh binaries. We currently don't entirely support distributing a fresh
+  # copy of the compiler (including llvm tools, etc.) if we haven't actually
+  # built LLVM, since not everything necessary is copied into the
+  # local-usage-only LLVM artifacts. If that changes, this could maybe be made
+  # true for all builds. In practice it's probably a good idea to keep building
+  # LLVM continuously on at least some builders to ensure it works, though.
+  # (And PGO is its own can of worms).
+  if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-available"
+  fi
 fi
 
 if [ "$RUST_RELEASE_CHANNEL" = "nightly" ] || [ "$DIST_REQUIRE_ALL_TOOLS" = "" ]; then
@@ -131,7 +159,7 @@ trap datecheck EXIT
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
 if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
-  $SRC/configure --enable-parallel-compiler
+  $SRC/configure --set rust.parallel-compiler
   CARGO_INCREMENTAL=0 $PYTHON ../x.py check
   rm -f config.toml
   rm -rf build

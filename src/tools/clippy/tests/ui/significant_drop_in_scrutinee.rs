@@ -1,14 +1,13 @@
 // FIXME: Ideally these suggestions would be fixed via rustfix. Blocked by rust-lang/rust#53934
 // // run-rustfix
-
 #![warn(clippy::significant_drop_in_scrutinee)]
-#![allow(clippy::single_match)]
-#![allow(clippy::match_single_binding)]
-#![allow(unused_assignments)]
-#![allow(dead_code)]
+#![allow(dead_code, unused_assignments)]
+#![allow(clippy::match_single_binding, clippy::single_match, clippy::uninlined_format_args)]
 
+use std::num::ParseIntError;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::RwLock;
 use std::sync::{Mutex, MutexGuard};
 
 struct State {}
@@ -54,6 +53,19 @@ fn should_trigger_lint_with_mutex_guard_in_match_scrutinee() {
     // Should trigger lint because the lifetime of the temporary MutexGuard is surprising because it
     // is preserved until the end of the match, but there is no clear indication that this is the
     // case.
+    match mutex.lock().unwrap().foo() {
+        true => {
+            mutex.lock().unwrap().bar();
+        },
+        false => {},
+    };
+}
+
+fn should_not_trigger_lint_with_mutex_guard_in_match_scrutinee_when_lint_allowed() {
+    let mutex = Mutex::new(State {});
+
+    // Lint should not be triggered because it is "allowed" below.
+    #[allow(clippy::significant_drop_in_scrutinee)]
     match mutex.lock().unwrap().foo() {
         true => {
             mutex.lock().unwrap().bar();
@@ -549,6 +561,66 @@ fn should_not_cause_stack_overflow() {
         GenericRecursiveEnum::Foo(i, f) => {
             println!("{} {:?}", i, f)
         },
+    }
+}
+
+fn should_not_produce_lint_for_try_desugar() -> Result<u64, ParseIntError> {
+    // TryDesugar (i.e. using `?` for a Result type) will turn into a match but is out of scope
+    // for this lint
+    let rwlock = RwLock::new("1".to_string());
+    let result = rwlock.read().unwrap().parse::<u64>()?;
+    println!("{}", result);
+    rwlock.write().unwrap().push('2');
+    Ok(result)
+}
+
+struct ResultReturner {
+    s: String,
+}
+
+impl ResultReturner {
+    fn to_number(&self) -> Result<i64, ParseIntError> {
+        self.s.parse::<i64>()
+    }
+}
+
+fn should_trigger_lint_for_non_ref_move_and_clone_suggestion() {
+    let rwlock = RwLock::<ResultReturner>::new(ResultReturner { s: "1".to_string() });
+    match rwlock.read().unwrap().to_number() {
+        Ok(n) => println!("Converted to number: {}", n),
+        Err(e) => println!("Could not convert {} to number", e),
+    };
+}
+
+fn should_trigger_lint_for_read_write_lock_for_loop() {
+    // For-in loops desugar to match expressions and are prone to the type of deadlock this lint is
+    // designed to look for.
+    let rwlock = RwLock::<Vec<String>>::new(vec!["1".to_string()]);
+    for s in rwlock.read().unwrap().iter() {
+        println!("{}", s);
+    }
+}
+
+fn do_bar(mutex: &Mutex<State>) {
+    mutex.lock().unwrap().bar();
+}
+
+fn should_trigger_lint_without_significant_drop_in_arm() {
+    let mutex = Mutex::new(State {});
+
+    // Should trigger lint because the lifetime of the temporary MutexGuard is surprising because it
+    // is preserved until the end of the match, but there is no clear indication that this is the
+    // case.
+    match mutex.lock().unwrap().foo() {
+        true => do_bar(&mutex),
+        false => {},
+    };
+}
+
+fn should_not_trigger_on_significant_iterator_drop() {
+    let lines = std::io::stdin().lines();
+    for line in lines {
+        println!("foo: {}", line.unwrap());
     }
 }
 

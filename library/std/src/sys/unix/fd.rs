@@ -4,12 +4,10 @@
 mod tests;
 
 use crate::cmp;
-use crate::io::{self, IoSlice, IoSliceMut, Read, ReadBuf};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
-
-use libc::{c_int, c_void};
 
 #[cfg(any(
     target_os = "android",
@@ -38,7 +36,7 @@ pub struct FileDesc(OwnedFd);
 // larger than or equal to INT_MAX. To handle both of these the read
 // size is capped on both platforms.
 #[cfg(target_os = "macos")]
-const READ_LIMIT: usize = c_int::MAX as usize - 1;
+const READ_LIMIT: usize = libc::c_int::MAX as usize - 1;
 #[cfg(not(target_os = "macos"))]
 const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
 
@@ -49,6 +47,7 @@ const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
+    target_os = "watchos",
 ))]
 const fn max_iov() -> usize {
     libc::IOV_MAX as usize
@@ -69,6 +68,8 @@ const fn max_iov() -> usize {
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
+    target_os = "horizon",
+    target_os = "watchos",
 )))]
 const fn max_iov() -> usize {
     16 // The minimum value required by POSIX.
@@ -79,33 +80,33 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::read(
                 self.as_raw_fd(),
-                buf.as_mut_ptr() as *mut c_void,
+                buf.as_mut_ptr() as *mut libc::c_void,
                 cmp::min(buf.len(), READ_LIMIT),
             )
         })?;
         Ok(ret as usize)
     }
 
-    #[cfg(not(target_os = "espidf"))]
+    #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::readv(
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as c_int,
+                cmp::min(bufs.len(), max_iov()) as libc::c_int,
             )
         })?;
         Ok(ret as usize)
     }
 
-    #[cfg(target_os = "espidf")]
+    #[cfg(any(target_os = "espidf", target_os = "horizon"))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         return crate::io::default_read_vectored(|b| self.read(b), bufs);
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        cfg!(not(target_os = "espidf"))
+        cfg!(not(any(target_os = "espidf", target_os = "horizon")))
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -122,7 +123,7 @@ impl FileDesc {
         unsafe {
             cvt(pread64(
                 self.as_raw_fd(),
-                buf.as_mut_ptr() as *mut c_void,
+                buf.as_mut_ptr() as *mut libc::c_void,
                 cmp::min(buf.len(), READ_LIMIT),
                 offset as off64_t,
             ))
@@ -130,20 +131,19 @@ impl FileDesc {
         }
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let ret = cvt(unsafe {
             libc::read(
                 self.as_raw_fd(),
-                buf.unfilled_mut().as_mut_ptr() as *mut c_void,
-                cmp::min(buf.remaining(), READ_LIMIT),
+                cursor.as_mut().as_mut_ptr() as *mut libc::c_void,
+                cmp::min(cursor.capacity(), READ_LIMIT),
             )
         })?;
 
         // Safety: `ret` bytes were written to the initialized portion of the buffer
         unsafe {
-            buf.assume_init(ret as usize);
+            cursor.advance(ret as usize);
         }
-        buf.add_filled(ret as usize);
         Ok(())
     }
 
@@ -151,33 +151,33 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::write(
                 self.as_raw_fd(),
-                buf.as_ptr() as *const c_void,
+                buf.as_ptr() as *const libc::c_void,
                 cmp::min(buf.len(), READ_LIMIT),
             )
         })?;
         Ok(ret as usize)
     }
 
-    #[cfg(not(target_os = "espidf"))]
+    #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::writev(
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as c_int,
+                cmp::min(bufs.len(), max_iov()) as libc::c_int,
             )
         })?;
         Ok(ret as usize)
     }
 
-    #[cfg(target_os = "espidf")]
+    #[cfg(any(target_os = "espidf", target_os = "horizon"))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         return crate::io::default_write_vectored(|b| self.write(b), bufs);
     }
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        cfg!(not(target_os = "espidf"))
+        cfg!(not(any(target_os = "espidf", target_os = "horizon")))
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
@@ -189,7 +189,7 @@ impl FileDesc {
         unsafe {
             cvt(pwrite64(
                 self.as_raw_fd(),
-                buf.as_ptr() as *const c_void,
+                buf.as_ptr() as *const libc::c_void,
                 cmp::min(buf.len(), READ_LIMIT),
                 offset as off64_t,
             ))
@@ -221,7 +221,7 @@ impl FileDesc {
         }
     }
     #[cfg(any(
-        all(target_env = "newlib", not(target_os = "espidf")),
+        all(target_env = "newlib", not(any(target_os = "espidf", target_os = "horizon"))),
         target_os = "solaris",
         target_os = "illumos",
         target_os = "emscripten",
@@ -242,17 +242,17 @@ impl FileDesc {
             Ok(())
         }
     }
-    #[cfg(target_os = "espidf")]
+    #[cfg(any(target_os = "espidf", target_os = "horizon"))]
     pub fn set_cloexec(&self) -> io::Result<()> {
-        // FD_CLOEXEC is not supported in ESP-IDF but there's no need to,
-        // because ESP-IDF does not support spawning processes either.
+        // FD_CLOEXEC is not supported in ESP-IDF and Horizon OS but there's no need to,
+        // because neither supports spawning processes.
         Ok(())
     }
 
     #[cfg(target_os = "linux")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         unsafe {
-            let v = nonblocking as c_int;
+            let v = nonblocking as libc::c_int;
             cvt(libc::ioctl(self.as_raw_fd(), libc::FIONBIO, &v))?;
             Ok(())
         }

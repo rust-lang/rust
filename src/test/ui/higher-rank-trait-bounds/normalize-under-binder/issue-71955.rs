@@ -1,7 +1,3 @@
-// ignore-compare-mode-nll
-// revisions: base nll
-// [nll]compile-flags: -Zborrowck=mir
-
 // check-fail
 #![feature(rustc_attrs)]
 
@@ -47,11 +43,9 @@ fn main() {
     }
 
     foo(bar, "string", |s| s.len() == 5);
-    //[base]~^ ERROR implementation of `Parser` is not general enough
-    //[nll]~^^ ERROR mismatched types
-    //[nll]~| ERROR mismatched types
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
     foo(baz, "string", |s| s.0.len() == 5);
-    //[base]~^ ERROR implementation of `Parser` is not general enough
-    //[nll]~^^ ERROR mismatched types
-    //[nll]~| ERROR mismatched types
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
 }

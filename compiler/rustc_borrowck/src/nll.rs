@@ -1,7 +1,7 @@
 //! The entry point of the NLL borrow checker.
 
 use rustc_data_structures::vec_map::VecMap;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
@@ -44,7 +44,7 @@ pub type PoloniusOutput = Output<RustcFacts>;
 /// closure requirements to propagate, and any generated errors.
 pub(crate) struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
-    pub opaque_type_values: VecMap<DefId, OpaqueHiddenType<'tcx>>,
+    pub opaque_type_values: VecMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     pub polonius_input: Option<Box<AllFacts>>,
     pub polonius_output: Option<Rc<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
@@ -55,8 +55,8 @@ pub(crate) struct NllOutput<'tcx> {
 /// regions (e.g., region parameters) declared on the function. That set will need to be given to
 /// `compute_regions`.
 #[instrument(skip(infcx, param_env, body, promoted), level = "debug")]
-pub(crate) fn replace_regions_in_mir<'cx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'tcx>,
+pub(crate) fn replace_regions_in_mir<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,
@@ -155,7 +155,7 @@ fn populate_polonius_move_facts(
 ///
 /// This may result in errors being reported.
 pub(crate) fn compute_regions<'cx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexVec<Promoted, Body<'tcx>>,
@@ -278,9 +278,9 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     // Dump facts if requested.
     let polonius_output = all_facts.as_ref().and_then(|all_facts| {
-        if infcx.tcx.sess.opts.debugging_opts.nll_facts {
+        if infcx.tcx.sess.opts.unstable_opts.nll_facts {
             let def_path = infcx.tcx.def_path(def_id);
-            let dir_path = PathBuf::from(&infcx.tcx.sess.opts.debugging_opts.nll_facts_dir)
+            let dir_path = PathBuf::from(&infcx.tcx.sess.opts.unstable_opts.nll_facts_dir)
                 .join(def_path.to_filename_friendly_no_crate());
             all_facts.write_to_dir(dir_path, location_table).unwrap();
         }
@@ -299,7 +299,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, &body, polonius_output.clone());
+        regioncx.solve(infcx, param_env, &body, polonius_output.clone());
 
     if !nll_errors.is_empty() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
@@ -318,8 +318,8 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     }
 }
 
-pub(super) fn dump_mir_results<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub(super) fn dump_mir_results<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
@@ -368,12 +368,12 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
     };
 }
 
-pub(super) fn dump_annotation<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub(super) fn dump_annotation<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
-    opaque_type_values: &VecMap<DefId, OpaqueHiddenType<'tcx>>,
+    opaque_type_values: &VecMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     errors: &mut crate::error::BorrowckErrors<'tcx>,
 ) {
     let tcx = infcx.tcx;
@@ -389,8 +389,9 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     // viewing the intraprocedural state, the -Zdump-mir output is
     // better.
 
+    let def_span = tcx.def_span(body.source.def_id());
     let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
-        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "external requirements");
+        let mut err = tcx.sess.diagnostic().span_note_diag(def_span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
 
@@ -409,7 +410,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
 
         err
     } else {
-        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "no external requirements");
+        let mut err = tcx.sess.diagnostic().span_note_diag(def_span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
         err

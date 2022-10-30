@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) -C extra-filename=-hash foo.rs

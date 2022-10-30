@@ -459,7 +459,7 @@
 //! [`Result`] of a collection of each contained value of the original
 //! [`Result`] values, or [`Err`] if any of the elements was [`Err`].
 //!
-//! [impl-FromIterator]: Result#impl-FromIterator%3CResult%3CA%2C%20E%3E%3E
+//! [impl-FromIterator]: Result#impl-FromIterator%3CResult%3CA%2C%20E%3E%3E-for-Result%3CV%2C%20E%3E
 //!
 //! ```
 //! let v = [Ok(2), Ok(4), Err("err!"), Ok(8)];
@@ -475,8 +475,8 @@
 //! to provide the [`product`][Iterator::product] and
 //! [`sum`][Iterator::sum] methods.
 //!
-//! [impl-Product]: Result#impl-Product%3CResult%3CU%2C%20E%3E%3E
-//! [impl-Sum]: Result#impl-Sum%3CResult%3CU%2C%20E%3E%3E
+//! [impl-Product]: Result#impl-Product%3CResult%3CU%2C%20E%3E%3E-for-Result%3CT%2C%20E%3E
+//! [impl-Sum]: Result#impl-Sum%3CResult%3CU%2C%20E%3E%3E-for-Result%3CT%2C%20E%3E
 //!
 //! ```
 //! let v = [Err("error!"), Ok(1), Ok(2), Ok(3), Err("foo")];
@@ -548,22 +548,25 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_some_with)]
+    /// #![feature(is_some_and)]
     ///
     /// let x: Result<u32, &str> = Ok(2);
-    /// assert_eq!(x.is_ok_and(|&x| x > 1), true);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), true);
     ///
     /// let x: Result<u32, &str> = Ok(0);
-    /// assert_eq!(x.is_ok_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), false);
     ///
     /// let x: Result<u32, &str> = Err("hey");
-    /// assert_eq!(x.is_ok_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), false);
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_ok_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
-        matches!(self, Ok(x) if f(x))
+    #[unstable(feature = "is_some_and", issue = "93050")]
+    pub fn is_ok_and(self, f: impl FnOnce(T) -> bool) -> bool {
+        match self {
+            Err(_) => false,
+            Ok(x) => f(x),
+        }
     }
 
     /// Returns `true` if the result is [`Err`].
@@ -592,7 +595,7 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_some_with)]
+    /// #![feature(is_some_and)]
     /// use std::io::{Error, ErrorKind};
     ///
     /// let x: Result<u32, Error> = Err(Error::new(ErrorKind::NotFound, "!"));
@@ -606,9 +609,12 @@ impl<T, E> Result<T, E> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_err_and(&self, f: impl FnOnce(&E) -> bool) -> bool {
-        matches!(self, Err(x) if f(x))
+    #[unstable(feature = "is_some_and", issue = "93050")]
+    pub fn is_err_and(self, f: impl FnOnce(E) -> bool) -> bool {
+        match self {
+            Ok(_) => false,
+            Err(e) => f(e),
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -1009,6 +1015,15 @@ impl<T, E> Result<T, E> {
 
     /// Returns the contained [`Ok`] value, consuming the `self` value.
     ///
+    /// Because this function may panic, its use is generally discouraged.
+    /// Instead, prefer to use pattern matching and handle the [`Err`]
+    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
+    /// [`unwrap_or_default`].
+    ///
+    /// [`unwrap_or`]: Result::unwrap_or
+    /// [`unwrap_or_else`]: Result::unwrap_or_else
+    /// [`unwrap_or_default`]: Result::unwrap_or_default
+    ///
     /// # Panics
     ///
     /// Panics if the value is an [`Err`], with a panic message including the
@@ -1276,6 +1291,11 @@ impl<T, E> Result<T, E> {
 
     /// Returns `res` if the result is [`Ok`], otherwise returns the [`Err`] value of `self`.
     ///
+    /// Arguments passed to `and` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`and_then`], which is
+    /// lazily evaluated.
+    ///
+    /// [`and_then`]: Result::and_then
     ///
     /// # Examples
     ///
@@ -1762,40 +1782,6 @@ impl<T, E> Result<Result<T, E>, E> {
     }
 }
 
-impl<T> Result<T, T> {
-    /// Returns the [`Ok`] value if `self` is `Ok`, and the [`Err`] value if
-    /// `self` is `Err`.
-    ///
-    /// In other words, this function returns the value (the `T`) of a
-    /// `Result<T, T>`, regardless of whether or not that result is `Ok` or
-    /// `Err`.
-    ///
-    /// This can be useful in conjunction with APIs such as
-    /// [`Atomic*::compare_exchange`], or [`slice::binary_search`], but only in
-    /// cases where you don't care if the result was `Ok` or not.
-    ///
-    /// [`Atomic*::compare_exchange`]: crate::sync::atomic::AtomicBool::compare_exchange
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(result_into_ok_or_err)]
-    /// let ok: Result<u32, u32> = Ok(3);
-    /// let err: Result<u32, u32> = Err(4);
-    ///
-    /// assert_eq!(ok.into_ok_or_err(), 3);
-    /// assert_eq!(err.into_ok_or_err(), 4);
-    /// ```
-    #[inline]
-    #[unstable(feature = "result_into_ok_or_err", reason = "newly added", issue = "82223")]
-    pub const fn into_ok_or_err(self) -> T {
-        match self {
-            Ok(v) => v,
-            Err(v) => v,
-        }
-    }
-}
-
 // This is a separate function to reduce the code size of the methods
 #[cfg(not(feature = "panic_immediate_abort"))]
 #[inline(never)]
@@ -2086,9 +2072,6 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// so the final value of `shared` is 6 (= `3 + 2 + 1`), not 16.
     #[inline]
     fn from_iter<I: IntoIterator<Item = Result<A, E>>>(iter: I) -> Result<V, E> {
-        // FIXME(#11084): This could be replaced with Iterator::scan when this
-        // performance bug is closed.
-
         iter::try_process(iter.into_iter(), |i| i.collect())
     }
 }
@@ -2136,6 +2119,7 @@ impl<T, E, F: From<E>> ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
 }
 
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-impl<T, E> ops::Residual<T> for Result<convert::Infallible, E> {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<T, E> const ops::Residual<T> for Result<convert::Infallible, E> {
     type TryType = Result<T, E>;
 }

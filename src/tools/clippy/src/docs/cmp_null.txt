@@ -1,0 +1,23 @@
+### What it does
+This lint checks for equality comparisons with `ptr::null`
+
+### Why is this bad?
+It's easier and more readable to use the inherent
+`.is_null()`
+method instead
+
+### Example
+```
+use std::ptr;
+
+if x == ptr::null {
+    // ..
+}
+```
+
+Use instead:
+```
+if x.is_null() {
+    // ..
+}
+```

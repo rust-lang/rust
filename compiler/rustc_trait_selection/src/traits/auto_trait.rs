@@ -3,11 +3,14 @@
 
 use super::*;
 
+use crate::errors::UnableToConstructConstantValue;
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
-use rustc_middle::ty::fold::TypeFolder;
-use rustc_middle::ty::{Region, RegionVid, Term};
+use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::{PolyTraitRef, Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
@@ -63,13 +66,13 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// struct Foo<T> { data: Box<T> }
     /// ```
     ///
-    /// then this might return that Foo<T>: Send if T: Send (encoded in the AutoTraitResult type).
-    /// The analysis attempts to account for custom impls as well as other complex cases. This
-    /// result is intended for use by rustdoc and other such consumers.
+    /// then this might return that `Foo<T>: Send` if `T: Send` (encoded in the AutoTraitResult
+    /// type). The analysis attempts to account for custom impls as well as other complex cases.
+    /// This result is intended for use by rustdoc and other such consumers.
     ///
     /// (Note that due to the coinductive nature of Send, the full and correct result is actually
     /// quite simple to generate. That is, when a type has no custom impl, it is Send iff its field
-    /// types are all Send. So, in our example, we might have that Foo<T>: Send if Box<T>: Send.
+    /// types are all Send. So, in our example, we might have that `Foo<T>: Send` if `Box<T>: Send`.
     /// But this is often not the best way to present to the user.)
     ///
     /// Warning: The API should be considered highly unstable, and it may be refactored or removed
@@ -87,153 +90,105 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let trait_pred = ty::Binder::dummy(trait_ref);
 
-        let bail_out = tcx.infer_ctxt().enter(|infcx| {
-            let mut selcx = SelectionContext::new(&infcx);
-            let result = selcx.select(&Obligation::new(
-                ObligationCause::dummy(),
-                orig_env,
-                trait_pred.to_poly_trait_predicate(),
-            ));
-
-            match result {
-                Ok(Some(ImplSource::UserDefined(_))) => {
-                    debug!(
-                        "find_auto_trait_generics({:?}): \
-                         manual impl found, bailing out",
-                        trait_ref
-                    );
-                    return true;
-                }
-                _ => {}
+        let infcx = tcx.infer_ctxt().build();
+        let mut selcx = SelectionContext::new(&infcx);
+        for f in [
+            PolyTraitRef::to_poly_trait_predicate,
+            PolyTraitRef::to_poly_trait_predicate_negative_polarity,
+        ] {
+            let result =
+                selcx.select(&Obligation::new(ObligationCause::dummy(), orig_env, f(&trait_pred)));
+            if let Ok(Some(ImplSource::UserDefined(_))) = result {
+                debug!(
+                    "find_auto_trait_generics({:?}): \
+                 manual impl found, bailing out",
+                    trait_ref
+                );
+                // If an explicit impl exists, it always takes priority over an auto impl
+                return AutoTraitResult::ExplicitImpl;
             }
-
-            let result = selcx.select(&Obligation::new(
-                ObligationCause::dummy(),
-                orig_env,
-                trait_pred.to_poly_trait_predicate_negative_polarity(),
-            ));
-
-            match result {
-                Ok(Some(ImplSource::UserDefined(_))) => {
-                    debug!(
-                        "find_auto_trait_generics({:?}): \
-                         manual impl found, bailing out",
-                        trait_ref
-                    );
-                    true
-                }
-                _ => false,
-            }
-        });
-
-        // If an explicit impl exists, it always takes priority over an auto impl
-        if bail_out {
-            return AutoTraitResult::ExplicitImpl;
         }
 
-        tcx.infer_ctxt().enter(|infcx| {
-            let mut fresh_preds = FxHashSet::default();
+        let infcx = tcx.infer_ctxt().build();
+        let mut fresh_preds = FxHashSet::default();
 
-            // Due to the way projections are handled by SelectionContext, we need to run
-            // evaluate_predicates twice: once on the original param env, and once on the result of
-            // the first evaluate_predicates call.
-            //
-            // The problem is this: most of rustc, including SelectionContext and traits::project,
-            // are designed to work with a concrete usage of a type (e.g., Vec<u8>
-            // fn<T>() { Vec<T> }. This information will generally never change - given
-            // the 'T' in fn<T>() { ... }, we'll never know anything else about 'T'.
-            // If we're unable to prove that 'T' implements a particular trait, we're done -
-            // there's nothing left to do but error out.
-            //
-            // However, synthesizing an auto trait impl works differently. Here, we start out with
-            // a set of initial conditions - the ParamEnv of the struct/enum/union we're dealing
-            // with - and progressively discover the conditions we need to fulfill for it to
-            // implement a certain auto trait. This ends up breaking two assumptions made by trait
-            // selection and projection:
-            //
-            // * We can always cache the result of a particular trait selection for the lifetime of
-            // an InfCtxt
-            // * Given a projection bound such as '<T as SomeTrait>::SomeItem = K', if 'T:
-            // SomeTrait' doesn't hold, then we don't need to care about the 'SomeItem = K'
-            //
-            // We fix the first assumption by manually clearing out all of the InferCtxt's caches
-            // in between calls to SelectionContext.select. This allows us to keep all of the
-            // intermediate types we create bound to the 'tcx lifetime, rather than needing to lift
-            // them between calls.
-            //
-            // We fix the second assumption by reprocessing the result of our first call to
-            // evaluate_predicates. Using the example of '<T as SomeTrait>::SomeItem = K', our first
-            // pass will pick up 'T: SomeTrait', but not 'SomeItem = K'. On our second pass,
-            // traits::project will see that 'T: SomeTrait' is in our ParamEnv, allowing
-            // SelectionContext to return it back to us.
+        // Due to the way projections are handled by SelectionContext, we need to run
+        // evaluate_predicates twice: once on the original param env, and once on the result of
+        // the first evaluate_predicates call.
+        //
+        // The problem is this: most of rustc, including SelectionContext and traits::project,
+        // are designed to work with a concrete usage of a type (e.g., Vec<u8>
+        // fn<T>() { Vec<T> }. This information will generally never change - given
+        // the 'T' in fn<T>() { ... }, we'll never know anything else about 'T'.
+        // If we're unable to prove that 'T' implements a particular trait, we're done -
+        // there's nothing left to do but error out.
+        //
+        // However, synthesizing an auto trait impl works differently. Here, we start out with
+        // a set of initial conditions - the ParamEnv of the struct/enum/union we're dealing
+        // with - and progressively discover the conditions we need to fulfill for it to
+        // implement a certain auto trait. This ends up breaking two assumptions made by trait
+        // selection and projection:
+        //
+        // * We can always cache the result of a particular trait selection for the lifetime of
+        // an InfCtxt
+        // * Given a projection bound such as '<T as SomeTrait>::SomeItem = K', if 'T:
+        // SomeTrait' doesn't hold, then we don't need to care about the 'SomeItem = K'
+        //
+        // We fix the first assumption by manually clearing out all of the InferCtxt's caches
+        // in between calls to SelectionContext.select. This allows us to keep all of the
+        // intermediate types we create bound to the 'tcx lifetime, rather than needing to lift
+        // them between calls.
+        //
+        // We fix the second assumption by reprocessing the result of our first call to
+        // evaluate_predicates. Using the example of '<T as SomeTrait>::SomeItem = K', our first
+        // pass will pick up 'T: SomeTrait', but not 'SomeItem = K'. On our second pass,
+        // traits::project will see that 'T: SomeTrait' is in our ParamEnv, allowing
+        // SelectionContext to return it back to us.
 
-            let Some((new_env, user_env)) = self.evaluate_predicates(
-                &infcx,
-                trait_did,
-                ty,
-                orig_env,
-                orig_env,
-                &mut fresh_preds,
-                false,
-            ) else {
-                return AutoTraitResult::NegativeImpl;
-            };
+        let Some((new_env, user_env)) = self.evaluate_predicates(
+            &infcx,
+            trait_did,
+            ty,
+            orig_env,
+            orig_env,
+            &mut fresh_preds,
+            false,
+        ) else {
+            return AutoTraitResult::NegativeImpl;
+        };
 
-            let (full_env, full_user_env) = self
-                .evaluate_predicates(
-                    &infcx,
-                    trait_did,
-                    ty,
-                    new_env,
-                    user_env,
-                    &mut fresh_preds,
-                    true,
-                )
-                .unwrap_or_else(|| {
-                    panic!("Failed to fully process: {:?} {:?} {:?}", ty, trait_did, orig_env)
-                });
+        let (full_env, full_user_env) = self
+            .evaluate_predicates(&infcx, trait_did, ty, new_env, user_env, &mut fresh_preds, true)
+            .unwrap_or_else(|| {
+                panic!("Failed to fully process: {:?} {:?} {:?}", ty, trait_did, orig_env)
+            });
 
-            debug!(
-                "find_auto_trait_generics({:?}): fulfilling \
-                 with {:?}",
-                trait_ref, full_env
-            );
-            infcx.clear_caches();
+        debug!(
+            "find_auto_trait_generics({:?}): fulfilling \
+             with {:?}",
+            trait_ref, full_env
+        );
+        infcx.clear_caches();
 
-            // At this point, we already have all of the bounds we need. FulfillmentContext is used
-            // to store all of the necessary region/lifetime bounds in the InferContext, as well as
-            // an additional sanity check.
-            let mut fulfill = FulfillmentContext::new();
-            fulfill.register_bound(&infcx, full_env, ty, trait_did, ObligationCause::dummy());
-            let errors = fulfill.select_all_or_error(&infcx);
+        // At this point, we already have all of the bounds we need. FulfillmentContext is used
+        // to store all of the necessary region/lifetime bounds in the InferContext, as well as
+        // an additional sanity check.
+        let errors =
+            super::fully_solve_bound(&infcx, ObligationCause::dummy(), full_env, ty, trait_did);
+        if !errors.is_empty() {
+            panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, errors);
+        }
 
-            if !errors.is_empty() {
-                panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, errors);
-            }
+        infcx.process_registered_region_obligations(&Default::default(), full_env);
 
-            let body_id_map: FxHashMap<_, _> = infcx
-                .inner
-                .borrow()
-                .region_obligations()
-                .iter()
-                .map(|&(id, _)| (id, vec![]))
-                .collect();
+        let region_data =
+            infcx.inner.borrow_mut().unwrap_region_constraints().region_constraint_data().clone();
 
-            infcx.process_registered_region_obligations(&body_id_map, None, full_env);
+        let vid_to_region = self.map_vid_to_region(&region_data);
 
-            let region_data = infcx
-                .inner
-                .borrow_mut()
-                .unwrap_region_constraints()
-                .region_constraint_data()
-                .clone();
+        let info = AutoTraitInfo { full_user_env, region_data, vid_to_region };
 
-            let vid_to_region = self.map_vid_to_region(&region_data);
-
-            let info = AutoTraitInfo { full_user_env, region_data, vid_to_region };
-
-            AutoTraitResult::PositiveImpl(auto_trait_callback(info))
-        })
+        AutoTraitResult::PositiveImpl(auto_trait_callback(info))
     }
 }
 
@@ -279,7 +234,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// user.
     fn evaluate_predicates(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         trait_did: DefId,
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -349,7 +304,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         }
                     }
 
-                    let obligations = impl_source.clone().nested_obligations().into_iter();
+                    let obligations = impl_source.borrow_nested_obligations().iter().cloned();
 
                     if !self.evaluate_nested_obligations(
                         ty,
@@ -619,7 +574,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        if let Term::Ty(ty) = p.term().skip_binder() {
+        if let Some(ty) = p.term().skip_binder().ty() {
             matches!(ty.kind(), ty::Projection(proj) if proj == &p.skip_binder().projection_ty)
         } else {
             false
@@ -799,9 +754,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::RegionOutlives(binder) => {
                     let binder = bound_predicate.rebind(binder);
-                    if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
-                        return false;
-                    }
+                    select.infcx().region_outlives_predicate(&dummy_cause, binder)
                 }
                 ty::PredicateKind::TypeOutlives(binder) => {
                     let binder = bound_predicate.rebind(binder);
@@ -828,13 +781,25 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val() {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
                             match select.infcx().const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,
                                 Some(obligation.cause.span),
                             ) {
-                                Ok(val) => Ok(ty::Const::from_value(select.tcx(), val, c.ty())),
+                                Ok(Some(valtree)) => {
+                                    Ok(ty::Const::from_value(select.tcx(), valtree, c.ty()))
+                                }
+                                Ok(None) => {
+                                    let tcx = self.tcx;
+                                    let def_id = unevaluated.def.did;
+                                    let reported =
+                                        tcx.sess.emit_err(UnableToConstructConstantValue {
+                                            span: tcx.def_span(def_id),
+                                            unevaluated: unevaluated,
+                                        });
+                                    Err(ErrorHandled::Reported(reported))
+                                }
                                 Err(err) => Err(err),
                             }
                         } else {
@@ -874,7 +839,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
     pub fn clean_pred(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         p: ty::Predicate<'tcx>,
     ) -> ty::Predicate<'tcx> {
         infcx.freshen(p)

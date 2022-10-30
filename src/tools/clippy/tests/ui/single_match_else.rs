@@ -1,8 +1,6 @@
 // aux-build: proc_macro_with_span.rs
-
 #![warn(clippy::single_match_else)]
-#![allow(clippy::needless_return)]
-#![allow(clippy::no_effect)]
+#![allow(clippy::needless_return, clippy::no_effect, clippy::uninlined_format_args)]
 
 extern crate proc_macro_with_span;
 use proc_macro_with_span::with_span;
@@ -96,5 +94,24 @@ fn main() {
             println!("else block");
             return;
         },
+    }
+
+    // lint here
+    use std::convert::Infallible;
+    match Result::<i32, Infallible>::Ok(1) {
+        Ok(a) => println!("${:?}", a),
+        Err(_) => {
+            println!("else block");
+            return;
+        }
+    }
+
+    use std::borrow::Cow;
+    match Cow::from("moo") {
+        Cow::Owned(a) => println!("${:?}", a),
+        Cow::Borrowed(_) => {
+            println!("else block");
+            return;
+        }
     }
 }

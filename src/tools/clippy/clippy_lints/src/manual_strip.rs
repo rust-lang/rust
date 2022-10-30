@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 
         if_chain! {
             if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr);
-            if let ExprKind::MethodCall(_, [target_arg, pattern], _) = cond.kind;
+            if let ExprKind::MethodCall(_, target_arg, [pattern], _) = cond.kind;
             if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id);
             if let ExprKind::Path(target_path) = &target_arg.kind;
             then {
@@ -108,15 +108,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                     };
 
                     let test_span = expr.span.until(then.span);
-                    span_lint_and_then(cx, MANUAL_STRIP, strippings[0], &format!("stripping a {} manually", kind_word), |diag| {
-                        diag.span_note(test_span, &format!("the {} was tested here", kind_word));
+                    span_lint_and_then(cx, MANUAL_STRIP, strippings[0], &format!("stripping a {kind_word} manually"), |diag| {
+                        diag.span_note(test_span, &format!("the {kind_word} was tested here"));
                         multispan_sugg(
                             diag,
-                            &format!("try using the `strip_{}` method", kind_word),
+                            &format!("try using the `strip_{kind_word}` method"),
                             vec![(test_span,
-                                  format!("if let Some(<stripped>) = {}.strip_{}({}) ",
+                                  format!("if let Some(<stripped>) = {}.strip_{kind_word}({}) ",
                                           snippet(cx, target_arg.span, ".."),
-                                          kind_word,
                                           snippet(cx, pattern.span, "..")))]
                             .into_iter().chain(strippings.into_iter().map(|span| (span, "<stripped>".into()))),
                         );
@@ -132,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 // Returns `Some(arg)` if `expr` matches `arg.len()` and `None` otherwise.
 fn len_arg<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if_chain! {
-        if let ExprKind::MethodCall(_, [arg], _) = expr.kind;
+        if let ExprKind::MethodCall(_, arg, [], _) = expr.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if match_def_path(cx, method_def_id, &paths::STR_LEN);
         then {

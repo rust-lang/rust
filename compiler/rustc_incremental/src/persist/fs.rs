@@ -447,7 +447,7 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
         }
     }
 
-    if sess.opts.debugging_opts.incremental_info {
+    if sess.opts.unstable_opts.incremental_info {
         eprintln!(
             "[incremental] session directory: \
                   {} files hard-linked",

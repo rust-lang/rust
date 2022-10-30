@@ -1,0 +1,13 @@
+### What it does
+Checks for binding a unit value.
+
+### Why is this bad?
+A unit value cannot usefully be used anywhere. So
+binding one is kind of pointless.
+
+### Example
+```
+let x = {
+    1;
+};
+```

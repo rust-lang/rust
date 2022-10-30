@@ -14,15 +14,14 @@
 // - `relocation-model` set to `static`; also no PIE, no relro and no dynamic
 // linking. rationale: matches `thumb` targets
 
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
+use super::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     let opts = TargetOptions {
         abi: "eabi".into(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+        linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         features: "+v7,+thumb2,+soft-float,-neon,+strict-align".into(),
-        executables: true,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(64),

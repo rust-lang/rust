@@ -1,4 +1,4 @@
-//! This crates defines the trait resolution method.
+//! This crate defines the trait resolution method.
 //!
 //! - **Traits.** Trait resolution is implemented in the `traits` module.
 //!
@@ -16,11 +16,10 @@
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(hash_drain_filter)]
-#![feature(label_break_value)]
 #![feature(let_chains)]
-#![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
+#![feature(type_alias_impl_trait)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]
@@ -36,6 +35,6 @@ extern crate rustc_middle;
 extern crate smallvec;
 
 pub mod autoderef;
+pub mod errors;
 pub mod infer;
-pub mod opaque_types;
 pub mod traits;

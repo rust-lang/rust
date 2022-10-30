@@ -1,7 +1,7 @@
-use crate::ascii;
 use crate::cmp::Ordering;
 use crate::ffi::c_char;
-use crate::fmt::{self, Write};
+use crate::fmt;
+use crate::intrinsics;
 use crate::ops;
 use crate::slice;
 use crate::slice::memchr;
@@ -65,9 +65,9 @@ use crate::str;
 /// extern "C" { fn my_string() -> *const c_char; }
 ///
 /// fn my_string_safe() -> String {
-///     unsafe {
-///         CStr::from_ptr(my_string()).to_string_lossy().into_owned()
-///     }
+///     let cstr = unsafe { CStr::from_ptr(my_string()) };
+///     // Get copy-on-write Cow<'_, str>, then guarantee a freshly-owned String allocation
+///     String::from_utf8_lossy(cstr.to_bytes()).to_string()
 /// }
 ///
 /// println!("string: {}", my_string_safe());
@@ -76,7 +76,7 @@ use crate::str;
 /// [str]: prim@str "str"
 #[derive(Hash)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "CStr")]
-#[unstable(feature = "core_c_str", issue = "94079")]
+#[stable(feature = "core_c_str", since = "1.64.0")]
 #[rustc_has_incoherent_inherent_impls]
 // FIXME:
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
@@ -108,7 +108,7 @@ pub struct CStr {
 /// let _: FromBytesWithNulError = CStr::from_bytes_with_nul(b"f\0oo").unwrap_err();
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "core_c_str", issue = "94079")]
+#[stable(feature = "core_c_str", since = "1.64.0")]
 pub struct FromBytesWithNulError {
     kind: FromBytesWithNulErrorKind,
 }
@@ -120,10 +120,10 @@ enum FromBytesWithNulErrorKind {
 }
 
 impl FromBytesWithNulError {
-    fn interior_nul(pos: usize) -> FromBytesWithNulError {
+    const fn interior_nul(pos: usize) -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::InteriorNul(pos) }
     }
-    fn not_nul_terminated() -> FromBytesWithNulError {
+    const fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
     }
 
@@ -160,11 +160,7 @@ impl fmt::Display for FromBytesUntilNulError {
 #[stable(feature = "cstr_debug", since = "1.3.0")]
 impl fmt::Debug for CStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\"")?;
-        for byte in self.to_bytes().iter().flat_map(|&b| ascii::escape_default(b)) {
-            f.write_char(byte as char)?;
-        }
-        write!(f, "\"")
+        write!(f, "\"{}\"", self.to_bytes().escape_ascii())
     }
 }
 
@@ -196,19 +192,31 @@ impl CStr {
     /// allows inspection and interoperation of non-owned C strings. The total
     /// size of the raw C string must be smaller than `isize::MAX` **bytes**
     /// in memory due to calling the `slice::from_raw_parts` function.
-    /// This method is unsafe for a number of reasons:
     ///
-    /// * There is no guarantee to the validity of `ptr`.
-    /// * The returned lifetime is not guaranteed to be the actual lifetime of
-    ///   `ptr`.
-    /// * There is no guarantee that the memory pointed to by `ptr` contains a
-    ///   valid nul terminator byte at the end of the string.
-    /// * It is not guaranteed that the memory pointed by `ptr` won't change
-    ///   before the `CStr` has been destroyed.
+    /// # Safety
+    ///
+    /// * The memory pointed to by `ptr` must contain a valid nul terminator at the
+    ///   end of the string.
+    ///
+    /// * `ptr` must be [valid] for reads of bytes up to and including the null terminator.
+    ///   This means in particular:
+    ///
+    ///     * The entire memory range of this `CStr` must be contained within a single allocated object!
+    ///     * `ptr` must be non-null even for a zero-length cstr.
+    ///
+    /// * The memory referenced by the returned `CStr` must not be mutated for
+    ///   the duration of lifetime `'a`.
     ///
     /// > **Note**: This operation is intended to be a 0-cost cast but it is
     /// > currently implemented with an up-front calculation of the length of
     /// > the string. This is not guaranteed to always be the case.
+    ///
+    /// # Caveat
+    ///
+    /// The lifetime for the returned slice is inferred from its usage. To prevent accidental misuse,
+    /// it's suggested to tie the lifetime to whichever source lifetime is safe in the context,
+    /// such as by providing a helper function taking the lifetime of a host value for the slice,
+    /// or by explicit annotation.
     ///
     /// # Examples
     ///
@@ -227,6 +235,8 @@ impl CStr {
     /// }
     /// # }
     /// ```
+    ///
+    /// [valid]: core::ptr#safety
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -284,7 +294,8 @@ impl CStr {
     /// ```
     ///
     #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
-    pub fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
+    #[rustc_const_unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+    pub const fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
             Some(nul_pos) => {
@@ -333,7 +344,8 @@ impl CStr {
     /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    pub fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
             Some(nul_pos) if nul_pos + 1 == bytes.len() => {
@@ -349,8 +361,11 @@ impl CStr {
     /// Unsafely creates a C string wrapper from a byte slice.
     ///
     /// This function will cast the provided `bytes` to a `CStr` wrapper without
-    /// performing any sanity checks. The provided slice **must** be nul-terminated
-    /// and not contain any interior nul bytes.
+    /// performing any sanity checks.
+    ///
+    /// # Safety
+    /// The provided slice **must** be nul-terminated and not contain any interior
+    /// nul bytes.
     ///
     /// # Examples
     ///
@@ -367,21 +382,42 @@ impl CStr {
     #[must_use]
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_cstr_unchecked", since = "1.59.0")]
+    #[rustc_allow_const_fn_unstable(const_eval_select)]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        // We're in a const fn, so this is the best we can do
-        debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
-        // SAFETY: Calling an inner function with the same prerequisites.
-        unsafe { Self::_from_bytes_with_nul_unchecked(bytes) }
-    }
+        #[inline]
+        fn rt_impl(bytes: &[u8]) -> &CStr {
+            // Chance at catching some UB at runtime with debug builds.
+            debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
 
-    #[inline]
-    const unsafe fn _from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        // SAFETY: Casting to CStr is safe because its internal representation
-        // is a [u8] too (safe only inside std).
-        // Dereferencing the obtained pointer is safe because it comes from a
-        // reference. Making a reference is then safe because its lifetime
-        // is bound by the lifetime of the given `bytes`.
-        unsafe { &*(bytes as *const [u8] as *const CStr) }
+            // SAFETY: Casting to CStr is safe because its internal representation
+            // is a [u8] too (safe only inside std).
+            // Dereferencing the obtained pointer is safe because it comes from a
+            // reference. Making a reference is then safe because its lifetime
+            // is bound by the lifetime of the given `bytes`.
+            unsafe { &*(bytes as *const [u8] as *const CStr) }
+        }
+
+        const fn const_impl(bytes: &[u8]) -> &CStr {
+            // Saturating so that an empty slice panics in the assert with a good
+            // message, not here due to underflow.
+            let mut i = bytes.len().saturating_sub(1);
+            assert!(!bytes.is_empty() && bytes[i] == 0, "input was not nul-terminated");
+
+            // Ending null byte exists, skip to the rest.
+            while i != 0 {
+                i -= 1;
+                let byte = bytes[i];
+                assert!(byte != 0, "input contained interior nul");
+            }
+
+            // SAFETY: See `rt_impl` cast.
+            unsafe { &*(bytes as *const [u8] as *const CStr) }
+        }
+
+        // SAFETY: The const and runtime versions have identical behavior
+        // unless the safety contract of `from_bytes_with_nul_unchecked` is
+        // violated, which is UB.
+        unsafe { intrinsics::const_eval_select((bytes,), const_impl, rt_impl) }
     }
 
     /// Returns the inner pointer to this C string.
@@ -438,6 +474,34 @@ impl CStr {
         self.inner.as_ptr()
     }
 
+    /// Returns `true` if `self.to_bytes()` has a length of 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cstr_is_empty)]
+    ///
+    /// use std::ffi::CStr;
+    /// # use std::ffi::FromBytesWithNulError;
+    ///
+    /// # fn main() { test().unwrap(); }
+    /// # fn test() -> Result<(), FromBytesWithNulError> {
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0")?;
+    /// assert!(!cstr.is_empty());
+    ///
+    /// let empty_cstr = CStr::from_bytes_with_nul(b"\0")?;
+    /// assert!(empty_cstr.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "cstr_is_empty", issue = "102444")]
+    pub const fn is_empty(&self) -> bool {
+        // SAFETY: We know there is at least one byte; for empty strings it
+        // is the NUL terminator.
+        (unsafe { self.inner.get_unchecked(0) }) == &0
+    }
+
     /// Converts this C string to a byte slice.
     ///
     /// The returned slice will **not** contain the trailing nul terminator that this C
@@ -459,7 +523,8 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_bytes(&self) -> &[u8] {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
         // SAFETY: to_bytes_with_nul returns slice with length at least 1
         unsafe { bytes.get_unchecked(..bytes.len() - 1) }
@@ -486,7 +551,8 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_bytes_with_nul(&self) -> &[u8] {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
         unsafe { &*(&self.inner as *const [c_char] as *const [u8]) }
@@ -509,7 +575,8 @@ impl CStr {
     /// assert_eq!(cstr.to_str(), Ok("foo"));
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const fn to_str(&self) -> Result<&str, str::Utf8Error> {
         // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
         // instead of in `from_ptr()`, it may be worth considering if this should
         // be rewritten to do the UTF-8 check inline with the length calculation

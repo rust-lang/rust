@@ -37,33 +37,6 @@ impl<A, B> Chain<A, B> {
     }
 }
 
-/// Fuse the iterator if the expression is `None`.
-macro_rules! fuse {
-    ($self:ident . $iter:ident . $($call:tt)+) => {
-        match $self.$iter {
-            Some(ref mut iter) => match iter.$($call)+ {
-                None => {
-                    $self.$iter = None;
-                    None
-                }
-                item => item,
-            },
-            None => None,
-        }
-    };
-}
-
-/// Try an iterator method without fusing,
-/// like an inline `.as_mut().and_then(...)`
-macro_rules! maybe {
-    ($self:ident . $iter:ident . $($call:tt)+) => {
-        match $self.$iter {
-            Some(ref mut iter) => iter.$($call)+,
-            None => None,
-        }
-    };
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> Iterator for Chain<A, B>
 where
@@ -74,10 +47,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<A::Item> {
-        match fuse!(self.a.next()) {
-            None => maybe!(self.b.next()),
-            item => item,
-        }
+        and_then_or_clear(&mut self.a, Iterator::next).or_else(|| self.b.as_mut()?.next())
     }
 
     #[inline]
@@ -161,7 +131,7 @@ where
             self.a = None;
         }
 
-        maybe!(self.b.nth(n))
+        self.b.as_mut()?.nth(n)
     }
 
     #[inline]
@@ -169,23 +139,15 @@ where
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        match fuse!(self.a.find(&mut predicate)) {
-            None => maybe!(self.b.find(predicate)),
-            item => item,
-        }
+        and_then_or_clear(&mut self.a, |a| a.find(&mut predicate))
+            .or_else(|| self.b.as_mut()?.find(predicate))
     }
 
     #[inline]
     fn last(self) -> Option<A::Item> {
         // Must exhaust a before b.
-        let a_last = match self.a {
-            Some(a) => a.last(),
-            None => None,
-        };
-        let b_last = match self.b {
-            Some(b) => b.last(),
-            None => None,
-        };
+        let a_last = self.a.and_then(Iterator::last);
+        let b_last = self.b.and_then(Iterator::last);
         b_last.or(a_last)
     }
 
@@ -220,10 +182,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<A::Item> {
-        match fuse!(self.b.next_back()) {
-            None => maybe!(self.a.next_back()),
-            item => item,
-        }
+        and_then_or_clear(&mut self.b, |b| b.next_back()).or_else(|| self.a.as_mut()?.next_back())
     }
 
     #[inline]
@@ -263,7 +222,7 @@ where
             self.b = None;
         }
 
-        maybe!(self.a.nth_back(n))
+        self.a.as_mut()?.nth_back(n)
     }
 
     #[inline]
@@ -271,10 +230,8 @@ where
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        match fuse!(self.b.rfind(&mut predicate)) {
-            None => maybe!(self.a.rfind(predicate)),
-            item => item,
-        }
+        and_then_or_clear(&mut self.b, |b| b.rfind(&mut predicate))
+            .or_else(|| self.a.as_mut()?.rfind(predicate))
     }
 
     fn try_rfold<Acc, F, R>(&mut self, mut acc: Acc, mut f: F) -> R
@@ -323,4 +280,13 @@ where
     A: TrustedLen,
     B: TrustedLen<Item = A::Item>,
 {
+}
+
+#[inline]
+fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option<U>) -> Option<U> {
+    let x = f(opt.as_mut()?);
+    if x.is_none() {
+        *opt = None;
+    }
+    x
 }

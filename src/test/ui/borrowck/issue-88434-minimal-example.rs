@@ -1,6 +1,7 @@
 // Regression test related to issue 88434
 
 const _CONST: &() = &f(&|_| {});
+//~^ ERROR constant
 
 const fn f<F>(_: &F)
 where

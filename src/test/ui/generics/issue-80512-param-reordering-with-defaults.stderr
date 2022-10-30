@@ -1,4 +1,4 @@
-error: lifetime parameters must be declared prior to type parameters
+error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/issue-80512-param-reordering-with-defaults.rs:3:18
    |
 LL | struct S<T = (), 'a>(&'a T);

@@ -1,0 +1,15 @@
+### What it does
+Checks for manual implementations of `str::repeat`
+
+### Why is this bad?
+These are both harder to read, as well as less performant.
+
+### Example
+```
+let x: String = std::iter::repeat('x').take(10).collect();
+```
+
+Use instead:
+```
+let x: String = "x".repeat(10);
+```

@@ -24,17 +24,15 @@ use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::LintPass;
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use std::any::Any;
 use std::cell::Cell;
 use std::slice;
-use tracing::debug;
 
 /// Extract the `LintStore` from the query context.
 /// This function exists because we've erased `LintStore` as `dyn Any` in the context.
-pub(crate) fn unerased_lint_store(tcx: TyCtxt<'_>) -> &LintStore {
+pub fn unerased_lint_store(tcx: TyCtxt<'_>) -> &LintStore {
     let store: &dyn Any = &*tcx.lint_store;
     store.downcast_ref().unwrap()
 }
@@ -59,9 +57,11 @@ impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
         let attrs = self.context.tcx.hir().attrs(id);
         let prev = self.context.last_node_with_lint_attrs;
         self.context.last_node_with_lint_attrs = id;
-        self.enter_attrs(attrs);
+        debug!("late context: enter_attrs({:?})", attrs);
+        lint_callback!(self, enter_lint_attrs, attrs);
         f(self);
-        self.exit_attrs(attrs);
+        debug!("late context: exit_attrs({:?})", attrs);
+        lint_callback!(self, exit_lint_attrs, attrs);
         self.context.last_node_with_lint_attrs = prev;
     }
 
@@ -76,20 +76,9 @@ impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
         self.context.param_env = old_param_env;
     }
 
-    fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, s: Span, n: hir::HirId) {
-        lint_callback!(self, check_mod, m, s, n);
+    fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, n: hir::HirId) {
+        lint_callback!(self, check_mod, m, n);
         hir_visit::walk_mod(self, m, n);
-        lint_callback!(self, check_mod_post, m, s, n);
-    }
-
-    fn enter_attrs(&mut self, attrs: &'tcx [ast::Attribute]) {
-        debug!("late context: enter_attrs({:?})", attrs);
-        lint_callback!(self, enter_lint_attrs, attrs);
-    }
-
-    fn exit_attrs(&mut self, attrs: &'tcx [ast::Attribute]) {
-        debug!("late context: exit_attrs({:?})", attrs);
-        lint_callback!(self, exit_lint_attrs, attrs);
     }
 }
 
@@ -126,7 +115,6 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
         self.with_lint_attrs(param.hir_id, |cx| {
-            lint_callback!(cx, check_param, param);
             hir_visit::walk_param(cx, param);
         });
     }
@@ -159,7 +147,6 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
             cx.with_param_env(it.hir_id(), |cx| {
                 lint_callback!(cx, check_foreign_item, it);
                 hir_visit::walk_foreign_item(cx, it);
-                lint_callback!(cx, check_foreign_item_post, it);
             });
         })
     }
@@ -200,23 +187,14 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         let old_cached_typeck_results = self.context.cached_typeck_results.take();
         let body = self.context.tcx.hir().body(body_id);
         lint_callback!(self, check_fn, fk, decl, body, span, id);
-        hir_visit::walk_fn(self, fk, decl, body_id, span, id);
-        lint_callback!(self, check_fn_post, fk, decl, body, span, id);
+        hir_visit::walk_fn(self, fk, decl, body_id, id);
         self.context.enclosing_body = old_enclosing_body;
         self.context.cached_typeck_results.set(old_cached_typeck_results);
     }
 
-    fn visit_variant_data(
-        &mut self,
-        s: &'tcx hir::VariantData<'tcx>,
-        _: Symbol,
-        _: &'tcx hir::Generics<'tcx>,
-        _: hir::HirId,
-        _: Span,
-    ) {
+    fn visit_variant_data(&mut self, s: &'tcx hir::VariantData<'tcx>) {
         lint_callback!(self, check_struct_def, s);
         hir_visit::walk_struct_def(self, s);
-        lint_callback!(self, check_struct_def_post, s);
     }
 
     fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
@@ -226,16 +204,10 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         })
     }
 
-    fn visit_variant(
-        &mut self,
-        v: &'tcx hir::Variant<'tcx>,
-        g: &'tcx hir::Generics<'tcx>,
-        item_id: hir::HirId,
-    ) {
+    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
         self.with_lint_attrs(v.id, |cx| {
             lint_callback!(cx, check_variant, v);
-            hir_visit::walk_variant(cx, v, g, item_id);
-            lint_callback!(cx, check_variant_post, v);
+            hir_visit::walk_variant(cx, v);
         })
     }
 
@@ -245,17 +217,12 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
-        lint_callback!(self, check_infer, inf);
         hir_visit::walk_inf(self, inf);
     }
 
-    fn visit_name(&mut self, sp: Span, name: Symbol) {
-        lint_callback!(self, check_name, sp, name);
-    }
-
-    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, s: Span, n: hir::HirId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _: Span, n: hir::HirId) {
         if !self.context.only_module {
-            self.process_mod(m, s, n);
+            self.process_mod(m, n);
         }
     }
 
@@ -288,17 +255,12 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_where_predicate(&mut self, p: &'tcx hir::WherePredicate<'tcx>) {
-        lint_callback!(self, check_where_predicate, p);
         hir_visit::walk_where_predicate(self, p);
     }
 
-    fn visit_poly_trait_ref(
-        &mut self,
-        t: &'tcx hir::PolyTraitRef<'tcx>,
-        m: hir::TraitBoundModifier,
-    ) {
-        lint_callback!(self, check_poly_trait_ref, t, m);
-        hir_visit::walk_poly_trait_ref(self, t, m);
+    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef<'tcx>) {
+        lint_callback!(self, check_poly_trait_ref, t);
+        hir_visit::walk_poly_trait_ref(self, t);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
@@ -308,7 +270,6 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
             cx.with_param_env(trait_item.hir_id(), |cx| {
                 lint_callback!(cx, check_trait_item, trait_item);
                 hir_visit::walk_trait_item(cx, trait_item);
-                lint_callback!(cx, check_trait_item_post, trait_item);
             });
         });
         self.context.generics = generics;
@@ -328,7 +289,6 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
-        lint_callback!(self, check_lifetime, lt);
         hir_visit::walk_lifetime(self, lt);
     }
 
@@ -337,19 +297,17 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_path(self, p);
     }
 
-    fn visit_attribute(&mut self, hir_id: hir::HirId, attr: &'tcx ast::Attribute) {
-        self.with_lint_attrs(hir_id, |cx| {
-            lint_callback!(cx, check_attribute, attr);
-        })
+    fn visit_attribute(&mut self, attr: &'tcx ast::Attribute) {
+        lint_callback!(self, check_attribute, attr);
     }
 }
 
-struct LateLintPassObjects<'a> {
-    lints: &'a mut [LateLintPassObject],
+struct LateLintPassObjects<'a, 'tcx> {
+    lints: &'a mut [LateLintPassObject<'tcx>],
 }
 
 #[allow(rustc::lint_pass_impl_without_macro)]
-impl LintPass for LateLintPassObjects<'_> {
+impl LintPass for LateLintPassObjects<'_, '_> {
     fn name(&self) -> &'static str {
         panic!()
     }
@@ -367,7 +325,7 @@ macro_rules! expand_late_lint_pass_impl_methods {
 
 macro_rules! late_lint_pass_impl {
     ([], [$hir:tt], $methods:tt) => {
-        impl<$hir> LateLintPass<$hir> for LateLintPassObjects<'_> {
+        impl<$hir> LateLintPass<$hir> for LateLintPassObjects<'_, $hir> {
             expand_late_lint_pass_impl_methods!([$hir], $methods);
         }
     };
@@ -396,13 +354,13 @@ fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
 
     let mut cx = LateContextAndPass { context, pass };
 
-    let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
-    cx.process_mod(module, span, hir_id);
+    let (module, _span, hir_id) = tcx.hir().get_module(module_def_id);
+    cx.process_mod(module, hir_id);
 
     // Visit the crate attributes
     if hir_id == hir::CRATE_HIR_ID {
         for attr in tcx.hir().attrs(hir::CRATE_HIR_ID).iter() {
-            cx.visit_attribute(hir_id, attr)
+            cx.visit_attribute(attr)
         }
     }
 }
@@ -412,7 +370,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
     module_def_id: LocalDefId,
     builtin_lints: T,
 ) {
-    if tcx.sess.opts.debugging_opts.no_interleave_lints {
+    if tcx.sess.opts.unstable_opts.no_interleave_lints {
         // These passes runs in late_lint_crate with -Z no_interleave_lints
         return;
     }
@@ -420,7 +378,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
     late_lint_mod_pass(tcx, module_def_id, builtin_lints);
 
     let mut passes: Vec<_> =
-        unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)()).collect();
+        unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)(tcx)).collect();
 
     if !passes.is_empty() {
         late_lint_mod_pass(tcx, module_def_id, LateLintPassObjects { lints: &mut passes[..] });
@@ -456,9 +414,10 @@ fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T)
 }
 
 fn late_lint_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
-    let mut passes = unerased_lint_store(tcx).late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
+    let mut passes =
+        unerased_lint_store(tcx).late_passes.iter().map(|p| (p)(tcx)).collect::<Vec<_>>();
 
-    if !tcx.sess.opts.debugging_opts.no_interleave_lints {
+    if !tcx.sess.opts.unstable_opts.no_interleave_lints {
         if !passes.is_empty() {
             late_lint_pass_crate(tcx, LateLintPassObjects { lints: &mut passes[..] });
         }
@@ -466,20 +425,23 @@ fn late_lint_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints
         late_lint_pass_crate(tcx, builtin_lints);
     } else {
         for pass in &mut passes {
-            tcx.sess.prof.extra_verbose_generic_activity("run_late_lint", pass.name()).run(|| {
-                late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
-            });
-        }
-
-        let mut passes: Vec<_> =
-            unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)()).collect();
-
-        for pass in &mut passes {
-            tcx.sess.prof.extra_verbose_generic_activity("run_late_module_lint", pass.name()).run(
+            tcx.sess.prof.verbose_generic_activity_with_arg("run_late_lint", pass.name()).run(
                 || {
                     late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
                 },
             );
+        }
+
+        let mut passes: Vec<_> =
+            unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)(tcx)).collect();
+
+        for pass in &mut passes {
+            tcx.sess
+                .prof
+                .verbose_generic_activity_with_arg("run_late_module_lint", pass.name())
+                .run(|| {
+                    late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
+                });
         }
     }
 }

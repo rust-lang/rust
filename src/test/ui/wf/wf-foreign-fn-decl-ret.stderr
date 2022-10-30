@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `(): Foo` is not satisfied
-  --> $DIR/wf-foreign-fn-decl-ret.rs:11:25
+  --> $DIR/wf-foreign-fn-decl-ret.rs:11:5
    |
 LL |     pub fn lint_me() -> <() as Foo>::Assoc;
-   |                         ^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
 
 error[E0277]: the trait bound `u32: Unsatisfied` is not satisfied
   --> $DIR/wf-foreign-fn-decl-ret.rs:14:32

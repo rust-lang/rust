@@ -1,18 +1,9 @@
-warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/raw-dylib-windows-only.rs:3:12
-   |
-LL | #![feature(raw_dylib)]
-   |            ^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
-
 error[E0455]: link kind `raw-dylib` is only supported on Windows targets
-  --> $DIR/raw-dylib-windows-only.rs:5:29
+  --> $DIR/raw-dylib-windows-only.rs:4:29
    |
 LL | #[link(name = "foo", kind = "raw-dylib")]
    |                             ^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0455`.

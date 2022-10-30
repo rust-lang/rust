@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 #![feature(associated_type_bounds)]
 
 trait Tr1 { type As1; }
@@ -19,8 +15,7 @@ where
 {
     // This should fail because `T: 'b` is not implied from `WF(St<'a, 'b, T>)`.
     let _failure_proves_not_implied_outlives_region_b: &'b T = &x.f0;
-    //[base]~^ ERROR lifetime mismatch [E0623]
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 enum En7<'a, 'b, T> // `<T::As1 as Tr2>::As2: 'a` is implied.
@@ -41,8 +36,7 @@ where
         En7::V0(x) => {
             // Also fails for the same reason as above:
             let _failure_proves_not_implied_outlives_region_b: &'b T = &x;
-            //[base]~^ ERROR lifetime mismatch [E0623]
-            //[nll]~^^ ERROR lifetime may not live long enough
+            //~^ ERROR lifetime may not live long enough
         },
         En7::V1(_) => {},
     }

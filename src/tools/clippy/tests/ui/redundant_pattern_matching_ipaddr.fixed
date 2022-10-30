@@ -1,8 +1,11 @@
 // run-rustfix
-
-#![warn(clippy::all)]
-#![warn(clippy::redundant_pattern_matching)]
-#![allow(unused_must_use, clippy::needless_bool, clippy::match_like_matches_macro)]
+#![warn(clippy::all, clippy::redundant_pattern_matching)]
+#![allow(unused_must_use)]
+#![allow(
+    clippy::match_like_matches_macro,
+    clippy::needless_bool,
+    clippy::uninlined_format_args
+)]
 
 use std::net::{
     IpAddr::{self, V4, V6},

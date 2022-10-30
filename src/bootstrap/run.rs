@@ -103,3 +103,25 @@ impl Step for BumpStage0 {
         builder.run(&mut cmd);
     }
 }
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct ReplaceVersionPlaceholder;
+
+impl Step for ReplaceVersionPlaceholder {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/replace-version-placeholder")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(ReplaceVersionPlaceholder);
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let mut cmd = builder.tool_cmd(Tool::ReplaceVersionPlaceholder);
+        cmd.arg(&builder.src);
+        builder.run(&mut cmd);
+    }
+}

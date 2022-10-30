@@ -1,87 +1,106 @@
-use crate::io;
-use crate::lazy;
+//! # Random key generation
+//!
+//! This module wraps the RNG provided by the OS. There are a few different
+//! ways to interface with the OS RNG so it's worth exploring each of the options.
+//! Note that at the time of writing these all go through the (undocumented)
+//! `bcryptPrimitives.dll` but they use different route to get there.
+//!
+//! Originally we were using [`RtlGenRandom`], however that function is
+//! deprecated and warns it "may be altered or unavailable in subsequent versions".
+//!
+//! So we switched to [`BCryptGenRandom`] with the `BCRYPT_USE_SYSTEM_PREFERRED_RNG`
+//! flag to query and find the system configured RNG. However, this change caused a small
+//! but significant number of users to experience panics caused by a failure of
+//! this function. See [#94098].
+//!
+//! The current version falls back to using `BCryptOpenAlgorithmProvider` if
+//! `BCRYPT_USE_SYSTEM_PREFERRED_RNG` fails for any reason.
+//!
+//! [#94098]: https://github.com/rust-lang/rust/issues/94098
+//! [`RtlGenRandom`]: https://docs.microsoft.com/en-us/windows/win32/api/ntsecapi/nf-ntsecapi-rtlgenrandom
+//! [`BCryptGenRandom`]: https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
 use crate::mem;
+use crate::ptr;
 use crate::sys::c;
 
-/// The kinds of HashMap RNG that may be available
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum HashMapRng {
-    Preferred,
-    Fallback,
-}
-
+/// Generates high quality secure random keys for use by [`HashMap`].
+///
+/// This is used to seed the default [`RandomState`].
+///
+/// [`HashMap`]: crate::collections::HashMap
+/// [`RandomState`]: crate::collections::hash_map::RandomState
 pub fn hashmap_random_keys() -> (u64, u64) {
-    match get_hashmap_rng() {
-        HashMapRng::Preferred => {
-            preferred_rng().expect("couldn't generate random bytes with preferred RNG")
+    Rng::SYSTEM.gen_random_keys().unwrap_or_else(fallback_rng)
+}
+
+struct Rng {
+    algorithm: c::BCRYPT_ALG_HANDLE,
+    flags: u32,
+}
+impl Rng {
+    const SYSTEM: Self = unsafe { Self::new(ptr::null_mut(), c::BCRYPT_USE_SYSTEM_PREFERRED_RNG) };
+
+    /// Create the RNG from an existing algorithm handle.
+    ///
+    /// # Safety
+    ///
+    /// The handle must either be null or a valid algorithm handle.
+    const unsafe fn new(algorithm: c::BCRYPT_ALG_HANDLE, flags: u32) -> Self {
+        Self { algorithm, flags }
+    }
+
+    /// Open a handle to the RNG algorithm.
+    fn open() -> Result<Self, c::NTSTATUS> {
+        use crate::sync::atomic::AtomicPtr;
+        use crate::sync::atomic::Ordering::{Acquire, Release};
+
+        // An atomic is used so we don't need to reopen the handle every time.
+        static HANDLE: AtomicPtr<crate::ffi::c_void> = AtomicPtr::new(ptr::null_mut());
+
+        let mut handle = HANDLE.load(Acquire);
+        if handle.is_null() {
+            let status = unsafe {
+                c::BCryptOpenAlgorithmProvider(
+                    &mut handle,
+                    c::BCRYPT_RNG_ALGORITHM.as_ptr(),
+                    ptr::null(),
+                    0,
+                )
+            };
+            if c::nt_success(status) {
+                // If another thread opens a handle first then use that handle instead.
+                let result = HANDLE.compare_exchange(ptr::null_mut(), handle, Release, Acquire);
+                if let Err(previous_handle) = result {
+                    // Close our handle and return the previous one.
+                    unsafe { c::BCryptCloseAlgorithmProvider(handle, 0) };
+                    handle = previous_handle;
+                }
+                Ok(unsafe { Self::new(handle, 0) })
+            } else {
+                Err(status)
+            }
+        } else {
+            Ok(unsafe { Self::new(handle, 0) })
         }
-        HashMapRng::Fallback => {
-            fallback_rng().expect("couldn't generate random bytes with fallback RNG")
-        }
+    }
+
+    fn gen_random_keys(self) -> Result<(u64, u64), c::NTSTATUS> {
+        let mut v = (0, 0);
+        let status = unsafe {
+            let size = mem::size_of_val(&v).try_into().unwrap();
+            c::BCryptGenRandom(self.algorithm, ptr::addr_of_mut!(v).cast(), size, self.flags)
+        };
+        if c::nt_success(status) { Ok(v) } else { Err(status) }
     }
 }
 
-/// Returns the HashMap RNG that should be used
-///
-/// Panics if they are both broken
-fn get_hashmap_rng() -> HashMapRng {
-    // Assume that if the preferred RNG is broken the first time we use it, it likely means
-    // that: the DLL has failed to load, there is no point to calling it over-and-over again,
-    // and we should cache the result
-    static VALUE: lazy::SyncOnceCell<HashMapRng> = lazy::SyncOnceCell::new();
-    *VALUE.get_or_init(choose_hashmap_rng)
-}
-
-/// Test whether we should use the preferred or fallback RNG
-///
-/// If the preferred RNG is successful, we choose it. Otherwise, if the fallback RNG is successful,
-/// we choose that
-///
-/// Panics if both the preferred and the fallback RNG are both non-functional
-fn choose_hashmap_rng() -> HashMapRng {
-    let preferred_error = match preferred_rng() {
-        Ok(_) => return HashMapRng::Preferred,
-        Err(e) => e,
-    };
-
-    match fallback_rng() {
-        Ok(_) => return HashMapRng::Fallback,
-        Err(fallback_error) => panic!(
-            "preferred RNG broken: `{}`, fallback RNG broken: `{}`",
-            preferred_error, fallback_error
-        ),
+/// Generate random numbers using the fallback RNG function
+#[inline(never)]
+fn fallback_rng(rng_status: c::NTSTATUS) -> (u64, u64) {
+    match Rng::open().and_then(|rng| rng.gen_random_keys()) {
+        Ok(keys) => keys,
+        Err(status) => {
+            panic!("RNG broken: {rng_status:#x}, fallback RNG broken: {status:#x}")
+        }
     }
-}
-
-/// Generate random numbers using the preferred RNG function (BCryptGenRandom)
-fn preferred_rng() -> Result<(u64, u64), io::Error> {
-    use crate::ptr;
-
-    let mut v = (0, 0);
-    let ret = unsafe {
-        c::BCryptGenRandom(
-            ptr::null_mut(),
-            &mut v as *mut _ as *mut u8,
-            mem::size_of_val(&v) as c::ULONG,
-            c::BCRYPT_USE_SYSTEM_PREFERRED_RNG,
-        )
-    };
-
-    if ret == 0 { Ok(v) } else { Err(io::Error::last_os_error()) }
-}
-
-/// Generate random numbers using the fallback RNG function (RtlGenRandom)
-#[cfg(not(target_vendor = "uwp"))]
-fn fallback_rng() -> Result<(u64, u64), io::Error> {
-    let mut v = (0, 0);
-    let ret =
-        unsafe { c::RtlGenRandom(&mut v as *mut _ as *mut u8, mem::size_of_val(&v) as c::ULONG) };
-
-    if ret != 0 { Ok(v) } else { Err(io::Error::last_os_error()) }
-}
-
-/// We can't use RtlGenRandom with UWP, so there is no fallback
-#[cfg(target_vendor = "uwp")]
-fn fallback_rng() -> Result<(u64, u64), io::Error> {
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "RtlGenRandom() not supported on UWP"))
 }

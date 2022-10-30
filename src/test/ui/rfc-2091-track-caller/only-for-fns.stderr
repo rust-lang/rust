@@ -1,10 +1,10 @@
-error[E0739]: attribute should be applied to function
+error[E0739]: attribute should be applied to a function definition
   --> $DIR/only-for-fns.rs:1:1
    |
 LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 LL | struct S;
-   | --------- not a function
+   | --------- not a function definition
 
 error: aborting due to previous error
 

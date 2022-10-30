@@ -2,33 +2,17 @@
 
 use crate::ty;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::ItemLocalId;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::DefId;
+use rustc_hir::{ItemLocalId, OwnerId};
 use rustc_macros::HashStable;
-use rustc_span::symbol::Symbol;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum Region {
     Static,
-    EarlyBound(/* index */ u32, /* lifetime decl */ DefId),
+    EarlyBound(/* lifetime decl */ DefId),
     LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* lifetime decl */ DefId),
-    LateBoundAnon(ty::DebruijnIndex, /* late-bound index */ u32, /* anon index */ u32),
     Free(DefId, /* lifetime decl */ DefId),
-}
-
-/// This is used in diagnostics to improve suggestions for missing generic arguments.
-/// It gives information on the type of lifetimes that are in scope for a particular `PathSegment`,
-/// so that we can e.g. suggest elided-lifetimes-in-paths of the form <'_, '_> e.g.
-#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
-pub enum LifetimeScopeForPath {
-    // Contains all lifetime names that are in scope and could possibly be used in generics
-    // arguments of path.
-    NonElided(Vec<Symbol>),
-
-    // Information that allows us to suggest args of the form `<'_>` in case
-    // no generic arguments were provided for a path.
-    Elided,
 }
 
 /// A set containing, at most, one known element.
@@ -51,7 +35,13 @@ impl<T: PartialEq> Set1<T> {
     }
 }
 
-pub type ObjectLifetimeDefault = Set1<Region>;
+#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+pub enum ObjectLifetimeDefault {
+    Empty,
+    Static,
+    Ambiguous,
+    Param(DefId),
+}
 
 /// Maps the id of each lifetime reference to the lifetime decl
 /// that it corresponds to.
@@ -59,12 +49,7 @@ pub type ObjectLifetimeDefault = Set1<Region>;
 pub struct ResolveLifetimes {
     /// Maps from every use of a named (not anonymous) lifetime to a
     /// `Region` describing how that region is bound
-    pub defs: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Region>>,
+    pub defs: FxHashMap<OwnerId, FxHashMap<ItemLocalId, Region>>,
 
-    /// Set of lifetime def ids that are late-bound; a region can
-    /// be late-bound if (a) it does NOT appear in a where-clause and
-    /// (b) it DOES appear in the arguments.
-    pub late_bound: FxHashMap<LocalDefId, FxHashSet<LocalDefId>>,
-
-    pub late_bound_vars: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
+    pub late_bound_vars: FxHashMap<OwnerId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
 }

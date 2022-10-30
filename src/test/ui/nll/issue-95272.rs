@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 use std::cell::Cell;
 
 fn check<'a, 'b>(x: Cell<&'a ()>, y: Cell<&'b ()>)

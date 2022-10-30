@@ -8,7 +8,7 @@ note: the function `bar` is defined here
   --> $DIR/auxiliary/issue-16725.rs:2:5
    |
 LL |     fn bar();
-   |     ^^^^^^^^^
+   |     ^^^^^^^^
 
 error: aborting due to previous error
 

@@ -1,5 +1,5 @@
 error[E0597]: `v` does not live long enough
-  --> $DIR/method-ufcs-inherent-1.rs:16:26
+  --> $DIR/method-ufcs-inherent-1.rs:14:26
    |
 LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here

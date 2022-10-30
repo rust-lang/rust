@@ -4,9 +4,9 @@ warning: unknown lint: `test_unstable_lint`
 LL | #![allow(test_unstable_lint)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_lints)]` on by default
    = note: the `test_unstable_lint` lint is unstable
    = help: add `#![feature(test_unstable_lint)]` to the crate attributes to enable
+   = note: `#[warn(unknown_lints)]` on by default
 
 warning: unknown lint: `test_unstable_lint`
   --> $DIR/feature-gate-test_unstable_lint.rs:4:1

@@ -21,7 +21,11 @@ LL |     v3.push(&id('x'));           // statement 6
 LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
    |              -- borrow later used here
    |
-   = note: consider using a `let` binding to create a longer lived value
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = id('x');
+LL ~     v3.push(&binding);           // statement 6
+   |
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:29:18
@@ -47,7 +51,11 @@ LL |     v5.push(&id('z'));
 LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
    |                                     -- borrow later used here
    |
-   = note: consider using a `let` binding to create a longer lived value
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = id('z');
+LL ~     v5.push(&binding);
+   |
 
 error: aborting due to 4 previous errors
 

@@ -3,7 +3,6 @@
 // Check that partially moved from function parameters are dropped after the
 // named bindings that move from them.
 
-// ignore-wasm32-bare compiled with panic=abort by default
 
 use std::{panic, cell::RefCell};
 

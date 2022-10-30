@@ -1,19 +1,31 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_fn_ptr_fail2.rs:19:16
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
    |
-LL |     assert_eq!(Y, 4);
-   |                ^ referenced constant has errors
+LL |     x(y)
+   |     ^^^^
+   |     |
+   |     calling non-const function `double`
+   |     inside `bar` at $DIR/const_fn_ptr_fail2.rs:9:5
+...
+LL | const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
+   |                  --------- inside `Y` at $DIR/const_fn_ptr_fail2.rs:14:18
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_fn_ptr_fail2.rs:21:16
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
    |
-LL |     assert_eq!(Z, 4);
-   |                ^ referenced constant has errors
+LL |     x(y)
+   |     ^^^^
+   |     |
+   |     calling non-const function `double`
+   |     inside `bar` at $DIR/const_fn_ptr_fail2.rs:9:5
+...
+LL | const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
+   |                  -------------- inside `Z` at $DIR/const_fn_ptr_fail2.rs:15:18
 
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_fn_ptr_fail2.rs:12:5
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
    |
 LL |     x(y)
    |     ^^^^

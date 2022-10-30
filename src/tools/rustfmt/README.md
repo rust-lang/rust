@@ -135,7 +135,7 @@ completed without error (whether or not changes were made).
 * [Emacs](https://github.com/rust-lang/rust-mode)
 * [Sublime Text 3](https://packagecontrol.io/packages/RustFmt)
 * [Atom](atom.md)
-* Visual Studio Code using [vscode-rust](https://github.com/editor-rs/vscode-rust), [vsc-rustfmt](https://github.com/Connorcpu/vsc-rustfmt) or [rls_vscode](https://github.com/jonathandturner/rls_vscode) through RLS.
+* [Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
 * [IntelliJ or CLion](intellij.md)
 
 

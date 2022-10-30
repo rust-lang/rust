@@ -1,0 +1,25 @@
+error[E0425]: cannot find value `True` in this scope
+  --> $DIR/bool_typo_err_suggest.rs:5:13
+   |
+LL |     let x = True;
+   |             ^^^^ not found in this scope
+   |
+help: you may want to use a bool value instead
+   |
+LL |     let x = true;
+   |             ~~~~
+
+error[E0425]: cannot find value `False` in this scope
+  --> $DIR/bool_typo_err_suggest.rs:9:13
+   |
+LL |     let y = False;
+   |             ^^^^^ not found in this scope
+   |
+help: you may want to use a bool value instead
+   |
+LL |     let y = false;
+   |             ~~~~~
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

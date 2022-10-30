@@ -69,8 +69,10 @@ use crate::sys_common::mutex::StaticMutex;
 /// ```ignore (cannot-doctest-private-modules)
 /// use tls::os::{StaticKey, INIT};
 ///
+/// // Use a regular global static to store the key.
 /// static KEY: StaticKey = INIT;
 ///
+/// // The state provided via `get` and `set` is thread-local.
 /// unsafe {
 ///     assert!(KEY.get().is_null());
 ///     KEY.set(1 as *mut u8);

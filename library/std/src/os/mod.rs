@@ -132,6 +132,8 @@ pub mod freebsd;
 pub mod fuchsia;
 #[cfg(target_os = "haiku")]
 pub mod haiku;
+#[cfg(target_os = "horizon")]
+pub mod horizon;
 #[cfg(target_os = "illumos")]
 pub mod illumos;
 #[cfg(target_os = "ios")]
@@ -148,11 +150,15 @@ pub mod openbsd;
 pub mod redox;
 #[cfg(target_os = "solaris")]
 pub mod solaris;
-
 #[cfg(target_os = "solid_asp3")]
 pub mod solid;
 #[cfg(target_os = "vxworks")]
 pub mod vxworks;
+#[cfg(target_os = "watchos")]
+pub(crate) mod watchos;
 
 #[cfg(any(unix, target_os = "wasi", doc))]
-mod fd;
+pub mod fd;
+
+#[cfg(any(target_os = "linux", target_os = "android", doc))]
+mod net;

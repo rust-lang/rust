@@ -1,8 +1,6 @@
 // Like `projection-bound-cycle.rs` but this avoids using
 // `feature(trivial_bounds)`.
 
-#![feature(generic_associated_types)]
-
 trait Print {
     fn print();
 }

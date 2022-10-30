@@ -117,8 +117,6 @@ impl Condvar {
         unsafe { mutex.lock() };
         success
     }
-
-    pub unsafe fn destroy(&self) {}
 }
 
 mod waiter_queue {

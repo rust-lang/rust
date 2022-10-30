@@ -4,7 +4,6 @@ error: future cannot be sent between threads safely
 LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    |                                                              ^^^^ future returned by `private_future` is not `Send`
    |
-   = note: `-D clippy::future-not-send` implied by `-D warnings`
 note: future is not `Send` as this value is used across an await
   --> $DIR/future_not_send.rs:8:19
    |
@@ -25,6 +24,7 @@ LL |     async { true }.await
 LL | }
    | - `cell` is later dropped here
    = note: `std::cell::Cell<usize>` doesn't implement `std::marker::Sync`
+   = note: `-D clippy::future-not-send` implied by `-D warnings`
 
 error: future cannot be sent between threads safely
   --> $DIR/future_not_send.rs:11:42

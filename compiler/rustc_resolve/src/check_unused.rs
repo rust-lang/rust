@@ -6,7 +6,7 @@
 // `use` items.
 //
 // Unused trait imports can't be checked until the method resolution. We save
-// candidates here, and do the actual check in librustc_typeck/check_unused.rs.
+// candidates here, and do the actual check in rustc_hir_analysis/check_unused.rs.
 //
 // Checking for unused imports is split into three steps:
 //
@@ -30,7 +30,6 @@ use crate::Resolver;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, MultiSpan};
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_IMPORTS};
@@ -228,7 +227,7 @@ impl Resolver<'_> {
         for import in self.potentially_unused_imports.iter() {
             match import.kind {
                 _ if import.used.get()
-                    || import.vis.get().is_public()
+                    || import.expect_vis().is_public()
                     || import.span.is_dummy() =>
                 {
                     if let ImportKind::MacroUse = import.kind {

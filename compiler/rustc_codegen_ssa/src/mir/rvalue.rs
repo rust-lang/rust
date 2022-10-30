@@ -4,25 +4,25 @@ use super::{FunctionCx, LocalRef};
 
 use crate::base;
 use crate::common::{self, IntPredicate};
+use crate::meth::get_vtable;
 use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::mir;
+use rustc_middle::mir::Operand;
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
-use rustc_target::abi::{Abi, Int, Variants};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    #[instrument(level = "trace", skip(self, bx))]
     pub fn codegen_rvalue(
         &mut self,
         mut bx: Bx,
         dest: PlaceRef<'tcx, Bx::Value>,
         rvalue: &mir::Rvalue<'tcx>,
     ) -> Bx {
-        debug!("codegen_rvalue(dest.llval={:?}, rvalue={:?})", dest.llval, rvalue);
-
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
                 let cg_operand = self.codegen_operand(&mut bx, operand);
@@ -88,7 +88,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let size = bx.const_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if bx.cx().const_to_opt_uint(v) == Some(0) {
+                    if bx.cx().const_to_opt_u128(v, false) == Some(0) {
                         let fill = bx.cx().const_u8(0);
                         bx.memset(start, fill, size, dest.align, MemFlags::empty());
                         return bx;
@@ -125,7 +125,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Do not generate stores and GEPis for zero-sized fields.
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
-                        let field = dest.project_field(&mut bx, field_index);
+                        let field = if let mir::AggregateKind::Array(_) = **kind {
+                            let llindex = bx.cx().const_usize(field_index as u64);
+                            dest.project_index(&mut bx, llindex)
+                        } else {
+                            dest.project_field(&mut bx, field_index)
+                        };
                         op.val.store(&mut bx, field);
                     }
                 }
@@ -181,6 +186,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cast = bx.cx().layout_of(self.monomorphize(mir_cast_ty));
 
                 let val = match *kind {
+                    mir::CastKind::PointerExposeAddress => {
+                        assert!(bx.cx().is_backend_immediate(cast));
+                        let llptr = operand.immediate();
+                        let llcast_ty = bx.cx().immediate_backend_type(cast);
+                        let lladdr = bx.ptrtoint(llptr, llcast_ty);
+                        OperandValue::Immediate(lladdr)
+                    }
                     mir::CastKind::Pointer(PointerCast::ReifyFnPointer) => {
                         match *operand.layout.ty.kind() {
                             ty::FnDef(def_id, substs) => {
@@ -206,6 +218,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     substs,
                                     ty::ClosureKind::FnOnce,
                                 )
+                                .expect("failed to normalize and resolve closure during codegen")
                                 .polymorphize(bx.cx().tcx());
                                 OperandValue::Immediate(bx.cx().get_fn_addr(instance))
                             }
@@ -237,7 +250,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         OperandValue::Pair(lldata, llextra)
                     }
                     mir::CastKind::Pointer(PointerCast::MutToConstPointer)
-                    | mir::CastKind::Misc
+                    | mir::CastKind::PtrToPtr
                         if bx.cx().is_backend_scalar_pair(operand.layout) =>
                     {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
@@ -259,10 +272,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("unexpected non-pair operand");
                         }
                     }
+                    mir::CastKind::DynStar => {
+                        let data = match operand.val {
+                            OperandValue::Ref(_, _, _) => todo!(),
+                            OperandValue::Immediate(v) => v,
+                            OperandValue::Pair(_, _) => todo!(),
+                        };
+                        let trait_ref =
+                            if let ty::Dynamic(data, _, ty::DynStar) = cast.ty.kind() {
+                                data.principal()
+                            } else {
+                                bug!("Only valid to do a DynStar cast into a DynStar type")
+                            };
+                        let vtable = get_vtable(bx.cx(), source.ty(self.mir, bx.tcx()), trait_ref);
+                        OperandValue::Pair(data, vtable)
+                    }
                     mir::CastKind::Pointer(
                         PointerCast::MutToConstPointer | PointerCast::ArrayToPointer,
                     )
-                    | mir::CastKind::Misc => {
+                    | mir::CastKind::IntToInt
+                    | mir::CastKind::FloatToInt
+                    | mir::CastKind::FloatToFloat
+                    | mir::CastKind::IntToFloat
+                    | mir::CastKind::PtrToPtr
+                    | mir::CastKind::FnPtrToPtr
+
+                    // Since int2ptr can have arbitrary integer types as input (so we have to do
+                    // sign extension and all that), it is currently best handled in the same code
+                    // path as the other integer-to-X casts.
+                    | mir::CastKind::PointerFromExposedAddress => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {
@@ -273,74 +311,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             CastTy::from_ty(operand.layout.ty).expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast.ty).expect("bad output type for cast");
                         let ll_t_in = bx.cx().immediate_backend_type(operand.layout);
-                        match operand.layout.variants {
-                            Variants::Single { index } => {
-                                if let Some(discr) =
-                                    operand.layout.ty.discriminant_for_variant(bx.tcx(), index)
-                                {
-                                    let discr_layout = bx.cx().layout_of(discr.ty);
-                                    let discr_t = bx.cx().immediate_backend_type(discr_layout);
-                                    let discr_val = bx.cx().const_uint_big(discr_t, discr.val);
-                                    let discr_val =
-                                        bx.intcast(discr_val, ll_t_out, discr.ty.is_signed());
-
-                                    return (
-                                        bx,
-                                        OperandRef {
-                                            val: OperandValue::Immediate(discr_val),
-                                            layout: cast,
-                                        },
-                                    );
-                                }
-                            }
-                            Variants::Multiple { .. } => {}
-                        }
                         let llval = operand.immediate();
 
-                        let mut signed = false;
-                        if let Abi::Scalar(scalar) = operand.layout.abi {
-                            if let Int(_, s) = scalar.primitive() {
-                                // We use `i1` for bytes that are always `0` or `1`,
-                                // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
-                                // let LLVM interpret the `i1` as signed, because
-                                // then `i1 1` (i.e., E::B) is effectively `i8 -1`.
-                                signed = !scalar.is_bool() && s;
-
-                                if !scalar.is_always_valid(bx.cx())
-                                    && scalar.valid_range(bx.cx()).end
-                                        >= scalar.valid_range(bx.cx()).start
-                                {
-                                    // We want `table[e as usize ± k]` to not
-                                    // have bound checks, and this is the most
-                                    // convenient place to put the `assume`s.
-                                    if scalar.valid_range(bx.cx()).start > 0 {
-                                        let enum_value_lower_bound = bx.cx().const_uint_big(
-                                            ll_t_in,
-                                            scalar.valid_range(bx.cx()).start,
-                                        );
-                                        let cmp_start = bx.icmp(
-                                            IntPredicate::IntUGE,
-                                            llval,
-                                            enum_value_lower_bound,
-                                        );
-                                        bx.assume(cmp_start);
-                                    }
-
-                                    let enum_value_upper_bound = bx
-                                        .cx()
-                                        .const_uint_big(ll_t_in, scalar.valid_range(bx.cx()).end);
-                                    let cmp_end = bx.icmp(
-                                        IntPredicate::IntULE,
-                                        llval,
-                                        enum_value_upper_bound,
-                                    );
-                                    bx.assume(cmp_end);
-                                }
-                            }
-                        }
-
                         let newval = match (r_t_in, r_t_out) {
-                            (CastTy::Int(_), CastTy::Int(_)) => bx.intcast(llval, ll_t_out, signed),
+                            (CastTy::Int(i), CastTy::Int(_)) => {
+                                bx.intcast(llval, ll_t_out, i.is_signed())
+                            }
                             (CastTy::Float, CastTy::Float) => {
                                 let srcsz = bx.cx().float_width(ll_t_in);
                                 let dstsz = bx.cx().float_width(ll_t_out);
@@ -352,8 +328,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     llval
                                 }
                             }
-                            (CastTy::Int(_), CastTy::Float) => {
-                                if signed {
+                            (CastTy::Int(i), CastTy::Float) => {
+                                if i.is_signed() {
                                     bx.sitofp(llval, ll_t_out)
                                 } else {
                                     bx.uitofp(llval, ll_t_out)
@@ -362,11 +338,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Ptr(_)) => {
                                 bx.pointercast(llval, ll_t_out)
                             }
-                            (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
-                                bx.ptrtoint(llval, ll_t_out)
-                            }
-                            (CastTy::Int(_), CastTy::Ptr(_)) => {
-                                let usize_llval = bx.intcast(llval, bx.cx().type_isize(), signed);
+                            (CastTy::Int(i), CastTy::Ptr(_)) => {
+                                let usize_llval =
+                                    bx.intcast(llval, bx.cx().type_isize(), i.is_signed());
                                 bx.inttoptr(usize_llval, ll_t_out)
                             }
                             (CastTy::Float, CastTy::Int(IntTy::I)) => {
@@ -393,6 +367,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_place_to_pointer(bx, place, mk_ref)
             }
 
+            mir::Rvalue::CopyForDeref(place) => {
+                let operand = self.codegen_operand(&mut bx, &Operand::Copy(place));
+                (bx, operand)
+            }
             mir::Rvalue::AddressOf(mutability, place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
                     tcx.mk_ptr(ty::TypeAndMut { ty, mutbl: mutability })
@@ -747,6 +725,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
             mir::Rvalue::Ref(..) |
+            mir::Rvalue::CopyForDeref(..) |
             mir::Rvalue::AddressOf(..) |
             mir::Rvalue::Len(..) |
             mir::Rvalue::Cast(..) | // (*)

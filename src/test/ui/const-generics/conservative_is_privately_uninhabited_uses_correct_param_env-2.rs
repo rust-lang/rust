@@ -9,6 +9,7 @@ trait Foo {
     const ASSOC: usize = 1;
 }
 
+#[allow(unused_tuple_struct_fields)]
 struct Iced<T: Foo>(T, [(); T::ASSOC])
 where
     [(); T::ASSOC]: ;

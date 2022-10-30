@@ -215,7 +215,6 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                     None,
                 );
 
-                let filename = i.span(self.ctx.tcx).filename(self.ctx.sess());
                 let has_doc_example = tests.found_tests != 0;
                 // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
                 // would presumably panic if a fake `DefIndex` were passed.
@@ -261,13 +260,16 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                 let should_have_docs = !should_be_ignored
                     && (level != lint::Level::Allow || matches!(source, LintLevelSource::Default));
 
-                debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
-                self.items.entry(filename).or_default().count_item(
-                    has_docs,
-                    has_doc_example,
-                    should_have_doc_example(self.ctx, i),
-                    should_have_docs,
-                );
+                if let Some(span) = i.span(self.ctx.tcx) {
+                    let filename = span.filename(self.ctx.sess());
+                    debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
+                    self.items.entry(filename).or_default().count_item(
+                        has_docs,
+                        has_doc_example,
+                        should_have_doc_example(self.ctx, i),
+                        should_have_docs,
+                    );
+                }
             }
         }
 

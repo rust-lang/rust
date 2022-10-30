@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed};
+use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
@@ -8,14 +8,16 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeFoldable};
+use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeVisitable};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
-use rustc_trait_selection::traits::SelectionContext;
+use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::{
+    self, ObligationCauseCode, SelectionContext, TraitEngine, TraitEngineExt,
+};
 
 use std::mem;
 use std::ops::Deref;
@@ -25,6 +27,7 @@ use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, NeedsNonConstDro
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
+use crate::errors::UnstableInStable;
 
 type QualifResults<'mir, 'tcx, Q> =
     rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
@@ -135,7 +138,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         // qualifs for the return type.
         let return_block = ccx
             .body
-            .basic_blocks()
+            .basic_blocks
             .iter_enumerated()
             .find(|(_, block)| matches!(block.terminator().kind, TerminatorKind::Return))
             .map(|(bb, _)| bb);
@@ -312,7 +315,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             Status::Forbidden => None,
         };
 
-        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+        if self.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.miri_unleashed_feature(span, gate);
             return;
         }
@@ -419,7 +422,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
                     };
-                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_local(reborrowed_place_ref.local, ctx, location);
                     self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
@@ -432,7 +435,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
-                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_local(reborrowed_place_ref.local, ctx, location);
                     self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
@@ -446,6 +449,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
 
             Rvalue::Use(_)
+            | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(_)
@@ -521,37 +525,35 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(
-                CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
-                _,
-                _,
-            ) => {}
-
-            Rvalue::Cast(
                 CastKind::Pointer(
-                    PointerCast::UnsafeFnPointer
+                    PointerCast::MutToConstPointer
+                    | PointerCast::ArrayToPointer
+                    | PointerCast::UnsafeFnPointer
                     | PointerCast::ClosureFnPointer(_)
                     | PointerCast::ReifyFnPointer,
                 ),
                 _,
                 _,
             ) => {
-                // Nothing to do here. Function pointer casts are allowed now.
+                // These are all okay; they only change the type, not the data.
             }
 
             Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
-                // Nothing to check here (`check_local_or_return_ty` ensures no trait objects occur
-                // in the type of any local, which also excludes casts).
+                // Unsizing is implemented for CTFE.
             }
 
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(self.body, self.tcx);
-                let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-
-                if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
-                    self.check_op(ops::RawPtrToIntCast);
-                }
+            Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
+                self.check_op(ops::RawPtrToIntCast);
             }
+            Rvalue::Cast(CastKind::PointerFromExposedAddress, _, _) => {
+                // Since no pointer can ever get exposed (rejected above), this is easy to support.
+            }
+
+            Rvalue::Cast(CastKind::DynStar, _, _) => {
+                unimplemented!()
+            }
+
+            Rvalue::Cast(_, _, _) => {}
 
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
@@ -657,6 +659,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Downcast(..)
+            | ProjectionElem::OpaqueCast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {}
@@ -683,7 +686,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::Nop => {}
         }
     }
@@ -734,10 +737,49 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     let obligation =
                         Obligation::new(ObligationCause::dummy(), param_env, poly_trait_pred);
 
-                    let implsrc = tcx.infer_ctxt().enter(|infcx| {
+                    let implsrc = {
+                        let infcx = tcx.infer_ctxt().build();
                         let mut selcx = SelectionContext::new(&infcx);
                         selcx.select(&obligation)
-                    });
+                    };
+
+                    // do a well-formedness check on the trait method being called. This is because typeck only does a
+                    // "non-const" check. This is required for correctness here.
+                    {
+                        let infcx = tcx.infer_ctxt().build();
+                        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
+                        let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
+                        let hir_id = tcx
+                            .hir()
+                            .local_def_id_to_hir_id(self.body.source.def_id().expect_local());
+                        let cause = || {
+                            ObligationCause::new(
+                                terminator.source_info.span,
+                                hir_id,
+                                ObligationCauseCode::ItemObligation(callee),
+                            )
+                        };
+                        let normalized = infcx.partially_normalize_associated_types_in(
+                            cause(),
+                            param_env,
+                            predicates,
+                        );
+
+                        for p in normalized.obligations {
+                            fulfill_cx.register_predicate_obligation(&infcx, p);
+                        }
+                        for obligation in traits::predicates_for_generics(
+                            |_, _| cause(),
+                            self.param_env,
+                            normalized.value,
+                        ) {
+                            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+                        }
+                        let errors = fulfill_cx.select_all_or_error(&infcx);
+                        if !errors.is_empty() {
+                            infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+                        }
+                    }
 
                     match implsrc {
                         Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
@@ -760,7 +802,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 callee = did;
                             }
 
-                            if let hir::Constness::NotConst = tcx.impl_constness(data.impl_def_id) {
+                            if let hir::Constness::NotConst = tcx.constness(data.impl_def_id) {
                                 self.check_op(ops::FnCallNonConst {
                                     caller,
                                     callee,
@@ -777,7 +819,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             let mut nonconst_call_permission = false;
                             if let Some(callee_trait) = tcx.trait_of_item(callee)
                                 && tcx.has_attr(callee_trait, sym::const_trait)
-                                && Some(callee_trait) == tcx.trait_of_item(caller)
+                                && Some(callee_trait) == tcx.trait_of_item(caller.to_def_id())
                                 // Can only call methods when it's `<Self as TheTrait>::f`.
                                 && tcx.types.self_param == substs.type_at(0)
                             {
@@ -795,16 +837,15 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                                 // improve diagnostics by showing what failed. Our requirements are stricter this time
                                 // as we are going to error again anyways.
-                                tcx.infer_ctxt().enter(|infcx| {
-                                    if let Err(e) = implsrc {
-                                        infcx.report_selection_error(
-                                            obligation.clone(),
-                                            &obligation,
-                                            &e,
-                                            false,
-                                        );
-                                    }
-                                });
+                                let infcx = tcx.infer_ctxt().build();
+                                if let Err(e) = implsrc {
+                                    infcx.err_ctxt().report_selection_error(
+                                        obligation.clone(),
+                                        &obligation,
+                                        &e,
+                                        false,
+                                    );
+                                }
 
                                 self.check_op(ops::FnCallNonConst {
                                     caller,
@@ -969,7 +1010,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 if needs_non_const_drop {
                     self.check_op_spanned(
-                        ops::LiveDrop { dropped_at: Some(terminator.source_info.span) },
+                        ops::LiveDrop {
+                            dropped_at: Some(terminator.source_info.span),
+                            dropped_ty: ty_of_dropped_place,
+                        },
                         err_span,
                     );
                 }
@@ -1033,23 +1077,5 @@ fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
-    ccx.tcx
-        .sess
-        .struct_span_err(
-            span,
-            &format!("const-stable function cannot use `#[feature({})]`", gate.as_str()),
-        )
-        .span_suggestion(
-            attr_span,
-            "if it is not part of the public API, make this function unstably const",
-            concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
-            Applicability::HasPlaceholders,
-        )
-        .span_suggestion(
-            attr_span,
-            "otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks",
-            format!("#[rustc_allow_const_fn_unstable({})]\n", gate),
-            Applicability::MaybeIncorrect,
-        )
-        .emit();
+    ccx.tcx.sess.emit_err(UnstableInStable { gate: gate.to_string(), span, attr_span });
 }

@@ -1,5 +1,5 @@
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:9:15
+  --> $DIR/needless_borrow.rs:11:15
    |
 LL |     let _ = x(&&a); // warn
    |               ^^^ help: change this to: `&a`
@@ -7,94 +7,172 @@ LL |     let _ = x(&&a); // warn
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:13:13
+  --> $DIR/needless_borrow.rs:15:13
    |
 LL |     mut_ref(&mut &mut b); // warn
    |             ^^^^^^^^^^^ help: change this to: `&mut b`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:25:13
+  --> $DIR/needless_borrow.rs:27:13
    |
 LL |             &&a
    |             ^^^ help: change this to: `&a`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:27:15
+  --> $DIR/needless_borrow.rs:29:15
    |
 LL |         46 => &&a,
    |               ^^^ help: change this to: `&a`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:33:27
+  --> $DIR/needless_borrow.rs:35:27
    |
 LL |                     break &ref_a;
    |                           ^^^^^^ help: change this to: `ref_a`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:40:15
+  --> $DIR/needless_borrow.rs:42:15
    |
 LL |     let _ = x(&&&a);
    |               ^^^^ help: change this to: `&a`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:41:15
+  --> $DIR/needless_borrow.rs:43:15
    |
 LL |     let _ = x(&mut &&a);
    |               ^^^^^^^^ help: change this to: `&a`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:42:15
+  --> $DIR/needless_borrow.rs:44:15
    |
 LL |     let _ = x(&&&mut b);
    |               ^^^^^^^^ help: change this to: `&mut b`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:43:15
+  --> $DIR/needless_borrow.rs:45:15
    |
 LL |     let _ = x(&&ref_a);
    |               ^^^^^^^ help: change this to: `ref_a`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:46:11
+  --> $DIR/needless_borrow.rs:48:11
    |
 LL |         x(&b);
    |           ^^ help: change this to: `b`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:53:13
+  --> $DIR/needless_borrow.rs:55:13
    |
 LL |     mut_ref(&mut x);
    |             ^^^^^^ help: change this to: `x`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:54:13
+  --> $DIR/needless_borrow.rs:56:13
    |
 LL |     mut_ref(&mut &mut x);
    |             ^^^^^^^^^^^ help: change this to: `x`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:55:23
+  --> $DIR/needless_borrow.rs:57:23
    |
 LL |     let y: &mut i32 = &mut x;
    |                       ^^^^^^ help: change this to: `x`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:56:23
+  --> $DIR/needless_borrow.rs:58:23
    |
 LL |     let y: &mut i32 = &mut &mut x;
    |                       ^^^^^^^^^^^ help: change this to: `x`
 
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:67:14
+   |
+LL |         0 => &mut x,
+   |              ^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:73:14
+   |
+LL |         0 => &mut x,
+   |              ^^^^^^ help: change this to: `x`
+
 error: this expression borrows a value the compiler would automatically borrow
-  --> $DIR/needless_borrow.rs:72:13
+  --> $DIR/needless_borrow.rs:85:13
    |
 LL |     let _ = (&x).0;
    |             ^^^^ help: change this to: `x`
 
 error: this expression borrows a value the compiler would automatically borrow
-  --> $DIR/needless_borrow.rs:74:22
+  --> $DIR/needless_borrow.rs:87:22
    |
 LL |     let _ = unsafe { (&*x).0 };
    |                      ^^^^^ help: change this to: `(*x)`
 
-error: aborting due to 16 previous errors
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:97:5
+   |
+LL |     (&&()).foo();
+   |     ^^^^^^ help: change this to: `(&())`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:106:5
+   |
+LL |     (&&5).foo();
+   |     ^^^^^ help: change this to: `(&5)`
+
+error: the borrowed expression implements the required traits
+  --> $DIR/needless_borrow.rs:131:51
+   |
+LL |     let _ = std::process::Command::new("ls").args(&["-a", "-l"]).status().unwrap();
+   |                                                   ^^^^^^^^^^^^^ help: change this to: `["-a", "-l"]`
+
+error: the borrowed expression implements the required traits
+  --> $DIR/needless_borrow.rs:132:44
+   |
+LL |     let _ = std::path::Path::new(".").join(&&".");
+   |                                            ^^^^^ help: change this to: `"."`
+
+error: the borrowed expression implements the required traits
+  --> $DIR/needless_borrow.rs:133:23
+   |
+LL |     deref_target_is_x(&X);
+   |                       ^^ help: change this to: `X`
+
+error: the borrowed expression implements the required traits
+  --> $DIR/needless_borrow.rs:134:26
+   |
+LL |     multiple_constraints(&[[""]]);
+   |                          ^^^^^^^ help: change this to: `[[""]]`
+
+error: the borrowed expression implements the required traits
+  --> $DIR/needless_borrow.rs:135:45
+   |
+LL |     multiple_constraints_normalizes_to_same(&X, X);
+   |                                             ^^ help: change this to: `X`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:136:32
+   |
+LL |     let _ = Some("").unwrap_or(&"");
+   |                                ^^^ help: change this to: `""`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> $DIR/needless_borrow.rs:187:13
+   |
+LL |             (&self.f)()
+   |             ^^^^^^^^^ help: change this to: `(self.f)`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> $DIR/needless_borrow.rs:196:13
+   |
+LL |             (&mut self.f)()
+   |             ^^^^^^^^^^^^^ help: change this to: `(self.f)`
+
+error: the borrowed expression implements the required traits
+  --> $DIR/needless_borrow.rs:298:55
+   |
+LL |         let _ = std::process::Command::new("ls").args(&["-a", "-l"]).status().unwrap();
+   |                                                       ^^^^^^^^^^^^^ help: change this to: `["-a", "-l"]`
+
+error: aborting due to 29 previous errors
 

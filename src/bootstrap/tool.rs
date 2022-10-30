@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::{exit, Command};
+use std::path::PathBuf;
+use std::process::Command;
 
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::channel::GitInfo;
@@ -51,10 +51,10 @@ impl Step for ToolBuild {
 
         match self.mode {
             Mode::ToolRustc => {
-                builder.ensure(compile::Std { compiler, target: compiler.host });
-                builder.ensure(compile::Rustc { compiler, target });
+                builder.ensure(compile::Std::new(compiler, compiler.host));
+                builder.ensure(compile::Rustc::new(compiler, target));
             }
-            Mode::ToolStd => builder.ensure(compile::Std { compiler, target }),
+            Mode::ToolStd => builder.ensure(compile::Std::new(compiler, target)),
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build"),
         }
@@ -158,34 +158,38 @@ impl Step for ToolBuild {
                       a transitive dependency has different features activated \
                       than in a previous build:\n"
             );
-            eprintln!(
-                "the following dependencies are duplicated although they \
-                      have the same features enabled:"
-            );
             let (same, different): (Vec<_>, Vec<_>) =
                 duplicates.into_iter().partition(|(_, cur, prev)| cur.2 == prev.2);
-            for (id, cur, prev) in same {
-                eprintln!("  {}", id);
-                // same features
-                eprintln!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
+            if !same.is_empty() {
+                eprintln!(
+                    "the following dependencies are duplicated although they \
+                      have the same features enabled:"
+                );
+                for (id, cur, prev) in same {
+                    eprintln!("  {}", id);
+                    // same features
+                    eprintln!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
+                }
             }
-            eprintln!("the following dependencies have different features:");
-            for (id, cur, prev) in different {
-                eprintln!("  {}", id);
-                let cur_features: HashSet<_> = cur.2.into_iter().collect();
-                let prev_features: HashSet<_> = prev.2.into_iter().collect();
-                eprintln!(
-                    "    `{}` additionally enabled features {:?} at {:?}",
-                    cur.0,
-                    &cur_features - &prev_features,
-                    cur.1
-                );
-                eprintln!(
-                    "    `{}` additionally enabled features {:?} at {:?}",
-                    prev.0,
-                    &prev_features - &cur_features,
-                    prev.1
-                );
+            if !different.is_empty() {
+                eprintln!("the following dependencies have different features:");
+                for (id, cur, prev) in different {
+                    eprintln!("  {}", id);
+                    let cur_features: HashSet<_> = cur.2.into_iter().collect();
+                    let prev_features: HashSet<_> = prev.2.into_iter().collect();
+                    eprintln!(
+                        "    `{}` additionally enabled features {:?} at {:?}",
+                        cur.0,
+                        &cur_features - &prev_features,
+                        cur.1
+                    );
+                    eprintln!(
+                        "    `{}` additionally enabled features {:?} at {:?}",
+                        prev.0,
+                        &prev_features - &cur_features,
+                        prev.1
+                    );
+                }
             }
             eprintln!();
             eprintln!(
@@ -204,7 +208,7 @@ impl Step for ToolBuild {
 
         if !is_expected {
             if !is_optional_tool {
-                exit(1);
+                crate::detail_exit(1);
             } else {
                 None
             }
@@ -367,13 +371,15 @@ bootstrap_tool!(
     Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
-    RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
+    RustInstaller, "src/tools/rust-installer", "rust-installer", is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
     LintDocs, "src/tools/lint-docs", "lint-docs";
     JsonDocCk, "src/tools/jsondocck", "jsondocck";
+    JsonDocLint, "src/tools/jsondoclint", "jsondoclint";
     HtmlChecker, "src/tools/html-checker", "html-checker";
     BumpStage0, "src/tools/bump-stage0", "bump-stage0";
+    ReplaceVersionPlaceholder, "src/tools/replace-version-placeholder", "replace-version-placeholder";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
@@ -512,8 +518,8 @@ impl Step for Rustdoc {
         // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
         // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
         // it.
-        builder.ensure(compile::Std { compiler: build_compiler, target: target_compiler.host });
-        builder.ensure(compile::Rustc { compiler: build_compiler, target: target_compiler.host });
+        builder.ensure(compile::Std::new(build_compiler, target_compiler.host));
+        builder.ensure(compile::Rustc::new(build_compiler, target_compiler.host));
         // NOTE: this implies that `download-rustc` is pretty useless when compiling with the stage0
         // compiler, since you do just as much work.
         if !builder.config.dry_run && builder.download_rustc() && build_compiler.stage == 0 {
@@ -683,15 +689,114 @@ impl Step for LldWrapper {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustAnalyzer {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for RustAnalyzer {
+    type Output = Option<PathBuf>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
+        run.path("src/tools/rust-analyzer").default_condition(
+            builder.config.extended
+                && builder
+                    .config
+                    .tools
+                    .as_ref()
+                    .map_or(true, |tools| tools.iter().any(|tool| tool == "rust-analyzer")),
+        )
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustAnalyzer {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "rust-analyzer",
+            mode: Mode::ToolStd,
+            path: "src/tools/rust-analyzer",
+            extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
+            is_optional_tool: false,
+            source_type: SourceType::InTree,
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustAnalyzerProcMacroSrv {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for RustAnalyzerProcMacroSrv {
+    type Output = Option<PathBuf>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
+
+        // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
+        run.path("src/tools/rust-analyzer")
+            .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
+            .default_condition(
+                builder.config.extended
+                    && builder.config.tools.as_ref().map_or(true, |tools| {
+                        tools.iter().any(|tool| {
+                            tool == "rust-analyzer" || tool == "rust-analyzer-proc-macro-srv"
+                        })
+                    }),
+            )
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustAnalyzerProcMacroSrv {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+        let path = builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "rust-analyzer-proc-macro-srv",
+            mode: Mode::ToolStd,
+            path: "src/tools/rust-analyzer/crates/proc-macro-srv-cli",
+            extra_features: vec!["proc-macro-srv/sysroot-abi".to_owned()],
+            is_optional_tool: false,
+            source_type: SourceType::InTree,
+        })?;
+
+        // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
+        // so that r-a can use it.
+        let libexec_path = builder.sysroot(self.compiler).join("libexec");
+        t!(fs::create_dir_all(&libexec_path));
+        builder.copy(&path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
+
+        Some(path)
+    }
+}
+
 macro_rules! tool_extended {
     (($sel:ident, $builder:ident),
        $($name:ident,
-       $toolstate:ident,
        $path:expr,
        $tool_name:expr,
        stable = $stable:expr,
        $(in_tree = $in_tree:expr,)?
-       $(submodule = $submodule:literal,)?
+       $(tool_std = $tool_std:literal,)?
        $extra_deps:block;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -735,12 +840,11 @@ macro_rules! tool_extended {
             #[allow(unused_mut)]
             fn run(mut $sel, $builder: &Builder<'_>) -> Option<PathBuf> {
                 $extra_deps
-                $( $builder.update_submodule(&Path::new("src").join("tools").join($submodule)); )?
                 $builder.ensure(ToolBuild {
                     compiler: $sel.compiler,
                     target: $sel.target,
                     tool: $tool_name,
-                    mode: Mode::ToolRustc,
+                    mode: if false $(|| $tool_std)? { Mode::ToolStd } else { Mode::ToolRustc },
                     path: $path,
                     extra_features: $sel.extra_features,
                     is_optional_tool: true,
@@ -761,22 +865,17 @@ macro_rules! tool_extended {
 // Note: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
 // invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
-    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", stable=true, in_tree=true, {};
-    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
-    Clippy, clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
-    Miri, miri, "src/tools/miri", "miri", stable=false, {};
-    CargoMiri, miri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, {};
-    Rls, rls, "src/tools/rls", "rls", stable=true, {
-        builder.ensure(Clippy {
-            compiler: self.compiler,
-            target: self.target,
-            extra_features: Vec::new(),
-        });
-        self.extra_features.push("clippy".to_owned());
-    };
-    RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, {};
-    Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
-    RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, submodule="rust-analyzer", {};
+    Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true, in_tree=true, {};
+    CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
+    Clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
+    Miri, "src/tools/miri", "miri", stable=false, in_tree=true, {};
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, in_tree=true, {};
+    // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
+    // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
+    // and this is close enough for now.
+    Rls, "src/tools/rls", "rls", stable=true, in_tree=true, tool_std=true, {};
+    RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, tool_std=true, {};
+    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
 );
 
 impl<'a> Builder<'a> {

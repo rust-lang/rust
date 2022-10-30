@@ -1,8 +1,10 @@
 error[E0271]: type mismatch resolving `<i8 as Trait>::AssociatedType == u32`
-  --> $DIR/E0271.rs:10:5
+  --> $DIR/E0271.rs:10:9
    |
 LL |     foo(3_i8);
-   |     ^^^ type mismatch resolving `<i8 as Trait>::AssociatedType == u32`
+   |     --- ^^^^ type mismatch resolving `<i8 as Trait>::AssociatedType == u32`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: expected this to be `u32`
   --> $DIR/E0271.rs:7:43

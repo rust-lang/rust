@@ -1,0 +1,16 @@
+### What it does
+This lint warns about boolean comparisons in assert-like macros.
+
+### Why is this bad?
+It is shorter to use the equivalent.
+
+### Example
+```
+assert_eq!("a".is_empty(), false);
+assert_ne!("a".is_empty(), true);
+```
+
+Use instead:
+```
+assert!(!"a".is_empty());
+```

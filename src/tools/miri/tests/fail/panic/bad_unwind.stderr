@@ -1,0 +1,25 @@
+thread 'main' panicked at 'explicit panic', $DIR/bad_unwind.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: Undefined Behavior: unwinding past a stack frame that does not allow unwinding
+  --> $DIR/bad_unwind.rs:LL:CC
+   |
+LL |     std::panic::catch_unwind(|| unwind()).unwrap_err();
+   |                                 ^^^^^^^^ unwinding past a stack frame that does not allow unwinding
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside closure at $DIR/bad_unwind.rs:LL:CC
+   = note: inside `std::panicking::r#try::do_call::<[closure@$DIR/bad_unwind.rs:LL:CC], ()>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::r#try::<(), [closure@$DIR/bad_unwind.rs:LL:CC]>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panic::catch_unwind::<[closure@$DIR/bad_unwind.rs:LL:CC], ()>` at RUSTLIB/std/src/panic.rs:LL:CC
+note: inside `main` at $DIR/bad_unwind.rs:LL:CC
+  --> $DIR/bad_unwind.rs:LL:CC
+   |
+LL |     std::panic::catch_unwind(|| unwind()).unwrap_err();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

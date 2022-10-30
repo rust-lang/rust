@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 #[derive(Clone)]
 struct Foo<'a>(fn(&'a ()) -> &'a ());
 

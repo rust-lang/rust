@@ -4,7 +4,7 @@
 // This function is checking that our (type-based) automatic
 // truncation does not sidestep the overflow checking.
 
-#![deny(arithmetic_overflow, const_err)]
+#![deny(arithmetic_overflow)]
 
 fn main() {
     // this signals overflow when checking is on

@@ -39,8 +39,8 @@ struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    fn new(input: &'a str) -> Parser<'a> {
-        Parser { state: input.as_bytes() }
+    fn new(input: &'a [u8]) -> Parser<'a> {
+        Parser { state: input }
     }
 
     /// Run a parser, and restore the pre-parse state if it fails.
@@ -273,11 +273,54 @@ impl<'a> Parser<'a> {
     }
 }
 
+impl IpAddr {
+    /// Parse an IP address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// let localhost_v4 = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    /// let localhost_v6 = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    ///
+    /// assert_eq!(IpAddr::parse_ascii(b"127.0.0.1"), Ok(localhost_v4));
+    /// assert_eq!(IpAddr::parse_ascii(b"::1"), Ok(localhost_v6));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+        Parser::new(b).parse_with(|p| p.read_ip_addr(), AddrKind::Ip)
+    }
+}
+
 #[stable(feature = "ip_addr", since = "1.7.0")]
 impl FromStr for IpAddr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<IpAddr, AddrParseError> {
-        Parser::new(s).parse_with(|p| p.read_ip_addr(), AddrKind::Ip)
+        Self::parse_ascii(s.as_bytes())
+    }
+}
+
+impl Ipv4Addr {
+    /// Parse an IPv4 address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let localhost = Ipv4Addr::new(127, 0, 0, 1);
+    ///
+    /// assert_eq!(Ipv4Addr::parse_ascii(b"127.0.0.1"), Ok(localhost));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+        // don't try to parse if too long
+        if b.len() > 15 {
+            Err(AddrParseError(AddrKind::Ipv4))
+        } else {
+            Parser::new(b).parse_with(|p| p.read_ipv4_addr(), AddrKind::Ipv4)
+        }
     }
 }
 
@@ -285,12 +328,25 @@ impl FromStr for IpAddr {
 impl FromStr for Ipv4Addr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<Ipv4Addr, AddrParseError> {
-        // don't try to parse if too long
-        if s.len() > 15 {
-            Err(AddrParseError(AddrKind::Ipv4))
-        } else {
-            Parser::new(s).parse_with(|p| p.read_ipv4_addr(), AddrKind::Ipv4)
-        }
+        Self::parse_ascii(s.as_bytes())
+    }
+}
+
+impl Ipv6Addr {
+    /// Parse an IPv6 address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let localhost = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+    ///
+    /// assert_eq!(Ipv6Addr::parse_ascii(b"::1"), Ok(localhost));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+        Parser::new(b).parse_with(|p| p.read_ipv6_addr(), AddrKind::Ipv6)
     }
 }
 
@@ -298,7 +354,25 @@ impl FromStr for Ipv4Addr {
 impl FromStr for Ipv6Addr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<Ipv6Addr, AddrParseError> {
-        Parser::new(s).parse_with(|p| p.read_ipv6_addr(), AddrKind::Ipv6)
+        Self::parse_ascii(s.as_bytes())
+    }
+}
+
+impl SocketAddrV4 {
+    /// Parse an IPv4 socket address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::{Ipv4Addr, SocketAddrV4};
+    ///
+    /// let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080);
+    ///
+    /// assert_eq!(SocketAddrV4::parse_ascii(b"127.0.0.1:8080"), Ok(socket));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+        Parser::new(b).parse_with(|p| p.read_socket_addr_v4(), AddrKind::SocketV4)
     }
 }
 
@@ -306,7 +380,25 @@ impl FromStr for Ipv6Addr {
 impl FromStr for SocketAddrV4 {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<SocketAddrV4, AddrParseError> {
-        Parser::new(s).parse_with(|p| p.read_socket_addr_v4(), AddrKind::SocketV4)
+        Self::parse_ascii(s.as_bytes())
+    }
+}
+
+impl SocketAddrV6 {
+    /// Parse an IPv6 socket address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::{Ipv6Addr, SocketAddrV6};
+    ///
+    /// let socket = SocketAddrV6::new(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1), 8080, 0, 0);
+    ///
+    /// assert_eq!(SocketAddrV6::parse_ascii(b"[2001:db8::1]:8080"), Ok(socket));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+        Parser::new(b).parse_with(|p| p.read_socket_addr_v6(), AddrKind::SocketV6)
     }
 }
 
@@ -314,7 +406,27 @@ impl FromStr for SocketAddrV4 {
 impl FromStr for SocketAddrV6 {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<SocketAddrV6, AddrParseError> {
-        Parser::new(s).parse_with(|p| p.read_socket_addr_v6(), AddrKind::SocketV6)
+        Self::parse_ascii(s.as_bytes())
+    }
+}
+
+impl SocketAddr {
+    /// Parse a socket address from a slice of bytes.
+    ///
+    /// ```
+    /// #![feature(addr_parse_ascii)]
+    ///
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+    ///
+    /// let socket_v4 = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    /// let socket_v6 = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), 8080);
+    ///
+    /// assert_eq!(SocketAddr::parse_ascii(b"127.0.0.1:8080"), Ok(socket_v4));
+    /// assert_eq!(SocketAddr::parse_ascii(b"[::1]:8080"), Ok(socket_v6));
+    /// ```
+    #[unstable(feature = "addr_parse_ascii", issue = "101035")]
+    pub fn parse_ascii(b: &[u8]) -> Result<Self, AddrParseError> {
+        Parser::new(b).parse_with(|p| p.read_socket_addr(), AddrKind::Socket)
     }
 }
 
@@ -322,7 +434,7 @@ impl FromStr for SocketAddrV6 {
 impl FromStr for SocketAddr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<SocketAddr, AddrParseError> {
-        Parser::new(s).parse_with(|p| p.read_socket_addr(), AddrKind::Socket)
+        Self::parse_ascii(s.as_bytes())
     }
 }
 

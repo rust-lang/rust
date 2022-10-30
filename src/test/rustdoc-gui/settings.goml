@@ -1,5 +1,5 @@
 // This test ensures that the settings menu display is working as expected.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
 assert-false: "#settings"
@@ -20,6 +20,8 @@ wait-for-css: ("#settings", {"display": "none"})
 // Let's click on it when the search results are displayed.
 focus: ".search-input"
 write: "test"
+// To be SURE that the search will be run.
+press-key: 'Enter'
 wait-for: "#alternative-display #search"
 click: "#settings-menu"
 wait-for-css: ("#settings", {"display": "block"})
@@ -121,8 +123,22 @@ local-storage: {"rustdoc-disable-shortcuts": "false"}
 click: ".setting-line:last-child .toggle .label"
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 
+// Make sure that "Disable keyboard shortcuts" actually took effect.
+press-key: "Escape"
+press-key: "?"
+assert-false: "#help-button .popover"
+wait-for-css: ("#settings-menu .popover", {"display": "block"})
+
+// Now turn keyboard shortcuts back on, and see if they work.
+click: ".setting-line:last-child .toggle .label"
+assert-local-storage: {"rustdoc-disable-shortcuts": "false"}
+press-key: "Escape"
+press-key: "?"
+wait-for-css: ("#help-button .popover", {"display": "block"})
+assert-css: ("#settings-menu .popover", {"display": "none"})
+
 // Now we go to the settings page to check that the CSS is loaded as expected.
-goto: file://|DOC_PATH|/settings.html
+goto: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
 assert-css: (".setting-line .toggle .slider", {"width": "45px", "margin-right": "20px"})
 
@@ -131,3 +147,12 @@ assert-false: "noscript section"
 javascript: false
 reload:
 assert-css: ("noscript section", {"display": "block"})
+javascript: true
+
+// Check for the display on small screen
+show-text: true
+reload:
+size: (300, 1000)
+click: "#settings-menu"
+wait-for: "#settings"
+assert-css: ("#settings .slider", {"width": "45px"}, ALL)

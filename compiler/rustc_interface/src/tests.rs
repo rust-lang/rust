@@ -1,3 +1,4 @@
+#![allow(rustc::bad_opt_access)]
 use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -10,7 +11,7 @@ use rustc_session::config::{
 };
 use rustc_session::config::{
     BranchProtection, Externs, OomStrategy, OutputType, OutputTypes, PAuthKey, PacRet,
-    SymbolManglingVersion, WasiExecModel,
+    ProcMacroExecutionStrategy, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::lint::Level;
@@ -20,10 +21,8 @@ use rustc_session::{build_session, getopts, DiagnosticOutput, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::SourceFileHashAlgorithm;
-use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy};
-use rustc_target::spec::{
-    RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel,
-};
+use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel};
+use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel};
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
@@ -551,7 +550,7 @@ fn test_codegen_options_tracking_hash() {
     untracked!(link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(link_self_contained, Some(true));
     untracked!(linker, Some(PathBuf::from("linker")));
-    untracked!(linker_flavor, Some(LinkerFlavor::Gcc));
+    untracked!(linker_flavor, Some(LinkerFlavorCli::Gcc));
     untracked!(no_stack_check, true);
     untracked!(remark, Passes::Some(vec![String::from("pass1"), String::from("pass2")]));
     untracked!(rpath, true);
@@ -629,14 +628,14 @@ fn test_top_level_options_tracked_no_crate() {
 }
 
 #[test]
-fn test_debugging_options_tracking_hash() {
+fn test_unstable_options_tracking_hash() {
     let reference = Options::default();
     let mut opts = Options::default();
 
     macro_rules! untracked {
         ($name: ident, $non_default_value: expr) => {
-            assert_ne!(opts.debugging_opts.$name, $non_default_value);
-            opts.debugging_opts.$name = $non_default_value;
+            assert_ne!(opts.unstable_opts.$name, $non_default_value);
+            opts.unstable_opts.$name = $non_default_value;
             assert_same_hash(&reference, &opts);
         };
     }
@@ -644,14 +643,12 @@ fn test_debugging_options_tracking_hash() {
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
     // This list is in alphabetical order.
     untracked!(assert_incr_state, Some(String::from("loaded")));
-    untracked!(ast_json, true);
-    untracked!(ast_json_noexpand, true);
-    untracked!(borrowck, String::from("other"));
     untracked!(deduplicate_diagnostics, false);
     untracked!(dep_tasks, true);
     untracked!(dlltool, Some(PathBuf::from("custom_dlltool.exe")));
     untracked!(dont_buffer_diagnostics, true);
     untracked!(dump_dep_graph, true);
+    untracked!(dump_drop_tracking_cfg, Some("cfg.dot".to_string()));
     untracked!(dump_mir, Some(String::from("abc")));
     untracked!(dump_mir_dataflow, true);
     untracked!(dump_mir_dir, String::from("abc"));
@@ -671,6 +668,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(ls, true);
     untracked!(macro_backtrace, true);
     untracked!(meta_stats, true);
+    untracked!(mir_pretty_relative_line_numbers, true);
     untracked!(nll_facts, true);
     untracked!(no_analysis, true);
     untracked!(no_interleave_lints, true);
@@ -685,6 +683,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(print_mono_items, Some(String::from("abc")));
     untracked!(print_type_sizes, true);
     untracked!(proc_macro_backtrace, true);
+    untracked!(proc_macro_execution_strategy, ProcMacroExecutionStrategy::CrossThread);
     untracked!(query_dep_graph, true);
     untracked!(save_analysis, true);
     untracked!(self_profile, SwitchWithOptPath::Enabled(None));
@@ -692,9 +691,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(span_debug, true);
     untracked!(span_free_formats, true);
     untracked!(temps_dir, Some(String::from("abc")));
-    untracked!(terminal_width, Some(80));
     untracked!(threads, 99);
-    untracked!(time, true);
     untracked!(time_llvm_passes, true);
     untracked!(time_passes, true);
     untracked!(trace_macros, true);
@@ -708,8 +705,8 @@ fn test_debugging_options_tracking_hash() {
     macro_rules! tracked {
         ($name: ident, $non_default_value: expr) => {
             opts = reference.clone();
-            assert_ne!(opts.debugging_opts.$name, $non_default_value);
-            opts.debugging_opts.$name = $non_default_value;
+            assert_ne!(opts.unstable_opts.$name, $non_default_value);
+            opts.unstable_opts.$name = $non_default_value;
             assert_different_hash(&reference, &opts);
         };
     }
@@ -721,6 +718,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(asm_comments, true);
     tracked!(assume_incomplete_release, true);
     tracked!(binary_dep_depinfo, true);
+    tracked!(box_noalias, Some(false));
     tracked!(
         branch_protection,
         Some(BranchProtection {
@@ -735,7 +733,10 @@ fn test_debugging_options_tracking_hash() {
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);
     tracked!(drop_tracking, true);
+    tracked!(export_executable_symbols, true);
     tracked!(dual_proc_macros, true);
+    tracked!(dwarf_version, Some(5));
+    tracked!(emit_thin_lto, false);
     tracked!(fewer_names, Some(true));
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
@@ -756,13 +757,13 @@ fn test_debugging_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, Some(true));
-    tracked!(new_llvm_pass_manager, Some(true));
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
     tracked!(no_unique_section_names, true);
     tracked!(no_profiler_runtime, true);
     tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
+    tracked!(packed_bundled_libs, true);
     tracked!(panic_abort_tests, true);
     tracked!(panic_in_drop, PanicStrategy::Abort);
     tracked!(pick_stable_methods_before_any_unstable, false);
@@ -792,6 +793,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(thinlto, Some(true));
     tracked!(thir_unsafeck, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
+    tracked!(translate_remapped_path_to_local_path, false);
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZeroUsize::new(1));
     tracked!(tune_cpu, Some(String::from("abc")));
@@ -799,13 +801,14 @@ fn test_debugging_options_tracking_hash() {
     tracked!(unleash_the_miri_inside_of_you, true);
     tracked!(use_ctors_section, Some(true));
     tracked!(verify_llvm_ir, true);
+    tracked!(virtual_function_elimination, true);
     tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));
 
     macro_rules! tracked_no_crate_hash {
         ($name: ident, $non_default_value: expr) => {
             opts = reference.clone();
-            assert_ne!(opts.debugging_opts.$name, $non_default_value);
-            opts.debugging_opts.$name = $non_default_value;
+            assert_ne!(opts.unstable_opts.$name, $non_default_value);
+            opts.unstable_opts.$name = $non_default_value;
             assert_non_crate_hash_different(&reference, &opts);
         };
     }

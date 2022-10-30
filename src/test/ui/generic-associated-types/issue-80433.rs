@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 #[derive(Default)]
 struct E<T> {
     data: T,

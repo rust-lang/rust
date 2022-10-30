@@ -20,13 +20,9 @@ pub(crate) fn emit_unescape_error(
     range: Range<usize>,
     error: EscapeError,
 ) {
-    tracing::debug!(
+    debug!(
         "emit_unescape_error: {:?}, {:?}, {:?}, {:?}, {:?}",
-        lit,
-        span_with_quotes,
-        mode,
-        range,
-        error
+        lit, span_with_quotes, mode, range, error
     );
     let last_char = || {
         let c = lit[range.clone()].chars().rev().next().unwrap();
@@ -105,7 +101,7 @@ pub(crate) fn emit_unescape_error(
                     handler.span_suggestion(
                         span,
                         "consider removing the non-printing characters",
-                        ch.to_string(),
+                        ch,
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -141,7 +137,7 @@ pub(crate) fn emit_unescape_error(
                 .span_suggestion(
                     char_span,
                     "escape the character",
-                    c.escape_default().to_string(),
+                    c.escape_default(),
                     Applicability::MachineApplicable,
                 )
                 .emit();
@@ -157,7 +153,7 @@ pub(crate) fn emit_unescape_error(
                 .span_suggestion(
                     span,
                     "escape the character",
-                    "\\r".to_string(),
+                    "\\r",
                     Applicability::MachineApplicable,
                 )
                 .emit();
@@ -299,7 +295,7 @@ pub(crate) fn emit_unescape_error(
                 .span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "terminate the unicode escape",
-                    "}".to_string(),
+                    "}",
                     Applicability::MaybeIncorrect,
                 )
                 .emit();

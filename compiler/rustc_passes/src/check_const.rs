@@ -56,7 +56,7 @@ impl NonConstExpr {
 
 fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let mut vis = CheckConstVisitor::new(tcx);
-    tcx.hir().deep_visit_item_likes_in_module(module_def_id, &mut vis);
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut vis);
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -97,7 +97,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
             // If the function belongs to a trait, then it must enable the const_trait_impl
             // feature to use that trait function (with a const default body).
-            if tcx.trait_of_item(def_id).is_some() {
+            if tcx.trait_of_item(def_id.to_def_id()).is_some() {
                 return true;
             }
 
@@ -122,7 +122,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             // `-Zunleash-the-miri-inside-of-you` only works for expressions that don't have a
             // corresponding feature gate. This encourages nightly users to use feature gates when
             // possible.
-            None if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you => {
+            None if tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you => {
                 tcx.sess.span_warn(span, "skipping const checks");
                 return;
             }
@@ -189,10 +189,6 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.tcx.hir()
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        intravisit::walk_item(self, item);
     }
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {

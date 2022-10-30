@@ -1,0 +1,26 @@
+error[E0369]: cannot add `T` to `Wrapper<T>`
+  --> $DIR/restrict-type-not-param.rs:8:7
+   |
+LL |     a + b
+   |     - ^ - T
+   |     |
+   |     Wrapper<T>
+   |
+note: an implementation of `Add<_>` might be missing for `Wrapper<T>`
+  --> $DIR/restrict-type-not-param.rs:3:1
+   |
+LL | struct Wrapper<T>(T);
+   | ^^^^^^^^^^^^^^^^^ must implement `Add<_>`
+note: the following trait must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+LL | pub trait Add<Rhs = Self> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn qux<T>(a: Wrapper<T>, b: T) -> T where Wrapper<T>: Add<T, Output = T> {
+   |                                     ++++++++++++++++++++++++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.

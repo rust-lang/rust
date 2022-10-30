@@ -20,7 +20,7 @@ pub const fn foo() -> u32 { 42 }
 pub const unsafe fn foo_unsafe() -> u32 { 42 }
 
 // @has 'foo/fn.foo2.html' '//pre' 'pub const fn foo2() -> u32'
-// @!has - '//span[@class="since"]'
+// @!hasraw - '//span[@class="since"]'
 #[unstable(feature = "humans", issue = "none")]
 pub const fn foo2() -> u32 { 42 }
 
@@ -32,7 +32,7 @@ pub const fn bar2() -> u32 { 42 }
 
 
 // @has 'foo/fn.foo2_gated.html' '//pre' 'pub const unsafe fn foo2_gated() -> u32'
-// @!has - '//span[@class="since"]'
+// @!hasraw - '//span[@class="since"]'
 #[unstable(feature = "foo2", issue = "none")]
 pub const unsafe fn foo2_gated() -> u32 { 42 }
 
@@ -43,7 +43,7 @@ pub const unsafe fn foo2_gated() -> u32 { 42 }
 pub const unsafe fn bar2_gated() -> u32 { 42 }
 
 // @has 'foo/fn.bar_not_gated.html' '//pre' 'pub const unsafe fn bar_not_gated() -> u32'
-// @!has - '//span[@class="since"]'
+// @!hasraw - '//span[@class="since"]'
 pub const unsafe fn bar_not_gated() -> u32 { 42 }
 
 pub struct Foo;

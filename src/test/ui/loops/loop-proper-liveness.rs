@@ -6,7 +6,7 @@ fn test1() {
     'a: loop {
         x = loop { break 'a };
     }
-    println!("{:?}", x); //~ ERROR borrow of possibly-uninitialized variable
+    println!("{:?}", x); //~ ERROR E0381
 }
 
 // test2 and test3 should not fail.

@@ -1,7 +1,5 @@
 // compile-flags:-ldylib:+as-needed=foo -lstatic=bar -Zunstable-options
 
-#![feature(native_link_modifiers_bundle)]
-
 #[link(name = "foo")]
 #[link(
     name = "bar",

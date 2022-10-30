@@ -15,4 +15,5 @@ type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)C
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)Ref<.+>$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)RefMut<.+>$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)RefCell<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^core::num::([a-z_]+::)*NonZero.+$" --category Rust
 type category enable Rust

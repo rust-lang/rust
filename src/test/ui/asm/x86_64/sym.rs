@@ -1,4 +1,3 @@
-// min-llvm-version: 12.0.1
 // only-x86_64
 // only-linux
 // needs-asm-support

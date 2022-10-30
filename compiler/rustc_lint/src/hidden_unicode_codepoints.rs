@@ -1,7 +1,7 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 use ast::util::unicode::{contains_text_flow_control_chars, TEXT_FLOW_CONTROL_CHARS};
 use rustc_ast as ast;
-use rustc_errors::{Applicability, SuggestionStyle};
+use rustc_errors::{fluent, Applicability, SuggestionStyle};
 use rustc_span::{BytePos, Span, Symbol};
 
 declare_lint! {
@@ -60,68 +60,56 @@ impl HiddenUnicodeCodepoints {
             })
             .collect();
 
-        cx.struct_span_lint(TEXT_DIRECTION_CODEPOINT_IN_LITERAL, span, |lint| {
-            let mut err = lint.build(&format!(
-                "unicode codepoint changing visible direction of text present in {}",
-                label
-            ));
-            let (an, s) = match spans.len() {
-                1 => ("an ", ""),
-                _ => ("", "s"),
-            };
-            err.span_label(
-                span,
-                &format!(
-                    "this {} contains {}invisible unicode text flow control codepoint{}",
-                    label, an, s,
-                ),
-            );
-            if point_at_inner_spans {
-                for (c, span) in &spans {
-                    err.span_label(*span, format!("{:?}", c));
+        cx.struct_span_lint(
+            TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
+            span,
+            fluent::lint::hidden_unicode_codepoints,
+            |lint| {
+                lint.set_arg("label", label);
+                lint.set_arg("count", spans.len());
+                lint.span_label(span, fluent::lint::label);
+                lint.note(fluent::lint::note);
+                if point_at_inner_spans {
+                    for (c, span) in &spans {
+                        lint.span_label(*span, format!("{:?}", c));
+                    }
                 }
-            }
-            err.note(
-                "these kind of unicode codepoints change the way text flows on applications that \
-                 support them, but can cause confusion because they change the order of \
-                 characters on the screen",
-            );
-            if point_at_inner_spans && !spans.is_empty() {
-                err.multipart_suggestion_with_style(
-                    "if their presence wasn't intentional, you can remove them",
-                    spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
-                    Applicability::MachineApplicable,
-                    SuggestionStyle::HideCodeAlways,
-                );
-                err.multipart_suggestion(
-                    "if you want to keep them but make them visible in your source code, you can \
-                    escape them",
-                    spans
-                        .into_iter()
-                        .map(|(c, span)| {
-                            let c = format!("{:?}", c);
-                            (span, c[1..c.len() - 1].to_string())
-                        })
-                        .collect(),
-                    Applicability::MachineApplicable,
-                );
-            } else {
-                // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
-                // should do the same here to provide the same good suggestions as we do for
-                // literals above.
-                err.note("if their presence wasn't intentional, you can remove them");
-                err.note(&format!(
-                    "if you want to keep them but make them visible in your source code, you can \
-                     escape them: {}",
-                    spans
-                        .into_iter()
-                        .map(|(c, _)| { format!("{:?}", c) })
-                        .collect::<Vec<String>>()
-                        .join(", "),
-                ));
-            }
-            err.emit();
-        });
+                if point_at_inner_spans && !spans.is_empty() {
+                    lint.multipart_suggestion_with_style(
+                        fluent::lint::suggestion_remove,
+                        spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
+                        Applicability::MachineApplicable,
+                        SuggestionStyle::HideCodeAlways,
+                    );
+                    lint.multipart_suggestion(
+                        fluent::lint::suggestion_escape,
+                        spans
+                            .into_iter()
+                            .map(|(c, span)| {
+                                let c = format!("{:?}", c);
+                                (span, c[1..c.len() - 1].to_string())
+                            })
+                            .collect(),
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
+                    // should do the same here to provide the same good suggestions as we do for
+                    // literals above.
+                    lint.set_arg(
+                        "escaped",
+                        spans
+                            .into_iter()
+                            .map(|(c, _)| format!("{:?}", c))
+                            .collect::<Vec<String>>()
+                            .join(", "),
+                    );
+                    lint.note(fluent::lint::suggestion_remove);
+                    lint.note(fluent::lint::no_suggestion_note_escape);
+                }
+                lint
+            },
+        );
     }
 }
 impl EarlyLintPass for HiddenUnicodeCodepoints {
@@ -136,8 +124,8 @@ impl EarlyLintPass for HiddenUnicodeCodepoints {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         // byte strings are already handled well enough by `EscapeError::NonAsciiCharInByteString`
         let (text, span, padding) = match &expr.kind {
-            ast::ExprKind::Lit(ast::Lit { token, kind, span }) => {
-                let text = token.symbol;
+            ast::ExprKind::Lit(ast::Lit { token_lit, kind, span }) => {
+                let text = token_lit.symbol;
                 if !contains_text_flow_control_chars(text.as_str()) {
                     return;
                 }

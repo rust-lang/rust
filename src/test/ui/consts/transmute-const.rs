@@ -3,7 +3,7 @@
 use std::mem;
 
 #[repr(transparent)]
-struct Foo(u32);
+struct Foo(#[allow(unused_tuple_struct_fields)] u32);
 
 const TRANSMUTED_U32: u32 = unsafe { mem::transmute(Foo(3)) };
 

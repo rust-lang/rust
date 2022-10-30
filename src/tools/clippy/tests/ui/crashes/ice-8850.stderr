@@ -1,0 +1,45 @@
+error: returning the result of a `let` binding from a block
+  --> $DIR/ice-8850.rs:4:5
+   |
+LL |     let res = FN() + 1;
+   |     ------------------- unnecessary `let` binding
+LL |     res
+   |     ^^^
+   |
+   = note: `-D clippy::let-and-return` implied by `-D warnings`
+help: return the expression directly
+   |
+LL ~     
+LL ~     FN() + 1
+   |
+
+error: returning the result of a `let` binding from a block
+  --> $DIR/ice-8850.rs:10:5
+   |
+LL |     let res = FN() + 1;
+   |     ------------------- unnecessary `let` binding
+LL |     res
+   |     ^^^
+   |
+help: return the expression directly
+   |
+LL ~     
+LL ~     FN() + 1
+   |
+
+error: returning the result of a `let` binding from a block
+  --> $DIR/ice-8850.rs:24:5
+   |
+LL |     let res = FN() + 1;
+   |     ------------------- unnecessary `let` binding
+LL |     res
+   |     ^^^
+   |
+help: return the expression directly
+   |
+LL ~     
+LL ~     FN() + 1
+   |
+
+error: aborting due to 3 previous errors
+

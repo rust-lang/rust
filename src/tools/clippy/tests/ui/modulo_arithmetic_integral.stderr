@@ -4,9 +4,9 @@ error: you are using modulo operator on types that might have different signs
 LL |     a % b;
    |     ^^^^^
    |
-   = note: `-D clippy::modulo-arithmetic` implied by `-D warnings`
    = note: double check for expected result especially when interoperating with different languages
    = note: or consider using `rem_euclid` or similar function
+   = note: `-D clippy::modulo-arithmetic` implied by `-D warnings`
 
 error: you are using modulo operator on types that might have different signs
   --> $DIR/modulo_arithmetic_integral.rs:9:5

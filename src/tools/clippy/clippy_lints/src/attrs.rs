@@ -78,10 +78,17 @@ declare_clippy_lint! {
     /// Checks for `extern crate` and `use` items annotated with
     /// lint attributes.
     ///
-    /// This lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]`,
-    /// `#[allow(unreachable_pub)]`, `#[allow(clippy::wildcard_imports)]` and
-    /// `#[allow(clippy::enum_glob_use)]` on `use` items and `#[allow(unused_imports)]` on
-    /// `extern crate` items with a `#[macro_use]` attribute.
+    /// This lint permits lint attributes for lints emitted on the items themself.
+    /// For `use` items these lints are:
+    /// * deprecated
+    /// * unreachable_pub
+    /// * unused_imports
+    /// * clippy::enum_glob_use
+    /// * clippy::macro_use_imports
+    /// * clippy::wildcard_imports
+    ///
+    /// For `extern crate` items these lints are:
+    /// * `unused_imports` on items with `#[macro_use]`
     ///
     /// ### Why is this bad?
     /// Lint attributes have no effect on crate imports. Most
@@ -89,13 +96,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// // Bad
     /// #[deny(dead_code)]
     /// extern crate foo;
     /// #[forbid(dead_code)]
     /// use foo::bar;
+    /// ```
     ///
-    /// // Ok
+    /// Use instead:
+    /// ```rust,ignore
     /// #[allow(unused_imports)]
     /// use foo::baz;
     /// #[allow(unused_imports)]
@@ -146,15 +154,19 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// #[allow(dead_code)]
+    ///
+    /// fn not_quite_good_code() { }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
     /// // Good (as inner attribute)
     /// #![allow(dead_code)]
     ///
     /// fn this_is_fine() { }
     ///
-    /// // Bad
-    /// #[allow(dead_code)]
-    ///
-    /// fn not_quite_good_code() { }
+    /// // or
     ///
     /// // Good (as outer attribute)
     /// #[allow(dead_code)]
@@ -175,12 +187,11 @@ declare_clippy_lint! {
     /// These lints should only be enabled on a lint-by-lint basis and with careful consideration.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #![deny(clippy::restriction)]
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// #![deny(clippy::as_conversions)]
     /// ```
@@ -205,13 +216,12 @@ declare_clippy_lint! {
     /// [#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #[cfg_attr(rustfmt, rustfmt_skip)]
     /// fn main() { }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// #[rustfmt::skip]
     /// fn main() { }
@@ -231,20 +241,20 @@ declare_clippy_lint! {
     /// by the conditional compilation engine.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #[cfg(linux)]
     /// fn conditional() { }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
+    /// # mod hidden {
     /// #[cfg(target_os = "linux")]
     /// fn conditional() { }
-    /// ```
+    /// # }
     ///
-    /// Or:
-    /// ```rust
+    /// // or
+    ///
     /// #[cfg(unix)]
     /// fn conditional() { }
     /// ```
@@ -266,14 +276,13 @@ declare_clippy_lint! {
     /// ensure that others understand the reasoning
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #![feature(lint_reasons)]
     ///
     /// #![allow(clippy::some_lint)]
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// #![feature(lint_reasons)]
     ///
@@ -338,14 +347,18 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                             for lint in lint_list {
                                 match item.kind {
                                     ItemKind::Use(..) => {
-                                        if is_word(lint, sym!(unused_imports))
+                                        if is_word(lint, sym::unused_imports)
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
                                             || extract_clippy_lint(lint).map_or(false, |s| {
                                                 matches!(
                                                     s.as_str(),
-                                                    "wildcard_imports" | "enum_glob_use" | "redundant_pub_crate",
+                                                    "wildcard_imports"
+                                                        | "enum_glob_use"
+                                                        | "redundant_pub_crate"
+                                                        | "macro_use_imports"
+                                                        | "unsafe_removed_from_name",
                                                 )
                                             })
                                         {
@@ -353,7 +366,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                         }
                                     },
                                     ItemKind::ExternCrate(..) => {
-                                        if is_word(lint, sym!(unused_imports)) && skip_unused_imports {
+                                        if is_word(lint, sym::unused_imports) && skip_unused_imports {
                                             return;
                                         }
                                         if is_word(lint, sym!(unused_extern_crates)) {
@@ -463,7 +476,7 @@ fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem
 
 fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if let ItemKind::Fn(_, _, eid) = item.kind {
-        is_relevant_expr(cx, cx.tcx.typeck_body(eid), &cx.tcx.hir().body(eid).value)
+        is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir().body(eid).value)
     } else {
         true
     }
@@ -471,7 +484,7 @@ fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
 
 fn is_relevant_impl(cx: &LateContext<'_>, item: &ImplItem<'_>) -> bool {
     match item.kind {
-        ImplItemKind::Fn(_, eid) => is_relevant_expr(cx, cx.tcx.typeck_body(eid), &cx.tcx.hir().body(eid).value),
+        ImplItemKind::Fn(_, eid) => is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir().body(eid).value),
         _ => false,
     }
 }
@@ -480,7 +493,7 @@ fn is_relevant_trait(cx: &LateContext<'_>, item: &TraitItem<'_>) -> bool {
     match item.kind {
         TraitItemKind::Fn(_, TraitFn::Required(_)) => true,
         TraitItemKind::Fn(_, TraitFn::Provided(eid)) => {
-            is_relevant_expr(cx, cx.tcx.typeck_body(eid), &cx.tcx.hir().body(eid).value)
+            is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir().body(eid).value)
         },
         _ => false,
     }
@@ -529,10 +542,7 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribut
                     cx,
                     INLINE_ALWAYS,
                     attr.span,
-                    &format!(
-                        "you have declared `#[inline(always)]` on `{}`. This is usually a bad idea",
-                        name
-                    ),
+                    &format!("you have declared `#[inline(always)]` on `{name}`. This is usually a bad idea"),
                 );
             }
         }
@@ -585,15 +595,21 @@ impl EarlyLintPass for EarlyAttributes {
 }
 
 fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
-    for attr in &item.attrs {
+    let mut iter = item.attrs.iter().peekable();
+    while let Some(attr) = iter.next() {
         if matches!(attr.kind, AttrKind::Normal(..))
             && attr.style == AttrStyle::Outer
             && is_present_in_source(cx, attr.span)
         {
             let begin_of_attr_to_item = Span::new(attr.span.lo(), item.span.lo(), item.span.ctxt(), item.span.parent());
-            let end_of_attr_to_item = Span::new(attr.span.hi(), item.span.lo(), item.span.ctxt(), item.span.parent());
+            let end_of_attr_to_next_attr_or_item = Span::new(
+                attr.span.hi(),
+                iter.peek().map_or(item.span.lo(), |next_attr| next_attr.span.lo()),
+                item.span.ctxt(),
+                item.span.parent(),
+            );
 
-            if let Some(snippet) = snippet_opt(cx, end_of_attr_to_item) {
+            if let Some(snippet) = snippet_opt(cx, end_of_attr_to_next_attr_or_item) {
                 let lines = snippet.split('\n').collect::<Vec<_>>();
                 let lines = without_block_comments(lines);
 
@@ -623,8 +639,15 @@ fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: Opti
         if feature_item.has_name(sym::rustfmt);
         // check for `rustfmt_skip` and `rustfmt::skip`
         if let Some(skip_item) = &items[1].meta_item();
-        if skip_item.has_name(sym!(rustfmt_skip)) ||
-            skip_item.path.segments.last().expect("empty path in attribute").ident.name == sym::skip;
+        if skip_item.has_name(sym!(rustfmt_skip))
+            || skip_item
+                .path
+                .segments
+                .last()
+                .expect("empty path in attribute")
+                .ident
+                .name
+                == sym::skip;
         // Only lint outer attributes, because custom inner attributes are unstable
         // Tracking issue: https://github.com/rust-lang/rust/issues/54726
         if attr.style == AttrStyle::Outer;
@@ -695,7 +718,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                 let mut unix_suggested = false;
 
                 for (os, span) in mismatched {
-                    let sugg = format!("target_os = \"{}\"", os);
+                    let sugg = format!("target_os = \"{os}\"");
                     diag.span_suggestion(span, "try", sugg, Applicability::MaybeIncorrect);
 
                     if !unix_suggested && is_unix(os) {

@@ -1,12 +1,12 @@
 // run-rustfix
-
 #![warn(clippy::while_let_on_iterator)]
+#![allow(dead_code, unreachable_code, unused_mut)]
 #![allow(
+    clippy::equatable_if_let,
+    clippy::manual_find,
     clippy::never_loop,
-    unreachable_code,
-    unused_mut,
-    dead_code,
-    clippy::equatable_if_let
+    clippy::redundant_closure_call,
+    clippy::uninlined_format_args
 )]
 
 fn base() {
@@ -258,7 +258,7 @@ fn issue1924() {
         fn f(&mut self) -> Option<u32> {
             // Used as a field.
             while let Some(i) = self.0.next() {
-                if i < 3 || i > 7 {
+                if !(3..8).contains(&i) {
                     return Some(i);
                 }
             }
@@ -400,6 +400,47 @@ fn issue_8113() {
     while let Some(x) = x[0].next() {
         println!("{}", x);
     }
+}
+
+fn fn_once_closure() {
+    let mut it = 0..10;
+    (|| {
+        while let Some(x) = it.next() {
+            if x % 2 == 0 {
+                break;
+            }
+        }
+    })();
+
+    fn f(_: impl FnOnce()) {}
+    let mut it = 0..10;
+    f(|| {
+        while let Some(x) = it.next() {
+            if x % 2 == 0 {
+                break;
+            }
+        }
+    });
+
+    fn f2(_: impl FnMut()) {}
+    let mut it = 0..10;
+    f2(|| {
+        while let Some(x) = it.next() {
+            if x % 2 == 0 {
+                break;
+            }
+        }
+    });
+
+    fn f3(_: fn()) {}
+    f3(|| {
+        let mut it = 0..10;
+        while let Some(x) = it.next() {
+            if x % 2 == 0 {
+                break;
+            }
+        }
+    })
 }
 
 fn main() {

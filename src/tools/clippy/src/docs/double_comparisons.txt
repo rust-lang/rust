@@ -1,0 +1,17 @@
+### What it does
+Checks for double comparisons that could be simplified to a single expression.
+
+
+### Why is this bad?
+Readability.
+
+### Example
+```
+if x == y || x < y {}
+```
+
+Use instead:
+
+```
+if x <= y {}
+```

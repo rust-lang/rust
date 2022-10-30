@@ -21,7 +21,6 @@
 
 use rustc_ast::{self as ast, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
 use rustc_hir::Node as HirNode;
@@ -81,7 +80,7 @@ const BASE_STRUCT: &[&str] =
 /// Extra `DepNode`s for functions and methods.
 const EXTRA_ASSOCIATED: &[&str] = &[label_strs::associated_item];
 
-const EXTRA_TRAIT: &[&str] = &[label_strs::trait_of_item];
+const EXTRA_TRAIT: &[&str] = &[];
 
 // Fully Built Labels
 
@@ -135,7 +134,7 @@ struct Assertion {
 }
 
 pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
-    if !tcx.sess.opts.debugging_opts.query_dep_graph {
+    if !tcx.sess.opts.unstable_opts.query_dep_graph {
         return;
     }
 
@@ -150,19 +149,19 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         for id in crate_items.trait_items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         for id in crate_items.impl_items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         for id in crate_items.foreign_items() {
-            dirty_clean_visitor.check_item(id.def_id);
+            dirty_clean_visitor.check_item(id.def_id.def_id);
         }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
@@ -303,7 +302,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             HirNode::ImplItem(item) => match item.kind {
                 ImplItemKind::Fn(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
-                ImplItemKind::TyAlias(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
+                ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
             },
             _ => self.tcx.sess.span_fatal(
                 attr.span,
@@ -473,7 +472,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_attribute(&mut self, _: hir::HirId, attr: &'tcx Attribute) {
+    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
         if self.is_active_attr(attr) {
             self.found_attrs.push(attr);
         }
