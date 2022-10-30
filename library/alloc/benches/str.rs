@@ -123,7 +123,7 @@ fn bench_contains_short_short(b: &mut Bencher) {
     let needle = "sit";
 
     b.iter(|| {
-        assert!(haystack.contains(needle));
+        assert!(black_box(haystack).contains(black_box(needle)));
     })
 }
 
@@ -167,7 +167,7 @@ malesuada sollicitudin quam eu fermentum.";
     let needle = "english";
 
     b.iter(|| {
-        assert!(!haystack.contains(needle));
+        assert!(!black_box(haystack).contains(black_box(needle)));
     })
 }
 
@@ -177,7 +177,7 @@ fn bench_contains_bad_naive(b: &mut Bencher) {
     let needle = "aaaaaaaab";
 
     b.iter(|| {
-        assert!(!haystack.contains(needle));
+        assert!(!black_box(haystack).contains(black_box(needle)));
     })
 }
 
@@ -187,7 +187,7 @@ fn bench_contains_equal(b: &mut Bencher) {
     let needle = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
 
     b.iter(|| {
-        assert!(haystack.contains(needle));
+        assert!(black_box(haystack).contains(black_box(needle)));
     })
 }
 
