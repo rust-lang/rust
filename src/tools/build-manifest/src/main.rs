@@ -284,8 +284,7 @@ impl Builder {
 
     fn add_packages_to(&mut self, manifest: &mut Manifest) {
         for pkg in PkgType::all() {
-            let fallback = if pkg.use_docs_fallback() { DOCS_FALLBACK } else { &[] };
-            self.package(pkg, &mut manifest.pkg, fallback);
+            self.package(pkg, &mut manifest.pkg);
         }
     }
 
@@ -471,18 +470,14 @@ impl Builder {
             .extend(pkgs.iter().map(|s| s.manifest_component_name()));
     }
 
-    fn package(
-        &mut self,
-        pkg: &PkgType,
-        dst: &mut BTreeMap<String, Package>,
-        fallback: &[(&str, &str)],
-    ) {
+    fn package(&mut self, pkg: &PkgType, dst: &mut BTreeMap<String, Package>) {
         if *pkg == PkgType::Rust {
             // This is handled specially by `rust_package` later.
             // Order is important, so don't call `rust_package` here.
             return;
         }
 
+        let fallback = if pkg.use_docs_fallback() { DOCS_FALLBACK } else { &[] };
         let version_info = self.versions.version(&pkg).expect("failed to load package version");
         let mut is_present = version_info.present;
 
