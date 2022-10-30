@@ -1418,7 +1418,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         }
         let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
-        flags.push(builder.config.cmd.rustc_args().join(" "));
+        flags.extend(builder.config.cmd.rustc_args().iter().map(|s| s.to_string()));
 
         if let Some(linker) = builder.linker(target) {
             cmd.arg("--linker").arg(linker);
@@ -1427,12 +1427,16 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
         hostflags.extend(builder.lld_flags(compiler.host));
-        cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
+        for flag in hostflags {
+            cmd.arg("--host-rustcflags").arg(flag);
+        }
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
         targetflags.extend(builder.lld_flags(target));
-        cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
+        for flag in targetflags {
+            cmd.arg("--target-rustcflags").arg(flag);
+        }
 
         cmd.arg("--python").arg(builder.python());
 

@@ -554,6 +554,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         val: &mir::ConstantKind<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        // FIXME(const_prop): normalization needed b/c const prop lint in
+        // `mir_drops_elaborated_and_const_checked`, which happens before
+        // optimized MIR. Only after optimizing the MIR can we guarantee
+        // that the `RevealAll` pass has happened and that the body's consts
+        // are normalized, so any call to resolve before that needs to be
+        // manually normalized.
+        let val = self.tcx.normalize_erasing_regions(self.param_env, *val);
         match val {
             mir::ConstantKind::Ty(ct) => {
                 match ct.kind() {
@@ -585,7 +592,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 }
             }
-            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, *ty, layout),
+            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(val, ty, layout),
             mir::ConstantKind::Unevaluated(uv, _) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
                 Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())

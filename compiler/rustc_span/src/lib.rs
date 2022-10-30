@@ -558,7 +558,7 @@ impl Span {
         self.data_untracked().is_dummy()
     }
 
-    /// Returns `true` if this span comes from a macro or desugaring.
+    /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
     #[inline]
     pub fn from_expansion(self) -> bool {
         self.ctxt() != SyntaxContext::root()
@@ -569,6 +569,12 @@ impl Span {
     pub fn in_macro_expansion_with_collapse_debuginfo(self) -> bool {
         let outer_expn = self.ctxt().outer_expn_data();
         matches!(outer_expn.kind, ExpnKind::Macro(..)) && outer_expn.collapse_debuginfo
+    }
+
+    /// Returns `true` if this span comes from MIR inlining.
+    pub fn is_inlined(self) -> bool {
+        let outer_expn = self.ctxt().outer_expn_data();
+        matches!(outer_expn.kind, ExpnKind::Inlined)
     }
 
     /// Returns `true` if `span` originates in a derive-macro's expansion.

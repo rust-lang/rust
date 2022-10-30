@@ -20,6 +20,7 @@
 #![feature(is_terminal)]
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
+#![feature(panic_can_unwind)]
 #![feature(test)]
 
 // Public reexports
@@ -54,6 +55,7 @@ use std::{
     collections::VecDeque,
     env, io,
     io::prelude::Write,
+    mem::ManuallyDrop,
     panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo},
     process::{self, Command, Termination},
     sync::mpsc::{channel, Sender},
@@ -112,6 +114,29 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
             process::exit(ERROR_EXIT_CODE);
         }
     } else {
+        if !opts.nocapture {
+            // If we encounter a non-unwinding panic, flush any captured output from the current test,
+            // and stop  capturing output to ensure that the non-unwinding panic message is visible.
+            // We also acquire the locks for both output streams to prevent output from other threads
+            // from interleaving with the panic message or appearing after it.
+            let builtin_panic_hook = panic::take_hook();
+            let hook = Box::new({
+                move |info: &'_ PanicInfo<'_>| {
+                    if !info.can_unwind() {
+                        std::mem::forget(std::io::stderr().lock());
+                        let mut stdout = ManuallyDrop::new(std::io::stdout().lock());
+                        if let Some(captured) = io::set_output_capture(None) {
+                            if let Ok(data) = captured.lock() {
+                                let _ = stdout.write_all(&data);
+                                let _ = stdout.flush();
+                            }
+                        }
+                    }
+                    builtin_panic_hook(info);
+                }
+            });
+            panic::set_hook(hook);
+        }
         match console::run_tests_console(&opts, tests) {
             Ok(true) => {}
             Ok(false) => process::exit(ERROR_EXIT_CODE),

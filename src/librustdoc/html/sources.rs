@@ -258,7 +258,7 @@ where
 
 pub(crate) enum SourceContext {
     Standalone,
-    Embedded { offset: usize },
+    Embedded { offset: usize, needs_expansion: bool },
 }
 
 /// Wrapper struct to render the source code of a file. This will do things like
@@ -274,14 +274,18 @@ pub(crate) fn print_src(
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
+    let extra;
     line_numbers.write_str("<pre class=\"src-line-numbers\">");
     match source_context {
         SourceContext::Standalone => {
+            extra = None;
             for line in 1..=lines {
                 writeln!(line_numbers, "<span id=\"{0}\">{0}</span>", line)
             }
         }
-        SourceContext::Embedded { offset } => {
+        SourceContext::Embedded { offset, needs_expansion } => {
+            extra =
+                if needs_expansion { Some(r#"<span class="expand">&varr;</span>"#) } else { None };
             for line in 1..=lines {
                 writeln!(line_numbers, "<span>{0}</span>", line + offset)
             }
@@ -297,5 +301,6 @@ pub(crate) fn print_src(
         line_numbers,
         highlight::HrefContext { context, file_span, root_path, current_href },
         decoration_info,
+        extra,
     );
 }

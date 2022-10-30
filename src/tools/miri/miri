@@ -121,7 +121,7 @@ toolchain)
 rustc-pull)
     cd "$MIRIDIR"
     git fetch http://localhost:8000/rust-lang/rust.git$JOSH_FILTER.git master
-    git merge FETCH_HEAD
+    git merge FETCH_HEAD --no-ff -m "Merge from rustc"
     exit 0
     ;;
 rustc-push)

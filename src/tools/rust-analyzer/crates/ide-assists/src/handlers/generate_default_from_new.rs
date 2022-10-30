@@ -1,8 +1,7 @@
 use ide_db::famous_defs::FamousDefs;
-use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    ast::{self, HasGenericParams, HasName, HasTypeBounds, Impl},
+    ast::{self, make, HasGenericParams, HasName, Impl},
     AstNode,
 };
 
@@ -77,45 +76,47 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext<'
     )
 }
 
+// FIXME: based on from utils::generate_impl_text_inner
 fn generate_trait_impl_text_from_impl(impl_: &ast::Impl, trait_text: &str, code: &str) -> String {
-    let generic_params = impl_.generic_param_list();
+    let impl_ty = impl_.self_ty().unwrap();
+    let generic_params = impl_.generic_param_list().map(|generic_params| {
+        let lifetime_params =
+            generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
+        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+            // remove defaults since they can't be specified in impls
+            match param {
+                ast::TypeOrConstParam::Type(param) => {
+                    let param = param.clone_for_update();
+                    param.remove_default();
+                    Some(ast::GenericParam::TypeParam(param))
+                }
+                ast::TypeOrConstParam::Const(param) => {
+                    let param = param.clone_for_update();
+                    param.remove_default();
+                    Some(ast::GenericParam::ConstParam(param))
+                }
+            }
+        });
+
+        make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
+    });
+
     let mut buf = String::with_capacity(code.len());
     buf.push_str("\n\n");
+
+    // `impl{generic_params} {trait_text} for {impl_.self_ty()}`
     buf.push_str("impl");
-
     if let Some(generic_params) = &generic_params {
-        let lifetimes = generic_params.lifetime_params().map(|lt| format!("{}", lt.syntax()));
-        let toc_params = generic_params.type_or_const_params().map(|toc_param| match toc_param {
-            ast::TypeOrConstParam::Type(type_param) => {
-                let mut buf = String::new();
-                if let Some(it) = type_param.name() {
-                    format_to!(buf, "{}", it.syntax());
-                }
-                if let Some(it) = type_param.colon_token() {
-                    format_to!(buf, "{} ", it);
-                }
-                if let Some(it) = type_param.type_bound_list() {
-                    format_to!(buf, "{}", it.syntax());
-                }
-                buf
-            }
-            ast::TypeOrConstParam::Const(const_param) => const_param.syntax().to_string(),
-        });
-        let generics = lifetimes.chain(toc_params).format(", ");
-        format_to!(buf, "<{}>", generics);
+        format_to!(buf, "{generic_params}")
     }
-
-    buf.push(' ');
-    buf.push_str(trait_text);
-    buf.push_str(" for ");
-    buf.push_str(&impl_.self_ty().unwrap().syntax().text().to_string());
+    format_to!(buf, " {trait_text} for {impl_ty}");
 
     match impl_.where_clause() {
         Some(where_clause) => {
-            format_to!(buf, "\n{}\n{{\n{}\n}}", where_clause, code);
+            format_to!(buf, "\n{where_clause}\n{{\n{code}\n}}");
         }
         None => {
-            format_to!(buf, " {{\n{}\n}}", code);
+            format_to!(buf, " {{\n{code}\n}}");
         }
     }
 

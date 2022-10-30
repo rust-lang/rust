@@ -2,7 +2,6 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 //! Error reporting machinery for lifetime errors.
 
-use either::Either;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
@@ -17,7 +16,7 @@ use rustc_infer::infer::{
     NllRegionVariableOrigin, RelateParamBound,
 };
 use rustc_middle::hir::place::PlaceBase;
-use rustc_middle::mir::{ConstraintCategory, ReturnConstraint, TerminatorKind};
+use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::Region;
 use rustc_middle::ty::TypeVisitor;
@@ -40,7 +39,7 @@ use crate::{
     MirBorrowckCtxt,
 };
 
-impl ConstraintDescription for ConstraintCategory {
+impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
     fn description(&self) -> &'static str {
         // Must end with a space. Allows for empty names to be provided.
         match self {
@@ -116,7 +115,7 @@ pub(crate) enum RegionErrorKind<'tcx> {
 
 /// Information about the various region constraints involved in a borrow checker error.
 #[derive(Clone, Debug)]
-pub struct ErrorConstraintInfo {
+pub struct ErrorConstraintInfo<'tcx> {
     // fr: outlived_fr
     pub(super) fr: RegionVid,
     pub(super) fr_is_local: bool,
@@ -124,7 +123,7 @@ pub struct ErrorConstraintInfo {
     pub(super) outlived_fr_is_local: bool,
 
     // Category and span for best blame constraint
-    pub(super) category: ConstraintCategory,
+    pub(super) category: ConstraintCategory<'tcx>,
     pub(super) span: Span,
 }
 
@@ -499,7 +498,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// ```
     fn report_fnmut_error(
         &self,
-        errci: &ErrorConstraintInfo,
+        errci: &ErrorConstraintInfo<'tcx>,
         kind: ReturnConstraint,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
@@ -572,7 +571,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn report_escaping_data_error(
         &self,
-        errci: &ErrorConstraintInfo,
+        errci: &ErrorConstraintInfo<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let ErrorConstraintInfo { span, category, .. } = errci;
 
@@ -676,7 +675,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// ```
     fn report_general_error(
         &self,
-        errci: &ErrorConstraintInfo,
+        errci: &ErrorConstraintInfo<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let ErrorConstraintInfo {
             fr,
@@ -789,7 +788,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         diag: &mut Diagnostic,
         f: Region<'tcx>,
         o: Region<'tcx>,
-        category: &ConstraintCategory,
+        category: &ConstraintCategory<'tcx>,
     ) {
         if !o.is_static() {
             return;
@@ -797,12 +796,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        let instance =
-            if let ConstraintCategory::CallArgument(location) = category
-                && let Either::Right(term) = self.body.stmt_at(*location)
-                && let TerminatorKind::Call { func, .. } = &term.kind
-        {
-            let func_ty = func.ty(self.body, tcx);
+        let instance = if let ConstraintCategory::CallArgument(Some(func_ty)) = category {
             let (fn_did, substs) = match func_ty.kind() {
                 ty::FnDef(fn_did, substs) => (fn_did, substs),
                 _ => return,

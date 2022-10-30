@@ -2,7 +2,7 @@ use crate::diagnostics::error::{
     span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err, DiagnosticDeriveError,
 };
 use proc_macro::Span;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
@@ -395,6 +395,82 @@ pub(super) fn build_field_mapping<'v>(variant: &VariantInfo<'v>) -> HashMap<Stri
     fields_map
 }
 
+#[derive(Copy, Clone, Debug)]
+pub(super) enum AllowMultipleAlternatives {
+    No,
+    Yes,
+}
+
+/// Constructs the `format!()` invocation(s) necessary for a `#[suggestion*(code = "foo")]` or
+/// `#[suggestion*(code("foo", "bar"))]` attribute field
+pub(super) fn build_suggestion_code(
+    code_field: &Ident,
+    meta: &Meta,
+    fields: &impl HasFieldMap,
+    allow_multiple: AllowMultipleAlternatives,
+) -> TokenStream {
+    let values = match meta {
+        // `code = "foo"`
+        Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(s), .. }) => vec![s],
+        // `code("foo", "bar")`
+        Meta::List(MetaList { nested, .. }) => {
+            if let AllowMultipleAlternatives::No = allow_multiple {
+                span_err(
+                    meta.span().unwrap(),
+                    "expected exactly one string literal for `code = ...`",
+                )
+                .emit();
+                vec![]
+            } else if nested.is_empty() {
+                span_err(
+                    meta.span().unwrap(),
+                    "expected at least one string literal for `code(...)`",
+                )
+                .emit();
+                vec![]
+            } else {
+                nested
+                    .into_iter()
+                    .filter_map(|item| {
+                        if let NestedMeta::Lit(syn::Lit::Str(s)) = item {
+                            Some(s)
+                        } else {
+                            span_err(
+                                item.span().unwrap(),
+                                "`code(...)` must contain only string literals",
+                            )
+                            .emit();
+                            None
+                        }
+                    })
+                    .collect()
+            }
+        }
+        _ => {
+            span_err(
+                meta.span().unwrap(),
+                r#"`code = "..."`/`code(...)` must contain only string literals"#,
+            )
+            .emit();
+            vec![]
+        }
+    };
+
+    if let AllowMultipleAlternatives::Yes = allow_multiple {
+        let formatted_strings: Vec<_> = values
+            .into_iter()
+            .map(|value| fields.build_format(&value.value(), value.span()))
+            .collect();
+        quote! { let #code_field = [#(#formatted_strings),*].into_iter(); }
+    } else if let [value] = values.as_slice() {
+        let formatted_str = fields.build_format(&value.value(), value.span());
+        quote! { let #code_field = #formatted_str; }
+    } else {
+        // error handled previously
+        quote! { let #code_field = String::new(); }
+    }
+}
+
 /// Possible styles for suggestion subdiagnostics.
 #[derive(Clone, Copy)]
 pub(super) enum SuggestionKind {
@@ -571,21 +647,23 @@ impl SubdiagnosticKind {
             let nested_name = meta.path().segments.last().unwrap().ident.to_string();
             let nested_name = nested_name.as_str();
 
-            let value = match meta {
-                Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(value), .. }) => value,
+            let string_value = match meta {
+                Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(value), .. }) => Some(value),
+
                 Meta::Path(_) => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
                     diag.help("a diagnostic slug must be the first argument to the attribute")
                 }),
-                _ => {
-                    invalid_nested_attr(attr, &nested_attr).emit();
-                    continue;
-                }
+                _ => None,
             };
 
             match (nested_name, &mut kind) {
                 ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
-                    let formatted_str = fields.build_format(&value.value(), value.span());
-                    let code_init = quote! { let #code_field = #formatted_str; };
+                    let code_init = build_suggestion_code(
+                        code_field,
+                        meta,
+                        fields,
+                        AllowMultipleAlternatives::Yes,
+                    );
                     code.set_once(code_init, span);
                 }
                 (
@@ -593,6 +671,11 @@ impl SubdiagnosticKind {
                     SubdiagnosticKind::Suggestion { ref mut applicability, .. }
                     | SubdiagnosticKind::MultipartSuggestion { ref mut applicability, .. },
                 ) => {
+                    let Some(value) = string_value else {
+                        invalid_nested_attr(attr, &nested_attr).emit();
+                        continue;
+                    };
+
                     let value = Applicability::from_str(&value.value()).unwrap_or_else(|()| {
                         span_err(span, "invalid applicability").emit();
                         Applicability::Unspecified
@@ -623,7 +706,7 @@ impl SubdiagnosticKind {
                     init
                 } else {
                     span_err(span, "suggestion without `code = \"...\"`").emit();
-                    quote! { let #code_field: String = unreachable!(); }
+                    quote! { let #code_field = std::iter::empty(); }
                 };
             }
             SubdiagnosticKind::Label
@@ -644,7 +727,7 @@ impl quote::IdentFragment for SubdiagnosticKind {
             SubdiagnosticKind::Note => write!(f, "note"),
             SubdiagnosticKind::Help => write!(f, "help"),
             SubdiagnosticKind::Warn => write!(f, "warn"),
-            SubdiagnosticKind::Suggestion { .. } => write!(f, "suggestion_with_style"),
+            SubdiagnosticKind::Suggestion { .. } => write!(f, "suggestions_with_style"),
             SubdiagnosticKind::MultipartSuggestion { .. } => {
                 write!(f, "multipart_suggestion_with_style")
             }

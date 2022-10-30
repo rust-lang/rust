@@ -185,7 +185,7 @@ impl<'tcx> ObligationCause<'tcx> {
         self
     }
 
-    pub fn to_constraint_category(&self) -> ConstraintCategory {
+    pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self.code() {
             MatchImpl(cause, _) => cause.to_constraint_category(),
             AscribeUserTypeProvePredicate(predicate_span) => {

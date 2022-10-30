@@ -263,13 +263,11 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 
         // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
         // the bounds that the function supplies.
-        match infcx.register_hidden_type(
-            OpaqueTypeKey { def_id, substs: id_substs },
-            ObligationCause::misc(instantiated_ty.span, body_id),
-            param_env,
-            definition_ty,
-            origin,
-        ) {
+        let opaque_ty = self.tcx.mk_opaque(def_id.to_def_id(), id_substs);
+        match infcx
+            .at(&ObligationCause::misc(instantiated_ty.span, body_id), param_env)
+            .eq(opaque_ty, definition_ty)
+        {
             Ok(infer_ok) => {
                 for obligation in infer_ok.obligations {
                     fulfillment_cx.register_predicate_obligation(&infcx, obligation);
@@ -280,7 +278,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     .err_ctxt()
                     .report_mismatched_types(
                         &ObligationCause::misc(instantiated_ty.span, body_id),
-                        self.tcx.mk_opaque(def_id.to_def_id(), id_substs),
+                        opaque_ty,
                         definition_ty,
                         err,
                     )

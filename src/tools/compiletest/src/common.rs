@@ -269,10 +269,10 @@ pub struct Config {
     pub runtool: Option<String>,
 
     /// Flags to pass to the compiler when building for the host
-    pub host_rustcflags: Option<String>,
+    pub host_rustcflags: Vec<String>,
 
     /// Flags to pass to the compiler when building for the target
-    pub target_rustcflags: Option<String>,
+    pub target_rustcflags: Vec<String>,
 
     /// Whether tests should be optimized by default. Individual test-suites and test files may
     /// override this setting.
@@ -457,12 +457,12 @@ pub enum Endian {
 }
 
 impl TargetCfg {
-    fn new(rustc_path: &Path, target: &str, target_rustcflags: &Option<String>) -> TargetCfg {
+    fn new(rustc_path: &Path, target: &str, target_rustcflags: &Vec<String>) -> TargetCfg {
         let output = match Command::new(rustc_path)
             .arg("--print=cfg")
             .arg("--target")
             .arg(target)
-            .args(target_rustcflags.into_iter().map(|s| s.split_whitespace()).flatten())
+            .args(target_rustcflags)
             .output()
         {
             Ok(output) => output,

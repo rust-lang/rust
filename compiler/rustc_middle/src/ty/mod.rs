@@ -17,7 +17,7 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
-use crate::middle::privacy::AccessLevels;
+use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, GeneratorLayout};
 use crate::traits::{self, Reveal};
 use crate::ty;
@@ -38,11 +38,13 @@ use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::definitions::Definitions;
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
+use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, Span};
@@ -142,8 +144,15 @@ mod sty;
 
 pub type RegisteredTools = FxHashSet<Ident>;
 
-#[derive(Debug)]
 pub struct ResolverOutputs {
+    pub definitions: Definitions,
+    pub global_ctxt: ResolverGlobalCtxt,
+    pub ast_lowering: ResolverAstLowering,
+}
+
+#[derive(Debug)]
+pub struct ResolverGlobalCtxt {
+    pub cstore: Box<CrateStoreDyn>,
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
     /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
     pub has_pub_restricted: bool,
@@ -151,7 +160,7 @@ pub struct ResolverOutputs {
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
     /// Reference span for definitions.
     pub source_span: IndexVec<LocalDefId, Span>,
-    pub access_levels: AccessLevels,
+    pub effective_visibilities: EffectiveVisibilities,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
@@ -2595,7 +2604,9 @@ impl<'tcx> TyCtxt<'tcx> {
             && if self.features().collapse_debuginfo {
                 span.in_macro_expansion_with_collapse_debuginfo()
             } else {
-                span.from_expansion()
+                // Inlined spans should not be collapsed as that leads to all of the
+                // inlined code being attributed to the inline callsite.
+                span.from_expansion() && !span.is_inlined()
             }
     }
 

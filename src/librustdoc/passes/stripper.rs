@@ -1,15 +1,17 @@
 //! A collection of utility functions for the `strip_*` passes.
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
+use rustc_span::symbol::sym;
+
 use std::mem;
 
-use crate::clean::{self, Item, ItemId, ItemIdSet};
+use crate::clean::{self, Item, ItemId, ItemIdSet, NestedAttributesExt};
 use crate::fold::{strip_item, DocFolder};
 use crate::formats::cache::Cache;
 
 pub(crate) struct Stripper<'a> {
     pub(crate) retained: &'a mut ItemIdSet,
-    pub(crate) access_levels: &'a AccessLevels<DefId>,
+    pub(crate) effective_visibilities: &'a EffectiveVisibilities<DefId>,
     pub(crate) update_retained: bool,
     pub(crate) is_json_output: bool,
 }
@@ -20,13 +22,13 @@ pub(crate) struct Stripper<'a> {
 #[inline]
 fn is_item_reachable(
     is_json_output: bool,
-    access_levels: &AccessLevels<DefId>,
+    effective_visibilities: &EffectiveVisibilities<DefId>,
     item_id: ItemId,
 ) -> bool {
     if is_json_output {
-        access_levels.is_reachable(item_id.expect_def_id())
+        effective_visibilities.is_reachable(item_id.expect_def_id())
     } else {
-        access_levels.is_exported(item_id.expect_def_id())
+        effective_visibilities.is_exported(item_id.expect_def_id())
     }
 }
 
@@ -64,7 +66,7 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::ForeignTypeItem => {
                 let item_id = i.item_id;
                 if item_id.is_local()
-                    && !is_item_reachable(self.is_json_output, self.access_levels, item_id)
+                    && !is_item_reachable(self.is_json_output, self.effective_visibilities, item_id)
                 {
                     debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
                     return None;
@@ -151,6 +153,22 @@ pub(crate) struct ImplStripper<'a> {
     pub(crate) document_private: bool,
 }
 
+impl<'a> ImplStripper<'a> {
+    #[inline]
+    fn should_keep_impl(&self, item: &Item, for_def_id: DefId) -> bool {
+        if !for_def_id.is_local() || self.retained.contains(&for_def_id.into()) {
+            true
+        } else if self.is_json_output {
+            // If the "for" item is exported and the impl block isn't `#[doc(hidden)]`, then we
+            // need to keep it.
+            self.cache.effective_visibilities.is_exported(for_def_id)
+                && !item.attrs.lists(sym::doc).has_word(sym::hidden)
+        } else {
+            false
+        }
+    }
+}
+
 impl<'a> DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = *i.kind {
@@ -168,7 +186,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
                         item_id.is_local()
                             && !is_item_reachable(
                                 self.is_json_output,
-                                &self.cache.access_levels,
+                                &self.cache.effective_visibilities,
                                 item_id,
                             )
                     })
@@ -178,15 +196,17 @@ impl<'a> DocFolder for ImplStripper<'a> {
                     return None;
                 }
             }
+            // Because we don't inline in `maybe_inline_local` if the output format is JSON,
+            // we need to make a special check for JSON output: we want to keep it unless it has
+            // a `#[doc(hidden)]` attribute if the `for_` type is exported.
             if let Some(did) = imp.for_.def_id(self.cache) {
-                if did.is_local() && !imp.for_.is_assoc_ty() && !self.retained.contains(&did.into())
-                {
+                if !imp.for_.is_assoc_ty() && !self.should_keep_impl(&i, did) {
                     debug!("ImplStripper: impl item for stripped type; removing");
                     return None;
                 }
             }
             if let Some(did) = imp.trait_.as_ref().map(|t| t.def_id()) {
-                if did.is_local() && !self.retained.contains(&did.into()) {
+                if !self.should_keep_impl(&i, did) {
                     debug!("ImplStripper: impl item for stripped trait; removing");
                     return None;
                 }
@@ -194,7 +214,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
             if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
                 for typaram in generics {
                     if let Some(did) = typaram.def_id(self.cache) {
-                        if did.is_local() && !self.retained.contains(&did.into()) {
+                        if !self.should_keep_impl(&i, did) {
                             debug!(
                                 "ImplStripper: stripped item in trait's generics; removing impl"
                             );

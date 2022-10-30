@@ -399,7 +399,7 @@ fn layout_of_uncached<'tcx>(
             }
 
             let pointee = tcx.normalize_erasing_regions(param_env, pointee);
-            if pointee.is_sized(tcx.at(DUMMY_SP), param_env) {
+            if pointee.is_sized(tcx, param_env) {
                 return Ok(tcx.intern_layout(LayoutS::scalar(cx, data_ptr)));
             }
 
@@ -755,8 +755,7 @@ fn layout_of_uncached<'tcx>(
                 } else {
                     let param_env = tcx.param_env(def.did());
                     let last_field = def.variant(v).fields.last().unwrap();
-                    let always_sized =
-                        tcx.type_of(last_field.did).is_sized(tcx.at(DUMMY_SP), param_env);
+                    let always_sized = tcx.type_of(last_field.did).is_sized(tcx, param_env);
                     if !always_sized { StructKind::MaybeUnsized } else { StructKind::AlwaysSized }
                 };
 

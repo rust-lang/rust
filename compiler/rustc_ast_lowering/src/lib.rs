@@ -1574,7 +1574,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
         hir::TyKind::OpaqueDef(
-            hir::ItemId { def_id: hir::OwnerId { def_id: opaque_ty_def_id } },
+            hir::ItemId { owner_id: hir::OwnerId { def_id: opaque_ty_def_id } },
             lifetimes,
             in_trait,
         )
@@ -1593,7 +1593,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Generate an `type Foo = impl Trait;` declaration.
         trace!("registering opaque type with id {:#?}", opaque_ty_id);
         let opaque_ty_item = hir::Item {
-            def_id: hir::OwnerId { def_id: opaque_ty_id },
+            owner_id: hir::OwnerId { def_id: opaque_ty_id },
             ident: Ident::empty(),
             kind: opaque_ty_item_kind,
             vis_span: self.lower_span(span.shrink_to_lo()),
@@ -2044,7 +2044,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // async fn, so the *type parameters* are inherited.  It's
         // only the lifetime parameters that we must supply.
         let opaque_ty_ref = hir::TyKind::OpaqueDef(
-            hir::ItemId { def_id: hir::OwnerId { def_id: opaque_ty_def_id } },
+            hir::ItemId { owner_id: hir::OwnerId { def_id: opaque_ty_def_id } },
             generic_args,
             in_trait,
         );

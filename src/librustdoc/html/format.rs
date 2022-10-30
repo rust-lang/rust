@@ -659,7 +659,7 @@ pub(crate) fn href_with_root_path(
     }
 
     if !did.is_local()
-        && !cache.access_levels.is_public(did)
+        && !cache.effective_visibilities.is_directly_public(did)
         && !cache.document_private
         && !cache.primitive_locations.values().any(|&id| id == did)
     {

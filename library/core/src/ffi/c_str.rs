@@ -221,9 +221,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```ignore (extern-declaration)
-    /// # fn main() {
-    /// use std::ffi::CStr;
-    /// use std::os::raw::c_char;
+    /// use std::ffi::{c_char, CStr};
     ///
     /// extern "C" {
     ///     fn my_string() -> *const c_char;
@@ -233,14 +231,26 @@ impl CStr {
     ///     let slice = CStr::from_ptr(my_string());
     ///     println!("string returned: {}", slice.to_str().unwrap());
     /// }
-    /// # }
+    /// ```
+    ///
+    /// ```
+    /// #![feature(const_cstr_methods)]
+    ///
+    /// use std::ffi::{c_char, CStr};
+    ///
+    /// const HELLO_PTR: *const c_char = {
+    ///     const BYTES: &[u8] = b"Hello, world!\0";
+    ///     BYTES.as_ptr().cast()
+    /// };
+    /// const HELLO: &CStr = unsafe { CStr::from_ptr(HELLO_PTR) };
     /// ```
     ///
     /// [valid]: core::ptr#safety
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
+    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    pub const unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         // SAFETY: The caller has provided a pointer that points to a valid C
         // string with a NUL terminator of size less than `isize::MAX`, whose
         // content remain valid and doesn't change for the lifetime of the
@@ -252,13 +262,29 @@ impl CStr {
         //
         // The cast from c_char to u8 is ok because a c_char is always one byte.
         unsafe {
-            extern "C" {
-                /// Provided by libc or compiler_builtins.
-                fn strlen(s: *const c_char) -> usize;
+            const fn strlen_ct(s: *const c_char) -> usize {
+                let mut len = 0;
+
+                // SAFETY: Outer caller has provided a pointer to a valid C string.
+                while unsafe { *s.add(len) } != 0 {
+                    len += 1;
+                }
+
+                len
             }
-            let len = strlen(ptr);
-            let ptr = ptr as *const u8;
-            CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
+
+            fn strlen_rt(s: *const c_char) -> usize {
+                extern "C" {
+                    /// Provided by libc or compiler_builtins.
+                    fn strlen(s: *const c_char) -> usize;
+                }
+
+                // SAFETY: Outer caller has provided a pointer to a valid C string.
+                unsafe { strlen(s) }
+            }
+
+            let len = intrinsics::const_eval_select((ptr,), strlen_ct, strlen_rt);
+            Self::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr.cast(), len + 1))
         }
     }
 

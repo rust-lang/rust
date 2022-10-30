@@ -16,7 +16,6 @@ use rustc_middle::ty::{
     layout::{HasParamEnv, LayoutOf},
     Ty,
 };
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::Abi;
 use rustc_target::abi::Size;
 use smallvec::SmallVec;
@@ -714,12 +713,12 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 let mut kind_str = format!("{kind}");
                 match kind {
                     RefKind::Unique { two_phase: false }
-                        if !ty.is_unpin(this.tcx.at(DUMMY_SP), this.param_env()) =>
+                        if !ty.is_unpin(*this.tcx, this.param_env()) =>
                     {
                         write!(kind_str, " (!Unpin pointee type {ty})").unwrap()
                     },
                     RefKind::Shared
-                        if !ty.is_freeze(this.tcx.at(DUMMY_SP), this.param_env()) =>
+                        if !ty.is_freeze(*this.tcx, this.param_env()) =>
                     {
                         write!(kind_str, " (!Freeze pointee type {ty})").unwrap()
                     },
@@ -834,7 +833,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // There could be existing unique pointers reborrowed from them that should remain valid!
         let perm = match kind {
             RefKind::Unique { two_phase: false }
-                if place.layout.ty.is_unpin(this.tcx.at(DUMMY_SP), this.param_env()) =>
+                if place.layout.ty.is_unpin(*this.tcx, this.param_env()) =>
             {
                 // Only if the type is unpin do we actually enforce uniqueness
                 Permission::Unique

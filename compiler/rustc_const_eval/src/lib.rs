@@ -22,7 +22,6 @@ Rust MIR: a lowered representation of Rust.
 #![feature(yeet_expr)]
 #![feature(is_some_and)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate tracing;

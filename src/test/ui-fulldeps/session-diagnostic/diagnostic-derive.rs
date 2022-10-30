@@ -758,3 +758,41 @@ struct WithDocComment {
     #[primary_span]
     span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionsGood {
+    #[suggestion(code("foo", "bar"))]
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionsSingleItem {
+    #[suggestion(code("foo"))]
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionsNoItem {
+    #[suggestion(code())]
+    //~^ ERROR expected at least one string literal for `code(...)`
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionsInvalidItem {
+    #[suggestion(code(foo))]
+    //~^ ERROR `code(...)` must contain only string literals
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionsInvalidLiteral {
+    #[suggestion(code = 3)]
+    //~^ ERROR `code = "..."`/`code(...)` must contain only string literals
+    sub: Span,
+}

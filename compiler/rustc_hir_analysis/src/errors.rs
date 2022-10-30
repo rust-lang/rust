@@ -1,7 +1,7 @@
 //! Errors emitted by `rustc_hir_analysis`.
 
-use rustc_errors::IntoDiagnostic;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler};
+use rustc_errors::{IntoDiagnostic, MultiSpan};
 use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -143,6 +143,7 @@ pub struct UnconstrainedOpaqueType {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
+    pub what: &'static str,
 }
 
 pub struct MissingTypeParams {
@@ -248,4 +249,34 @@ pub struct ExternCrateNotIdiomatic {
 pub struct ExpectedUsedSymbol {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_const_impl_for_non_const_trait)]
+pub struct ConstImplForNonConstTrait {
+    #[primary_span]
+    pub trait_ref_span: Span,
+    pub trait_name: String,
+    #[suggestion(applicability = "machine-applicable", code = "#[const_trait]")]
+    pub local_trait_span: Option<Span>,
+    #[note]
+    pub marking: (),
+    #[note(adding)]
+    pub adding: (),
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_const_bound_for_non_const_trait)]
+pub struct ConstBoundForNonConstTrait {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_self_in_impl_self)]
+pub struct SelfInImplSelf {
+    #[primary_span]
+    pub span: MultiSpan,
+    #[note]
+    pub note: (),
 }

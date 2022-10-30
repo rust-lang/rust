@@ -50,6 +50,7 @@ macro_rules! ast_fragments {
         /// Can also serve as an input and intermediate result for macro expansion operations.
         pub enum AstFragment {
             OptExpr(Option<P<ast::Expr>>),
+            MethodReceiverExpr(P<ast::Expr>),
             $($Kind($AstTy),)*
         }
 
@@ -57,6 +58,7 @@ macro_rules! ast_fragments {
         #[derive(Copy, Clone, PartialEq, Eq)]
         pub enum AstFragmentKind {
             OptExpr,
+            MethodReceiverExpr,
             $($Kind,)*
         }
 
@@ -64,6 +66,7 @@ macro_rules! ast_fragments {
             pub fn name(self) -> &'static str {
                 match self {
                     AstFragmentKind::OptExpr => "expression",
+                    AstFragmentKind::MethodReceiverExpr => "expression",
                     $(AstFragmentKind::$Kind => $kind_name,)*
                 }
             }
@@ -72,6 +75,8 @@ macro_rules! ast_fragments {
                 match self {
                     AstFragmentKind::OptExpr =>
                         result.make_expr().map(Some).map(AstFragment::OptExpr),
+                    AstFragmentKind::MethodReceiverExpr =>
+                        result.make_expr().map(AstFragment::MethodReceiverExpr),
                     $(AstFragmentKind::$Kind => result.$make_ast().map(AstFragment::$Kind),)*
                 }
             }
@@ -98,6 +103,13 @@ macro_rules! ast_fragments {
                 }
             }
 
+            pub fn make_method_receiver_expr(self) -> P<ast::Expr> {
+                match self {
+                    AstFragment::MethodReceiverExpr(expr) => expr,
+                    _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
+                }
+            }
+
             $(pub fn $make_ast(self) -> $AstTy {
                 match self {
                     AstFragment::$Kind(ast) => ast,
@@ -120,6 +132,7 @@ macro_rules! ast_fragments {
                             }
                         });
                     }
+                    AstFragment::MethodReceiverExpr(expr) => vis.visit_method_receiver_expr(expr),
                     $($(AstFragment::$Kind(ast) => vis.$mut_visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ast) =>
                         ast.flat_map_in_place(|ast| vis.$flat_map_ast_elt(ast)),)?)*
@@ -130,6 +143,7 @@ macro_rules! ast_fragments {
                 match *self {
                     AstFragment::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
                     AstFragment::OptExpr(None) => {}
+                    AstFragment::MethodReceiverExpr(ref expr) => visitor.visit_method_receiver_expr(expr),
                     $($(AstFragment::$Kind(ref ast) => visitor.$visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ref ast) => for ast_elt in &ast[..] {
                         visitor.$visit_ast_elt(ast_elt, $($args)*);
@@ -222,6 +236,7 @@ impl AstFragmentKind {
         match self {
             AstFragmentKind::OptExpr
             | AstFragmentKind::Expr
+            | AstFragmentKind::MethodReceiverExpr
             | AstFragmentKind::Stmts
             | AstFragmentKind::Ty
             | AstFragmentKind::Pat => SupportsMacroExpansion::Yes { supports_inner_attrs: false },
@@ -283,6 +298,9 @@ impl AstFragmentKind {
                 AstFragment::Stmts(items.map(Annotatable::expect_stmt).collect())
             }
             AstFragmentKind::Expr => AstFragment::Expr(
+                items.next().expect("expected exactly one expression").expect_expr(),
+            ),
+            AstFragmentKind::MethodReceiverExpr => AstFragment::MethodReceiverExpr(
                 items.next().expect("expected exactly one expression").expect_expr(),
             ),
             AstFragmentKind::OptExpr => {
@@ -893,6 +911,7 @@ pub fn parse_ast_fragment<'a>(
             AstFragment::Stmts(stmts)
         }
         AstFragmentKind::Expr => AstFragment::Expr(this.parse_expr()?),
+        AstFragmentKind::MethodReceiverExpr => AstFragment::MethodReceiverExpr(this.parse_expr()?),
         AstFragmentKind::OptExpr => {
             if this.token != token::Eof {
                 AstFragment::OptExpr(Some(this.parse_expr()?))
@@ -1477,6 +1496,42 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
     }
 }
 
+/// This struct is a hack to workaround unstable of `stmt_expr_attributes`.
+/// It can be removed once that feature is stabilized.
+struct MethodReceiverTag;
+impl DummyAstNode for MethodReceiverTag {
+    fn dummy() -> MethodReceiverTag {
+        MethodReceiverTag
+    }
+}
+impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag> {
+    type OutputTy = Self;
+    type AttrsTy = ast::AttrVec;
+    const KIND: AstFragmentKind = AstFragmentKind::MethodReceiverExpr;
+    fn descr() -> &'static str {
+        "an expression"
+    }
+    fn to_annotatable(self) -> Annotatable {
+        Annotatable::Expr(self.wrapped)
+    }
+    fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
+        AstNodeWrapper::new(fragment.make_method_receiver_expr(), MethodReceiverTag)
+    }
+    fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
+        noop_visit_expr(&mut self.wrapped, visitor)
+    }
+    fn is_mac_call(&self) -> bool {
+        matches!(self.wrapped.kind, ast::ExprKind::MacCall(..))
+    }
+    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+        let node = self.wrapped.into_inner();
+        match node.kind {
+            ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+            _ => unreachable!(),
+        }
+    }
+}
+
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
     invocations: Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>,
@@ -1838,6 +1893,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             self.cfg().maybe_emit_expr_attr_err(attr);
         }
         self.visit_node(node)
+    }
+
+    fn visit_method_receiver_expr(&mut self, node: &mut P<ast::Expr>) {
+        visit_clobber(node, |node| {
+            let mut wrapper = AstNodeWrapper::new(node, MethodReceiverTag);
+            self.visit_node(&mut wrapper);
+            wrapper.wrapped
+        })
     }
 
     fn filter_map_expr(&mut self, node: P<ast::Expr>) -> Option<P<ast::Expr>> {

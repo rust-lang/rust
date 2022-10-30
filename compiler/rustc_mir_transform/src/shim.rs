@@ -17,7 +17,7 @@ use std::iter;
 
 use crate::util::expand_aggregate;
 use crate::{
-    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator, marker,
+    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,
     pass_manager as pm, remove_noop_landing_pads, simplify,
 };
 use rustc_middle::mir::patch::MirPatch;
@@ -97,8 +97,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             &simplify::SimplifyCfg::new("make_shim"),
             &add_call_guards::CriticalCallEdges,
             &abort_unwinding_calls::AbortUnwindingCalls,
-            &marker::PhaseChange(MirPhase::Runtime(RuntimePhase::Optimized)),
         ],
+        Some(MirPhase::Runtime(RuntimePhase::Optimized)),
     );
 
     debug!("make_shim({:?}) = {:?}", instance, result);
@@ -312,7 +312,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let param_env = tcx.param_env(def_id);
 
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
-    let is_copy = self_ty.is_copy_modulo_regions(tcx.at(builder.span), param_env);
+    let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
 
     let dest = Place::return_place();
     let src = tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
