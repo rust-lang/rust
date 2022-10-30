@@ -1,3 +1,4 @@
+#![feature(impl_trait_in_fn_trait_return)]
 use std::fmt::Debug;
 
 fn fine(x: impl Into<u32>) -> impl Into<u32> { x }
@@ -25,8 +26,7 @@ fn allowed_in_assoc_type() -> impl Iterator<Item=impl Fn()> {
 }
 
 fn allowed_in_ret_type() -> impl Fn() -> impl Into<u32> {
-//~^ `impl Trait` only allowed in function and inherent method return types
-    || 5
+    || 5u8
 }
 
 fn main() {}
