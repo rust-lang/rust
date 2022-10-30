@@ -3,6 +3,7 @@ use std::time::SystemTime;
 use rustc_hir::LangItem;
 use rustc_middle::ty::{layout::TyAndLayout, query::TyCtxtAt, Ty};
 
+use crate::concurrency::sync::CondvarLock;
 use crate::concurrency::thread::{MachineCallback, Time};
 use crate::*;
 
@@ -696,9 +697,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn pthread_cond_signal(&mut self, cond_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         let id = this.condvar_get_or_create_id(cond_op, CONDVAR_ID_OFFSET)?;
-        if let Some((thread, mutex, shared)) = this.condvar_signal(id) {
-            assert!(!shared);
-            post_cond_signal(this, thread, MutexId::from_u32(mutex))?;
+        if let Some((thread, lock)) = this.condvar_signal(id) {
+            if let CondvarLock::Mutex(mutex) = lock {
+                post_cond_signal(this, thread, mutex)?;
+            } else {
+                panic!("condvar should not have an rwlock on unix");
+            }
         }
 
         Ok(0)
@@ -711,9 +715,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let id = this.condvar_get_or_create_id(cond_op, CONDVAR_ID_OFFSET)?;
 
-        while let Some((thread, mutex, shared)) = this.condvar_signal(id) {
-            assert!(!shared);
-            post_cond_signal(this, thread, MutexId::from_u32(mutex))?;
+        while let Some((thread, lock)) = this.condvar_signal(id) {
+            if let CondvarLock::Mutex(mutex) = lock {
+                post_cond_signal(this, thread, mutex)?;
+            } else {
+                panic!("condvar should not have an rwlock on unix");
+            }
         }
 
         Ok(0)
@@ -731,7 +738,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let active_thread = this.get_active_thread();
 
         release_cond_mutex_and_block(this, active_thread, mutex_id)?;
-        this.condvar_wait(id, active_thread, mutex_id.to_u32(), false);
+        this.condvar_wait(id, active_thread, CondvarLock::Mutex(mutex_id));
 
         Ok(0)
     }
@@ -770,7 +777,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
 
         release_cond_mutex_and_block(this, active_thread, mutex_id)?;
-        this.condvar_wait(id, active_thread, mutex_id.to_u32(), false);
+        this.condvar_wait(id, active_thread, CondvarLock::Mutex(mutex_id));
 
         // We return success for now and override it in the timeout callback.
         this.write_scalar(Scalar::from_i32(0), dest)?;
