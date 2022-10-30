@@ -8,34 +8,28 @@ use rustc_errors::IntoDiagnostic;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
-pub(crate) enum UnknownCTargetFeature<'a> {
-    UnknownFeaturePrefix { feature: &'a str },
-    UnknownFeature { feature: &'a str, rust_feature: Option<&'a str> },
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_unknown_ctarget_feature_prefix)]
+#[note]
+pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
+    pub feature: &'a str,
 }
 
-impl IntoDiagnostic<'_, ()> for UnknownCTargetFeature<'_> {
-    fn into_diagnostic(self, sess: &'_ Handler) -> DiagnosticBuilder<'_, ()> {
-        match self {
-            UnknownCTargetFeature::UnknownFeaturePrefix { feature } => {
-                let mut diag = sess.struct_warn(fluent::codegen_llvm_unknown_ctarget_feature);
-                diag.set_arg("feature", feature);
-                diag.note(fluent::codegen_llvm_unknown_feature_prefix);
-                diag
-            }
-            UnknownCTargetFeature::UnknownFeature { feature, rust_feature } => {
-                let mut diag = sess.struct_warn(fluent::codegen_llvm_unknown_ctarget_feature);
-                diag.set_arg("feature", feature);
-                diag.note(fluent::codegen_llvm_unknown_feature);
-                if let Some(rust_feature) = rust_feature {
-                    diag.help(fluent::codegen_llvm_rust_feature);
-                    diag.set_arg("rust_feature", rust_feature);
-                } else {
-                    diag.note(fluent::codegen_llvm_unknown_feature_fill_request);
-                }
-                diag
-            }
-        }
-    }
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_unknown_ctarget_feature)]
+#[note]
+pub(crate) struct UnknownCTargetFeature<'a> {
+    pub feature: &'a str,
+    #[subdiagnostic]
+    pub rust_feature: PossibleFeature<'a>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum PossibleFeature<'a> {
+    #[help(possible_feature)]
+    Some { rust_feature: &'a str },
+    #[help(consider_filing_feature_request)]
+    None,
 }
 
 #[derive(Diagnostic)]
@@ -131,6 +125,7 @@ pub(crate) struct FailParsingTargetMachineConfigToTargetMachine {
 pub(crate) struct TargetFeatureDisableOrEnable<'a> {
     pub features: &'a [&'a str],
     pub span: Option<Span>,
+    pub missing_features: Option<MissingFeatures>,
 }
 
 #[derive(Subdiagnostic)]
@@ -139,13 +134,13 @@ pub(crate) struct MissingFeatures;
 
 impl IntoDiagnostic<'_, ErrorGuaranteed> for TargetFeatureDisableOrEnable<'_> {
     fn into_diagnostic(self, sess: &'_ Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = if let Some(span) = self.span {
-            let mut diag = sess.struct_err(fluent::codegen_llvm_target_feature_disable_or_enable);
+        let mut diag = sess.struct_err(fluent::codegen_llvm_target_feature_disable_or_enable);
+        if let Some(span) = self.span {
             diag.set_span(span);
-            diag
-        } else {
-            sess.struct_err(fluent::codegen_llvm_target_feature_disable_or_enable)
         };
+        if let Some(missing_features) = self.missing_features {
+            diag.subdiagnostic(missing_features);
+        }
         diag.set_arg("features", self.features.join(", "));
         diag
     }

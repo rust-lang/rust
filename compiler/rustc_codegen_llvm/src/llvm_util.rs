@@ -1,5 +1,8 @@
 use crate::back::write::create_informational_target_machine;
-use crate::errors::{TargetFeatureDisableOrEnable, UnknownCTargetFeature};
+use crate::errors::{
+    PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature,
+    UnknownCTargetFeaturePrefix,
+};
 use crate::llvm;
 use libc::c_int;
 use rustc_codegen_ssa::target_features::{
@@ -435,9 +438,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 Some(c @ '+' | c @ '-') => c,
                 Some(_) => {
                     if diagnostics {
-                        sess.emit_warning(UnknownCTargetFeature::UnknownFeaturePrefix {
-                            feature: s,
-                        });
+                        sess.emit_warning(UnknownCTargetFeaturePrefix { feature: s });
                     }
                     return None;
                 }
@@ -454,7 +455,15 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                         None
                     }
                 });
-                sess.emit_warning(UnknownCTargetFeature::UnknownFeature { feature, rust_feature });
+                let unknown_feature = if let Some(rust_feature) = rust_feature {
+                    UnknownCTargetFeature {
+                        feature,
+                        rust_feature: PossibleFeature::Some { rust_feature },
+                    }
+                } else {
+                    UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
+                };
+                sess.emit_warning(unknown_feature);
             }
 
             if diagnostics {
@@ -482,7 +491,8 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
         sess.emit_err(TargetFeatureDisableOrEnable {
             features: f,
-            span: None
+            span: None,
+            missing_features: None,
         });
     }
 

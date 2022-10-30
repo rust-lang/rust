@@ -396,8 +396,11 @@ pub fn from_fn_attrs<'ll, 'tcx>(
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
         cx.tcx
             .sess
-            .create_err(TargetFeatureDisableOrEnable { features: f, span: Some(span) })
-            .subdiagnostic(MissingFeatures)
+            .create_err(TargetFeatureDisableOrEnable {
+                features: f,
+                span: Some(span),
+                missing_features: Some(MissingFeatures),
+            })
             .emit();
         return;
     }
