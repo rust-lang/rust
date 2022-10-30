@@ -8,6 +8,38 @@ use crate::*;
 
 const SRWLOCK_ID_OFFSET: u64 = 0;
 const INIT_ONCE_ID_OFFSET: u64 = 0;
+const CONDVAR_ID_OFFSET: u64 = 0;
+
+impl<'mir, 'tcx> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+pub trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+    /// Try to reacquire the lock associated with the condition variable after we
+    /// were signaled.
+    fn reacquire_cond_lock(
+        &mut self,
+        thread: ThreadId,
+        lock: RwLockId,
+        shared: bool,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.unblock_thread(thread);
+
+        if shared {
+            if this.rwlock_is_locked(lock) {
+                this.rwlock_enqueue_and_block_reader(lock, thread);
+            } else {
+                this.rwlock_reader_lock(lock, thread);
+            }
+        } else {
+            if this.rwlock_is_write_locked(lock) {
+                this.rwlock_enqueue_and_block_writer(lock, thread);
+            } else {
+                this.rwlock_writer_lock(lock, thread);
+            }
+        }
+
+        Ok(())
+    }
+}
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 #[allow(non_snake_case)]
@@ -322,6 +354,120 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         if let Some(thread) = this.futex_wake(ptr.addr().bytes(), u32::MAX) {
             this.unblock_thread(thread);
+            this.unregister_timeout_callback_if_exists(thread);
+        }
+
+        Ok(())
+    }
+
+    fn SleepConditionVariableSRW(
+        &mut self,
+        condvar_op: &OpTy<'tcx, Provenance>,
+        lock_op: &OpTy<'tcx, Provenance>,
+        timeout_op: &OpTy<'tcx, Provenance>,
+        flags_op: &OpTy<'tcx, Provenance>,
+        dest: &PlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        let this = self.eval_context_mut();
+
+        let condvar_id = this.condvar_get_or_create_id(condvar_op, CONDVAR_ID_OFFSET)?;
+        let lock_id = this.rwlock_get_or_create_id(lock_op, SRWLOCK_ID_OFFSET)?;
+        let timeout_ms = this.read_scalar(timeout_op)?.to_u32()?;
+        let flags = this.read_scalar(flags_op)?.to_u32()?;
+
+        let timeout_time = if timeout_ms == this.eval_windows("c", "INFINITE")?.to_u32()? {
+            None
+        } else {
+            let duration = Duration::from_millis(timeout_ms.into());
+            Some(this.machine.clock.now().checked_add(duration).unwrap())
+        };
+
+        let shared_mode = 0x1; // CONDITION_VARIABLE_LOCKMODE_SHARED is not in std
+        let shared = flags == shared_mode;
+
+        let active_thread = this.get_active_thread();
+
+        let was_locked = if shared {
+            this.rwlock_reader_unlock(lock_id, active_thread)
+        } else {
+            this.rwlock_writer_unlock(lock_id, active_thread)
+        };
+
+        if !was_locked {
+            throw_ub_format!(
+                "calling SleepConditionVariableSRW with an SRWLock that is not locked by the current thread"
+            );
+        }
+
+        this.block_thread(active_thread);
+        this.condvar_wait(condvar_id, active_thread, lock_id.to_u32(), shared);
+
+        if let Some(timeout_time) = timeout_time {
+            struct Callback<'tcx> {
+                thread: ThreadId,
+                condvar_id: CondvarId,
+                lock_id: RwLockId,
+                shared: bool,
+                dest: PlaceTy<'tcx, Provenance>,
+            }
+
+            impl<'tcx> VisitTags for Callback<'tcx> {
+                fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+                    let Callback { thread: _, condvar_id: _, lock_id: _, shared: _, dest } = self;
+                    dest.visit_tags(visit);
+                }
+            }
+
+            impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for Callback<'tcx> {
+                fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+                    this.reacquire_cond_lock(self.thread, self.lock_id, self.shared)?;
+
+                    this.condvar_remove_waiter(self.condvar_id, self.thread);
+
+                    let error_timeout = this.eval_windows("c", "ERROR_TIMEOUT")?;
+                    this.set_last_error(error_timeout)?;
+                    this.write_scalar(this.eval_windows("c", "FALSE")?, &self.dest)?;
+                    Ok(())
+                }
+            }
+
+            this.register_timeout_callback(
+                active_thread,
+                Time::Monotonic(timeout_time),
+                Box::new(Callback {
+                    thread: active_thread,
+                    condvar_id,
+                    lock_id,
+                    shared,
+                    dest: dest.clone(),
+                }),
+            );
+        }
+
+        this.eval_windows("c", "TRUE")
+    }
+
+    fn WakeConditionVariable(&mut self, condvar_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let condvar_id = this.condvar_get_or_create_id(condvar_op, CONDVAR_ID_OFFSET)?;
+
+        if let Some((thread, lock, shared)) = this.condvar_signal(condvar_id) {
+            this.reacquire_cond_lock(thread, RwLockId::from_u32(lock), shared)?;
+            this.unregister_timeout_callback_if_exists(thread);
+        }
+
+        Ok(())
+    }
+
+    fn WakeAllConditionVariable(
+        &mut self,
+        condvar_op: &OpTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let condvar_id = this.condvar_get_or_create_id(condvar_op, CONDVAR_ID_OFFSET)?;
+
+        while let Some((thread, lock, shared)) = this.condvar_signal(condvar_id) {
+            this.reacquire_cond_lock(thread, RwLockId::from_u32(lock), shared)?;
             this.unregister_timeout_callback_if_exists(thread);
         }
 
