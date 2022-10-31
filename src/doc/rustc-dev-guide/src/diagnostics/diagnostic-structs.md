@@ -28,8 +28,10 @@ pub struct FieldAlreadyDeclared {
 }
 ```
 
-`Diagnostic` can only be applied to structs. Every `Diagnostic`
-has to have one attribute, `#[diag(...)]`, applied to the struct itself.
+`Diagnostic` can only be applied to structs and enums. 
+Attributes that are placed on the type for structs are placed on each 
+variants for enums (or vice versa). Each `Diagnostic` has to have one
+attribute, `#[diag(...)]`, applied to the struct or each enum variant.
 
 If an error has an error code (e.g. "E0624"), then that can be specified using
 the `code` sub-attribute. Specifying a `code` isn't mandatory, but if you are
@@ -243,7 +245,7 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
 }
 ```
 
-Unlike `Diagnostic`, `Subdiagnostic` can be applied to structs or
+Like `Diagnostic`, `Subdiagnostic` can be applied to structs or
 enums. Attributes that are placed on the type for structs are placed on each
 variants for enums (or vice versa). Each `Subdiagnostic` should have one
 attribute applied to the struct or each variant, one of:
