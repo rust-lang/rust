@@ -252,7 +252,7 @@ pub fn err_sb_ub<'tcx>(
 /// We need to make at least the following things true:
 ///
 /// U1: After creating a `Uniq`, it is at the top.
-/// U2: If the top is `Uniq`, accesses must be through that `Uniq` or remove it it.
+/// U2: If the top is `Uniq`, accesses must be through that `Uniq` or remove it.
 /// U3: If an access happens with a `Uniq`, it requires the `Uniq` to be in the stack.
 ///
 /// F1: After creating a `&`, the parts outside `UnsafeCell` have our `SharedReadOnly` on top.
