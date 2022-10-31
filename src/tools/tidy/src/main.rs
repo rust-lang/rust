@@ -64,6 +64,7 @@ fn main() {
         // Checks over tests.
         check!(debug_artifacts, &src_path);
         check!(ui_tests, &src_path);
+        check!(mir_opt_tests, &src_path);
 
         // Checks that only make sense for the compiler.
         check!(errors, &compiler_path);

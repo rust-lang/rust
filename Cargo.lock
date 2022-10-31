@@ -816,6 +816,7 @@ dependencies = [
  "lazycell",
  "libc",
  "miow",
+ "miropt-test-tools",
  "regex",
  "rustfix",
  "serde",
@@ -2266,6 +2267,13 @@ dependencies = [
  "shell-escape",
  "smallvec",
  "ui_test",
+]
+
+[[package]]
+name = "miropt-test-tools"
+version = "0.1.0"
+dependencies = [
+ "regex",
 ]
 
 [[package]]
@@ -4920,6 +4928,7 @@ version = "0.1.0"
 dependencies = [
  "cargo_metadata 0.14.0",
  "lazy_static",
+ "miropt-test-tools",
  "regex",
  "walkdir",
 ]
