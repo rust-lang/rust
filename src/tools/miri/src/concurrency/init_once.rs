@@ -141,18 +141,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Wake up everyone.
         // need to take the queue to avoid having `this` be borrowed multiple times
         for waiter in std::mem::take(&mut init_once.waiters) {
-            // End of the wait happens-before woken-up thread.
-            if let Some(data_race) = &this.machine.data_race {
-                data_race.validate_lock_acquire(
-                    &this.machine.threads.sync.init_onces[id].data_race,
-                    waiter.thread,
-                );
-            }
-
             this.unblock_thread(waiter.thread);
 
             // Call callback, with the woken-up thread as `current`.
             this.set_active_thread(waiter.thread);
+            this.init_once_acquire(id);
             waiter.callback.call(this)?;
             this.set_active_thread(current_thread);
         }
@@ -172,26 +165,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         );
 
         // Each complete happens-before the end of the wait
-        // FIXME: should this really induce synchronization? If we think of it as a lock, then yes,
-        // but the docs don't talk about such details.
         if let Some(data_race) = &this.machine.data_race {
             data_race.validate_lock_release(&mut init_once.data_race, current_thread);
         }
 
         // Wake up one waiting thread, so they can go ahead and try to init this.
         if let Some(waiter) = init_once.waiters.pop_front() {
-            // End of the wait happens-before woken-up thread.
-            if let Some(data_race) = &this.machine.data_race {
-                data_race.validate_lock_acquire(
-                    &this.machine.threads.sync.init_onces[id].data_race,
-                    waiter.thread,
-                );
-            }
-
             this.unblock_thread(waiter.thread);
 
             // Call callback, with the woken-up thread as `current`.
             this.set_active_thread(waiter.thread);
+            this.init_once_acquire(id);
             waiter.callback.call(this)?;
             this.set_active_thread(current_thread);
         } else {
@@ -200,5 +184,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         Ok(())
+    }
+
+    /// Synchronize with the previous completion or failure of an InitOnce.
+    /// This is required to prevent data races.
+    #[inline]
+    fn init_once_acquire(&mut self, id: InitOnceId) {
+        let this = self.eval_context_mut();
+        let current_thread = this.get_active_thread();
+
+        if let Some(data_race) = &this.machine.data_race {
+            data_race.validate_lock_acquire(
+                &this.machine.threads.sync.init_onces[id].data_race,
+                current_thread,
+            );
+        }
     }
 }
