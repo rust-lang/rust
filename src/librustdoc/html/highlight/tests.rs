@@ -9,7 +9,7 @@ const STYLE: &str = r#"
 .kw { color: #8959A8; }
 .kw-2, .prelude-ty { color: #4271AE; }
 .number, .string { color: #718C00; }
-.self, .bool-val, .prelude-val, .attribute, .attribute .ident { color: #C82829; }
+.self, .bool-val, .prelude-val, .attr, .attr .ident { color: #C82829; }
 .macro, .macro-nonterminal { color: #3E999F; }
 .lifetime { color: #B76514; }
 .question-mark { color: #ff9011; }
