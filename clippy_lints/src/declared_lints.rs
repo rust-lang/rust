@@ -215,6 +215,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::len_zero::LEN_WITHOUT_IS_EMPTY_INFO,
     crate::len_zero::LEN_ZERO_INFO,
     crate::let_if_seq::USELESS_LET_IF_SEQ_INFO,
+    crate::let_underscore::LET_UNDERSCORE_FUTURE_INFO,
     crate::let_underscore::LET_UNDERSCORE_LOCK_INFO,
     crate::let_underscore::LET_UNDERSCORE_MUST_USE_INFO,
     crate::lifetimes::EXTRA_UNUSED_LIFETIMES_INFO,
