@@ -4,6 +4,16 @@ error: Undefined Behavior: Data race detected between Deallocate on thread `<unn
 LL |             }
    |             ^ Data race detected between Deallocate on thread `<unnamed>` and Read on thread `<unnamed>` at ALLOC
    |
+help: The Deallocate on thread `<unnamed>` is here
+  --> $DIR/dealloc_read_race_stack.rs:LL:CC
+   |
+LL |             }
+   |             ^
+help: The Read on thread `<unnamed>` is here
+  --> $DIR/dealloc_read_race_stack.rs:LL:CC
+   |
+LL |             *pointer.load(Ordering::Acquire)
+   |                                            ^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:

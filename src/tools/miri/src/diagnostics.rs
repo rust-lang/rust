@@ -35,6 +35,17 @@ pub enum TerminationInfo {
         link_name: Symbol,
         span: SpanData,
     },
+    DataRace {
+        op1: RacingOp,
+        op2: RacingOp,
+        ptr: Pointer,
+    },
+}
+
+pub struct RacingOp {
+    pub action: String,
+    pub thread_info: String,
+    pub span: SpanData,
 }
 
 impl fmt::Display for TerminationInfo {
@@ -55,6 +66,12 @@ impl fmt::Display for TerminationInfo {
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
                 write!(f, "found `{link_name}` symbol definition that clashes with a built-in shim",),
+            DataRace { ptr, op1, op2 } =>
+                write!(
+                    f,
+                    "Data race detected between {} on {} and {} on {} at {:?}",
+                    op1.action, op1.thread_info, op2.action, op2.thread_info, ptr,
+                ),
         }
     }
 }
@@ -167,7 +184,7 @@ pub fn report_error<'tcx, 'mir>(
             Abort(_) => Some("abnormal termination"),
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance =>
                 Some("unsupported operation"),
-            StackedBorrowsUb { .. } => Some("Undefined Behavior"),
+            StackedBorrowsUb { .. } | DataRace { .. } => Some("Undefined Behavior"),
             Deadlock => Some("deadlock"),
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
@@ -205,6 +222,13 @@ pub fn report_error<'tcx, 'mir>(
                 vec![(Some(*span), format!("the `{link_name}` symbol is defined here"))],
             Int2PtrWithStrictProvenance =>
                 vec![(None, format!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"))],
+            DataRace { ptr: _, op1, op2 } =>
+                vec![
+                    (Some(op1.span), format!("The {} on {} is here", op1.action, op1.thread_info)),
+                    (Some(op2.span), format!("The {} on {} is here", op2.action, op2.thread_info)),
+                    (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
+                    (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
+                ],
             _ => vec![],
         };
         (title, helps)

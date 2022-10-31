@@ -4,6 +4,16 @@ error: Undefined Behavior: Data race detected between Deallocate on thread `main
 LL | }
    |  ^ Data race detected between Deallocate on thread `main` and Read on thread `<unnamed>` at ALLOC
    |
+help: The Deallocate on thread `main` is here
+  --> $DIR/stack_pop_race.rs:LL:CC
+   |
+LL | }
+   |  ^
+help: The Read on thread `<unnamed>` is here
+  --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   |
+LL | }
+   | ^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:

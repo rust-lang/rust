@@ -9,6 +9,21 @@ LL | |                 std::mem::align_of::<usize>(),
 LL | |             );
    | |_____________^ Data race detected between Deallocate on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC
    |
+help: The Deallocate on thread `<unnamed>` is here
+  --> $DIR/dealloc_write_race1.rs:LL:CC
+   |
+LL | /             __rust_dealloc(
+LL | |
+LL | |                 ptr.0 as *mut _,
+LL | |                 std::mem::size_of::<usize>(),
+LL | |                 std::mem::align_of::<usize>(),
+LL | |             );
+   | |_____________^
+help: The Write on thread `<unnamed>` is here
+  --> $DIR/dealloc_write_race1.rs:LL:CC
+   |
+LL |             *ptr.0 = 2;
+   |             ^^^^^^^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:

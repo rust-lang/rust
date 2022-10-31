@@ -4,6 +4,16 @@ error: Undefined Behavior: Data race detected between Atomic Load on thread `<un
 LL |             (&*c.0).load(Ordering::SeqCst)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between Atomic Load on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC
    |
+help: The Atomic Load on thread `<unnamed>` is here
+  --> $DIR/atomic_read_na_write_race1.rs:LL:CC
+   |
+LL | ...   (&*c.0).load(Ordering::SeqCst)
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: The Write on thread `<unnamed>` is here
+  --> $DIR/atomic_read_na_write_race1.rs:LL:CC
+   |
+LL |             *(c.0 as *mut usize) = 32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
