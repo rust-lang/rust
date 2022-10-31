@@ -2883,7 +2883,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_bound_variable_kinds(
             self.late_bound_vars_map(id.owner)
                 .and_then(|map| map.get(&id.local_id).cloned())
-                .unwrap_or_default()
+                .unwrap_or_else(|| {
+                    bug!("No bound vars found for {:?} ({:?})", self.hir().node_to_string(id), id)
+                })
                 .iter(),
         )
     }
