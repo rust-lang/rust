@@ -744,6 +744,7 @@ pub struct InvalidAttrAtCrateLevel {
 }
 
 impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
@@ -877,6 +878,7 @@ pub struct BreakNonLoop<'a> {
 }
 
 impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &rustc_errors::Handler,
@@ -1014,6 +1016,7 @@ pub struct NakedFunctionsAsmBlock {
 }
 
 impl IntoDiagnostic<'_> for NakedFunctionsAsmBlock {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &rustc_errors::Handler,
@@ -1137,6 +1140,7 @@ pub struct NoMainErr {
 }
 
 impl<'a> IntoDiagnostic<'a> for NoMainErr {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'a rustc_errors::Handler,
@@ -1197,6 +1201,7 @@ pub struct DuplicateLangItem {
 }
 
 impl IntoDiagnostic<'_> for DuplicateLangItem {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &rustc_errors::Handler,

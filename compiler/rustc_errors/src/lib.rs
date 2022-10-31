@@ -763,6 +763,7 @@ impl Handler {
 
     /// Construct a builder at the `Allow` level with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Allow, msg)
     }
@@ -864,6 +865,7 @@ impl Handler {
 
     /// Construct a builder at the `Fatal` level at the given `span`, with the `msg`, and `code`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_fatal_with_code(
         &self,
         span: impl Into<MultiSpan>,
@@ -877,6 +879,7 @@ impl Handler {
 
     /// Construct a builder at the `Error` level with the `msg`.
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         DiagnosticBuilder::new_fatal(self, msg)
     }
@@ -898,6 +901,7 @@ impl Handler {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.emit_diag_at_span(Diagnostic::new(Fatal, msg), span);
         FatalError.raise()
@@ -956,7 +960,6 @@ impl Handler {
         self.emit_diag_at_span(Diagnostic::new_with_code(Warning(None), Some(code), msg), span);
     }
 
-    #[track_caller]
     pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.inner.borrow_mut().span_bug(span, msg)
     }
@@ -972,7 +975,6 @@ impl Handler {
 
     // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
     // where the explanation of what "good path" is (also, it should be renamed).
-    #[track_caller]
     pub fn delay_good_path_bug(&self, msg: impl Into<DiagnosticMessage>) {
         self.inner.borrow_mut().delay_good_path_bug(msg)
     }

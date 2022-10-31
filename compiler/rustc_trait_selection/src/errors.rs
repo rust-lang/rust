@@ -67,6 +67,7 @@ pub struct NegativePositiveConflict<'a> {
 }
 
 impl IntoDiagnostic<'_> for NegativePositiveConflict<'_> {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &Handler,
