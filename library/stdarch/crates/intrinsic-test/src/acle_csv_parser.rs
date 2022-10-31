@@ -6,8 +6,52 @@ use crate::argument::{Argument, ArgumentList, Constraint};
 use crate::intrinsic::Intrinsic;
 use crate::types::{IntrinsicType, TypeKind};
 
-pub fn get_acle_intrinsics(filename: &str) -> Vec<Intrinsic> {
+pub struct CsvMetadata {
+    notices: String,
+    spdx_lic: String,
+}
+
+impl CsvMetadata {
+    fn new<'a>(header: impl Iterator<Item = &'a str>) -> Self {
+        lazy_static! {
+            static ref SPDX_LICENSE_IDENTIFIER: Regex =
+                Regex::new(r#"SPDX-License-Identifier:(.*)"#).unwrap();
+        }
+
+        let notices = header.map(|line| format!("{line}\n")).collect::<String>();
+        let spdx_lic = match SPDX_LICENSE_IDENTIFIER
+            .captures_iter(&notices)
+            .exactly_one()
+        {
+            Ok(caps) => {
+                let cap = caps.get(1).unwrap().as_str().trim();
+                // Ensure that (unlikely) ACLE licence changes don't go unnoticed.
+                assert_eq!(cap, "Apache-2.0");
+                cap.to_string()
+            }
+            Err(caps_iter) => panic!(
+                "Expected exactly one SPDX-License-Identifier, found {}.",
+                caps_iter.count()
+            ),
+        };
+
+        Self { notices, spdx_lic }
+    }
+
+    pub fn spdx_license_identifier(&self) -> &str {
+        self.spdx_lic.as_str()
+    }
+
+    pub fn notices_lines(&self) -> impl Iterator<Item = &str> {
+        self.notices.lines()
+    }
+}
+
+pub fn get_acle_intrinsics(filename: &str) -> (CsvMetadata, Vec<Intrinsic>) {
     let data = std::fs::read_to_string(filename).expect("Failed to open ACLE intrinsics file");
+
+    let comment_header = data.lines().map_while(|l| l.strip_prefix("<COMMENT>\t"));
+    let meta = CsvMetadata::new(comment_header);
 
     let data = data
         .lines()
@@ -51,7 +95,7 @@ pub fn get_acle_intrinsics(filename: &str) -> Vec<Intrinsic> {
         }
     }
 
-    intrinsics.to_vec()
+    (meta, intrinsics.to_vec())
 }
 
 impl Into<Intrinsic> for ACLEIntrinsicLine {
