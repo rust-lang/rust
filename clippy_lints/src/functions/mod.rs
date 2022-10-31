@@ -254,7 +254,7 @@ declare_clippy_lint! {
     ///     Ok(())
     /// }
     /// ```
-    #[clippy::version = "1.64.0"]
+    #[clippy::version = "1.65.0"]
     pub RESULT_LARGE_ERR,
     perf,
     "function returning `Result` with large `Err` type"
