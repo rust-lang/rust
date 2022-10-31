@@ -488,7 +488,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     *destination,
                 );
             }
-            TerminatorKind::Abort => {
+            TerminatorKind::Terminate => {
                 codegen_panic_cannot_unwind(fx, source_info);
             }
             TerminatorKind::Resume => {
