@@ -12,7 +12,7 @@ static mut BAR: *const &i32 = [&Y].as_ptr();
 // EMIT_MIR const_promotion_extern_static.FOO-promoted[0].SimplifyCfg-elaborate-drops.after.mir
 static mut FOO: *const &i32 = [unsafe { &X }].as_ptr();
 
-// EMIT_MIR const_promotion_extern_static.BOP.mir_map.0.mir
+// EMIT_MIR const_promotion_extern_static.BOP.built.after.mir
 static BOP: &i32 = &13;
 
 fn main() {}
