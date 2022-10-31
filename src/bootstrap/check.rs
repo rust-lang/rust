@@ -460,6 +460,7 @@ tool_check_step!(Miri, "src/tools/miri", SourceType::InTree);
 tool_check_step!(CargoMiri, "src/tools/miri/cargo-miri", SourceType::InTree);
 tool_check_step!(Rls, "src/tools/rls", SourceType::InTree);
 tool_check_step!(Rustfmt, "src/tools/rustfmt", SourceType::InTree);
+tool_check_step!(MiroptTestTools, "src/tools/miropt-test-tools", SourceType::InTree);
 
 tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);
 
