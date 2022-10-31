@@ -17,10 +17,12 @@ pub trait Idx: Copy + 'static + Eq + PartialEq + Debug + Hash {
 
     fn index(self) -> usize;
 
+    #[inline]
     fn increment_by(&mut self, amount: usize) {
         *self = self.plus(amount);
     }
 
+    #[inline]
     fn plus(self, amount: usize) -> Self {
         Self::new(self.index() + amount)
     }
