@@ -1,5 +1,4 @@
 // edition:2018
-#![feature(pin_macro)]
 
 use core::{
     marker::PhantomPinned,

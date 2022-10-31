@@ -43,7 +43,6 @@
 #![feature(inline_const)]
 #![feature(is_sorted)]
 #![feature(pattern)]
-#![feature(pin_macro)]
 #![feature(sort_internals)]
 #![feature(slice_take)]
 #![feature(slice_from_ptr_range)]
