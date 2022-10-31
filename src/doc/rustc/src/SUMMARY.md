@@ -29,6 +29,7 @@
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
     - [m68k-unknown-linux-gnu](platform-support/m68k-unknown-linux-gnu.md)
     - [mips64-openwrt-linux-musl](platform-support/mips64-openwrt-linux-musl.md)
+    - [mipsel-sony-psx](platform-support/mipsel-sony-psx.md)
     - [nvptx64-nvidia-cuda](platform-support/nvptx64-nvidia-cuda.md)
     - [riscv32imac-unknown-xous-elf](platform-support/riscv32imac-unknown-xous-elf.md)
     - [*-pc-windows-gnullvm](platform-support/pc-windows-gnullvm.md)
