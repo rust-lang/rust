@@ -224,11 +224,11 @@ jobs:
         if: (matrix.os == 'windows-2019') && matrix.arch == 'x86'
         uses: egor-tensin/setup-mingw@v2
 
-      - name: Install llvm (Windows)
-        if: matrix.os == 'self-hosted-windows'
-        uses: KyleMayes/install-llvm-action@v1
-        with:
-          version: "10.0"
+      # - name: Install llvm (Windows)
+      #   if: matrix.os == 'self-hosted-windows'
+      #   uses: KyleMayes/install-llvm-action@v1
+      #   with:
+      #     version: "10.0"
 
       - name: Install ninja (Windows)
         if: (matrix.os == 'windows-2019') && matrix.arch == 'x86'
