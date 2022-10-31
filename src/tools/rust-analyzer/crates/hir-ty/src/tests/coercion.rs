@@ -123,6 +123,23 @@ fn test() {
 }
 
 #[test]
+fn if_else_adjust_for_branches_discard_type_var() {
+    check_no_mismatches(
+        r#"
+fn test() {
+    let f = || {
+        if true {
+            &""
+        } else {
+            ""
+        }
+    };
+}
+"#,
+    );
+}
+
+#[test]
 fn match_first_coerce() {
     check_no_mismatches(
         r#"
@@ -179,6 +196,22 @@ fn test() {
 
 }
         ",
+    );
+}
+
+#[test]
+fn match_adjust_for_branches_discard_type_var() {
+    check_no_mismatches(
+        r#"
+fn test() {
+    let f = || {
+        match 0i32 {
+            0i32 => &"",
+            _ => "",
+        }
+    };
+}
+"#,
     );
 }
 
