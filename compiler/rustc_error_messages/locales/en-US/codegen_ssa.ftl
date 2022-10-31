@@ -178,3 +178,7 @@ codegen_ssa_extract_bundled_libs_read_entry = failed to read entry '{$rlib}': {$
 codegen_ssa_extract_bundled_libs_archive_member = failed to get data from archive member '{$rlib}': {$error}
 codegen_ssa_extract_bundled_libs_convert_name = failed to convert name '{$rlib}': {$error}
 codegen_ssa_extract_bundled_libs_write_file = failed to write file '{$rlib}': {$error}
+
+codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
+
+codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {error}

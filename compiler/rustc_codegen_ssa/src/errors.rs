@@ -532,3 +532,16 @@ impl IntoDiagnostic<'_, !> for ExtractBundledLibsError<'_> {
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unsupported_arch)]
+pub struct UnsupportedArch<'a> {
+    pub arch: &'a str,
+    pub os: &'a str,
+}
+
+#[derive(Diagnostic)]
+pub enum AppleSdkRootError<'a> {
+    #[diag(codegen_ssa_apple_sdk_error_sdk_path)]
+    SdkPath { sdk_name: &'a str, error: Error },
+}
