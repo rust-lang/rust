@@ -869,6 +869,10 @@ fn for_each_late_bound_region_in_item<'tcx>(
     mir_def_id: LocalDefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
+    if !tcx.def_kind(mir_def_id).is_fn_like() {
+        return;
+    }
+
     for bound_var in tcx.late_bound_vars(tcx.hir().local_def_id_to_hir_id(mir_def_id)) {
         let ty::BoundVariableKind::Region(bound_region) = bound_var else { continue; };
         let liberated_region = tcx
