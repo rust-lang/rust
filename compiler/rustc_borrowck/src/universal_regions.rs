@@ -243,7 +243,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         tcx: TyCtxt<'tcx>,
         closure_substs: SubstsRef<'tcx>,
         expected_num_vars: usize,
-        typeck_root_def_id: DefId,
+        closure_def_id: LocalDefId,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
         let mut region_mapping = IndexVec::with_capacity(expected_num_vars);
         region_mapping.push(tcx.lifetimes.re_static);
@@ -251,9 +251,13 @@ impl<'tcx> UniversalRegions<'tcx> {
             region_mapping.push(fr);
         });
 
-        for_each_late_bound_region_defined_on(tcx, typeck_root_def_id, |r| {
-            region_mapping.push(r);
-        });
+        for_each_late_bound_region_in_scope(
+            tcx,
+            tcx.local_parent(closure_def_id),
+            |r| {
+                region_mapping.push(r);
+            },
+        );
 
         assert_eq!(
             region_mapping.len(),
@@ -341,9 +345,8 @@ impl<'tcx> UniversalRegions<'tcx> {
                 // tests, and the resulting print-outs include def-ids
                 // and other things that are not stable across tests!
                 // So we just include the region-vid. Annoying.
-                let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
-                for_each_late_bound_region_defined_on(tcx, typeck_root_def_id, |r| {
-                    err.note(&format!("late-bound region is {:?}", self.to_region_vid(r),));
+                for_each_late_bound_region_in_scope(tcx, def_id.expect_local(), |r| {
+                    err.note(&format!("late-bound region is {:?}", self.to_region_vid(r)));
                 });
             }
             DefiningTy::Generator(def_id, substs, _) => {
@@ -356,9 +359,8 @@ impl<'tcx> UniversalRegions<'tcx> {
                 // FIXME: As above, we'd like to print out the region
                 // `r` but doing so is not stable across architectures
                 // and so forth.
-                let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
-                for_each_late_bound_region_defined_on(tcx, typeck_root_def_id, |r| {
-                    err.note(&format!("late-bound region is {:?}", self.to_region_vid(r),));
+                for_each_late_bound_region_in_scope(tcx, def_id.expect_local(), |r| {
+                    err.note(&format!("late-bound region is {:?}", self.to_region_vid(r)));
                 });
             }
             DefiningTy::FnDef(def_id, substs) => {
@@ -749,28 +751,17 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     #[instrument(skip(self, indices))]
     fn replace_late_bound_regions_with_nll_infer_vars(
         &self,
-        mut mir_def_id: LocalDefId,
+        mir_def_id: LocalDefId,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) {
-        let typeck_root_def_id = self.tcx.typeck_root_def_id(mir_def_id.to_def_id());
-
-        // Walk up the tree, collecting late-bound regions until we hit the typeck root
-        loop {
-            for_each_late_bound_region_defined_on(self.tcx, mir_def_id.to_def_id(), |r| {
-                debug!(?r);
-                if !indices.indices.contains_key(&r) {
-                    let region_vid = self.next_nll_region_var(FR);
-                    debug!(?region_vid);
-                    indices.insert_late_bound_region(r, region_vid.to_region_vid());
-                }
-            });
-
-            if mir_def_id.to_def_id() == typeck_root_def_id {
-                break;
-            } else {
-                mir_def_id = self.tcx.parent(mir_def_id.to_def_id()).expect_local();
+        for_each_late_bound_region_in_scope(self.tcx, mir_def_id, |r| {
+            debug!(?r);
+            if !indices.indices.contains_key(&r) {
+                let region_vid = self.next_nll_region_var(FR);
+                debug!(?region_vid);
+                indices.insert_late_bound_region(r, region_vid.to_region_vid());
             }
-        }
+        });
     }
 }
 
@@ -814,18 +805,31 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     }
 }
 
-/// Iterates over the late-bound regions defined on fn_def_id and
-/// invokes `f` with the liberated form of each one.
-fn for_each_late_bound_region_defined_on<'tcx>(
+/// Iterates over the late-bound regions defined on fn_def_id and all of its
+/// parents, up to the typeck root, and invokes `f` with the liberated form
+/// of each one.
+fn for_each_late_bound_region_in_scope<'tcx>(
     tcx: TyCtxt<'tcx>,
-    fn_def_id: DefId,
+    mut mir_def_id: LocalDefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
-    for bound_var in tcx.late_bound_vars(tcx.hir().local_def_id_to_hir_id(fn_def_id.expect_local()))
-    {
-        let ty::BoundVariableKind::Region(bound_region) = bound_var else { continue; };
-        let liberated_region =
-            tcx.mk_region(ty::ReFree(ty::FreeRegion { scope: fn_def_id, bound_region }));
-        f(liberated_region);
+    let typeck_root_def_id = tcx.typeck_root_def_id(mir_def_id.to_def_id());
+
+    // Walk up the tree, collecting late-bound regions until we hit the typeck root
+    loop {
+        for bound_var in tcx.late_bound_vars(tcx.hir().local_def_id_to_hir_id(mir_def_id)) {
+            let ty::BoundVariableKind::Region(bound_region) = bound_var else { continue; };
+            let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
+                scope: mir_def_id.to_def_id(),
+                bound_region,
+            }));
+            f(liberated_region);
+        }
+
+        if mir_def_id.to_def_id() == typeck_root_def_id {
+            break;
+        } else {
+            mir_def_id = tcx.local_parent(mir_def_id);
+        }
     }
 }
