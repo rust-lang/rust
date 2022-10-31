@@ -32,6 +32,8 @@ use rustc_span::symbol::Ident;
 use rustc_span::{self, sym, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
+use either::Either;
+
 use std::iter;
 use std::mem;
 use std::ops::ControlFlow;
@@ -1215,28 +1217,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 return None;
             }
-            Res::Def(DefKind::Variant, _) => match ty.normalized.kind() {
-                ty::Adt(adt, substs) => Some((adt.variant_of_res(def), adt.did(), substs)),
+            Res::Def(DefKind::Variant, _) => match (ty.raw.kind(), ty.normalized.kind()) {
+                (ty::Adt(adt, substs), _) => {
+                    Some((adt.variant_of_res(def), adt.did(), substs, Either::Left(substs)))
+                }
+                (_, ty::Adt(adt, substs)) => {
+                    Some((adt.variant_of_res(def), adt.did(), substs, Either::Right(ty.raw)))
+                }
                 _ => bug!("unexpected type: {:?}", ty.normalized),
             },
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
             | Res::SelfTyParam { .. }
-            | Res::SelfTyAlias { .. } => match ty.normalized.kind() {
-                ty::Adt(adt, substs) if !adt.is_enum() => {
-                    Some((adt.non_enum_variant(), adt.did(), substs))
+            | Res::SelfTyAlias { .. } => match (ty.raw.kind(), ty.normalized.kind()) {
+                (ty::Adt(adt, substs), _) if !adt.is_enum() => {
+                    Some((adt.non_enum_variant(), adt.did(), substs, Either::Left(substs)))
+                }
+                (_, ty::Adt(adt, substs)) if !adt.is_enum() => {
+                    Some((adt.non_enum_variant(), adt.did(), substs, Either::Right(ty.raw)))
                 }
                 _ => None,
             },
             _ => bug!("unexpected definition: {:?}", def),
         };
 
-        if let Some((variant, did, substs)) = variant {
+        if let Some((variant, did, substs, user_annotation)) = variant {
             debug!("check_struct_path: did={:?} substs={:?}", did, substs);
 
-            // FIXME(aliemjay): We're using UserSelfTy unconditionally here because it is the only
-            // way to register the raw user ty, because `substs` is normalized.
-            let self_ty = ty::UserSelfTy { impl_def_id: did, self_ty: ty.raw };
-            self.write_user_type_annotation_from_substs(hir_id, did, substs, Some(self_ty));
+            // Register type annotation.
+            self.probe(|_| {
+                // UserSubsts and UserSelfTy are mutually exclusive here.
+                let (user_substs, self_ty) = match user_annotation {
+                    Either::Left(substs) => (*substs, None),
+                    Either::Right(self_ty) => {
+                        (self.fresh_substs_for_item(path_span, did), Some(self_ty))
+                    }
+                };
+                let self_ty = self_ty.map(|self_ty| ty::UserSelfTy { impl_def_id: did, self_ty });
+                self.write_user_type_annotation_from_substs(hir_id, did, user_substs, self_ty);
+            });
 
             // Check bounds on type arguments used in the path.
             self.add_required_obligations_for_hir(path_span, did, substs, hir_id);
