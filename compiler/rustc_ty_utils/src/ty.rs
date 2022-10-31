@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::StatementKind;
 use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
 use rustc_trait_selection::traits;
 
@@ -355,7 +356,25 @@ fn instance_def_size_estimate<'tcx>(
     match instance_def {
         InstanceDef::Item(..) | InstanceDef::DropGlue(..) => {
             let mir = tcx.instance_mir(instance_def);
-            mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
+            mir.basic_blocks
+                .iter()
+                .map(|bb| {
+                    bb.statements
+                        .iter()
+                        .filter(|s| {
+                            // do not count non-codegen statement
+                            !matches!(
+                                s.kind,
+                                StatementKind::Deinit(..)
+                                    | StatementKind::FakeRead(..)
+                                    | StatementKind::Retag { .. }
+                                    | StatementKind::AscribeUserType(..)
+                                    | StatementKind::Nop
+                            )
+                        })
+                        .count()
+                })
+                .sum()
         }
         // Estimate the size of other compiler-generated shims to be 1.
         _ => 1,
