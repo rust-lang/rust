@@ -52,7 +52,7 @@ by proving that an appropriate impl does exist.
 
 During type checking, we do not store the results of trait selection.
 We simply wish to verify that trait selection will succeed. Then
-later, at trans time, when we have all concrete types available, we
+later, at codegen time, when we have all concrete types available, we
 can repeat the trait selection to choose an actual implementation, which
 will then be generated in the output binary.
 
