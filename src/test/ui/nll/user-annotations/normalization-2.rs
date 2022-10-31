@@ -24,6 +24,7 @@ enum MyTy<T> {
 
 impl<T> MyTy<T> {
     fn method<X>() {}
+    fn method2<X>(&self) {}
 }
 
 type Ty<'a> = <&'a () as Trait>::Assoc;
@@ -45,6 +46,9 @@ fn test_path<'a, 'b, 'c, 'd>() {
     //~^ ERROR lifetime may not live long enough
     <Ty<'static>>::method::<Ty<'b>>;
     //~^ ERROR lifetime may not live long enough
+
+    MyTy::Unit::<Ty<'c>>;
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn test_call<'a, 'b, 'c>() {
@@ -55,11 +59,41 @@ fn test_call<'a, 'b, 'c>() {
 }
 
 fn test_variants<'a, 'b, 'c>() {
-    <Ty<'a>>::Struct {}; //TODO
+    <Ty<'a>>::Struct {};
     //~^ ERROR lifetime may not live long enough
     <Ty<'b>>::Tuple();
     //~^ ERROR lifetime may not live long enough
     <Ty<'c>>::Unit;
+    //~^ ERROR lifetime may not live long enough
+}
+
+fn test_method_call<'a>(x: MyTy<()>) {
+    // FIXME This should fail.
+    x.method2::<Ty<'a>>();
+}
+
+fn test_struct_path<'a, 'b, 'c, 'd>() {
+    struct Struct<T> { x: Option<T>, }
+
+    trait Project {
+        type Struct;
+        type Enum;
+    }
+    impl<T> Project for T {
+        type Struct = Struct<()>;
+        type Enum = MyTy<()>;
+    }
+
+    // Resolves to enum variant
+    MyTy::<Ty<'a>>::Struct {}; // without SelfTy
+    //~^ ERROR lifetime may not live long enough
+    <Ty<'b> as Project>::Enum::Struct {}; // with SelfTy
+    //~^ ERROR lifetime may not live long enough
+
+    // Resolves to struct and associated type respectively
+    Struct::<Ty<'c>> { x: None, }; // without SelfTy
+    //~^ ERROR lifetime may not live long enough
+    <Ty<'d> as Project>::Struct { x: None, }; // with SelfTy
     //~^ ERROR lifetime may not live long enough
 }
 
