@@ -1232,7 +1232,7 @@ impl fmt::Debug for Duration {
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[stable(feature = "duration_checked_float", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
 pub struct TryFromFloatSecsError {
     kind: TryFromFloatSecsErrorKind,
 }
@@ -1250,7 +1250,7 @@ impl TryFromFloatSecsError {
     }
 }
 
-#[stable(feature = "duration_checked_float", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
 impl fmt::Display for TryFromFloatSecsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.description().fmt(f)
@@ -1401,7 +1401,7 @@ impl Duration {
     /// let res = Duration::try_from_secs_f32(val);
     /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
     /// ```
-    #[stable(feature = "duration_checked_float", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "duration_checked_float", since = "1.66.0")]
     #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     #[inline]
     pub const fn try_from_secs_f32(secs: f32) -> Result<Duration, TryFromFloatSecsError> {
@@ -1478,7 +1478,7 @@ impl Duration {
     /// let res = Duration::try_from_secs_f64(val);
     /// assert_eq!(res, Ok(Duration::new(1, 2_929_688)));
     /// ```
-    #[stable(feature = "duration_checked_float", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "duration_checked_float", since = "1.66.0")]
     #[rustc_const_unstable(feature = "duration_consts_float", issue = "72440")]
     #[inline]
     pub const fn try_from_secs_f64(secs: f64) -> Result<Duration, TryFromFloatSecsError> {
