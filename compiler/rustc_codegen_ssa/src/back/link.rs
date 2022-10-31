@@ -2776,14 +2776,14 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("arm", "watchos") => "watchos",
         (_, "macos") => "macosx",
         _ => {
-            sess.err(&format!("unsupported arch `{}` for os `{}`", arch, os));
+            sess.emit_err(errors::UnsupportedArch { arch, os });
             return;
         }
     };
     let sdk_root = match get_apple_sdk_root(sdk_name) {
         Ok(s) => s,
         Err(e) => {
-            sess.err(&e);
+            sess.emit_err(e);
             return;
         }
     };
@@ -2799,7 +2799,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     }
 }
 
-fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
+fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootError<'_>> {
     // Following what clang does
     // (https://github.com/llvm/llvm-project/blob/
     // 296a80102a9b72c3eda80558fb78a3ed8849b341/clang/lib/Driver/ToolChains/Darwin.cpp#L1661-L1678)
@@ -2849,7 +2849,7 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
 
     match res {
         Ok(output) => Ok(output.trim().to_string()),
-        Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e)),
+        Err(error) => Err(errors::AppleSdkRootError::SdkPath { sdk_name, error }),
     }
 }
 
