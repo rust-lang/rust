@@ -246,6 +246,9 @@ impl FilteredTests {
         }));
         self.add_test(desc, testfn);
     }
+    fn total_len(&self) -> usize {
+        self.tests.len() + self.benchs.len()
+    }
 }
 
 pub fn run_tests<F>(
@@ -303,13 +306,13 @@ where
         };
     }
 
-    let filtered_out = tests_len - filtered.tests.len();
+    let filtered_out = tests_len - filtered.total_len();
     let event = TestEvent::TeFilteredOut(filtered_out);
     notify_about_test_event(event)?;
 
     let shuffle_seed = get_shuffle_seed(opts);
 
-    let event = TestEvent::TeFiltered(filtered.tests.len(), shuffle_seed);
+    let event = TestEvent::TeFiltered(filtered.total_len(), shuffle_seed);
     notify_about_test_event(event)?;
 
     let concurrency = opts.test_threads.unwrap_or_else(get_concurrency);
