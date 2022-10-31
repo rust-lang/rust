@@ -801,7 +801,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             }
 
             TerminatorKind::Goto { target: _ }
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Unreachable
             | TerminatorKind::Resume
             | TerminatorKind::Return
@@ -845,7 +845,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 }
             }
 
-            TerminatorKind::Abort
+            TerminatorKind::Terminate
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::Drop { .. }

@@ -522,8 +522,8 @@ pub struct CopyNonOverlapping<'tcx> {
 ///
 /// The basic block pointed to by a `Cleanup` unwind action must have its `cleanup` flag set.
 /// `cleanup` basic blocks have a couple restrictions:
-///  1. All `unwind` fields in them must be `UnwindAction::Continue`.
-///  2. `Return` terminators are not allowed in them. `Abort` and `Unwind` terminators are.
+///  1. All `unwind` fields in them must be `UnwindAction::Terminate` or `UnwindAction::Unreachable`.
+///  2. `Return` terminators are not allowed in them. `Terminate` and `Unwind` terminators are.
 ///  3. All other basic blocks (in the current body) that are reachable from `cleanup` basic blocks
 ///     must also be `cleanup`. This is a part of the type system and checked statically, so it is
 ///     still an error to have such an edge in the CFG even if it's known that it won't be taken at
@@ -565,11 +565,11 @@ pub enum TerminatorKind<'tcx> {
     /// deaggregation runs.
     Resume,
 
-    /// Indicates that the landing pad is finished and that the process should abort.
+    /// Indicates that the landing pad is finished and that the process should terminate.
     ///
     /// Used to prevent unwinding for foreign items or with `-C unwind=abort`. Only permitted in
     /// cleanup blocks.
-    Abort,
+    Terminate,
 
     /// Returns from the function.
     ///

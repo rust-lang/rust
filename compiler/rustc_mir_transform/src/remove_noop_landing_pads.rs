@@ -72,7 +72,7 @@ impl RemoveNoopLandingPads {
             TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::Return
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Unreachable
             | TerminatorKind::Call { .. }
             | TerminatorKind::Assert { .. }

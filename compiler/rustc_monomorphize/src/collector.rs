@@ -852,7 +852,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     self.output.push(create_fn_mono_item(tcx, instance, source));
                 }
             }
-            mir::TerminatorKind::Abort { .. } => {
+            mir::TerminatorKind::Terminate { .. } => {
                 let instance = Instance::mono(
                     tcx,
                     tcx.require_lang_item(LangItem::PanicCannotUnwind, Some(source)),

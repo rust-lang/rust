@@ -73,7 +73,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// Cached unreachable block
     unreachable_block: Option<Bx::BasicBlock>,
 
-    /// Cached double unwind guarding block
+    /// Cached terminate upon unwinding block
     terminate_block: Option<Bx::BasicBlock>,
 
     /// The location where each MIR arg/var/tmp/ret is stored. This is

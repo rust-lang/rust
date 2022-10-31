@@ -630,7 +630,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         MergingSucc::False
     }
 
-    fn codegen_abort_terminator(
+    fn codegen_terminate_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
@@ -1263,8 +1263,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 MergingSucc::False
             }
 
-            mir::TerminatorKind::Abort => {
-                self.codegen_abort_terminator(helper, bx, terminator);
+            mir::TerminatorKind::Terminate => {
+                self.codegen_terminate_terminator(helper, bx, terminator);
                 MergingSucc::False
             }
 

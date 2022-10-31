@@ -1136,19 +1136,15 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                     TerminatorKind::Unreachable
                 }
             }
-            TerminatorKind::Resume => match self.cleanup_block {
-                UnwindAction::Cleanup(tgt) => {
-                    terminator.kind = TerminatorKind::Goto { target: tgt };
-                }
-                UnwindAction::Continue => (),
-                UnwindAction::Unreachable | UnwindAction::Terminate => {
-                    // If the action is terminate, then we would have mapped marked
-                    // all our call-sites as `UnwindAction::Terminate` and no cleanup
-                    // blocks would ever be executed.
-                    terminator.kind = TerminatorKind::Unreachable;
-                }
-            },
-            TerminatorKind::Abort => {}
+            TerminatorKind::Resume => {
+                terminator.kind = match self.cleanup_block {
+                    UnwindAction::Cleanup(tgt) => TerminatorKind::Goto { target: tgt },
+                    UnwindAction::Continue => TerminatorKind::Resume,
+                    UnwindAction::Unreachable => TerminatorKind::Unreachable,
+                    UnwindAction::Terminate => TerminatorKind::Terminate,
+                };
+            }
+            TerminatorKind::Terminate => {}
             TerminatorKind::Unreachable => {}
             TerminatorKind::FalseEdge { ref mut real_target, ref mut imaginary_target } => {
                 *real_target = self.map_block(*real_target);

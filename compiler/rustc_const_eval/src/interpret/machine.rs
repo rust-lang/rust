@@ -218,7 +218,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx>;
 
-    /// Called to evaluate `Abort` MIR terminator.
+    /// Called to abort evaluation.
     fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _msg: String) -> InterpResult<'tcx, !> {
         throw_unsup_format!("aborting execution is not supported")
     }

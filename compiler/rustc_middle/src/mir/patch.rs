@@ -37,7 +37,19 @@ impl<'tcx> MirPatch<'tcx> {
             // Check if we already have a resume block
             if let TerminatorKind::Resume = block.terminator().kind && block.statements.is_empty() {
                 result.resume_block = Some(bb);
-                break;
+                continue;
+            }
+
+            // Check if we already have an unreachable block
+            if let TerminatorKind::Unreachable = block.terminator().kind && block.statements.is_empty() {
+                result.unreachable_block = Some(bb);
+                continue;
+            }
+
+            // Check if we already have a terminate block
+            if let TerminatorKind::Terminate = block.terminator().kind && block.statements.is_empty() {
+                result.terminate_block = Some(bb);
+                continue;
             }
         }
 
@@ -58,6 +70,40 @@ impl<'tcx> MirPatch<'tcx> {
             is_cleanup: true,
         });
         self.resume_block = Some(bb);
+        bb
+    }
+
+    pub fn unreachable_block(&mut self) -> BasicBlock {
+        if let Some(bb) = self.unreachable_block {
+            return bb;
+        }
+
+        let bb = self.new_block(BasicBlockData {
+            statements: vec![],
+            terminator: Some(Terminator {
+                source_info: SourceInfo::outermost(self.body_span),
+                kind: TerminatorKind::Unreachable,
+            }),
+            is_cleanup: true,
+        });
+        self.unreachable_block = Some(bb);
+        bb
+    }
+
+    pub fn terminate_block(&mut self) -> BasicBlock {
+        if let Some(bb) = self.terminate_block {
+            return bb;
+        }
+
+        let bb = self.new_block(BasicBlockData {
+            statements: vec![],
+            terminator: Some(Terminator {
+                source_info: SourceInfo::outermost(self.body_span),
+                kind: TerminatorKind::Terminate,
+            }),
+            is_cleanup: true,
+        });
+        self.terminate_block = Some(bb);
         bb
     }
 

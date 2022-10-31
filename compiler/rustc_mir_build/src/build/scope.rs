@@ -1454,7 +1454,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }

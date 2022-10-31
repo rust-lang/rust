@@ -144,7 +144,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Abort => {
+            Terminate => {
                 M::abort(self, "the program aborted execution".to_owned())?;
             }
 

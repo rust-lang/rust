@@ -1300,7 +1300,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         match &term.kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable
@@ -1584,7 +1584,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, block_data, "resume on non-cleanup block!")
                 }
             }
-            TerminatorKind::Abort => {
+            TerminatorKind::Terminate => {
                 if !is_cleanup {
                     span_mirbug!(self, block_data, "abort on non-cleanup block!")
                 }

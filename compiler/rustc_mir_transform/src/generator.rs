@@ -1194,7 +1194,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             // These never unwind.
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -1701,7 +1701,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }

@@ -155,7 +155,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 Some(t).into_iter().chain((&[]).into_iter().copied())
             }
             Resume
-            | Abort
+            | Terminate
             | GeneratorDrop
             | Return
             | Unreachable
@@ -197,7 +197,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 Some(t).into_iter().chain(&mut [])
             }
             Resume
-            | Abort
+            | Terminate
             | GeneratorDrop
             | Return
             | Unreachable
@@ -214,7 +214,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -233,7 +233,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
@@ -310,7 +310,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Return => write!(fmt, "return"),
             GeneratorDrop => write!(fmt, "generator_drop"),
             Resume => write!(fmt, "resume"),
-            Abort => write!(fmt, "abort"),
+            Terminate => write!(fmt, "abort"),
             Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
             Unreachable => write!(fmt, "unreachable"),
             Drop { place, .. } => write!(fmt, "drop({:?})", place),
@@ -389,7 +389,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::TerminatorKind::*;
         match *self {
-            Return | Resume | Abort | Unreachable | GeneratorDrop => vec![],
+            Return | Resume | Terminate | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref targets, .. } => targets
                 .values

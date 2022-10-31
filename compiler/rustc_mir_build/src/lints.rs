@@ -108,7 +108,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
 
         match self.body[bb].terminator().kind {
             // These terminators return control flow to the caller.
-            TerminatorKind::Abort
+            TerminatorKind::Terminate
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Resume
             | TerminatorKind::Return

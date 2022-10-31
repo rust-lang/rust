@@ -198,7 +198,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 }
             }
             TerminatorKind::Goto { target: _ }
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ } => {

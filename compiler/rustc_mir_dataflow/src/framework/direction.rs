@@ -474,7 +474,7 @@ impl Direction for Forward {
     {
         use mir::TerminatorKind::*;
         match bb_data.terminator().kind {
-            Return | Resume | Abort | GeneratorDrop | Unreachable => {}
+            Return | Resume | Terminate | GeneratorDrop | Unreachable => {}
 
             Goto { target } => propagate(target, exit_state),
 

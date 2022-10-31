@@ -375,7 +375,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             // need recording.
             | TerminatorKind::Return
             | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Terminate
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. } => {}

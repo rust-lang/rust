@@ -284,7 +284,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
             match data.terminator().kind {
                 TerminatorKind::Goto { .. }
                 | TerminatorKind::Resume
-                | TerminatorKind::Abort
+                | TerminatorKind::Terminate
                 | TerminatorKind::Return
                 | TerminatorKind::GeneratorDrop
                 | TerminatorKind::Unreachable
