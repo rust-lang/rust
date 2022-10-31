@@ -2447,7 +2447,7 @@ fn add_upstream_rust_crates<'a>(
                         let rlib = &src.rlib.as_ref().unwrap().0;
                         archive_builder_builder
                             .extract_bundled_libs(rlib, tmpdir, &bundled_libs)
-                            .unwrap_or_else(|e| sess.fatal(e));
+                            .unwrap_or_else(|e| sess.emit_fatal(e));
                     }
 
                     let mut last = (None, NativeLibKind::Unspecified, None);
