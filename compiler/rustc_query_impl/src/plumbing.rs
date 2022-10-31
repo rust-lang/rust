@@ -2,7 +2,6 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::keys::Key;
 use crate::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
 use crate::profiling_support::QueryKeyStringCache;
 use crate::{on_disk_cache, Queries};
@@ -12,6 +11,7 @@ use rustc_errors::{Diagnostic, Handler};
 use rustc_middle::dep_graph::{
     self, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
 };
+use rustc_middle::query::Key;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
