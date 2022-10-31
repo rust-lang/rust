@@ -27,8 +27,8 @@ use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::weak_lang_items;
-use rustc_hir::{GenericParamKind, Node};
+use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
+use rustc_hir::{lang_items, GenericParamKind, LangItem, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::Linkage;
@@ -2104,12 +2104,15 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
     // strippable by the linker.
     //
     // Additionally weak lang items have predetermined symbol names.
-    if tcx.is_weak_lang_item(did.to_def_id()) {
+    if WEAK_LANG_ITEMS.iter().any(|&l| tcx.lang_items().get(l) == Some(did.to_def_id())) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
     }
-    if let Some(name) = weak_lang_items::link_name(attrs) {
-        codegen_fn_attrs.export_name = Some(name);
-        codegen_fn_attrs.link_name = Some(name);
+    if let Some((name, _)) = lang_items::extract(attrs)
+        && let Some(lang_item) = LangItem::from_name(name)
+        && let Some(link_name) = lang_item.link_name()
+    {
+        codegen_fn_attrs.export_name = Some(link_name);
+        codegen_fn_attrs.link_name = Some(link_name);
     }
     check_link_name_xor_ordinal(tcx, &codegen_fn_attrs, link_ordinal_span);
 

@@ -32,12 +32,6 @@ pub struct TypeLengthLimit {
     pub type_length: usize,
 }
 
-#[derive(Diagnostic)]
-#[diag(monomorphize_requires_lang_item)]
-pub struct RequiresLangItem {
-    pub lang_item: String,
-}
-
 pub struct UnusedGenericParams {
     pub span: Span,
     pub param_spans: Vec<Span>,

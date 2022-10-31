@@ -17,7 +17,7 @@ use rustc_hir::def_id::{
 };
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
@@ -1905,22 +1905,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.index)))
     }
 
-    fn encode_lang_items(&mut self) -> LazyArray<(DefIndex, usize)> {
+    fn encode_lang_items(&mut self) -> LazyArray<(DefIndex, LangItem)> {
         empty_proc_macro!(self);
-        let tcx = self.tcx;
-        let lang_items = tcx.lang_items();
-        let lang_items = lang_items.items().iter();
-        self.lazy_array(lang_items.enumerate().filter_map(|(i, &opt_def_id)| {
-            if let Some(def_id) = opt_def_id {
-                if def_id.is_local() {
-                    return Some((def_id.index, i));
-                }
-            }
-            None
+        let lang_items = self.tcx.lang_items().iter();
+        self.lazy_array(lang_items.filter_map(|(lang_item, def_id)| {
+            def_id.as_local().map(|id| (id.local_def_index, lang_item))
         }))
     }
 
-    fn encode_lang_items_missing(&mut self) -> LazyArray<lang_items::LangItem> {
+    fn encode_lang_items_missing(&mut self) -> LazyArray<LangItem> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         self.lazy_array(&tcx.lang_items().missing)

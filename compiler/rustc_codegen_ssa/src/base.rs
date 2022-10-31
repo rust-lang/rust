@@ -22,7 +22,6 @@ use rustc_data_structures::sync::ParallelIterator;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::weak_lang_items::WEAK_ITEMS_SYMBOLS;
 use rustc_index::vec::Idx;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -887,14 +886,14 @@ impl CrateInfo {
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let missing_weak_lang_items: FxHashSet<&Symbol> = info
+            let missing_weak_lang_items: FxHashSet<Symbol> = info
                 .used_crates
                 .iter()
-                .flat_map(|cnum| {
-                    tcx.missing_lang_items(*cnum)
-                        .iter()
-                        .filter(|l| lang_items::required(tcx, **l))
-                        .filter_map(|item| WEAK_ITEMS_SYMBOLS.get(item))
+                .flat_map(|&cnum| tcx.missing_lang_items(cnum))
+                .filter(|l| l.is_weak())
+                .filter_map(|&l| {
+                    let name = l.link_name()?;
+                    lang_items::required(tcx, l).then_some(name)
                 })
                 .collect();
             let prefix = if target.is_like_windows && target.arch == "x86" { "_" } else { "" };

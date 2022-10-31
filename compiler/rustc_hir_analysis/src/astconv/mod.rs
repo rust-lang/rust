@@ -23,7 +23,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
@@ -884,9 +883,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        let sized_def_id = tcx.lang_items().require(LangItem::Sized);
+        let sized_def_id = tcx.lang_items().sized_trait();
         match (&sized_def_id, unbound) {
-            (Ok(sized_def_id), Some(tpb))
+            (Some(sized_def_id), Some(tpb))
                 if tpb.path.res == Res::Def(DefKind::Trait, *sized_def_id) =>
             {
                 // There was in fact a `?Sized` bound, return without doing anything
@@ -906,7 +905,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // There was no `?Sized` bound; add implicitly sized if `Sized` is available.
             }
         }
-        if sized_def_id.is_err() {
+        if sized_def_id.is_none() {
             // No lang item for `Sized`, so we can't add it as a bound.
             return;
         }
