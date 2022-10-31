@@ -1,4 +1,6 @@
-include ../tools.mk
+include ../../run-make-fulldeps/tools.mk
+
+# ignore-cross-compile
 
 all:
 	# Smoke-test that `#[bench]` isn't entirely broken.
