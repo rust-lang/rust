@@ -509,7 +509,7 @@ impl Step for Miri {
             host,
             "run",
             "src/tools/miri/cargo-miri",
-            SourceType::Submodule,
+            SourceType::InTree,
             &[],
         );
         cargo.add_rustc_lib_path(builder, compiler);
@@ -557,7 +557,7 @@ impl Step for Miri {
             host,
             "test",
             "src/tools/miri",
-            SourceType::Submodule,
+            SourceType::InTree,
             &[],
         );
         cargo.add_rustc_lib_path(builder, compiler);

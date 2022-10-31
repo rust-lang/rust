@@ -621,6 +621,7 @@ impl<'a> Builder<'a> {
                 check::CodegenBackend,
                 check::Clippy,
                 check::Miri,
+                check::CargoMiri,
                 check::Rls,
                 check::RustAnalyzer,
                 check::Rustfmt,
