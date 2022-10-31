@@ -484,3 +484,51 @@ pub struct RlibArchiveBuildFailure {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_option_gcc_only)]
 pub struct OptionGccOnly;
+
+pub struct ExtractBundledLibsError<'a> {
+    pub kind: ExtractBundledLibsErrorKind,
+    pub rlib: &'a Path,
+    pub error: String,
+}
+
+pub enum ExtractBundledLibsErrorKind {
+    OpenFile,
+    MmapFile,
+    ParseArchive,
+    ReadEntry,
+    ArchiveMember,
+    ConvertName,
+    WriteFile,
+}
+
+impl IntoDiagnostic<'_, !> for ExtractBundledLibsError<'_> {
+    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, !> {
+        let mut diag = match self.kind {
+            ExtractBundledLibsErrorKind::OpenFile => {
+                handler.struct_fatal(fluent::codegen_ssa_extract_bundled_libs_open_file)
+            }
+            ExtractBundledLibsErrorKind::MmapFile => {
+                handler.struct_fatal(fluent::codegen_ssa_extract_bundled_libs_mmap_file)
+            }
+            ExtractBundledLibsErrorKind::ParseArchive => {
+                handler.struct_fatal(fluent::codegen_ssa_extract_bundled_libs_parse_archive)
+            }
+            ExtractBundledLibsErrorKind::ReadEntry => {
+                handler.struct_fatal(fluent::codegen_ssa_extract_bundled_libs_read_entry)
+            }
+            ExtractBundledLibsErrorKind::ArchiveMember => {
+                handler.struct_fatal(fluent::codegen_ssa_extract_bundled_libs_archive_member)
+            }
+            ExtractBundledLibsErrorKind::ConvertName => {
+                handler.struct_fatal(fluent::codegen_ssa_extract_bundled_libs_convert_name)
+            }
+            ExtractBundledLibsErrorKind::WriteFile => {
+                handler.struct_fatal(fluent::codegen_ssa_extract_bundled_libs_write_file)
+            }
+        };
+
+        diag.set_arg("rlib", self.rlib);
+        diag.set_arg("error", self.error);
+        diag
+    }
+}

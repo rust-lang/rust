@@ -170,3 +170,11 @@ codegen_ssa_unable_to_write_debugger_visualizer = Unable to write debugger visua
 codegen_ssa_rlib_archive_build_failure = failed to build archive from rlib: {$error}
 
 codegen_ssa_option_gcc_only = option `-Z gcc-ld` is used even though linker flavor is not gcc
+
+codegen_ssa_extract_bundled_libs_open_file = failed to open file '{$rlib}': {$error}
+codegen_ssa_extract_bundled_libs_mmap_file = failed to mmap file '{$rlib}': {$error}
+codegen_ssa_extract_bundled_libs_parse_archive = failed to parse archive '{$rlib}': {$error}
+codegen_ssa_extract_bundled_libs_read_entry = failed to read entry '{$rlib}': {$error}
+codegen_ssa_extract_bundled_libs_archive_member = failed to get data from archive member '{$rlib}': {$error}
+codegen_ssa_extract_bundled_libs_convert_name = failed to convert name '{$rlib}': {$error}
+codegen_ssa_extract_bundled_libs_write_file = failed to write file '{$rlib}': {$error}
