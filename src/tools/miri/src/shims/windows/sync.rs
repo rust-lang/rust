@@ -12,7 +12,7 @@ const INIT_ONCE_ID_OFFSET: u64 = 0;
 const CONDVAR_ID_OFFSET: u64 = 0;
 
 impl<'mir, 'tcx> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Try to reacquire the lock associated with the condition variable after we
     /// were signaled.
     fn reacquire_cond_lock(
@@ -26,13 +26,13 @@ pub trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tc
 
         match mode {
             RwLockMode::Read =>
-                if this.rwlock_is_locked(lock) {
+                if this.rwlock_is_write_locked(lock) {
                     this.rwlock_enqueue_and_block_reader(lock, thread);
                 } else {
                     this.rwlock_reader_lock(lock, thread);
                 },
             RwLockMode::Write =>
-                if this.rwlock_is_write_locked(lock) {
+                if this.rwlock_is_locked(lock) {
                     this.rwlock_enqueue_and_block_writer(lock, thread);
                 } else {
                     this.rwlock_writer_lock(lock, thread);
