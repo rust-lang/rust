@@ -639,6 +639,13 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults const &TR,
     return true;
   }
 
+  if (isa<FenceInst>(I)) {
+    if (EnzymePrintActivity)
+      llvm::errs() << " constant fence instruction " << *I << "\n";
+    InsertConstantInstruction(TR, I);
+    return true;
+  }
+
   if (auto CI = dyn_cast<CallInst>(I)) {
     if (CI->hasFnAttr("enzyme_active")) {
       if (EnzymePrintActivity)
@@ -1618,6 +1625,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
 
     auto checkActivity = [&](Instruction *I) {
       if (notForAnalysis.count(I->getParent()))
+        return false;
+
+      if (isa<FenceInst>(I))
         return false;
 
       // If this is a malloc or free, this doesn't impact the activity

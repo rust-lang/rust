@@ -3646,6 +3646,31 @@ public:
     eraseIfUnused(MTI);
   }
 
+  void visitFenceInst(llvm::FenceInst &FI) {
+    switch (Mode) {
+    default:
+      break;
+    case DerivativeMode::ReverseModeGradient:
+    case DerivativeMode::ReverseModeCombined: {
+      IRBuilder<> Builder2(FI.getParent());
+      getReverseBuilder(Builder2);
+      auto order = FI.getOrdering();
+      switch (order) {
+      case AtomicOrdering::Acquire:
+        order = AtomicOrdering::Release;
+        break;
+      case AtomicOrdering::Release:
+        order = AtomicOrdering::Acquire;
+        break;
+      default:
+        break;
+      }
+      Builder2.CreateFence(order, FI.getSyncScopeID());
+    }
+    }
+    eraseIfUnused(FI);
+  }
+
   void visitIntrinsicInst(llvm::IntrinsicInst &II) {
     if (II.getIntrinsicID() == Intrinsic::stacksave) {
       eraseIfUnused(II, /*erase*/ true, /*check*/ false);
