@@ -1,5 +1,5 @@
 // aux-build:expand-expr.rs
-
+#![feature(concat_bytes)]
 extern crate expand_expr;
 
 use expand_expr::{
@@ -21,6 +21,11 @@ expand_expr_is!(b"Included file contents\n", include_bytes!("auxiliary/included-
 expand_expr_is!(
     "contents: Included file contents\n",
     concat!("contents: ", include_str!("auxiliary/included-file.txt"))
+);
+
+expand_expr_is!(
+    b"contents: Included file contents\n",
+    concat_bytes!(b"contents: ", include_bytes!("auxiliary/included-file.txt"))
 );
 
 // Correct value is checked for multiple sources.

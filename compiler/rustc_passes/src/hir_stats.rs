@@ -560,13 +560,14 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_expr(&mut self, e: &'v ast::Expr) {
+        #[rustfmt::skip]
         record_variants!(
             (self, e, e.kind, Id::None, ast, Expr, ExprKind),
             [
                 Box, Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
                 If, While, ForLoop, Loop, Match, Closure, Block, Async, Await, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
-                InlineAsm, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet, Err
+                InlineAsm, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet, IncludedBytes, Err
             ]
         );
         ast_visit::walk_expr(self, e)

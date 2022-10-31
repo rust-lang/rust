@@ -2,6 +2,7 @@
 
 use crate::ast::{self, Lit, LitKind};
 use crate::token::{self, Token};
+use rustc_data_structures::sync::Lrc;
 use rustc_lexer::unescape::{byte_from_char, unescape_byte, unescape_char, unescape_literal, Mode};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -229,6 +230,13 @@ impl Lit {
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
     pub fn from_lit_kind(kind: LitKind, span: Span) -> Lit {
         Lit { token_lit: kind.to_token_lit(), kind, span }
+    }
+
+    /// Recovers an AST literal from a string of bytes produced by `include_bytes!`.
+    /// This requires ASCII-escaping the string, which can result in poor performance
+    /// for very large strings of bytes.
+    pub fn from_included_bytes(bytes: &Lrc<[u8]>, span: Span) -> Lit {
+        Self::from_lit_kind(LitKind::ByteStr(bytes.clone()), span)
     }
 
     /// Losslessly convert an AST literal into a token.
