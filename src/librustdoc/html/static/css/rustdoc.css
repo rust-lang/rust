@@ -163,9 +163,6 @@ h1.fqn {
 	padding-bottom: 6px;
 	margin-bottom: 15px;
 }
-#toggle-all-docs {
-	text-decoration: none;
-}
 /* The only headings that get underlines are:
 	 Markdown-generated headings within the top-doc
 	 Rustdoc-generated h2 section headings (e.g. "Implementations", "Required Methods", etc)
@@ -209,7 +206,7 @@ ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
-a#toggle-all-docs,
+#toggle-all-docs,
 a.anchor,
 .small-section-header a,
 #source-sidebar a,
@@ -297,6 +294,16 @@ p:last-child {
 button {
 	/* Buttons on Safari have different default padding than other platforms. Make them the same. */
 	padding: 1px 6px;
+}
+
+button#toggle-all-docs {
+	padding: 0;
+	background: none;
+	border: none;
+	cursor: pointer;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
 }
 
 /* end tweaks for normalize.css 8 */

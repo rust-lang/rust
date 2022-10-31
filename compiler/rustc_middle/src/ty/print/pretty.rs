@@ -63,7 +63,6 @@ thread_local! {
     static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static NO_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
-    static NO_VERBOSE_CONSTANTS: Cell<bool> = const { Cell::new(false) };
 }
 
 macro_rules! define_helper {
@@ -118,9 +117,6 @@ define_helper!(
     /// Prevent selection of visible paths. `Display` impl of DefId will prefer
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
-    /// Prevent verbose printing of constants. Verbose printing of constants is
-    /// never desirable in some contexts like `std::any::type_name`.
-    fn with_no_verbose_constants(NoVerboseConstantsGuard, NO_VERBOSE_CONSTANTS);
 );
 
 /// The "region highlights" are used to control region printing during
@@ -600,7 +596,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
             ty::Infer(infer_ty) => {
-                let verbose = self.tcx().sess.verbose();
+                let verbose = self.should_print_verbose();
                 if let ty::TyVar(ty_vid) = infer_ty {
                     if let Some(name) = self.ty_infer_name(ty_vid) {
                         p!(write("{}", name))
@@ -642,7 +638,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(print_def_path(def_id, &[]));
             }
             ty::Projection(ref data) => {
-                if !(self.tcx().sess.verbose() || NO_QUERIES.with(|q| q.get()))
+                if !(self.should_print_verbose() || NO_QUERIES.with(|q| q.get()))
                     && self.tcx().def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder
                 {
                     return self.pretty_print_opaque_impl_type(data.item_def_id, data.substs);
@@ -658,7 +654,7 @@ pub trait PrettyPrinter<'tcx>:
                 // only affect certain debug messages (e.g. messages printed
                 // from `rustc_middle::ty` during the computation of `tcx.predicates_of`),
                 // and should have no effect on any compiler output.
-                if self.tcx().sess.verbose() || NO_QUERIES.with(|q| q.get()) {
+                if self.should_print_verbose() || NO_QUERIES.with(|q| q.get()) {
                     p!(write("Opaque({:?}, {:?})", def_id, substs));
                     return Ok(self);
                 }
@@ -689,7 +685,7 @@ pub trait PrettyPrinter<'tcx>:
                     hir::Movability::Static => p!("static "),
                 }
 
-                if !self.tcx().sess.verbose() {
+                if !self.should_print_verbose() {
                     p!("generator");
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
@@ -725,7 +721,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Closure(did, substs) => {
                 p!(write("["));
-                if !self.tcx().sess.verbose() {
+                if !self.should_print_verbose() {
                     p!(write("closure"));
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
@@ -763,7 +759,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Array(ty, sz) => {
                 p!("[", print(ty), "; ");
-                if !NO_VERBOSE_CONSTANTS.with(|flag| flag.get()) && self.tcx().sess.verbose() {
+                if self.should_print_verbose() {
                     p!(write("{:?}", sz));
                 } else if let ty::ConstKind::Unevaluated(..) = sz.kind() {
                     // Do not try to evaluate unevaluated constants. If we are const evaluating an
@@ -1077,7 +1073,7 @@ pub trait PrettyPrinter<'tcx>:
 
                 // Special-case `Fn(...) -> ...` and re-sugar it.
                 let fn_trait_kind = cx.tcx().fn_trait_kind_from_lang_item(principal.def_id);
-                if !cx.tcx().sess.verbose() && fn_trait_kind.is_some() {
+                if !cx.should_print_verbose() && fn_trait_kind.is_some() {
                     if let ty::Tuple(tys) = principal.substs.type_at(0).kind() {
                         let mut projections = predicates.projection_bounds();
                         if let (Some(proj), None) = (projections.next(), projections.next()) {
@@ -1185,7 +1181,7 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
-        if !NO_VERBOSE_CONSTANTS.with(|flag| flag.get()) && self.tcx().sess.verbose() {
+        if self.should_print_verbose() {
             p!(write("Const({:?}: {:?})", ct.kind(), ct.ty()));
             return Ok(self);
         }
@@ -1420,7 +1416,7 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
-        if !NO_VERBOSE_CONSTANTS.with(|flag| flag.get()) && self.tcx().sess.verbose() {
+        if self.should_print_verbose() {
             p!(write("ValTree({:?}: ", valtree), print(ty), ")");
             return Ok(self);
         }
@@ -1563,6 +1559,10 @@ pub trait PrettyPrinter<'tcx>:
 
             Ok(cx)
         })
+    }
+
+    fn should_print_verbose(&self) -> bool {
+        self.tcx().sess.verbose()
     }
 }
 
@@ -1839,7 +1839,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             }
         }
 
-        let verbose = self.tcx.sess.verbose();
+        let verbose = self.should_print_verbose();
         disambiguated_data.fmt_maybe_verbose(&mut self, verbose)?;
 
         self.empty_path = false;
@@ -1940,7 +1940,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
             return true;
         }
 
-        if self.tcx.sess.verbose() {
+        if self.should_print_verbose() {
             return true;
         }
 
@@ -2012,7 +2012,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             return Ok(self);
         }
 
-        if self.tcx.sess.verbose() {
+        if self.should_print_verbose() {
             p!(write("{:?}", region));
             return Ok(self);
         }
@@ -2218,7 +2218,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         // aren't named. Eventually, we might just want this as the default, but
         // this is not *quite* right and changes the ordering of some output
         // anyways.
-        let (new_value, map) = if self.tcx().sess.verbose() {
+        let (new_value, map) = if self.should_print_verbose() {
             let regions: Vec<_> = value
                 .bound_vars()
                 .into_iter()
