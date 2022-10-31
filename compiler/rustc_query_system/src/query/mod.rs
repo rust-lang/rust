@@ -8,7 +8,7 @@ pub use self::job::{print_query_stack, QueryInfo, QueryJob, QueryJobId, QueryJob
 
 mod caches;
 pub use self::caches::{
-    ArenaCache, DefaultCache, QueryCache, QueryStorage, VecArenaCache, VecCache,
+    CacheSelector, DefaultCacheSelector, QueryCache, QueryStorage, VecCacheSelector,
 };
 
 mod config;

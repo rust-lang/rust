@@ -12,6 +12,14 @@ use rustc_index::vec::{Idx, IndexVec};
 use std::default::Default;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::marker::PhantomData;
+
+pub trait CacheSelector<'tcx, V> {
+    type Cache
+    where
+        V: Clone;
+    type ArenaCache;
+}
 
 pub trait QueryStorage {
     type Value: Debug;
@@ -41,6 +49,15 @@ pub trait QueryCache: QueryStorage + Sized {
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex) -> Self::Stored;
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
+}
+
+pub struct DefaultCacheSelector<K>(PhantomData<K>);
+
+impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<'tcx, V> for DefaultCacheSelector<K> {
+    type Cache = DefaultCache<K, V>
+    where
+        V: Clone;
+    type ArenaCache = ArenaCache<'tcx, K, V>;
 }
 
 pub struct DefaultCache<K, V> {
@@ -207,6 +224,15 @@ where
             }
         }
     }
+}
+
+pub struct VecCacheSelector<K>(PhantomData<K>);
+
+impl<'tcx, K: Idx, V: 'tcx> CacheSelector<'tcx, V> for VecCacheSelector<K> {
+    type Cache = VecCache<K, V>
+    where
+        V: Clone;
+    type ArenaCache = VecArenaCache<'tcx, K, V>;
 }
 
 pub struct VecCache<K: Idx, V> {
