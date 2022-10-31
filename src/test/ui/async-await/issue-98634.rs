@@ -45,6 +45,5 @@ fn main() {
         StructAsync { callback }.await;
         //~^ ERROR expected `fn() -> impl Future<Output = ()> {callback}` to be a fn item that returns `Pin<Box<(dyn Future<Output = ()> + 'static)>>`, but it returns `impl Future<Output = ()>`
         //~| ERROR expected `fn() -> impl Future<Output = ()> {callback}` to be a fn item that returns `Pin<Box<(dyn Future<Output = ()> + 'static)>>`, but it returns `impl Future<Output = ()>`
-        //~| ERROR expected `fn() -> impl Future<Output = ()> {callback}` to be a fn item that returns `Pin<Box<(dyn Future<Output = ()> + 'static)>>`, but it returns `impl Future<Output = ()>`
     });
 }
