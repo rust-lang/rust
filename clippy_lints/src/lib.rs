@@ -268,6 +268,7 @@ mod strings;
 mod strlen_on_c_strings;
 mod suspicious_operation_groupings;
 mod suspicious_trait_impl;
+mod suspicious_xor_used_as_pow;
 mod swap;
 mod swap_ptr_to_ref;
 mod tabs_in_doc_comments;
@@ -916,6 +917,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(partial_pub_fields::PartialPubFields));
     store.register_late_pass(|_| Box::new(missing_trait_methods::MissingTraitMethods));
     store.register_late_pass(|_| Box::new(from_raw_with_void_ptr::FromRawWithVoidPtr));
+    store.register_late_pass(|_| Box::new(suspicious_xor_used_as_pow::ConfusingXorAndPow));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
