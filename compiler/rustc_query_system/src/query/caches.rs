@@ -11,11 +11,6 @@ use rustc_data_structures::sync::WorkerLocal;
 use std::default::Default;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::marker::PhantomData;
-
-pub trait CacheSelector<K, V> {
-    type Cache;
-}
 
 pub trait QueryStorage {
     type Value: Debug;
@@ -45,12 +40,6 @@ pub trait QueryCache: QueryStorage + Sized {
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex) -> Self::Stored;
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
-}
-
-pub struct DefaultCacheSelector;
-
-impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for DefaultCacheSelector {
-    type Cache = DefaultCache<K, V>;
 }
 
 pub struct DefaultCache<K, V> {
@@ -132,12 +121,6 @@ where
             }
         }
     }
-}
-
-pub struct ArenaCacheSelector<'tcx>(PhantomData<&'tcx ()>);
-
-impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<K, V> for ArenaCacheSelector<'tcx> {
-    type Cache = ArenaCache<'tcx, K, V>;
 }
 
 pub struct ArenaCache<'tcx, K, V> {

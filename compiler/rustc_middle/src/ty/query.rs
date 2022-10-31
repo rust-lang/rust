@@ -120,15 +120,9 @@ macro_rules! query_helper_param_ty {
 }
 
 macro_rules! query_storage {
-    ([][$K:ty, $V:ty]) => {
-        <DefaultCacheSelector as CacheSelector<$K, $V>>::Cache
-    };
-    ([(arena_cache) $($rest:tt)*][$K:ty, $V:ty]) => {
-        <ArenaCacheSelector<'tcx> as CacheSelector<$K, $V>>::Cache
-    };
-    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
-        query_storage!([$($modifiers)*][$($args)*])
-    };
+    ([][$K:ty, $V:ty]) => { DefaultCache<$K, $V> };
+    ([(arena_cache) $($rest:tt)*][$K:ty, $V:ty]) => { ArenaCache<'tcx, $K, $V> };
+    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => { query_storage!([$($modifiers)*][$($args)*]) };
 }
 
 macro_rules! separate_provide_extern_decl {
