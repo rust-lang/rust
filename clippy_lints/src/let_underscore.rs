@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{is_must_use_ty, match_type};
+use clippy_utils::ty::{implements_trait, is_must_use_ty, match_type};
 use clippy_utils::{is_must_use_func_call, paths};
 use rustc_hir::{Local, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -59,7 +59,31 @@ declare_clippy_lint! {
     "non-binding let on a synchronization lock"
 }
 
-declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK]);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `let _ = <expr>` where the resulting type of expr implements `Future`
+    ///
+    /// ### Why is this bad?
+    /// Futures must be polled for work to be done. The original intention was most likely to await the future
+    /// and ignore the resulting value.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// async fn foo() -> Result<(), ()> { }
+    /// let _ = foo();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// let _ = foo().await;
+    /// ```
+    #[clippy::version = "1.66"]
+    pub LET_UNDERSCORE_FUTURE,
+    suspicious,
+    "non-binding let on a future"
+}
+
+declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_FUTURE]);
 
 const SYNC_GUARD_PATHS: [&[&str]; 3] = [
     &paths::PARKING_LOT_MUTEX_GUARD,
@@ -87,6 +111,16 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     None,
                     "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`",
+                );
+            } else if let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
+                && implements_trait(cx, cx.typeck_results().expr_ty(init), future_trait_def_id, &[]) {
+                span_lint_and_help(
+                    cx,
+                    LET_UNDERSCORE_FUTURE,
+                    local.span,
+                    "non-binding let on a future",
+                    None,
+                    "consider awaiting the future or dropping explicitly with `std::mem::drop`"
                 );
             } else if is_must_use_ty(cx, cx.typeck_results().expr_ty(init)) {
                 span_lint_and_help(
