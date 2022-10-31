@@ -1,4 +1,4 @@
-include ../../run-make-fulldeps/tools.mk
+include ../tools.mk
 
 all:
 	# Smoke-test that `#[bench]` isn't entirely broken.
