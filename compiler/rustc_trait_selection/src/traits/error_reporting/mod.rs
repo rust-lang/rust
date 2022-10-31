@@ -2146,7 +2146,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             self.annotate_source_of_ambiguity(&mut err, &impls, predicate);
                         } else {
                             if self.is_tainted_by_errors() {
-                                err.cancel();
+                                err.delay_as_bug();
                                 return;
                             }
                             err.note(&format!("cannot satisfy `{}`", predicate));
@@ -2154,7 +2154,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
                     _ => {
                         if self.is_tainted_by_errors() {
-                            err.cancel();
+                            err.delay_as_bug();
                             return;
                         }
                         err.note(&format!("cannot satisfy `{}`", predicate));
