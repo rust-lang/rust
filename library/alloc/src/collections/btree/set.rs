@@ -343,7 +343,7 @@ impl<T> BTreeSet<T> {
     /// let mut set: BTreeSet<i32> = BTreeSet::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_btree_new", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[must_use]
     pub const fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
@@ -796,7 +796,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.first(), Some(&1));
     /// ```
     #[must_use]
-    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn first(&self) -> Option<&T>
     where
         T: Ord,
@@ -822,7 +822,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(set.last(), Some(&2));
     /// ```
     #[must_use]
-    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn last(&self) -> Option<&T>
     where
         T: Ord,
@@ -846,7 +846,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_first(&mut self) -> Option<T>
     where
         T: Ord,
@@ -870,7 +870,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// }
     /// assert!(set.is_empty());
     /// ```
-    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_last(&mut self) -> Option<T>
     where
         T: Ord,
