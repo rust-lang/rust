@@ -1186,6 +1186,11 @@ impl<'tcx> BasicBlockData<'tcx> {
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
         if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
     }
+
+    /// Does the block have no statements and an unreachable terminator?
+    pub fn is_empty_unreachable(&self) -> bool {
+        self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
+    }
 }
 
 impl<O> AssertKind<O> {
