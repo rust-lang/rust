@@ -652,7 +652,6 @@ fn test_unstable_options_tracking_hash() {
     untracked!(future_incompat_test, true);
     untracked!(hir_stats, true);
     untracked!(identify_regions, true);
-    untracked!(incremental_ignore_spans, true);
     untracked!(incremental_info, true);
     untracked!(incremental_verify_ich, true);
     untracked!(input_stats, true);
@@ -737,6 +736,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_sections, Some(false));
     tracked!(human_readable_cgu_names, true);
+    tracked!(incremental_ignore_spans, true);
     tracked!(inline_in_all_cgus, Some(true));
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
