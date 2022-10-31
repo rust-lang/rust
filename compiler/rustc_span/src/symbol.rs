@@ -694,6 +694,7 @@ symbols! {
         export_name,
         expr,
         extended_key_value_attributes,
+        extended_varargs_abi_support,
         extern_absolute_paths,
         extern_crate_item_prelude,
         extern_crate_self,
