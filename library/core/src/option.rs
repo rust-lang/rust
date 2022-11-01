@@ -1720,7 +1720,7 @@ impl<T, U> Option<(T, U)> {
     /// assert_eq!(y.unzip(), (None, None));
     /// ```
     #[inline]
-    #[stable(feature = "unzip_option", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unzip_option", since = "1.66.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn unzip(self) -> (Option<T>, Option<U>)
     where
