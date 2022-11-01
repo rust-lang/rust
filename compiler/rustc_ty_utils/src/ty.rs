@@ -372,7 +372,7 @@ fn instance_def_size_estimate<'tcx>(
                                     | StatementKind::Nop
                             )
                         })
-                        .count()
+                        .count() + 1
                 })
                 .sum()
         }
