@@ -337,7 +337,7 @@ fn could_use_elision<'tcx>(
     let elidable_lts = named_lifetime_occurrences(&input_lts)
         .into_iter()
         .filter_map(|(def_id, occurrences)| {
-            if occurrences <= 1 && (input_lts.len() <= 1 || !output_lts.contains(&RefLt::Named(def_id))) {
+            if occurrences == 1 && (input_lts.len() == 1 || !output_lts.contains(&RefLt::Named(def_id))) {
                 Some((
                     def_id,
                     input_visitor
