@@ -1,5 +1,5 @@
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:11:9
+  --> $DIR/missnamed_getters.rs:12:9
    |
 LL |         &self.b
    |         ^^^^^^^ help: consider using: `&self.a`
@@ -7,10 +7,58 @@ LL |         &self.b
    = note: `-D clippy::missnamed-getters` implied by `-D warnings`
 
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:22:9
+  --> $DIR/missnamed_getters.rs:15:9
+   |
+LL |         &mut self.b
+   |         ^^^^^^^^^^^ help: consider using: `&mut self.a`
+
+error: getter function appears to return the wrong field
+  --> $DIR/missnamed_getters.rs:19:9
+   |
+LL |         self.a
+   |         ^^^^^^ help: consider using: `self.b`
+
+error: getter function appears to return the wrong field
+  --> $DIR/missnamed_getters.rs:23:9
+   |
+LL |         &mut self.a
+   |         ^^^^^^^^^^^ help: consider using: `&mut self.b`
+
+error: getter function appears to return the wrong field
+  --> $DIR/missnamed_getters.rs:27:9
+   |
+LL |         &self.b
+   |         ^^^^^^^ help: consider using: `&self.c`
+
+error: getter function appears to return the wrong field
+  --> $DIR/missnamed_getters.rs:31:9
+   |
+LL |         &mut self.a
+   |         ^^^^^^^^^^^ help: consider using: `&mut self.c`
+
+error: getter function appears to return the wrong field
+  --> $DIR/missnamed_getters.rs:42:9
    |
 LL |         &self.b
    |         ^^^^^^^ help: consider using: `&self.a`
 
-error: aborting due to 2 previous errors
+error: getter function appears to return the wrong field
+  --> $DIR/missnamed_getters.rs:45:9
+   |
+LL |         &mut self.b
+   |         ^^^^^^^^^^^ help: consider using: `&mut self.a`
+
+error: getter function appears to return the wrong field
+  --> $DIR/missnamed_getters.rs:49:9
+   |
+LL |         self.a
+   |         ^^^^^^ help: consider using: `self.b`
+
+error: getter function appears to return the wrong field
+  --> $DIR/missnamed_getters.rs:53:9
+   |
+LL |         &mut self.a
+   |         ^^^^^^^^^^^ help: consider using: `&mut self.b`
+
+error: aborting due to 10 previous errors
 

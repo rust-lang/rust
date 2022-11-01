@@ -35,21 +35,34 @@ pub fn check_fn(
                 };
             name
         },
+        ImplicitSelfKind::Imm | ImplicitSelfKind::Mut => name,
         _ => return,
     };
 
     // Body must be &(mut) <self_data>.name
-    // self_data is not neccessarilly self
-    let (self_data, used_ident, span) = if_chain! {
+    // self_data is not neccessarilly self, to also lint sub-getters, etc…
+
+    let block_expr = if_chain! {
         if let ExprKind::Block(block,_) = body.value.kind;
         if block.stmts.is_empty();
         if let Some(block_expr) = block.expr;
-        // replace with while for as many addrof needed
-        if let ExprKind::AddrOf(_,_, expr) = block_expr.kind;
+        then {
+            block_expr
+        } else {
+            return;
+        }
+    };
+    let expr_span = block_expr.span;
+
+    let mut expr = block_expr;
+    if let ExprKind::AddrOf(_, _, tmp) = expr.kind {
+        expr = tmp;
+    }
+    let (self_data, used_ident) = if_chain! {
         if let ExprKind::Field(self_data, ident) = expr.kind;
         if ident.name.as_str() != name;
         then {
-            (self_data,ident,block_expr.span)
+            (self_data,ident)
         } else {
             return;
         }
@@ -108,12 +121,12 @@ pub fn check_fn(
         };
 
     if cx.tcx.type_of(used_field.did) == cx.tcx.type_of(correct_field.did) {
-        let snippet = snippet(cx, span, "..");
+        let snippet = snippet(cx, expr_span, "..");
         let sugg = format!("{}{name}", snippet.strip_suffix(used_field.name.as_str()).unwrap());
         span_lint_and_sugg(
             cx,
             MISSNAMED_GETTERS,
-            span,
+            expr_span,
             "getter function appears to return the wrong field",
             "consider using",
             sugg,
