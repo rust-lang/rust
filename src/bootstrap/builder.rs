@@ -689,6 +689,7 @@ impl<'a> Builder<'a> {
                 doc::UnstableBookGen,
                 doc::TheBook,
                 doc::Standalone,
+                doc::JsonStd,
                 doc::Std,
                 doc::Rustc,
                 doc::Rustdoc,
