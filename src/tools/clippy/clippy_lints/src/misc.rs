@@ -240,7 +240,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
         }
         let sym;
         let binding = match expr.kind {
-            ExprKind::Path(ref qpath) if !matches!(qpath, hir::QPath::LangItem(..)) => {
+            ExprKind::Path(ref qpath) => {
                 let binding = last_path_segment(qpath).ident.as_str();
                 if binding.starts_with('_') &&
                     !binding.starts_with("__") &&

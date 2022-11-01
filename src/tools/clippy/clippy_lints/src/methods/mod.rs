@@ -113,7 +113,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, Span};
+use rustc_span::{sym, DesugaringKind, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -3197,7 +3197,11 @@ fn method_call<'tcx>(
     recv: &'tcx hir::Expr<'tcx>,
 ) -> Option<(&'tcx str, &'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], Span)> {
     if let ExprKind::MethodCall(path, receiver, args, _) = recv.kind {
-        if !args.iter().any(|e| e.span.from_expansion()) && !receiver.span.from_expansion() {
+        if !(args
+            .iter()
+            .any(|e| e.span.from_expansion() && !e.span.is_desugaring(DesugaringKind::RangeLiteral))
+            || (receiver.span.from_expansion() && !receiver.span.is_desugaring(DesugaringKind::RangeLiteral)))
+        {
             let name = path.ident.name.as_str();
             return Some((name, receiver, args, path.ident.span));
         }

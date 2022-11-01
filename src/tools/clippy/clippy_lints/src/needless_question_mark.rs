@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::path_res;
 use clippy_utils::source::snippet;
+use clippy_utils::{is_path_lang_item, path_res};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{AsyncGeneratorKind, Block, Body, Expr, ExprKind, GeneratorKind, LangItem, MatchSource, QPath};
+use rustc_hir::{AsyncGeneratorKind, Block, Body, Expr, ExprKind, GeneratorKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::DefIdTree;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -124,8 +124,8 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
             return;
         };
         if let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar) = &arg.kind;
-        if let ExprKind::Call(called, [inner_expr]) = &inner_expr_with_q.kind;
-        if let ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, ..)) = &called.kind;
+        if let ExprKind::Call(called, [inner_expr]) = inner_expr_with_q.kind;
+        if is_path_lang_item(cx, called, LangItem::TryTraitBranch);
         if expr.span.ctxt() == inner_expr.span.ctxt();
         let expr_ty = cx.typeck_results().expr_ty(expr);
         let inner_ty = cx.typeck_results().expr_ty(inner_expr);

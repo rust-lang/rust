@@ -381,7 +381,6 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
     match *path {
         QPath::Resolved(_, path) => path.segments.last().expect("A path must have at least one segment"),
         QPath::TypeRelative(_, seg) => seg,
-        QPath::LangItem(..) => panic!("last_path_segment: lang item has no path segments"),
     }
 }
 
@@ -423,7 +422,6 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
             },
             _ => false,
         },
-        QPath::LangItem(..) => false,
     }
 }
 
@@ -523,6 +521,23 @@ pub fn path_res<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -
 /// If `maybe_path` is a path node which resolves to an item, retrieves the item ID
 pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -> Option<DefId> {
     path_res(cx, maybe_path).opt_def_id()
+}
+
+pub fn is_path_lang_item<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>, lang_item: LangItem) -> bool {
+    match maybe_path.qpath_opt() {
+        None => false,
+        Some(qpath) => is_qpath_lang_item(cx, qpath, lang_item),
+    }
+}
+
+pub fn is_qpath_lang_item(cx: &LateContext<'_>, qpath: &QPath<'_>, lang_item: LangItem) -> bool {
+    match qpath {
+        QPath::Resolved(_, path) => match path.res.opt_def_id() {
+            None => false,
+            Some(id) => Ok(id) == cx.tcx.lang_items().require(lang_item),
+        },
+        QPath::TypeRelative(..) => false,
+    }
 }
 
 fn find_primitive<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<Item = DefId> + 'tcx {

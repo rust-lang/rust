@@ -266,11 +266,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn qpath(&self, qpath: &Binding<&QPath<'_>>) {
-        if let QPath::LangItem(lang_item, ..) = *qpath.value {
-            chain!(self, "matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _))");
-        } else {
-            chain!(self, "match_qpath({qpath}, &[{}])", path_to_string(qpath.value));
-        }
+        chain!(self, "match_qpath({qpath}, &[{}])", path_to_string(qpath.value));
     }
 
     fn lit(&self, lit: &Binding<&Lit>) {
@@ -748,7 +744,6 @@ fn path_to_string(path: &QPath<'_>) -> String {
                 },
                 other => write!(s, "/* unimplemented: {other:?}*/").unwrap(),
             },
-            QPath::LangItem(..) => panic!("path_to_string: called for lang item qpath"),
         }
     }
     let mut s = String::new();

@@ -8,6 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, PatKind, Stmt, StmtKind, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::DesugaringKind;
 use std::ops::Deref;
 
 declare_clippy_lint! {
@@ -113,7 +114,7 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
 }
 
 fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if expr.span.from_expansion() {
+    if expr.span.from_expansion() && !is_range_literal(expr) {
         return false;
     }
     match peel_blocks(expr).kind {
@@ -160,7 +161,7 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if_chain! {
         if let StmtKind::Semi(expr) = stmt.kind;
         if let Some(reduced) = reduce_expression(cx, expr);
-        if !&reduced.iter().any(|e| e.span.from_expansion());
+        if !&reduced.iter().any(|e| e.span.from_expansion() && !e.span.is_desugaring(DesugaringKind::RangeLiteral));
         then {
             if let ExprKind::Index(..) = &expr.kind {
                 let snippet = if let (Some(arr), Some(func)) =
@@ -216,7 +217,7 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
 }
 
 fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec<&'a Expr<'a>>> {
-    if expr.span.from_expansion() {
+    if expr.span.from_expansion() && !expr.span.is_desugaring(DesugaringKind::RangeLiteral) {
         return None;
     }
     match expr.kind {

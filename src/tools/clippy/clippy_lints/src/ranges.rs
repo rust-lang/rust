@@ -12,7 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::{Span, Spanned};
+use rustc_span::source_map::Span;
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -498,35 +498,30 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
 }
 
 fn y_plus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
-    match expr.kind {
-        ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Add, ..
-            },
-            lhs,
-            rhs,
-        ) => {
-            if is_integer_const(cx, lhs, 1) {
-                Some(rhs)
-            } else if is_integer_const(cx, rhs, 1) {
-                Some(lhs)
-            } else {
-                None
-            }
-        },
-        _ => None,
+    if let ExprKind::Binary(node, lhs, rhs) = expr.kind
+        && matches!(node.node, BinOpKind::Add)
+        && lhs.span.ctxt() == rhs.span.ctxt()
+    {
+        if is_integer_const(cx, lhs, 1) {
+            Some(rhs)
+        } else if is_integer_const(cx, rhs, 1) {
+            Some(lhs)
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }
 
 fn y_minus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
-    match expr.kind {
-        ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Sub, ..
-            },
-            lhs,
-            rhs,
-        ) if is_integer_const(cx, rhs, 1) => Some(lhs),
-        _ => None,
+    if let ExprKind::Binary(node, lhs, rhs) = expr.kind
+        && matches!(node.node, BinOpKind::Sub)
+        && lhs.span.ctxt() == rhs.span.ctxt()
+        && is_integer_const(cx, rhs, 1)
+    {
+        Some(lhs)
+    } else {
+        None
     }
 }

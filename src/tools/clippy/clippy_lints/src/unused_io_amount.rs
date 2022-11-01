@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::{is_trait_method, is_try, match_trait_method, paths};
+use clippy_utils::{is_path_lang_item, is_trait_method, is_try, match_trait_method, paths};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -54,10 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
         match expr.kind {
             hir::ExprKind::Match(res, _, _) if is_try(cx, expr).is_some() => {
                 if let hir::ExprKind::Call(func, [ref arg_0, ..]) = res.kind {
-                    if matches!(
-                        func.kind,
-                        hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, ..))
-                    ) {
+                    if is_path_lang_item(cx, func, hir::LangItem::TryTraitBranch) {
                         check_map_error(cx, arg_0, expr);
                     }
                 } else {
@@ -77,13 +74,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
 
 /// If `expr` is an (e).await, return the inner expression "e" that's being
 /// waited on.  Otherwise return None.
-fn try_remove_await<'a>(expr: &'a hir::Expr<'a>) -> Option<&hir::Expr<'a>> {
+fn try_remove_await<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'a>) -> Option<&'a hir::Expr<'a>> {
     if let hir::ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind {
         if let hir::ExprKind::Call(func, [ref arg_0, ..]) = expr.kind {
-            if matches!(
-                func.kind,
-                hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::IntoFutureIntoFuture, ..))
-            ) {
+            if is_path_lang_item(cx, func, hir::LangItem::IntoFutureIntoFuture) {
                 return Some(arg_0);
             }
         }
@@ -102,7 +96,7 @@ fn check_map_error(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<
         }
     }
 
-    if let Some(call) = try_remove_await(call) {
+    if let Some(call) = try_remove_await(cx, call) {
         check_method_call(cx, call, expr, true);
     } else {
         check_method_call(cx, call, expr, false);

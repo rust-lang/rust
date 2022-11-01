@@ -2,7 +2,7 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
     && let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = pat.kind
     && name.as_str() == "y"
     && let ExprKind::Struct(qpath, fields, None) = arg.kind
-    && matches!(qpath, QPath::LangItem(LangItem::Range, _))
+    && match_qpath(qpath, &["Range"])
     && fields.len() == 2
     && fields[0].ident.as_str() == "start"
     && let ExprKind::Lit(ref lit) = fields[0].expr.kind
@@ -25,7 +25,7 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
 if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr)
     && let PatKind::Wild = pat.kind
     && let ExprKind::Struct(qpath, fields, None) = arg.kind
-    && matches!(qpath, QPath::LangItem(LangItem::Range, _))
+    && match_qpath(qpath, &["Range"])
     && fields.len() == 2
     && fields[0].ident.as_str() == "start"
     && let ExprKind::Lit(ref lit) = fields[0].expr.kind
@@ -45,7 +45,7 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
 if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr)
     && let PatKind::Wild = pat.kind
     && let ExprKind::Struct(qpath, fields, None) = arg.kind
-    && matches!(qpath, QPath::LangItem(LangItem::Range, _))
+    && match_qpath(qpath, &["Range"])
     && fields.len() == 2
     && fields[0].ident.as_str() == "start"
     && let ExprKind::Lit(ref lit) = fields[0].expr.kind

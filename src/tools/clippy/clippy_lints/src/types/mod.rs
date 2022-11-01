@@ -534,7 +534,6 @@ impl Types {
                             }
                         }
                     },
-                    QPath::LangItem(..) => {},
                 }
             },
             TyKind::Rptr(lt, ref mut_ty) => {

@@ -3,12 +3,14 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
-use clippy_utils::{is_diag_item_method, match_def_path, meets_msrv, msrvs, path_to_local_id, paths};
+use clippy_utils::{
+    is_diag_item_method, is_path_lang_item, match_def_path, meets_msrv, msrvs, path_to_local_id, paths,
+};
 use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    BindingAnnotation, Expr, ExprKind, HirId, LangItem, Local, MatchSource, Node, Pat, PatKind, QPath, Stmt, StmtKind,
+    BindingAnnotation, Expr, ExprKind, HirId, LangItem, Local, MatchSource, Node, Pat, PatKind, Stmt, StmtKind,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -347,13 +349,7 @@ fn parse_iter_usage<'tcx>(
 
     let (unwrap_kind, span) = if let Some((_, Node::Expr(e))) = iter.next() {
         match e.kind {
-            ExprKind::Call(
-                Expr {
-                    kind: ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, ..)),
-                    ..
-                },
-                _,
-            ) => {
+            ExprKind::Call(callee, _) if is_path_lang_item(cx, callee, LangItem::TryTraitBranch) => {
                 let parent_span = e.span.parent_callsite().unwrap();
                 if parent_span.ctxt() == ctxt {
                     (Some(UnwrapKind::QuestionMark), parent_span)

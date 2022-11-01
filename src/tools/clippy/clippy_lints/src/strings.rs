@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{get_parent_expr, is_lint_allowed, match_function_call, method_calls, paths};
+use clippy_utils::{get_parent_expr, is_lint_allowed, is_qpath_lang_item, match_function_call, method_calls, paths};
 use clippy_utils::{peel_blocks, SpanlessEq};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, QPath};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
@@ -266,7 +266,8 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             if method_names[0] == sym!(as_bytes);
 
             // Check for slicer
-            if let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), _, _) = right.kind;
+            if let ExprKind::Struct(ref qpath, _, _) = right.kind;
+            if is_qpath_lang_item(cx, qpath, LangItem::Range);
 
             then {
                 let mut applicability = Applicability::MachineApplicable;

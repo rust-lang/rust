@@ -10,7 +10,7 @@ use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath};
 use rustc_lint::LateContext;
-use rustc_span::{sym, symbol, Span};
+use rustc_span::{sym, symbol, DesugaringKind, Span};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Return `(pat, arg, body, span)`.
@@ -211,56 +211,36 @@ pub struct Range<'a> {
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
     pub fn hir(expr: &'a hir::Expr<'_>) -> Option<Range<'a>> {
-        /// Finds the field named `name` in the field. Always return `Some` for
-        /// convenience.
-        fn get_field<'c>(name: &str, fields: &'c [hir::ExprField<'_>]) -> Option<&'c hir::Expr<'c>> {
-            let expr = &fields.iter().find(|field| field.ident.name.as_str() == name)?.expr;
-            Some(expr)
+        if !expr.span.is_desugaring(DesugaringKind::RangeLiteral) {
+            return None;
         }
-
-        match expr.kind {
-            hir::ExprKind::Call(path, args)
-                if matches!(
-                    path.kind,
-                    hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, ..))
-                ) =>
-            {
-                Some(Range {
-                    start: Some(&args[0]),
-                    end: Some(&args[1]),
-                    limits: ast::RangeLimits::Closed,
-                })
+        let range = match expr.kind {
+            // RangeInclusive::new(start, end)
+            hir::ExprKind::Call(_, [start, end]) => Range {
+                start: Some(start),
+                end: Some(end),
+                limits: ast::RangeLimits::Closed,
             },
-            hir::ExprKind::Struct(path, fields, None) => match &path {
-                hir::QPath::LangItem(hir::LangItem::RangeFull, ..) => Some(Range {
-                    start: None,
-                    end: None,
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                hir::QPath::LangItem(hir::LangItem::RangeFrom, ..) => Some(Range {
-                    start: Some(get_field("start", fields)?),
-                    end: None,
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                hir::QPath::LangItem(hir::LangItem::Range, ..) => Some(Range {
-                    start: Some(get_field("start", fields)?),
-                    end: Some(get_field("end", fields)?),
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                hir::QPath::LangItem(hir::LangItem::RangeToInclusive, ..) => Some(Range {
-                    start: None,
-                    end: Some(get_field("end", fields)?),
-                    limits: ast::RangeLimits::Closed,
-                }),
-                hir::QPath::LangItem(hir::LangItem::RangeTo, ..) => Some(Range {
-                    start: None,
-                    end: Some(get_field("end", fields)?),
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                _ => None,
+            hir::ExprKind::Struct(QPath::Resolved(_, path), fields, None) => {
+                let mut start = None;
+                let mut end = None;
+                for field in fields {
+                    match field.ident.name {
+                        sym::start => start = Some(field.expr),
+                        sym::end => end = Some(field.expr),
+                        _ => {},
+                    }
+                }
+                let limits = match path.segments.last().unwrap().ident.name {
+                    sym::Range | sym::RangeFrom | sym::RangeTo | sym::RangeFull => ast::RangeLimits::HalfOpen,
+                    sym::RangeToInclusive => ast::RangeLimits::Closed,
+                    _ => return None,
+                };
+                Range { start, end, limits }
             },
-            _ => None,
-        }
+            _ => return None,
+        };
+        Some(range)
     }
 }
 
