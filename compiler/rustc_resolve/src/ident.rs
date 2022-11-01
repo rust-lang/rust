@@ -17,7 +17,7 @@ use crate::late::{
 };
 use crate::macros::{sub_namespace_match, MacroRulesScope};
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
-use crate::{ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{Import, ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res};
 use crate::{ResolutionError, Resolver, Scope, ScopeSet, Segment, ToNameBinding, Weak};
 
@@ -860,7 +860,11 @@ impl<'a> Resolver<'a> {
             }
 
             if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
-                if let NameBindingKind::Res(_, true) = binding.kind {
+                if let NameBindingKind::Import {
+                    import: Import { kind: ImportKind::MacroExport, .. },
+                    ..
+                } = binding.kind
+                {
                     self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
                 }
             }
