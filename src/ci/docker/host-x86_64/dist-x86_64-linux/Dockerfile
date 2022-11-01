@@ -23,7 +23,6 @@ RUN yum upgrade -y && \
       libstdc++-devel.x86_64 \
       make \
       ncurses-devel \
-      ninja-build \
       openssl-devel \
       patch \
       perl \
@@ -77,6 +76,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ar=/rustroot/bin/llvm-ar \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
+      --set llvm.ninja=false \
       --set rust.jemalloc \
       --set rust.use-lld=true \
       --set rust.lto=thin
