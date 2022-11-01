@@ -2,7 +2,7 @@ error[E0433]: failed to resolve: use of undeclared type `TryFrom`
   --> $DIR/suggest-tryinto-edition-change.rs:11:19
    |
 LL |     let _i: i16 = TryFrom::try_from(0_i32).unwrap();
-   |                   ^^^^^^^ not found in this scope
+   |                   ^^^^^^^ use of undeclared type `TryFrom`
    |
    = note: 'std::convert::TryFrom' is included in the prelude starting in Edition 2021
    = note: 'core::convert::TryFrom' is included in the prelude starting in Edition 2021
@@ -17,7 +17,7 @@ error[E0433]: failed to resolve: use of undeclared type `TryInto`
   --> $DIR/suggest-tryinto-edition-change.rs:17:19
    |
 LL |     let _i: i16 = TryInto::try_into(0_i32).unwrap();
-   |                   ^^^^^^^ not found in this scope
+   |                   ^^^^^^^ use of undeclared type `TryInto`
    |
    = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
    = note: 'core::convert::TryInto' is included in the prelude starting in Edition 2021
@@ -32,12 +32,7 @@ error[E0433]: failed to resolve: use of undeclared type `FromIterator`
   --> $DIR/suggest-tryinto-edition-change.rs:23:22
    |
 LL |     let _v: Vec<_> = FromIterator::from_iter(&[1]);
-   |                      ^^^^^^^^^^^^
-   |
-  ::: $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL | pub trait IntoIterator {
-   | ---------------------- similarly named trait `IntoIterator` defined here
+   |                      ^^^^^^^^^^^^ use of undeclared type `FromIterator`
    |
    = note: 'std::iter::FromIterator' is included in the prelude starting in Edition 2021
    = note: 'core::iter::FromIterator' is included in the prelude starting in Edition 2021
