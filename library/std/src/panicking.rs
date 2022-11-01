@@ -633,7 +633,11 @@ fn rust_panic_with_hook(
     location: &Location<'_>,
     can_unwind: bool,
 ) -> ! {
-    let (must_abort, panics) = panic_count::increase();
+    //DH changed this to avoid recursion/crash
+    //Temporary workaround which supports panic using hook, until we have more FreeRTOS support in std (specifically, mutex handling).
+    //let (must_abort, panics) = panic_count::increase();
+    let must_abort = false;
+    let panics = 1;
 
     // If this is the third nested call (e.g., panics == 2, this is 0-indexed),
     // the panic hook probably triggered the last panic, otherwise the
