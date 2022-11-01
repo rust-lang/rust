@@ -10,13 +10,10 @@ use rustc_span::Span;
 
 use std::ascii;
 
+// njn: how much of this will be left?
 pub enum LitError {
     NotLiteral,
     LexerError,
-    InvalidSuffix,
-    InvalidIntSuffix,
-    InvalidFloatSuffix,
-    NonDecimalFloat(u32),
     IntTooLarge,
 }
 
@@ -24,8 +21,10 @@ impl LitKind {
     /// Converts literal token into a semantic literal.
     pub fn from_token_lit(lit: token::Lit) -> Result<LitKind, LitError> {
         let token::Lit { kind, symbol, suffix } = lit;
+        // njn: could even move the suffix into `kind`...
         if suffix.is_some() && !kind.may_have_suffix() {
-            return Err(LitError::InvalidSuffix);
+            // njn: yuk
+            return Err(LitError::LexerError);
         }
 
         Ok(match kind {
@@ -259,31 +258,21 @@ fn strip_underscores(symbol: Symbol) -> Symbol {
     symbol
 }
 
-fn filtered_float_lit(
-    symbol: Symbol,
-    suffix: Option<Symbol>,
-    base: u32,
-) -> Result<LitKind, LitError> {
-    debug!("filtered_float_lit: {:?}, {:?}, {:?}", symbol, suffix, base);
-    if base != 10 {
-        return Err(LitError::NonDecimalFloat(base));
-    }
+fn float_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitError> {
+    debug!("float_lit: {:?}, {:?}", symbol, suffix);
+    let symbol = strip_underscores(symbol);
+
     Ok(match suffix {
         Some(suf) => LitKind::Float(
             symbol,
             ast::LitFloatType::Suffixed(match suf {
                 sym::f32 => ast::FloatTy::F32,
                 sym::f64 => ast::FloatTy::F64,
-                _ => return Err(LitError::InvalidFloatSuffix),
+                _ => return Err(LitError::LexerError),
             }),
         ),
         None => LitKind::Float(symbol, ast::LitFloatType::Unsuffixed),
     })
-}
-
-fn float_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitError> {
-    debug!("float_lit: {:?}, {:?}", symbol, suffix);
-    filtered_float_lit(strip_underscores(symbol), suffix, 10)
 }
 
 fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitError> {
@@ -312,10 +301,11 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
             sym::u32 => ast::LitIntType::Unsigned(ast::UintTy::U32),
             sym::u64 => ast::LitIntType::Unsigned(ast::UintTy::U64),
             sym::u128 => ast::LitIntType::Unsigned(ast::UintTy::U128),
-            // `1f64` and `2f32` etc. are valid float literals, and
-            // `fxxx` looks more like an invalid float literal than invalid integer literal.
-            _ if suf.as_str().starts_with('f') => return filtered_float_lit(symbol, suffix, base),
-            _ => return Err(LitError::InvalidIntSuffix),
+            _ =>
+            //return Err(LitError::LexerError), // njn: hmm
+            {
+                return Ok(ast::LitKind::Err);
+            }
         },
         _ => ast::LitIntType::Unsuffixed,
     };

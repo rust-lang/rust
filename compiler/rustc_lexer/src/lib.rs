@@ -165,9 +165,13 @@ pub enum DocStyle {
     Inner,
 }
 
+// Note that the suffix is *not* considered when deciding the `LiteralKind` in
+// this type. This means that float literals like `1f32` are classified by this
+// type as `Int`. (Compare against `rustc_ast::token::LitKind` and
+// `rustc_ast::ast::LitKind.)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LiteralKind {
-    /// "12_u8", "0o100", "0b120i99"
+    /// "12_u8", "0o100", "0b120i99", "1f32".
     Int { base: Base, empty_int: bool },
     /// "12.34f32", "0b100.100"
     Float { base: Base, empty_exponent: bool },
@@ -185,6 +189,19 @@ pub enum LiteralKind {
     /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a". `None`
     /// indicates an invalid literal.
     RawByteStr { n_hashes: Option<u8> },
+}
+
+impl LiteralKind {
+    pub fn descr(self) -> &'static str {
+        match self {
+            Int { .. } => "integer",
+            Float { .. } => "float",
+            Char { .. } => "char",
+            Byte { .. } => "byte",
+            Str { .. } | RawStr { .. } => "string",
+            ByteStr { .. } | RawByteStr { .. } => "byte string",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

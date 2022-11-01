@@ -1729,9 +1729,9 @@ pub enum LitFloatType {
     Unsuffixed,
 }
 
-/// Literal kind.
-///
-/// E.g., `"foo"`, `42`, `12.34`, or `bool`.
+/// Note that the entire literal (including the suffix) is considered when
+/// deciding the `LitKind`. This means that float literals like `1f32` are
+/// classified by this type as `Float`.
 #[derive(Clone, Encodable, Decodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
 pub enum LitKind {
     /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
@@ -1745,8 +1745,8 @@ pub enum LitKind {
     Char(char),
     /// An integer literal (`1`).
     Int(u128, LitIntType),
-    /// A float literal (`1f64` or `1E10f64`). Stored as a symbol rather than
-    /// `f64` so that `LitKind` can impl `Eq` and `Hash`.
+    /// A float literal (`1.0`, `1f64` or `1E10f64`). Stored as a symbol rather
+    /// than `f64` so that `LitKind` can impl `Eq` and `Hash`.
     Float(Symbol, LitFloatType),
     /// A boolean literal.
     Bool(bool),

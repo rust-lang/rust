@@ -1,3 +1,7 @@
+use crate::errors::{
+    InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth, InvalidIntLiteralWidth,
+    InvalidLiteralSuffix, InvalidNumLiteralBasePrefix, InvalidNumLiteralSuffix,
+};
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
@@ -14,7 +18,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{edition::Edition, BytePos, Pos, Span};
 
 mod tokentrees;
@@ -169,10 +173,15 @@ impl<'a> StringReader<'a> {
                 }
                 rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                     let suffix_start = start + BytePos(suffix_start);
-                    let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
                     let suffix = if suffix_start < self.pos {
-                        let string = self.str_from(suffix_start);
-                        if string == "_" {
+                        Some(Symbol::intern(self.str_from(suffix_start)))
+                    } else {
+                        None
+                    };
+                    let (kind, symbol) =
+                        self.cook_lexer_literal(start, suffix_start, self.pos, suffix, kind);
+                    let suffix = suffix.and_then(|suffix| {
+                        if suffix == kw::Underscore {
                             self.sess
                                 .span_diagnostic
                                 .struct_span_warn(
@@ -192,11 +201,9 @@ impl<'a> StringReader<'a> {
                                 .emit();
                             None
                         } else {
-                            Some(Symbol::intern(string))
+                            Some(suffix)
                         }
-                    } else {
-                        None
-                    };
+                    });
                     token::Literal(token::Lit { kind, symbol, suffix })
                 }
                 rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
@@ -360,12 +367,33 @@ impl<'a> StringReader<'a> {
         token::DocComment(comment_kind, attr_style, Symbol::intern(content))
     }
 
+    // njn: use LitKind::Err more?
     fn cook_lexer_literal(
         &self,
         start: BytePos,
         suffix_start: BytePos,
+        suffix_end: BytePos,
+        suffix: Option<Symbol>,
         kind: rustc_lexer::LiteralKind,
     ) -> (token::LitKind, Symbol) {
+        // Checks if `s` looks like i32 or u1234 etc.
+        fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
+            s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
+        }
+
+        // Try to lowercase the prefix if it's a valid base prefix.
+        fn fix_base_capitalisation(s: &str) -> Option<String> {
+            if let Some(stripped) = s.strip_prefix('B') {
+                Some(format!("0b{stripped}"))
+            } else if let Some(stripped) = s.strip_prefix('O') {
+                Some(format!("0o{stripped}"))
+            } else if let Some(stripped) = s.strip_prefix('X') {
+                Some(format!("0x{stripped}"))
+            } else {
+                None
+            }
+        }
+
         // prefix means `"` or `br"` or `r###"`, ...
         let (lit_kind, mode, prefix_len, postfix_len) = match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
@@ -436,8 +464,81 @@ impl<'a> StringReader<'a> {
                         .emit();
                     (token::Integer, sym::integer(0))
                 } else {
-                    self.validate_int_literal(base, start, suffix_start);
-                    (token::Integer, self.symbol_from_to(start, suffix_start))
+                    // If it's a literal like `1f32`, change it to a float.
+                    // njn: can this check be even earlier
+                    let kind = if matches!(suffix, Some(sym::f32 | sym::f64)) {
+                        // njn: factor out
+                        // njn: could use .ftl stuff here
+                        match base {
+                            Base::Hexadecimal => self.err_span_(
+                                start,
+                                suffix_start,
+                                "hexadecimal float literal is not supported",
+                            ),
+                            Base::Octal => self.err_span_(
+                                start,
+                                suffix_start,
+                                "octal float literal is not supported",
+                            ),
+                            Base::Binary => self.err_span_(
+                                start,
+                                suffix_start,
+                                "binary float literal is not supported",
+                            ),
+                            _ => (),
+                        }
+
+                        token::Float
+                    } else {
+                        self.validate_int_literal(base, start, suffix_start);
+
+                        match suffix {
+                            None => {}
+                            Some(
+                                sym::u8
+                                | sym::u16
+                                | sym::u32
+                                | sym::u64
+                                | sym::u128
+                                | sym::usize
+                                | sym::i8
+                                | sym::i16
+                                | sym::i32
+                                | sym::i64
+                                | sym::i128
+                                | sym::isize,
+                            ) => {}
+                            Some(suffix) => {
+                                let suffix = suffix.as_str();
+                                let span = self.mk_sp(start, suffix_end);
+                                if looks_like_width_suffix(&['i', 'u'], suffix) {
+                                    // If it looks like an integer width, try to be helpful.
+                                    self.sess.emit_err(InvalidIntLiteralWidth {
+                                        span,
+                                        width: suffix[1..].to_string(),
+                                    });
+                                } else if looks_like_width_suffix(&['f'], suffix) {
+                                    // If it looks like a float width, try to be helpful.
+                                    self.sess.emit_err(InvalidFloatLiteralWidth {
+                                        span,
+                                        width: suffix[1..].to_string(),
+                                    });
+                                } else if let Some(fixed) = fix_base_capitalisation(suffix) {
+                                    // njn: this matches `0X123`, which is good, but also
+                                    // `1X123` and `123X123`
+                                    self.sess.emit_err(InvalidNumLiteralBasePrefix { span, fixed });
+                                } else {
+                                    self.sess.emit_err(InvalidNumLiteralSuffix {
+                                        span,
+                                        suffix: suffix.to_string(), // njn: change to Symbol?
+                                    });
+                                }
+                            }
+                        }
+
+                        token::Integer
+                    };
+                    (kind, self.symbol_from_to(start, suffix_start))
                 };
             }
             rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
@@ -445,6 +546,7 @@ impl<'a> StringReader<'a> {
                     self.err_span_(start, self.pos, "expected at least one digit in exponent");
                 }
 
+                // njn: could use .ftl stuff here
                 match base {
                     Base::Hexadecimal => self.err_span_(
                         start,
@@ -460,10 +562,42 @@ impl<'a> StringReader<'a> {
                     _ => (),
                 }
 
+                // njn: factor out
+                match suffix {
+                    None => {}
+                    Some(sym::f32 | sym::f64) => {}
+                    Some(suffix) => {
+                        let suffix = suffix.as_str();
+                        let span = self.mk_sp(start, suffix_end);
+                        if looks_like_width_suffix(&['f'], suffix) {
+                            // If it looks like a width, try to be helpful.
+                            self.sess.emit_err(InvalidFloatLiteralWidth {
+                                span,
+                                width: suffix[1..].to_string(),
+                            });
+                        } else {
+                            self.sess.emit_err(InvalidFloatLiteralSuffix {
+                                span,
+                                suffix: suffix.to_string(), // njn: change to symbol?
+                            });
+                        }
+                    }
+                }
+
                 let id = self.symbol_from_to(start, suffix_start);
                 return (token::Float, id);
             }
         };
+        // Int and float literals are the only ones allowed to have suffixes,
+        // and they've been handled above.
+        if let Some(suffix) = suffix {
+            let span = self.mk_sp(start, suffix_end);
+            self.sess.emit_err(InvalidLiteralSuffix {
+                span,
+                kind: format!("{}", kind.descr()),
+                suffix,
+            });
+        }
         let content_start = start + BytePos(prefix_len);
         let content_end = suffix_start - BytePos(postfix_len);
         let id = self.symbol_from_to(content_start, content_end);

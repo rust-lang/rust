@@ -58,13 +58,16 @@ pub enum Delimiter {
     Invisible,
 }
 
+/// Note that the entire literal (including the suffix) is considered when
+/// deciding the `LitKind`. This means that float literals like `1f32` are
+/// classified by this type as `Float`.
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
     Char,
-    Integer,
-    Float,
+    Integer, // e.g. `1`, `1u8`
+    Float,   // e.g. `1.`, `1.0`, `1f32`, `1e3f32`
     Str,
     StrRaw(u8), // raw string delimited by `n` hash symbols
     ByteStr,
@@ -77,7 +80,7 @@ pub enum LitKind {
 pub struct Lit {
     pub kind: LitKind,
     pub symbol: Symbol,
-    pub suffix: Option<Symbol>,
+    pub suffix: Option<Symbol>, // njn: change to a type?
 }
 
 impl fmt::Display for Lit {
@@ -117,19 +120,6 @@ impl LitKind {
         match self {
             Integer | Err => "an",
             _ => "a",
-        }
-    }
-
-    pub fn descr(self) -> &'static str {
-        match self {
-            Bool => panic!("literal token contains `Lit::Bool`"),
-            Byte => "byte",
-            Char => "char",
-            Integer => "integer",
-            Float => "float",
-            Str | StrRaw(..) => "string",
-            ByteStr | ByteStrRaw(..) => "byte string",
-            Err => "error",
         }
     }
 

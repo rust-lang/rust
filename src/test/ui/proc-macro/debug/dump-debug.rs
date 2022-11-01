@@ -23,18 +23,6 @@ dump_debug! {
     br##"BR"##
     'C'
     b'B'
-
-    // suffixed literals
-    0q
-    1.0q
-    "S"q
-    b"B"q
-    r"R"q
-    r##"R"##q
-    br"BR"q
-    br##"BR"##q
-    'C'q
-    b'B'q
 }
 
 fn main() {}

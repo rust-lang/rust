@@ -962,6 +962,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lit = if let ExprKind::Lit(lit) = &expr.kind {
                     lit.clone()
                 } else {
+                    // njn: use Lit::from_token_lit here?
                     Lit {
                         token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),
                         kind: LitKind::Err,

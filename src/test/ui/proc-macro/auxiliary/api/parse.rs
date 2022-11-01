@@ -38,8 +38,6 @@ fn test_parse_literal() {
     assert_eq!("\"\n\"".parse::<Literal>().unwrap().to_string(), "\"\n\"");
     assert_eq!("b\"\"".parse::<Literal>().unwrap().to_string(), "b\"\"");
     assert_eq!("r##\"\"##".parse::<Literal>().unwrap().to_string(), "r##\"\"##");
-    assert_eq!("10ulong".parse::<Literal>().unwrap().to_string(), "10ulong");
-    assert_eq!("-10ulong".parse::<Literal>().unwrap().to_string(), "-10ulong");
 
     assert!("true".parse::<Literal>().is_err());
     assert!(".8".parse::<Literal>().is_err());

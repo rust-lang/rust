@@ -1,3 +1,35 @@
+error: invalid suffix `suffix` for number literal
+  --> $DIR/issue-59418.rs:5:15
+   |
+LL |     let b = a.1suffix;
+   |               ^^^^^^^ invalid suffix `suffix`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: invalid suffix `suffix` for number literal
+  --> $DIR/issue-59418.rs:10:15
+   |
+LL |     let d = c.1suffix;
+   |               ^^^^^^^ invalid suffix `suffix`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: invalid suffix `suffix` for number literal
+  --> $DIR/issue-59418.rs:14:17
+   |
+LL |     let s = X { 0suffix: 0, 1: 1, 2: 2 };
+   |                 ^^^^^^^ invalid suffix `suffix`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: invalid suffix `suffix` for number literal
+  --> $DIR/issue-59418.rs:18:13
+   |
+LL |         X { 0suffix: _, .. } => {}
+   |             ^^^^^^^ invalid suffix `suffix`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
 error: suffixes on a tuple index are invalid
   --> $DIR/issue-59418.rs:5:15
    |
@@ -5,22 +37,22 @@ LL |     let b = a.1suffix;
    |               ^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on a tuple index are invalid
-  --> $DIR/issue-59418.rs:9:15
+  --> $DIR/issue-59418.rs:10:15
    |
 LL |     let d = c.1suffix;
    |               ^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on a tuple index are invalid
-  --> $DIR/issue-59418.rs:12:17
+  --> $DIR/issue-59418.rs:14:17
    |
 LL |     let s = X { 0suffix: 0, 1: 1, 2: 2 };
    |                 ^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on a tuple index are invalid
-  --> $DIR/issue-59418.rs:15:13
+  --> $DIR/issue-59418.rs:18:13
    |
 LL |         X { 0suffix: _, .. } => {}
    |             ^^^^^^^ invalid suffix `suffix`
 
-error: aborting due to 4 previous errors
+error: aborting due to 8 previous errors
 

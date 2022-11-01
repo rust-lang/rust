@@ -7,25 +7,21 @@ use super::{
 };
 use crate::errors::{
     ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncMoveOrderIncorrect,
-    BinaryFloatLiteralNotSupported, BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct,
-    ComparisonInterpretedAsGeneric, ComparisonOrShiftInterpretedAsGenericSugg,
-    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedExpressionFoundLet,
-    FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt,
-    HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
+    BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct, ComparisonInterpretedAsGeneric,
+    ComparisonOrShiftInterpretedAsGenericSugg, DoCatchSyntaxRemoved, DotDotDot, EqFieldInit,
+    ExpectedElseBlock, ExpectedExpressionFoundLet, FieldExpressionWithGeneric,
+    FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt, IfExpressionMissingCondition,
     IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub, IntLiteralTooLarge,
     InvalidBlockMacroSegment, InvalidComparisonOperator, InvalidComparisonOperatorSub,
-    InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth, InvalidIntLiteralWidth,
-    InvalidInterpolatedExpression, InvalidLiteralSuffix, InvalidLiteralSuffixOnTupleIndex,
-    InvalidLogicalOperator, InvalidLogicalOperatorSub, InvalidNumLiteralBasePrefix,
-    InvalidNumLiteralSuffix, LabeledLoopInBreak, LeadingPlusNotSupported, LeftArrowOperator,
+    InvalidInterpolatedExpression, InvalidLiteralSuffixOnTupleIndex, InvalidLogicalOperator,
+    InvalidLogicalOperatorSub, LabeledLoopInBreak, LeadingPlusNotSupported, LeftArrowOperator,
     LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
     MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm,
     MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall,
-    NotAsNegationOperator, NotAsNegationOperatorSub, OctalFloatLiteralNotSupported,
-    OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
-    RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, StructLiteralNotAllowedHere,
-    StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
-    UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
+    NotAsNegationOperator, NotAsNegationOperatorSub, OuterAttributeNotAllowedOnIfElse,
+    ParenthesesWithStructFields, RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric,
+    StructLiteralNotAllowedHere, StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator,
+    UnexpectedTokenAfterLabel, UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
@@ -1815,12 +1811,14 @@ impl<'a> Parser<'a> {
             // Attempt to recover `.4` as `0.4`. We don't currently have any syntax where
             // dot would follow an optional literal, so we do this unconditionally.
             recovered = self.look_ahead(1, |next_token| {
-                if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) =
-                    next_token.kind
+                if let token::Literal(token_lit) = next_token.kind
+                        // njn: a bit imprecise with the Float case, matches `.3.3f32`
+                    && matches!(token_lit.kind, token::Integer | token::Float)
                 {
                     if self.token.span.hi() == next_token.span.lo() {
-                        let s = String::from("0.") + symbol.as_str();
-                        let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
+                        let s = String::from("0.") + token_lit.symbol.as_str();
+                        let kind =
+                            TokenKind::lit(token::Float, Symbol::intern(&s), token_lit.suffix);
                         return Some(Token::new(kind, self.token.span.to(next_token.span)));
                     }
                 }
@@ -1848,84 +1846,26 @@ impl<'a> Parser<'a> {
                     unreachable!();
                 };
                 self.bump();
-                self.report_lit_error(err, lit, span);
+                self.report_lit_error(err, span);
                 // Pack possible quotes and prefixes from the original literal into
                 // the error literal's symbol so they can be pretty-printed faithfully.
                 let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
                 let symbol = Symbol::intern(&suffixless_lit.to_string());
                 let lit = token::Lit::new(token::Err, symbol, lit.suffix);
+                // njn: could avoid this call, just build the `Err` Lit directly...
                 Some(Lit::from_token_lit(lit, span).unwrap_or_else(|_| unreachable!()))
             }
         }
     }
 
-    fn report_lit_error(&self, err: LitError, lit: token::Lit, span: Span) {
-        // Checks if `s` looks like i32 or u1234 etc.
-        fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
-            s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
-        }
-
-        // Try to lowercase the prefix if it's a valid base prefix.
-        fn fix_base_capitalisation(s: &str) -> Option<String> {
-            if let Some(stripped) = s.strip_prefix('B') {
-                Some(format!("0b{stripped}"))
-            } else if let Some(stripped) = s.strip_prefix('O') {
-                Some(format!("0o{stripped}"))
-            } else if let Some(stripped) = s.strip_prefix('X') {
-                Some(format!("0x{stripped}"))
-            } else {
-                None
-            }
-        }
-
-        let token::Lit { kind, suffix, .. } = lit;
+    fn report_lit_error(&self, err: LitError, span: Span) {
         match err {
             // `NotLiteral` is not an error by itself, so we don't report
             // it and give the parser opportunity to try something else.
-            LitError::NotLiteral => {}
+            LitError::NotLiteral => {} // njn: unreachable?
             // `LexerError` *is* an error, but it was already reported
             // by lexer, so here we don't report it the second time.
             LitError::LexerError => {}
-            LitError::InvalidSuffix => {
-                if let Some(suffix) = suffix {
-                    self.sess.emit_err(InvalidLiteralSuffix {
-                        span,
-                        kind: format!("{}", kind.descr()),
-                        suffix,
-                    });
-                }
-            }
-            LitError::InvalidIntSuffix => {
-                let suf = suffix.expect("suffix error with no suffix");
-                let suf = suf.as_str();
-                if looks_like_width_suffix(&['i', 'u'], &suf) {
-                    // If it looks like a width, try to be helpful.
-                    self.sess.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() });
-                } else if let Some(fixed) = fix_base_capitalisation(suf) {
-                    self.sess.emit_err(InvalidNumLiteralBasePrefix { span, fixed });
-                } else {
-                    self.sess.emit_err(InvalidNumLiteralSuffix { span, suffix: suf.to_string() });
-                }
-            }
-            LitError::InvalidFloatSuffix => {
-                let suf = suffix.expect("suffix error with no suffix");
-                let suf = suf.as_str();
-                if looks_like_width_suffix(&['f'], suf) {
-                    // If it looks like a width, try to be helpful.
-                    self.sess
-                        .emit_err(InvalidFloatLiteralWidth { span, width: suf[1..].to_string() });
-                } else {
-                    self.sess.emit_err(InvalidFloatLiteralSuffix { span, suffix: suf.to_string() });
-                }
-            }
-            LitError::NonDecimalFloat(base) => {
-                match base {
-                    16 => self.sess.emit_err(HexadecimalFloatLiteralNotSupported { span }),
-                    8 => self.sess.emit_err(OctalFloatLiteralNotSupported { span }),
-                    2 => self.sess.emit_err(BinaryFloatLiteralNotSupported { span }),
-                    _ => unreachable!(),
-                };
-            }
             LitError::IntTooLarge => {
                 self.sess.emit_err(IntLiteralTooLarge { span });
             }

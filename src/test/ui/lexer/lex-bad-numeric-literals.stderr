@@ -5,6 +5,12 @@ LL |     0o1.0;
    |     ^^^^^
 
 error: octal float literal is not supported
+  --> $DIR/lex-bad-numeric-literals.rs:3:5
+   |
+LL |     0o2f32;
+   |     ^^^
+
+error: octal float literal is not supported
   --> $DIR/lex-bad-numeric-literals.rs:4:5
    |
 LL |     0o3.0f32;
@@ -95,22 +101,28 @@ LL |     0b;
    |     ^^
 
 error: octal float literal is not supported
+  --> $DIR/lex-bad-numeric-literals.rs:23:5
+   |
+LL |     0o123f64;
+   |     ^^^^^
+
+error: octal float literal is not supported
   --> $DIR/lex-bad-numeric-literals.rs:24:5
    |
 LL |     0o123.456;
    |     ^^^^^^^^^
 
 error: binary float literal is not supported
+  --> $DIR/lex-bad-numeric-literals.rs:25:5
+   |
+LL |     0b101f64;
+   |     ^^^^^
+
+error: binary float literal is not supported
   --> $DIR/lex-bad-numeric-literals.rs:26:5
    |
 LL |     0b111.101;
    |     ^^^^^^^^^
-
-error: octal float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:3:5
-   |
-LL |     0o2f32;
-   |     ^^^^^^ not supported
 
 error: integer literal is too large
   --> $DIR/lex-bad-numeric-literals.rs:14:5
@@ -123,18 +135,6 @@ error: integer literal is too large
    |
 LL |     9900000000000000000000000000999999999999999999999999999999;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: octal float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:23:5
-   |
-LL |     0o123f64;
-   |     ^^^^^^^^ not supported
-
-error: binary float literal is not supported
-  --> $DIR/lex-bad-numeric-literals.rs:25:5
-   |
-LL |     0b101f64;
-   |     ^^^^^^^^ not supported
 
 error: aborting due to 23 previous errors
 
