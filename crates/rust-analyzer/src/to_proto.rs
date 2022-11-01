@@ -21,7 +21,7 @@ use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
-    line_index::{LineEndings, LineIndex, OffsetEncoding},
+    line_index::{LineEndings, LineIndex, PositionEncoding},
     lsp_ext,
     lsp_utils::invalid_params_error,
     semantic_tokens, Result,
@@ -30,8 +30,8 @@ use crate::{
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
     let line_col = line_index.index.line_col(offset);
     match line_index.encoding {
-        OffsetEncoding::Utf8 => lsp_types::Position::new(line_col.line, line_col.col),
-        OffsetEncoding::Utf16 => {
+        PositionEncoding::Utf8 => lsp_types::Position::new(line_col.line, line_col.col),
+        PositionEncoding::Utf16 => {
             let line_col = line_index.index.to_utf16(line_col);
             lsp_types::Position::new(line_col.line, line_col.col)
         }
@@ -1394,7 +1394,7 @@ fn main() {
         let line_index = LineIndex {
             index: Arc::new(ide::LineIndex::new(text)),
             endings: LineEndings::Unix,
-            encoding: OffsetEncoding::Utf16,
+            encoding: PositionEncoding::Utf16,
         };
         let converted: Vec<lsp_types::FoldingRange> =
             folds.into_iter().map(|it| folding_range(text, &line_index, true, it)).collect();

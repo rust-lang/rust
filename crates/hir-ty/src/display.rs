@@ -289,16 +289,18 @@ impl HirDisplay for ProjectionTy {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
-        let trait_ = f.db.trait_data(self.trait_(f.db));
+        let trait_ref = self.trait_ref(f.db);
         write!(f, "<")?;
-        self.self_type_parameter(f.db).hir_fmt(f)?;
-        write!(f, " as {}", trait_.name)?;
-        if self.substitution.len(Interner) > 1 {
+        fmt_trait_ref(&trait_ref, f, true)?;
+        write!(f, ">::{}", f.db.type_alias_data(from_assoc_type_id(self.associated_ty_id)).name)?;
+        let proj_params_count =
+            self.substitution.len(Interner) - trait_ref.substitution.len(Interner);
+        let proj_params = &self.substitution.as_slice(Interner)[..proj_params_count];
+        if !proj_params.is_empty() {
             write!(f, "<")?;
-            f.write_joined(&self.substitution.as_slice(Interner)[1..], ", ")?;
+            f.write_joined(proj_params, ", ")?;
             write!(f, ">")?;
         }
-        write!(f, ">::{}", f.db.type_alias_data(from_assoc_type_id(self.associated_ty_id)).name)?;
         Ok(())
     }
 }
@@ -641,9 +643,12 @@ impl HirDisplay for Ty {
                 // Use placeholder associated types when the target is test (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
                 if f.display_target.is_test() {
                     write!(f, "{}::{}", trait_.name, type_alias_data.name)?;
+                    // Note that the generic args for the associated type come before those for the
+                    // trait (including the self type).
+                    // FIXME: reconsider the generic args order upon formatting?
                     if parameters.len(Interner) > 0 {
                         write!(f, "<")?;
-                        f.write_joined(&*parameters.as_slice(Interner), ", ")?;
+                        f.write_joined(parameters.as_slice(Interner), ", ")?;
                         write!(f, ">")?;
                     }
                 } else {
@@ -972,9 +977,20 @@ fn write_bounds_like_dyn_trait(
                     angle_open = true;
                 }
                 if let AliasTy::Projection(proj) = alias {
-                    let type_alias =
-                        f.db.type_alias_data(from_assoc_type_id(proj.associated_ty_id));
-                    write!(f, "{} = ", type_alias.name)?;
+                    let assoc_ty_id = from_assoc_type_id(proj.associated_ty_id);
+                    let type_alias = f.db.type_alias_data(assoc_ty_id);
+                    write!(f, "{}", type_alias.name)?;
+
+                    let proj_arg_count = generics(f.db.upcast(), assoc_ty_id.into()).len_self();
+                    if proj_arg_count > 0 {
+                        write!(f, "<")?;
+                        f.write_joined(
+                            &proj.substitution.as_slice(Interner)[..proj_arg_count],
+                            ", ",
+                        )?;
+                        write!(f, ">")?;
+                    }
+                    write!(f, " = ")?;
                 }
                 ty.hir_fmt(f)?;
             }
