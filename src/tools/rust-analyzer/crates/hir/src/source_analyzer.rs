@@ -782,21 +782,6 @@ impl SourceAnalyzer {
         false
     }
 
-    pub(crate) fn is_diverging_match_arm(
-        &self,
-        db: &dyn HirDatabase,
-        match_arm: &ast::MatchArm,
-    ) -> Option<bool> {
-        let infer = self.infer.as_ref()?;
-        let match_expr = match_arm.syntax().ancestors().find_map(ast::MatchExpr::cast)?;
-        let match_id = self.expr_id(db, &match_expr.into())?;
-        let diverging_arms = infer.diverging_arms.get(&match_id)?;
-        let match_arm_expr = match_arm.expr()?;
-        let match_arm_expr_id = self.expr_id(db, &match_arm_expr)?;
-
-        Some(diverging_arms.contains(&match_arm_expr_id))
-    }
-
     fn resolve_impl_method_or_trait_def(
         &self,
         db: &dyn HirDatabase,
