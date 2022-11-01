@@ -38,10 +38,12 @@ use std::sync::Arc;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
-    NoSolution,
+    NoSolution, UniverseIndex,
 };
 use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
+use hir_expand::name;
 use itertools::Either;
+use traits::FnTrait;
 use utils::Generics;
 
 use crate::{consteval::unknown_const, db::HirDatabase, utils::generics};
@@ -507,4 +509,69 @@ where
         )
     });
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(Interner, kinds) }
+}
+
+pub fn callable_sig_from_fnonce(
+    self_ty: &Canonical<Ty>,
+    env: Arc<TraitEnvironment>,
+    db: &dyn HirDatabase,
+) -> Option<CallableSig> {
+    let krate = env.krate;
+    let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
+    let output_assoc_type = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
+
+    let mut kinds = self_ty.binders.interned().to_vec();
+    let b = TyBuilder::trait_ref(db, fn_once_trait);
+    if b.remaining() != 2 {
+        return None;
+    }
+    let fn_once = b
+        .push(self_ty.value.clone())
+        .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
+        .build();
+    kinds.extend(fn_once.substitution.iter(Interner).skip(1).map(|x| {
+        let vk = match x.data(Interner) {
+            chalk_ir::GenericArgData::Ty(_) => {
+                chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
+            }
+            chalk_ir::GenericArgData::Lifetime(_) => chalk_ir::VariableKind::Lifetime,
+            chalk_ir::GenericArgData::Const(c) => {
+                chalk_ir::VariableKind::Const(c.data(Interner).ty.clone())
+            }
+        };
+        chalk_ir::WithKind::new(vk, UniverseIndex::ROOT)
+    }));
+
+    // FIXME: chalk refuses to solve `<Self as FnOnce<^0.0>>::Output == ^0.1`, so we first solve
+    // `<Self as FnOnce<^0.0>>` and then replace `^0.0` with the concrete argument tuple.
+    let trait_env = env.env.clone();
+    let obligation = InEnvironment { goal: fn_once.cast(Interner), environment: trait_env };
+    let canonical =
+        Canonical { binders: CanonicalVarKinds::from_iter(Interner, kinds), value: obligation };
+    let subst = match db.trait_solve(krate, canonical) {
+        Some(Solution::Unique(vars)) => vars.value.subst,
+        _ => return None,
+    };
+    let args = subst.at(Interner, self_ty.binders.interned().len()).ty(Interner)?;
+    let params = match args.kind(Interner) {
+        chalk_ir::TyKind::Tuple(_, subst) => {
+            subst.iter(Interner).filter_map(|arg| arg.ty(Interner).cloned()).collect::<Vec<_>>()
+        }
+        _ => return None,
+    };
+    if params.iter().any(|ty| ty.is_unknown()) {
+        return None;
+    }
+
+    let fn_once = TyBuilder::trait_ref(db, fn_once_trait)
+        .push(self_ty.value.clone())
+        .push(args.clone())
+        .build();
+    let projection =
+        TyBuilder::assoc_type_projection(db, output_assoc_type, Some(fn_once.substitution.clone()))
+            .build();
+
+    let ret_ty = db.normalize_projection(projection, env);
+
+    Some(CallableSig::from_params_and_return(params, ret_ty.clone(), false))
 }
