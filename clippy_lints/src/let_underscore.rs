@@ -28,7 +28,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.42.0"]
     pub LET_UNDERSCORE_MUST_USE,
     restriction,
-    "non-binding let on a `#[must_use]` expression"
+    "non-binding `let` on a `#[must_use]` expression"
 }
 
 declare_clippy_lint! {
@@ -56,7 +56,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.43.0"]
     pub LET_UNDERSCORE_LOCK,
     correctness,
-    "non-binding let on a synchronization lock"
+    "non-binding `let` on a synchronization lock"
 }
 
 declare_clippy_lint! {
@@ -80,7 +80,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.66"]
     pub LET_UNDERSCORE_FUTURE,
     suspicious,
-    "non-binding let on a future"
+    "non-binding `let` on a future"
 }
 
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_FUTURE]);
