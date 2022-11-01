@@ -23,7 +23,7 @@ declare_lint! {
     ///
     /// When working with raw pointers it's usually undesirable to create references,
     /// since they inflict a lot of safety requirement. Unfortunately, it's possible
-    /// to take a reference to a dereferece of a raw pointer implitly, which inflicts
+    /// to take a reference to a dereference of a raw pointer implicitly, which inflicts
     /// the usual reference requirements without you even knowing that.
     /// 
     /// If you are sure, you can soundly take a reference, then you can take it explicitly:
@@ -68,9 +68,9 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitUnsafeAutorefs {
             let msg = "implicit auto-ref creates a reference to a dereference of a raw pointer";
             cx.struct_span_lint(IMPLICIT_UNSAFE_AUTOREFS, expr.span, msg, |lint| {
                 lint
-                    .note("creating a reference inflicts a lot of safety requirements")
+                    .note("creating a reference requires the pointer to be valid and imposes aliasing requirements")
                     .multipart_suggestion(
-                        "if this reference is intentional, make it explicit", 
+                        "try using a raw pointer method instead; or if this reference is intentional, make it explicit", 
                         vec![
                             (expr.span.shrink_to_lo(), format!("(&{mutbl}")),
                             (expr.span.shrink_to_hi(), ")".to_owned())
