@@ -515,7 +515,7 @@ impl Step for JsonStd {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Std { stage: run.builder.top_stage, target: run.target });
+        run.builder.ensure(JsonStd { stage: run.builder.top_stage, target: run.target });
     }
 
     /// Build JSON documentation for the standard library crates.
