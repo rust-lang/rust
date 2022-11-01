@@ -1968,24 +1968,26 @@ in storage.js
 	}
 }
 
-.method-toggle > summary,
 .implementors-toggle > summary,
 .impl,
 #implementors-list > .docblock,
 .impl-items > section,
-.methods > section
+.impl-items > .rustdoc-toggle > summary,
+.methods > section,
+.methods > .rustdoc-toggle > summary
 {
 	margin-bottom: 0.75em;
 }
 
-.method-toggle[open]:not(:last-child),
+.impl-items > .rustdoc-toggle[open]:not(:last-child),
+.methods > .rustdoc-toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {
 	margin-bottom: 2em;
 }
 
-#trait-implementations-list .method-toggle:not(:last-child),
-#synthetic-implementations-list .method-toggle:not(:last-child),
-#blanket-implementations-list .method-toggle:not(:last-child) {
+#trait-implementations-list .impl-items > .rustdoc-toggle:not(:last-child),
+#synthetic-implementations-list .impl-items > .rustdoc-toggle:not(:last-child),
+#blanket-implementations-list .impl-items > .rustdoc-toggle:not(:last-child) {
 	margin-bottom: 1em;
 }
 
