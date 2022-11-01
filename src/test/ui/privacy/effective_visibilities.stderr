@@ -64,13 +64,13 @@ error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImpl
 LL |                 PubUnion,
    |                 ^^^^^^^^
 
-error: Direct: pub(crate), Reexported: pub(crate), Reachable: pub(crate), ReachableThroughImplTrait: pub(crate)
+error: not in the table
   --> $DIR/effective_visibilities.rs:41:5
    |
 LL |     macro_rules! none_macro {
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+error: Direct: pub(self), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
   --> $DIR/effective_visibilities.rs:47:5
    |
 LL |     macro_rules! public_macro {

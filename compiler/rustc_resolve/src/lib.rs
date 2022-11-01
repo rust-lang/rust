@@ -104,9 +104,7 @@ enum Scope<'a> {
     DeriveHelpersCompat,
     MacroRules(MacroRulesScopeRef<'a>),
     CrateRoot,
-    // The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
-    // lint if it should be reported.
-    Module(Module<'a>, Option<NodeId>),
+    Module(Module<'a>),
     MacroUsePrelude,
     BuiltinAttrs,
     ExternPrelude,
@@ -646,7 +644,7 @@ impl<'a> ToNameBinding<'a> for &'a NameBinding<'a> {
 
 #[derive(Clone, Debug)]
 enum NameBindingKind<'a> {
-    Res(Res, /* is_macro_export */ bool),
+    Res(Res),
     Module(Module<'a>),
     Import { binding: &'a NameBinding<'a>, import: &'a Import<'a>, used: Cell<bool> },
 }
@@ -745,7 +743,7 @@ impl<'a> NameBinding<'a> {
 
     fn res(&self) -> Res {
         match self.kind {
-            NameBindingKind::Res(res, _) => res,
+            NameBindingKind::Res(res) => res,
             NameBindingKind::Module(module) => module.res().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.res(),
         }
@@ -762,10 +760,10 @@ impl<'a> NameBinding<'a> {
     fn is_possibly_imported_variant(&self) -> bool {
         match self.kind {
             NameBindingKind::Import { binding, .. } => binding.is_possibly_imported_variant(),
-            NameBindingKind::Res(
-                Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _),
+            NameBindingKind::Res(Res::Def(
+                DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..),
                 _,
-            ) => true,
+            )) => true,
             NameBindingKind::Res(..) | NameBindingKind::Module(..) => false,
         }
     }
@@ -786,6 +784,13 @@ impl<'a> NameBinding<'a> {
 
     fn is_import(&self) -> bool {
         matches!(self.kind, NameBindingKind::Import { .. })
+    }
+
+    /// The binding introduced by `#[macro_export] macro_rules` is a public import, but it might
+    /// not be perceived as such by users, so treat it as a non-import in some diagnostics.
+    fn is_import_user_facing(&self) -> bool {
+        matches!(self.kind, NameBindingKind::Import { import, .. }
+            if !matches!(import.kind, ImportKind::MacroExport))
     }
 
     fn is_glob_import(&self) -> bool {
@@ -1283,7 +1288,7 @@ impl<'a> Resolver<'a> {
 
             arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
-                kind: NameBindingKind::Res(Res::Err, false),
+                kind: NameBindingKind::Res(Res::Err),
                 ambiguity: None,
                 expansion: LocalExpnId::ROOT,
                 span: DUMMY_SP,
@@ -1551,7 +1556,7 @@ impl<'a> Resolver<'a> {
 
         self.visit_scopes(ScopeSet::All(TypeNS, false), parent_scope, ctxt, |this, scope, _, _| {
             match scope {
-                Scope::Module(module, _) => {
+                Scope::Module(module) => {
                     this.traits_in_module(module, assoc_item, &mut found_traits);
                 }
                 Scope::StdLibPrelude => {
@@ -1613,10 +1618,12 @@ impl<'a> Resolver<'a> {
     ) -> SmallVec<[LocalDefId; 1]> {
         let mut import_ids = smallvec![];
         while let NameBindingKind::Import { import, binding, .. } = kind {
-            let id = self.local_def_id(import.id);
-            self.maybe_unused_trait_imports.insert(id);
+            if let Some(node_id) = import.id() {
+                let def_id = self.local_def_id(node_id);
+                self.maybe_unused_trait_imports.insert(def_id);
+                import_ids.push(def_id);
+            }
             self.add_to_glob_map(&import, trait_name);
-            import_ids.push(id);
             kind = &binding.kind;
         }
         import_ids
@@ -1683,7 +1690,9 @@ impl<'a> Resolver<'a> {
             }
             used.set(true);
             import.used.set(true);
-            self.used_imports.insert(import.id);
+            if let Some(id) = import.id() {
+                self.used_imports.insert(id);
+            }
             self.add_to_glob_map(&import, ident);
             self.record_use(ident, binding, false);
         }
@@ -1691,8 +1700,8 @@ impl<'a> Resolver<'a> {
 
     #[inline]
     fn add_to_glob_map(&mut self, import: &Import<'_>, ident: Ident) {
-        if import.is_glob() {
-            let def_id = self.local_def_id(import.id);
+        if let ImportKind::Glob { id, .. } = import.kind {
+            let def_id = self.local_def_id(id);
             self.glob_map.entry(def_id).or_default().insert(ident.name);
         }
     }
@@ -1994,11 +2003,7 @@ impl<'a> Resolver<'a> {
 
     // Items that go to reexport table encoded to metadata and visible through it to other crates.
     fn is_reexport(&self, binding: &NameBinding<'a>) -> Option<def::Res<!>> {
-        // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
-        // into the crate root to actual `NameBindingKind::Import`.
-        if binding.is_import()
-            || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
-        {
+        if binding.is_import() {
             let res = binding.res().expect_non_local();
             // Ambiguous imports are treated as errors at this point and are
             // not exposed to other crates (see #36837 for more details).

@@ -190,12 +190,12 @@ impl<'a> Resolver<'a> {
             ModuleKind::Block => "block",
         };
 
-        let old_noun = match old_binding.is_import() {
+        let old_noun = match old_binding.is_import_user_facing() {
             true => "import",
             false => "definition",
         };
 
-        let new_participle = match new_binding.is_import() {
+        let new_participle = match new_binding.is_import_user_facing() {
             true => "imported",
             false => "defined",
         };
@@ -226,7 +226,7 @@ impl<'a> Resolver<'a> {
                 true => struct_span_err!(self.session, span, E0254, "{}", msg),
                 false => struct_span_err!(self.session, span, E0260, "{}", msg),
             },
-            _ => match (old_binding.is_import(), new_binding.is_import()) {
+            _ => match (old_binding.is_import_user_facing(), new_binding.is_import_user_facing()) {
                 (false, false) => struct_span_err!(self.session, span, E0428, "{}", msg),
                 (true, true) => struct_span_err!(self.session, span, E0252, "{}", msg),
                 _ => struct_span_err!(self.session, span, E0255, "{}", msg),
@@ -248,14 +248,18 @@ impl<'a> Resolver<'a> {
 
         // See https://github.com/rust-lang/rust/issues/32354
         use NameBindingKind::Import;
+        let can_suggest = |binding: &NameBinding<'_>, import: &self::Import<'_>| {
+            !binding.span.is_dummy()
+                && !matches!(import.kind, ImportKind::MacroUse | ImportKind::MacroExport)
+        };
         let import = match (&new_binding.kind, &old_binding.kind) {
             // If there are two imports where one or both have attributes then prefer removing the
             // import without attributes.
             (Import { import: new, .. }, Import { import: old, .. })
                 if {
-                    !new_binding.span.is_dummy()
-                        && !old_binding.span.is_dummy()
-                        && (new.has_attributes || old.has_attributes)
+                    (new.has_attributes || old.has_attributes)
+                        && can_suggest(old_binding, old)
+                        && can_suggest(new_binding, new)
                 } =>
             {
                 if old.has_attributes {
@@ -265,10 +269,10 @@ impl<'a> Resolver<'a> {
                 }
             }
             // Otherwise prioritize the new binding.
-            (Import { import, .. }, other) if !new_binding.span.is_dummy() => {
+            (Import { import, .. }, other) if can_suggest(new_binding, import) => {
                 Some((import, new_binding.span, other.is_import()))
             }
-            (other, Import { import, .. }) if !old_binding.span.is_dummy() => {
+            (other, Import { import, .. }) if can_suggest(old_binding, import) => {
                 Some((import, old_binding.span, other.is_import()))
             }
             _ => None,
@@ -353,7 +357,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
-            ImportKind::ExternCrate { source, target } => {
+            ImportKind::ExternCrate { source, target, .. } => {
                 suggestion = Some(format!(
                     "extern crate {} as {};",
                     source.unwrap_or(target.name),
@@ -1202,7 +1206,7 @@ impl<'a> Resolver<'a> {
                     let root_module = this.resolve_crate_root(root_ident);
                     this.add_module_candidates(root_module, &mut suggestions, filter_fn, None);
                 }
-                Scope::Module(module, _) => {
+                Scope::Module(module) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn, None);
                 }
                 Scope::MacroUsePrelude => {
@@ -1683,7 +1687,7 @@ impl<'a> Resolver<'a> {
             let a = if built_in.is_empty() { res.article() } else { "a" };
             format!("{a}{built_in} {thing}{from}", thing = res.descr())
         } else {
-            let introduced = if b.is_import() { "imported" } else { "defined" };
+            let introduced = if b.is_import_user_facing() { "imported" } else { "defined" };
             format!("the {thing} {introduced} here", thing = res.descr())
         }
     }
@@ -1742,10 +1746,10 @@ impl<'a> Resolver<'a> {
     /// If the binding refers to a tuple struct constructor with fields,
     /// returns the span of its fields.
     fn ctor_fields_span(&self, binding: &NameBinding<'_>) -> Option<Span> {
-        if let NameBindingKind::Res(
-            Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id),
-            _,
-        ) = binding.kind
+        if let NameBindingKind::Res(Res::Def(
+            DefKind::Ctor(CtorOf::Struct, CtorKind::Fn),
+            ctor_def_id,
+        )) = binding.kind
         {
             let def_id = self.parent(ctor_def_id);
             let fields = self.field_names.get(&def_id)?;
@@ -1789,7 +1793,9 @@ impl<'a> Resolver<'a> {
                         next_ident = source;
                         Some(binding)
                     }
-                    ImportKind::Glob { .. } | ImportKind::MacroUse => Some(binding),
+                    ImportKind::Glob { .. } | ImportKind::MacroUse | ImportKind::MacroExport => {
+                        Some(binding)
+                    }
                     ImportKind::ExternCrate { .. } => None,
                 },
                 _ => None,
