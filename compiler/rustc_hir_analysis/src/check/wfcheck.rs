@@ -1674,7 +1674,7 @@ fn receiver_is_valid<'tcx>(
 
     // `self: Self` is always valid.
     if can_eq_self(receiver_ty) {
-        if let Err(err) = wfcx.equate_types(&cause, wfcx.param_env, self_ty, receiver_ty) {
+        if let Err(err) = wfcx.eq(&cause, wfcx.param_env, self_ty, receiver_ty) {
             infcx.err_ctxt().report_mismatched_types(&cause, self_ty, receiver_ty, err).emit();
         }
         return true;
@@ -1704,9 +1704,7 @@ fn receiver_is_valid<'tcx>(
             if can_eq_self(potential_self_ty) {
                 wfcx.register_obligations(autoderef.into_obligations());
 
-                if let Err(err) =
-                    wfcx.equate_types(&cause, wfcx.param_env, self_ty, potential_self_ty)
-                {
+                if let Err(err) = wfcx.eq(&cause, wfcx.param_env, self_ty, potential_self_ty) {
                     infcx
                         .err_ctxt()
                         .report_mismatched_types(&cause, self_ty, potential_self_ty, err)
