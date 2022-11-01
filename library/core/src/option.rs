@@ -2045,13 +2045,13 @@ impl<T: PartialEq> PartialEq for Option<T> {
     }
 }
 
-#[unstable(feature = "spec_option_partial_eq", issue = "none")]
+#[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
 #[doc(hidden)]
 pub trait SpecOptionPartialEq: Sized {
     fn eq(l: &Option<Self>, other: &Option<Self>) -> bool;
 }
 
-#[unstable(feature = "spec_option_partial_eq", issue = "none")]
+#[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
 impl<T: PartialEq> SpecOptionPartialEq for T {
     #[inline]
     default fn eq(l: &Option<T>, r: &Option<T>) -> bool {

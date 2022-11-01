@@ -18,7 +18,6 @@
 #![feature(if_let_guard)]
 #![feature(negative_impls)]
 #![feature(min_specialization)]
-#![feature(spec_option_partial_eq)]
 #![feature(rustc_attrs)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]

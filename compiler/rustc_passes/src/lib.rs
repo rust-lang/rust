@@ -11,7 +11,6 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
-#![feature(spec_option_partial_eq)]
 #![feature(min_specialization)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]

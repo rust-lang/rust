@@ -7,7 +7,6 @@
 #![feature(once_cell)]
 #![feature(option_get_or_insert_default)]
 #![feature(trusted_step)]
-#![feature(spec_option_partial_eq)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 #![feature(if_let_guard)]

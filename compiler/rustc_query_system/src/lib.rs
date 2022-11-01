@@ -3,7 +3,6 @@
 #![feature(hash_raw_entry)]
 #![feature(min_specialization)]
 #![feature(extern_types)]
-#![feature(spec_option_partial_eq)]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]

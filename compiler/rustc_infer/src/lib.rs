@@ -19,7 +19,6 @@
 #![feature(extend_one)]
 #![feature(let_chains)]
 #![feature(if_let_guard)]
-#![feature(spec_option_partial_eq)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(try_blocks)]

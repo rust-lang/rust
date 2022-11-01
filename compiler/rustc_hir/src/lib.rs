@@ -9,7 +9,6 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(variant_count)]
-#![feature(spec_option_partial_eq)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]

@@ -65,7 +65,6 @@ This API is completely unstable and subject to change.
 #![feature(is_sorted)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(spec_option_partial_eq)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(once_cell)]

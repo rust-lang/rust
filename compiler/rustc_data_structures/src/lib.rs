@@ -13,7 +13,6 @@
 #![feature(cell_leak)]
 #![feature(control_flow_enum)]
 #![feature(extend_one)]
-#![feature(spec_option_partial_eq)]
 #![feature(hash_raw_entry)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(maybe_uninit_uninit_array)]
