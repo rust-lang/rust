@@ -1789,34 +1789,49 @@ fn collect_print_requests(
         cg.target_feature = String::new();
     }
 
-    prints.extend(matches.opt_strs("print").into_iter().map(|s| match &*s {
-        "crate-name" => PrintRequest::CrateName,
-        "file-names" => PrintRequest::FileNames,
-        "sysroot" => PrintRequest::Sysroot,
-        "target-libdir" => PrintRequest::TargetLibdir,
-        "cfg" => PrintRequest::Cfg,
-        "calling-conventions" => PrintRequest::CallingConventions,
-        "target-list" => PrintRequest::TargetList,
-        "target-cpus" => PrintRequest::TargetCPUs,
-        "target-features" => PrintRequest::TargetFeatures,
-        "relocation-models" => PrintRequest::RelocationModels,
-        "code-models" => PrintRequest::CodeModels,
-        "tls-models" => PrintRequest::TlsModels,
-        "native-static-libs" => PrintRequest::NativeStaticLibs,
-        "stack-protector-strategies" => PrintRequest::StackProtectorStrategies,
-        "target-spec-json" => {
-            if unstable_opts.unstable_options {
-                PrintRequest::TargetSpec
-            } else {
+    const PRINT_REQUESTS: &[(&str, PrintRequest)] = &[
+        ("crate-name", PrintRequest::CrateName),
+        ("file-names", PrintRequest::FileNames),
+        ("sysroot", PrintRequest::Sysroot),
+        ("target-libdir", PrintRequest::TargetLibdir),
+        ("cfg", PrintRequest::Cfg),
+        ("calling-conventions", PrintRequest::CallingConventions),
+        ("target-list", PrintRequest::TargetList),
+        ("target-cpus", PrintRequest::TargetCPUs),
+        ("target-features", PrintRequest::TargetFeatures),
+        ("relocation-models", PrintRequest::RelocationModels),
+        ("code-models", PrintRequest::CodeModels),
+        ("tls-models", PrintRequest::TlsModels),
+        ("native-static-libs", PrintRequest::NativeStaticLibs),
+        ("stack-protector-strategies", PrintRequest::StackProtectorStrategies),
+        ("target-spec-json", PrintRequest::TargetSpec),
+        ("link-args", PrintRequest::LinkArgs),
+    ];
+
+    prints.extend(matches.opt_strs("print").into_iter().map(|req| {
+        match PRINT_REQUESTS.iter().find(|&&(name, _)| name == req) {
+            Some((_, PrintRequest::TargetSpec)) => {
+                if unstable_opts.unstable_options {
+                    PrintRequest::TargetSpec
+                } else {
+                    early_error(
+                        error_format,
+                        "the `-Z unstable-options` flag must also be passed to \
+                     enable the target-spec-json print option",
+                    );
+                }
+            }
+            Some(&(_, print_request)) => print_request,
+            None => {
+                let prints =
+                    PRINT_REQUESTS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
+                let prints = prints.join(", ");
                 early_error(
                     error_format,
-                    "the `-Z unstable-options` flag must also be passed to \
-                     enable the target-spec-json print option",
+                    &format!("unknown print request `{req}`. Valid print requests are: {prints}"),
                 );
             }
         }
-        "link-args" => PrintRequest::LinkArgs,
-        req => early_error(error_format, &format!("unknown print request `{req}`")),
     }));
 
     prints
