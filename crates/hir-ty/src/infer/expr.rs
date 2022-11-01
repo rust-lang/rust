@@ -375,7 +375,6 @@ impl<'a> InferenceContext<'a> {
 
                 let matchee_diverges = self.diverges;
                 let mut all_arms_diverge = Diverges::Always;
-                let mut diverging_arms = Vec::new();
 
                 for arm in arms.iter() {
                     self.diverges = Diverges::Maybe;
@@ -388,15 +387,11 @@ impl<'a> InferenceContext<'a> {
                     }
 
                     let arm_ty = self.infer_expr_inner(arm.expr, &expected);
-                    if self.diverges.is_always() {
-                        diverging_arms.push(arm.expr);
-                    }
                     all_arms_diverge &= self.diverges;
                     coerce.coerce(self, Some(arm.expr), &arm_ty);
                 }
 
                 self.diverges = matchee_diverges | all_arms_diverge;
-                self.result.diverging_arms.insert(tgt_expr, diverging_arms);
 
                 coerce.complete()
             }
