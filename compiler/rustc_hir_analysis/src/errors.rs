@@ -156,6 +156,7 @@ pub struct MissingTypeParams {
 
 // Manual implementation of `IntoDiagnostic` to be able to call `span_to_snippet`.
 impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
+    #[track_caller]
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = handler.struct_span_err_with_code(
             self.span,

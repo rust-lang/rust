@@ -39,6 +39,7 @@ pub struct UnusedGenericParams {
 }
 
 impl IntoDiagnostic<'_> for UnusedGenericParams {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,

@@ -171,6 +171,7 @@
     -Z                             time-passes=val -- measure time of each rustc pass (default: no)
     -Z                               tls-model=val -- choose the TLS model to use (`rustc --print tls-models` for details)
     -Z                            trace-macros=val -- for every macro invocation, print its name and arguments (default: no)
+    -Z                       track-diagnostics=val -- tracks where in rustc a diagnostic was emitted
     -Z                translate-additional-ftl=val -- additional fluent translation to preferentially use (for testing translation)
     -Z        translate-directionality-markers=val -- emit directionality isolation markers in translated diagnostics
     -Z                          translate-lang=val -- language identifier for diagnostic output

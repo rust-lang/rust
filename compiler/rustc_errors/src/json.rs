@@ -45,6 +45,7 @@ pub struct JsonEmitter {
     json_rendered: HumanReadableErrorType,
     diagnostic_width: Option<usize>,
     macro_backtrace: bool,
+    track_diagnostics: bool,
 }
 
 impl JsonEmitter {
@@ -57,6 +58,7 @@ impl JsonEmitter {
         json_rendered: HumanReadableErrorType,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::BufWriter::new(io::stderr())),
@@ -69,6 +71,7 @@ impl JsonEmitter {
             json_rendered,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         }
     }
 
@@ -79,6 +82,7 @@ impl JsonEmitter {
         fallback_bundle: LazyFallbackBundle,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
         JsonEmitter::stderr(
@@ -90,6 +94,7 @@ impl JsonEmitter {
             json_rendered,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         )
     }
 
@@ -103,6 +108,7 @@ impl JsonEmitter {
         json_rendered: HumanReadableErrorType,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst,
@@ -115,6 +121,7 @@ impl JsonEmitter {
             json_rendered,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         }
     }
 
@@ -350,6 +357,7 @@ impl Diagnostic {
                 false,
                 je.diagnostic_width,
                 je.macro_backtrace,
+                je.track_diagnostics,
             )
             .ui_testing(je.ui_testing)
             .emit_diagnostic(diag);

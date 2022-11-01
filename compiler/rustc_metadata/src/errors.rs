@@ -603,6 +603,7 @@ pub struct InvalidMetadataFiles {
 }
 
 impl IntoDiagnostic<'_> for InvalidMetadataFiles {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
@@ -631,6 +632,7 @@ pub struct CannotFindCrate {
 }
 
 impl IntoDiagnostic<'_> for CannotFindCrate {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,

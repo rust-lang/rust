@@ -794,6 +794,7 @@ impl UnstableOptions {
             report_delayed_bugs: self.report_delayed_bugs,
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
+            track_diagnostics: self.track_diagnostics,
         }
     }
 }
