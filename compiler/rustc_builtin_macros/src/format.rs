@@ -589,7 +589,7 @@ fn report_missing_placeholders(
 
         macro_rules! check_foreign {
             ($kind:ident) => {{
-                let mut show_doc_note = false;
+                let mut show_doc_help = false;
 
                 let mut suggestions = vec![];
                 // account for `"` and account for raw strings `r#`
@@ -612,7 +612,7 @@ fn report_missing_placeholders(
 
                     if !found_foreign {
                         found_foreign = true;
-                        show_doc_note = true;
+                        show_doc_help = true;
                     }
 
                     if let Some(inner_sp) = pos {
@@ -635,11 +635,8 @@ fn report_missing_placeholders(
                     }
                 }
 
-                if show_doc_note {
-                    diag.note(concat!(
-                        stringify!($kind),
-                        " formatting not supported; see the documentation for `std::fmt`",
-                    ));
+                if show_doc_help {
+                    diag.help("you might have meant to use the `print!` macro");
                 }
                 if suggestions.len() > 0 {
                     diag.multipart_suggestion(
