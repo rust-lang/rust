@@ -79,7 +79,10 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
         intravisit::walk_local(self, loc);
         let els = loc.els;
         if let Some(init) = loc.init && els.is_some() {
-            self.check_let(&loc.pat, init, loc.span);
+            // Build a span without the else { ... } as we don't want to underline
+            // the entire else block in the IDE setting.
+            let span = loc.span.with_hi(init.span.hi());
+            self.check_let(&loc.pat, init, span);
         }
 
         let (msg, sp) = match loc.source {
@@ -630,11 +633,6 @@ fn irrefutable_let_patterns(
     count: usize,
     span: Span,
 ) {
-    let span = match source {
-        LetSource::LetElse(span) => span,
-        _ => span,
-    };
-
     macro_rules! emit_diag {
         (
             $lint:expr,
@@ -680,7 +678,7 @@ fn irrefutable_let_patterns(
                 "removing the guard and adding a `let` inside the match arm"
             );
         }
-        LetSource::LetElse(..) => {
+        LetSource::LetElse => {
             emit_diag!(
                 lint,
                 "`let...else`",
@@ -1127,7 +1125,7 @@ pub enum LetSource {
     GenericLet,
     IfLet,
     IfLetGuard,
-    LetElse(Span),
+    LetElse,
     WhileLet,
 }
 
@@ -1156,8 +1154,8 @@ fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> L
     let parent_parent = hir.get_parent_node(parent);
     let parent_parent_node = hir.get(parent_parent);
     match parent_parent_node {
-        hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), span, .. }) => {
-            return LetSource::LetElse(*span);
+        hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), .. }) => {
+            return LetSource::LetElse;
         }
         hir::Node::Arm(hir::Arm { guard: Some(hir::Guard::If(_)), .. }) => {
             return LetSource::IfLetGuard;

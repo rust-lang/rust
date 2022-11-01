@@ -284,7 +284,8 @@ pub(crate) mod rustc {
                 }
 
                 ty::Array(ty, len) => {
-                    let len = len.try_eval_usize(tcx, ParamEnv::reveal_all()).unwrap();
+                    let len =
+                        len.try_eval_usize(tcx, ParamEnv::reveal_all()).ok_or(Err::Unspecified)?;
                     let elt = Tree::from_ty(*ty, tcx)?;
                     Ok(std::iter::repeat(elt)
                         .take(len as usize)
