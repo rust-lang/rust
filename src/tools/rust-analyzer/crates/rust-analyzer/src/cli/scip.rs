@@ -5,7 +5,7 @@ use std::{
     time::Instant,
 };
 
-use crate::line_index::{LineEndings, LineIndex, OffsetEncoding};
+use crate::line_index::{LineEndings, LineIndex, PositionEncoding};
 use hir::Name;
 use ide::{
     LineCol, MonikerDescriptorKind, StaticIndex, StaticIndexedFile, TextRange, TokenId,
@@ -91,7 +91,7 @@ impl flags::Scip {
 
             let line_index = LineIndex {
                 index: db.line_index(file_id),
-                encoding: OffsetEncoding::Utf8,
+                encoding: PositionEncoding::Utf8,
                 endings: LineEndings::Unix,
             };
 

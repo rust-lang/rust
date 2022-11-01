@@ -340,8 +340,8 @@ impl<'a> InferenceTable<'a> {
         self.resolve_with_fallback(t, &|_, _, d, _| d)
     }
 
-    /// Unify two types and register new trait goals that arise from that.
-    pub(crate) fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
+    /// Unify two relatable values (e.g. `Ty`) and register new trait goals that arise from that.
+    pub(crate) fn unify<T: ?Sized + Zip<Interner>>(&mut self, ty1: &T, ty2: &T) -> bool {
         let result = match self.try_unify(ty1, ty2) {
             Ok(r) => r,
             Err(_) => return false,
@@ -350,9 +350,13 @@ impl<'a> InferenceTable<'a> {
         true
     }
 
-    /// Unify two types and return new trait goals arising from it, so the
+    /// Unify two relatable values (e.g. `Ty`) and return new trait goals arising from it, so the
     /// caller needs to deal with them.
-    pub(crate) fn try_unify<T: Zip<Interner>>(&mut self, t1: &T, t2: &T) -> InferResult<()> {
+    pub(crate) fn try_unify<T: ?Sized + Zip<Interner>>(
+        &mut self,
+        t1: &T,
+        t2: &T,
+    ) -> InferResult<()> {
         match self.var_unification_table.relate(
             Interner,
             &self.db,
