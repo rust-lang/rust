@@ -10,7 +10,7 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
 
 fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     if arg.layout.is_aggregate() {
-        arg.make_indirect_byval();
+        arg.make_indirect_byval(None);
     } else {
         arg.extend_integer_width_to(32);
     }
