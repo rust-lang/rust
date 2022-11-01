@@ -1470,7 +1470,7 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
-            for tool in &["rust-demangler"] {
+            for tool in &["rust-demangler", "miri"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
@@ -1510,9 +1510,8 @@ impl Step for Extended {
             prepare("rust-std");
             prepare("rust-analysis");
             prepare("clippy");
-            prepare("miri");
             prepare("rust-analyzer");
-            for tool in &["rust-docs", "rust-demangler"] {
+            for tool in &["rust-docs", "rust-demangler", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1571,9 +1570,8 @@ impl Step for Extended {
             prepare("rust-docs");
             prepare("rust-std");
             prepare("clippy");
-            prepare("miri");
             prepare("rust-analyzer");
-            for tool in &["rust-demangler"] {
+            for tool in &["rust-demangler", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1710,23 +1708,25 @@ impl Step for Extended {
                         .arg(etc.join("msi/remove-duplicates.xsl")),
                 );
             }
-            builder.run(
-                Command::new(&heat)
-                    .current_dir(&exe)
-                    .arg("dir")
-                    .arg("miri")
-                    .args(&heat_flags)
-                    .arg("-cg")
-                    .arg("MiriGroup")
-                    .arg("-dr")
-                    .arg("Miri")
-                    .arg("-var")
-                    .arg("var.MiriDir")
-                    .arg("-out")
-                    .arg(exe.join("MiriGroup.wxs"))
-                    .arg("-t")
-                    .arg(etc.join("msi/remove-duplicates.xsl")),
-            );
+            if built_tools.contains("miri") {
+                builder.run(
+                    Command::new(&heat)
+                        .current_dir(&exe)
+                        .arg("dir")
+                        .arg("miri")
+                        .args(&heat_flags)
+                        .arg("-cg")
+                        .arg("MiriGroup")
+                        .arg("-dr")
+                        .arg("Miri")
+                        .arg("-var")
+                        .arg("var.MiriDir")
+                        .arg("-out")
+                        .arg(exe.join("MiriGroup.wxs"))
+                        .arg("-t")
+                        .arg(etc.join("msi/remove-duplicates.xsl")),
+                );
+            }
             builder.run(
                 Command::new(&heat)
                     .current_dir(&exe)
@@ -1774,7 +1774,6 @@ impl Step for Extended {
                     .arg("-dStdDir=rust-std")
                     .arg("-dAnalysisDir=rust-analysis")
                     .arg("-dClippyDir=clippy")
-                    .arg("-dMiriDir=miri")
                     .arg("-arch")
                     .arg(&arch)
                     .arg("-out")
@@ -1787,6 +1786,9 @@ impl Step for Extended {
                 }
                 if built_tools.contains("rust-analyzer") {
                     cmd.arg("-dRustAnalyzerDir=rust-analyzer");
+                }
+                if built_tools.contains("miri") {
+                    cmd.arg("-dMiriDir=miri");
                 }
                 if target.ends_with("windows-gnu") {
                     cmd.arg("-dGccDir=rust-mingw");
@@ -1801,7 +1803,9 @@ impl Step for Extended {
             candle("CargoGroup.wxs".as_ref());
             candle("StdGroup.wxs".as_ref());
             candle("ClippyGroup.wxs".as_ref());
-            candle("MiriGroup.wxs".as_ref());
+            if built_tools.contains("miri") {
+                candle("MiriGroup.wxs".as_ref());
+            }
             if built_tools.contains("rust-demangler") {
                 candle("RustDemanglerGroup.wxs".as_ref());
             }
@@ -1837,9 +1841,11 @@ impl Step for Extended {
                 .arg("StdGroup.wixobj")
                 .arg("AnalysisGroup.wixobj")
                 .arg("ClippyGroup.wixobj")
-                .arg("MiriGroup.wixobj")
                 .current_dir(&exe);
 
+            if built_tools.contains("miri") {
+                cmd.arg("MiriGroup.wixobj");
+            }
             if built_tools.contains("rust-analyzer") {
                 cmd.arg("RustAnalyzerGroup.wixobj");
             }
