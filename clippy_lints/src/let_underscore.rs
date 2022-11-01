@@ -68,13 +68,13 @@ declare_clippy_lint! {
     /// and ignore the resulting value.
     ///
     /// ### Example
-    /// ```rust,ignore
+    /// ```rust
     /// async fn foo() -> Result<(), ()> { }
     /// let _ = foo();
     /// ```
     ///
     /// Use instead:
-    /// ```rust,ignore
+    /// ```rust
     /// let _ = foo().await;
     /// ```
     #[clippy::version = "1.66"]
