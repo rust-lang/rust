@@ -316,21 +316,28 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         let desc = item.doc_value().map_or_else(String::new, |x| {
                             short_markdown_summary(x.as_str(), &item.link_names(self.cache))
                         });
-                        self.cache.search_index.push(IndexItem {
-                            ty: item.type_(),
-                            name: s.to_string(),
-                            path: join_with_double_colon(path),
-                            desc,
-                            parent,
-                            parent_idx: None,
-                            search_type: get_function_type_for_search(
-                                &item,
-                                self.tcx,
-                                clean_impl_generics(self.cache.parent_stack.last()).as_ref(),
-                                self.cache,
-                            ),
-                            aliases: item.attrs.get_doc_aliases(),
-                        });
+                        let ty = item.type_();
+                        let name = s.to_string();
+                        if ty != ItemType::StructField || u16::from_str_radix(&name, 10).is_err() {
+                            // In case this is a field from a tuple struct, we don't add it into
+                            // the search index because its name is something like "0", which is
+                            // not useful for rustdoc search.
+                            self.cache.search_index.push(IndexItem {
+                                ty,
+                                name,
+                                path: join_with_double_colon(path),
+                                desc,
+                                parent,
+                                parent_idx: None,
+                                search_type: get_function_type_for_search(
+                                    &item,
+                                    self.tcx,
+                                    clean_impl_generics(self.cache.parent_stack.last()).as_ref(),
+                                    self.cache,
+                                ),
+                                aliases: item.attrs.get_doc_aliases(),
+                            });
+                        }
                     }
                 }
                 (Some(parent), None) if is_inherent_impl_item => {
