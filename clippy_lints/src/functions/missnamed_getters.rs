@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::{intravisit::FnKind, Body, ExprKind, FnDecl, HirId, ImplicitSelfKind};
@@ -13,7 +13,7 @@ pub fn check_fn(
     kind: FnKind<'_>,
     decl: &FnDecl<'_>,
     body: &Body<'_>,
-    _span: Span,
+    span: Span,
     _hir_id: HirId,
 ) {
     let FnKind::Method(ref ident, sig) = kind else {
@@ -55,6 +55,7 @@ pub fn check_fn(
     let expr_span = block_expr.span;
 
     let mut expr = block_expr;
+    // Accept &<expr>, &mut <expr> and <expr>
     if let ExprKind::AddrOf(_, _, tmp) = expr.kind {
         expr = tmp;
     }
@@ -62,7 +63,7 @@ pub fn check_fn(
         if let ExprKind::Field(self_data, ident) = expr.kind;
         if ident.name.as_str() != name;
         then {
-            (self_data,ident)
+            (self_data, ident)
         } else {
             return;
         }
@@ -121,16 +122,17 @@ pub fn check_fn(
         };
 
     if cx.tcx.type_of(used_field.did) == cx.tcx.type_of(correct_field.did) {
-        let snippet = snippet(cx, expr_span, "..");
-        let sugg = format!("{}{name}", snippet.strip_suffix(used_field.name.as_str()).unwrap());
-        span_lint_and_sugg(
+        let left_span = block_expr.span.until(used_ident.span);
+        let snippet = snippet(cx, left_span, "..");
+        let sugg = format!("{snippet}{name}");
+        span_lint_and_then(
             cx,
             MISSNAMED_GETTERS,
-            expr_span,
+            span,
             "getter function appears to return the wrong field",
-            "consider using",
-            sugg,
-            Applicability::MaybeIncorrect,
+            |diag| {
+                diag.span_suggestion(expr_span, "consider using", sugg, Applicability::MaybeIncorrect);
+            },
         );
     }
 }
