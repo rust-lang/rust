@@ -7,10 +7,7 @@ use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::errors::{
-    AllocFuncRequired, MissingAllocErrorHandler, MissingLangItem, MissingPanicHandler,
-    UnknownExternLangItem,
-};
+use crate::errors::{MissingLangItem, MissingPanicHandler, UnknownExternLangItem};
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
 /// language items required by this crate, but not defined yet.
@@ -69,11 +66,6 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
         if missing.contains(&item) && required(tcx, item) && items.get(item).is_none() {
             if item == LangItem::PanicImpl {
                 tcx.sess.emit_err(MissingPanicHandler);
-            } else if item == LangItem::Oom {
-                if !tcx.features().default_alloc_error_handler {
-                    tcx.sess.emit_err(AllocFuncRequired);
-                    tcx.sess.emit_note(MissingAllocErrorHandler);
-                }
             } else {
                 tcx.sess.emit_err(MissingLangItem { name: item.name() });
             }

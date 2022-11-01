@@ -1,5 +1,5 @@
 #![crate_type = "bin"]
-#![feature(lang_items)]
+#![feature(lang_items, alloc_error_handler)]
 #![no_main]
 #![no_std]
 
@@ -14,7 +14,7 @@ fn panic(_: &PanicInfo) -> ! {
 #[lang = "eh_personality"]
 fn eh() {}
 
-#[lang = "oom"]
+#[alloc_error_handler]
 fn oom(_: Layout) -> ! {
     loop {}
 }

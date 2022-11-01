@@ -211,13 +211,6 @@ pub(super) fn check_fn<'a, 'tcx>(
         check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig, decl, declared_ret_ty);
     }
 
-    // Check that a function marked as `#[alloc_error_handler]` has signature `fn(Layout) -> !`
-    if let Some(alloc_error_handler_did) = tcx.lang_items().oom()
-        && alloc_error_handler_did == hir.local_def_id(fn_id).to_def_id()
-    {
-        check_alloc_error_fn(tcx, alloc_error_handler_did.expect_local(), fn_sig, decl, declared_ret_ty);
-    }
-
     (fcx, gen_ty)
 }
 
@@ -271,54 +264,5 @@ fn check_panic_info_fn(
     if generic_counts.consts != 0 {
         let span = tcx.def_span(fn_id);
         tcx.sess.span_err(span, "should have no const parameters");
-    }
-}
-
-fn check_alloc_error_fn(
-    tcx: TyCtxt<'_>,
-    fn_id: LocalDefId,
-    fn_sig: ty::FnSig<'_>,
-    decl: &hir::FnDecl<'_>,
-    declared_ret_ty: Ty<'_>,
-) {
-    let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() else {
-        tcx.sess.err("language item required, but not found: `alloc_layout`");
-        return;
-    };
-
-    if *declared_ret_ty.kind() != ty::Never {
-        tcx.sess.span_err(decl.output.span(), "return type should be `!`");
-    }
-
-    let inputs = fn_sig.inputs();
-    if inputs.len() != 1 {
-        tcx.sess.span_err(tcx.def_span(fn_id), "function should have one argument");
-        return;
-    }
-
-    let arg_is_alloc_layout = match inputs[0].kind() {
-        ty::Adt(ref adt, _) => adt.did() == alloc_layout_did,
-        _ => false,
-    };
-
-    if !arg_is_alloc_layout {
-        tcx.sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
-    }
-
-    let DefKind::Fn = tcx.def_kind(fn_id) else {
-        let span = tcx.def_span(fn_id);
-        tcx.sess.span_err(span, "`#[alloc_error_handler]` should be a function");
-        return;
-    };
-
-    let generic_counts = tcx.generics_of(fn_id).own_counts();
-    if generic_counts.types != 0 {
-        let span = tcx.def_span(fn_id);
-        tcx.sess.span_err(span, "`#[alloc_error_handler]` function should have no type parameters");
-    }
-    if generic_counts.consts != 0 {
-        let span = tcx.def_span(fn_id);
-        tcx.sess
-            .span_err(span, "`#[alloc_error_handler]` function should have no const parameters");
     }
 }
