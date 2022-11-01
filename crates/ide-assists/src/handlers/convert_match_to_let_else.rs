@@ -86,7 +86,7 @@ fn find_arms(
     let mut extracting = None;
     let mut diverging = None;
     for arm in arms {
-        if ctx.sema.is_diverging_match_arm(&arm)? {
+        if ctx.sema.type_of_expr(&arm.expr().unwrap()).unwrap().original().is_never() {
             diverging = Some(arm);
         } else {
             extracting = Some(arm);
@@ -159,6 +159,7 @@ mod tests {
         check_assist_not_applicable(
             convert_match_to_let_else,
             r#"
+//- minicore: option
 fn foo(opt: Option<()>) {
     let val = $0match opt {
         Some(it) => it,
@@ -175,7 +176,8 @@ fn foo(opt: Option<()>) {
         check_assist_not_applicable(
             convert_match_to_let_else,
             r#"
-fn foo(opt: Option<()>) {
+//- minicore: option
+fn foo(opt: Option<i32>) {
     let val = $0match opt {
         Some(it) => it + 1,
         None => return,
@@ -187,6 +189,7 @@ fn foo(opt: Option<()>) {
         check_assist_not_applicable(
             convert_match_to_let_else,
             r#"
+//- minicore: option
 fn foo(opt: Option<()>) {
     let val = $0match opt {
         Some(it) => {
@@ -206,6 +209,7 @@ fn foo(opt: Option<()>) {
         check_assist_not_applicable(
             convert_match_to_let_else,
             r#"
+//- minicore: option
 fn foo(opt: Option<()>) {
     let val = $0match opt {
         Some(it) if 2 > 1 => it,
@@ -221,6 +225,7 @@ fn foo(opt: Option<()>) {
         check_assist(
             convert_match_to_let_else,
             r#"
+//- minicore: option
 fn foo(opt: Option<()>) {
     let val = $0match opt {
         Some(it) => it,
@@ -241,6 +246,7 @@ fn foo(opt: Option<()>) {
         check_assist(
             convert_match_to_let_else,
             r#"
+//- minicore: option
 fn foo(opt: Option<()>) {
     let ref mut val = $0match opt {
         Some(it) => it,
@@ -261,6 +267,7 @@ fn foo(opt: Option<()>) {
         check_assist(
             convert_match_to_let_else,
             r#"
+//- minicore: option, result
 fn foo(opt: Option<Result<()>>) {
     let val = $0match opt {
         Some(Ok(it)) => it,
@@ -281,6 +288,7 @@ fn foo(opt: Option<Result<()>>) {
         check_assist(
             convert_match_to_let_else,
             r#"
+//- minicore: option
 fn foo(opt: Option<()>) {
     loop {
         let val = $0match opt {
@@ -302,6 +310,7 @@ fn foo(opt: Option<()>) {
         check_assist(
             convert_match_to_let_else,
             r#"
+//- minicore: option
 fn foo(opt: Option<()>) {
     loop {
         let val = $0match opt {
@@ -323,6 +332,7 @@ fn foo(opt: Option<()>) {
         check_assist(
             convert_match_to_let_else,
             r#"
+//- minicore: option
 fn panic() -> ! {}
 
 fn foo(opt: Option<()>) {
@@ -351,6 +361,7 @@ fn foo(opt: Option<()>) {
         check_assist(
             convert_match_to_let_else,
             r#"
+//- minicore: option
 struct Point {
     x: i32,
     y: i32,
@@ -381,6 +392,7 @@ fn foo(opt: Option<Point>) {
         check_assist(
             convert_match_to_let_else,
             r#"
+//- minicore: option
 fn foo(opt: Option<i32>) -> Option<i32> {
     let val = $0match opt {
         it @ Some(42) => it,
