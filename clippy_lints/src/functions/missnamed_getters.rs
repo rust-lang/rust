@@ -83,24 +83,9 @@ pub fn check_fn(
         }
     };
 
-    let variants = def.variants();
-
-    // We're accessing a field, so it should be an union or a struct and have one and only one variant
-    if variants.len() != 1 {
-        if cfg!(debug_assertions) {
-            panic!("Struct or union expected to have only one variant");
-        } else {
-            // Don't ICE when possible
-            return;
-        }
-    }
-
-    let first = variants.last().unwrap();
-    let fields = &variants[first];
-
     let mut used_field = None;
     let mut correct_field = None;
-    for f in &fields.fields {
+    for f in def.all_fields() {
         if f.name.as_str() == name {
             correct_field = Some(f);
         }
