@@ -255,6 +255,7 @@ provide! { tcx, def_id, other, cdata,
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
+    has_alloc_error_handler => { cdata.root.has_alloc_error_handler }
     has_panic_handler => { cdata.root.has_panic_handler }
     is_profiler_runtime => { cdata.root.profiler_runtime }
     required_panic_strategy => { cdata.root.required_panic_strategy }
@@ -339,6 +340,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
+        alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
         is_private_dep: |_tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             false
@@ -463,6 +465,10 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         has_global_allocator: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             CStore::from_tcx(tcx).has_global_allocator()
+        },
+        has_alloc_error_handler: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            CStore::from_tcx(tcx).has_alloc_error_handler()
         },
         postorder_cnums: |tcx, ()| {
             tcx.arena

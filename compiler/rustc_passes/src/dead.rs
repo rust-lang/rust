@@ -470,11 +470,6 @@ fn has_allow_dead_code_or_lang_attr_helper(
         return true;
     }
 
-    // (To be) stable attribute for #[lang = "oom"]
-    if tcx.sess.contains_name(attrs, sym::alloc_error_handler) {
-        return true;
-    }
-
     let def_id = tcx.hir().local_def_id(id);
     if tcx.def_kind(def_id).has_codegen_attrs() {
         let cg_attrs = tcx.codegen_fn_attrs(def_id);

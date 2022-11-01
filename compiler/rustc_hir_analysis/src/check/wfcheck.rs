@@ -218,19 +218,16 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         hir::ItemKind::Const(ty, ..) => {
             check_item_type(tcx, def_id, ty.span, false);
         }
-        hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
-            check_type_defn(tcx, item, false, |wfcx| vec![wfcx.non_enum_variant(struct_def)]);
-
+        hir::ItemKind::Struct(_, ref ast_generics) => {
+            check_type_defn(tcx, item, false);
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
-        hir::ItemKind::Union(ref struct_def, ref ast_generics) => {
-            check_type_defn(tcx, item, true, |wfcx| vec![wfcx.non_enum_variant(struct_def)]);
-
+        hir::ItemKind::Union(_, ref ast_generics) => {
+            check_type_defn(tcx, item, true);
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
-        hir::ItemKind::Enum(ref enum_def, ref ast_generics) => {
-            check_type_defn(tcx, item, true, |wfcx| wfcx.enum_variants(enum_def));
-
+        hir::ItemKind::Enum(_, ref ast_generics) => {
+            check_type_defn(tcx, item, true);
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
         hir::ItemKind::Trait(..) => {
@@ -1037,27 +1034,25 @@ fn item_adt_kind(kind: &ItemKind<'_>) -> Option<AdtKind> {
 }
 
 /// In a type definition, we check that to ensure that the types of the fields are well-formed.
-fn check_type_defn<'tcx, F>(
-    tcx: TyCtxt<'tcx>,
-    item: &hir::Item<'tcx>,
-    all_sized: bool,
-    mut lookup_fields: F,
-) where
-    F: FnMut(&WfCheckingCtxt<'_, 'tcx>) -> Vec<AdtVariant<'tcx>>,
-{
+fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: bool) {
     let _ = tcx.representability(item.owner_id.def_id);
+    let adt_def = tcx.adt_def(item.owner_id);
 
     enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
-        let variants = lookup_fields(wfcx);
-        let packed = tcx.adt_def(item.owner_id).repr().packed();
+        let variants = adt_def.variants();
+        let packed = adt_def.repr().packed();
 
-        for variant in &variants {
+        for variant in variants.iter() {
             // All field types must be well-formed.
             for field in &variant.fields {
+                let field_id = field.did.expect_local();
+                let hir::Node::Field(hir::FieldDef { ty: hir_ty, .. }) = tcx.hir().get_by_def_id(field_id)
+                else { bug!() };
+                let ty = wfcx.normalize(hir_ty.span, None, tcx.type_of(field.did));
                 wfcx.register_wf_obligation(
-                    field.span,
-                    Some(WellFormedLoc::Ty(field.def_id)),
-                    field.ty.into(),
+                    hir_ty.span,
+                    Some(WellFormedLoc::Ty(field_id)),
+                    ty.into(),
                 )
             }
 
@@ -1065,7 +1060,7 @@ fn check_type_defn<'tcx, F>(
             // intermediate types must be sized.
             let needs_drop_copy = || {
                 packed && {
-                    let ty = variant.fields.last().unwrap().ty;
+                    let ty = tcx.type_of(variant.fields.last().unwrap().did);
                     let ty = tcx.erase_regions(ty);
                     if ty.needs_infer() {
                         tcx.sess
@@ -1084,27 +1079,31 @@ fn check_type_defn<'tcx, F>(
                 variant.fields[..variant.fields.len() - unsized_len].iter().enumerate()
             {
                 let last = idx == variant.fields.len() - 1;
+                let field_id = field.did.expect_local();
+                let hir::Node::Field(hir::FieldDef { ty: hir_ty, .. }) = tcx.hir().get_by_def_id(field_id)
+                else { bug!() };
+                let ty = wfcx.normalize(hir_ty.span, None, tcx.type_of(field.did));
                 wfcx.register_bound(
                     traits::ObligationCause::new(
-                        field.span,
+                        hir_ty.span,
                         wfcx.body_id,
                         traits::FieldSized {
                             adt_kind: match item_adt_kind(&item.kind) {
                                 Some(i) => i,
                                 None => bug!(),
                             },
-                            span: field.span,
+                            span: hir_ty.span,
                             last,
                         },
                     ),
                     wfcx.param_env,
-                    field.ty,
+                    ty,
                     tcx.require_lang_item(LangItem::Sized, None),
                 );
             }
 
             // Explicit `enum` discriminant values must const-evaluate successfully.
-            if let Some(discr_def_id) = variant.explicit_discr {
+            if let ty::VariantDiscr::Explicit(discr_def_id) = variant.discr {
                 let cause = traits::ObligationCause::new(
                     tcx.def_span(discr_def_id),
                     wfcx.body_id,
@@ -1114,7 +1113,7 @@ fn check_type_defn<'tcx, F>(
                     cause,
                     wfcx.param_env,
                     ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(
-                        ty::Const::from_anon_const(tcx, discr_def_id),
+                        ty::Const::from_anon_const(tcx, discr_def_id.expect_local()),
                     ))
                     .to_predicate(tcx),
                 ));
@@ -1923,56 +1922,6 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalDefId) {
     items.par_impl_items(|item| tcx.ensure().check_well_formed(item.owner_id));
     items.par_trait_items(|item| tcx.ensure().check_well_formed(item.owner_id));
     items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id));
-}
-
-///////////////////////////////////////////////////////////////////////////
-// ADT
-
-// FIXME(eddyb) replace this with getting fields/discriminants through `ty::AdtDef`.
-struct AdtVariant<'tcx> {
-    /// Types of fields in the variant, that must be well-formed.
-    fields: Vec<AdtField<'tcx>>,
-
-    /// Explicit discriminant of this variant (e.g. `A = 123`),
-    /// that must evaluate to a constant value.
-    explicit_discr: Option<LocalDefId>,
-}
-
-struct AdtField<'tcx> {
-    ty: Ty<'tcx>,
-    def_id: LocalDefId,
-    span: Span,
-}
-
-impl<'a, 'tcx> WfCheckingCtxt<'a, 'tcx> {
-    // FIXME(eddyb) replace this with getting fields through `ty::AdtDef`.
-    fn non_enum_variant(&self, struct_def: &hir::VariantData<'_>) -> AdtVariant<'tcx> {
-        let fields = struct_def
-            .fields()
-            .iter()
-            .map(|field| {
-                let def_id = self.tcx().hir().local_def_id(field.hir_id);
-                let field_ty = self.tcx().type_of(def_id);
-                let field_ty = self.normalize(field.ty.span, None, field_ty);
-                debug!("non_enum_variant: type of field {:?} is {:?}", field, field_ty);
-                AdtField { ty: field_ty, span: field.ty.span, def_id }
-            })
-            .collect();
-        AdtVariant { fields, explicit_discr: None }
-    }
-
-    fn enum_variants(&self, enum_def: &hir::EnumDef<'_>) -> Vec<AdtVariant<'tcx>> {
-        enum_def
-            .variants
-            .iter()
-            .map(|variant| AdtVariant {
-                fields: self.non_enum_variant(&variant.data).fields,
-                explicit_discr: variant
-                    .disr_expr
-                    .map(|explicit_discr| self.tcx().hir().local_def_id(explicit_discr.hir_id)),
-            })
-            .collect()
-    }
 }
 
 fn error_392(
