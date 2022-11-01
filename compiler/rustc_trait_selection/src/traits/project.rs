@@ -2260,6 +2260,13 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     // since `data.substs` are the impl substs.
     let impl_fn_substs =
         obligation.predicate.substs.rebase_onto(tcx, tcx.parent(trait_fn_def_id), data.substs);
+    let impl_fn_substs = translate_substs(
+        selcx.infcx(),
+        obligation.param_env,
+        data.impl_def_id,
+        impl_fn_substs,
+        leaf_def.defining_node,
+    );
 
     if !check_substs_compatible(tcx, &leaf_def.item, impl_fn_substs) {
         let err = tcx.ty_error_with_message(
