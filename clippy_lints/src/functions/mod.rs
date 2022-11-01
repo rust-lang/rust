@@ -263,21 +263,38 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for getter methods that return a field that doesn't correspond
+    /// to the name of the method, when there is a field's whose name matches that of the method.
     ///
     /// ### Why is this bad?
+    /// It is most likely that such a  method is a bug caused by a typo or by copy-pasting.
     ///
     /// ### Example
     /// ```rust
+    /// struct A {
+    ///     a: String,
+    ///     b: String,
+    /// }
+    ///
+    /// impl A {
+    ///     fn a(&self) -> &str{
+    ///         self.b
+    ///     }
+    /// }
     /// // example code where clippy issues a warning
     /// ```
     /// Use instead:
     /// ```rust
-    /// // example code which does not raise clippy warning
+    /// impl A {
+    ///     fn a(&self) -> &str{
+    ///         self.a
+    ///     }
+    /// }
     /// ```
     #[clippy::version = "1.66.0"]
     pub MISSNAMED_GETTERS,
     suspicious,
-    "default lint description"
+    "getter method returning the wrong field"
 }
 
 #[derive(Copy, Clone)]
