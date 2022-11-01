@@ -524,8 +524,13 @@ impl Step for JsonStd {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.config.docs && run.builder.config.cmd.json();
-        run.all_krates("test").path("library").default_condition(default)
+        if run.builder.config.cmd.json() {
+            let default = run.builder.config.docs && run.builder.config.cmd.json();
+            run.all_krates("test").path("library").default_condition(default)
+        } else {
+            // Without this JsonStd would take priority on Std and prevent it from running.
+            run.never()
+        }
     }
 
     fn make_run(run: RunConfig<'_>) {
