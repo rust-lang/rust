@@ -4281,6 +4281,8 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "rand 0.8.5",
+ "rand_xoshiro",
  "rustc_data_structures",
  "rustc_feature",
  "rustc_index",
@@ -4336,6 +4338,7 @@ dependencies = [
  "rustc_infer",
  "rustc_middle",
  "rustc_span",
+ "rustc_target",
  "rustc_trait_selection",
  "smallvec",
  "tracing",

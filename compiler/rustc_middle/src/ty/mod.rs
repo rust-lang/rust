@@ -48,7 +48,8 @@ use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, Span};
-use rustc_target::abi::{Align, VariantIdx};
+use rustc_target::abi::{Align, Integer, IntegerType, VariantIdx};
+pub use rustc_target::abi::{ReprFlags, ReprOptions};
 pub use subst::*;
 pub use vtable::*;
 
@@ -1994,161 +1995,76 @@ impl Hash for FieldDef {
     }
 }
 
-bitflags! {
-    #[derive(TyEncodable, TyDecodable, Default, HashStable)]
-    pub struct ReprFlags: u8 {
-        const IS_C               = 1 << 0;
-        const IS_SIMD            = 1 << 1;
-        const IS_TRANSPARENT     = 1 << 2;
-        // Internal only for now. If true, don't reorder fields.
-        const IS_LINEAR          = 1 << 3;
-        // If true, the type's layout can be randomized using
-        // the seed stored in `ReprOptions.layout_seed`
-        const RANDOMIZE_LAYOUT   = 1 << 4;
-        // Any of these flags being set prevent field reordering optimisation.
-        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits
-                                 | ReprFlags::IS_SIMD.bits
-                                 | ReprFlags::IS_LINEAR.bits;
+pub fn repr_options_of_def(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
+    let mut flags = ReprFlags::empty();
+    let mut size = None;
+    let mut max_align: Option<Align> = None;
+    let mut min_pack: Option<Align> = None;
+
+    // Generate a deterministically-derived seed from the item's path hash
+    // to allow for cross-crate compilation to actually work
+    let mut field_shuffle_seed = tcx.def_path_hash(did).0.to_smaller_hash();
+
+    // If the user defined a custom seed for layout randomization, xor the item's
+    // path hash with the user defined seed, this will allowing determinism while
+    // still allowing users to further randomize layout generation for e.g. fuzzing
+    if let Some(user_seed) = tcx.sess.opts.unstable_opts.layout_seed {
+        field_shuffle_seed ^= user_seed;
     }
-}
 
-/// Represents the repr options provided by the user,
-#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Default, HashStable)]
-pub struct ReprOptions {
-    pub int: Option<attr::IntType>,
-    pub align: Option<Align>,
-    pub pack: Option<Align>,
-    pub flags: ReprFlags,
-    /// The seed to be used for randomizing a type's layout
-    ///
-    /// Note: This could technically be a `[u8; 16]` (a `u128`) which would
-    /// be the "most accurate" hash as it'd encompass the item and crate
-    /// hash without loss, but it does pay the price of being larger.
-    /// Everything's a tradeoff, a `u64` seed should be sufficient for our
-    /// purposes (primarily `-Z randomize-layout`)
-    pub field_shuffle_seed: u64,
-}
-
-impl ReprOptions {
-    pub fn new(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
-        let mut flags = ReprFlags::empty();
-        let mut size = None;
-        let mut max_align: Option<Align> = None;
-        let mut min_pack: Option<Align> = None;
-
-        // Generate a deterministically-derived seed from the item's path hash
-        // to allow for cross-crate compilation to actually work
-        let mut field_shuffle_seed = tcx.def_path_hash(did).0.to_smaller_hash();
-
-        // If the user defined a custom seed for layout randomization, xor the item's
-        // path hash with the user defined seed, this will allowing determinism while
-        // still allowing users to further randomize layout generation for e.g. fuzzing
-        if let Some(user_seed) = tcx.sess.opts.unstable_opts.layout_seed {
-            field_shuffle_seed ^= user_seed;
+    for attr in tcx.get_attrs(did, sym::repr) {
+        for r in attr::parse_repr_attr(&tcx.sess, attr) {
+            flags.insert(match r {
+                attr::ReprC => ReprFlags::IS_C,
+                attr::ReprPacked(pack) => {
+                    let pack = Align::from_bytes(pack as u64).unwrap();
+                    min_pack =
+                        Some(if let Some(min_pack) = min_pack { min_pack.min(pack) } else { pack });
+                    ReprFlags::empty()
+                }
+                attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
+                attr::ReprSimd => ReprFlags::IS_SIMD,
+                attr::ReprInt(i) => {
+                    size = Some(match i {
+                        attr::IntType::SignedInt(x) => match x {
+                            ast::IntTy::Isize => IntegerType::Pointer(true),
+                            ast::IntTy::I8 => IntegerType::Fixed(Integer::I8, true),
+                            ast::IntTy::I16 => IntegerType::Fixed(Integer::I16, true),
+                            ast::IntTy::I32 => IntegerType::Fixed(Integer::I32, true),
+                            ast::IntTy::I64 => IntegerType::Fixed(Integer::I64, true),
+                            ast::IntTy::I128 => IntegerType::Fixed(Integer::I128, true),
+                        },
+                        attr::IntType::UnsignedInt(x) => match x {
+                            ast::UintTy::Usize => IntegerType::Pointer(false),
+                            ast::UintTy::U8 => IntegerType::Fixed(Integer::I8, false),
+                            ast::UintTy::U16 => IntegerType::Fixed(Integer::I16, false),
+                            ast::UintTy::U32 => IntegerType::Fixed(Integer::I32, false),
+                            ast::UintTy::U64 => IntegerType::Fixed(Integer::I64, false),
+                            ast::UintTy::U128 => IntegerType::Fixed(Integer::I128, false),
+                        },
+                    });
+                    ReprFlags::empty()
+                }
+                attr::ReprAlign(align) => {
+                    max_align = max_align.max(Some(Align::from_bytes(align as u64).unwrap()));
+                    ReprFlags::empty()
+                }
+            });
         }
-
-        for attr in tcx.get_attrs(did, sym::repr) {
-            for r in attr::parse_repr_attr(&tcx.sess, attr) {
-                flags.insert(match r {
-                    attr::ReprC => ReprFlags::IS_C,
-                    attr::ReprPacked(pack) => {
-                        let pack = Align::from_bytes(pack as u64).unwrap();
-                        min_pack = Some(if let Some(min_pack) = min_pack {
-                            min_pack.min(pack)
-                        } else {
-                            pack
-                        });
-                        ReprFlags::empty()
-                    }
-                    attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
-                    attr::ReprSimd => ReprFlags::IS_SIMD,
-                    attr::ReprInt(i) => {
-                        size = Some(i);
-                        ReprFlags::empty()
-                    }
-                    attr::ReprAlign(align) => {
-                        max_align = max_align.max(Some(Align::from_bytes(align as u64).unwrap()));
-                        ReprFlags::empty()
-                    }
-                });
-            }
-        }
-
-        // If `-Z randomize-layout` was enabled for the type definition then we can
-        // consider performing layout randomization
-        if tcx.sess.opts.unstable_opts.randomize_layout {
-            flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
-        }
-
-        // This is here instead of layout because the choice must make it into metadata.
-        if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.def_path_str(did))) {
-            flags.insert(ReprFlags::IS_LINEAR);
-        }
-
-        Self { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
     }
 
-    #[inline]
-    pub fn simd(&self) -> bool {
-        self.flags.contains(ReprFlags::IS_SIMD)
+    // If `-Z randomize-layout` was enabled for the type definition then we can
+    // consider performing layout randomization
+    if tcx.sess.opts.unstable_opts.randomize_layout {
+        flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
     }
 
-    #[inline]
-    pub fn c(&self) -> bool {
-        self.flags.contains(ReprFlags::IS_C)
+    // This is here instead of layout because the choice must make it into metadata.
+    if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.def_path_str(did))) {
+        flags.insert(ReprFlags::IS_LINEAR);
     }
 
-    #[inline]
-    pub fn packed(&self) -> bool {
-        self.pack.is_some()
-    }
-
-    #[inline]
-    pub fn transparent(&self) -> bool {
-        self.flags.contains(ReprFlags::IS_TRANSPARENT)
-    }
-
-    #[inline]
-    pub fn linear(&self) -> bool {
-        self.flags.contains(ReprFlags::IS_LINEAR)
-    }
-
-    /// Returns the discriminant type, given these `repr` options.
-    /// This must only be called on enums!
-    pub fn discr_type(&self) -> attr::IntType {
-        self.int.unwrap_or(attr::SignedInt(ast::IntTy::Isize))
-    }
-
-    /// Returns `true` if this `#[repr()]` should inhabit "smart enum
-    /// layout" optimizations, such as representing `Foo<&T>` as a
-    /// single pointer.
-    pub fn inhibit_enum_layout_opt(&self) -> bool {
-        self.c() || self.int.is_some()
-    }
-
-    /// Returns `true` if this `#[repr()]` should inhibit struct field reordering
-    /// optimizations, such as with `repr(C)`, `repr(packed(1))`, or `repr(<int>)`.
-    pub fn inhibit_struct_field_reordering_opt(&self) -> bool {
-        if let Some(pack) = self.pack {
-            if pack.bytes() == 1 {
-                return true;
-            }
-        }
-
-        self.flags.intersects(ReprFlags::IS_UNOPTIMISABLE) || self.int.is_some()
-    }
-
-    /// Returns `true` if this type is valid for reordering and `-Z randomize-layout`
-    /// was enabled for its declaration crate
-    pub fn can_randomize_type_layout(&self) -> bool {
-        !self.inhibit_struct_field_reordering_opt()
-            && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
-    }
-
-    /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.
-    pub fn inhibit_union_abi_opt(&self) -> bool {
-        self.c()
-    }
+    ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
 }
 
 impl<'tcx> FieldDef {

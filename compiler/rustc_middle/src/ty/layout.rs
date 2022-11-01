@@ -1,8 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitable};
-use rustc_ast as ast;
-use rustc_attr as attr;
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -20,7 +18,6 @@ use std::ops::Bound;
 
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
-    fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer;
     fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> Integer;
     fn from_uint_ty<C: HasDataLayout>(cx: &C, uty: ty::UintTy) -> Integer;
     fn repr_discr<'tcx>(
@@ -46,22 +43,6 @@ impl IntegerExt for Integer {
             (I32, true) => tcx.types.i32,
             (I64, true) => tcx.types.i64,
             (I128, true) => tcx.types.i128,
-        }
-    }
-
-    /// Gets the Integer type from an attr::IntType.
-    fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer {
-        let dl = cx.data_layout();
-
-        match ity {
-            attr::SignedInt(ast::IntTy::I8) | attr::UnsignedInt(ast::UintTy::U8) => I8,
-            attr::SignedInt(ast::IntTy::I16) | attr::UnsignedInt(ast::UintTy::U16) => I16,
-            attr::SignedInt(ast::IntTy::I32) | attr::UnsignedInt(ast::UintTy::U32) => I32,
-            attr::SignedInt(ast::IntTy::I64) | attr::UnsignedInt(ast::UintTy::U64) => I64,
-            attr::SignedInt(ast::IntTy::I128) | attr::UnsignedInt(ast::UintTy::U128) => I128,
-            attr::SignedInt(ast::IntTy::Isize) | attr::UnsignedInt(ast::UintTy::Usize) => {
-                dl.ptr_sized_integer()
-            }
         }
     }
 
@@ -235,6 +216,18 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
 pub struct LayoutCx<'tcx, C> {
     pub tcx: C,
     pub param_env: ty::ParamEnv<'tcx>,
+}
+
+impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
+    type TargetDataLayoutRef = &'tcx TargetDataLayout;
+
+    fn delay_bug(&self, txt: &str) {
+        self.tcx.sess.delay_span_bug(DUMMY_SP, txt);
+    }
+
+    fn current_data_layout(&self) -> Self::TargetDataLayoutRef {
+        &self.tcx.data_layout
+    }
 }
 
 /// Type size "skeleton", i.e., the only information determining a type's size.

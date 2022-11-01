@@ -13,6 +13,7 @@ use std::num::{NonZeroUsize, ParseIntError};
 use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
+use bitflags::bitflags;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::intern::Interned;
 use rustc_index::vec::{Idx, IndexVec};
@@ -21,6 +22,127 @@ use rustc_macros::HashStable_Generic;
 
 #[cfg(feature = "nightly")]
 pub mod call;
+
+mod layout;
+
+pub use layout::LayoutCalculator;
+
+bitflags! {
+    #[derive(Default)]
+    #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+    pub struct ReprFlags: u8 {
+        const IS_C               = 1 << 0;
+        const IS_SIMD            = 1 << 1;
+        const IS_TRANSPARENT     = 1 << 2;
+        // Internal only for now. If true, don't reorder fields.
+        const IS_LINEAR          = 1 << 3;
+        // If true, the type's layout can be randomized using
+        // the seed stored in `ReprOptions.layout_seed`
+        const RANDOMIZE_LAYOUT   = 1 << 4;
+        // Any of these flags being set prevent field reordering optimisation.
+        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits
+                                 | ReprFlags::IS_SIMD.bits
+                                 | ReprFlags::IS_LINEAR.bits;
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+pub enum IntegerType {
+    Pointer(bool),
+    Fixed(Integer, bool),
+}
+
+impl IntegerType {
+    pub fn is_signed(&self) -> bool {
+        match self {
+            IntegerType::Pointer(b) => *b,
+            IntegerType::Fixed(_, b) => *b,
+        }
+    }
+}
+
+/// Represents the repr options provided by the user,
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+pub struct ReprOptions {
+    pub int: Option<IntegerType>,
+    pub align: Option<Align>,
+    pub pack: Option<Align>,
+    pub flags: ReprFlags,
+    /// The seed to be used for randomizing a type's layout
+    ///
+    /// Note: This could technically be a `[u8; 16]` (a `u128`) which would
+    /// be the "most accurate" hash as it'd encompass the item and crate
+    /// hash without loss, but it does pay the price of being larger.
+    /// Everything's a tradeoff, a `u64` seed should be sufficient for our
+    /// purposes (primarily `-Z randomize-layout`)
+    pub field_shuffle_seed: u64,
+}
+
+impl ReprOptions {
+    #[inline]
+    pub fn simd(&self) -> bool {
+        self.flags.contains(ReprFlags::IS_SIMD)
+    }
+
+    #[inline]
+    pub fn c(&self) -> bool {
+        self.flags.contains(ReprFlags::IS_C)
+    }
+
+    #[inline]
+    pub fn packed(&self) -> bool {
+        self.pack.is_some()
+    }
+
+    #[inline]
+    pub fn transparent(&self) -> bool {
+        self.flags.contains(ReprFlags::IS_TRANSPARENT)
+    }
+
+    #[inline]
+    pub fn linear(&self) -> bool {
+        self.flags.contains(ReprFlags::IS_LINEAR)
+    }
+
+    /// Returns the discriminant type, given these `repr` options.
+    /// This must only be called on enums!
+    pub fn discr_type(&self) -> IntegerType {
+        self.int.unwrap_or(IntegerType::Pointer(true))
+    }
+
+    /// Returns `true` if this `#[repr()]` should inhabit "smart enum
+    /// layout" optimizations, such as representing `Foo<&T>` as a
+    /// single pointer.
+    pub fn inhibit_enum_layout_opt(&self) -> bool {
+        self.c() || self.int.is_some()
+    }
+
+    /// Returns `true` if this `#[repr()]` should inhibit struct field reordering
+    /// optimizations, such as with `repr(C)`, `repr(packed(1))`, or `repr(<int>)`.
+    pub fn inhibit_struct_field_reordering_opt(&self) -> bool {
+        if let Some(pack) = self.pack {
+            if pack.bytes() == 1 {
+                return true;
+            }
+        }
+
+        self.flags.intersects(ReprFlags::IS_UNOPTIMISABLE) || self.int.is_some()
+    }
+
+    /// Returns `true` if this type is valid for reordering and `-Z randomize-layout`
+    /// was enabled for its declaration crate
+    pub fn can_randomize_type_layout(&self) -> bool {
+        !self.inhibit_struct_field_reordering_opt()
+            && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
+    }
+
+    /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.
+    pub fn inhibit_union_abi_opt(&self) -> bool {
+        self.c()
+    }
+}
 
 /// Parsed [Data layout](https://llvm.org/docs/LangRef.html#data-layout)
 /// for a target, which contains everything needed to compute layouts.
@@ -622,7 +744,7 @@ impl AbiAndPrefAlign {
 
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 
 pub enum Integer {
     I8,
@@ -641,6 +763,16 @@ impl Integer {
             I32 => Size::from_bytes(4),
             I64 => Size::from_bytes(8),
             I128 => Size::from_bytes(16),
+        }
+    }
+
+    /// Gets the Integer type from an attr::IntType.
+    pub fn from_attr<C: HasDataLayout>(cx: &C, ity: IntegerType) -> Integer {
+        let dl = cx.data_layout();
+
+        match ity {
+            IntegerType::Pointer(_) => dl.ptr_sized_integer(),
+            IntegerType::Fixed(x, _) => x,
         }
     }
 
@@ -1172,12 +1304,7 @@ pub enum TagEncoding<V: Idx> {
     /// For example, `Option<(usize, &T)>`  is represented such that
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
-    Niche {
-        untagged_variant: V,
-        #[cfg(feature = "nightly")]
-        niche_variants: RangeInclusive<V>,
-        niche_start: u128,
-    },
+    Niche { untagged_variant: V, niche_variants: RangeInclusive<V>, niche_start: u128 },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -1567,4 +1694,14 @@ impl<V: Idx> LayoutS<V> {
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0,
         }
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum StructKind {
+    /// A tuple, closure, or univariant which cannot be coerced to unsized.
+    AlwaysSized,
+    /// A univariant, the last field of which may be coerced to unsized.
+    MaybeUnsized,
+    /// A univariant, but with a prefix of an arbitrary size & alignment (e.g., enum tag).
+    Prefixed(Size, Align),
 }

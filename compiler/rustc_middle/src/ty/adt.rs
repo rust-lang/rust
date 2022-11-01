@@ -14,7 +14,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{ReprOptions, VariantIdx};
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -22,9 +22,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
 
-use super::{
-    Destructor, FieldDef, GenericPredicates, ReprOptions, Ty, TyCtxt, VariantDef, VariantDiscr,
-};
+use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr};
 
 bitflags! {
     #[derive(HashStable, TyEncodable, TyDecodable)]

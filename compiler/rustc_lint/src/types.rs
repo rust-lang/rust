@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable,
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::{Abi, WrappingRange};
+use rustc_target::abi::{Abi, Size, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
@@ -225,11 +225,11 @@ fn report_bin_hex_error(
     cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
     ty: attr::IntType,
+    size: Size,
     repr_str: String,
     val: u128,
     negative: bool,
 ) {
-    let size = Integer::from_attr(&cx.tcx, ty).size();
     cx.struct_span_lint(
         OVERFLOWING_LITERALS,
         expr.span,
@@ -352,6 +352,7 @@ fn lint_int_literal<'tcx>(
                 cx,
                 e,
                 attr::IntType::SignedInt(ty::ast_int_ty(t)),
+                Integer::from_int_ty(cx, t).size(),
                 repr_str,
                 v,
                 negative,
@@ -437,6 +438,7 @@ fn lint_uint_literal<'tcx>(
                 cx,
                 e,
                 attr::IntType::UnsignedInt(ty::ast_uint_ty(t)),
+                Integer::from_uint_ty(cx, t).size(),
                 repr_str,
                 lit_val,
                 false,
