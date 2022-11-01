@@ -1,0 +1,16 @@
+error: getter function appears to return the wrong field
+  --> $DIR/missnamed_getters.rs:11:9
+   |
+LL |         &self.b
+   |         ^^^^^^^ help: consider using: `&self.a`
+   |
+   = note: `-D clippy::missnamed-getters` implied by `-D warnings`
+
+error: getter function appears to return the wrong field
+  --> $DIR/missnamed_getters.rs:22:9
+   |
+LL |         &self.b
+   |         ^^^^^^^ help: consider using: `&self.a`
+
+error: aborting due to 2 previous errors
+

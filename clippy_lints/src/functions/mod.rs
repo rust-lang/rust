@@ -1,3 +1,4 @@
+mod missnamed_getters;
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
 mod result;
@@ -260,6 +261,25 @@ declare_clippy_lint! {
     "function returning `Result` with large `Err` type"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// ### Why is this bad?
+    ///
+    /// ### Example
+    /// ```rust
+    /// // example code where clippy issues a warning
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// // example code which does not raise clippy warning
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub MISSNAMED_GETTERS,
+    suspicious,
+    "default lint description"
+}
+
 #[derive(Copy, Clone)]
 pub struct Functions {
     too_many_arguments_threshold: u64,
@@ -286,6 +306,7 @@ impl_lint_pass!(Functions => [
     MUST_USE_CANDIDATE,
     RESULT_UNIT_ERR,
     RESULT_LARGE_ERR,
+    MISSNAMED_GETTERS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Functions {
@@ -301,6 +322,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         too_many_arguments::check_fn(cx, kind, decl, span, hir_id, self.too_many_arguments_threshold);
         too_many_lines::check_fn(cx, kind, span, body, self.too_many_lines_threshold);
         not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, hir_id);
+        missnamed_getters::check_fn(cx, kind, decl, body, span, hir_id);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
