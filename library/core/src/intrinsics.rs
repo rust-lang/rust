@@ -790,7 +790,7 @@ extern "rust-intrinsic" {
     /// uninitialized at that point in the control flow.
     ///
     /// This intrinsic should not be used outside of the compiler.
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn rustc_peek<T>(_: T) -> T;
 
     /// Aborts the execution of the process.
@@ -808,7 +808,7 @@ extern "rust-intrinsic" {
     /// On Unix, the
     /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
     /// `SIGBUS`.  The precise behaviour is not guaranteed and not stable.
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn abort() -> !;
 
     /// Informs the optimizer that this point in the code is not reachable,
@@ -847,7 +847,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_likely", issue = "none")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn likely(b: bool) -> bool;
 
     /// Hints to the compiler that branch condition is likely to be false.
@@ -862,7 +862,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_likely", issue = "none")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn unlikely(b: bool) -> bool;
 
     /// Executes a breakpoint trap, for inspection by a debugger.
@@ -882,7 +882,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::mem::size_of`].
     #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn size_of<T>() -> usize;
 
     /// The minimum alignment of a type.
@@ -894,7 +894,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::mem::align_of`].
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn min_align_of<T>() -> usize;
     /// The preferred alignment of a type.
     ///
@@ -923,7 +923,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::any::type_name`].
     #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This
@@ -937,7 +937,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
@@ -945,7 +945,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_stable(feature = "const_assert_type", since = "1.59.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn assert_inhabited<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
@@ -953,7 +953,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn assert_zero_valid<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` has invalid
@@ -961,7 +961,7 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn assert_uninit_valid<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
@@ -973,7 +973,7 @@ extern "rust-intrinsic" {
     ///
     /// Consider using [`core::panic::Location::caller`] instead.
     #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
     /// Moves a value out of scope without running drop glue.
@@ -986,7 +986,7 @@ extern "rust-intrinsic" {
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
     #[rustc_const_unstable(feature = "const_intrinsic_forget", issue = "none")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.
@@ -1266,7 +1266,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn needs_drop<T: ?Sized>() -> bool;
 
     /// Calculates the offset from a pointer.
@@ -1311,7 +1311,7 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     ///
     /// Consider using [`pointer::mask`] instead.
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
@@ -1503,7 +1503,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::min`]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn minnumf32(x: f32, y: f32) -> f32;
     /// Returns the minimum of two `f64` values.
     ///
@@ -1514,7 +1514,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::min`]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn minnumf64(x: f64, y: f64) -> f64;
     /// Returns the maximum of two `f32` values.
     ///
@@ -1525,7 +1525,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::max`]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn maxnumf32(x: f32, y: f32) -> f32;
     /// Returns the maximum of two `f64` values.
     ///
@@ -1536,7 +1536,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::max`]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn maxnumf64(x: f64, y: f64) -> f64;
 
     /// Copies the sign from `y` to `x` for `f32` values.
@@ -1657,7 +1657,7 @@ extern "rust-intrinsic" {
     /// primitives via the `count_ones` method. For example,
     /// [`u32::count_ones`]
     #[rustc_const_stable(feature = "const_ctpop", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn ctpop<T: Copy>(x: T) -> T;
 
     /// Returns the number of leading unset bits (zeroes) in an integer type `T`.
@@ -1695,7 +1695,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_leading, 16);
     /// ```
     #[rustc_const_stable(feature = "const_ctlz", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn ctlz<T: Copy>(x: T) -> T;
 
     /// Like `ctlz`, but extra-unsafe as it returns `undef` when
@@ -1752,7 +1752,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_trailing, 16);
     /// ```
     #[rustc_const_stable(feature = "const_cttz", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn cttz<T: Copy>(x: T) -> T;
 
     /// Like `cttz`, but extra-unsafe as it returns `undef` when
@@ -1785,7 +1785,7 @@ extern "rust-intrinsic" {
     /// primitives via the `swap_bytes` method. For example,
     /// [`u32::swap_bytes`]
     #[rustc_const_stable(feature = "const_bswap", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn bswap<T: Copy>(x: T) -> T;
 
     /// Reverses the bits in an integer type `T`.
@@ -1799,7 +1799,7 @@ extern "rust-intrinsic" {
     /// primitives via the `reverse_bits` method. For example,
     /// [`u32::reverse_bits`]
     #[rustc_const_stable(feature = "const_bitreverse", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn bitreverse<T: Copy>(x: T) -> T;
 
     /// Performs checked integer addition.
@@ -1813,7 +1813,7 @@ extern "rust-intrinsic" {
     /// primitives via the `overflowing_add` method. For example,
     /// [`u32::overflowing_add`]
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn add_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer subtraction
@@ -1827,7 +1827,7 @@ extern "rust-intrinsic" {
     /// primitives via the `overflowing_sub` method. For example,
     /// [`u32::overflowing_sub`]
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn sub_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer multiplication
@@ -1841,7 +1841,7 @@ extern "rust-intrinsic" {
     /// primitives via the `overflowing_mul` method. For example,
     /// [`u32::overflowing_mul`]
     #[rustc_const_stable(feature = "const_int_overflow", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn mul_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs an exact division, resulting in undefined behavior where
@@ -1916,7 +1916,7 @@ extern "rust-intrinsic" {
     /// primitives via the `rotate_left` method. For example,
     /// [`u32::rotate_left`]
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
 
     /// Performs rotate right.
@@ -1930,7 +1930,7 @@ extern "rust-intrinsic" {
     /// primitives via the `rotate_right` method. For example,
     /// [`u32::rotate_right`]
     #[rustc_const_stable(feature = "const_int_rotate", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn rotate_right<T: Copy>(x: T, y: T) -> T;
 
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
@@ -1944,7 +1944,7 @@ extern "rust-intrinsic" {
     /// primitives via the `wrapping_add` method. For example,
     /// [`u32::wrapping_add`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn wrapping_add<T: Copy>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
@@ -1957,7 +1957,7 @@ extern "rust-intrinsic" {
     /// primitives via the `wrapping_sub` method. For example,
     /// [`u32::wrapping_sub`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
@@ -1970,7 +1970,7 @@ extern "rust-intrinsic" {
     /// primitives via the `wrapping_mul` method. For example,
     /// [`u32::wrapping_mul`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn wrapping_mul<T: Copy>(a: T, b: T) -> T;
 
     /// Computes `a + b`, saturating at numeric bounds.
@@ -1984,7 +1984,7 @@ extern "rust-intrinsic" {
     /// primitives via the `saturating_add` method. For example,
     /// [`u32::saturating_add`]
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn saturating_add<T: Copy>(a: T, b: T) -> T;
     /// Computes `a - b`, saturating at numeric bounds.
     ///
@@ -1997,7 +1997,7 @@ extern "rust-intrinsic" {
     /// primitives via the `saturating_sub` method. For example,
     /// [`u32::saturating_sub`]
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 
     /// Returns the value of the discriminant for the variant in 'v';
@@ -2010,7 +2010,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::mem::discriminant`].
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
     /// Returns the number of variants of the type `T` cast to a `usize`;
@@ -2023,7 +2023,7 @@ extern "rust-intrinsic" {
     ///
     /// The to-be-stabilized version of this intrinsic is [`mem::variant_count`].
     #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn variant_count<T>() -> usize;
 
     /// Rust's "try catch" construct which invokes the function pointer `try_fn`
@@ -2057,7 +2057,7 @@ extern "rust-intrinsic" {
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
 
     /// Allocates a block of memory at compile time.
@@ -2108,7 +2108,7 @@ extern "rust-intrinsic" {
     ///
     /// [`std::hint::black_box`]: crate::hint::black_box
     #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
-    #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
+    #[rustc_safe_intrinsic]
     pub fn black_box<T>(dummy: T) -> T;
 
     /// `ptr` must point to a vtable.
