@@ -25,7 +25,7 @@ impl IterType {
     }
 }
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, method_name: &str, recv: &Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: &str, recv: &Expr<'_>) {
     let item = match recv.kind {
         ExprKind::Array([]) => None,
         ExprKind::Array([e]) => Some(e),

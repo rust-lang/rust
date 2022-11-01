@@ -17,7 +17,7 @@ use super::MANUAL_FILTER_MAP;
 use super::MANUAL_FIND_MAP;
 use super::OPTION_FILTER_MAP;
 
-fn is_method<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Symbol) -> bool {
+fn is_method(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol) -> bool {
     match &expr.kind {
         hir::ExprKind::Path(QPath::TypeRelative(_, mname)) => mname.ident.name == method_name,
         hir::ExprKind::Path(QPath::Resolved(_, segments)) => {
@@ -46,7 +46,7 @@ fn is_method<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Sy
     }
 }
 
-fn is_option_filter_map<'tcx>(cx: &LateContext<'tcx>, filter_arg: &hir::Expr<'_>, map_arg: &hir::Expr<'_>) -> bool {
+fn is_option_filter_map(cx: &LateContext<'_>, filter_arg: &hir::Expr<'_>, map_arg: &hir::Expr<'_>) -> bool {
     is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym!(is_some))
 }
 
@@ -66,8 +66,8 @@ fn is_filter_some_map_unwrap(
 
 /// lint use of `filter().map()` or `find().map()` for `Iterators`
 #[allow(clippy::too_many_arguments)]
-pub(super) fn check<'tcx>(
-    cx: &LateContext<'tcx>,
+pub(super) fn check(
+    cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
     filter_recv: &hir::Expr<'_>,
     filter_arg: &hir::Expr<'_>,

@@ -1232,8 +1232,8 @@ fn is_mixed_projection_predicate<'tcx>(
     }
 }
 
-fn referent_used_exactly_once<'a, 'tcx>(
-    cx: &'a LateContext<'tcx>,
+fn referent_used_exactly_once<'tcx>(
+    cx: &LateContext<'tcx>,
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     reference: &Expr<'tcx>,
 ) -> bool {

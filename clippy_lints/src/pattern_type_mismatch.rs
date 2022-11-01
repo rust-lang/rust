@@ -130,7 +130,7 @@ enum DerefPossible {
     Impossible,
 }
 
-fn apply_lint<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, deref_possible: DerefPossible) -> bool {
+fn apply_lint(cx: &LateContext<'_>, pat: &Pat<'_>, deref_possible: DerefPossible) -> bool {
     let maybe_mismatch = find_first_mismatch(cx, pat);
     if let Some((span, mutability, level)) = maybe_mismatch {
         span_lint_and_help(
@@ -163,7 +163,7 @@ enum Level {
     Lower,
 }
 
-fn find_first_mismatch<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>) -> Option<(Span, Mutability, Level)> {
+fn find_first_mismatch(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<(Span, Mutability, Level)> {
     let mut result = None;
     pat.walk(|p| {
         if result.is_some() {
