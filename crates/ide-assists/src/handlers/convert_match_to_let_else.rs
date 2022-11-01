@@ -14,6 +14,7 @@ use crate::{
 // Converts let statement with match initializer to let-else statement.
 //
 // ```
+// # //- minicore: option
 // fn foo(opt: Option<()>) {
 //     let val = $0match opt {
 //         Some(it) => it,

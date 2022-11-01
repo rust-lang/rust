@@ -412,6 +412,7 @@ fn doctest_convert_match_to_let_else() {
     check_doc_test(
         "convert_match_to_let_else",
         r#####"
+//- minicore: option
 fn foo(opt: Option<()>) {
     let val = $0match opt {
         Some(it) => it,
