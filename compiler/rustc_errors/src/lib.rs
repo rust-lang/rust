@@ -466,6 +466,7 @@ pub enum StashKey {
     /// When an invalid lifetime e.g. `'2` should be reinterpreted
     /// as a char literal in the parser
     LifetimeIsChar,
+    RangeLit,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}

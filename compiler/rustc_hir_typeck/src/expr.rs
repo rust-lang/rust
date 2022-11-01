@@ -1613,9 +1613,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.demand_coerce_diag(&field.expr, ty, field_type, None, AllowTwoPhase::No);
 
             if let Some(mut diag) = diag {
-                if idx == ast_fields.len() - 1 && remaining_fields.is_empty() {
-                    self.suggest_fru_from_range(field, variant, substs, &mut diag);
+                if idx == ast_fields.len() - 1 {
+                    if remaining_fields.is_empty() {
+                        self.suggest_fru_from_range(field, variant, substs, &mut diag);
+                    } else {
+                        diag.stash(diag.sort_span, StashKey::RangeLit)
+                    }
                 }
+
                 diag.emit();
             }
         }
@@ -1807,7 +1812,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &'tcx ty::VariantDef,
         ast_fields: &'tcx [hir::ExprField<'tcx>],
         substs: SubstsRef<'tcx>,
-    ) {
+    ) -> bool {
         let len = remaining_fields.len();
 
         let mut displayable_field_names: Vec<&str> =
@@ -1844,7 +1849,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_label(span, format!("missing {remaining_fields_names}{truncated_fields_error}"));
 
-        if let Some(last) = ast_fields.last() {
+        if let Some(last) = ast_fields.last() && self.suggest_fru_from_range() {
+            // unstash and cancel
+            let un = self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::RangeLit).unwrap();
+            un.cancel();
             self.suggest_fru_from_range(last, variant, substs, &mut err);
         }
 
