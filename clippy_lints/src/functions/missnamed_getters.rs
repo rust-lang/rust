@@ -28,15 +28,14 @@ pub fn check_fn(
     let name = ident.name.as_str();
 
     let name = match sig.decl.implicit_self {
-        ImplicitSelfKind::ImmRef => name,
         ImplicitSelfKind::MutRef => {
             let Some(name) = name.strip_suffix("_mut") else {
                     return;
                 };
             name
         },
-        ImplicitSelfKind::Imm | ImplicitSelfKind::Mut => name,
-        _ => return,
+        ImplicitSelfKind::Imm | ImplicitSelfKind::Mut | ImplicitSelfKind::ImmRef => name,
+        ImplicitSelfKind::None => return,
     };
 
     // Body must be &(mut) <self_data>.name

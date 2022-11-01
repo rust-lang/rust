@@ -278,16 +278,21 @@ declare_clippy_lint! {
     ///
     /// impl A {
     ///     fn a(&self) -> &str{
-    ///         self.b
+    ///         &self.b
     ///     }
     /// }
     /// // example code where clippy issues a warning
     /// ```
     /// Use instead:
     /// ```rust
+    /// struct A {
+    ///     a: String,
+    ///     b: String,
+    /// }
+    ///
     /// impl A {
     ///     fn a(&self) -> &str{
-    ///         self.a
+    ///         &self.a
     ///     }
     /// }
     /// ```
