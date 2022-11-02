@@ -85,7 +85,7 @@ static_assert_size!(PendingPredicateObligation<'_>, 72);
 
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
-    pub fn new() -> FulfillmentContext<'tcx> {
+    pub(super) fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             relationships: FxHashMap::default(),
@@ -93,7 +93,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
         }
     }
 
-    pub fn new_in_snapshot() -> FulfillmentContext<'tcx> {
+    pub(super) fn new_in_snapshot() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             relationships: FxHashMap::default(),

@@ -3,13 +3,14 @@ pub mod on_unimplemented;
 pub mod suggestions;
 
 use super::{
-    FulfillmentContext, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
-    Obligation, ObligationCause, ObligationCauseCode, OutputTypeParameterMismatch, Overflow,
-    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
+    FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation, ObligationCause,
+    ObligationCauseCode, OutputTypeParameterMismatch, Overflow, PredicateObligation,
+    SelectionContext, SelectionError, TraitNotObjectSafe,
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
+use crate::traits::engine::TraitEngineExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::AtExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
@@ -352,7 +353,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     })
                     .to_predicate(self.tcx),
                 );
-                let mut fulfill_cx = FulfillmentContext::new_in_snapshot();
+                let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new_in_snapshot(self.tcx);
                 fulfill_cx.register_predicate_obligation(self, obligation);
                 if fulfill_cx.select_all_or_error(self).is_empty() {
                     return Ok((
