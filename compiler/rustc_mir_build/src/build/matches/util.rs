@@ -31,10 +31,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place_builder: PlaceBuilder<'tcx>,
         subpatterns: &'pat [FieldPat<'tcx>],
     ) -> Vec<MatchPair<'pat, 'tcx>> {
-        let place_ty = place_builder
-            .try_ty(&self.local_decls, self)
-            .map(|ty| self.tcx.normalize_erasing_regions(self.param_env, ty));
-        debug!(?place_ty);
+        let place_ty_and_variant_idx =
+            place_builder.try_compute_ty(&self.local_decls, self).map(|place_ty| {
+                (
+                    self.tcx.normalize_erasing_regions(self.param_env, place_ty.ty),
+                    place_ty.variant_index,
+                )
+            });
+        debug!(?place_ty_and_variant_idx);
 
         subpatterns
             .iter()
@@ -43,9 +47,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // during borrow-checking on higher-ranked types if we use the
                 // ascribed type as the field type, so we try to get the actual field
                 // type from the `Place`, if possible, see issue #96514
-                let field_ty = if let Some(place_ty) = place_ty {
+                let field_ty = if let Some((place_ty, opt_variant_idx)) = place_ty_and_variant_idx {
                     let field_idx = fieldpat.field.as_usize();
                     let field_ty = match place_ty.kind() {
+                        ty::Adt(adt_def, substs) if adt_def.is_enum() => {
+                            let variant_idx = opt_variant_idx.unwrap();
+                            adt_def.variant(variant_idx).fields[field_idx].ty(self.tcx, substs)
+                        }
                         ty::Adt(adt_def, substs) => {
                             adt_def.all_fields().collect::<Vec<_>>()[field_idx].ty(self.tcx, substs)
                         }

@@ -7,6 +7,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::hir::place::Projection as HirProjection;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
+use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -324,56 +325,35 @@ impl<'tcx> PlaceBuilder<'tcx> {
         }
     }
 
-    pub fn try_ty<D>(&self, local_decls: &D, cx: &Builder<'_, 'tcx>) -> Option<Ty<'tcx>>
+    pub fn try_compute_ty<D>(
+        &self,
+        local_decls: &D,
+        cx: &Builder<'_, 'tcx>,
+    ) -> Option<PlaceTy<'tcx>>
     where
         D: HasLocalDecls<'tcx>,
     {
-        let tcx = cx.tcx;
-
-        let project_ty = |ty: Ty<'tcx>, elem: &PlaceElem<'tcx>| -> Ty<'tcx> {
-            match elem {
-                ProjectionElem::Deref => {
-                    ty.builtin_deref(true)
-                        .unwrap_or_else(|| {
-                            bug!("deref projection of non-dereferenceable ty {:?}", ty)
-                        })
-                        .ty
-                }
-                ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
-                    ty.builtin_index().unwrap()
-                }
-                ProjectionElem::Subslice { from, to, from_end } => match ty.kind() {
-                    ty::Slice(..) => ty,
-                    ty::Array(inner, _) if !from_end => tcx.mk_array(*inner, (to - from) as u64),
-                    ty::Array(inner, size) if *from_end => {
-                        let size = size.eval_usize(tcx, ty::ParamEnv::empty());
-                        let len = size - (*from as u64) - (*to as u64);
-                        tcx.mk_array(*inner, len)
-                    }
-                    _ => bug!("cannot subslice non-array type: `{:?}`", ty),
-                },
-                ProjectionElem::Downcast(..) => ty,
-                ProjectionElem::Field(_, ty) | ProjectionElem::OpaqueCast(ty) => *ty,
-            }
-        };
-
         match self.base {
-            PlaceBase::Local(local) => {
-                let base_ty = local_decls.local_decls()[local].ty;
-                Some(self.projection.iter().fold(base_ty, |ty, &elem| project_ty(ty, &elem)))
-            }
+            PlaceBase::Local(_) => Some(self.clone().into_place(cx).ty(local_decls, cx.tcx)),
             PlaceBase::Upvar { .. } => {
                 match to_upvars_resolved_place_builder(self.clone(), cx) {
                     Ok(resolved_place_builder) => {
                         // `base` is guaranteed to be `PlaceBase::Local` now, so recursive call is ok
-                        resolved_place_builder.try_ty(local_decls, cx)
+                        resolved_place_builder.try_compute_ty(local_decls, cx)
                     }
                     Err(place_builder) => {
                         match &place_builder.projection[..] {
-                            &[ProjectionElem::OpaqueCast(base_ty), ref projections @ ..] => Some(
-                                projections.iter().fold(base_ty, |ty, &elem| project_ty(ty, &elem)),
-                            ),
+                            &[ProjectionElem::OpaqueCast(base_ty), ref projections @ ..] => {
+                                let place_ty = projections
+                                    .iter()
+                                    .fold(PlaceTy::from_ty(base_ty), |place_ty, &elem| {
+                                        place_ty.projection_ty(cx.tcx, elem)
+                                    });
 
+                                debug!(?place_ty);
+
+                                Some(place_ty)
+                            }
                             _ => None, // would need a base `Ty` for these
                         }
                     }

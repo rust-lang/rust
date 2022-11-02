@@ -272,9 +272,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
                     let place_builder = match_pair.place.downcast(adt_def, variant_index);
-                    candidate
-                        .match_pairs
-                        .extend(self.field_match_pairs(place_builder, subpatterns));
+                    let field_match_pairs =
+                        self.field_match_pairs(place_builder.clone(), subpatterns);
+                    candidate.match_pairs.extend(field_match_pairs);
                     Ok(())
                 } else {
                     Err(match_pair)
@@ -294,9 +294,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::Leaf { ref subpatterns } => {
                 // tuple struct, match subpats (if any)
-                candidate
-                    .match_pairs
-                    .extend(self.field_match_pairs_tuple_struct(match_pair.place, subpatterns));
+                candidate.match_pairs.extend(self.field_match_pairs(match_pair.place, subpatterns));
                 Ok(())
             }
 
