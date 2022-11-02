@@ -25,19 +25,19 @@ declare_lint! {
     /// since they inflict a lot of safety requirement. Unfortunately, it's possible
     /// to take a reference to a dereference of a raw pointer implicitly, which inflicts
     /// the usual reference requirements without you even knowing that.
-    /// 
+    ///
     /// If you are sure, you can soundly take a reference, then you can take it explicitly:
     /// ```rust
     /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
     ///     addr_of_mut!((&mut *ptr)[..16])
     /// }
     /// ```
-    /// 
+    ///
     /// Otherwise try to find an alternative way to achive your goals that work only with
     /// raw pointers:
     /// ```rust
     /// #![feature(slice_ptr_get)]
-    /// 
+    ///
     /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
     ///     ptr.get_unchecked_mut(..16)
     /// }
@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitUnsafeAutorefs {
         let typeck = cx.typeck_results();
         let adjustments_table = typeck.adjustments();
 
-        if let Some(adjustments) = adjustments_table.get(expr.hir_id) 
+        if let Some(adjustments) = adjustments_table.get(expr.hir_id)
         && let [adjustment] = &**adjustments
         // An auto-borrow
         && let Adjust::Borrow(AutoBorrow::Ref(_, mutbl)) = adjustment.kind
@@ -64,17 +64,17 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitUnsafeAutorefs {
         && typeck.expr_ty(dereferenced).is_unsafe_ptr()
         {
             let mutbl = hir::Mutability::prefix_str(&mutbl.into());
-            
+
             let msg = "implicit auto-ref creates a reference to a dereference of a raw pointer";
             cx.struct_span_lint(IMPLICIT_UNSAFE_AUTOREFS, expr.span, msg, |lint| {
                 lint
                     .note("creating a reference requires the pointer to be valid and imposes aliasing requirements")
                     .multipart_suggestion(
-                        "try using a raw pointer method instead; or if this reference is intentional, make it explicit", 
+                        "try using a raw pointer method instead; or if this reference is intentional, make it explicit",
                         vec![
                             (expr.span.shrink_to_lo(), format!("(&{mutbl}")),
                             (expr.span.shrink_to_hi(), ")".to_owned())
-                        ], 
+                        ],
                         Applicability::MaybeIncorrect
                     )
             })
