@@ -16,17 +16,11 @@ use std::thread;
 
 use crate::vec::Vec;
 
-struct Canary(*mut atomic::AtomicUsize);
+struct Canary<'a>(&'a atomic::AtomicUsize);
 
-impl Drop for Canary {
+impl Drop for Canary<'_> {
     fn drop(&mut self) {
-        unsafe {
-            match *self {
-                Canary(c) => {
-                    (*c).fetch_add(1, SeqCst);
-                }
-            }
-        }
+        self.0.fetch_add(1, SeqCst);
     }
 }
 
@@ -272,16 +266,16 @@ fn weak_self_cyclic() {
 
 #[test]
 fn drop_arc() {
-    let mut canary = atomic::AtomicUsize::new(0);
-    let x = Arc::new(Canary(&mut canary as *mut atomic::AtomicUsize));
+    let canary = atomic::AtomicUsize::new(0);
+    let x = Arc::new(Canary(&canary));
     drop(x);
     assert!(canary.load(Acquire) == 1);
 }
 
 #[test]
 fn drop_arc_weak() {
-    let mut canary = atomic::AtomicUsize::new(0);
-    let arc = Arc::new(Canary(&mut canary as *mut atomic::AtomicUsize));
+    let canary = atomic::AtomicUsize::new(0);
+    let arc = Arc::new(Canary(&canary));
     let arc_weak = Arc::downgrade(&arc);
     assert!(canary.load(Acquire) == 0);
     drop(arc);
