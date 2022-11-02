@@ -1303,7 +1303,16 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                         ..
                     }) = generics.params.iter_mut().find(|param| &param.name == arg)
                     {
-                        param_bounds.extend(mem::take(bounds));
+                        param_bounds.append(bounds);
+                    } else if let WherePredicate::RegionPredicate { lifetime: Lifetime(arg), bounds } = &mut pred
+                    && let Some(GenericParamDef {
+                        kind: GenericParamDefKind::Lifetime { outlives: param_bounds },
+                        ..
+                    }) = generics.params.iter_mut().find(|param| &param.name == arg) {
+                        param_bounds.extend(bounds.drain(..).map(|bound| match bound {
+                            GenericBound::Outlives(lifetime) => lifetime,
+                            _ => unreachable!(),
+                        }));
                     } else {
                         where_predicates.push(pred);
                     }

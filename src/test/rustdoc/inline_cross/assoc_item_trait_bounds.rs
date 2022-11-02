@@ -38,3 +38,7 @@ extern crate assoc_item_trait_bounds as aux;
 //     F: FnOnce(u32) -> String, \
 //     Self::Out2<()>: Protocol<u8, Q0 = Self::Item, Q1 = ()>"
 pub use aux::Main;
+
+// @has main/trait.Aid.html
+// @has - '//*[@id="associatedtype.Result"]' "type Result<'inter: 'src>"
+pub use aux::Aid;
