@@ -1797,7 +1797,6 @@ in storage.js
 
 	.sidebar-elems {
 		margin-top: 1em;
-		background-color: var(--sidebar-background-color);
 	}
 
 	.content {
