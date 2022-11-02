@@ -12,7 +12,7 @@ pub(crate) mod utils;
 
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -1711,8 +1711,25 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 })
                 .collect();
 
+            let late_bound_regions: FxIndexSet<_> = obj
+                .iter()
+                .flat_map(|pb| pb.bound_vars())
+                .filter_map(|br| match br {
+                    ty::BoundVariableKind::Region(ty::BrNamed(_, name))
+                        if name != kw::UnderscoreLifetime =>
+                    {
+                        Some(GenericParamDef {
+                            name,
+                            kind: GenericParamDefKind::Lifetime { outlives: vec![] },
+                        })
+                    }
+                    _ => None,
+                })
+                .collect();
+            let late_bound_regions = late_bound_regions.into_iter().collect();
+
             let path = external_path(cx, did, false, bindings, substs);
-            bounds.insert(0, PolyTrait { trait_: path, generic_params: Vec::new() });
+            bounds.insert(0, PolyTrait { trait_: path, generic_params: late_bound_regions });
 
             DynTrait(bounds, lifetime)
         }
