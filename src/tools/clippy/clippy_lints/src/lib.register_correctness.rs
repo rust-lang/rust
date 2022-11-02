@@ -59,7 +59,6 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(ptr::INVALID_NULL_PTR_USAGE),
     LintId::of(ptr::MUT_FROM_REF),
     LintId::of(ranges::REVERSED_EMPTY_RANGES),
-    LintId::of(read_zero_byte_vec::READ_ZERO_BYTE_VEC),
     LintId::of(regex::INVALID_REGEX),
     LintId::of(serde_api::SERDE_API_MISUSE),
     LintId::of(size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
