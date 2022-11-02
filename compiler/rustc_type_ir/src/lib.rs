@@ -45,7 +45,7 @@ pub trait Interner {
     type BoundTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type PlaceholderType: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type InferTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type DelaySpanBugEmitted: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type ErrorGuaranteed: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type PredicateKind: Clone + Debug + Hash + PartialEq + Eq;
     type AllocId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
 
