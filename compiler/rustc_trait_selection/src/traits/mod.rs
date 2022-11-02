@@ -390,6 +390,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 }
 
 /// Normalize a type and process all resulting obligations, returning any errors
+#[instrument(skip_all)]
 pub fn fully_normalize<'tcx, T>(
     infcx: &InferCtxt<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -399,28 +400,18 @@ pub fn fully_normalize<'tcx, T>(
 where
     T: TypeFoldable<'tcx>,
 {
-    debug!("fully_normalize_with_fulfillcx(value={:?})", value);
-    let selcx = &mut SelectionContext::new(infcx);
-    let Normalized { value: normalized_value, obligations } =
-        project::normalize(selcx, param_env, cause, value);
-    debug!(
-        "fully_normalize: normalized_value={:?} obligations={:?}",
-        normalized_value, obligations
-    );
-
-    let mut fulfill_cx = FulfillmentContext::new();
-    for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(infcx, obligation);
-    }
-
-    debug!("fully_normalize: select_all_or_error start");
-    let errors = fulfill_cx.select_all_or_error(infcx);
+    let ocx = ObligationCtxt::new(infcx);
+    debug!(?value);
+    let normalized_value = ocx.normalize(cause, param_env, value);
+    debug!(?normalized_value);
+    debug!("select_all_or_error start");
+    let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
         return Err(errors);
     }
-    debug!("fully_normalize: select_all_or_error complete");
+    debug!("select_all_or_error complete");
     let resolved_value = infcx.resolve_vars_if_possible(normalized_value);
-    debug!("fully_normalize: resolved_value={:?}", resolved_value);
+    debug!(?resolved_value);
     Ok(resolved_value)
 }
 
