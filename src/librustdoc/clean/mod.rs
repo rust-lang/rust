@@ -957,12 +957,14 @@ fn clean_args_from_types_and_names<'tcx>(
         values: types
             .iter()
             .enumerate()
-            .map(|(i, ty)| {
-                let mut name = names.get(i).map_or(kw::Empty, |ident| ident.name);
-                if name.is_empty() {
-                    name = kw::Underscore;
-                }
-                Argument { name, type_: clean_ty(ty, cx), is_const: false }
+            .map(|(i, ty)| Argument {
+                type_: clean_ty(ty, cx),
+                name: names
+                    .get(i)
+                    .map(|ident| ident.name)
+                    .filter(|ident| !ident.is_empty())
+                    .unwrap_or(kw::Underscore),
+                is_const: false,
             })
             .collect(),
     }
@@ -1024,7 +1026,11 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
                 .iter()
                 .map(|t| Argument {
                     type_: clean_middle_ty(*t, cx, None),
-                    name: names.next().map_or(kw::Empty, |i| i.name),
+                    name: names
+                        .next()
+                        .map(|i| i.name)
+                        .filter(|i| !i.is_empty())
+                        .unwrap_or(kw::Underscore),
                     is_const: false,
                 })
                 .collect(),
