@@ -500,6 +500,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     GenericParamDefKind::Const { has_default } => {
                         let ty = tcx.at(self.span).type_of(param.def_id);
+                        if ty.references_error() {
+                            return tcx.const_error(ty).into();
+                        }
                         if !infer_args && has_default {
                             tcx.bound_const_param_default(param.def_id)
                                 .subst(tcx, substs.unwrap())
