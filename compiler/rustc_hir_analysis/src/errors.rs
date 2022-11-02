@@ -120,7 +120,7 @@ pub struct TypeofReservedKeywordUsed<'tcx> {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[suggestion_verbose(code = "{ty}")]
+    #[suggestion(style = "verbose", code = "{ty}")]
     pub opt_sugg: Option<(Span, Applicability)>,
 }
 
@@ -239,7 +239,11 @@ pub struct UnusedExternCrate {
 #[derive(LintDiagnostic)]
 #[diag(hir_analysis_extern_crate_not_idiomatic)]
 pub struct ExternCrateNotIdiomatic {
-    #[suggestion_short(applicability = "machine-applicable", code = "{suggestion_code}")]
+    #[suggestion(
+        style = "short",
+        applicability = "machine-applicable",
+        code = "{suggestion_code}"
+    )]
     pub span: Span,
     pub msg_code: String,
     pub suggestion_code: String,

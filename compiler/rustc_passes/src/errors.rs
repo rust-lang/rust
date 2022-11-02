@@ -291,7 +291,7 @@ pub struct DocTestUnknownAny {
 #[note(no_op_note)]
 pub struct DocTestUnknownSpotlight {
     pub path: String,
-    #[suggestion_short(applicability = "machine-applicable", code = "notable_trait")]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "notable_trait")]
     pub span: Span,
 }
 
