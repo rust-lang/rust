@@ -893,7 +893,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is [`core::mem::align_of`].
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
     #[cfg_attr(not(bootstrap), rustc_safe_intrinsic)]
-    pub fn min_align_of<T>() -> usize;
+    pub fn min_align_of<T: ?Sized>() -> usize;
     /// The preferred alignment of a type.
     ///
     /// This intrinsic does not have a stable counterpart.
