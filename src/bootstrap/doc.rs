@@ -420,6 +420,7 @@ impl Step for SharedAssets {
 pub struct Std {
     pub stage: u32,
     pub target: TargetSelection,
+    pub format: DocumentationFormat,
 }
 
 impl Step for Std {
@@ -432,7 +433,15 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Std { stage: run.builder.top_stage, target: run.target });
+        run.builder.ensure(Std {
+            stage: run.builder.top_stage,
+            target: run.target,
+            format: if run.builder.config.cmd.json() {
+                DocumentationFormat::JSON
+            } else {
+                DocumentationFormat::HTML
+            },
+        });
     }
 
     /// Compile all standard library documentation.
@@ -448,13 +457,16 @@ impl Step for Std {
         builder.ensure(SharedAssets { target: self.target });
 
         let index_page = builder.src.join("src/doc/index.md").into_os_string();
-        let mut extra_args = vec![
-            OsStr::new("--markdown-css"),
-            OsStr::new("rust.css"),
-            OsStr::new("--markdown-no-toc"),
-            OsStr::new("--index-page"),
-            &index_page,
-        ];
+        let mut extra_args = match self.format {
+            DocumentationFormat::HTML => vec![
+                OsStr::new("--markdown-css"),
+                OsStr::new("rust.css"),
+                OsStr::new("--markdown-no-toc"),
+                OsStr::new("--index-page"),
+                &index_page,
+            ],
+            DocumentationFormat::JSON => vec![OsStr::new("--output-format"), OsStr::new("json")],
+        };
 
         if !builder.config.docs_minification {
             extra_args.push(OsStr::new("--disable-minification"));
@@ -478,15 +490,7 @@ impl Step for Std {
             })
             .collect::<Vec<_>>();
 
-        doc_std(
-            builder,
-            DocumentationFormat::HTML,
-            stage,
-            target,
-            &out,
-            &extra_args,
-            &requested_crates,
-        );
+        doc_std(builder, self.format, stage, target, &out, &extra_args, &requested_crates);
 
         // Look for library/std, library/core etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
@@ -496,43 +500,6 @@ impl Step for Std {
                 builder.open_in_browser(index);
             }
         }
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct JsonStd {
-    pub stage: u32,
-    pub target: TargetSelection,
-}
-
-impl Step for JsonStd {
-    type Output = ();
-    const DEFAULT: bool = false;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        if run.builder.config.cmd.json() {
-            let default = run.builder.config.docs && run.builder.config.cmd.json();
-            run.all_krates("test").path("library").default_condition(default)
-        } else {
-            // Without this JsonStd would take priority on Std and prevent it from running.
-            run.never()
-        }
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(JsonStd { stage: run.builder.top_stage, target: run.target });
-    }
-
-    /// Build JSON documentation for the standard library crates.
-    ///
-    /// This is largely just a wrapper around `cargo doc`.
-    fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
-        let target = self.target;
-        let out = builder.json_doc_out(target);
-        t!(fs::create_dir_all(&out));
-        let extra_args = [OsStr::new("--output-format"), OsStr::new("json")];
-        doc_std(builder, DocumentationFormat::JSON, stage, target, &out, &extra_args, &[])
     }
 }
 
@@ -548,7 +515,7 @@ impl Step for JsonStd {
 const STD_PUBLIC_CRATES: [&str; 5] = ["core", "alloc", "std", "proc_macro", "test"];
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-enum DocumentationFormat {
+pub enum DocumentationFormat {
     HTML,
     JSON,
 }
