@@ -83,8 +83,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!(?bound_sig, ?liberated_sig);
 
-        let return_type_pre_known = !liberated_sig.output().is_ty_infer();
-
         let generator_types = check_fn(
             self,
             self.param_env.without_const(),
@@ -93,7 +91,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr.hir_id,
             body,
             gen,
-            return_type_pre_known,
         )
         .1;
 
