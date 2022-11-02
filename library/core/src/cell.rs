@@ -807,7 +807,8 @@ impl<T> RefCell<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently borrowed, or
+    /// if `self` and `other` point to the same `RefCell`.
     ///
     /// # Examples
     ///
@@ -1193,7 +1194,7 @@ impl<T: Default> Default for RefCell<T> {
 impl<T: ?Sized + PartialEq> PartialEq for RefCell<T> {
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn eq(&self, other: &RefCell<T>) -> bool {
         *self.borrow() == *other.borrow()
@@ -1207,7 +1208,7 @@ impl<T: ?Sized + Eq> Eq for RefCell<T> {}
 impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn partial_cmp(&self, other: &RefCell<T>) -> Option<Ordering> {
         self.borrow().partial_cmp(&*other.borrow())
@@ -1215,7 +1216,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn lt(&self, other: &RefCell<T>) -> bool {
         *self.borrow() < *other.borrow()
@@ -1223,7 +1224,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn le(&self, other: &RefCell<T>) -> bool {
         *self.borrow() <= *other.borrow()
@@ -1231,7 +1232,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn gt(&self, other: &RefCell<T>) -> bool {
         *self.borrow() > *other.borrow()
@@ -1239,7 +1240,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn ge(&self, other: &RefCell<T>) -> bool {
         *self.borrow() >= *other.borrow()
@@ -1250,7 +1251,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 impl<T: ?Sized + Ord> Ord for RefCell<T> {
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn cmp(&self, other: &RefCell<T>) -> Ordering {
         self.borrow().cmp(&*other.borrow())
