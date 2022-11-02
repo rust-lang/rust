@@ -33,7 +33,7 @@ extern crate assoc_item_trait_bounds as aux;
 // @snapshot out9 - '//*[@id="associatedtype.Out9"]/*[@class="code-header"]'
 //
 // @has - '//*[@id="tymethod.make"]' \
-// "fn make<F>(F, impl FnMut(&str) -> bool)\
+// "fn make<F>(_: F, _: impl FnMut(&str) -> bool)\
 // where \
 //     F: FnOnce(u32) -> String, \
 //     Self::Out2<()>: Protocol<u8, Q0 = Self::Item, Q1 = ()>"
