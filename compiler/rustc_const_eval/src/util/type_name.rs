@@ -73,18 +73,10 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 
     fn print_dyn_existential(
-        mut self,
+        self,
         predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
-        let mut first = true;
-        for p in predicates {
-            if !first {
-                write!(self, "+")?;
-            }
-            first = false;
-            self = p.print(self)?;
-        }
-        Ok(self)
+        self.pretty_print_dyn_existential(predicates)
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
