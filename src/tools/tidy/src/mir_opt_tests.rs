@@ -1,9 +1,9 @@
-//! Tidy check to ensure that mir opt directories do not have stale files.
+//! Tidy check to ensure that mir opt directories do not have stale files or dashes in file names
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-pub fn check(path: &Path, bad: &mut bool) {
+fn check_unused_files(path: &Path, bad: &mut bool) {
     let mut rs_files = Vec::<PathBuf>::new();
     let mut output_files = HashSet::<PathBuf>::new();
     let files = walkdir::WalkDir::new(&path.join("test/mir-opt")).into_iter();
@@ -34,4 +34,37 @@ pub fn check(path: &Path, bad: &mut bool) {
             );
         }
     }
+}
+
+fn check_dash_files(path: &Path, bless: bool, bad: &mut bool) {
+    for file in walkdir::WalkDir::new(&path.join("test/mir-opt"))
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| e.file_type().is_file())
+    {
+        let path = file.path();
+        if path.extension() == Some("rs".as_ref()) {
+            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                if name.contains('-') {
+                    if !bless {
+                        tidy_error!(
+                            bad,
+                            "mir-opt test files should not have dashes in them: {}",
+                            path.display()
+                        );
+                    } else {
+                        let new_name = name.replace('-', "_");
+                        let mut new_path = path.to_owned();
+                        new_path.set_file_name(new_name);
+                        let _ = std::fs::rename(path, new_path);
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn check(path: &Path, bless: bool, bad: &mut bool) {
+    check_unused_files(path, bad);
+    check_dash_files(path, bless, bad);
 }
