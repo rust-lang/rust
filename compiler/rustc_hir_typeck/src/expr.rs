@@ -840,7 +840,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_expr_ty,
         );
 
-        if self.return_type_has_opaque {
+        if let Some(fn_sig) = self.body_fn_sig()
+            && fn_sig.output().has_opaque_types()
+        {
             // Point any obligations that were registered due to opaque type
             // inference at the return expression.
             self.select_obligations_where_possible(false, |errors| {
