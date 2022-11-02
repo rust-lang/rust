@@ -364,12 +364,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let arm_block = this.bind_pattern(
                         outer_source_info,
                         candidate,
-                        arm.guard.as_ref(),
                         &fake_borrow_temps,
                         scrutinee_span,
-                        Some(arm.span),
-                        Some(arm.scope),
-                        Some(match_scope),
+                        Some((arm, match_scope)),
                         false,
                     );
 
@@ -410,12 +407,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         outer_source_info: SourceInfo,
         candidate: Candidate<'_, 'tcx>,
-        guard: Option<&Guard<'tcx>>,
         fake_borrow_temps: &[(Place<'tcx>, Local)],
         scrutinee_span: Span,
-        arm_span: Option<Span>,
-        arm_scope: Option<region::Scope>,
-        match_scope: Option<region::Scope>,
+        arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
         storages_alive: bool,
     ) -> BasicBlock {
         if candidate.subcandidates.is_empty() {
@@ -424,11 +418,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.bind_and_guard_matched_candidate(
                 candidate,
                 &[],
-                guard,
                 fake_borrow_temps,
                 scrutinee_span,
-                arm_span,
-                match_scope,
+                arm_match_scope,
                 true,
                 storages_alive,
             )
@@ -449,6 +441,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // we lower the guard.
             let target_block = self.cfg.start_new_block();
             let mut schedule_drops = true;
+            let arm = arm_match_scope.unzip().0;
             // We keep a stack of all of the bindings and type ascriptions
             // from the parent candidates that we visit, that also need to
             // be bound for each candidate.
@@ -456,21 +449,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate,
                 &mut Vec::new(),
                 &mut |leaf_candidate, parent_bindings| {
-                    if let Some(arm_scope) = arm_scope {
-                        self.clear_top_scope(arm_scope);
+                    if let Some(arm) = arm {
+                        self.clear_top_scope(arm.scope);
                     }
                     let binding_end = self.bind_and_guard_matched_candidate(
                         leaf_candidate,
                         parent_bindings,
-                        guard,
                         &fake_borrow_temps,
                         scrutinee_span,
-                        arm_span,
-                        match_scope,
+                        arm_match_scope,
                         schedule_drops,
                         storages_alive,
                     );
-                    if arm_scope.is_none() {
+                    if arm.is_none() {
                         schedule_drops = false;
                     }
                     self.cfg.goto(binding_end, outer_source_info, target_block);
@@ -636,11 +627,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.bind_pattern(
             self.source_info(irrefutable_pat.span),
             candidate,
-            None,
             &fake_borrow_temps,
             irrefutable_pat.span,
-            None,
-            None,
             None,
             false,
         )
@@ -1820,11 +1808,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let post_guard_block = self.bind_pattern(
             self.source_info(pat.span),
             guard_candidate,
-            None,
             &fake_borrow_temps,
             expr.span,
-            None,
-            None,
             None,
             false,
         );
@@ -1844,11 +1829,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         parent_bindings: &[(Vec<Binding<'tcx>>, Vec<Ascription<'tcx>>)],
-        guard: Option<&Guard<'tcx>>,
         fake_borrows: &[(Place<'tcx>, Local)],
         scrutinee_span: Span,
-        arm_span: Option<Span>,
-        match_scope: Option<region::Scope>,
+        arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
         schedule_drops: bool,
         storages_alive: bool,
     ) -> BasicBlock {
@@ -1960,7 +1943,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //      the reference that we create for the arm.
         //    * So we eagerly create the reference for the arm and then take a
         //      reference to that.
-        if let Some(guard) = guard {
+        if let Some((arm, match_scope)) = arm_match_scope
+            && let Some(guard) = &arm.guard
+        {
             let tcx = self.tcx;
             let bindings = parent_bindings
                 .iter()
@@ -1981,8 +1966,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
-            let arm_span = arm_span.unwrap();
-            let match_scope = match_scope.unwrap();
             let mut guard_span = rustc_span::DUMMY_SP;
 
             let (post_guard_block, otherwise_post_guard_block) =
@@ -1995,13 +1978,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             e,
                             None,
                             match_scope,
-                            this.source_info(arm_span),
+                            this.source_info(arm.span),
                         )
                     }
                     Guard::IfLet(ref pat, scrutinee) => {
                         let s = &this.thir[scrutinee];
                         guard_span = s.span;
-                        this.lower_let_expr(block, s, pat, match_scope, None, arm_span)
+                        this.lower_let_expr(block, s, pat, match_scope, None, arm.span)
                     }
                 });
 
@@ -2317,11 +2300,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let matching = this.bind_pattern(
                 this.source_info(pattern.span),
                 candidate,
-                None,
                 &fake_borrow_temps,
                 initializer_span,
-                None,
-                None,
                 None,
                 true,
             );
@@ -2329,11 +2309,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let failure = this.bind_pattern(
                 this.source_info(else_block_span),
                 wildcard,
-                None,
                 &fake_borrow_temps,
                 initializer_span,
-                None,
-                None,
                 None,
                 true,
             );
