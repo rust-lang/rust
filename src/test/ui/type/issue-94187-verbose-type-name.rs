@@ -12,8 +12,5 @@ fn main() {
     struct Wrapper<const VALUE: usize>;
     assert_eq!(type_name::<Wrapper<0>>(), "issue_94187_verbose_type_name::main::Wrapper<0>");
 
-    assert_eq!(
-        type_name::<dyn Fn(u32) -> u32>(),
-        "dyn core::ops::function::Fn<(u32,)>+Output = u32"
-    );
+    assert_eq!(type_name::<dyn Fn(u32) -> u32>(), "dyn core::ops::function::Fn(u32) -> u32");
 }
