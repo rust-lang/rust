@@ -1683,6 +1683,9 @@ pub(crate) fn clean_middle_ty<'tcx>(
 
             inline::record_extern_fqn(cx, did, ItemType::Trait);
 
+            // FIXME(fmease): Hide the trait-object lifetime bound if it coincides with its default
+            // to partially address #44306. Follow the rules outlined at
+            // https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
             let lifetime = clean_middle_region(*reg);
             let mut bounds = dids
                 .map(|did| {
