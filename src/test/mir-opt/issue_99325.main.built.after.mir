@@ -1,18 +1,18 @@
 // MIR for `main` after built
 
 | User Type Annotations
-| 0: user_ty: Canonical { max_universe: U0, variables: [], value: TypeOf(DefId(0:3 ~ issue_99325[8f58]::function_with_bytes), UserSubsts { substs: [Const { ty: &'static [u8; 4], kind: Value(Branch([Leaf(0x41), Leaf(0x41), Leaf(0x41), Leaf(0x41)])) }], user_self_ty: None }) }, span: $DIR/issue-99325.rs:10:16: 10:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
-| 1: user_ty: Canonical { max_universe: U0, variables: [], value: TypeOf(DefId(0:3 ~ issue_99325[8f58]::function_with_bytes), UserSubsts { substs: [Const { ty: &'static [u8; 4], kind: Unevaluated(UnevaluatedConst { def: WithOptConstParam { did: DefId(0:8 ~ issue_99325[8f58]::main::{constant#1}), const_param_did: Some(DefId(0:4 ~ issue_99325[8f58]::function_with_bytes::BYTES)) }, substs: [] }) }], user_self_ty: None }) }, span: $DIR/issue-99325.rs:11:16: 11:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 0: user_ty: Canonical { max_universe: U0, variables: [], value: TypeOf(DefId(0:3 ~ issue_99325[8f58]::function_with_bytes), UserSubsts { substs: [Const { ty: &'static [u8; 4], kind: Value(Branch([Leaf(0x41), Leaf(0x41), Leaf(0x41), Leaf(0x41)])) }], user_self_ty: None }) }, span: $DIR/issue_99325.rs:10:16: 10:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 1: user_ty: Canonical { max_universe: U0, variables: [], value: TypeOf(DefId(0:3 ~ issue_99325[8f58]::function_with_bytes), UserSubsts { substs: [Const { ty: &'static [u8; 4], kind: Unevaluated(UnevaluatedConst { def: WithOptConstParam { did: DefId(0:8 ~ issue_99325[8f58]::main::{constant#1}), const_param_did: Some(DefId(0:4 ~ issue_99325[8f58]::function_with_bytes::BYTES)) }, substs: [] }) }], user_self_ty: None }) }, span: $DIR/issue_99325.rs:11:16: 11:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
 |
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/issue-99325.rs:+0:15: +0:15
+    let mut _0: ();                      // return place in scope 0 at $DIR/issue_99325.rs:+0:15: +0:15
     let _1: ();                          // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _2: (&&[u8], &&[u8; 4]);     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _3: &&[u8];                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _4: &[u8];                       // in scope 0 at $DIR/issue-99325.rs:+1:16: +1:48
+    let _4: &[u8];                       // in scope 0 at $DIR/issue_99325.rs:+1:16: +1:48
     let mut _5: &&[u8; 4];               // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _6: &[u8; 4];                    // in scope 0 at $DIR/issue-99325.rs:+1:50: +1:75
-    let _7: [u8; 4];                     // in scope 0 at $DIR/issue-99325.rs:+1:51: +1:75
+    let _6: &[u8; 4];                    // in scope 0 at $DIR/issue_99325.rs:+1:50: +1:75
+    let _7: [u8; 4];                     // in scope 0 at $DIR/issue_99325.rs:+1:51: +1:75
     let _8: &&[u8];                      // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let _9: &&[u8; 4];                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _10: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -30,9 +30,9 @@ fn main() -> () {
     let _23: ();                         // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _24: (&&[u8], &&[u8; 4]);    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _25: &&[u8];                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _26: &[u8];                      // in scope 0 at $DIR/issue-99325.rs:+2:16: +2:70
+    let _26: &[u8];                      // in scope 0 at $DIR/issue_99325.rs:+2:16: +2:70
     let mut _27: &&[u8; 4];              // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _28: &[u8; 4];                   // in scope 0 at $DIR/issue-99325.rs:+2:72: +2:79
+    let _28: &[u8; 4];                   // in scope 0 at $DIR/issue_99325.rs:+2:72: +2:79
     let _29: &&[u8];                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let _30: &&[u8; 4];                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _31: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -68,10 +68,10 @@ fn main() -> () {
         StorageLive(_1);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_2);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_3);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_4);                 // scope 0 at $DIR/issue-99325.rs:+1:16: +1:48
-        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb19]; // scope 0 at $DIR/issue-99325.rs:+1:16: +1:48
+        StorageLive(_4);                 // scope 0 at $DIR/issue_99325.rs:+1:16: +1:48
+        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb19]; // scope 0 at $DIR/issue_99325.rs:+1:16: +1:48
                                          // mir::Constant
-                                         // + span: $DIR/issue-99325.rs:10:16: 10:46
+                                         // + span: $DIR/issue_99325.rs:10:16: 10:46
                                          // + user_ty: UserType(0)
                                          // + literal: Const { ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}, val: Value(<ZST>) }
     }
@@ -79,10 +79,10 @@ fn main() -> () {
     bb1: {
         _3 = &_4;                        // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_5);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_6);                 // scope 0 at $DIR/issue-99325.rs:+1:50: +1:75
-        StorageLive(_7);                 // scope 0 at $DIR/issue-99325.rs:+1:51: +1:75
-        _7 = [const 65_u8, const 65_u8, const 65_u8, const 65_u8]; // scope 0 at $DIR/issue-99325.rs:+1:51: +1:75
-        _6 = &_7;                        // scope 0 at $DIR/issue-99325.rs:+1:50: +1:75
+        StorageLive(_6);                 // scope 0 at $DIR/issue_99325.rs:+1:50: +1:75
+        StorageLive(_7);                 // scope 0 at $DIR/issue_99325.rs:+1:51: +1:75
+        _7 = [const 65_u8, const 65_u8, const 65_u8, const 65_u8]; // scope 0 at $DIR/issue_99325.rs:+1:51: +1:75
+        _6 = &_7;                        // scope 0 at $DIR/issue_99325.rs:+1:50: +1:75
         _5 = &_6;                        // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _2 = (move _3, move _5);         // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_5);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -176,10 +176,10 @@ fn main() -> () {
         StorageLive(_23);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_24);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_25);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_26);                // scope 0 at $DIR/issue-99325.rs:+2:16: +2:70
-        _26 = function_with_bytes::<&*b"AAAA">() -> [return: bb10, unwind: bb19]; // scope 0 at $DIR/issue-99325.rs:+2:16: +2:70
+        StorageLive(_26);                // scope 0 at $DIR/issue_99325.rs:+2:16: +2:70
+        _26 = function_with_bytes::<&*b"AAAA">() -> [return: bb10, unwind: bb19]; // scope 0 at $DIR/issue_99325.rs:+2:16: +2:70
                                          // mir::Constant
-                                         // + span: $DIR/issue-99325.rs:11:16: 11:68
+                                         // + span: $DIR/issue_99325.rs:11:16: 11:68
                                          // + user_ty: UserType(1)
                                          // + literal: Const { ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}, val: Value(<ZST>) }
     }
@@ -187,10 +187,10 @@ fn main() -> () {
     bb10: {
         _25 = &_26;                      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_27);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_28);                // scope 0 at $DIR/issue-99325.rs:+2:72: +2:79
-        _28 = const b"AAAA";             // scope 0 at $DIR/issue-99325.rs:+2:72: +2:79
+        StorageLive(_28);                // scope 0 at $DIR/issue_99325.rs:+2:72: +2:79
+        _28 = const b"AAAA";             // scope 0 at $DIR/issue_99325.rs:+2:72: +2:79
                                          // mir::Constant
-                                         // + span: $DIR/issue-99325.rs:11:72: 11:79
+                                         // + span: $DIR/issue_99325.rs:11:72: 11:79
                                          // + literal: Const { ty: &[u8; 4], val: Value(Scalar(alloc4)) }
         _27 = &_28;                      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _24 = (move _25, move _27);      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -281,12 +281,12 @@ fn main() -> () {
         StorageDead(_26);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_24);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_23);                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _0 = const ();                   // scope 0 at $DIR/issue-99325.rs:+0:15: +3:2
-        return;                          // scope 0 at $DIR/issue-99325.rs:+3:2: +3:2
+        _0 = const ();                   // scope 0 at $DIR/issue_99325.rs:+0:15: +3:2
+        return;                          // scope 0 at $DIR/issue_99325.rs:+3:2: +3:2
     }
 
     bb19 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue-99325.rs:+0:1: +3:2
+        resume;                          // scope 0 at $DIR/issue_99325.rs:+0:1: +3:2
     }
 }
 
