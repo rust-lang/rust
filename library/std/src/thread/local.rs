@@ -1029,8 +1029,8 @@ pub mod fast {
         // causes future calls to `get` to run `try_initialize_drop` again,
         // which will now fail, and return `None`.
         unsafe {
-            let value = (*ptr).inner.take();
-            (*ptr).dtor_state.set(DtorState::RunningOrHasRun);
+            let value = (&mut (*ptr).inner).take();
+            (&(*ptr).dtor_state).set(DtorState::RunningOrHasRun);
             drop(value);
         }
     }

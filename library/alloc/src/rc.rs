@@ -457,9 +457,9 @@ impl<T> Rc<T> {
             let inner = init_ptr.as_ptr();
             ptr::write(ptr::addr_of_mut!((*inner).value), data);
 
-            let prev_value = (*inner).strong.get();
+            let prev_value = (&(*inner).strong).get();
             debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
-            (*inner).strong.set(1);
+            (&mut (*inner).strong).set(1);
 
             Rc::from_inner(init_ptr)
         };

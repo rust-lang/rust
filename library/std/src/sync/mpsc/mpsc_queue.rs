@@ -70,7 +70,7 @@ impl<T> Queue<T> {
         unsafe {
             let n = Node::new(Some(t));
             let prev = self.head.swap(n, Ordering::AcqRel);
-            (*prev).next.store(n, Ordering::Release);
+            (&(*prev).next).store(n, Ordering::Release);
         }
     }
 
@@ -87,13 +87,13 @@ impl<T> Queue<T> {
     pub fn pop(&self) -> PopResult<T> {
         unsafe {
             let tail = *self.tail.get();
-            let next = (*tail).next.load(Ordering::Acquire);
+            let next = (&(*tail).next).load(Ordering::Acquire);
 
             if !next.is_null() {
                 *self.tail.get() = next;
-                assert!((*tail).value.is_none());
-                assert!((*next).value.is_some());
-                let ret = (*next).value.take().unwrap();
+                assert!((&(*tail).value).is_none());
+                assert!((&(*next).value).is_some());
+                let ret = (&mut (*next).value).take().unwrap();
                 let _: Box<Node<T>> = Box::from_raw(tail);
                 return Data(ret);
             }
@@ -108,7 +108,7 @@ impl<T> Drop for Queue<T> {
         unsafe {
             let mut cur = *self.tail.get();
             while !cur.is_null() {
-                let next = (*cur).next.load(Ordering::Relaxed);
+                let next = (&(*cur).next).load(Ordering::Relaxed);
                 let _: Box<Node<T>> = Box::from_raw(cur);
                 cur = next;
             }

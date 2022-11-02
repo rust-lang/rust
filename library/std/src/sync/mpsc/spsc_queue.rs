@@ -102,7 +102,7 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
     ) -> Self {
         let n1 = Node::new();
         let n2 = Node::new();
-        (*n1).next.store(n2, Ordering::Relaxed);
+        (&(*n1).next).store(n2, Ordering::Relaxed);
         Queue {
             consumer: CacheAligned::new(Consumer {
                 tail: UnsafeCell::new(n2),
@@ -127,10 +127,10 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
             // Acquire a node (which either uses a cached one or allocates a new
             // one), and then append this to the 'head' node.
             let n = self.alloc();
-            assert!((*n).value.is_none());
+            assert!((&(*n).value).is_none());
             (*n).value = Some(t);
-            (*n).next.store(ptr::null_mut(), Ordering::Relaxed);
-            (**self.producer.head.get()).next.store(n, Ordering::Release);
+            (&(*n).next).store(ptr::null_mut(), Ordering::Relaxed);
+            (&(**self.producer.head.get()).next).store(n, Ordering::Release);
             *(&self.producer.head).get() = n;
         }
     }
@@ -139,7 +139,7 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
         // First try to see if we can consume the 'first' node for our uses.
         if *self.producer.first.get() != *self.producer.tail_copy.get() {
             let ret = *self.producer.first.get();
-            *self.producer.0.first.get() = (*ret).next.load(Ordering::Relaxed);
+            *self.producer.0.first.get() = (&(*ret).next).load(Ordering::Relaxed);
             return ret;
         }
         // If the above fails, then update our copy of the tail and try
@@ -147,7 +147,7 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
         *self.producer.0.tail_copy.get() = self.consumer.tail_prev.load(Ordering::Acquire);
         if *self.producer.first.get() != *self.producer.tail_copy.get() {
             let ret = *self.producer.first.get();
-            *self.producer.0.first.get() = (*ret).next.load(Ordering::Relaxed);
+            *self.producer.0.first.get() = (&(*ret).next).load(Ordering::Relaxed);
             return ret;
         }
         // If all of that fails, then we have to allocate a new node
@@ -164,12 +164,12 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
             // tail's next field and see if we can use it. If we do a pop, then
             // the current tail node is a candidate for going into the cache.
             let tail = *self.consumer.tail.get();
-            let next = (*tail).next.load(Ordering::Acquire);
+            let next = (&(*tail).next).load(Ordering::Acquire);
             if next.is_null() {
                 return None;
             }
-            assert!((*next).value.is_some());
-            let ret = (*next).value.take();
+            assert!((&(*next).value).is_some());
+            let ret = (&mut (*next).value).take();
 
             *self.consumer.0.tail.get() = next;
             if self.consumer.cache_bound == 0 {
@@ -184,8 +184,7 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
                 if (*tail).cached {
                     self.consumer.tail_prev.store(tail, Ordering::Release);
                 } else {
-                    (*self.consumer.tail_prev.load(Ordering::Relaxed))
-                        .next
+                    (&(*self.consumer.tail_prev.load(Ordering::Relaxed)).next)
                         .store(next, Ordering::Relaxed);
                     // We have successfully erased all references to 'tail', so
                     // now we can safely drop it.
@@ -208,8 +207,8 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
         // stripped out.
         unsafe {
             let tail = *self.consumer.tail.get();
-            let next = (*tail).next.load(Ordering::Acquire);
-            if next.is_null() { None } else { (*next).value.as_mut() }
+            let next = (&(*tail).next).load(Ordering::Acquire);
+            if next.is_null() { None } else { (&mut (*next).value).as_mut() }
         }
     }
 
@@ -227,7 +226,7 @@ impl<T, ProducerAddition, ConsumerAddition> Drop for Queue<T, ProducerAddition, 
         unsafe {
             let mut cur = *self.producer.first.get();
             while !cur.is_null() {
-                let next = (*cur).next.load(Ordering::Relaxed);
+                let next = (&(*cur).next).load(Ordering::Relaxed);
                 let _n: Box<Node<T>> = Box::from_raw(cur);
                 cur = next;
             }

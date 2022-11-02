@@ -489,7 +489,7 @@ impl Queue {
         }
         unsafe {
             (*node).next = ptr::null_mut();
-            Some((*node).token.take().unwrap())
+            Some((&mut (*node).token).take().unwrap())
         }
     }
 }

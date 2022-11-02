@@ -544,7 +544,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     fn set_parent_link(&mut self, parent: NonNull<InternalNode<K, V>>, parent_idx: usize) {
         let leaf = Self::as_leaf_ptr(self);
         unsafe { (*leaf).parent = Some(parent) };
-        unsafe { (*leaf).parent_idx.write(parent_idx as u16) };
+        unsafe { (*leaf).parent_idx = MaybeUninit::new(parent_idx as u16) };
     }
 }
 
