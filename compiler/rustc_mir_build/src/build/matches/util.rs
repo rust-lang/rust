@@ -54,10 +54,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             let variant_idx = opt_variant_idx.unwrap();
                             adt_def.variant(variant_idx).fields[field_idx].ty(self.tcx, substs)
                         }
-                        ty::Adt(adt_def, substs) => {
-                            adt_def.all_fields().collect::<Vec<_>>()[field_idx].ty(self.tcx, substs)
-                        }
-                        ty::Tuple(elems) => elems.to_vec()[field_idx],
+                        ty::Adt(adt_def, substs) => adt_def
+                            .all_fields()
+                            .nth(field_idx)
+                            .unwrap_or_else(|| {
+                                bug!(
+                                    "expected to take field idx {:?} of fields of {:?}",
+                                    field_idx,
+                                    adt_def
+                                )
+                            })
+                            .ty(self.tcx, substs),
+                        ty::Tuple(elems) => elems.iter().nth(field_idx).unwrap_or_else(|| {
+                            bug!("expected to take field idx {:?} of {:?}", field_idx, elems)
+                        }),
                         _ => bug!(
                             "no field available, place_ty: {:#?}, kind: {:?}",
                             place_ty,

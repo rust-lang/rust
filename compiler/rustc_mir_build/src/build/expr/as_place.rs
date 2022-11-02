@@ -325,6 +325,13 @@ impl<'tcx> PlaceBuilder<'tcx> {
         }
     }
 
+    /// Similar to `Place::ty` but needed during mir building.
+    ///
+    /// Applies the projections in the `PlaceBuilder` to the base
+    /// type.
+    ///
+    /// Fallible as the root of this place may be an upvar for
+    /// which no base type can be determined.
     pub fn try_compute_ty<D>(
         &self,
         local_decls: &D,
