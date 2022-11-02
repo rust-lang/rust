@@ -245,10 +245,7 @@ fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<c
 
     let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
         ty::BoundVariableKind::Region(ty::BrNamed(_, name)) if name != kw::UnderscoreLifetime => {
-            Some(clean::GenericParamDef {
-                name,
-                kind: clean::GenericParamDefKind::Lifetime { outlives: Vec::new() },
-            })
+            Some(clean::GenericParamDef::lifetime(name))
         }
         _ => None,
     });

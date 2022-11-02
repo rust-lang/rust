@@ -336,10 +336,7 @@ where
                 match br {
                     // We only care about named late bound regions, as we need to add them
                     // to the 'for<>' section
-                    ty::BrNamed(_, name) => Some(GenericParamDef {
-                        name,
-                        kind: GenericParamDefKind::Lifetime { outlives: vec![] },
-                    }),
+                    ty::BrNamed(_, name) => Some(GenericParamDef::lifetime(name)),
                     _ => None,
                 }
             })
