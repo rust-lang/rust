@@ -13,7 +13,7 @@ use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
 use crate::read2::read2_abbreviated;
-use crate::util::{logv, PathBufExt};
+use crate::util::{add_dylib_path, dylib_env_var, logv, PathBufExt};
 use crate::ColorConfig;
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
@@ -26,6 +26,7 @@ use std::fs::{self, create_dir_all, File, OpenOptions};
 use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
@@ -70,19 +71,6 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
 #[cfg(not(windows))]
 fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     f()
-}
-
-/// The name of the environment variable that holds dynamic library locations.
-pub fn dylib_env_var() -> &'static str {
-    if cfg!(windows) {
-        "PATH"
-    } else if cfg!(target_os = "macos") {
-        "DYLD_LIBRARY_PATH"
-    } else if cfg!(target_os = "haiku") {
-        "LIBRARY_PATH"
-    } else {
-        "LD_LIBRARY_PATH"
-    }
 }
 
 /// The platform-specific library name
@@ -1811,16 +1799,7 @@ impl<'test> TestCx<'test> {
 
         // Need to be sure to put both the lib_path and the aux path in the dylib
         // search path for the child.
-        let mut path =
-            env::split_paths(&env::var_os(dylib_env_var()).unwrap_or_default()).collect::<Vec<_>>();
-        if let Some(p) = aux_path {
-            path.insert(0, PathBuf::from(p))
-        }
-        path.insert(0, PathBuf::from(lib_path));
-
-        // Add the new dylib search path var
-        let newpath = env::join_paths(&path).unwrap();
-        command.env(dylib_env_var(), newpath);
+        add_dylib_path(&mut command, iter::once(lib_path).chain(aux_path));
 
         let mut child = disable_error_reporting(|| command.spawn())
             .unwrap_or_else(|_| panic!("failed to exec `{:?}`", &command));
