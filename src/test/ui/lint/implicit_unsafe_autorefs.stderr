@@ -1,5 +1,5 @@
 warning: implicit auto-ref creates a reference to a dereference of a raw pointer
-  --> $DIR/implicit_unsafe_autorefs.rs:6:18
+  --> $DIR/implicit_unsafe_autorefs.rs:7:18
    |
 LL |     addr_of_mut!((*ptr)[..16])
    |                  ^^^^^^
@@ -12,7 +12,7 @@ LL |     addr_of_mut!((&mut (*ptr))[..16])
    |                  +++++       +
 
 warning: implicit auto-ref creates a reference to a dereference of a raw pointer
-  --> $DIR/implicit_unsafe_autorefs.rs:11:14
+  --> $DIR/implicit_unsafe_autorefs.rs:12:14
    |
 LL |     addr_of!((*ptr)[..16])
    |              ^^^^^^
@@ -23,5 +23,29 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     addr_of!((&(*ptr))[..16])
    |              ++      +
 
-warning: 2 warnings emitted
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_unsafe_autorefs.rs:21:13
+   |
+LL |     let l = (*ptr).field.len();
+   |             ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let l = (&(*ptr).field).len();
+   |             ++            +
+
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_unsafe_autorefs.rs:24:14
+   |
+LL |     addr_of!((*ptr).field[..l - 1])
+   |              ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     addr_of!((&(*ptr).field)[..l - 1])
+   |              ++            +
+
+warning: 4 warnings emitted
 

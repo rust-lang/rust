@@ -58,8 +58,8 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitUnsafeAutorefs {
         && let [adjustment] = &**adjustments
         // An auto-borrow
         && let Adjust::Borrow(AutoBorrow::Ref(_, mutbl)) = adjustment.kind
-        // ... of a deref
-        && let ExprKind::Unary(UnOp::Deref, dereferenced) = expr.kind
+        // ... of a place derived from a deref
+        && let ExprKind::Unary(UnOp::Deref, dereferenced) = skip_field_access(&expr.kind)
         // ... of a raw pointer
         && typeck.expr_ty(dereferenced).is_unsafe_ptr()
         {
@@ -80,4 +80,11 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitUnsafeAutorefs {
             })
         }
     }
+}
+
+fn skip_field_access<'a>(mut expr: &'a ExprKind<'a>) -> &'a ExprKind<'a> {
+    while let ExprKind::Field(e, _) = expr {
+        expr = &e.kind;
+    }
+    expr
 }
