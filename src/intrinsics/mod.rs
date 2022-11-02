@@ -197,10 +197,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
         ty => ty,
     };
 
-    let val = if int_ty == types::I8 { val } else { fx.bcx.ins().uextend(int_ty, val) };
-
-    // FIXME use bmask instead
-    let mut res = fx.bcx.ins().ineg(val);
+    let mut res = fx.bcx.ins().bmask(int_ty, val);
 
     if ty.is_float() {
         res = fx.bcx.ins().bitcast(ty, res);
@@ -636,85 +633,21 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, res);
         }
         sym::bswap => {
-            // FIXME(CraneStation/cranelift#794) add bswap instruction to cranelift
-            fn swap(bcx: &mut FunctionBuilder<'_>, v: Value) -> Value {
-                match bcx.func.dfg.value_type(v) {
-                    types::I8 => v,
-
-                    // https://code.woboq.org/gcc/include/bits/byteswap.h.html
-                    types::I16 => {
-                        let tmp1 = bcx.ins().ishl_imm(v, 8);
-                        let n1 = bcx.ins().band_imm(tmp1, 0xFF00);
-
-                        let tmp2 = bcx.ins().ushr_imm(v, 8);
-                        let n2 = bcx.ins().band_imm(tmp2, 0x00FF);
-
-                        bcx.ins().bor(n1, n2)
-                    }
-                    types::I32 => {
-                        let tmp1 = bcx.ins().ishl_imm(v, 24);
-                        let n1 = bcx.ins().band_imm(tmp1, 0xFF00_0000);
-
-                        let tmp2 = bcx.ins().ishl_imm(v, 8);
-                        let n2 = bcx.ins().band_imm(tmp2, 0x00FF_0000);
-
-                        let tmp3 = bcx.ins().ushr_imm(v, 8);
-                        let n3 = bcx.ins().band_imm(tmp3, 0x0000_FF00);
-
-                        let tmp4 = bcx.ins().ushr_imm(v, 24);
-                        let n4 = bcx.ins().band_imm(tmp4, 0x0000_00FF);
-
-                        let or_tmp1 = bcx.ins().bor(n1, n2);
-                        let or_tmp2 = bcx.ins().bor(n3, n4);
-                        bcx.ins().bor(or_tmp1, or_tmp2)
-                    }
-                    types::I64 => {
-                        let tmp1 = bcx.ins().ishl_imm(v, 56);
-                        let n1 = bcx.ins().band_imm(tmp1, 0xFF00_0000_0000_0000u64 as i64);
-
-                        let tmp2 = bcx.ins().ishl_imm(v, 40);
-                        let n2 = bcx.ins().band_imm(tmp2, 0x00FF_0000_0000_0000u64 as i64);
-
-                        let tmp3 = bcx.ins().ishl_imm(v, 24);
-                        let n3 = bcx.ins().band_imm(tmp3, 0x0000_FF00_0000_0000u64 as i64);
-
-                        let tmp4 = bcx.ins().ishl_imm(v, 8);
-                        let n4 = bcx.ins().band_imm(tmp4, 0x0000_00FF_0000_0000u64 as i64);
-
-                        let tmp5 = bcx.ins().ushr_imm(v, 8);
-                        let n5 = bcx.ins().band_imm(tmp5, 0x0000_0000_FF00_0000u64 as i64);
-
-                        let tmp6 = bcx.ins().ushr_imm(v, 24);
-                        let n6 = bcx.ins().band_imm(tmp6, 0x0000_0000_00FF_0000u64 as i64);
-
-                        let tmp7 = bcx.ins().ushr_imm(v, 40);
-                        let n7 = bcx.ins().band_imm(tmp7, 0x0000_0000_0000_FF00u64 as i64);
-
-                        let tmp8 = bcx.ins().ushr_imm(v, 56);
-                        let n8 = bcx.ins().band_imm(tmp8, 0x0000_0000_0000_00FFu64 as i64);
-
-                        let or_tmp1 = bcx.ins().bor(n1, n2);
-                        let or_tmp2 = bcx.ins().bor(n3, n4);
-                        let or_tmp3 = bcx.ins().bor(n5, n6);
-                        let or_tmp4 = bcx.ins().bor(n7, n8);
-
-                        let or_tmp5 = bcx.ins().bor(or_tmp1, or_tmp2);
-                        let or_tmp6 = bcx.ins().bor(or_tmp3, or_tmp4);
-                        bcx.ins().bor(or_tmp5, or_tmp6)
-                    }
-                    types::I128 => {
-                        let (lo, hi) = bcx.ins().isplit(v);
-                        let lo = swap(bcx, lo);
-                        let hi = swap(bcx, hi);
-                        bcx.ins().iconcat(hi, lo)
-                    }
-                    ty => unreachable!("bswap {}", ty),
-                }
-            }
             intrinsic_args!(fx, args => (arg); intrinsic);
             let val = arg.load_scalar(fx);
 
-            let res = CValue::by_val(swap(&mut fx.bcx, val), arg.layout());
+            let res = match fx.bcx.func.dfg.value_type(val) {
+                types::I8 => val,
+                types::I128 => {
+                    // FIXME(bytecodealliance/wasmtime#1092) bswap.i128 is not yet implemented
+                    let (lsb, msb) = fx.bcx.ins().isplit(val);
+                    let lsb_swap = fx.bcx.ins().bswap(lsb);
+                    let msb_swap = fx.bcx.ins().bswap(msb);
+                    fx.bcx.ins().iconcat(msb_swap, lsb_swap)
+                }
+                _ => fx.bcx.ins().bswap(val),
+            };
+            let res = CValue::by_val(res, arg.layout());
             ret.write_cvalue(fx, res);
         }
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_uninit_valid => {

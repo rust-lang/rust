@@ -575,12 +575,6 @@ fn codegen_stmt<'tcx>(
                             _ => unreachable!("un op Not for {:?}", layout.ty),
                         },
                         UnOp::Neg => match layout.ty.kind() {
-                            ty::Int(IntTy::I128) => {
-                                // FIXME remove this case once ineg.i128 works
-                                let zero =
-                                    CValue::const_val(fx, layout, ty::ScalarInt::null(layout.size));
-                                crate::num::codegen_int_binop(fx, BinOp::Sub, zero, operand)
-                            }
                             ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
                             ty::Float(_) => CValue::by_val(fx.bcx.ins().fneg(val), layout),
                             _ => unreachable!("un op Neg for {:?}", layout.ty),
