@@ -60,6 +60,29 @@ impl B {
     unsafe fn c_mut(&mut self) -> &mut u8 {
         &mut self.a
     }
+
+    unsafe fn a_unchecked(&self) -> &u8 {
+        &self.b
+    }
+    unsafe fn a_unchecked_mut(&mut self) -> &mut u8 {
+        &mut self.b
+    }
+
+    unsafe fn b_unchecked(self) -> u8 {
+        self.a
+    }
+
+    unsafe fn b_unchecked_mut(&mut self) -> &mut u8 {
+        &mut self.a
+    }
+
+    unsafe fn c_unchecked(&self) -> &u8 {
+        &self.b
+    }
+
+    unsafe fn c_unchecked_mut(&mut self) -> &mut u8 {
+        &mut self.a
+    }
 }
 
 fn main() {

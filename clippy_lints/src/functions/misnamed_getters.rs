@@ -16,7 +16,7 @@ pub fn check_fn(
     span: Span,
     _hir_id: HirId,
 ) {
-    let FnKind::Method(ref ident, sig) = kind else {
+    let FnKind::Method(ref ident, _) = kind else {
             return;
         };
 
@@ -27,7 +27,7 @@ pub fn check_fn(
 
     let name = ident.name.as_str();
 
-    let name = match sig.decl.implicit_self {
+    let name = match decl.implicit_self {
         ImplicitSelfKind::MutRef => {
             let Some(name) = name.strip_suffix("_mut") else {
                     return;
@@ -53,11 +53,12 @@ pub fn check_fn(
     };
     let expr_span = block_expr.span;
 
-    let mut expr = block_expr;
     // Accept &<expr>, &mut <expr> and <expr>
-    if let ExprKind::AddrOf(_, _, tmp) = expr.kind {
-        expr = tmp;
-    }
+    let expr = if let ExprKind::AddrOf(_, _, tmp) = block_expr.kind {
+        tmp
+    } else {
+        block_expr
+    };
     let (self_data, used_ident) = if_chain! {
         if let ExprKind::Field(self_data, ident) = expr.kind;
         if ident.name.as_str() != name;
