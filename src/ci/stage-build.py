@@ -175,7 +175,7 @@ class WindowsPipeline(Pipeline):
 
     def build_rustc_perf(self):
         # rustc-perf version from 2023-03-15
-        perf_commit = "9dfaa35193154b690922347ee1141a06ec87a199"
+        perf_commit = "8b2ac3042e1ff2c0074455a0a3618adef97156b1"
         rustc_perf_zip_path = self.opt_artifacts() / "perf.zip"
 
         def download_rustc_perf():

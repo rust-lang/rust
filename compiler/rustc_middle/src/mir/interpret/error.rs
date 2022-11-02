@@ -465,10 +465,6 @@ impl fmt::Display for UnsupportedOpInfo {
 pub enum ResourceExhaustionInfo {
     /// The stack grew too big.
     StackFrameLimitReached,
-    /// The program ran for too long.
-    ///
-    /// The exact limit is set by the `const_eval_limit` attribute.
-    StepLimitReached,
     /// There is not enough memory (on the host) to perform an allocation.
     MemoryExhausted,
     /// The address space (of the target) is full.
@@ -481,9 +477,6 @@ impl fmt::Display for ResourceExhaustionInfo {
         match self {
             StackFrameLimitReached => {
                 write!(f, "reached the configured maximum number of stack frames")
-            }
-            StepLimitReached => {
-                write!(f, "exceeded interpreter step limit (see `#[const_eval_limit]`)")
             }
             MemoryExhausted => {
                 write!(f, "tried to allocate more memory than available to compiler")

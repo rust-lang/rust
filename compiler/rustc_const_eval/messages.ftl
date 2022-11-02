@@ -10,6 +10,12 @@ const_eval_interior_mutable_data_refer =
         This would make multiple uses of a constant to be able to see different values and allow circumventing
         the `Send` and `Sync` requirements for shared mutable data, which is unsound.
 
+const_eval_long_running =
+    constant evaluation is taking a long time
+    .note = this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
+        If your compilation actually takes a long time, you can safely allow the lint.
+    .label = the const evaluator is currently interpreting this expression
+    .help = the constant being evaluated
 const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant {$global_const_id}
 
 const_eval_mut_deref =

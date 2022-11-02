@@ -103,7 +103,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
         tcx,
         root_span,
         param_env,
-        CompileTimeInterpreter::new(tcx.const_eval_limit(), can_access_statics, CheckAlignment::No),
+        CompileTimeInterpreter::new(can_access_statics, CheckAlignment::No),
     )
 }
 
@@ -306,7 +306,6 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         // Statics (and promoteds inside statics) may access other statics, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
         CompileTimeInterpreter::new(
-            tcx.const_eval_limit(),
             /*can_access_statics:*/ is_static,
             if tcx.sess.opts.unstable_opts.extra_const_ub_checks {
                 CheckAlignment::Error
