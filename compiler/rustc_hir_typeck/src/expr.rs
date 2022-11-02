@@ -1617,7 +1617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if remaining_fields.is_empty() {
                         self.suggest_fru_from_range(field, variant, substs, &mut diag);
                     } else {
-                        diag.stash(diag.sort_span, StashKey::RangeLit)
+                        diag.clone().stash(diag.sort_span, StashKey::RangeLit);
                     }
                 }
 
@@ -1812,7 +1812,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &'tcx ty::VariantDef,
         ast_fields: &'tcx [hir::ExprField<'tcx>],
         substs: SubstsRef<'tcx>,
-    ) -> bool {
+    ) {
         let len = remaining_fields.len();
 
         let mut displayable_field_names: Vec<&str> =
@@ -1849,7 +1849,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_label(span, format!("missing {remaining_fields_names}{truncated_fields_error}"));
 
-        if let Some(last) = ast_fields.last() && self.suggest_fru_from_range() {
+        if let Some(last) = ast_fields.last()
+            && self.suggest_fru_from_range(last, variant, substs, &mut err) {
             // unstash and cancel
             let un = self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::RangeLit).unwrap();
             un.cancel();
@@ -1867,7 +1868,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &ty::VariantDef,
         substs: SubstsRef<'tcx>,
         err: &mut Diagnostic,
-    ) {
+    ) -> bool {
         // I don't use 'is_range_literal' because only double-sided, half-open ranges count.
         if let ExprKind::Struct(
                 QPath::LangItem(LangItem::Range, ..),
@@ -1895,7 +1896,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ",",
                 Applicability::MaybeIncorrect,
             );
+
+            return true;
         }
+
+        return false;
     }
 
     /// Report an error for a struct field expression when there are invisible fields.
