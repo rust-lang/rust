@@ -397,6 +397,11 @@
                     "type": "boolean"
                 },
                 "$generated-start": {},
+                "rust-analyzer.assist.emitMustUse": {
+                    "markdownDescription": "Whether to insert #[must_use] when generating `as_` methods\nfor enum variants.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.assist.expressionFillDefault": {
                     "markdownDescription": "Placeholder expression to use for missing expressions in assists.",
                     "default": "todo",
