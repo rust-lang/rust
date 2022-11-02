@@ -1018,11 +1018,8 @@ impl Session {
                 return config::Lto::Fat;
             }
             config::LtoCli::Thin => {
-                return if self.opts.cli_forced_thinlto_off {
-                    config::Lto::Fat
-                } else {
-                    config::Lto::Thin
-                };
+                // The user explicitly asked for ThinLTO
+                return config::Lto::Thin;
             }
         }
 
@@ -1034,7 +1031,7 @@ impl Session {
 
         // If processing command line options determined that we're incompatible
         // with ThinLTO (e.g., `-C lto --emit llvm-ir`) then return that option.
-        if self.opts.cli_forced_thinlto_off {
+        if self.opts.cli_forced_local_thinlto_off {
             return config::Lto::No;
         }
 
