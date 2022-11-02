@@ -44,6 +44,15 @@ pub trait IntoDiagnosticArg {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
 }
 
+impl<'source> IntoDiagnosticArg for DiagnosticArgValue<'source> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        match self {
+            DiagnosticArgValue::Str(s) => DiagnosticArgValue::Str(Cow::Owned(s.into_owned())),
+            DiagnosticArgValue::Number(n) => DiagnosticArgValue::Number(n),
+        }
+    }
+}
+
 impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
     fn into(self) -> FluentValue<'source> {
         match self {
