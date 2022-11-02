@@ -323,6 +323,64 @@ impl<'tcx> PlaceBuilder<'tcx> {
             projection: Vec::from_iter(self.projection.iter().copied().chain([elem])),
         }
     }
+
+    pub fn try_ty<D>(&self, local_decls: &D, cx: &Builder<'_, 'tcx>) -> Option<Ty<'tcx>>
+    where
+        D: HasLocalDecls<'tcx>,
+    {
+        let tcx = cx.tcx;
+
+        let project_ty = |ty: Ty<'tcx>, elem: &PlaceElem<'tcx>| -> Ty<'tcx> {
+            match elem {
+                ProjectionElem::Deref => {
+                    ty.builtin_deref(true)
+                        .unwrap_or_else(|| {
+                            bug!("deref projection of non-dereferenceable ty {:?}", ty)
+                        })
+                        .ty
+                }
+                ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
+                    ty.builtin_index().unwrap()
+                }
+                ProjectionElem::Subslice { from, to, from_end } => match ty.kind() {
+                    ty::Slice(..) => ty,
+                    ty::Array(inner, _) if !from_end => tcx.mk_array(*inner, (to - from) as u64),
+                    ty::Array(inner, size) if *from_end => {
+                        let size = size.eval_usize(tcx, ty::ParamEnv::empty());
+                        let len = size - (*from as u64) - (*to as u64);
+                        tcx.mk_array(*inner, len)
+                    }
+                    _ => bug!("cannot subslice non-array type: `{:?}`", ty),
+                },
+                ProjectionElem::Downcast(..) => ty,
+                ProjectionElem::Field(_, ty) | ProjectionElem::OpaqueCast(ty) => *ty,
+            }
+        };
+
+        match self.base {
+            PlaceBase::Local(local) => {
+                let base_ty = local_decls.local_decls()[local].ty;
+                Some(self.projection.iter().fold(base_ty, |ty, &elem| project_ty(ty, &elem)))
+            }
+            PlaceBase::Upvar { .. } => {
+                match to_upvars_resolved_place_builder(self.clone(), cx) {
+                    Ok(resolved_place_builder) => {
+                        // `base` is guaranteed to be `PlaceBase::Local` now, so recursive call is ok
+                        resolved_place_builder.try_ty(local_decls, cx)
+                    }
+                    Err(place_builder) => {
+                        match &place_builder.projection[..] {
+                            &[ProjectionElem::OpaqueCast(base_ty), ref projections @ ..] => Some(
+                                projections.iter().fold(base_ty, |ty, &elem| project_ty(ty, &elem)),
+                            ),
+
+                            _ => None, // would need a base `Ty` for these
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'tcx> From<Local> for PlaceBuilder<'tcx> {
