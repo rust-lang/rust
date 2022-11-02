@@ -90,5 +90,41 @@ LL | |         &mut self.a
 LL | |     }
    | |_____^
 
-error: aborting due to 10 previous errors
+error: getter function appears to return the wrong field
+  --> $DIR/misnamed_getters.rs:64:5
+   |
+LL | /     unsafe fn a_unchecked(&self) -> &u8 {
+LL | |         &self.b
+   | |         ------- help: consider using: `&self.a`
+LL | |     }
+   | |_____^
+
+error: getter function appears to return the wrong field
+  --> $DIR/misnamed_getters.rs:67:5
+   |
+LL | /     unsafe fn a_unchecked_mut(&mut self) -> &mut u8 {
+LL | |         &mut self.b
+   | |         ----------- help: consider using: `&mut self.a`
+LL | |     }
+   | |_____^
+
+error: getter function appears to return the wrong field
+  --> $DIR/misnamed_getters.rs:71:5
+   |
+LL | /     unsafe fn b_unchecked(self) -> u8 {
+LL | |         self.a
+   | |         ------ help: consider using: `self.b`
+LL | |     }
+   | |_____^
+
+error: getter function appears to return the wrong field
+  --> $DIR/misnamed_getters.rs:75:5
+   |
+LL | /     unsafe fn b_unchecked_mut(&mut self) -> &mut u8 {
+LL | |         &mut self.a
+   | |         ----------- help: consider using: `&mut self.b`
+LL | |     }
+   | |_____^
+
+error: aborting due to 14 previous errors
 

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
-use rustc_hir::{intravisit::FnKind, Body, ExprKind, FnDecl, HirId, ImplicitSelfKind};
+use rustc_hir::{intravisit::FnKind, Body, ExprKind, FnDecl, HirId, ImplicitSelfKind, Unsafety};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
@@ -16,7 +16,7 @@ pub fn check_fn(
     span: Span,
     _hir_id: HirId,
 ) {
-    let FnKind::Method(ref ident, _) = kind else {
+    let FnKind::Method(ref ident, sig) = kind else {
             return;
         };
 
@@ -36,6 +36,12 @@ pub fn check_fn(
         },
         ImplicitSelfKind::Imm | ImplicitSelfKind::Mut | ImplicitSelfKind::ImmRef => name,
         ImplicitSelfKind::None => return,
+    };
+
+    let name = if sig.header.unsafety == Unsafety::Unsafe {
+        name.strip_suffix("_unchecked").unwrap_or(name)
+    } else {
+        name
     };
 
     // Body must be &(mut) <self_data>.name
