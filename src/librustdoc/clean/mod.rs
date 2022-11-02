@@ -1144,12 +1144,28 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             }
         }
         ty::AssocKind::Fn => {
-            let generics = clean_ty_generics(
+            let sig = tcx.fn_sig(assoc_item.def_id);
+
+            let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
+                ty::BoundVariableKind::Region(ty::BrNamed(_, name))
+                    if name != kw::UnderscoreLifetime =>
+                {
+                    Some(GenericParamDef {
+                        name,
+                        kind: GenericParamDefKind::Lifetime { outlives: Vec::new() },
+                    })
+                }
+                _ => None,
+            });
+
+            let mut generics = clean_ty_generics(
                 cx,
                 tcx.generics_of(assoc_item.def_id),
                 tcx.explicit_predicates_of(assoc_item.def_id),
             );
-            let sig = tcx.fn_sig(assoc_item.def_id);
+            // FIXME: This does not place parameters in source order (late-bound ones come last)
+            generics.params.extend(late_bound_regions);
+
             let mut decl = clean_fn_decl_from_did_and_sig(cx, Some(assoc_item.def_id), sig);
 
             if assoc_item.fn_has_self_parameter {
