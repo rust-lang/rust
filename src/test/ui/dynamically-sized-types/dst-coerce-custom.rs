@@ -3,14 +3,14 @@
 
 #![feature(unsize, coerce_unsized)]
 
-use std::ops::CoerceUnsized;
 use std::marker::Unsize;
+use std::ops::CoerceUnsized;
 
 struct Bar<T: ?Sized> {
     x: *const T,
 }
 
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Bar<U>> for Bar<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Bar<U>> for Bar<T> {}
 
 trait Baz {
     fn get(&self) -> i32;
@@ -38,6 +38,6 @@ fn main() {
     let a: Bar<i32> = Bar { x: &42 };
     let b: Bar<dyn Baz> = a;
     unsafe {
-        assert_eq!((*b.x).get(), 42);
+        assert_eq!((&*b.x).get(), 42);
     }
 }
