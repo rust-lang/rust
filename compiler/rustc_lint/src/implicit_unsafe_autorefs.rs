@@ -10,6 +10,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// use std::ptr::addr_of_mut;
+    ///
     /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
     ///     addr_of_mut!((*ptr)[..16])
     ///     //                 ^^^^^^ this calls `IndexMut::index_mut(&mut ..., ..16)`,
@@ -28,6 +30,7 @@ declare_lint! {
     ///
     /// If you are sure, you can soundly take a reference, then you can take it explicitly:
     /// ```rust
+    /// # use std::ptr::addr_of_mut;
     /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
     ///     addr_of_mut!((&mut *ptr)[..16])
     /// }
