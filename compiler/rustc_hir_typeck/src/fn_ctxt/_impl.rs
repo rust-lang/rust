@@ -143,7 +143,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().node_types_mut().insert(id, ty);
 
         if ty.references_error() {
-            self.has_errors.set(true);
             self.set_tainted_by_errors();
         }
     }
