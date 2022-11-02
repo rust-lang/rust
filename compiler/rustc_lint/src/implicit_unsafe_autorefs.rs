@@ -43,7 +43,7 @@ declare_lint! {
     /// }
     /// ```
     pub IMPLICIT_UNSAFE_AUTOREFS,
-    Deny,
+    Warn,
     "implicit reference to a dereference of a raw pointer"
 }
 

@@ -1,14 +1,15 @@
+// check-pass
 // run-rustfix
 use std::ptr::{addr_of, addr_of_mut};
 
 unsafe fn _test_mut(ptr: *mut [u8]) -> *mut [u8] {
     addr_of_mut!((*ptr)[..16])
-    //~^ error: implicit auto-ref creates a reference to a dereference of a raw pointer
+    //~^ warn: implicit auto-ref creates a reference to a dereference of a raw pointer
 }
 
 unsafe fn _test_const(ptr: *const [u8]) -> *const [u8] {
     addr_of!((*ptr)[..16])
-    //~^ error: implicit auto-ref creates a reference to a dereference of a raw pointer
+    //~^ warn: implicit auto-ref creates a reference to a dereference of a raw pointer
 }
 
 fn main() {}

@@ -1,18 +1,18 @@
-error: implicit auto-ref creates a reference to a dereference of a raw pointer
-  --> $DIR/implicit_unsafe_autorefs.rs:5:18
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_unsafe_autorefs.rs:6:18
    |
 LL |     addr_of_mut!((*ptr)[..16])
    |                  ^^^^^^
    |
    = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
-   = note: `#[deny(implicit_unsafe_autorefs)]` on by default
+   = note: `#[warn(implicit_unsafe_autorefs)]` on by default
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     addr_of_mut!((&mut (*ptr))[..16])
    |                  +++++       +
 
-error: implicit auto-ref creates a reference to a dereference of a raw pointer
-  --> $DIR/implicit_unsafe_autorefs.rs:10:14
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_unsafe_autorefs.rs:11:14
    |
 LL |     addr_of!((*ptr)[..16])
    |              ^^^^^^
@@ -23,5 +23,5 @@ help: try using a raw pointer method instead; or if this reference is intentiona
 LL |     addr_of!((&(*ptr))[..16])
    |              ++      +
 
-error: aborting due to 2 previous errors
+warning: 2 warnings emitted
 
