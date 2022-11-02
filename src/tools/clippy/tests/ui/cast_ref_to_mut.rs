@@ -15,9 +15,9 @@ fn main() {
         let num = &3i32;
         let mut_num = &mut 3i32;
         // Should be warned against
-        (*(a as *const _ as *mut String)).push_str(" world");
+        (&mut *(a as *const _ as *mut String)).push_str(" world");
         *(a as *const _ as *mut _) = String::from("Replaced");
-        *(a as *const _ as *mut String) += " world";
+        *&mut *(a as *const _ as *mut String) += " world";
         // Shouldn't be warned against
         println!("{}", *(num as *const _ as *const i16));
         println!("{}", *(mut_num as *mut _ as *mut i16));
