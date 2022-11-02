@@ -194,8 +194,8 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.tcx
     }
 
-    fn item_def_id(&self) -> Option<DefId> {
-        None
+    fn item_def_id(&self) -> DefId {
+        self.body_id.owner.to_def_id()
     }
 
     fn get_type_parameter_bounds(
