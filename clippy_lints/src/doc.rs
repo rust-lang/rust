@@ -11,7 +11,7 @@ use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Applicability, Handler, MultiSpan, SuggestionStyle};
+use rustc_errors::{Applicability, Handler, SuggestionStyle};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Expr};
@@ -265,15 +265,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                         panic_span: None,
                     };
                     fpu.visit_expr(body.value);
-                    lint_for_missing_headers(
-                        cx,
-                        item.def_id.def_id,
-                        item.span,
-                        sig,
-                        headers,
-                        Some(body_id),
-                        fpu.panic_span,
-                    );
+                    lint_for_missing_headers(cx, item.def_id.def_id, sig, headers, Some(body_id), fpu.panic_span);
                 }
             },
             hir::ItemKind::Impl(impl_) => {
@@ -284,7 +276,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                     span_lint(
                         cx,
                         MISSING_SAFETY_DOC,
-                        item.span,
+                        cx.tcx.def_span(item.def_id),
                         "docs for unsafe trait missing `# Safety` section",
                     );
                 }
@@ -304,7 +296,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, attrs);
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.def_id.def_id, item.span, sig, headers, None, None);
+                lint_for_missing_headers(cx, item.def_id.def_id, sig, headers, None, None);
             }
         }
     }
@@ -323,15 +315,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                 panic_span: None,
             };
             fpu.visit_expr(body.value);
-            lint_for_missing_headers(
-                cx,
-                item.def_id.def_id,
-                item.span,
-                sig,
-                headers,
-                Some(body_id),
-                fpu.panic_span,
-            );
+            lint_for_missing_headers(cx, item.def_id.def_id, sig, headers, Some(body_id), fpu.panic_span);
         }
     }
 }
@@ -339,7 +323,6 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 fn lint_for_missing_headers(
     cx: &LateContext<'_>,
     def_id: LocalDefId,
-    span: impl Into<MultiSpan> + Copy,
     sig: &hir::FnSig<'_>,
     headers: DocHeaders,
     body_id: Option<hir::BodyId>,
@@ -358,6 +341,8 @@ fn lint_for_missing_headers(
     {
         return;
     }
+
+    let span = cx.tcx.def_span(def_id);
 
     if !headers.safety && sig.header.unsafety == hir::Unsafety::Unsafe {
         span_lint(
