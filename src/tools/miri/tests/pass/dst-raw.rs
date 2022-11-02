@@ -35,7 +35,7 @@ pub fn main() {
     unsafe {
         let b = (*a)[2];
         assert_eq!(b, 3);
-        let len = (*a).len();
+        let len = (&*a).len();
         assert_eq!(len, 3);
     }
 
@@ -44,7 +44,7 @@ pub fn main() {
     unsafe {
         let b = (*a)[2];
         assert_eq!(b, 3);
-        let len = (*a).len();
+        let len = (&*a).len();
         assert_eq!(len, 3);
     }
 
@@ -72,7 +72,7 @@ pub fn main() {
     unsafe {
         let b = (*a)[2];
         assert_eq!(b, 3);
-        let len = (*a).len();
+        let len = (&*a).len();
         assert_eq!(len, 3);
     }
 
@@ -80,7 +80,7 @@ pub fn main() {
     unsafe {
         let b = (*a)[2];
         assert_eq!(b, 3);
-        let len = (*a).len();
+        let len = (&*a).len();
         assert_eq!(len, 3);
     }
 
