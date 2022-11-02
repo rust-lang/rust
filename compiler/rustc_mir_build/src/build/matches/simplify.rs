@@ -294,7 +294,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::Leaf { ref subpatterns } => {
                 // tuple struct, match subpats (if any)
-                candidate.match_pairs.extend(self.field_match_pairs(match_pair.place, subpatterns));
+                candidate
+                    .match_pairs
+                    .extend(self.field_match_pairs_tuple_struct(match_pair.place, subpatterns));
                 Ok(())
             }
 

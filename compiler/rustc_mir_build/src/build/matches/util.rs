@@ -25,6 +25,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .collect()
     }
 
+    #[instrument(skip(self), level = "debug")]
+    pub(crate) fn field_match_pairs_tuple_struct<'pat>(
+        &mut self,
+        place_builder: PlaceBuilder<'tcx>,
+        subpatterns: &'pat [FieldPat<'tcx>],
+    ) -> Vec<MatchPair<'pat, 'tcx>> {
+        let place_ty = place_builder
+            .try_ty(&self.local_decls, self)
+            .map(|ty| self.tcx.normalize_erasing_regions(self.param_env, ty));
+        debug!(?place_ty);
+
+        subpatterns
+            .iter()
+            .map(|fieldpat| {
+                // NOTE: With type ascriptions it can happen that we get errors
+                // during borrow-checking on higher-ranked types if we use the
+                // ascribed type as the field type, so we try to get the actual field
+                // type from the `Place`, if possible, see issue #96514
+                let field_ty = if let Some(place_ty) = place_ty {
+                    let field_idx = fieldpat.field.as_usize();
+                    let field_ty = match place_ty.kind() {
+                        ty::Adt(adt_def, substs) => {
+                            adt_def.all_fields().collect::<Vec<_>>()[field_idx].ty(self.tcx, substs)
+                        }
+                        ty::Tuple(elems) => elems.to_vec()[field_idx],
+                        _ => bug!(
+                            "no field available, place_ty: {:#?}, kind: {:?}",
+                            place_ty,
+                            place_ty.kind()
+                        ),
+                    };
+
+                    self.tcx.normalize_erasing_regions(self.param_env, field_ty)
+                } else {
+                    fieldpat.pattern.ty
+                };
+
+                let place = place_builder.clone().field(fieldpat.field, field_ty);
+                debug!(?place, ?field_ty);
+
+                MatchPair::new(place, &fieldpat.pattern, self)
+            })
+            .collect()
+    }
+
     pub(crate) fn prefix_slice_suffix<'pat>(
         &mut self,
         match_pairs: &mut SmallVec<[MatchPair<'pat, 'tcx>; 1]>,
