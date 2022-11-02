@@ -25,8 +25,8 @@ pub(crate) struct Module<'hir> {
     pub(crate) where_inner: Span,
     pub(crate) mods: Vec<Module<'hir>>,
     pub(crate) id: hir::HirId,
-    // (item, renamed)
-    pub(crate) items: Vec<(&'hir hir::Item<'hir>, Option<Symbol>)>,
+    // (item, renamed, import_id)
+    pub(crate) items: Vec<(&'hir hir::Item<'hir>, Option<Symbol>, Option<hir::HirId>)>,
     pub(crate) foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
 }
 
@@ -93,6 +93,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::CRATE_HIR_ID,
             self.cx.tcx.hir().root_module(),
             self.cx.tcx.crate_name(LOCAL_CRATE),
+            None,
         );
 
         // `#[macro_export] macro_rules!` items are reexported at the top level of the
@@ -113,7 +114,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     if self.cx.tcx.has_attr(def_id, sym::macro_export) {
                         if inserted.insert(def_id) {
                             let item = self.cx.tcx.hir().expect_item(local_def_id);
-                            top_level_module.items.push((item, None));
+                            top_level_module.items.push((item, None, None));
                         }
                     }
                 }
@@ -155,6 +156,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         id: hir::HirId,
         m: &'tcx hir::Mod<'tcx>,
         name: Symbol,
+        parent_id: Option<hir::HirId>,
     ) -> Module<'tcx> {
         let mut om = Module::new(name, id, m.spans.inner_span);
         let def_id = self.cx.tcx.hir().local_def_id(id).to_def_id();
@@ -166,7 +168,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
                 continue;
             }
-            self.visit_item(item, None, &mut om);
+            self.visit_item(item, None, &mut om, parent_id);
         }
         for &i in m.item_ids {
             let item = self.cx.tcx.hir().item(i);
@@ -174,7 +176,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // Later passes in rustdoc will de-duplicate by name and kind, so if glob-
             // imported items appear last, then they'll be the ones that get discarded.
             if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
-                self.visit_item(item, None, &mut om);
+                self.visit_item(item, None, &mut om, parent_id);
             }
         }
         self.inside_public_path = orig_inside_public_path;
@@ -247,14 +249,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
                     let i = self.cx.tcx.hir().item(i);
-                    self.visit_item(i, None, om);
+                    self.visit_item(i, None, om, Some(id));
                 }
                 self.inlining = prev;
                 true
             }
             Node::Item(it) if !glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                self.visit_item(it, renamed, om);
+                self.visit_item(it, renamed, om, Some(id));
                 self.inlining = prev;
                 true
             }
@@ -275,6 +277,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         item: &'tcx hir::Item<'_>,
         renamed: Option<Symbol>,
         om: &mut Module<'tcx>,
+        parent_id: Option<hir::HirId>,
     ) {
         debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
@@ -330,7 +333,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     }
                 }
 
-                om.items.push((item, renamed))
+                om.items.push((item, renamed, parent_id))
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
                 // `#[macro_export] macro_rules!` items are handled separately in `visit()`,
@@ -349,11 +352,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let nonexported = !self.cx.tcx.has_attr(def_id, sym::macro_export);
 
                 if is_macro_2_0 || nonexported || self.inlining {
-                    om.items.push((item, renamed));
+                    om.items.push((item, renamed, None));
                 }
             }
             hir::ItemKind::Mod(ref m) => {
-                om.mods.push(self.visit_mod_contents(item.hir_id(), m, name));
+                om.mods.push(self.visit_mod_contents(item.hir_id(), m, name, parent_id));
             }
             hir::ItemKind::Fn(..)
             | hir::ItemKind::ExternCrate(..)
@@ -364,19 +367,19 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Trait(..)
-            | hir::ItemKind::TraitAlias(..) => om.items.push((item, renamed)),
+            | hir::ItemKind::TraitAlias(..) => om.items.push((item, renamed, parent_id)),
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
                 if name != kw::Underscore {
-                    om.items.push((item, renamed));
+                    om.items.push((item, renamed, parent_id));
                 }
             }
             hir::ItemKind::Impl(impl_) => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
                 if !self.inlining && impl_.of_trait.is_none() {
-                    om.items.push((item, None));
+                    om.items.push((item, None, None));
                 }
             }
         }
