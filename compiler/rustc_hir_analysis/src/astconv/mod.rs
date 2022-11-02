@@ -1979,7 +1979,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
 
                     err.emit()
-                } else if let Some(reported) = qself_ty.error_reported() {
+                } else if let Err(reported) = qself_ty.error_reported() {
                     reported
                 } else {
                     // Don't print `TyErr` to the user.

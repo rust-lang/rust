@@ -1316,10 +1316,7 @@ impl<'tcx> TyCtxt<'tcx> {
         msg: &str,
     ) -> Const<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_const(ty::ConstS {
-            kind: ty::ConstKind::Error(reported),
-            ty,
-        })
+        self.mk_const(ty::ConstS { kind: ty::ConstKind::Error(reported), ty })
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
