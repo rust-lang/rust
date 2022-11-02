@@ -162,7 +162,7 @@ fn generate_enum_projection_method(
             let field_type_syntax = field_type.syntax();
 
             let must_use = if ctx.config.assist_emit_must_use {
-                "#[must_use]\n"
+                "#[must_use]\n    "
             } else {
                 ""
             };
