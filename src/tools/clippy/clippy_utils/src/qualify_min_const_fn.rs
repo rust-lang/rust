@@ -37,6 +37,7 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
                 ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
                 ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
                 ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Ambiguous => panic!("ambiguous predicate on function: {predicate:#?}"),
             }
         }
         match predicates.parent {

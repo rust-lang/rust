@@ -48,6 +48,10 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         true
     } // irrelevant
 
+    fn mark_ambiguous(&mut self) {
+        bug!()
+    }
+
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _: ty::Variance,

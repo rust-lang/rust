@@ -34,6 +34,9 @@ pub trait TypeRelation<'tcx>: Sized {
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
 
+    /// Used during coherence. If called, must emit an always-ambiguous obligation.
+    fn mark_ambiguous(&mut self);
+
     fn with_cause<F, R>(&mut self, _cause: Cause, f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
@@ -567,6 +570,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             if relation.intercrate() {
                 // During coherence, opaque types should be treated as equal to each other, even if their generic params
                 // differ, as they could resolve to the same hidden type, even for different generic params.
+                relation.mark_ambiguous();
                 Ok(a)
             } else {
                 let opt_variances = tcx.variances_of(a_def_id);

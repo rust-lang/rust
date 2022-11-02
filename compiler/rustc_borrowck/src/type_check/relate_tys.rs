@@ -2,7 +2,6 @@ use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRe
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Const, Ty};
 use rustc_span::Span;
@@ -156,10 +155,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
         true
     }
 
-    fn register_opaque_type_obligations(
-        &mut self,
-        obligations: PredicateObligations<'tcx>,
-    ) -> Result<(), TypeError<'tcx>> {
+    fn register_opaque_type_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.type_checker
             .fully_perform_op(
                 self.locations,
@@ -172,6 +168,5 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
                 },
             )
             .unwrap();
-        Ok(())
     }
 }

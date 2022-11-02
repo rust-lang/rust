@@ -450,6 +450,15 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             ty::Binder::dummy(predicate),
         ));
     }
+
+    pub fn mark_ambiguous(&mut self) {
+        self.obligations.push(Obligation::new(
+            self.tcx(),
+            self.trace.cause.clone(),
+            self.param_env,
+            ty::Binder::dummy(ty::PredicateKind::Ambiguous),
+        ));
+    }
 }
 
 struct Generalizer<'cx, 'tcx> {
@@ -536,6 +545,11 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        // The generalizer always compares types against themselves,
+        // and thus doesn't really take part in coherence.
     }
 
     fn binders<T>(
@@ -818,6 +832,10 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        bug!()
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(

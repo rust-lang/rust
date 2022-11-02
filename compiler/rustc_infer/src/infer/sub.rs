@@ -52,6 +52,10 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         self.a_is_expected
     }
 
+    fn mark_ambiguous(&mut self) {
+        self.fields.mark_ambiguous()
+    }
+
     fn with_cause<F, R>(&mut self, cause: Cause, f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,

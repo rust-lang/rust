@@ -260,6 +260,10 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
         true
     }
 
+    fn mark_ambiguous(&mut self) {
+        bug!()
+    }
+
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _: ty::Variance,

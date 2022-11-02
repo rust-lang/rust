@@ -23,7 +23,6 @@ use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
@@ -741,11 +740,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         true
     }
 
-    fn register_opaque_type_obligations(
-        &mut self,
-        obligations: PredicateObligations<'tcx>,
-    ) -> Result<(), TypeError<'tcx>> {
+    fn register_opaque_type_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.obligations.extend(obligations);
-        Ok(())
     }
 }

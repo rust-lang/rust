@@ -2954,6 +2954,10 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         true
     }
 
+    fn mark_ambiguous(&mut self) {
+        bug!()
+    }
+
     fn relate_with_variance<T: relate::Relate<'tcx>>(
         &mut self,
         _variance: ty::Variance,

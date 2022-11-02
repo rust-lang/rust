@@ -44,6 +44,10 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         self.a_is_expected
     }
 
+    fn mark_ambiguous(&mut self) {
+        self.fields.mark_ambiguous();
+    }
+
     fn relate_item_substs(
         &mut self,
         _item_def_id: DefId,

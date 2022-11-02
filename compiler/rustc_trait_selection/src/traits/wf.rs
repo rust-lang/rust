@@ -155,6 +155,7 @@ pub fn predicate_obligations<'tcx>(
             wf.compute(c1.into());
             wf.compute(c2.into());
         }
+        ty::PredicateKind::Ambiguous => {}
         ty::PredicateKind::TypeWellFormedFromEnv(..) => {
             bug!("TypeWellFormedFromEnv is only used for Chalk")
         }
@@ -878,6 +879,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                 | ty::PredicateKind::RegionOutlives(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
                     // Search for a bound of the form `erased_self_ty

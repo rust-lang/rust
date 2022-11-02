@@ -46,6 +46,10 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
         self.a_is_expected
     }
 
+    fn mark_ambiguous(&mut self) {
+        self.fields.mark_ambiguous();
+    }
+
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,

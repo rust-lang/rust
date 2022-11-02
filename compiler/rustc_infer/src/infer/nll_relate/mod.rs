@@ -93,10 +93,7 @@ pub trait TypeRelatingDelegate<'tcx> {
     );
 
     fn const_equate(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
-    fn register_opaque_type_obligations(
-        &mut self,
-        obligations: Vec<PredicateObligation<'tcx>>,
-    ) -> Result<(), TypeError<'tcx>>;
+    fn register_opaque_type_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>);
 
     /// Creates a new universe index. Used when instantiating placeholders.
     fn create_next_universe(&mut self) -> ty::UniverseIndex;
@@ -419,7 +416,7 @@ where
             .infcx
             .handle_opaque_type(a, b, true, &cause, self.delegate.param_env())?
             .obligations;
-        self.delegate.register_opaque_type_obligations(obligations)?;
+        self.delegate.register_opaque_type_obligations(obligations);
         trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
         Ok(a)
     }
@@ -545,6 +542,10 @@ where
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        bug!()
     }
 
     #[instrument(skip(self, info), level = "trace", ret)]
@@ -916,6 +917,10 @@ where
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        bug!()
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
