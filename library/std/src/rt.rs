@@ -154,7 +154,7 @@ fn lang_start_internal(
     ret_code
 }
 
-#[cfg(not(test))]
+#[cfg(not(any(test, doctest)))]
 #[lang = "start"]
 fn lang_start<T: crate::process::Termination + 'static>(
     main: fn() -> T,
