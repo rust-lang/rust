@@ -318,6 +318,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             );
         }
 
+        let tcx = cx.tcx();
         match *myitem.kind {
             clean::ExternCrateItem { ref src } => {
                 use crate::html::format::anchor;
@@ -327,14 +328,14 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     Some(src) => write!(
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {} as {};",
-                        myitem.visibility.print_with_space(myitem.item_id, cx),
+                        myitem.visibility(tcx).print_with_space(myitem.item_id, cx),
                         anchor(myitem.item_id.expect_def_id(), src, cx),
                         myitem.name.unwrap(),
                     ),
                     None => write!(
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {};",
-                        myitem.visibility.print_with_space(myitem.item_id, cx),
+                        myitem.visibility(tcx).print_with_space(myitem.item_id, cx),
                         anchor(myitem.item_id.expect_def_id(), myitem.name.unwrap(), cx),
                     ),
                 }
@@ -384,7 +385,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                      </div>\
                      {stab_tags_before}{stab_tags}{stab_tags_after}",
                     stab = stab.unwrap_or_default(),
-                    vis = myitem.visibility.print_with_space(myitem.item_id, cx),
+                    vis = myitem.visibility(tcx).print_with_space(myitem.item_id, cx),
                     imp = import.print(cx),
                 );
                 w.write_str(ITEM_TABLE_ROW_CLOSE);
@@ -408,7 +409,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 let stab = myitem.stability_class(cx.tcx());
                 let add = if stab.is_some() { " " } else { "" };
 
-                let visibility_emoji = match myitem.visibility {
+                let visibility_emoji = match myitem.visibility(tcx) {
                     clean::Visibility::Restricted(_) => {
                         "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
                     }
@@ -496,12 +497,13 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 }
 
 fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {
-    let header = it.fn_header(cx.tcx()).expect("printing a function which isn't a function");
-    let constness = print_constness_with_space(&header.constness, it.const_stability(cx.tcx()));
+    let tcx = cx.tcx();
+    let header = it.fn_header(tcx).expect("printing a function which isn't a function");
+    let constness = print_constness_with_space(&header.constness, it.const_stability(tcx));
     let unsafety = header.unsafety.print_with_space();
     let abi = print_abi_with_space(header.abi).to_string();
     let asyncness = header.asyncness.print_with_space();
-    let visibility = it.visibility.print_with_space(it.item_id, cx).to_string();
+    let visibility = it.visibility(tcx).print_with_space(it.item_id, cx).to_string();
     let name = it.name.unwrap();
 
     let generics_len = format!("{:#}", f.generics.print(cx)).len();
@@ -539,6 +541,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
 }
 
 fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Trait) {
+    let tcx = cx.tcx();
     let bounds = bounds(&t.bounds, false, cx);
     let required_types = t.items.iter().filter(|m| m.is_ty_associated_type()).collect::<Vec<_>>();
     let provided_types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
@@ -549,8 +552,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     let count_types = required_types.len() + provided_types.len();
     let count_consts = required_consts.len() + provided_consts.len();
     let count_methods = required_methods.len() + provided_methods.len();
-    let must_implement_one_of_functions =
-        cx.tcx().trait_def(t.def_id).must_implement_one_of.clone();
+    let must_implement_one_of_functions = tcx.trait_def(t.def_id).must_implement_one_of.clone();
 
     // Output the trait definition
     wrap_into_item_decl(w, |w| {
@@ -559,9 +561,9 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             write!(
                 w,
                 "{}{}{}trait {}{}{}",
-                it.visibility.print_with_space(it.item_id, cx),
-                t.unsafety(cx.tcx()).print_with_space(),
-                if t.is_auto(cx.tcx()) { "auto " } else { "" },
+                it.visibility(tcx).print_with_space(it.item_id, cx),
+                t.unsafety(tcx).print_with_space(),
+                if t.is_auto(tcx) { "auto " } else { "" },
                 it.name.unwrap(),
                 t.generics.print(cx),
                 bounds
@@ -1020,7 +1022,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     }
     let extern_crates = extern_crates
         .into_iter()
-        .map(|cnum| cx.shared.tcx.crate_name(cnum).to_string())
+        .map(|cnum| tcx.crate_name(cnum).to_string())
         .collect::<Vec<_>>()
         .join(",");
     let (extern_before, extern_after) =
@@ -1084,7 +1086,7 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
     fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
         wrap_item(w, "typedef", |w| {
             render_attributes_in_pre(w, it, "");
-            write!(w, "{}", it.visibility.print_with_space(it.item_id, cx));
+            write!(w, "{}", it.visibility(cx.tcx()).print_with_space(it.item_id, cx));
             write!(
                 w,
                 "type {}{}{where_clause} = {type_};",
@@ -1173,6 +1175,7 @@ fn print_tuple_struct_fields(w: &mut Buffer, cx: &Context<'_>, s: &[clean::Item]
 }
 
 fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::Enum) {
+    let tcx = cx.tcx();
     let count_variants = e.variants().count();
     wrap_into_item_decl(w, |w| {
         wrap_item(w, "enum", |w| {
@@ -1180,7 +1183,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             write!(
                 w,
                 "{}enum {}{}",
-                it.visibility.print_with_space(it.item_id, cx),
+                it.visibility(tcx).print_with_space(it.item_id, cx),
                 it.name.unwrap(),
                 e.generics.print(cx),
             );
@@ -1268,10 +1271,10 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             w.write_str("</code>");
             render_stability_since_raw(
                 w,
-                variant.stable_since(cx.tcx()),
-                variant.const_stability(cx.tcx()),
-                it.stable_since(cx.tcx()),
-                it.const_stable_since(cx.tcx()),
+                variant.stable_since(tcx),
+                variant.const_stability(tcx),
+                it.stable_since(tcx),
+                it.const_stable_since(tcx),
             );
             w.write_str("</h3>");
 
@@ -1389,12 +1392,13 @@ fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
 fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {
     wrap_into_item_decl(w, |w| {
         wrap_item(w, "const", |w| {
+            let tcx = cx.tcx();
             render_attributes_in_code(w, it);
 
             write!(
                 w,
                 "{vis}const {name}: {typ}",
-                vis = it.visibility.print_with_space(it.item_id, cx),
+                vis = it.visibility(tcx).print_with_space(it.item_id, cx),
                 name = it.name.unwrap(),
                 typ = c.type_.print(cx),
             );
@@ -1408,9 +1412,9 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
             //            ` = 100i32;`
             //        instead?
 
-            let value = c.value(cx.tcx());
-            let is_literal = c.is_literal(cx.tcx());
-            let expr = c.expr(cx.tcx());
+            let value = c.value(tcx);
+            let is_literal = c.is_literal(tcx);
+            let expr = c.expr(tcx);
             if value.is_some() || is_literal {
                 write!(w, " = {expr};", expr = Escape(&expr));
             } else {
@@ -1495,7 +1499,7 @@ fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             write!(
                 w,
                 "{vis}static {mutability}{name}: {typ}",
-                vis = it.visibility.print_with_space(it.item_id, cx),
+                vis = it.visibility(cx.tcx()).print_with_space(it.item_id, cx),
                 mutability = s.mutability.print_with_space(),
                 name = it.name.unwrap(),
                 typ = s.type_.print(cx)
@@ -1513,7 +1517,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
             write!(
                 w,
                 "    {}type {};\n}}",
-                it.visibility.print_with_space(it.item_id, cx),
+                it.visibility(cx.tcx()).print_with_space(it.item_id, cx),
                 it.name.unwrap(),
             );
         });
@@ -1666,7 +1670,8 @@ fn render_union(
     tab: &str,
     cx: &Context<'_>,
 ) {
-    write!(w, "{}union {}", it.visibility.print_with_space(it.item_id, cx), it.name.unwrap(),);
+    let tcx = cx.tcx();
+    write!(w, "{}union {}", it.visibility(tcx).print_with_space(it.item_id, cx), it.name.unwrap(),);
 
     let where_displayed = g
         .map(|g| {
@@ -1693,7 +1698,7 @@ fn render_union(
             write!(
                 w,
                 "    {}{}: {},\n{}",
-                field.visibility.print_with_space(field.item_id, cx),
+                field.visibility(tcx).print_with_space(field.item_id, cx),
                 field.name.unwrap(),
                 ty.print(cx),
                 tab
@@ -1720,10 +1725,11 @@ fn render_struct(
     structhead: bool,
     cx: &Context<'_>,
 ) {
+    let tcx = cx.tcx();
     write!(
         w,
         "{}{}{}",
-        it.visibility.print_with_space(it.item_id, cx),
+        it.visibility(tcx).print_with_space(it.item_id, cx),
         if structhead { "struct " } else { "" },
         it.name.unwrap()
     );
@@ -1753,7 +1759,7 @@ fn render_struct(
                         w,
                         "\n{}    {}{}: {},",
                         tab,
-                        field.visibility.print_with_space(field.item_id, cx),
+                        field.visibility(tcx).print_with_space(field.item_id, cx),
                         field.name.unwrap(),
                         ty.print(cx),
                     );
@@ -1785,7 +1791,7 @@ fn render_struct(
                         write!(
                             w,
                             "{}{}",
-                            field.visibility.print_with_space(field.item_id, cx),
+                            field.visibility(tcx).print_with_space(field.item_id, cx),
                             ty.print(cx),
                         )
                     }

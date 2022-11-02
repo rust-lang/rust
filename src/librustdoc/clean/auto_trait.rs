@@ -118,7 +118,6 @@ where
         Some(Item {
             name: None,
             attrs: Default::default(),
-            visibility: Inherited,
             item_id: ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
             kind: Box::new(ImplItem(Box::new(Impl {
                 unsafety: hir::Unsafety::Normal,
@@ -130,6 +129,7 @@ where
                 kind: ImplKind::Auto,
             }))),
             cfg: None,
+            inline_stmt_id: None,
         })
     }
 
