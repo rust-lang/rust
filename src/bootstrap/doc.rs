@@ -492,6 +492,11 @@ impl Step for Std {
 
         doc_std(builder, self.format, stage, target, &out, &extra_args, &requested_crates);
 
+        // Don't open if the format is json
+        if let DocumentationFormat::JSON = self.format {
+            return;
+        }
+
         // Look for library/std, library/core etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
         for requested_crate in requested_crates {
