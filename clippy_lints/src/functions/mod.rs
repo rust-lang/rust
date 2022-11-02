@@ -1,4 +1,4 @@
-mod missnamed_getters;
+mod misnamed_getters;
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
 mod result;
@@ -297,7 +297,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.66.0"]
-    pub MISSNAMED_GETTERS,
+    pub MISNAMED_GETTERS,
     suspicious,
     "getter method returning the wrong field"
 }
@@ -328,7 +328,7 @@ impl_lint_pass!(Functions => [
     MUST_USE_CANDIDATE,
     RESULT_UNIT_ERR,
     RESULT_LARGE_ERR,
-    MISSNAMED_GETTERS,
+    MISNAMED_GETTERS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Functions {
@@ -344,7 +344,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         too_many_arguments::check_fn(cx, kind, decl, span, hir_id, self.too_many_arguments_threshold);
         too_many_lines::check_fn(cx, kind, span, body, self.too_many_lines_threshold);
         not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, hir_id);
-        missnamed_getters::check_fn(cx, kind, decl, body, span, hir_id);
+        misnamed_getters::check_fn(cx, kind, decl, body, span, hir_id);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {

@@ -1,5 +1,5 @@
 #![allow(unused)]
-#![warn(clippy::missnamed_getters)]
+#![warn(clippy::misnamed_getters)]
 
 struct A {
     a: u8,

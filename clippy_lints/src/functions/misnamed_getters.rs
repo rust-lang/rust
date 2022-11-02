@@ -6,7 +6,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
 
-use super::MISSNAMED_GETTERS;
+use super::MISNAMED_GETTERS;
 
 pub fn check_fn(
     cx: &LateContext<'_>,
@@ -111,7 +111,7 @@ pub fn check_fn(
         let sugg = format!("{snippet}{name}");
         span_lint_and_then(
             cx,
-            MISSNAMED_GETTERS,
+            MISNAMED_GETTERS,
             span,
             "getter function appears to return the wrong field",
             |diag| {

@@ -1,5 +1,5 @@
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:11:5
+  --> $DIR/misnamed_getters.rs:11:5
    |
 LL | /     fn a(&self) -> &u8 {
 LL | |         &self.b
@@ -7,10 +7,10 @@ LL | |         &self.b
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::missnamed-getters` implied by `-D warnings`
+   = note: `-D clippy::misnamed-getters` implied by `-D warnings`
 
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:14:5
+  --> $DIR/misnamed_getters.rs:14:5
    |
 LL | /     fn a_mut(&mut self) -> &mut u8 {
 LL | |         &mut self.b
@@ -19,7 +19,7 @@ LL | |     }
    | |_____^
 
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:18:5
+  --> $DIR/misnamed_getters.rs:18:5
    |
 LL | /     fn b(self) -> u8 {
 LL | |         self.a
@@ -28,7 +28,7 @@ LL | |     }
    | |_____^
 
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:22:5
+  --> $DIR/misnamed_getters.rs:22:5
    |
 LL | /     fn b_mut(&mut self) -> &mut u8 {
 LL | |         &mut self.a
@@ -37,7 +37,7 @@ LL | |     }
    | |_____^
 
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:26:5
+  --> $DIR/misnamed_getters.rs:26:5
    |
 LL | /     fn c(&self) -> &u8 {
 LL | |         &self.b
@@ -46,7 +46,7 @@ LL | |     }
    | |_____^
 
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:30:5
+  --> $DIR/misnamed_getters.rs:30:5
    |
 LL | /     fn c_mut(&mut self) -> &mut u8 {
 LL | |         &mut self.a
@@ -55,7 +55,7 @@ LL | |     }
    | |_____^
 
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:41:5
+  --> $DIR/misnamed_getters.rs:41:5
    |
 LL | /     unsafe fn a(&self) -> &u8 {
 LL | |         &self.b
@@ -64,7 +64,7 @@ LL | |     }
    | |_____^
 
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:44:5
+  --> $DIR/misnamed_getters.rs:44:5
    |
 LL | /     unsafe fn a_mut(&mut self) -> &mut u8 {
 LL | |         &mut self.b
@@ -73,7 +73,7 @@ LL | |     }
    | |_____^
 
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:48:5
+  --> $DIR/misnamed_getters.rs:48:5
    |
 LL | /     unsafe fn b(self) -> u8 {
 LL | |         self.a
@@ -82,7 +82,7 @@ LL | |     }
    | |_____^
 
 error: getter function appears to return the wrong field
-  --> $DIR/missnamed_getters.rs:52:5
+  --> $DIR/misnamed_getters.rs:52:5
    |
 LL | /     unsafe fn b_mut(&mut self) -> &mut u8 {
 LL | |         &mut self.a
