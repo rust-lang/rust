@@ -16,6 +16,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
 #![feature(if_let_guard)]
+#![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
@@ -537,7 +538,7 @@ impl Span {
     }
     #[inline]
     pub fn eq_ctxt(self, other: Span) -> bool {
-        self.data_untracked().ctxt == other.data_untracked().ctxt
+        self.ctxt() == other.ctxt()
     }
     #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
@@ -1990,7 +1991,8 @@ pub struct FileLines {
     pub lines: Vec<LineInfo>,
 }
 
-pub static SPAN_TRACK: AtomicRef<fn(LocalDefId)> = AtomicRef::new(&((|_| {}) as fn(_)));
+pub static SPAN_TRACK: AtomicRef<fn(LocalDefId) -> Option<Span>> =
+    AtomicRef::new(&((|_| None) as fn(_) -> _));
 
 // _____________________________________________________________________________
 // SpanLinesError, SpanSnippetError, DistinctSources, MalformedSourceMapPositions

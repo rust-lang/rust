@@ -12,14 +12,18 @@
 use rustc_errors::{Diagnostic, TRACK_DIAGNOSTICS};
 use rustc_middle::dep_graph::TaskDepsRef;
 use rustc_middle::ty::tls;
+use rustc_span::Span;
 use std::fmt;
 
-fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
+fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) -> Option<Span> {
     tls::with_opt(|tcx| {
         if let Some(tcx) = tcx {
-            let _span = tcx.source_span(def_id);
+            let span = tcx.source_span(def_id);
             // Sanity check: relative span's parent must be an absolute span.
-            debug_assert_eq!(_span.data_untracked().parent, None);
+            debug_assert_eq!(span.data_untracked().parent, None);
+            Some(span)
+        } else {
+            None
         }
     })
 }
@@ -62,7 +66,7 @@ fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) ->
 /// Sets up the callbacks in prior crates which we want to refer to the
 /// TyCtxt in.
 pub fn setup_callbacks() {
-    rustc_span::SPAN_TRACK.swap(&(track_span_parent as fn(_)));
+    rustc_span::SPAN_TRACK.swap(&(track_span_parent as fn(_) -> _));
     rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     TRACK_DIAGNOSTICS.swap(&(track_diagnostic as _));
 }

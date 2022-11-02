@@ -84,6 +84,7 @@ const PARENT_MASK: u16 = 0b1000_0000_0000_0000;
 const MAX_LEN: u32 = 0b0111_1111_1111_1111;
 const CTXT_TAG: u32 = 0b1111_1111_1111_1111;
 const MAX_CTXT: u32 = CTXT_TAG - 1;
+const MAX_PARENT: u32 = 0b1111_1111_1111_1111;
 
 /// Dummy span, both position and length are zero, syntax context is zero as well.
 pub const DUMMY_SP: Span = Span { base_or_index: 0, len_or_tag: 0, ctxt_or_tag: 0 };
@@ -110,8 +111,13 @@ impl Span {
                 // Inline format with parent.
                 let len_or_tag = len_or_tag | PARENT_MASK;
                 let parent2 = parent.local_def_index.as_u32();
-                if ctxt2 == SyntaxContext::root().as_u32() && parent2 <= MAX_CTXT {
-                    return Span { base_or_index: base, len_or_tag, ctxt_or_tag: parent2 as u16 };
+                if parent2 <= MAX_PARENT
+                    && let Some(parent_base) = SPAN_TRACK(parent)
+                    && let Some(delta_base) = base.checked_sub(parent_base.lo().0)
+                    && delta_base <= MAX_PARENT
+                {
+                    let base_or_index = parent2 << 16 | delta_base;
+                    return Span { base_or_index, len_or_tag, ctxt_or_tag: ctxt2 as u16 };
                 }
             } else {
                 // Inline format with ctxt.
@@ -134,7 +140,7 @@ impl Span {
     pub fn data(self) -> SpanData {
         let data = self.data_untracked();
         if let Some(parent) = data.parent {
-            (*SPAN_TRACK)(parent);
+            SPAN_TRACK(parent);
         }
         data
     }
@@ -156,12 +162,14 @@ impl Span {
             } else {
                 let len = self.len_or_tag & !PARENT_MASK;
                 debug_assert!(len as u32 <= MAX_LEN);
-                let parent =
-                    LocalDefId { local_def_index: DefIndex::from_u32(self.ctxt_or_tag as u32) };
+                let parent2 = self.base_or_index >> 16;
+                let delta_base = self.base_or_index & MAX_PARENT;
+                let parent = LocalDefId { local_def_index: DefIndex::from_u32(parent2 as u32) };
+                let lo = SPAN_TRACK(parent).unwrap().lo().0 + (delta_base as u32);
                 SpanData {
-                    lo: BytePos(self.base_or_index),
-                    hi: BytePos(self.base_or_index + len as u32),
-                    ctxt: SyntaxContext::root(),
+                    lo: BytePos(lo),
+                    hi: BytePos(lo + len as u32),
+                    ctxt: SyntaxContext::from_u32(self.ctxt_or_tag as u32),
                     parent: Some(parent),
                 }
             }
@@ -177,14 +185,8 @@ impl Span {
     pub fn ctxt(self) -> SyntaxContext {
         let ctxt_or_tag = self.ctxt_or_tag as u32;
         if ctxt_or_tag <= MAX_CTXT {
-            if self.len_or_tag == LEN_TAG || self.len_or_tag & PARENT_MASK == 0 {
-                // Inline format or interned format with inline ctxt.
-                SyntaxContext::from_u32(ctxt_or_tag)
-            } else {
-                // Inline format or interned format with inline parent.
-                // We know that the SyntaxContext is root.
-                SyntaxContext::root()
-            }
+            // Inline format or interned format with inline ctxt.
+            SyntaxContext::from_u32(ctxt_or_tag)
         } else {
             // Interned format.
             let index = self.base_or_index;
