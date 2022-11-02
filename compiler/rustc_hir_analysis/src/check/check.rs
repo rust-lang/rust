@@ -471,7 +471,7 @@ fn check_opaque_meets_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
     }
     match origin {
         // Checked when type checking the function containing them.
