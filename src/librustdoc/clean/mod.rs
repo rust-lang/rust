@@ -182,10 +182,9 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
         .collect_referenced_late_bound_regions(&poly_trait_ref)
         .into_iter()
         .filter_map(|br| match br {
-            ty::BrNamed(_, name) if name != kw::UnderscoreLifetime => Some(GenericParamDef {
-                name,
-                kind: GenericParamDefKind::Lifetime { outlives: vec![] },
-            }),
+            ty::BrNamed(_, name) if name != kw::UnderscoreLifetime => {
+                Some(GenericParamDef::lifetime(name))
+            }
             _ => None,
         })
         .collect();
@@ -741,10 +740,7 @@ fn clean_ty_generics<'tcx>(
                             p.get_bound_params()
                                 .into_iter()
                                 .flatten()
-                                .map(|param| GenericParamDef {
-                                    name: param.0,
-                                    kind: GenericParamDefKind::Lifetime { outlives: Vec::new() },
-                                })
+                                .map(|param| GenericParamDef::lifetime(param.0))
                                 .collect(),
                         ));
                     }
@@ -1156,10 +1152,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 ty::BoundVariableKind::Region(ty::BrNamed(_, name))
                     if name != kw::UnderscoreLifetime =>
                 {
-                    Some(GenericParamDef {
-                        name,
-                        kind: GenericParamDefKind::Lifetime { outlives: Vec::new() },
-                    })
+                    Some(GenericParamDef::lifetime(name))
                 }
                 _ => None,
             });
@@ -1720,10 +1713,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                     ty::BoundVariableKind::Region(ty::BrNamed(_, name))
                         if name != kw::UnderscoreLifetime =>
                     {
-                        Some(GenericParamDef {
-                            name,
-                            kind: GenericParamDefKind::Lifetime { outlives: vec![] },
-                        })
+                        Some(GenericParamDef::lifetime(name))
                     }
                     _ => None,
                 })

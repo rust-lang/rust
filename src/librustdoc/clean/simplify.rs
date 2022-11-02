@@ -51,10 +51,7 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> ThinVec<WP
         let Some((bounds, _)) = tybounds.get_mut(ty) else { return true };
         let bound_params = bound_params
             .into_iter()
-            .map(|param| clean::GenericParamDef {
-                name: param.0,
-                kind: clean::GenericParamDefKind::Lifetime { outlives: Vec::new() },
-            })
+            .map(|param| clean::GenericParamDef::lifetime(param.0))
             .collect();
         merge_bounds(cx, bounds, bound_params, trait_did, name, rhs)
     });
