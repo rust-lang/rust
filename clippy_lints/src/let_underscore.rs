@@ -69,13 +69,20 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// async fn foo() -> Result<(), ()> { }
+    /// async fn foo() -> Result<(), ()> {
+    ///     Ok(())
+    /// }
     /// let _ = foo();
     /// ```
     ///
     /// Use instead:
     /// ```rust
+    /// # async fn context() {
+    /// async fn foo() -> Result<(), ()> {
+    ///     Ok(())
+    /// }
     /// let _ = foo().await;
+    /// # }
     /// ```
     #[clippy::version = "1.66"]
     pub LET_UNDERSCORE_FUTURE,
