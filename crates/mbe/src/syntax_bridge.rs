@@ -35,7 +35,7 @@ pub fn syntax_node_to_token_tree_with_modifications(
     append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
 ) -> (tt::Subtree, TokenMap, u32) {
     let global_offset = node.text_range().start();
-    let mut c = Convertor::new(node, global_offset, existing_token_map, next_id, replace, append);
+    let mut c = Converter::new(node, global_offset, existing_token_map, next_id, replace, append);
     let subtree = convert_tokens(&mut c);
     c.id_alloc.map.shrink_to_fit();
     always!(c.replace.is_empty(), "replace: {:?}", c.replace);
@@ -100,7 +100,7 @@ pub fn parse_to_token_tree(text: &str) -> Option<(tt::Subtree, TokenMap)> {
         return None;
     }
 
-    let mut conv = RawConvertor {
+    let mut conv = RawConverter {
         lexed,
         pos: 0,
         id_alloc: TokenIdAlloc {
@@ -148,7 +148,7 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
     res
 }
 
-fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
+fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree {
     struct StackEntry {
         subtree: tt::Subtree,
         idx: usize,
@@ -425,8 +425,8 @@ impl TokenIdAlloc {
     }
 }
 
-/// A raw token (straight from lexer) convertor
-struct RawConvertor<'a> {
+/// A raw token (straight from lexer) converter
+struct RawConverter<'a> {
     lexed: parser::LexedStr<'a>,
     pos: usize,
     id_alloc: TokenIdAlloc,
@@ -442,7 +442,7 @@ trait SrcToken<Ctx>: std::fmt::Debug {
     fn synthetic_id(&self, ctx: &Ctx) -> Option<SyntheticTokenId>;
 }
 
-trait TokenConvertor: Sized {
+trait TokenConverter: Sized {
     type Token: SrcToken<Self>;
 
     fn convert_doc_comment(&self, token: &Self::Token) -> Option<Vec<tt::TokenTree>>;
@@ -454,25 +454,25 @@ trait TokenConvertor: Sized {
     fn id_alloc(&mut self) -> &mut TokenIdAlloc;
 }
 
-impl<'a> SrcToken<RawConvertor<'a>> for usize {
-    fn kind(&self, ctx: &RawConvertor<'a>) -> SyntaxKind {
+impl<'a> SrcToken<RawConverter<'a>> for usize {
+    fn kind(&self, ctx: &RawConverter<'a>) -> SyntaxKind {
         ctx.lexed.kind(*self)
     }
 
-    fn to_char(&self, ctx: &RawConvertor<'a>) -> Option<char> {
+    fn to_char(&self, ctx: &RawConverter<'a>) -> Option<char> {
         ctx.lexed.text(*self).chars().next()
     }
 
-    fn to_text(&self, ctx: &RawConvertor<'_>) -> SmolStr {
+    fn to_text(&self, ctx: &RawConverter<'_>) -> SmolStr {
         ctx.lexed.text(*self).into()
     }
 
-    fn synthetic_id(&self, _ctx: &RawConvertor<'a>) -> Option<SyntheticTokenId> {
+    fn synthetic_id(&self, _ctx: &RawConverter<'a>) -> Option<SyntheticTokenId> {
         None
     }
 }
 
-impl<'a> TokenConvertor for RawConvertor<'a> {
+impl<'a> TokenConverter for RawConverter<'a> {
     type Token = usize;
 
     fn convert_doc_comment(&self, &token: &usize) -> Option<Vec<tt::TokenTree>> {
@@ -504,7 +504,7 @@ impl<'a> TokenConvertor for RawConvertor<'a> {
     }
 }
 
-struct Convertor {
+struct Converter {
     id_alloc: TokenIdAlloc,
     current: Option<SyntaxToken>,
     current_synthetic: Vec<SyntheticToken>,
@@ -515,7 +515,7 @@ struct Convertor {
     punct_offset: Option<(SyntaxToken, TextSize)>,
 }
 
-impl Convertor {
+impl Converter {
     fn new(
         node: &SyntaxNode,
         global_offset: TextSize,
@@ -523,11 +523,11 @@ impl Convertor {
         next_id: u32,
         mut replace: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
         mut append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
-    ) -> Convertor {
+    ) -> Converter {
         let range = node.text_range();
         let mut preorder = node.preorder_with_tokens();
         let (first, synthetic) = Self::next_token(&mut preorder, &mut replace, &mut append);
-        Convertor {
+        Converter {
             id_alloc: { TokenIdAlloc { map: existing_token_map, global_offset, next_id } },
             current: first,
             current_synthetic: synthetic,
@@ -590,15 +590,15 @@ impl SynToken {
     }
 }
 
-impl SrcToken<Convertor> for SynToken {
-    fn kind(&self, _ctx: &Convertor) -> SyntaxKind {
+impl SrcToken<Converter> for SynToken {
+    fn kind(&self, _ctx: &Converter) -> SyntaxKind {
         match self {
             SynToken::Ordinary(token) => token.kind(),
             SynToken::Punch(token, _) => token.kind(),
             SynToken::Synthetic(token) => token.kind,
         }
     }
-    fn to_char(&self, _ctx: &Convertor) -> Option<char> {
+    fn to_char(&self, _ctx: &Converter) -> Option<char> {
         match self {
             SynToken::Ordinary(_) => None,
             SynToken::Punch(it, i) => it.text().chars().nth((*i).into()),
@@ -606,7 +606,7 @@ impl SrcToken<Convertor> for SynToken {
             SynToken::Synthetic(_) => None,
         }
     }
-    fn to_text(&self, _ctx: &Convertor) -> SmolStr {
+    fn to_text(&self, _ctx: &Converter) -> SmolStr {
         match self {
             SynToken::Ordinary(token) => token.text().into(),
             SynToken::Punch(token, _) => token.text().into(),
@@ -614,7 +614,7 @@ impl SrcToken<Convertor> for SynToken {
         }
     }
 
-    fn synthetic_id(&self, _ctx: &Convertor) -> Option<SyntheticTokenId> {
+    fn synthetic_id(&self, _ctx: &Converter) -> Option<SyntheticTokenId> {
         match self {
             SynToken::Synthetic(token) => Some(token.id),
             _ => None,
@@ -622,7 +622,7 @@ impl SrcToken<Convertor> for SynToken {
     }
 }
 
-impl TokenConvertor for Convertor {
+impl TokenConverter for Converter {
     type Token = SynToken;
     fn convert_doc_comment(&self, token: &Self::Token) -> Option<Vec<tt::TokenTree>> {
         convert_doc_comment(token.token()?)
