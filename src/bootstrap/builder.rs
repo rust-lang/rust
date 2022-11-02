@@ -622,6 +622,7 @@ impl<'a> Builder<'a> {
                 check::Clippy,
                 check::Miri,
                 check::CargoMiri,
+                check::MiroptTestTools,
                 check::Rls,
                 check::RustAnalyzer,
                 check::Rustfmt,

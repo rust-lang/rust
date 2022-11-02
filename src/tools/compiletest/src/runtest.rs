@@ -13,7 +13,7 @@ use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
 use crate::read2::read2_abbreviated;
-use crate::util::{logv, PathBufExt};
+use crate::util::{add_dylib_path, dylib_env_var, logv, PathBufExt};
 use crate::ColorConfig;
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
@@ -26,6 +26,7 @@ use std::fs::{self, create_dir_all, File, OpenOptions};
 use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
@@ -70,19 +71,6 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
 #[cfg(not(windows))]
 fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     f()
-}
-
-/// The name of the environment variable that holds dynamic library locations.
-pub fn dylib_env_var() -> &'static str {
-    if cfg!(windows) {
-        "PATH"
-    } else if cfg!(target_os = "macos") {
-        "DYLD_LIBRARY_PATH"
-    } else if cfg!(target_os = "haiku") {
-        "LIBRARY_PATH"
-    } else {
-        "LD_LIBRARY_PATH"
-    }
 }
 
 /// The platform-specific library name
@@ -1811,16 +1799,7 @@ impl<'test> TestCx<'test> {
 
         // Need to be sure to put both the lib_path and the aux path in the dylib
         // search path for the child.
-        let mut path =
-            env::split_paths(&env::var_os(dylib_env_var()).unwrap_or_default()).collect::<Vec<_>>();
-        if let Some(p) = aux_path {
-            path.insert(0, PathBuf::from(p))
-        }
-        path.insert(0, PathBuf::from(lib_path));
-
-        // Add the new dylib search path var
-        let newpath = env::join_paths(&path).unwrap();
-        command.env(dylib_env_var(), newpath);
+        add_dylib_path(&mut command, iter::once(lib_path).chain(aux_path));
 
         let mut child = disable_error_reporting(|| command.spawn())
             .unwrap_or_else(|_| panic!("failed to exec `{:?}`", &command));
@@ -3399,103 +3378,49 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        for l in test_file_contents.lines() {
-            if l.starts_with("// EMIT_MIR ") {
-                let test_name = l.trim_start_matches("// EMIT_MIR ").trim();
-                let mut test_names = test_name.split(' ');
-                // sometimes we specify two files so that we get a diff between the two files
-                let test_name = test_names.next().unwrap();
-                let mut expected_file;
-                let from_file;
-                let to_file;
+        let files = miropt_test_tools::files_for_miropt_test(
+            &self.testpaths.file,
+            self.config.get_pointer_width(),
+        );
 
-                if test_name.ends_with(".diff") {
-                    let trimmed = test_name.trim_end_matches(".diff");
-                    let test_against = format!("{}.after.mir", trimmed);
-                    from_file = format!("{}.before.mir", trimmed);
-                    expected_file = format!("{}{}.diff", trimmed, bit_width);
-                    assert!(
-                        test_names.next().is_none(),
-                        "two mir pass names specified for MIR diff"
-                    );
-                    to_file = Some(test_against);
-                } else if let Some(first_pass) = test_names.next() {
-                    let second_pass = test_names.next().unwrap();
-                    assert!(
-                        test_names.next().is_none(),
-                        "three mir pass names specified for MIR diff"
-                    );
-                    expected_file =
-                        format!("{}{}.{}-{}.diff", test_name, bit_width, first_pass, second_pass);
-                    let second_file = format!("{}.{}.mir", test_name, second_pass);
-                    from_file = format!("{}.{}.mir", test_name, first_pass);
-                    to_file = Some(second_file);
-                } else {
-                    let ext_re = Regex::new(r#"(\.(mir|dot|html))$"#).unwrap();
-                    let cap = ext_re
-                        .captures_iter(test_name)
-                        .next()
-                        .expect("test_name has an invalid extension");
-                    let extension = cap.get(1).unwrap().as_str();
-                    expected_file = format!(
-                        "{}{}{}",
-                        test_name.trim_end_matches(extension),
-                        bit_width,
-                        extension,
-                    );
-                    from_file = test_name.to_string();
-                    assert!(
-                        test_names.next().is_none(),
-                        "two mir pass names specified for MIR dump"
-                    );
-                    to_file = None;
-                };
-                if !expected_file.starts_with(&test_crate) {
-                    expected_file = format!("{}.{}", test_crate, expected_file);
-                }
-                let expected_file = test_dir.join(expected_file);
-
-                let dumped_string = if let Some(after) = to_file {
-                    self.diff_mir_files(from_file.into(), after.into())
-                } else {
-                    let mut output_file = PathBuf::new();
-                    output_file.push(self.get_mir_dump_dir());
-                    output_file.push(&from_file);
-                    debug!(
-                        "comparing the contents of: {} with {}",
+        for miropt_test_tools::MiroptTestFiles { from_file, to_file, expected_file } in files {
+            let dumped_string = if let Some(after) = to_file {
+                self.diff_mir_files(from_file.into(), after.into())
+            } else {
+                let mut output_file = PathBuf::new();
+                output_file.push(self.get_mir_dump_dir());
+                output_file.push(&from_file);
+                debug!(
+                    "comparing the contents of: {} with {}",
+                    output_file.display(),
+                    expected_file.display()
+                );
+                if !output_file.exists() {
+                    panic!(
+                        "Output file `{}` from test does not exist, available files are in `{}`",
                         output_file.display(),
+                        output_file.parent().unwrap().display()
+                    );
+                }
+                self.check_mir_test_timestamp(&from_file, &output_file);
+                let dumped_string = fs::read_to_string(&output_file).unwrap();
+                self.normalize_output(&dumped_string, &[])
+            };
+
+            if self.config.bless {
+                let _ = std::fs::remove_file(&expected_file);
+                std::fs::write(expected_file, dumped_string.as_bytes()).unwrap();
+            } else {
+                if !expected_file.exists() {
+                    panic!("Output file `{}` from test does not exist", expected_file.display());
+                }
+                let expected_string = fs::read_to_string(&expected_file).unwrap();
+                if dumped_string != expected_string {
+                    print!("{}", write_diff(&expected_string, &dumped_string, 3));
+                    panic!(
+                        "Actual MIR output differs from expected MIR output {}",
                         expected_file.display()
                     );
-                    if !output_file.exists() {
-                        panic!(
-                            "Output file `{}` from test does not exist, available files are in `{}`",
-                            output_file.display(),
-                            output_file.parent().unwrap().display()
-                        );
-                    }
-                    self.check_mir_test_timestamp(&from_file, &output_file);
-                    let dumped_string = fs::read_to_string(&output_file).unwrap();
-                    self.normalize_output(&dumped_string, &[])
-                };
-
-                if self.config.bless {
-                    let _ = std::fs::remove_file(&expected_file);
-                    std::fs::write(expected_file, dumped_string.as_bytes()).unwrap();
-                } else {
-                    if !expected_file.exists() {
-                        panic!(
-                            "Output file `{}` from test does not exist",
-                            expected_file.display()
-                        );
-                    }
-                    let expected_string = fs::read_to_string(&expected_file).unwrap();
-                    if dumped_string != expected_string {
-                        print!("{}", write_diff(&expected_string, &dumped_string, 3));
-                        panic!(
-                            "Actual MIR output differs from expected MIR output {}",
-                            expected_file.display()
-                        );
-                    }
                 }
             }
         }
