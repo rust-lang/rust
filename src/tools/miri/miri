@@ -79,6 +79,8 @@ shift
 MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
 # Used for rustc syncs.
 JOSH_FILTER=":at_commit=75dd959a3a40eb5b4574f8d2e23aa6efbeb33573[:prefix=src/tools/miri]:/src/tools/miri"
+# Needed for `./miri bench`.
+TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
 
 ## Early commands, that don't do auto-things and don't want the environment-altering things happening below.
 case "$COMMAND" in
@@ -189,6 +191,8 @@ if [ -z "$MIRI_AUTO_OPS" ]; then
     # other code has run.
     if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-toolchain" ] ; then
         $0 toolchain
+        # Let's make sure to actually use that toolchain, too.
+        TOOLCHAIN=miri
     fi
 
     if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-fmt" ] ; then
@@ -202,7 +206,6 @@ fi
 
 ## Prepare the environment
 # Determine some toolchain properties
-TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
 TARGET=$(rustc +$TOOLCHAIN --version --verbose | grep "^host:" | cut -d ' ' -f 2)
 SYSROOT=$(rustc +$TOOLCHAIN --print sysroot)
 LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
