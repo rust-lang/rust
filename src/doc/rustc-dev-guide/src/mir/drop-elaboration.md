@@ -111,7 +111,7 @@ a few optimizations:
 
 - Only paths that are the target of a `Drop` (or have the target as a prefix)
   need drop flags.
-- Some variables are known to initialized (or uninitialized) when they are
+- Some variables are known to be initialized (or uninitialized) when they are
   dropped. These do not need drop flags.
 - If a set of paths are only dropped or moved from via a shared prefix, those
   paths can share a single drop flag.

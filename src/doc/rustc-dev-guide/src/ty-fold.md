@@ -17,7 +17,7 @@ and
 
 For example, the `TypeFolder` trait has a method
 [`fold_ty`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/fold/trait.TypeFolder.html#method.fold_ty)
-that takes a type as input a type and returns a new type as a result. `TypeFoldable` invokes the
+that takes a type as input and returns a new type as a result. `TypeFoldable` invokes the
 `TypeFolder` `fold_foo` methods on itself, giving the `TypeFolder` access to its contents (the
 types, regions, etc that are contained within).
 

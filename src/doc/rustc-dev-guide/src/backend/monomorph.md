@@ -70,7 +70,7 @@ or more modules in Crate B.
 | Crate A function | Behavior |
 | - | - |
 | Non-generic function | Crate A function doesn't appear in any codegen units of Crate B |
-| Non-generic `#[inline]` function |  Crate A function appears with in a single CGU  of Crate B, and exists even after post-inlining stage|
+| Non-generic `#[inline]` function |  Crate A function appears within a single CGU  of Crate B, and exists even after post-inlining stage|
 | Generic function |  Regardless of inlining, all monomorphized (specialized) functions <br> from Crate A appear within a single codegen unit for Crate B. <br> The codegen unit exists even after the post inlining stage.|
 | Generic `#[inline]` function |   - same - |
 

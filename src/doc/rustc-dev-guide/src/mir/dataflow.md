@@ -61,7 +61,7 @@ slower as a result. All implementers of `GenKillAnalysis` also implement
 ### Transfer Functions and Effects
 
 The dataflow framework in `rustc` allows each statement (and terminator) inside
-a basic block define its own transfer function. For brevity, these
+a basic block to define its own transfer function. For brevity, these
 individual transfer functions are known as "effects". Each effect is applied
 successively in dataflow order, and together they define the transfer function
 for the entire basic block. It's also possible to define an effect for

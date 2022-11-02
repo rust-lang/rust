@@ -26,7 +26,7 @@ occurs in the `rustc_codegen_ssa::base` module.
 
 The underlying thread-safe data-structures used in the parallel compiler
 can be found in the `rustc_data_structures::sync` module. These data structures 
-are implemented diferently depending on whether `parallel-compiler` is true.
+are implemented differently depending on whether `parallel-compiler` is true.
 
 | data structure                   | parallel                                            | non-parallel |
 | -------------------------------- | --------------------------------------------------- | ------------ |

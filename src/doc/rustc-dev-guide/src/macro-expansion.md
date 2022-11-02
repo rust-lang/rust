@@ -149,9 +149,9 @@ macros are implemented in [`rustc_builtin_macros`], along with some other early
 code generation facilities like injection of standard library imports or
 generation of test harness. There are some additional helpers for building
 their AST fragments in [`rustc_expand::build`][reb]. Eager expansion generally
-performs a subset of the things that lazy (normal) expansion. It is done by
+performs a subset of the things that lazy (normal) expansion does. It is done by
 invoking [`fully_expand_fragment`][fef] on only part of a crate (as opposed to
-whole crate, like we normally do).
+the whole crate, like we normally do).
 
 ### Other Data Structures
 
@@ -532,7 +532,7 @@ three cases has occurred:
 - Failure: the token stream does not match `matcher`. This results in an error message such as
   "No rule expected token _blah_".
 - Error: some fatal error has occurred _in the parser_. For example, this
-  happens if there are more than one pattern match, since that indicates
+  happens if there is more than one pattern match, since that indicates
   the macro is ambiguous.
 
 The full interface is defined [here][code_parse_int].
