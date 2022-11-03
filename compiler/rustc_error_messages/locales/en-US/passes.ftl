@@ -679,8 +679,7 @@ passes_change_fields_to_be_of_unit_type =
     consider changing the { $num ->
       [one] field
      *[other] fields
-    } to be of unit type to suppress this warning
-    while preserving the field numbering, or remove the { $num ->
+    } to be of unit type to suppress this warning while preserving the field numbering, or remove the { $num ->
       [one] field
      *[other] fields
     }
