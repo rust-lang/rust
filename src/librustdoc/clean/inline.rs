@@ -19,8 +19,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use crate::clean::{
     self, clean_fn_decl_from_did_and_sig, clean_generics, clean_impl_item, clean_middle_assoc_item,
     clean_middle_field, clean_middle_ty, clean_trait_ref_with_bindings, clean_ty,
-    clean_ty_generics, clean_variant_def, clean_visibility, utils, Attributes, AttributesExt,
-    ImplKind, ItemId, Type,
+    clean_ty_generics, clean_variant_def, utils, Attributes, AttributesExt, ImplKind, ItemId, Type,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -654,7 +653,7 @@ fn build_macro(
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.sess()) {
         LoadedMacro::MacroDef(item_def, _) => {
             if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
-                let vis = clean_visibility(cx.tcx.visibility(import_def_id.unwrap_or(def_id)));
+                let vis = cx.tcx.visibility(import_def_id.unwrap_or(def_id));
                 clean::MacroItem(clean::Macro {
                     source: utils::display_macro_source(cx, name, def, def_id, vis),
                 })

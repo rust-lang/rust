@@ -100,13 +100,12 @@ impl JsonRenderer<'_> {
         }
     }
 
-    fn convert_visibility(&self, v: clean::Visibility) -> Visibility {
-        use clean::Visibility::*;
+    fn convert_visibility(&self, v: Option<ty::Visibility<DefId>>) -> Visibility {
         match v {
-            Public => Visibility::Public,
-            Inherited => Visibility::Default,
-            Restricted(did) if did.is_crate_root() => Visibility::Crate,
-            Restricted(did) => Visibility::Restricted {
+            None => Visibility::Default,
+            Some(ty::Visibility::Public) => Visibility::Public,
+            Some(ty::Visibility::Restricted(did)) if did.is_crate_root() => Visibility::Crate,
+            Some(ty::Visibility::Restricted(did)) => Visibility::Restricted {
                 parent: from_item_id(did.into(), self.tcx),
                 path: self.tcx.def_path(did).to_string_no_crate_verbose(),
             },

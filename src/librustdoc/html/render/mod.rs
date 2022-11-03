@@ -70,8 +70,8 @@ use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
     href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
-    print_default_space, print_generic_bounds, print_where_clause, Buffer, Ending, HrefError,
-    PrintWithSpace,
+    print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
+    Buffer, Ending, HrefError, PrintWithSpace,
 };
 use crate::html::highlight;
 use crate::html::markdown::{
@@ -752,7 +752,7 @@ fn assoc_const(
         w,
         "{extra}{vis}const <a{href} class=\"constant\">{name}</a>: {ty}",
         extra = extra,
-        vis = it.visibility(tcx).print_with_space(it.item_id, cx),
+        vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
         ty = ty.print(cx),
@@ -809,7 +809,7 @@ fn assoc_method(
     let tcx = cx.tcx();
     let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
     let name = meth.name.as_ref().unwrap();
-    let vis = meth.visibility(tcx).print_with_space(meth.item_id, cx).to_string();
+    let vis = visibility_print_with_space(meth.visibility(tcx), meth.item_id, cx).to_string();
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
