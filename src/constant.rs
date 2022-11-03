@@ -28,9 +28,7 @@ impl ConstantCx {
     }
 
     pub(crate) fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut dyn Module) {
-        //println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
-        //println!("done {:?}", self.done);
         self.done.clear();
     }
 }
@@ -358,8 +356,6 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 (data_id, alloc, None)
             }
             TodoItem::Static(def_id) => {
-                //println!("static {:?}", def_id);
-
                 let section_name = tcx.codegen_fn_attrs(def_id).link_section;
 
                 let alloc = tcx.eval_static_initializer(def_id).unwrap();
@@ -369,7 +365,6 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             }
         };
 
-        //("data_id {}", data_id);
         if cx.done.contains(&data_id) {
             continue;
         }
