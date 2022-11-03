@@ -410,6 +410,7 @@ impl<T> Lock<T> {
 
     #[cfg(parallel_compiler)]
     #[inline(always)]
+    #[track_caller]
     pub fn lock(&self) -> LockGuard<'_, T> {
         if ERROR_CHECKING {
             self.0.try_lock().expect("lock was already held")
@@ -420,21 +421,25 @@ impl<T> Lock<T> {
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
+    #[track_caller]
     pub fn lock(&self) -> LockGuard<'_, T> {
         self.0.borrow_mut()
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn with_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
         f(&mut *self.lock())
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn borrow(&self) -> LockGuard<'_, T> {
         self.lock()
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn borrow_mut(&self) -> LockGuard<'_, T> {
         self.lock()
     }
@@ -476,6 +481,7 @@ impl<T> RwLock<T> {
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
+    #[track_caller]
     pub fn read(&self) -> ReadGuard<'_, T> {
         self.0.borrow()
     }
@@ -491,6 +497,7 @@ impl<T> RwLock<T> {
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn with_read_lock<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
         f(&*self.read())
     }
@@ -509,6 +516,7 @@ impl<T> RwLock<T> {
 
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
+    #[track_caller]
     pub fn write(&self) -> WriteGuard<'_, T> {
         self.0.borrow_mut()
     }
@@ -524,16 +532,19 @@ impl<T> RwLock<T> {
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn with_write_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
         f(&mut *self.write())
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn borrow(&self) -> ReadGuard<'_, T> {
         self.read()
     }
 
     #[inline(always)]
+    #[track_caller]
     pub fn borrow_mut(&self) -> WriteGuard<'_, T> {
         self.write()
     }
