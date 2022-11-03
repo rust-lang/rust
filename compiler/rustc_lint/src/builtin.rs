@@ -2499,7 +2499,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         ) -> Option<InitError> {
             let field_err = variant.fields.iter().find_map(|field| {
                 ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|mut err| {
-                    if err.span.is_none() {
+                    if !field.did.is_local() {
+                        err
+                    } else if err.span.is_none() {
                         err.span = Some(cx.tcx.def_span(field.did));
                         write!(&mut err.message, " (in this {descr})").unwrap();
                         err

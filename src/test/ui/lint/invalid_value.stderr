@@ -332,11 +332,7 @@ LL |         let _val: NonNull<i32> = mem::uninitialized();
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
-note: raw pointers must not be uninitialized (in this struct field)
-  --> $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
-   |
-LL |     pointer: *const T,
-   |     ^^^^^^^^^^^^^^^^^
+   = note: raw pointers must not be uninitialized
 
 error: the type `(NonZeroU32, i32)` does not permit zero-initialization
   --> $DIR/invalid_value.rs:95:39
@@ -359,18 +355,7 @@ LL |         let _val: (NonZeroU32, i32) = mem::uninitialized();
    |                                       help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::num::NonZeroU32` must be non-null
-note: integers must not be uninitialized (in this struct field)
-  --> $SRC_DIR/core/src/num/nonzero.rs:LL:COL
-   |
-LL | / nonzero_integers! {
-LL | |     #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU8(u8);
-LL | |     #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU16(u16);
-LL | |     #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU32(u32);
-...  |
-LL | |     #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIs...
-LL | | }
-   | |_^
-   = note: this error originates in the macro `nonzero_integers` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: integers must not be uninitialized
 
 error: the type `*const dyn Send` does not permit zero-initialization
   --> $DIR/invalid_value.rs:98:37
@@ -477,18 +462,7 @@ note: `std::num::NonZeroU32` must be non-null (in this field of the only potenti
    |
 LL |     Banana(NonZeroU32),
    |            ^^^^^^^^^^
-note: integers must not be uninitialized (in this struct field)
-  --> $SRC_DIR/core/src/num/nonzero.rs:LL:COL
-   |
-LL | / nonzero_integers! {
-LL | |     #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU8(u8);
-LL | |     #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU16(u16);
-LL | |     #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU32(u32);
-...  |
-LL | |     #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIs...
-LL | | }
-   | |_^
-   = note: this error originates in the macro `nonzero_integers` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: integers must not be uninitialized
 
 error: the type `bool` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:112:26
@@ -688,11 +662,7 @@ LL |         let _val: NonNull<i32> = MaybeUninit::uninit().assume_init();
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
-note: raw pointers must not be uninitialized (in this struct field)
-  --> $SRC_DIR/core/src/ptr/non_null.rs:LL:COL
-   |
-LL |     pointer: *const T,
-   |     ^^^^^^^^^^^^^^^^^
+   = note: raw pointers must not be uninitialized
 
 error: the type `bool` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:159:26
