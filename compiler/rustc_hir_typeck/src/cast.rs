@@ -219,8 +219,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         // inference is more completely known.
         match cast_ty.kind() {
             ty::Dynamic(_, _, ty::Dyn) | ty::Slice(..) => {
-                let reported = check.report_cast_to_unsized_type(fcx);
-                return Err(reported);
+                Err(check.report_cast_to_unsized_type(fcx))
             }
             _ => Ok(check),
         }
