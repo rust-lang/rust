@@ -245,6 +245,18 @@ impl ScalarInt {
         self.to_bits(size)
     }
 
+    // Tries to convert the `ScalarInt` to `bool`. Fails if the `size` of the `ScalarInt`
+    // in not equal to `Size { raw: 1 }` or if the value is not 0 or 1 and returns the `size`
+    // value of the `ScalarInt` in that case.
+    #[inline]
+    pub fn try_to_bool(self) -> Result<bool, Size> {
+        match self.try_to_u8()? {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(self.size()),
+        }
+    }
+
     // Tries to convert the `ScalarInt` to `u8`. Fails if the `size` of the `ScalarInt`
     // in not equal to `Size { raw: 1 }` and returns the `size` value of the `ScalarInt` in
     // that case.
