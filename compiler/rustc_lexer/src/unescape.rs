@@ -84,12 +84,9 @@ where
         Mode::Char | Mode::Byte => {
             let mut chars = src.chars();
             let result = unescape_char_or_byte(&mut chars, mode == Mode::Byte);
-            // The Chars iterator moved forward.
             callback(0..(src.len() - chars.as_str().len()), result);
         }
         Mode::Str | Mode::ByteStr => unescape_str_or_byte_str(src, mode == Mode::ByteStr, callback),
-        // NOTE: Raw strings do not perform any explicit character escaping, here we
-        // only translate CRLF to LF and produce errors on bare CR.
         Mode::RawStr | Mode::RawByteStr => {
             unescape_raw_str_or_raw_byte_str(src, mode == Mode::RawByteStr, callback)
         }
@@ -333,7 +330,7 @@ where
 /// Takes a contents of a string literal (without quotes) and produces a
 /// sequence of characters or errors.
 /// NOTE: Raw strings do not perform any explicit character escaping, here we
-/// only translate CRLF to LF and produce errors on bare CR.
+/// only produce errors on bare CR.
 fn unescape_raw_str_or_raw_byte_str<F>(src: &str, is_byte: bool, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
