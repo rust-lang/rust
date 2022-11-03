@@ -8,9 +8,6 @@ LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -31,9 +28,6 @@ LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -54,9 +48,6 @@ LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -77,9 +68,6 @@ LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -100,9 +88,6 @@ LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -123,9 +108,6 @@ LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -146,9 +128,6 @@ LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -169,9 +148,6 @@ LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -192,9 +168,6 @@ LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -215,9 +188,6 @@ LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -238,9 +208,6 @@ LL |         assert::is_maybe_transmutable::<repr_c, ()>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {
@@ -261,9 +228,6 @@ LL |         assert::is_maybe_transmutable::<u128, repr_c>();
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |       pub fn is_maybe_transmutable<Src, Dst>()
-   |              --------------------- required by a bound in this
-LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^
 LL | |             Assume {

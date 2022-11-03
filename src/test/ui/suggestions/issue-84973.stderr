@@ -11,9 +11,6 @@ note: required by a bound in `Other::<'a, G>::new`
    |
 LL |     G: SomeTrait,
    |        ^^^^^^^^^ required by this bound in `Other::<'a, G>::new`
-LL | {
-LL |     pub fn new(g: G) -> Self {
-   |            --- required by a bound in this
 help: consider borrowing here
    |
 LL |     let o = Other::new(&f);

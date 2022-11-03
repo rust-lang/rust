@@ -1,6 +1,4 @@
 fn process_slice(data: &[i32]) {
-    //~^ NOTE required by a bound in this
-    //~| NOTE required by a bound in this
     todo!()
 }
 

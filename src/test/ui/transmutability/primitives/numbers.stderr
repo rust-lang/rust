@@ -8,9 +8,6 @@ LL |     assert::is_transmutable::<   i8,   i16>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -24,9 +21,6 @@ LL |     assert::is_transmutable::<   i8,   u16>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -40,9 +34,6 @@ LL |     assert::is_transmutable::<   i8,   i32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -56,9 +47,6 @@ LL |     assert::is_transmutable::<   i8,   f32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -72,9 +60,6 @@ LL |     assert::is_transmutable::<   i8,   u32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -88,9 +73,6 @@ LL |     assert::is_transmutable::<   i8,   u64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -104,9 +86,6 @@ LL |     assert::is_transmutable::<   i8,   i64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -120,9 +99,6 @@ LL |     assert::is_transmutable::<   i8,   f64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -136,9 +112,6 @@ LL |     assert::is_transmutable::<   i8,  u128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -152,9 +125,6 @@ LL |     assert::is_transmutable::<   i8,  i128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -168,9 +138,6 @@ LL |     assert::is_transmutable::<   u8,   i16>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -184,9 +151,6 @@ LL |     assert::is_transmutable::<   u8,   u16>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -200,9 +164,6 @@ LL |     assert::is_transmutable::<   u8,   i32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -216,9 +177,6 @@ LL |     assert::is_transmutable::<   u8,   f32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -232,9 +190,6 @@ LL |     assert::is_transmutable::<   u8,   u32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -248,9 +203,6 @@ LL |     assert::is_transmutable::<   u8,   u64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -264,9 +216,6 @@ LL |     assert::is_transmutable::<   u8,   i64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -280,9 +229,6 @@ LL |     assert::is_transmutable::<   u8,   f64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -296,9 +242,6 @@ LL |     assert::is_transmutable::<   u8,  u128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -312,9 +255,6 @@ LL |     assert::is_transmutable::<   u8,  i128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -328,9 +268,6 @@ LL |     assert::is_transmutable::<  i16,   i32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -344,9 +281,6 @@ LL |     assert::is_transmutable::<  i16,   f32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -360,9 +294,6 @@ LL |     assert::is_transmutable::<  i16,   u32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -376,9 +307,6 @@ LL |     assert::is_transmutable::<  i16,   u64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -392,9 +320,6 @@ LL |     assert::is_transmutable::<  i16,   i64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -408,9 +333,6 @@ LL |     assert::is_transmutable::<  i16,   f64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -424,9 +346,6 @@ LL |     assert::is_transmutable::<  i16,  u128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -440,9 +359,6 @@ LL |     assert::is_transmutable::<  i16,  i128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -456,9 +372,6 @@ LL |     assert::is_transmutable::<  u16,   i32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -472,9 +385,6 @@ LL |     assert::is_transmutable::<  u16,   f32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -488,9 +398,6 @@ LL |     assert::is_transmutable::<  u16,   u32>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -504,9 +411,6 @@ LL |     assert::is_transmutable::<  u16,   u64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -520,9 +424,6 @@ LL |     assert::is_transmutable::<  u16,   i64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -536,9 +437,6 @@ LL |     assert::is_transmutable::<  u16,   f64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -552,9 +450,6 @@ LL |     assert::is_transmutable::<  u16,  u128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -568,9 +463,6 @@ LL |     assert::is_transmutable::<  u16,  i128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -584,9 +476,6 @@ LL |     assert::is_transmutable::<  i32,   u64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -600,9 +489,6 @@ LL |     assert::is_transmutable::<  i32,   i64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -616,9 +502,6 @@ LL |     assert::is_transmutable::<  i32,   f64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -632,9 +515,6 @@ LL |     assert::is_transmutable::<  i32,  u128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -648,9 +528,6 @@ LL |     assert::is_transmutable::<  i32,  i128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -664,9 +541,6 @@ LL |     assert::is_transmutable::<  f32,   u64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -680,9 +554,6 @@ LL |     assert::is_transmutable::<  f32,   i64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -696,9 +567,6 @@ LL |     assert::is_transmutable::<  f32,   f64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -712,9 +580,6 @@ LL |     assert::is_transmutable::<  f32,  u128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -728,9 +593,6 @@ LL |     assert::is_transmutable::<  f32,  i128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -744,9 +606,6 @@ LL |     assert::is_transmutable::<  u32,   u64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -760,9 +619,6 @@ LL |     assert::is_transmutable::<  u32,   i64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -776,9 +632,6 @@ LL |     assert::is_transmutable::<  u32,   f64>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -792,9 +645,6 @@ LL |     assert::is_transmutable::<  u32,  u128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -808,9 +658,6 @@ LL |     assert::is_transmutable::<  u32,  i128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -824,9 +671,6 @@ LL |     assert::is_transmutable::<  u64,  u128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -840,9 +684,6 @@ LL |     assert::is_transmutable::<  u64,  i128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -856,9 +697,6 @@ LL |     assert::is_transmutable::<  i64,  u128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -872,9 +710,6 @@ LL |     assert::is_transmutable::<  i64,  i128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -888,9 +723,6 @@ LL |     assert::is_transmutable::<  f64,  u128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
@@ -904,9 +736,6 @@ LL |     assert::is_transmutable::<  f64,  i128>();
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
-LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
