@@ -20,6 +20,7 @@ for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|// error-pat
 done
 
 git checkout -- src/test/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
+git checkout -- src/test/ui/proc-macro/pretty-print-hack/
 
 # missing features
 # ================
@@ -30,6 +31,7 @@ rm src/test/incremental/issue-80691-bad-eval-cache.rs # -Cpanic=abort causes abo
 
 # requires compiling with -Cpanic=unwind
 rm -r src/test/ui/macros/rfc-2011-nicer-assert-messages/
+rm -r src/test/run-make/test-benches
 
 # vendor intrinsics
 rm src/test/ui/sse2.rs # cpuid not supported, so sse2 not detected
@@ -94,8 +96,6 @@ rm -r src/test/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 
 # genuine bugs
 # ============
-rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition
-
 rm src/test/incremental/spike-neg1.rs # errors out for some reason
 rm src/test/incremental/spike-neg2.rs # same
 rm src/test/ui/issues/issue-74564-if-expr-stack-overflow.rs # gives a stackoverflow before the backend runs
@@ -111,6 +111,7 @@ rm src/test/ui/simple_global_asm.rs # TODO add needs-asm-support
 rm src/test/ui/test-attrs/test-type.rs # TODO panic message on stderr. correct stdout
 # not sure if this is actually a bug in the test suite, but the symbol list shows the function without leading _ for some reason
 rm -r src/test/run-make/native-link-modifier-bundle
+rm src/test/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 
 rm src/test/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
