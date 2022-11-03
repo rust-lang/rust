@@ -720,28 +720,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_cloning(&self, err: &mut Diagnostic, ty: Ty<'tcx>, span: Span) {
         let tcx = self.infcx.tcx;
-
         // Try to find predicates on *generic params* that would allow copying `ty`
         let infcx = tcx.infer_ctxt().build();
-        let mut fulfill_cx = <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
-
-        let clone_did = infcx.tcx.lang_items().clone_trait().unwrap();
-        let cause = ObligationCause::new(
-            span,
-            self.mir_hir_id(),
-            rustc_infer::traits::ObligationCauseCode::MiscObligation,
-        );
-        fulfill_cx.register_bound(
-            &infcx,
-            self.param_env,
-            // Erase any region vids from the type, which may not be resolved
-            infcx.tcx.erase_regions(ty),
-            clone_did,
-            cause,
-        );
-        // Select all, including ambiguous predicates
-        let errors = fulfill_cx.select_all_or_error(&infcx);
-        if errors.is_empty() {
+        let clone_did = tcx.lang_items().clone_trait().unwrap();
+        let params = ty::List::empty();
+        let ty = tcx.erase_regions(ty);
+        let env = self.param_env;
+        if infcx.type_implements_trait(clone_did, ty, params, env).must_apply_modulo_regions() {
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
                 "consider cloning the value if the performance cost is acceptable",
