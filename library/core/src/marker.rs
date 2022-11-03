@@ -779,6 +779,22 @@ unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<T: ?Sized> Freeze for &T {}
 unsafe impl<T: ?Sized> Freeze for &mut T {}
 
+/// Compiler-internal trait used to handle more easily trait aliases.
+/// They get generated like projections. For example:
+/// ```ignore (pseudo-code)
+/// type Foo = Bar;
+/// // becomes:
+/// type Foo = <Bar as Identity>::Identity;
+/// ```
+pub(crate) trait Identity: Sized {
+    #[cfg_attr(not(bootstrap), lang = "identity")]
+    type Identity;
+}
+
+impl<T> Identity for T {
+    type Identity = T;
+}
+
 /// Types that can be safely moved after being pinned.
 ///
 /// Rust itself has no notion of immovable types, and considers moves (e.g.,

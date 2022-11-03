@@ -790,6 +790,7 @@ symbols! {
         i64,
         i8,
         ident,
+        identity,
         identity_future,
         if_let,
         if_let_guard,
