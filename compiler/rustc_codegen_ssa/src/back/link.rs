@@ -1063,7 +1063,7 @@ fn strip_symbols_with_external_utility<'a>(
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                sess.emit_warning(errors::StrippingDebuInfoFailed {
+                sess.emit_warning(errors::StrippingDebugInfoFailed {
                     util,
                     status: prog.status,
                     output: escape_string(&output),
@@ -1077,7 +1077,6 @@ fn strip_symbols_with_external_utility<'a>(
 fn escape_string(s: &[u8]) -> String {
     match str::from_utf8(s) {
         Ok(s) => s.to_owned(),
-        // FIXME: return a type that can conform to IntoDiagnosticArg
         Err(_) => format!("Non-UTF-8 output: {}", s.escape_ascii()),
     }
 }
