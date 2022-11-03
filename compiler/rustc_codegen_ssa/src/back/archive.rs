@@ -10,7 +10,7 @@ use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::errors::{ExtractBundledLibsError, ExtractBundledLibsErrorKind::*};
+use crate::errors::ExtractBundledLibsError;
 
 pub trait ArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a>;
@@ -35,48 +35,30 @@ pub trait ArchiveBuilderBuilder {
         outdir: &Path,
         bundled_lib_file_names: &FxHashSet<Symbol>,
     ) -> Result<(), ExtractBundledLibsError<'_>> {
-        let archive_map = unsafe {
-            Mmap::map(File::open(rlib).map_err(|e| ExtractBundledLibsError {
-                kind: OpenFile,
-                rlib,
-                error: e.to_string(),
-            })?)
-            .map_err(|e| ExtractBundledLibsError {
-                kind: MmapFile,
-                rlib,
-                error: e.to_string(),
-            })?
-        };
-        let archive = ArchiveFile::parse(&*archive_map).map_err(|e| ExtractBundledLibsError {
-            kind: ParseArchive,
-            rlib,
-            error: e.to_string(),
-        })?;
+        let archive_map =
+            unsafe {
+                Mmap::map(File::open(rlib).map_err(|e| ExtractBundledLibsError::OpenFile {
+                    rlib,
+                    error: e.to_string(),
+                })?)
+                .map_err(|e| ExtractBundledLibsError::MmapFile { rlib, error: e.to_string() })?
+            };
+        let archive = ArchiveFile::parse(&*archive_map)
+            .map_err(|e| ExtractBundledLibsError::ParseArchive { rlib, error: e.to_string() })?;
 
         for entry in archive.members() {
-            let entry = entry.map_err(|e| ExtractBundledLibsError {
-                kind: ReadEntry,
-                rlib,
-                error: e.to_string(),
+            let entry = entry
+                .map_err(|e| ExtractBundledLibsError::ReadEntry { rlib, error: e.to_string() })?;
+            let data = entry.data(&*archive_map).map_err(|e| {
+                ExtractBundledLibsError::ArchiveMember { rlib, error: e.to_string() }
             })?;
-            let data = entry.data(&*archive_map).map_err(|e| ExtractBundledLibsError {
-                kind: ArchiveMember,
-                rlib,
-                error: e.to_string(),
-            })?;
-            let name = std::str::from_utf8(entry.name()).map_err(|e| ExtractBundledLibsError {
-                kind: ConvertName,
-                rlib,
-                error: e.to_string(),
-            })?;
+            let name = std::str::from_utf8(entry.name())
+                .map_err(|e| ExtractBundledLibsError::ConvertName { rlib, error: e.to_string() })?;
             if !bundled_lib_file_names.contains(&Symbol::intern(name)) {
                 continue; // We need to extract only native libraries.
             }
-            std::fs::write(&outdir.join(&name), data).map_err(|e| ExtractBundledLibsError {
-                kind: WriteFile,
-                rlib,
-                error: e.to_string(),
-            })?;
+            std::fs::write(&outdir.join(&name), data)
+                .map_err(|e| ExtractBundledLibsError::WriteFile { rlib, error: e.to_string() })?;
         }
         Ok(())
     }
