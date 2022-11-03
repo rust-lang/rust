@@ -73,8 +73,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             {
                 existing_bindings.extend_from_slice(&new_bindings);
                 mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                candidate.subcandidates =
-                    self.create_or_subcandidates(candidate, place.clone(), pats);
+                candidate.subcandidates = self.create_or_subcandidates(candidate, &place, pats);
                 return true;
             }
 
@@ -127,7 +126,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &Candidate<'pat, 'tcx>,
-        place: PlaceBuilder<'tcx>,
+        place: &PlaceBuilder<'tcx>,
         pats: &'pat [Box<Pat<'tcx>>],
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()

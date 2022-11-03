@@ -315,6 +315,14 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self.projection.push(elem);
         self
     }
+
+    /// Same as `.clone().project(..)` but more efficient
+    pub(crate) fn clone_project(&self, elem: PlaceElem<'tcx>) -> Self {
+        Self {
+            base: self.base,
+            projection: Vec::from_iter(self.projection.iter().copied().chain([elem])),
+        }
+    }
 }
 
 impl<'tcx> From<Local> for PlaceBuilder<'tcx> {

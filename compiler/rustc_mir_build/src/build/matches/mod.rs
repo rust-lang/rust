@@ -168,7 +168,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span,));
 
-        let mut arm_candidates = self.create_match_candidates(scrutinee_place.clone(), &arms);
+        let mut arm_candidates = self.create_match_candidates(&scrutinee_place, &arms);
 
         let match_has_guard = arm_candidates.iter().any(|(_, candidate)| candidate.has_guard);
         let mut candidates =
@@ -230,7 +230,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Create the initial `Candidate`s for a `match` expression.
     fn create_match_candidates<'pat>(
         &mut self,
-        scrutinee: PlaceBuilder<'tcx>,
+        scrutinee: &PlaceBuilder<'tcx>,
         arms: &'pat [ArmId],
     ) -> Vec<(&'pat Arm<'tcx>, Candidate<'pat, 'tcx>)>
     where
@@ -1332,7 +1332,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 bug!("Or-patterns should have been sorted to the end");
             };
             let or_span = match_pair.pattern.span;
-            let place = match_pair.place;
 
             first_candidate.visit_leaves(|leaf_candidate| {
                 self.test_or_pattern(
@@ -1340,7 +1339,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     &mut otherwise,
                     pats,
                     or_span,
-                    place.clone(),
+                    &match_pair.place,
                     fake_borrows,
                 );
             });
@@ -1368,7 +1367,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         otherwise: &mut Option<BasicBlock>,
         pats: &'pat [Box<Pat<'tcx>>],
         or_span: Span,
-        place: PlaceBuilder<'tcx>,
+        place: &PlaceBuilder<'tcx>,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         debug!("candidate={:#?}\npats={:#?}", candidate, pats);
@@ -1607,7 +1606,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // encounter a candidate where the test is not relevant; at
         // that point, we stop sorting.
         while let Some(candidate) = candidates.first_mut() {
-            let Some(idx) = self.sort_candidate(&match_place.clone(), &test, candidate) else {
+            let Some(idx) = self.sort_candidate(&match_place, &test, candidate) else {
                 break;
             };
             let (candidate, rest) = candidates.split_first_mut().unwrap();
@@ -1676,7 +1675,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             target_blocks
         };
 
-        self.perform_test(span, scrutinee_span, block, match_place, &test, make_target_blocks);
+        self.perform_test(span, scrutinee_span, block, &match_place, &test, make_target_blocks);
     }
 
     /// Determine the fake borrows that are needed from a set of places that
