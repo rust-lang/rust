@@ -40,9 +40,9 @@ endif
 # e.g. for `$(CC) -o $(RUN_BINFILE)`.
 RUN_BINFILE = $(TMPDIR)/$(1)
 
-# Invoke the generated binary on the remote machine if a test address is
-# provided, otherwise run it on the current host.
-ifdef TEST_DEVICE_ADDR
+# Invoke the generated binary on the remote machine if compiletest was
+# configured to use a remote test device, otherwise run it on the current host.
+ifdef REMOTE_TEST_CLIENT
 # FIXME: if a test requires additional files, this will need to be changed to
 # also push them (by changing the 0 to the number of additional files, and
 # providing the path of the additional files as the last arguments).
