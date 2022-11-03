@@ -112,7 +112,7 @@ note: consider changing this parameter type in function `guard` to borrow instea
   --> $DIR/moves-based-on-type-exprs.rs:6:14
    |
 LL | fn guard(_s: String) -> bool {panic!()}
-   |    -----     ^^^^^^ this type parameter takes ownership of the value
+   |    -----     ^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
 help: consider cloning the value if the performance cost is acceptable

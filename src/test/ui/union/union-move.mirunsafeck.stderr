@@ -13,7 +13,7 @@ note: consider changing this parameter type in function `move_out` to borrow ins
   --> $DIR/union-move.rs:10:19
    |
 LL | fn move_out<T>(x: T) {}
-   |    --------       ^ this type parameter takes ownership of the value
+   |    --------       ^ this parameter takes ownership of the value
    |    |
    |    in this function
 
@@ -32,7 +32,7 @@ note: consider changing this parameter type in function `move_out` to borrow ins
   --> $DIR/union-move.rs:10:19
    |
 LL | fn move_out<T>(x: T) {}
-   |    --------       ^ this type parameter takes ownership of the value
+   |    --------       ^ this parameter takes ownership of the value
    |    |
    |    in this function
 

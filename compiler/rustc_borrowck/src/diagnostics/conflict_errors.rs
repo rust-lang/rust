@@ -404,7 +404,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let mut span: MultiSpan = arg.span.into();
                         span.push_span_label(
                             arg.span,
-                            "this type parameter takes ownership of the value".to_string(),
+                            "this parameter takes ownership of the value".to_string(),
                         );
                         let descr = match node.fn_kind() {
                             Some(hir::intravisit::FnKind::ItemFn(..)) | None => "function",
