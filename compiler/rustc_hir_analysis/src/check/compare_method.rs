@@ -611,11 +611,11 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                 collected_tys.insert(def_id, ty);
             }
             Err(err) => {
-                tcx.sess.delay_span_bug(
+                let reported = tcx.sess.delay_span_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, tcx.ty_error());
+                collected_tys.insert(def_id, tcx.ty_error_with_guaranteed(reported));
             }
         }
     }

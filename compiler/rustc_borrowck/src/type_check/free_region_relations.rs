@@ -247,12 +247,13 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                     .and(type_op::normalize::Normalize::new(ty))
                     .fully_perform(self.infcx)
                     .unwrap_or_else(|_| {
-                        self.infcx
+                        let reported = self
+                            .infcx
                             .tcx
                             .sess
                             .delay_span_bug(span, &format!("failed to normalize {:?}", ty));
                         TypeOpOutput {
-                            output: self.infcx.tcx.ty_error(),
+                            output: self.infcx.tcx.ty_error_with_guaranteed(reported),
                             constraints: None,
                             error_info: None,
                         }
