@@ -108,7 +108,7 @@ LL |         _ if guard(x) => 10,
 LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
-note: consider changing this parameter type in `guard` to borrow instead if ownering the value isn't necessary
+note: consider changing this parameter type in function `guard` to borrow instead if ownering the value isn't necessary
   --> $DIR/moves-based-on-type-exprs.rs:6:14
    |
 LL | fn guard(_s: String) -> bool {panic!()}
