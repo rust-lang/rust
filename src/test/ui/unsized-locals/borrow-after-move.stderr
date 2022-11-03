@@ -33,7 +33,7 @@ note: consider changing this parameter type in function `drop_unsized` to borrow
   --> $DIR/borrow-after-move.rs:14:31
    |
 LL | fn drop_unsized<T: ?Sized>(_: T) {}
-   |    ------------               ^ this type parameter takes ownership of the value
+   |    ------------               ^ this parameter takes ownership of the value
    |    |
    |    in this function
 

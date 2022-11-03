@@ -12,7 +12,7 @@ note: consider changing this parameter type in function `takes_fnonce` to borrow
   --> $DIR/borrow-closures-instead-of-move.rs:34:20
    |
 LL | fn takes_fnonce(_: impl FnOnce()) {}
-   |    ------------    ^^^^^^^^^^^^^ this type parameter takes ownership of the value
+   |    ------------    ^^^^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
 help: consider borrowing `f`
@@ -36,7 +36,7 @@ note: consider changing this parameter type in function `takes_fnonce` to borrow
   --> $DIR/borrow-closures-instead-of-move.rs:34:20
    |
 LL | fn takes_fnonce(_: impl FnOnce()) {}
-   |    ------------    ^^^^^^^^^^^^^ this type parameter takes ownership of the value
+   |    ------------    ^^^^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
 help: consider mutably borrowing `m`
@@ -62,7 +62,7 @@ note: consider changing this parameter type in function `takes_fnonce` to borrow
   --> $DIR/borrow-closures-instead-of-move.rs:34:20
    |
 LL | fn takes_fnonce(_: impl FnOnce()) {}
-   |    ------------    ^^^^^^^^^^^^^ this type parameter takes ownership of the value
+   |    ------------    ^^^^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
 help: consider mutably borrowing `closure`

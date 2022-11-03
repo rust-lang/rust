@@ -14,7 +14,7 @@ note: consider changing this parameter type in method `push` to borrow instead i
   --> $DIR/use-after-move-implicity-coerced-object.rs:17:27
    |
 LL |     fn push(&mut self, n: Box<dyn ToString + 'static>) {
-   |        ----               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this type parameter takes ownership of the value
+   |        ----               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this parameter takes ownership of the value
    |        |
    |        in this method
 

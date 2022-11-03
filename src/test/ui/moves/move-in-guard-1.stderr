@@ -13,7 +13,7 @@ note: consider changing this parameter type in function `take` to borrow instead
   --> $DIR/move-in-guard-1.rs:15:15
    |
 LL | fn take<T>(_: T) -> bool { false }
-   |    ----       ^ this type parameter takes ownership of the value
+   |    ----       ^ this parameter takes ownership of the value
    |    |
    |    in this function
 help: consider cloning the value if the performance cost is acceptable

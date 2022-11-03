@@ -12,7 +12,7 @@ note: consider changing this parameter type in function `consume` to borrow inst
   --> $DIR/borrowck-consume-upcast-box.rs:5:15
    |
 LL | fn consume(_: Box<dyn Foo>) {
-   |    -------    ^^^^^^^^^^^^ this type parameter takes ownership of the value
+   |    -------    ^^^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
 

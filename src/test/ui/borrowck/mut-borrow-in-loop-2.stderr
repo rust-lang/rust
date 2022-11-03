@@ -12,7 +12,7 @@ note: consider changing this parameter type in function `handle` to borrow inste
   --> $DIR/mut-borrow-in-loop-2.rs:9:22
    |
 LL |     fn handle(value: T) -> Self;
-   |        ------        ^ this type parameter takes ownership of the value
+   |        ------        ^ this parameter takes ownership of the value
    |        |
    |        in this function
 help: consider creating a fresh reborrow of `value` here

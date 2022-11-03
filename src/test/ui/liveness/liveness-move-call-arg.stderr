@@ -13,7 +13,7 @@ note: consider changing this parameter type in function `take` to borrow instead
   --> $DIR/liveness-move-call-arg.rs:1:13
    |
 LL | fn take(_x: Box<isize>) {}
-   |    ----     ^^^^^^^^^^ this type parameter takes ownership of the value
+   |    ----     ^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
 help: consider cloning the value if the performance cost is acceptable
