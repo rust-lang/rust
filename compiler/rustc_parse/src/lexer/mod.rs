@@ -437,7 +437,19 @@ impl<'a> StringReader<'a> {
                         .emit();
                     (token::Integer, sym::integer(0))
                 } else {
-                    self.validate_int_literal(base, start, end);
+                    if matches!(base, Base::Binary | Base::Octal) {
+                        let base = base as u32;
+                        let s = self.str_from_to(start + BytePos(2), end);
+                        for (idx, c) in s.char_indices() {
+                            if c != '_' && c.to_digit(base).is_none() {
+                                self.err_span_(
+                                    start + BytePos::from_usize(2 + idx),
+                                    start + BytePos::from_usize(2 + idx + c.len_utf8()),
+                                    &format!("invalid digit for a base {} literal", base),
+                                );
+                            }
+                        }
+                    }
                     (token::Integer, self.symbol_from_to(start, end))
                 }
             }
@@ -682,23 +694,6 @@ impl<'a> StringReader<'a> {
             }
         });
         (kind, Symbol::intern(lit_content))
-    }
-
-    fn validate_int_literal(&self, base: Base, content_start: BytePos, content_end: BytePos) {
-        let base = match base {
-            Base::Binary => 2,
-            Base::Octal => 8,
-            _ => return,
-        };
-        let s = self.str_from_to(content_start + BytePos(2), content_end);
-        for (idx, c) in s.char_indices() {
-            let idx = idx as u32;
-            if c != '_' && c.to_digit(base).is_none() {
-                let lo = content_start + BytePos(2 + idx);
-                let hi = content_start + BytePos(2 + idx + c.len_utf8() as u32);
-                self.err_span_(lo, hi, &format!("invalid digit for a base {} literal", base));
-            }
-        }
     }
 }
 
