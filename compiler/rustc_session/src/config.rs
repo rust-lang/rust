@@ -738,7 +738,7 @@ impl Default for Options {
             actually_rustdoc: false,
             trimmed_def_paths: TrimmedDefPaths::default(),
             cli_forced_codegen_units: None,
-            cli_forced_thinlto_off: false,
+            cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             real_rust_source_base_dir: None,
             edition: DEFAULT_EDITION,
@@ -1721,7 +1721,7 @@ fn should_override_cgus_and_disable_thinlto(
     error_format: ErrorOutputType,
     mut codegen_units: Option<usize>,
 ) -> (bool, Option<usize>) {
-    let mut disable_thinlto = false;
+    let mut disable_local_thinlto = false;
     // Issue #30063: if user requests LLVM-related output to one
     // particular path, disable codegen-units.
     let incompatible: Vec<_> = output_types
@@ -1746,12 +1746,12 @@ fn should_override_cgus_and_disable_thinlto(
                     }
                     early_warn(error_format, "resetting to default -C codegen-units=1");
                     codegen_units = Some(1);
-                    disable_thinlto = true;
+                    disable_local_thinlto = true;
                 }
             }
             _ => {
                 codegen_units = Some(1);
-                disable_thinlto = true;
+                disable_local_thinlto = true;
             }
         }
     }
@@ -1760,7 +1760,7 @@ fn should_override_cgus_and_disable_thinlto(
         early_error(error_format, "value for codegen units must be a positive non-zero integer");
     }
 
-    (disable_thinlto, codegen_units)
+    (disable_local_thinlto, codegen_units)
 }
 
 fn check_thread_count(unstable_opts: &UnstableOptions, error_format: ErrorOutputType) {
@@ -2265,7 +2265,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let output_types = parse_output_types(&unstable_opts, matches, error_format);
 
     let mut cg = CodegenOptions::build(matches, error_format);
-    let (disable_thinlto, mut codegen_units) = should_override_cgus_and_disable_thinlto(
+    let (disable_local_thinlto, mut codegen_units) = should_override_cgus_and_disable_thinlto(
         &output_types,
         matches,
         error_format,
@@ -2508,7 +2508,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         actually_rustdoc: false,
         trimmed_def_paths: TrimmedDefPaths::default(),
         cli_forced_codegen_units: codegen_units,
-        cli_forced_thinlto_off: disable_thinlto,
+        cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
         real_rust_source_base_dir,
         edition,

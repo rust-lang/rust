@@ -74,12 +74,12 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     // This covers the case where somebody does an import which should pull in an item,
     // but there's already an item with the same namespace and same name. Rust gives
     // priority to the not-imported one, so we should, too.
-    items.extend(doc.items.iter().flat_map(|(item, renamed)| {
+    items.extend(doc.items.iter().flat_map(|(item, renamed, import_id)| {
         // First, lower everything other than imports.
         if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
             return Vec::new();
         }
-        let v = clean_maybe_renamed_item(cx, item, *renamed);
+        let v = clean_maybe_renamed_item(cx, item, *renamed, *import_id);
         for item in &v {
             if let Some(name) = item.name && !item.attrs.lists(sym::doc).has_word(sym::hidden) {
                 inserted.insert((item.type_(), name));
@@ -87,7 +87,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         v
     }));
-    items.extend(doc.items.iter().flat_map(|(item, renamed)| {
+    items.extend(doc.items.iter().flat_map(|(item, renamed, _)| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
             let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
@@ -1911,6 +1911,7 @@ fn clean_maybe_renamed_item<'tcx>(
     cx: &mut DocContext<'tcx>,
     item: &hir::Item<'tcx>,
     renamed: Option<Symbol>,
+    import_id: Option<hir::HirId>,
 ) -> Vec<Item> {
     use hir::ItemKind;
 
@@ -1987,8 +1988,23 @@ fn clean_maybe_renamed_item<'tcx>(
             }
             _ => unreachable!("not yet converted"),
         };
-
-        vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
+        if let Some(import_id) = import_id {
+            let (attrs, cfg) = inline::merge_attrs(
+                cx,
+                Some(cx.tcx.parent_module(import_id).to_def_id()),
+                inline::load_attrs(cx, def_id),
+                Some(inline::load_attrs(cx, cx.tcx.hir().local_def_id(import_id).to_def_id())),
+            );
+            vec![Item::from_def_id_and_attrs_and_parts(
+                def_id,
+                Some(name),
+                kind,
+                Box::new(attrs),
+                cfg,
+            )]
+        } else {
+            vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
+        }
     })
 }
 

@@ -379,8 +379,8 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         self.tcx
     }
 
-    fn item_def_id(&self) -> Option<DefId> {
-        Some(self.item_def_id)
+    fn item_def_id(&self) -> DefId {
+        self.item_def_id
     }
 
     fn get_type_parameter_bounds(
