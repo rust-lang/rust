@@ -12,7 +12,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::{Config, TargetSelection};
@@ -370,7 +370,10 @@ impl Step for Standalone {
 
         // We open doc/index.html as the default if invoked as `x.py doc --open`
         // with no particular explicit doc requested (e.g. library/core).
-        builder.maybe_open_in_browser::<Self>(out.join("index.html"));
+        if builder.paths.is_empty() || builder.was_invoked_explicitly::<Self>(Kind::Doc) {
+            let index = out.join("index.html");
+            builder.open_in_browser(&index);
+        }
     }
 }
 
