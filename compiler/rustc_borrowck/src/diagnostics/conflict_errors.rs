@@ -192,146 +192,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     is_loop_move = true;
                 }
 
-                struct ExpressionFinder<'hir> {
-                    expr_span: Span,
-                    expr: Option<&'hir hir::Expr<'hir>>,
-                    pat: Option<&'hir hir::Pat<'hir>>,
-                }
-                impl<'hir> Visitor<'hir> for ExpressionFinder<'hir> {
-                    fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
-                        if e.span == self.expr_span {
-                            self.expr = Some(e);
-                        }
-                        hir::intravisit::walk_expr(self, e);
-                    }
-                    fn visit_pat(&mut self, p: &'hir hir::Pat<'hir>) {
-                        if p.span == self.expr_span {
-                            self.pat = Some(p);
-                        }
-                        if let hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, i, _) = p.kind
-                            && i.span == self.expr_span
-                        {
-                            self.pat = Some(p);
-                        }
-                        hir::intravisit::walk_pat(self, p);
-                    }
-                }
-
-                let hir = self.infcx.tcx.hir();
-                if let Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(_, _, body_id),
-                    ..
-                })) = hir.find(hir.local_def_id_to_hir_id(self.mir_def_id()))
-                    && let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id)
-                {
-                    let place = &self.move_data.move_paths[mpi].place;
-                    let span = place.as_local()
-                        .map(|local| self.body.local_decls[local].source_info.span);
-                    let mut finder = ExpressionFinder {
-                        expr_span: move_span,
-                        expr: None,
-                        pat: None,
-                    };
-                    finder.visit_expr(expr);
-                    if let Some(span) = span && let Some(expr) = finder.expr {
-                        for (_, expr) in hir.parent_iter(expr.hir_id) {
-                            if let hir::Node::Expr(expr) = expr {
-                                if expr.span.contains(span) {
-                                    // If the let binding occurs within the same loop, then that
-                                    // loop isn't relevant, like in the following, the outermost `loop`
-                                    // doesn't play into `x` being moved.
-                                    // ```
-                                    // loop {
-                                    //     let x = String::new();
-                                    //     loop {
-                                    //         foo(x);
-                                    //     }
-                                    // }
-                                    // ```
-                                    break;
-                                }
-                                if let hir::ExprKind::Loop(.., loop_span) = expr.kind {
-                                    err.span_label(loop_span, "inside of this loop");
-                                }
-                            }
-                        }
-                        let typeck = self.infcx.tcx.typeck(self.mir_def_id());
-                        let hir_id = hir.get_parent_node(expr.hir_id);
-                        if let Some(parent) = hir.find(hir_id) {
-                            if let hir::Node::Expr(parent_expr) = parent
-                                && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
-                                && let Some(def_id) = typeck.type_dependent_def_id(parent_expr.hir_id)
-                                && let Some(def_id) = def_id.as_local()
-                                && let Some(node) = hir.find(hir.local_def_id_to_hir_id(def_id))
-                                && let Some(fn_sig) = node.fn_sig()
-                                && let Some(ident) = node.ident()
-                                && let Some(pos) = args.iter()
-                                    .position(|arg| arg.hir_id == expr.hir_id)
-                                && let Some(arg) = fn_sig.decl.inputs.get(pos + 1)
-                            {
-                                let mut span: MultiSpan = arg.span.into();
-                                span.push_span_label(
-                                    arg.span,
-                                    "this type parameter takes ownership of the value".to_string(),
-                                );
-                                span.push_span_label(
-                                    ident.span,
-                                    "in this method".to_string(),
-                                );
-                                err.span_note(
-                                    span,
-                                    format!(
-                                        "consider changing this parameter type in `{}` to borrow \
-                                         instead if ownering the value isn't necessary",
-                                        ident,
-                                    ),
-                                );
-                            }
-                            if let hir::Node::Expr(parent_expr) = parent
-                                && let hir::ExprKind::Call(call, args) = parent_expr.kind
-                                && let ty::FnDef(def_id, _) = typeck.node_type(call.hir_id).kind()
-                                && let Some(def_id) = def_id.as_local()
-                                && let Some(node) = hir.find(hir.local_def_id_to_hir_id(def_id))
-                                && let Some(fn_sig) = node.fn_sig()
-                                && let Some(ident) = node.ident()
-                                && let Some(pos) = args.iter()
-                                    .position(|arg| arg.hir_id == expr.hir_id)
-                                && let Some(arg) = fn_sig.decl.inputs.get(pos)
-                            {
-                                let mut span: MultiSpan = arg.span.into();
-                                span.push_span_label(
-                                    arg.span,
-                                    "this type parameter takes ownership of the value".to_string(),
-                                );
-                                span.push_span_label(
-                                    ident.span,
-                                    "in this function".to_string(),
-                                );
-                                err.span_note(
-                                    span,
-                                    format!(
-                                        "consider changing this parameter type in `{}` to borrow \
-                                         instead if ownering the value isn't necessary",
-                                        ident,
-                                    ),
-                                );
-                            }
-                            let place = &self.move_data.move_paths[mpi].place;
-                            let ty = place.ty(self.body, self.infcx.tcx).ty;
-                            self.suggest_cloning(&mut err, ty, move_span);
-                        }
-                    }
-                    if let Some(pat) = finder.pat && !seen_spans.contains(&pat.span) {
-                        in_pattern = true;
-                        err.span_suggestion_verbose(
-                            pat.span.shrink_to_lo(),
-                            "borrow this binding in the pattern to avoid moving the value",
-                            "ref ".to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                        seen_spans.insert(pat.span);
-                    }
-                }
+                self.suggest_ref_or_clone(
+                    mpi,
+                    move_span,
+                    &mut err,
+                    &mut seen_spans,
+                    &mut in_pattern,
+                );
 
                 self.explain_captures(
                     &mut err,
@@ -437,6 +304,155 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             self.buffer_move_error(move_out_indices, (used_place, err));
+        }
+    }
+
+    fn suggest_ref_or_clone(
+        &mut self,
+        mpi: MovePathIndex,
+        move_span: Span,
+        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        seen_spans: &mut FxHashSet<Span>,
+        in_pattern: &mut bool,
+    ) {
+        struct ExpressionFinder<'hir> {
+            expr_span: Span,
+            expr: Option<&'hir hir::Expr<'hir>>,
+            pat: Option<&'hir hir::Pat<'hir>>,
+        }
+        impl<'hir> Visitor<'hir> for ExpressionFinder<'hir> {
+            fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
+                if e.span == self.expr_span {
+                    self.expr = Some(e);
+                }
+                hir::intravisit::walk_expr(self, e);
+            }
+            fn visit_pat(&mut self, p: &'hir hir::Pat<'hir>) {
+                if p.span == self.expr_span {
+                    self.pat = Some(p);
+                }
+                if let hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, i, _) = p.kind
+                    && i.span == self.expr_span
+                {
+                    self.pat = Some(p);
+                }
+                hir::intravisit::walk_pat(self, p);
+            }
+        }
+        let hir = self.infcx.tcx.hir();
+        if let Some(hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Fn(_, _, body_id),
+            ..
+        })) = hir.find(hir.local_def_id_to_hir_id(self.mir_def_id()))
+            && let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id)
+        {
+            let place = &self.move_data.move_paths[mpi].place;
+            let span = place.as_local()
+                .map(|local| self.body.local_decls[local].source_info.span);
+            let mut finder = ExpressionFinder {
+                expr_span: move_span,
+                expr: None,
+                pat: None,
+            };
+            finder.visit_expr(expr);
+            if let Some(span) = span && let Some(expr) = finder.expr {
+                for (_, expr) in hir.parent_iter(expr.hir_id) {
+                    if let hir::Node::Expr(expr) = expr {
+                        if expr.span.contains(span) {
+                            // If the let binding occurs within the same loop, then that
+                            // loop isn't relevant, like in the following, the outermost `loop`
+                            // doesn't play into `x` being moved.
+                            // ```
+                            // loop {
+                            //     let x = String::new();
+                            //     loop {
+                            //         foo(x);
+                            //     }
+                            // }
+                            // ```
+                            break;
+                        }
+                        if let hir::ExprKind::Loop(.., loop_span) = expr.kind {
+                            err.span_label(loop_span, "inside of this loop");
+                        }
+                    }
+                }
+                let typeck = self.infcx.tcx.typeck(self.mir_def_id());
+                let hir_id = hir.get_parent_node(expr.hir_id);
+                if let Some(parent) = hir.find(hir_id) {
+                    if let hir::Node::Expr(parent_expr) = parent
+                        && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
+                        && let Some(def_id) = typeck.type_dependent_def_id(parent_expr.hir_id)
+                        && let Some(def_id) = def_id.as_local()
+                        && let Some(node) = hir.find(hir.local_def_id_to_hir_id(def_id))
+                        && let Some(fn_sig) = node.fn_sig()
+                        && let Some(ident) = node.ident()
+                        && let Some(pos) = args.iter()
+                            .position(|arg| arg.hir_id == expr.hir_id)
+                        && let Some(arg) = fn_sig.decl.inputs.get(pos + 1)
+                    {
+                        let mut span: MultiSpan = arg.span.into();
+                        span.push_span_label(
+                            arg.span,
+                            "this type parameter takes ownership of the value".to_string(),
+                        );
+                        span.push_span_label(
+                            ident.span,
+                            "in this method".to_string(),
+                        );
+                        err.span_note(
+                            span,
+                            format!(
+                                "consider changing this parameter type in `{}` to borrow instead \
+                                 if ownering the value isn't necessary",
+                                ident,
+                            ),
+                        );
+                    }
+                    if let hir::Node::Expr(parent_expr) = parent
+                        && let hir::ExprKind::Call(call, args) = parent_expr.kind
+                        && let ty::FnDef(def_id, _) = typeck.node_type(call.hir_id).kind()
+                        && let Some(def_id) = def_id.as_local()
+                        && let Some(node) = hir.find(hir.local_def_id_to_hir_id(def_id))
+                        && let Some(fn_sig) = node.fn_sig()
+                        && let Some(ident) = node.ident()
+                        && let Some(pos) = args.iter()
+                            .position(|arg| arg.hir_id == expr.hir_id)
+                        && let Some(arg) = fn_sig.decl.inputs.get(pos)
+                    {
+                        let mut span: MultiSpan = arg.span.into();
+                        span.push_span_label(
+                            arg.span,
+                            "this type parameter takes ownership of the value".to_string(),
+                        );
+                        span.push_span_label(
+                            ident.span,
+                            "in this function".to_string(),
+                        );
+                        err.span_note(
+                            span,
+                            format!(
+                                "consider changing this parameter type in `{}` to borrow instead \
+                                 if ownering the value isn't necessary",
+                                ident,
+                            ),
+                        );
+                    }
+                    let place = &self.move_data.move_paths[mpi].place;
+                    let ty = place.ty(self.body, self.infcx.tcx).ty;
+                    self.suggest_cloning(err, ty, move_span);
+                }
+            }
+            if let Some(pat) = finder.pat && !seen_spans.contains(&pat.span) {
+                *in_pattern = true;
+                err.span_suggestion_verbose(
+                    pat.span.shrink_to_lo(),
+                    "borrow this binding in the pattern to avoid moving the value",
+                    "ref ".to_string(),
+                    Applicability::MachineApplicable,
+                );
+                seen_spans.insert(pat.span);
+            }
         }
     }
 
