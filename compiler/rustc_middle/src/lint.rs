@@ -483,7 +483,10 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
             DesugaringKind::ForLoop | DesugaringKind::WhileLoop | DesugaringKind::OpaqueTy,
         ) => false,
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
-        ExpnKind::Macro(MacroKind::Bang, _) => {
+        ExpnKind::Macro(MacroKind::Bang, id) => {
+            if id.as_str() == "core::arch::global_asm" {
+                return false;
+            }
             // Dummy span for the `def_site` means it's an external macro.
             expn_data.def_site.is_dummy() || sess.source_map().is_imported(expn_data.def_site)
         }
