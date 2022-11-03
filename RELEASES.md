@@ -87,6 +87,9 @@ Compatibility Notes
   This strengthens the forward compatibility lint deprecated_cfg_attr_crate_type_name to deny.
 - [`llvm-has-rust-patches` allows setting the build system to treat the LLVM as having Rust-specific patches](https://github.com/rust-lang/rust/pull/101072)
   This option may need to be set for distributions that are building Rust with a patched LLVM via `llvm-config`, not the built-in LLVM.
+- Combining three or more languages (e.g. Objective C, C++ and Rust) into one binary may hit linker limitations when using `lld`. For more information, see [issue 102754][102754].
+
+[102754]: https://github.com/rust-lang/rust/issues/102754
 
 Internal Changes
 ----------------
