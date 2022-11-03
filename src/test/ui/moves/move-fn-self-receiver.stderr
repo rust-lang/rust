@@ -127,10 +127,6 @@ LL |     for _val in implicit_into_iter {}
 LL |     implicit_into_iter;
    |     ^^^^^^^^^^^^^^^^^^ value used here after move
    |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     for _val in implicit_into_iter.clone() {}
-   |                                   ++++++++
 help: consider iterating over a slice of the `Vec<bool>`'s content to avoid moving into the `for` loop
    |
 LL |     for _val in &implicit_into_iter {}

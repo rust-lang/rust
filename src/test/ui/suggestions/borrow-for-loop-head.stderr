@@ -21,10 +21,6 @@ note: this function takes ownership of the receiver `self`, which moves `a`
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |         for j in a.clone() {
-   |                   ++++++++
 help: consider iterating over a slice of the `Vec<i32>`'s content to avoid moving into the `for` loop
    |
 LL |         for j in &a {
