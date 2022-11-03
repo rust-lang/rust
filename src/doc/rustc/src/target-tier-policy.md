@@ -3,6 +3,7 @@
 ## Table of Contents
 
 * [General](#general)
+* [Adding a new target](#adding-a-new-target)
 * [Tier 3 target policy](#tier-3-target-policy)
 * [Tier 2 target policy](#tier-2-target-policy)
   * [Tier 2 with host tools](#tier-2-with-host-tools)
@@ -103,6 +104,30 @@ approving teams may grant an exception for good reason. The word "may"
 indicates something entirely optional, and does not indicate guidance or
 recommendations. This language is based on [IETF RFC
 2119](https://tools.ietf.org/html/rfc2119).
+
+## Adding a new target
+
+New targets typically start as Tier 3 and then can be promoted later.
+To propose addition of a new target, open a pull request on [`rust-lang/rust`]:
+
+- Copy the [Tier 3 target policy](#tier-3-target-policy) to the description
+  and fill it out, see [example][tier3example].
+- Add a new description for the target in `src/doc/rustc/src/platform-support`
+  using the [template][platform_template].
+- Add the target to the [SUMMARY.md][summary] (allows wildcards) and
+  [platform-support.md][platformsupport] (must name all targets verbatim).
+  Link to the created description page.
+- Ensure the pull request is assigned to a member of the [Rust compiler team][rust_compiler_team] by commenting:
+  ```text
+  r? compiler-team
+  ```
+
+[tier3example]: https://github.com/rust-lang/rust/pull/94872
+[platform_template]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support/TEMPLATE.md
+[summary]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/SUMMARY.md
+[platformsupport]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support.md
+[rust_compiler_team]: https://www.rust-lang.org/governance/teams/compiler
+[`rust-lang/rust`]: https://github.com/rust-lang/rust
 
 ## Tier 3 target policy
 
