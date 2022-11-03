@@ -76,10 +76,7 @@ LL | fn bindings_after_at_or_patterns_move(x: Option<Test>) {
    |                                       - move occurs because `x` has type `Option<Test>`, which does not implement the `Copy` trait
 LL |     match x {
 LL |         foo @ Some(Test::Foo | Test::Bar) => (),
-   |         ---
-   |         |
-   |         value moved here
-   |         value moved here
+   |         --- value moved here
 ...
 LL |     &x;
    |     ^^ value borrowed here after move
@@ -132,10 +129,7 @@ LL | fn bindings_after_at_slice_patterns_or_patterns_moves(x: [Option<Test>; 4])
    |                                                       - move occurs because `x` has type `[Option<Test>; 4]`, which does not implement the `Copy` trait
 LL |     match x {
 LL |         a @ [.., Some(Test::Foo | Test::Bar)] => (),
-   |         -
-   |         |
-   |         value moved here
-   |         value moved here
+   |         - value moved here
 ...
 LL |     &x;
    |     ^^ value borrowed here after move
