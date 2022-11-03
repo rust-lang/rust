@@ -100,22 +100,27 @@
             {
                 "command": "rust-analyzer.syntaxTree",
                 "title": "Show Syntax Tree",
-                "category": "rust-analyzer"
+                "category": "rust-analyzer (debug command)"
             },
             {
                 "command": "rust-analyzer.viewHir",
                 "title": "View Hir",
-                "category": "rust-analyzer"
+                "category": "rust-analyzer (debug command)"
             },
             {
                 "command": "rust-analyzer.viewFileText",
                 "title": "View File Text (as seen by the server)",
-                "category": "rust-analyzer"
+                "category": "rust-analyzer (debug command)"
             },
             {
                 "command": "rust-analyzer.viewItemTree",
                 "title": "Debug ItemTree",
-                "category": "rust-analyzer"
+                "category": "rust-analyzer (debug command)"
+            },
+            {
+                "command": "rust-analyzer.shuffleCrateGraph",
+                "title": "Shuffle Crate Graph",
+                "category": "rust-analyzer (debug command)"
             },
             {
                 "command": "rust-analyzer.viewCrateGraph",
@@ -175,11 +180,6 @@
             {
                 "command": "rust-analyzer.memoryUsage",
                 "title": "Memory Usage (Clears Database)",
-                "category": "rust-analyzer"
-            },
-            {
-                "command": "rust-analyzer.shuffleCrateGraph",
-                "title": "Shuffle Crate Graph",
                 "category": "rust-analyzer"
             },
             {
