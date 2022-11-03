@@ -55,8 +55,7 @@ pub enum MethodError<'tcx> {
     // not-in-scope traits which may work.
     PrivateMatch(DefKind, DefId, Vec<DefId>),
 
-    // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
-    // forgotten to import a trait.
+    // Found a `Self: Sized` bound where `Self` is a trait object.
     IllegalSizedBound(Vec<DefId>, bool, Span),
 
     // Found a match, but the return type is wrong
