@@ -12,8 +12,6 @@ use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
-use rustc_errors::{pluralize, AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
-
 use crate::lang_items::Duplicate;
 
 #[derive(LintDiagnostic)]
@@ -1502,28 +1500,10 @@ pub struct IgnoredDerivedImpls {
     pub trait_list_len: usize,
 }
 
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(passes_change_fields_to_be_of_unit_type, applicability = "has-placeholders")]
 pub struct ChangeFieldsToBeOfUnitType {
     pub num: usize,
+    #[suggestion_part(code = "()")]
     pub spans: Vec<Span>,
-}
-
-// FIXME: Replace this impl with a derive.
-impl AddToDiagnostic for ChangeFieldsToBeOfUnitType {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        diag.multipart_suggestion(
-            &format!(
-                "consider changing the field{s} to be of unit type to \
-                          suppress this warning while preserving the field \
-                          numbering, or remove the field{s}",
-                s = pluralize!(self.num)
-            ),
-            self.spans.iter().map(|sp| (*sp, "()".to_string())).collect(),
-            // "HasPlaceholders" because applying this fix by itself isn't
-            // enough: All constructor calls have to be adjusted as well
-            Applicability::HasPlaceholders,
-        );
-    }
 }
