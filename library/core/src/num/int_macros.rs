@@ -2067,7 +2067,15 @@ macro_rules! int_impl {
         #[rustc_inherit_overflow_checks]
         pub const fn rem_euclid(self, rhs: Self) -> Self {
             let r = self % rhs;
-            if r < 0 { r + rhs.abs() } else { r }
+            if r < 0 {
+                // if rhs is `integer::MIN`, rhs.wrapping_abs() == rhs.wrapping_abs,
+                // thus r.wrapping_add(rhs.wrapping_abs()) == r.wrapping_add(rhs) == r - rhs,
+                // which suits our need.
+                // otherwise, rhs.wrapping_abs() == -rhs, which won't overflow since r is negative.
+                r.wrapping_add(rhs.wrapping_abs())
+            } else {
+                r
+            }
         }
 
         /// Calculates the quotient of `self` and `rhs`, rounding the result towards negative infinity.
