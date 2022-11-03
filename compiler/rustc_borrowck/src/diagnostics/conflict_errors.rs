@@ -171,6 +171,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             let mut is_loop_move = false;
             let mut in_pattern = false;
+            let mut seen_spans = FxHashSet::default();
 
             for move_site in &move_site_vec {
                 let move_out = self.move_data.moves[(*move_site).moi];
@@ -320,7 +321,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             self.suggest_cloning(&mut err, ty, move_span);
                         }
                     }
-                    if let Some(pat) = finder.pat {
+                    if let Some(pat) = finder.pat && !seen_spans.contains(&pat.span) {
                         in_pattern = true;
                         err.span_suggestion_verbose(
                             pat.span.shrink_to_lo(),
@@ -328,6 +329,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             "ref ".to_string(),
                             Applicability::MachineApplicable,
                         );
+                        seen_spans.insert(pat.span);
                     }
                 }
 
