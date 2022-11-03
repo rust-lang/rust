@@ -226,12 +226,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let check_equal = |this: &Self, location, f_ty| {
                     if !this.mir_assign_valid_types(ty, f_ty) {
                         this.fail(
-                        location,
-                        format!(
-                            "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is `{:?}`",
-                            parent, f, ty, f_ty
+                            location,
+                            format!(
+                                "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is `{:?}`",
+                                parent, f, ty, f_ty
+                            )
                         )
-                    )
                     }
                 };
 
