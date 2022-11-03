@@ -940,7 +940,10 @@ impl Diagnostic {
         self
     }
 
-    pub fn replace_args(&mut self, args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue<'static>>) {
+    pub fn replace_args(
+        &mut self,
+        args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue<'static>>,
+    ) {
         self.args = args;
     }
 
