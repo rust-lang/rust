@@ -314,7 +314,6 @@ pub trait Emitter: Translate {
 
     fn fix_multispans_in_extern_macros_and_render_macro_backtrace(
         &self,
-        source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
         children: &mut Vec<SubDiagnostic>,
         level: &Level,
@@ -340,7 +339,7 @@ pub trait Emitter: Translate {
             .collect();
 
         if !backtrace {
-            self.fix_multispans_in_extern_macros(source_map, span, children);
+            self.fix_multispans_in_extern_macros(span, children);
         }
 
         self.render_multispans_macro_backtrace(span, children, backtrace);
@@ -480,15 +479,13 @@ pub trait Emitter: Translate {
     // this will change the span to point at the use site.
     fn fix_multispans_in_extern_macros(
         &self,
-        source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
         children: &mut Vec<SubDiagnostic>,
     ) {
-        let Some(source_map) = source_map else { return };
         debug!("fix_multispans_in_extern_macros: before: span={:?} children={:?}", span, children);
-        self.fix_multispan_in_extern_macros(source_map, span);
+        self.fix_multispan_in_extern_macros(span);
         for child in children.iter_mut() {
-            self.fix_multispan_in_extern_macros(source_map, &mut child.span);
+            self.fix_multispan_in_extern_macros(&mut child.span);
         }
         debug!("fix_multispans_in_extern_macros: after: span={:?} children={:?}", span, children);
     }
@@ -496,7 +493,8 @@ pub trait Emitter: Translate {
     // This "fixes" MultiSpans that contain `Span`s pointing to locations inside of external macros.
     // Since these locations are often difficult to read,
     // we move these spans from the external macros to their corresponding use site.
-    fn fix_multispan_in_extern_macros(&self, source_map: &Lrc<SourceMap>, span: &mut MultiSpan) {
+    fn fix_multispan_in_extern_macros(&self, span: &mut MultiSpan) {
+        let Some(source_map) = self.source_map() else { return };
         // First, find all the spans in external macros and point instead at their use site.
         let replacements: Vec<(Span, Span)> = span
             .primary_spans()
@@ -544,7 +542,6 @@ impl Emitter for EmitterWriter {
         debug!("emit_diagnostic: suggestions={:?}", suggestions);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
-            &self.sm,
             &mut primary_span,
             &mut children,
             &diag.level,
