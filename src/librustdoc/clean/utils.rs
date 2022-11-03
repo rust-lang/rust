@@ -7,8 +7,6 @@ use crate::clean::{
     PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
 };
 use crate::core::DocContext;
-use crate::formats::item_type::ItemType;
-use crate::visit_lib::LibEmbargoVisitor;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
@@ -32,7 +30,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     for &cnum in cx.tcx.crates(()) {
         // Analyze doc-reachability for extern items
-        LibEmbargoVisitor::new(cx).visit_lib(cnum);
+        crate::visit_lib::lib_embargo_visit_item(cx, cnum.as_def_id());
     }
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
@@ -504,9 +502,6 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         return did;
     }
     inline::record_extern_fqn(cx, did, kind);
-    if let ItemType::Trait = kind {
-        inline::record_extern_trait(cx, did);
-    }
     did
 }
 

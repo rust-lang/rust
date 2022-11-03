@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/coerce-block-tail-83783.rs:7:32
+   |
+LL |     _consume_reference::<i32>(&async { Box::new(7_i32) }.await);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found struct `Box`
+   |
+   = note: expected type `i32`
+            found struct `Box<i32>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

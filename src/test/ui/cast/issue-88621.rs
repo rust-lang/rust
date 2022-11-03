@@ -1,5 +1,3 @@
-#![feature(arbitrary_enum_discriminant)]
-
 #[repr(u8)]
 enum Kind2 {
     Foo() = 1,

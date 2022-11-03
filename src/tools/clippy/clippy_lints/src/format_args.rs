@@ -115,7 +115,7 @@ declare_clippy_lint! {
     /// nothing will be suggested, e.g. `println!("{0}={1}", var, 1+2)`.
     #[clippy::version = "1.65.0"]
     pub UNINLINED_FORMAT_ARGS,
-    style,
+    pedantic,
     "using non-inlined variables in `format!` calls"
 }
 

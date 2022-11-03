@@ -31,7 +31,7 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -542,7 +542,7 @@ pub struct LateContext<'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
 
     /// Items accessible from the crate being checked.
-    pub access_levels: &'tcx AccessLevels,
+    pub effective_visibilities: &'tcx EffectiveVisibilities,
 
     /// The store of registered lints and the lint levels.
     pub lint_store: &'tcx LintStore,

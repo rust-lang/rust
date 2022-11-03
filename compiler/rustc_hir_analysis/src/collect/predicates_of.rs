@@ -427,6 +427,8 @@ pub(super) fn explicit_predicates_of<'tcx>(
     } else {
         if matches!(def_kind, DefKind::AnonConst) && tcx.lazy_normalization() {
             let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+            let parent_def_id = tcx.hir().get_parent_item(hir_id);
+
             if tcx.hir().opt_const_param_default_param_hir_id(hir_id).is_some() {
                 // In `generics_of` we set the generics' parent to be our parent's parent which means that
                 // we lose out on the predicates of our actual parent if we dont return those predicates here.
@@ -439,8 +441,33 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 //        parent of generics returned by `generics_of`
                 //
                 // In the above code we want the anon const to have predicates in its param env for `T: Trait`
-                let item_def_id = tcx.hir().get_parent_item(hir_id);
-                // In the above code example we would be calling `explicit_predicates_of(Foo)` here
+                // and we would be calling `explicit_predicates_of(Foo)` here
+                return tcx.explicit_predicates_of(parent_def_id);
+            }
+
+            let parent_def_kind = tcx.def_kind(parent_def_id);
+            if matches!(parent_def_kind, DefKind::OpaqueTy) {
+                // In `instantiate_identity` we inherit the predicates of our parent.
+                // However, opaque types do not have a parent (see `gather_explicit_predicates_of`), which means
+                // that we lose out on the predicates of our actual parent if we dont return those predicates here.
+                //
+                //
+                // fn foo<T: Trait>() -> impl Iterator<Output = Another<{ <T as Trait>::ASSOC }> > { todo!() }
+                //                                                        ^^^^^^^^^^^^^^^^^^^ the def id we are calling
+                //                                                                            explicit_predicates_of on
+                //
+                // In the above code we want the anon const to have predicates in its param env for `T: Trait`.
+                // However, the anon const cannot inherit predicates from its parent since it's opaque.
+                //
+                // To fix this, we call `explicit_predicates_of` directly on `foo`, the parent's parent.
+
+                // In the above example this is `foo::{opaque#0}` or `impl Iterator`
+                let parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent_def_id.def_id);
+
+                // In the above example this is the function `foo`
+                let item_def_id = tcx.hir().get_parent_item(parent_hir_id);
+
+                // In the above code example we would be calling `explicit_predicates_of(foo)` here
                 return tcx.explicit_predicates_of(item_def_id);
             }
         }

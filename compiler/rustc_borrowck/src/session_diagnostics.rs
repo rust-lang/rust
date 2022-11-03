@@ -49,7 +49,7 @@ pub(crate) struct GenericDoesNotLiveLongEnough {
 #[derive(LintDiagnostic)]
 #[diag(borrowck_var_does_not_need_mut)]
 pub(crate) struct VarNeedNotMut {
-    #[suggestion_short(applicability = "machine-applicable", code = "")]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "")]
     pub span: Span,
 }
 #[derive(Diagnostic)]

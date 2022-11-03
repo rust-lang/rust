@@ -37,7 +37,7 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
     span: Span,
-    category: ConstraintCategory,
+    category: ConstraintCategory<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 }
 
@@ -50,7 +50,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
         span: Span,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     ) -> Self {
         Self {
@@ -175,7 +175,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         &mut self,
         sup: ty::RegionVid,
         sub: ty::RegionVid,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) {
         let category = match self.category {
             ConstraintCategory::Boring | ConstraintCategory::BoringNoLocation => category,
@@ -203,7 +203,7 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         _origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
-        constraint_category: ConstraintCategory,
+        constraint_category: ConstraintCategory<'tcx>,
     ) {
         let b = self.to_region_vid(b);
         let a = self.to_region_vid(a);

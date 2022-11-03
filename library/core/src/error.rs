@@ -1,5 +1,5 @@
 #![doc = include_str!("error.md")]
-#![unstable(feature = "error_in_core", issue = "none")]
+#![unstable(feature = "error_in_core", issue = "103765")]
 
 #[cfg(test)]
 mod tests;

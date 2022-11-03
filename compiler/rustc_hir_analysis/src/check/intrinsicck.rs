@@ -33,7 +33,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     fn is_thin_ptr_ty(&self, ty: Ty<'tcx>) -> bool {
         // Type still may have region variables, but `Sized` does not depend
         // on those, so just erase them before querying.
-        if ty.is_sized(self.tcx.at(DUMMY_SP), self.param_env) {
+        if ty.is_sized(self.tcx, self.param_env) {
             return true;
         }
         if let ty::Foreign(..) = ty.kind() {
@@ -128,7 +128,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
-        if !ty.is_copy_modulo_regions(self.tcx.at(expr.span), self.param_env) {
+        if !ty.is_copy_modulo_regions(self.tcx, self.param_env) {
             let msg = "arguments for inline assembly must be copyable";
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             err.note(&format!("`{ty}` does not implement the Copy trait"));

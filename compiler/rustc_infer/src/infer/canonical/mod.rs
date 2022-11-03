@@ -43,7 +43,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// This is only meant to be invoked as part of constructing an
     /// inference context at the start of a query (see
-    /// `InferCtxtBuilder::enter_with_canonical`). It basically
+    /// `InferCtxtBuilder::build_with_canonical`). It basically
     /// brings the canonical value "into scope" within your new infcx.
     ///
     /// At the end of processing, the substitution S (once

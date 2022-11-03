@@ -11,8 +11,10 @@ use crate::diagnostics::utils::{
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, NestedMeta, Path};
+use syn::{spanned::Spanned, Attribute, Meta, MetaList, NestedMeta, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
+
+use super::utils::{build_suggestion_code, AllowMultipleAlternatives};
 
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
 pub(crate) struct SubdiagnosticDeriveBuilder {
@@ -414,15 +416,16 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     let nested_name = meta.path().segments.last().unwrap().ident.to_string();
                     let nested_name = nested_name.as_str();
 
-                    let Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(value), .. }) = meta else {
-                        throw_invalid_nested_attr!(attr, &nested_attr);
-                    };
-
                     match nested_name {
                         "code" => {
-                            let formatted_str = self.build_format(&value.value(), value.span());
                             let code_field = new_code_ident();
-                            code.set_once((code_field, formatted_str), span);
+                            let formatting_init = build_suggestion_code(
+                                &code_field,
+                                meta,
+                                self,
+                                AllowMultipleAlternatives::No,
+                            );
+                            code.set_once((code_field, formatting_init), span);
                         }
                         _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
                             diag.help("`code` is the only valid nested attribute")
@@ -430,14 +433,14 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     }
                 }
 
-                let Some((code_field, formatted_str)) = code.value() else {
+                let Some((code_field, formatting_init)) = code.value() else {
                     span_err(span, "`#[suggestion_part(...)]` attribute without `code = \"...\"`")
                         .emit();
                     return Ok(quote! {});
                 };
                 let binding = info.binding;
 
-                self.formatting_init.extend(quote! { let #code_field = #formatted_str; });
+                self.formatting_init.extend(formatting_init);
                 let code_field = if clone_suggestion_code {
                     quote! { #code_field.clone() }
                 } else {

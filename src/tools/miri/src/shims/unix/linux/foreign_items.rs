@@ -68,8 +68,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "pthread_setname_np" => {
                 let [thread, name] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let res =
-                    this.pthread_setname_np(this.read_scalar(thread)?, this.read_scalar(name)?)?;
+                let max_len = 16;
+                let res = this.pthread_setname_np(
+                    this.read_scalar(thread)?,
+                    this.read_scalar(name)?,
+                    max_len,
+                )?;
+                this.write_scalar(res, dest)?;
+            }
+            "pthread_getname_np" => {
+                let [thread, name, len] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let res = this.pthread_getname_np(
+                    this.read_scalar(thread)?,
+                    this.read_scalar(name)?,
+                    this.read_scalar(len)?,
+                )?;
                 this.write_scalar(res, dest)?;
             }
 
@@ -126,7 +140,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         futex(this, &args[1..], dest)?;
                     }
                     id => {
-                        this.handle_unsupported(format!("can't execute syscall with ID {}", id))?;
+                        this.handle_unsupported(format!("can't execute syscall with ID {id}"))?;
                         return Ok(EmulateByNameResult::AlreadyJumped);
                     }
                 }

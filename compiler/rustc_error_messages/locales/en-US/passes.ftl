@@ -367,12 +367,6 @@ passes_unknown_external_lang_item =
 passes_missing_panic_handler =
     `#[panic_handler]` function required, but not found
 
-passes_alloc_func_required =
-    `#[alloc_error_handler]` function required, but not found
-
-passes_missing_alloc_error_handler =
-    use `#![feature(default_alloc_error_handler)]` for a default error handler
-
 passes_missing_lang_item =
     language item required, but not found: `{$name}`
     .note = this can occur when a binary crate with `#![no_std]` is compiled for a target where `{$name}` is defined in the standard library

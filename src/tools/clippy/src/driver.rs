@@ -179,6 +179,7 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         false,
         None,
         false,
+        false,
     ));
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
 

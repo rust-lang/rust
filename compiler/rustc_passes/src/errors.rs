@@ -291,7 +291,7 @@ pub struct DocTestUnknownAny {
 #[note(no_op_note)]
 pub struct DocTestUnknownSpotlight {
     pub path: String,
-    #[suggestion_short(applicability = "machine-applicable", code = "notable_trait")]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "notable_trait")]
     pub span: Span,
 }
 
@@ -702,14 +702,6 @@ pub struct UnknownExternLangItem {
 pub struct MissingPanicHandler;
 
 #[derive(Diagnostic)]
-#[diag(passes_alloc_func_required)]
-pub struct AllocFuncRequired;
-
-#[derive(Diagnostic)]
-#[diag(passes_missing_alloc_error_handler)]
-pub struct MissingAllocErrorHandler;
-
-#[derive(Diagnostic)]
 #[diag(passes_missing_lang_item)]
 #[note]
 #[help]
@@ -744,6 +736,7 @@ pub struct InvalidAttrAtCrateLevel {
 }
 
 impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
@@ -876,6 +869,7 @@ pub struct BreakNonLoop<'a> {
 }
 
 impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &rustc_errors::Handler,
@@ -1013,6 +1007,7 @@ pub struct NakedFunctionsAsmBlock {
 }
 
 impl IntoDiagnostic<'_> for NakedFunctionsAsmBlock {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &rustc_errors::Handler,
@@ -1136,6 +1131,7 @@ pub struct NoMainErr {
 }
 
 impl<'a> IntoDiagnostic<'a> for NoMainErr {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'a rustc_errors::Handler,
@@ -1196,6 +1192,7 @@ pub struct DuplicateLangItem {
 }
 
 impl IntoDiagnostic<'_> for DuplicateLangItem {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &rustc_errors::Handler,

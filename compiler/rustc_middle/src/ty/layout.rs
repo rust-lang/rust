@@ -830,7 +830,7 @@ where
                 } else {
                     match mt {
                         hir::Mutability::Not => {
-                            if ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env()) {
+                            if ty.is_freeze(tcx, cx.param_env()) {
                                 PointerKind::Frozen
                             } else {
                                 PointerKind::SharedMutable
@@ -841,7 +841,7 @@ where
                             // noalias, as another pointer to the structure can be obtained, that
                             // is not based-on the original reference. We consider all !Unpin
                             // types to be potentially self-referential here.
-                            if ty.is_unpin(tcx.at(DUMMY_SP), cx.param_env()) {
+                            if ty.is_unpin(tcx, cx.param_env()) {
                                 PointerKind::UniqueBorrowed
                             } else {
                                 PointerKind::UniqueBorrowedPinned

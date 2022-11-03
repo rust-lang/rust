@@ -427,18 +427,6 @@ fn run_compiler(
     })
 }
 
-#[cfg(unix)]
-pub fn set_sigpipe_handler() {
-    unsafe {
-        // Set the SIGPIPE signal handler, so that an EPIPE
-        // will cause rustc to terminate, as expected.
-        assert_ne!(libc::signal(libc::SIGPIPE, libc::SIG_DFL), libc::SIG_ERR);
-    }
-}
-
-#[cfg(windows)]
-pub fn set_sigpipe_handler() {}
-
 // Extract output directory and file from matches.
 fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>) {
     let odir = matches.opt_str("out-dir").map(|o| PathBuf::from(&o));
@@ -1211,6 +1199,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         false,
         false,
         None,
+        false,
         false,
     ));
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);

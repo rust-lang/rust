@@ -1202,8 +1202,8 @@ impl LinkCollector<'_, '_> {
                 item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
             })
         {
-            if self.cx.tcx.privacy_access_levels(()).is_exported(src_id)
-                && !self.cx.tcx.privacy_access_levels(()).is_exported(dst_id)
+            if self.cx.tcx.effective_visibilities(()).is_exported(src_id)
+                && !self.cx.tcx.effective_visibilities(()).is_exported(dst_id)
             {
                 privacy_error(self.cx, diag_info, path_str);
             }
@@ -1893,7 +1893,7 @@ fn disambiguator_error(
     diag_info.link_range = disambiguator_range;
     report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, _sp| {
         let msg = format!(
-            "see {}/rustdoc/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators",
+            "see {}/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators",
             crate::DOC_RUST_LANG_ORG_CHANNEL
         );
         diag.note(&msg);

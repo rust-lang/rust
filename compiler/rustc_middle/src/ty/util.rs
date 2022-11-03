@@ -2,7 +2,6 @@
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::layout::IntegerExt;
-use crate::ty::query::TyCtxtAt;
 use crate::ty::{
     self, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitable,
@@ -821,12 +820,8 @@ impl<'tcx> Ty<'tcx> {
     /// does copies even when the type actually doesn't satisfy the
     /// full requirements for the `Copy` trait (cc #29149) -- this
     /// winds up being reported as an error during NLL borrow check.
-    pub fn is_copy_modulo_regions(
-        self,
-        tcx_at: TyCtxtAt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> bool {
-        self.is_trivially_pure_clone_copy() || tcx_at.is_copy_raw(param_env.and(self))
+    pub fn is_copy_modulo_regions(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.is_trivially_pure_clone_copy() || tcx.is_copy_raw(param_env.and(self))
     }
 
     /// Checks whether values of this type `T` have a size known at
@@ -835,8 +830,8 @@ impl<'tcx> Ty<'tcx> {
     /// over-approximation in generic contexts, where one can have
     /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
     /// actually carry lifetime requirements.
-    pub fn is_sized(self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.is_trivially_sized(tcx_at.tcx) || tcx_at.is_sized_raw(param_env.and(self))
+    pub fn is_sized(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.is_trivially_sized(tcx) || tcx.is_sized_raw(param_env.and(self))
     }
 
     /// Checks whether values of this type `T` implement the `Freeze`
@@ -846,8 +841,8 @@ impl<'tcx> Ty<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
-    pub fn is_freeze(self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.is_trivially_freeze() || tcx_at.is_freeze_raw(param_env.and(self))
+    pub fn is_freeze(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.is_trivially_freeze() || tcx.is_freeze_raw(param_env.and(self))
     }
 
     /// Fast path helper for testing if a type is `Freeze`.
@@ -886,8 +881,8 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Checks whether values of this type `T` implement the `Unpin` trait.
-    pub fn is_unpin(self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
-        self.is_trivially_unpin() || tcx_at.is_unpin_raw(param_env.and(self))
+    pub fn is_unpin(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.is_trivially_unpin() || tcx.is_unpin_raw(param_env.and(self))
     }
 
     /// Fast path helper for testing if a type is `Unpin`.

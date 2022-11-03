@@ -23,7 +23,7 @@ rustc_queries! {
         desc { "triggering a delay span bug" }
     }
 
-    query resolutions(_: ()) -> &'tcx ty::ResolverOutputs {
+    query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
         eval_always
         no_hash
         desc { "getting the resolver outputs" }
@@ -912,7 +912,7 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    query used_trait_imports(key: LocalDefId) -> &'tcx FxHashSet<LocalDefId> {
+    query used_trait_imports(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
         desc { |tcx| "finding used_trait_imports `{}`", tcx.def_path_str(key.to_def_id()) }
         cache_on_disk_if { true }
     }
@@ -1065,10 +1065,10 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
     }
 
-    /// Performs part of the privacy check and computes "access levels".
-    query privacy_access_levels(_: ()) -> &'tcx AccessLevels {
+    /// Performs part of the privacy check and computes effective visibilities.
+    query effective_visibilities(_: ()) -> &'tcx EffectiveVisibilities {
         eval_always
-        desc { "checking privacy access levels" }
+        desc { "checking effective visibilities" }
     }
     query check_private_in_public(_: ()) -> () {
         eval_always
@@ -1391,6 +1391,13 @@ rustc_queries! {
         desc { "checking if the crate has_global_allocator" }
         separate_provide_extern
     }
+    query has_alloc_error_handler(_: CrateNum) -> bool {
+        // This query depends on untracked global state in CStore
+        eval_always
+        fatal_cycle
+        desc { "checking if the crate has_alloc_error_handler" }
+        separate_provide_extern
+    }
     query has_panic_handler(_: CrateNum) -> bool {
         fatal_cycle
         desc { "checking if the crate has_panic_handler" }
@@ -1705,7 +1712,7 @@ rustc_queries! {
     }
 
     /// Returns the lang items defined in another crate by loading it from metadata.
-    query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, usize)] {
+    query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, LangItem)] {
         desc { "calculating the lang items defined in a crate" }
         separate_provide_extern
     }
@@ -1760,6 +1767,10 @@ rustc_queries! {
     query allocator_kind(_: ()) -> Option<AllocatorKind> {
         eval_always
         desc { "getting the allocator kind for the current crate" }
+    }
+    query alloc_error_handler_kind(_: ()) -> Option<AllocatorKind> {
+        eval_always
+        desc { "alloc error handler kind for the current crate" }
     }
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {

@@ -108,11 +108,11 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         tcx: TyCtxt<'tcx>,
         module_name: &str,
         kind: AllocatorKind,
-        has_alloc_error_handler: bool,
+        alloc_error_handler_kind: AllocatorKind,
     ) -> ModuleLlvm {
         let mut module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
         unsafe {
-            allocator::codegen(tcx, &mut module_llvm, module_name, kind, has_alloc_error_handler);
+            allocator::codegen(tcx, &mut module_llvm, module_name, kind, alloc_error_handler_kind);
         }
         module_llvm
     }

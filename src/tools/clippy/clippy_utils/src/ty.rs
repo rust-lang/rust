@@ -18,7 +18,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, Symbol, DUMMY_SP};
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::{Size, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
@@ -28,7 +28,7 @@ use crate::{match_def_path, path_res, paths};
 
 // Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_copy_modulo_regions(cx.tcx.at(DUMMY_SP), cx.param_env)
+    ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
 }
 
 /// This checks whether a given type is known to implement Debug.
@@ -318,11 +318,7 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
 /// Returns `false` if the `LangItem` is not defined.
 pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => cx
-            .tcx
-            .lang_items()
-            .require(lang_item)
-            .map_or(false, |li| li == adt.did()),
+        ty::Adt(adt, _) => cx.tcx.lang_items().get(lang_item) == Some(adt.did()),
         _ => false,
     }
 }

@@ -2,6 +2,7 @@
 
 use rustc_index::vec::Idx;
 use rustc_middle::ty::util::IntTypeExt;
+use rustc_target::abi::{Abi, Primitive};
 
 use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
@@ -198,6 +199,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let (source, ty) = if let ty::Adt(adt_def, ..) = source.ty.kind() && adt_def.is_enum() {
                     let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
                     let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
+                    let layout = this.tcx.layout_of(this.param_env.and(source.ty));
                     let discr = this.temp(discr_ty, source.span);
                     this.cfg.push_assign(
                         block,
@@ -205,8 +207,55 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         discr,
                         Rvalue::Discriminant(temp.into()),
                     );
+                    let (op,ty) = (Operand::Move(discr), discr_ty);
 
-                    (Operand::Move(discr), discr_ty)
+                    if let Abi::Scalar(scalar) = layout.unwrap().abi{
+                        if let Primitive::Int(_, signed) = scalar.primitive() {
+                            let range = scalar.valid_range(&this.tcx);
+                            // FIXME: Handle wraparound cases too.
+                            if range.end >= range.start {
+                                let mut assumer = |range: u128, bin_op: BinOp| {
+                                    // We will be overwriting this val if our scalar is signed value
+                                    // because sign extension on unsigned types might cause unintended things
+                                    let mut range_val =
+                                        ConstantKind::from_bits(this.tcx, range, ty::ParamEnv::empty().and(discr_ty));
+                                    let bool_ty = this.tcx.types.bool;
+                                    if signed {
+                                        let scalar_size_extend = scalar.size(&this.tcx).sign_extend(range);
+                                        let discr_layout = this.tcx.layout_of(this.param_env.and(discr_ty));
+                                        let truncated_val = discr_layout.unwrap().size.truncate(scalar_size_extend);
+                                        range_val = ConstantKind::from_bits(
+                                            this.tcx,
+                                            truncated_val,
+                                            ty::ParamEnv::empty().and(discr_ty),
+                                        );
+                                    }
+                                    let lit_op = this.literal_operand(expr.span, range_val);
+                                    let is_bin_op = this.temp(bool_ty, expr_span);
+                                    this.cfg.push_assign(
+                                        block,
+                                        source_info,
+                                        is_bin_op,
+                                        Rvalue::BinaryOp(bin_op, Box::new(((lit_op), (Operand::Copy(discr))))),
+                                    );
+                                    this.cfg.push(
+                                        block,
+                                        Statement {
+                                            source_info,
+                                            kind: StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
+                                                Operand::Copy(is_bin_op),
+                                            ))),
+                                        },
+                                    )
+                                };
+                                assumer(range.end, BinOp::Ge);
+                                assumer(range.start, BinOp::Le);
+                            }
+                        }
+                    }
+
+                    (op,ty)
+
                 } else {
                     let ty = source.ty;
                     let source = unpack!(

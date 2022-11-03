@@ -56,7 +56,7 @@ impl crate::doctest::Tester for Tests {
 }
 
 pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if !cx.cache.access_levels.is_public(item.item_id.expect_def_id())
+    if !cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
         || matches!(
             *item.kind,
             clean::StructFieldItem(_)
@@ -130,7 +130,7 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
             );
         }
     } else if tests.found_tests > 0
-        && !cx.cache.access_levels.is_exported(item.item_id.expect_def_id())
+        && !cx.cache.effective_visibilities.is_exported(cx.tcx, item.item_id.expect_def_id())
     {
         cx.tcx.struct_span_lint_hir(
             crate::lint::PRIVATE_DOC_TESTS,

@@ -228,7 +228,7 @@ impl Step for TheBook {
         }
 
         // build the version info page and CSS
-        builder.ensure(Standalone { compiler, target });
+        let shared_assets = builder.ensure(SharedAssets { target });
 
         // build the redirect pages
         builder.info(&format!("Documenting book redirect pages ({})", target));
@@ -237,7 +237,7 @@ impl Step for TheBook {
             let path = file.path();
             let path = path.to_str().unwrap();
 
-            invoke_rustdoc(builder, compiler, target, path);
+            invoke_rustdoc(builder, compiler, &shared_assets, target, path);
         }
 
         if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
@@ -251,6 +251,7 @@ impl Step for TheBook {
 fn invoke_rustdoc(
     builder: &Builder<'_>,
     compiler: Compiler,
+    shared_assets: &SharedAssetsPaths,
     target: TargetSelection,
     markdown: &str,
 ) {
@@ -260,7 +261,6 @@ fn invoke_rustdoc(
 
     let header = builder.src.join("src/doc/redirect.inc");
     let footer = builder.src.join("src/doc/footer.inc");
-    let version_info = out.join("version_info.html");
 
     let mut cmd = builder.rustdoc_cmd(compiler);
 
@@ -269,7 +269,7 @@ fn invoke_rustdoc(
     cmd.arg("--html-after-content")
         .arg(&footer)
         .arg("--html-before-content")
-        .arg(&version_info)
+        .arg(&shared_assets.version_info)
         .arg("--html-in-header")
         .arg(&header)
         .arg("--markdown-no-toc")
@@ -300,7 +300,7 @@ impl Step for Standalone {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/doc").default_condition(builder.config.docs)
+        run.path("src/doc").alias("standalone").default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -325,21 +325,11 @@ impl Step for Standalone {
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
 
+        let version_info = builder.ensure(SharedAssets { target: self.target }).version_info;
+
         let favicon = builder.src.join("src/doc/favicon.inc");
         let footer = builder.src.join("src/doc/footer.inc");
         let full_toc = builder.src.join("src/doc/full-toc.inc");
-        t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
-
-        let version_input = builder.src.join("src/doc/version_info.html.template");
-        let version_info = out.join("version_info.html");
-
-        if !builder.config.dry_run && !up_to_date(&version_input, &version_info) {
-            let info = t!(fs::read_to_string(&version_input))
-                .replace("VERSION", &builder.rust_release())
-                .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
-                .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
-            t!(fs::write(&version_info, &info));
-        }
 
         for file in t!(fs::read_dir(builder.src.join("src/doc"))) {
             let file = t!(file);
@@ -401,6 +391,45 @@ impl Step for Standalone {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SharedAssetsPaths {
+    pub version_info: PathBuf,
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct SharedAssets {
+    target: TargetSelection,
+}
+
+impl Step for SharedAssets {
+    type Output = SharedAssetsPaths;
+    const DEFAULT: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        // Other tasks depend on this, no need to execute it on its own
+        run.never()
+    }
+
+    // Generate shared resources used by other pieces of documentation.
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let out = builder.doc_out(self.target);
+
+        let version_input = builder.src.join("src").join("doc").join("version_info.html.template");
+        let version_info = out.join("version_info.html");
+        if !builder.config.dry_run && !up_to_date(&version_input, &version_info) {
+            let info = t!(fs::read_to_string(&version_input))
+                .replace("VERSION", &builder.rust_release())
+                .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
+                .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
+            t!(fs::write(&version_info, &info));
+        }
+
+        builder.copy(&builder.src.join("src").join("doc").join("rust.css"), &out.join("rust.css"));
+
+        SharedAssetsPaths { version_info }
+    }
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
     pub stage: u32,
@@ -429,7 +458,8 @@ impl Step for Std {
         let target = self.target;
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
+
+        builder.ensure(SharedAssets { target: self.target });
 
         let index_page = builder.src.join("src/doc/index.md").into_os_string();
         let mut extra_args = vec![
@@ -735,7 +765,7 @@ impl Step for Rustc {
 }
 
 macro_rules! tool_doc {
-    ($tool: ident, $should_run: literal, $path: literal, [$($krate: literal),+ $(,)?], in_tree = $in_tree:expr $(,)?) => {
+    ($tool: ident, $should_run: literal, $path: literal, [$($krate: literal),+ $(,)?] $(,)?) => {
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
             target: TargetSelection,
@@ -791,12 +821,6 @@ macro_rules! tool_doc {
                 t!(fs::create_dir_all(&out_dir));
                 t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
-                let source_type = if $in_tree == true {
-                    SourceType::InTree
-                } else {
-                    SourceType::Submodule
-                };
-
                 // Build cargo command.
                 let mut cargo = prepare_tool_cargo(
                     builder,
@@ -805,7 +829,7 @@ macro_rules! tool_doc {
                     target,
                     "doc",
                     $path,
-                    source_type,
+                    SourceType::InTree,
                     &[],
                 );
 
@@ -821,38 +845,21 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--show-type-layout");
                 cargo.rustdocflag("--generate-link-to-definition");
                 cargo.rustdocflag("-Zunstable-options");
-                if $in_tree == true {
-                    builder.run(&mut cargo.into());
-                } else {
-                    // Allow out-of-tree docs to fail (since the tool might be in a broken state).
-                    if !builder.try_run(&mut cargo.into()) {
-                        builder.info(&format!(
-                            "WARNING: tool {} failed to document; ignoring failure because it is an out-of-tree tool",
-                            stringify!($tool).to_lowercase(),
-                        ));
-                    }
-                }
+                builder.run(&mut cargo.into());
             }
         }
     }
 }
 
-tool_doc!(
-    Rustdoc,
-    "rustdoc-tool",
-    "src/tools/rustdoc",
-    ["rustdoc", "rustdoc-json-types"],
-    in_tree = true
-);
+tool_doc!(Rustdoc, "rustdoc-tool", "src/tools/rustdoc", ["rustdoc", "rustdoc-json-types"],);
 tool_doc!(
     Rustfmt,
     "rustfmt-nightly",
     "src/tools/rustfmt",
     ["rustfmt-nightly", "rustfmt-config_proc_macro"],
-    in_tree = true
 );
-tool_doc!(Clippy, "clippy", "src/tools/clippy", ["clippy_utils"], in_tree = true);
-tool_doc!(Miri, "miri", "src/tools/miri", ["miri"], in_tree = false);
+tool_doc!(Clippy, "clippy", "src/tools/clippy", ["clippy_utils"]);
+tool_doc!(Miri, "miri", "src/tools/miri", ["miri"]);
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {

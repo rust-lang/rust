@@ -14,7 +14,7 @@ use super::super::{
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 
-/// An interface for dealing with iterators.
+/// A trait for dealing with iterators.
 ///
 /// This is the main iterator trait. For more about the concept of iterators
 /// generally, please see the [module-level documentation]. In particular, you

@@ -28,7 +28,7 @@ impl CompletedTest {
 
 #[derive(Debug, Clone)]
 pub enum TestEvent {
-    TeFiltered(Vec<TestDesc>, Option<u64>),
+    TeFiltered(usize, Option<u64>),
     TeWait(TestDesc),
     TeResult(CompletedTest),
     TeTimeout(TestDesc),

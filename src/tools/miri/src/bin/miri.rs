@@ -32,7 +32,7 @@ use rustc_middle::{
 };
 use rustc_session::{config::CrateType, search_paths::PathKind, CtfeBacktrace};
 
-use miri::{BacktraceStyle, ProvenanceMode};
+use miri::{BacktraceStyle, ProvenanceMode, RetagFields};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -192,7 +192,7 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
             if log::Level::from_str(&var).is_ok() {
                 env::set_var(
                     "RUSTC_LOG",
-                    &format!(
+                    format!(
                         "rustc_middle::mir::interpret={0},rustc_const_eval::interpret={0}",
                         var
                     ),
@@ -243,7 +243,7 @@ fn host_sysroot() -> Option<String> {
                     )
                 }
             }
-            format!("{}/toolchains/{}", home, toolchain)
+            format!("{home}/toolchains/{toolchain}")
         }
         _ => option_env!("RUST_SYSROOT")
             .unwrap_or_else(|| {
@@ -330,7 +330,7 @@ fn main() {
         } else if crate_kind == "host" {
             false
         } else {
-            panic!("invalid `MIRI_BE_RUSTC` value: {:?}", crate_kind)
+            panic!("invalid `MIRI_BE_RUSTC` value: {crate_kind:?}")
         };
 
         // We cannot use `rustc_driver::main` as we need to adjust the CLI arguments.
@@ -426,7 +426,14 @@ fn main() {
         } else if arg == "-Zmiri-mute-stdout-stderr" {
             miri_config.mute_stdout_stderr = true;
         } else if arg == "-Zmiri-retag-fields" {
-            miri_config.retag_fields = true;
+            miri_config.retag_fields = RetagFields::Yes;
+        } else if let Some(retag_fields) = arg.strip_prefix("-Zmiri-retag-fields=") {
+            miri_config.retag_fields = match retag_fields {
+                "all" => RetagFields::Yes,
+                "none" => RetagFields::No,
+                "scalar" => RetagFields::OnlyScalar,
+                _ => show_error!("`-Zmiri-retag-fields` can only be `all`, `none`, or `scalar`"),
+            };
         } else if arg == "-Zmiri-track-raw-pointers" {
             eprintln!(
                 "WARNING: `-Zmiri-track-raw-pointers` has no effect; it is enabled by default"

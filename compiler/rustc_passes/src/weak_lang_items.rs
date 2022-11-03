@@ -2,15 +2,12 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::lang_items::{self, LangItem};
-use rustc_hir::weak_lang_items::WEAK_ITEMS_REFS;
+use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::errors::{
-    AllocFuncRequired, MissingAllocErrorHandler, MissingLangItem, MissingPanicHandler,
-    UnknownExternLangItem,
-};
+use crate::errors::{MissingLangItem, MissingPanicHandler, UnknownExternLangItem};
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
 /// language items required by this crate, but not defined yet.
@@ -29,12 +26,12 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
     for id in crate_items.foreign_items() {
         let attrs = tcx.hir().attrs(id.hir_id());
         if let Some((lang_item, _)) = lang_items::extract(attrs) {
-            if let Some(&item) = WEAK_ITEMS_REFS.get(&lang_item) {
-                if items.require(item).is_err() {
+            if let Some(item) = LangItem::from_name(lang_item) && item.is_weak() {
+                if items.get(item).is_none() {
                     items.missing.push(item);
                 }
             } else {
-                let span = tcx.def_span(id.def_id);
+                let span = tcx.def_span(id.owner_id);
                 tcx.sess.emit_err(UnknownExternLangItem { span, lang_item });
             }
         }
@@ -65,17 +62,12 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
         }
     }
 
-    for (name, &item) in WEAK_ITEMS_REFS.iter() {
-        if missing.contains(&item) && required(tcx, item) && items.require(item).is_err() {
+    for &item in WEAK_LANG_ITEMS.iter() {
+        if missing.contains(&item) && required(tcx, item) && items.get(item).is_none() {
             if item == LangItem::PanicImpl {
                 tcx.sess.emit_err(MissingPanicHandler);
-            } else if item == LangItem::Oom {
-                if !tcx.features().default_alloc_error_handler {
-                    tcx.sess.emit_err(AllocFuncRequired);
-                    tcx.sess.emit_note(MissingAllocErrorHandler);
-                }
             } else {
-                tcx.sess.emit_err(MissingLangItem { name: *name });
+                tcx.sess.emit_err(MissingLangItem { name: item.name() });
             }
         }
     }

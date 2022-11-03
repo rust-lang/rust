@@ -104,7 +104,7 @@ MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/pass/v
 In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
 evaluation error was originally raised.
 
-#### UI testing
+### UI testing
 
 We use ui-testing in Miri, meaning we generate `.stderr` and `.stdout` files for the output
 produced by Miri. You can use `./miri bless` to automatically (re)generate these files when
@@ -257,7 +257,7 @@ Note: When you are working with a locally built rustc or any other toolchain tha
 is not the same as the one in `rust-version`, you should not have `.auto-everything` or
 `.auto-toolchain` as that will keep resetting your toolchain.
 
-```
+```sh
 rm -f .auto-everything .auto-toolchain
 ```
 
@@ -275,3 +275,51 @@ see <https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html>.
 
 With this, you should now have a working development setup! See
 [above](#building-and-testing-miri) for how to proceed working on Miri.
+
+## Advanced topic: Syncing with the rustc repo
+
+We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit
+changes between the rustc and Miri repositories. For now, a fork of josh needs to be built
+from source. This downloads and runs josh:
+
+```sh
+git clone https://github.com/RalfJung/josh
+cd josh
+cargo run --release -p josh-proxy -- --local=$(pwd)/local --remote=https://github.com --no-background
+```
+
+### Importing changes from the rustc repo
+
+We assume we start on an up-to-date master branch in the Miri repo.
+
+```sh
+# Fetch rustc side of the history. Takes ca 5 min the first time.
+# Do NOT change that commit ID, it needs to be exactly this!
+git fetch http://localhost:8000/rust-lang/rust.git:at_commit=75dd959a3a40eb5b4574f8d2e23aa6efbeb33573[:prefix=src/tools/miri]:/src/tools/miri.git master
+# Include that history into ours.
+git merge FETCH_HEAD -m "merge rustc history"
+# Update toolchain reference and apply formatting.
+./rustup-toolchain HEAD && ./miri fmt
+git commit -am "rustup"
+```
+
+Now push this to a new branch in your Miri fork, and create a PR. It is worth
+running `./miri test` locally in parallel, since the test suite in the Miri repo
+is stricter than the one on the rustc side, so some small tweaks might be
+needed.
+
+### Exporting changes to the rustc repo
+
+We will use the josh proxy to push to your fork of rustc. You need to make sure
+that the master branch of your fork is up-to-date. Also make sure that there
+exists no branch called `miri` in your fork. Then run the following in the Miri
+repo, assuming we are on an up-to-date master branch:
+
+```sh
+# Push the Miri changes to your rustc fork (substitute your github handle for YOUR_NAME).
+# Do NOT change that commit ID, it needs to be exactly this!
+git push http://localhost:8000/YOUR_NAME/rust.git:at_commit=75dd959a3a40eb5b4574f8d2e23aa6efbeb33573[:prefix=src/tools/miri]:/src/tools/miri.git -o base=master HEAD:miri
+```
+
+This will create a new branch in your fork, and the output should include a link
+to create a rustc PR that will integrate those changes into the main repository.

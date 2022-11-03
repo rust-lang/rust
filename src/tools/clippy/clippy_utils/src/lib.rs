@@ -247,7 +247,7 @@ pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
 /// For example, use this to check whether a function call or a pattern is `Some(..)`.
 pub fn is_res_lang_ctor(cx: &LateContext<'_>, res: Res, lang_item: LangItem) -> bool {
     if let Res::Def(DefKind::Ctor(..), id) = res
-        && let Ok(lang_id) = cx.tcx.lang_items().require(lang_item)
+        && let Some(lang_id) = cx.tcx.lang_items().get(lang_item)
         && let Some(id) = cx.tcx.opt_parent(id)
     {
         id == lang_id
@@ -303,7 +303,7 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
         _ => did,
     };
 
-    cx.tcx.lang_items().require(item).map_or(false, |id| id == did)
+    cx.tcx.lang_items().get(item) == Some(did)
 }
 
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
@@ -2281,7 +2281,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalDefId, f: impl Fn(&[Symbol
         Entry::Vacant(entry) => {
             let mut names = Vec::new();
             for id in tcx.hir().module_items(module) {
-                if matches!(tcx.def_kind(id.def_id), DefKind::Const)
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Const)
                     && let item = tcx.hir().item(id)
                     && let ItemKind::Const(ty, _body) = item.kind {
                     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {

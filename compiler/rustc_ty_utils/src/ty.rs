@@ -137,10 +137,82 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     let local_did = def_id.as_local();
     let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
 
+    // FIXME(consts): This is not exactly in line with the constness query.
+    let constness = match hir_id {
+        Some(hir_id) => match tcx.hir().get(hir_id) {
+            hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
+                if tcx.is_const_default_method(def_id) =>
+            {
+                hir::Constness::Const
+            }
+
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(..), .. })
+            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Static(..), .. })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Const(..), ..
+            })
+            | hir::Node::AnonConst(_)
+            | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
+            | hir::Node::ImplItem(hir::ImplItem {
+                kind:
+                    hir::ImplItemKind::Fn(
+                        hir::FnSig {
+                            header: hir::FnHeader { constness: hir::Constness::Const, .. },
+                            ..
+                        },
+                        ..,
+                    ),
+                ..
+            }) => hir::Constness::Const,
+
+            hir::Node::ImplItem(hir::ImplItem {
+                kind: hir::ImplItemKind::Type(..) | hir::ImplItemKind::Fn(..),
+                ..
+            }) => {
+                let parent_hir_id = tcx.hir().get_parent_node(hir_id);
+                match tcx.hir().get(parent_hir_id) {
+                    hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
+                        ..
+                    }) => *constness,
+                    _ => span_bug!(
+                        tcx.def_span(parent_hir_id.owner),
+                        "impl item's parent node is not an impl",
+                    ),
+                }
+            }
+
+            hir::Node::Item(hir::Item {
+                kind:
+                    hir::ItemKind::Fn(hir::FnSig { header: hir::FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind:
+                    hir::TraitItemKind::Fn(
+                        hir::FnSig { header: hir::FnHeader { constness, .. }, .. },
+                        ..,
+                    ),
+                ..
+            })
+            | hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
+                ..
+            }) => *constness,
+
+            _ => hir::Constness::NotConst,
+        },
+        // FIXME(consts): It's suspicious that a param-env for a foreign item
+        // will always have NotConst param-env, though we don't typically use
+        // that param-env for anything meaningful right now, so it's likely
+        // not an issue.
+        None => hir::Constness::NotConst,
+    };
+
     let unnormalized_env = ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
         traits::Reveal::UserFacing,
-        tcx.constness(def_id),
+        constness,
     );
 
     let body_id =

@@ -292,8 +292,6 @@ declare_features! (
     (incomplete, adt_const_params, "1.56.0", Some(95174), None),
     /// Allows defining an `#[alloc_error_handler]`.
     (active, alloc_error_handler, "1.29.0", Some(51540), None),
-    /// Allows explicit discriminants on non-unit enum variants.
-    (active, arbitrary_enum_discriminant, "1.37.0", Some(60553), None),
     /// Allows trait methods with arbitrary self types.
     (active, arbitrary_self_types, "1.23.0", Some(44874), None),
     /// Allows using `const` operands in inline assembly.
@@ -390,6 +388,9 @@ declare_features! (
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (active, exhaustive_patterns, "1.13.0", Some(51085), None),
+    /// Allows using `efiapi`, `sysv64` and `win64` as calling convention
+    /// for functions with varargs.
+    (active, extended_varargs_abi_support, "1.65.0", Some(100189), None),
     /// Allows defining `extern type`s.
     (active, extern_types, "1.23.0", Some(43467), None),
     /// Allows the use of `#[ffi_const]` on foreign functions.
@@ -414,6 +415,8 @@ declare_features! (
     (active, half_open_range_patterns_in_slices, "CURRENT_RUSTC_VERSION", Some(67264), None),
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
+    /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
+    (active, impl_trait_in_fn_trait_return, "1.64.0", Some(99697), None),
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
     /// Allows associated types in inherent impls.

@@ -974,7 +974,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 // useful for less general traits.
                                 if peeled
                                     && !self.tcx.trait_is_auto(def_id)
-                                    && !self.tcx.lang_items().items().contains(&Some(def_id))
+                                    && !self.tcx.lang_items().iter().any(|(_, id)| id == def_id)
                                 {
                                     let trait_ref = trait_pred.to_poly_trait_ref();
                                     let impl_candidates =
@@ -1898,7 +1898,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let def_id = trait_ref.def_id();
         if impl_candidates.is_empty() {
             if self.tcx.trait_is_auto(def_id)
-                || self.tcx.lang_items().items().contains(&Some(def_id))
+                || self.tcx.lang_items().iter().any(|(_, id)| id == def_id)
                 || self.tcx.get_diagnostic_name(def_id).is_some()
             {
                 // Mentioning implementers of `Copy`, `Debug` and friends is not useful.

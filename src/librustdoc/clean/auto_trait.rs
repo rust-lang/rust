@@ -118,7 +118,6 @@ where
         Some(Item {
             name: None,
             attrs: Default::default(),
-            visibility: Inherited,
             item_id: ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
             kind: Box::new(ImplItem(Box::new(Impl {
                 unsafety: hir::Unsafety::Normal,
@@ -130,6 +129,7 @@ where
                 kind: ImplKind::Auto,
             }))),
             cfg: None,
+            inline_stmt_id: None,
         })
     }
 
@@ -148,7 +148,7 @@ where
             })
             .collect();
         // We are only interested in case the type *doesn't* implement the Sized trait.
-        if !ty.is_sized(tcx.at(rustc_span::DUMMY_SP), param_env) {
+        if !ty.is_sized(tcx, param_env) {
             // In case `#![no_core]` is used, `sized_trait` returns nothing.
             if let Some(item) = tcx.lang_items().sized_trait().and_then(|sized_trait_did| {
                 self.generate_for_trait(ty, sized_trait_did, param_env, item_def_id, &f, true)

@@ -163,9 +163,6 @@ h1.fqn {
 	padding-bottom: 6px;
 	margin-bottom: 15px;
 }
-#toggle-all-docs {
-	text-decoration: none;
-}
 /* The only headings that get underlines are:
 	 Markdown-generated headings within the top-doc
 	 Rustdoc-generated h2 section headings (e.g. "Implementations", "Required Methods", etc)
@@ -209,7 +206,7 @@ ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
-a#toggle-all-docs,
+#toggle-all-docs,
 a.anchor,
 .small-section-header a,
 #source-sidebar a,
@@ -292,15 +289,21 @@ p:last-child {
 	margin: 0;
 }
 
-summary {
-	outline: none;
-}
-
 /* Fix some style changes due to normalize.css 8 */
 
 button {
 	/* Buttons on Safari have different default padding than other platforms. Make them the same. */
 	padding: 1px 6px;
+}
+
+button#toggle-all-docs {
+	padding: 0;
+	background: none;
+	border: none;
+	cursor: pointer;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
 }
 
 /* end tweaks for normalize.css 8 */
@@ -497,9 +500,7 @@ ul.block, .block li {
 .sidebar h2 {
 	overflow-wrap: anywhere;
 	padding: 0;
-	margin: 0;
-	margin-top: 0.7rem;
-	margin-bottom: 0.7rem;
+	margin: 0.7rem 0;
 }
 
 .sidebar h3 {
@@ -549,45 +550,44 @@ ul.block, .block li {
 	margin-bottom: 0px;
 }
 
-pre.example-line-numbers {
-	overflow: initial;
-	border: 1px solid;
-	padding: 13px 8px;
-	text-align: right;
-	border-top-left-radius: 5px;
-	border-bottom-left-radius: 5px;
-}
-
-.src-line-numbers {
-	text-align: right;
-}
-.rustdoc:not(.source) .example-wrap > pre:not(.example-line-numbers) {
-	width: 100%;
+.rustdoc .example-wrap > pre {
+	margin: 0;
+	flex-grow: 1;
 	overflow-x: auto;
 }
 
-.rustdoc:not(.source) .example-wrap > pre.src-line-numbers {
-	width: auto;
-	overflow-x: visible;
-}
-
-.rustdoc .example-wrap > pre {
-	margin: 0;
-}
-
-.search-loading {
-	text-align: center;
-}
-
-.content > .example-wrap pre.src-line-numbers {
-	position: relative;
+.rustdoc .example-wrap > pre.example-line-numbers,
+.rustdoc .example-wrap > pre.src-line-numbers {
+	flex-grow: 0;
+	overflow: initial;
+	text-align: right;
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
 }
+
+.example-line-numbers {
+	border: 1px solid;
+	padding: 13px 8px;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+	border-color: var(--example-line-numbers-border-color);
+}
+
 .src-line-numbers span {
 	cursor: pointer;
+	color: var(--src-line-numbers-span-color);
+}
+.src-line-numbers .line-highlighted {
+	background-color: var(--src-line-number-highlighted-background-color);
+}
+.src-line-numbers :target {
+	background-color: transparent;
+}
+
+.search-loading {
+	text-align: center;
 }
 
 .docblock-short {
@@ -688,13 +688,16 @@ nav.sub {
 	display: flex;
 	align-items: center;
 }
-nav.sub form {
+.search-form {
+	position: relative;
+	display: flex;
+	height: 34px;
 	flex-grow: 1;
 }
 .source nav.sub {
 	margin: 0 0 15px 0;
 }
-.source nav.sub form {
+.source .search-form {
 	margin-left: 32px;
 }
 
@@ -785,11 +788,6 @@ table,
 	padding-right: 1.25rem;
 }
 
-.search-container {
-	position: relative;
-	display: flex;
-	height: 34px;
-}
 .search-results-title {
 	margin-top: 0;
 	white-space: nowrap;
@@ -810,10 +808,8 @@ table,
 }
 #crate-search {
 	min-width: 115px;
-	padding: 0;
 	/* keep these two in sync with "@-moz-document url-prefix()" below */
-	padding-left: 4px;
-	padding-right: 23px;
+	padding: 0 23px 0 4px;
 	/* prevents the <select> from overflowing the containing div in case it's shrunk */
 	max-width: 100%;
 	/* contents can overflow because of max-width limit, then show ellipsis */
@@ -865,17 +861,12 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	   -webkit-appearance: textfield for search inputs. That
 	   causes rounded corners and no border on iOS Safari. */
 	-webkit-appearance: none;
-	/* Override Normalize.css: we have margins and do
-	 not want to overflow - the `moz` attribute is necessary
-	 until Firefox 29, too early to drop at this point */
-	-moz-box-sizing: border-box !important;
-	box-sizing: border-box !important;
 	outline: none;
 	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	padding: 8px;
 	font-size: 1rem;
-	width: 100%;
+	flex-grow: 1;
 	background-color: var(--button-background-color);
 	color: var(--search-color);
 }
@@ -885,13 +876,10 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results {
 	display: none;
-	padding-bottom: 2em;
 }
 
 .search-results.active {
 	display: block;
-	/* prevent overhanging tabs from moving the first result */
-	clear: both;
 }
 
 .search-results .desc > span {
@@ -1102,7 +1090,7 @@ pre.rust .bool-val {
 pre.rust .self {
 	color: var(--code-highlight-self-color);
 }
-pre.rust .attribute {
+pre.rust .attr {
 	color: var(--code-highlight-attribute-color);
 }
 pre.rust .macro,
@@ -1302,7 +1290,7 @@ h3.variant {
 	content: "\00a0\00a0\00a0";
 }
 
-.notable-traits .notable, .notable-traits .docblock {
+.notable-traits .docblock {
 	margin: 0;
 }
 
@@ -1538,6 +1526,8 @@ details.rustdoc-toggle > summary.hideme {
 
 details.rustdoc-toggle > summary {
 	list-style: none;
+	/* focus outline is shown on `::before` instead of this */
+	outline: none;
 }
 details.rustdoc-toggle > summary::-webkit-details-marker,
 details.rustdoc-toggle > summary::marker {
@@ -1583,6 +1573,15 @@ details.rustdoc-toggle > summary.hideme::after {
 details.rustdoc-toggle > summary:focus::before,
 details.rustdoc-toggle > summary:hover::before {
 	opacity: 1;
+}
+
+details.rustdoc-toggle > summary:focus-visible::before {
+	/* The SVG is black, and gets turned white using a filter in the dark themes.
+	   Do the same with the outline.
+	   The dotted 1px style is copied from Firefox's focus ring style.
+	*/
+	outline: 1px dotted #000;
+	outline-offset: 1px;
 }
 
 details.rustdoc-toggle.top-doc > summary,
@@ -1678,7 +1677,6 @@ in storage.js
 	}
 
 	.rustdoc {
-		padding-top: 0px;
 		/* Sidebar should overlay main content, rather than pushing main content to the right.
 		   Turn off `display: flex` on the body element. */
 		display: block;
@@ -1720,7 +1718,6 @@ in storage.js
 		/* Hide the sidebar offscreen while not in use. Doing this instead of display: none means
 		   the sidebar stays visible for screen readers, which is useful for navigation. */
 		left: -1000px;
-		margin-left: 0;
 		margin: 0;
 		padding: 0;
 		z-index: 11;
@@ -1773,9 +1770,7 @@ in storage.js
 	.mobile-topbar .logo-container > img {
 		max-width: 35px;
 		max-height: 35px;
-		margin-left: 20px;
-		margin-top: 5px;
-		margin-bottom: 5px;
+		margin: 5px 0 5px 20px;
 	}
 
 	.mobile-topbar {
@@ -1874,15 +1869,8 @@ in storage.js
 	}
 
 	/* Display an alternating layout on tablets and phones */
-	.item-table {
+	.item-table, .item-row, .item-left, .item-right {
 		display: block;
-	}
-	.item-row {
-		display: flex;
-		flex-flow: column wrap;
-	}
-	.item-left, .item-right {
-		width: 100%;
 	}
 
 	/* Display an alternating layout on tablets and phones */
@@ -1953,7 +1941,7 @@ in storage.js
 		flex-direction: column;
 	}
 
-	nav.sub form {
+	.search-form {
 		align-self: stretch;
 	}
 
@@ -1970,24 +1958,26 @@ in storage.js
 	}
 }
 
-.method-toggle > summary,
 .implementors-toggle > summary,
 .impl,
 #implementors-list > .docblock,
 .impl-items > section,
-.methods > section
+.impl-items > .rustdoc-toggle > summary,
+.methods > section,
+.methods > .rustdoc-toggle > summary
 {
 	margin-bottom: 0.75em;
 }
 
-.method-toggle[open]:not(:last-child),
+.impl-items > .rustdoc-toggle[open]:not(:last-child),
+.methods > .rustdoc-toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {
 	margin-bottom: 2em;
 }
 
-#trait-implementations-list .method-toggle:not(:last-child),
-#synthetic-implementations-list .method-toggle:not(:last-child),
-#blanket-implementations-list .method-toggle:not(:last-child) {
+#trait-implementations-list .impl-items > .rustdoc-toggle:not(:last-child),
+#synthetic-implementations-list .impl-items > .rustdoc-toggle:not(:last-child),
+#blanket-implementations-list .impl-items > .rustdoc-toggle:not(:last-child) {
 	margin-bottom: 1em;
 }
 
@@ -2024,49 +2014,36 @@ in storage.js
 	padding-bottom: 0;
 }
 
-.scraped-example:not(.expanded) .code-wrapper pre.src-line-numbers {
-	overflow-x: hidden;
-}
-
-.scraped-example .code-wrapper .prev {
-	position: absolute;
-	top: 0.25em;
-	right: 2.25em;
-	z-index: 100;
-	cursor: pointer;
-}
-
-.scraped-example .code-wrapper .next {
-	position: absolute;
-	top: 0.25em;
-	right: 1.25em;
-	z-index: 100;
-	cursor: pointer;
-}
-
+.scraped-example .code-wrapper .next,
+.scraped-example .code-wrapper .prev,
 .scraped-example .code-wrapper .expand {
 	position: absolute;
 	top: 0.25em;
-	right: 0.25em;
-	z-index: 100;
+	z-index: 1;
 	cursor: pointer;
 }
-
-.scraped-example:not(.expanded) .code-wrapper:before {
-	content: " ";
-	width: 100%;
-	height: 5px;
-	position: absolute;
-	z-index: 100;
-	top: 0;
+.scraped-example .code-wrapper .prev {
+	right: 2.25em;
+}
+.scraped-example .code-wrapper .next {
+	right: 1.25em;
+}
+.scraped-example .code-wrapper .expand {
+	right: 0.25em;
 }
 
+.scraped-example:not(.expanded) .code-wrapper:before,
 .scraped-example:not(.expanded) .code-wrapper:after {
 	content: " ";
 	width: 100%;
 	height: 5px;
 	position: absolute;
-	z-index: 100;
+	z-index: 1;
+}
+.scraped-example:not(.expanded) .code-wrapper:before {
+	top: 0;
+}
+.scraped-example:not(.expanded) .code-wrapper:after {
 	bottom: 0;
 }
 

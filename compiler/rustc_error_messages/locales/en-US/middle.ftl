@@ -27,3 +27,7 @@ middle_values_too_big =
 
 middle_cannot_be_normalized =
     unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized
+
+middle_strict_coherence_needs_negative_coherence =
+    to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
+    .label = due to this attribute

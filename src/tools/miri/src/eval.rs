@@ -126,7 +126,7 @@ pub struct MiriConfig {
     /// Report the current instruction being executed every N basic blocks.
     pub report_progress: Option<u32>,
     /// Whether Stacked Borrows retagging should recurse into fields of datatypes.
-    pub retag_fields: bool,
+    pub retag_fields: RetagFields,
     /// The location of a shared object file to load when calling external functions
     /// FIXME! consider allowing users to specify paths to multiple SO files, or to a directory
     pub external_so_file: Option<PathBuf>,
@@ -163,7 +163,7 @@ impl Default for MiriConfig {
             mute_stdout_stderr: false,
             preemption_rate: 0.01, // 1%
             report_progress: None,
-            retag_fields: false,
+            retag_fields: RetagFields::No,
             external_so_file: None,
             gc_interval: 10_000,
             num_cpus: 1,

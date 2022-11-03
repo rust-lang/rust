@@ -140,6 +140,11 @@ pub trait Visitor<'ast>: Sized {
     fn visit_expr(&mut self, ex: &'ast Expr) {
         walk_expr(self, ex)
     }
+    /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
+    /// It can be removed once that feature is stabilized.
+    fn visit_method_receiver_expr(&mut self, ex: &'ast Expr) {
+        self.visit_expr(ex)
+    }
     fn visit_expr_post(&mut self, _ex: &'ast Expr) {}
     fn visit_ty(&mut self, t: &'ast Ty) {
         walk_ty(self, t)

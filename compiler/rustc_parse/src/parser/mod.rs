@@ -104,6 +104,7 @@ macro_rules! maybe_whole {
 macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery
+                    && $self.may_recover()
                     && $self.look_ahead(1, |t| t == &token::ModSep)
                     && let token::Interpolated(nt) = &$self.token.kind
                     && let token::NtTy(ty) = &**nt
@@ -113,6 +114,12 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
                     return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
                 }
     };
+}
+
+#[derive(Clone, Copy)]
+pub enum Recovery {
+    Allowed,
+    Forbidden,
 }
 
 #[derive(Clone)]
@@ -152,12 +159,15 @@ pub struct Parser<'a> {
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
     pub current_closure: Option<ClosureSpans>,
+    /// Whether the parser is allowed to do recovery.
+    /// This is disabled when parsing macro arguments, see #103534
+    pub recovery: Recovery,
 }
 
-// This type is used a lot, e.g. it's cloned when matching many declarative macro rules. Make sure
+// This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 328);
+rustc_data_structures::static_assert_size!(Parser<'_>, 336);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -483,12 +493,29 @@ impl<'a> Parser<'a> {
                 inner_attr_ranges: Default::default(),
             },
             current_closure: None,
+            recovery: Recovery::Allowed,
         };
 
         // Make parser point to the first token.
         parser.bump();
 
         parser
+    }
+
+    pub fn forbid_recovery(mut self) -> Self {
+        self.recovery = Recovery::Forbidden;
+        self
+    }
+
+    /// Whether the parser is allowed to recover from broken code.
+    ///
+    /// If this returns false, recovering broken code into valid code (especially if this recovery does lookahead)
+    /// is not allowed. All recovery done by the parser must be gated behind this check.
+    ///
+    /// Technically, this only needs to restrict eager recovery by doing lookahead at more tokens.
+    /// But making the distinction is very subtle, and simply forbidding all recovery is a lot simpler to uphold.
+    fn may_recover(&self) -> bool {
+        matches!(self.recovery, Recovery::Allowed)
     }
 
     pub fn unexpected<T>(&mut self) -> PResult<'a, T> {
