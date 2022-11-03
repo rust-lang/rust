@@ -1283,6 +1283,12 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
+    #[track_caller]
+    pub fn ty_error_with_guaranteed(self, reported: ErrorGuaranteed) -> Ty<'tcx> {
+        self.mk_ty(Error(reported))
+    }
+
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
     #[track_caller]
     pub fn ty_error(self) -> Ty<'tcx> {
@@ -1295,6 +1301,16 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
         self.mk_ty(Error(reported))
+    }
+
+    /// Like [TyCtxt::ty_error] but for constants, with current `ErrorGuaranteed`
+    #[track_caller]
+    pub fn const_error_with_guaranteed(
+        self,
+        ty: Ty<'tcx>,
+        reported: ErrorGuaranteed,
+    ) -> Const<'tcx> {
+        self.mk_const(ty::ConstS { kind: ty::ConstKind::Error(reported), ty })
     }
 
     /// Like [TyCtxt::ty_error] but for constants.
