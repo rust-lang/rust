@@ -48,6 +48,17 @@ pub struct LifetimesOrBoundsMismatchOnTrait {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_async_trait_impl_should_be_async)]
+pub struct AsyncTraitImplShouldBeAsync {
+    #[primary_span]
+    // #[label]
+    pub span: Span,
+    #[label(trait_item_label)]
+    pub trait_item_span: Option<Span>,
+    pub method_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_drop_impl_on_wrong_item, code = "E0120")]
 pub struct DropImplOnWrongItem {
     #[primary_span]
