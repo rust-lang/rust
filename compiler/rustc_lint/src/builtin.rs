@@ -57,6 +57,8 @@ use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
+use std::fmt::Write;
+
 // hardwired lints from librustc_middle
 pub use rustc_session::lint::builtin::*;
 
@@ -2496,10 +2498,16 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             init: InitKind,
         ) -> Option<InitError> {
             let field_err = variant.fields.iter().find_map(|field| {
-                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|err| {
-                    InitError::from(format!("in this {descr}"))
-                        .spanned(cx.tcx.def_span(field.did))
-                        .nested(err)
+                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|mut err| {
+                    if err.span.is_none() {
+                        err.span = Some(cx.tcx.def_span(field.did));
+                        write!(&mut err.message, " (in this {descr})").unwrap();
+                        err
+                    } else {
+                        InitError::from(format!("in this {descr}"))
+                            .spanned(cx.tcx.def_span(field.did))
+                            .nested(err)
+                    }
                 })
             });
 
