@@ -1052,6 +1052,9 @@ impl Step for Tidy {
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }
+        if builder.config.cmd.bless() {
+            cmd.arg("--bless");
+        }
 
         builder.info("tidy check");
         try_run(builder, &mut cmd);
