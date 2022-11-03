@@ -1,6 +1,6 @@
 use crate::errors::{
     ActualImplExpectedKind, ActualImplExpectedLifetimeKind, ActualImplExplNotes,
-    TraitPlaceholderMismatch,
+    TraitPlaceholderMismatch, TyOrSig,
 };
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
@@ -8,7 +8,7 @@ use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
@@ -17,6 +17,42 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, RePlaceholder, ReVar, Region, TyCtxt};
 
 use std::fmt;
+
+// HACK(eddyb) maybe move this in a more central location.
+#[derive(Copy, Clone)]
+pub struct Highlighted<'tcx, T> {
+    tcx: TyCtxt<'tcx>,
+    highlight: RegionHighlightMode<'tcx>,
+    value: T,
+}
+
+impl<'tcx, T> IntoDiagnosticArg for Highlighted<'tcx, T>
+where
+    T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>, Error = fmt::Error, Output = FmtPrinter<'a, 'tcx>>,
+{
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        rustc_errors::DiagnosticArgValue::Str(self.to_string().into())
+    }
+}
+
+impl<'tcx, T> Highlighted<'tcx, T> {
+    fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'tcx, U> {
+        Highlighted { tcx: self.tcx, highlight: self.highlight, value: f(self.value) }
+    }
+}
+
+impl<'tcx, T> fmt::Display for Highlighted<'tcx, T>
+where
+    T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>, Error = fmt::Error, Output = FmtPrinter<'a, 'tcx>>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
+        printer.region_highlight_mode = self.highlight;
+
+        let s = self.value.print(printer)?.into_buffer();
+        f.write_str(&s)
+    }
+}
 
 impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
@@ -328,39 +364,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         actual_has_vid: Option<usize>,
         any_self_ty_has_vid: bool,
         leading_ellipsis: bool,
-    ) -> Vec<ActualImplExplNotes> {
-        // HACK(eddyb) maybe move this in a more central location.
-        #[derive(Copy, Clone)]
-        struct Highlighted<'tcx, T> {
-            tcx: TyCtxt<'tcx>,
-            highlight: RegionHighlightMode<'tcx>,
-            value: T,
-        }
-
-        impl<'tcx, T> Highlighted<'tcx, T> {
-            fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'tcx, U> {
-                Highlighted { tcx: self.tcx, highlight: self.highlight, value: f(self.value) }
-            }
-        }
-
-        impl<'tcx, T> fmt::Display for Highlighted<'tcx, T>
-        where
-            T: for<'a> Print<
-                'tcx,
-                FmtPrinter<'a, 'tcx>,
-                Error = fmt::Error,
-                Output = FmtPrinter<'a, 'tcx>,
-            >,
-        {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
-                printer.region_highlight_mode = self.highlight;
-
-                let s = self.value.print(printer)?.into_buffer();
-                f.write_str(&s)
-            }
-        }
-
+    ) -> Vec<ActualImplExplNotes<'tcx>> {
         // The weird thing here with the `maybe_highlighting_region` calls and the
         // the match inside is meant to be like this:
         //
@@ -418,27 +422,27 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 });
                 (
                     ActualImplExpectedKind::Signature,
-                    closure_sig.to_string(),
-                    expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
+                    TyOrSig::ClosureSig(closure_sig),
+                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
                 )
             } else {
                 (
                     ActualImplExpectedKind::Other,
-                    self_ty.to_string(),
-                    expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
+                    TyOrSig::Ty(self_ty),
+                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
                 )
             }
         } else if passive_voice {
             (
                 ActualImplExpectedKind::Passive,
-                expected_trait_ref.map(|tr| tr.self_ty()).to_string(),
-                expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
+                TyOrSig::Ty(expected_trait_ref.map(|tr| tr.self_ty())),
+                expected_trait_ref.map(|tr| tr.print_only_trait_path()),
             )
         } else {
             (
                 ActualImplExpectedKind::Other,
-                expected_trait_ref.map(|tr| tr.self_ty()).to_string(),
-                expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
+                TyOrSig::Ty(expected_trait_ref.map(|tr| tr.self_ty())),
+                expected_trait_ref.map(|tr| tr.print_only_trait_path()),
             )
         };
 
@@ -474,7 +478,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             None => true,
         };
 
-        let trait_path = actual_trait_ref.map(|tr| tr.print_only_trait_path()).to_string();
+        let trait_path = actual_trait_ref.map(|tr| tr.print_only_trait_path());
         let ty = actual_trait_ref.map(|tr| tr.self_ty()).to_string();
         let has_lifetime = actual_has_vid.is_some();
         let lifetime = actual_has_vid.unwrap_or_default();

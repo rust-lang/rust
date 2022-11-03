@@ -9,7 +9,7 @@ mod different_lifetimes;
 pub mod find_anon_type;
 mod mismatched_static_lifetime;
 mod named_anon_conflict;
-mod placeholder_error;
+pub(crate) mod placeholder_error;
 mod placeholder_relation;
 mod static_impl_trait;
 mod trait_impl_difference;

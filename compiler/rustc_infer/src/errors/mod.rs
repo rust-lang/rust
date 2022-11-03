@@ -1,16 +1,18 @@
 use hir::GenericParamKind;
 use rustc_errors::{
     fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticMessage, DiagnosticStyledString,
-    MultiSpan, SubdiagnosticMessage,
+    IntoDiagnosticArg, MultiSpan, SubdiagnosticMessage,
 };
 use rustc_hir as hir;
 use rustc_hir::FnRetTy;
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_middle::ty::{Region, Ty, TyCtxt};
+use rustc_middle::ty::print::TraitRefPrintOnlyTraitPath;
+use rustc_middle::ty::{Binder, FnSig, Region, Ty, TyCtxt};
 use rustc_span::symbol::kw;
 use rustc_span::Symbol;
 use rustc_span::{symbol::Ident, BytePos, Span};
 
+use crate::infer::error_reporting::nice_region_error::placeholder_error::Highlighted;
 use crate::infer::error_reporting::{
     need_type_info::{GeneratorKindAsDiagArg, UnderspecifiedArgKind},
     ObligationCauseAsDiagArg,
@@ -557,91 +559,126 @@ pub enum ExplicitLifetimeRequired<'a> {
     },
 }
 
+pub enum TyOrSig<'tcx> {
+    Ty(Highlighted<'tcx, Ty<'tcx>>),
+    ClosureSig(Highlighted<'tcx, Binder<'tcx, FnSig<'tcx>>>),
+}
+
+impl IntoDiagnosticArg for TyOrSig<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        match self {
+            TyOrSig::Ty(ty) => ty.into_diagnostic_arg(),
+            TyOrSig::ClosureSig(sig) => sig.into_diagnostic_arg(),
+        }
+    }
+}
+
 #[derive(Subdiagnostic)]
-pub enum ActualImplExplNotes {
+pub enum ActualImplExplNotes<'tcx> {
     #[note(infer_actual_impl_expl_expected_signature_two)]
     ExpectedSignatureTwo {
         leading_ellipsis: bool,
-        ty_or_sig: String,
-        trait_path: String,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
     },
     #[note(infer_actual_impl_expl_expected_signature_any)]
     ExpectedSignatureAny {
         leading_ellipsis: bool,
-        ty_or_sig: String,
-        trait_path: String,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
     #[note(infer_actual_impl_expl_expected_signature_some)]
     ExpectedSignatureSome {
         leading_ellipsis: bool,
-        ty_or_sig: String,
-        trait_path: String,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
     #[note(infer_actual_impl_expl_expected_signature_nothing)]
-    ExpectedSignatureNothing { leading_ellipsis: bool, ty_or_sig: String, trait_path: String },
+    ExpectedSignatureNothing {
+        leading_ellipsis: bool,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+    },
     #[note(infer_actual_impl_expl_expected_passive_two)]
     ExpectedPassiveTwo {
         leading_ellipsis: bool,
-        ty_or_sig: String,
-        trait_path: String,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
     },
     #[note(infer_actual_impl_expl_expected_passive_any)]
     ExpectedPassiveAny {
         leading_ellipsis: bool,
-        ty_or_sig: String,
-        trait_path: String,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
     #[note(infer_actual_impl_expl_expected_passive_some)]
     ExpectedPassiveSome {
         leading_ellipsis: bool,
-        ty_or_sig: String,
-        trait_path: String,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
     #[note(infer_actual_impl_expl_expected_passive_nothing)]
-    ExpectedPassiveNothing { leading_ellipsis: bool, ty_or_sig: String, trait_path: String },
+    ExpectedPassiveNothing {
+        leading_ellipsis: bool,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+    },
     #[note(infer_actual_impl_expl_expected_other_two)]
     ExpectedOtherTwo {
         leading_ellipsis: bool,
-        ty_or_sig: String,
-        trait_path: String,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
     },
     #[note(infer_actual_impl_expl_expected_other_any)]
     ExpectedOtherAny {
         leading_ellipsis: bool,
-        ty_or_sig: String,
-        trait_path: String,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
     #[note(infer_actual_impl_expl_expected_other_some)]
     ExpectedOtherSome {
         leading_ellipsis: bool,
-        ty_or_sig: String,
-        trait_path: String,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
     },
     #[note(infer_actual_impl_expl_expected_other_nothing)]
-    ExpectedOtherNothing { leading_ellipsis: bool, ty_or_sig: String, trait_path: String },
+    ExpectedOtherNothing {
+        leading_ellipsis: bool,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+    },
     #[note(infer_actual_impl_expl_but_actually_implements_trait)]
-    ButActuallyImplementsTrait { trait_path: String, has_lifetime: bool, lifetime: usize },
+    ButActuallyImplementsTrait {
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+        has_lifetime: bool,
+        lifetime: usize,
+    },
     #[note(infer_actual_impl_expl_but_actually_implemented_for_ty)]
     ButActuallyImplementedForTy {
-        trait_path: String,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         has_lifetime: bool,
         lifetime: usize,
         ty: String,
     },
     #[note(infer_actual_impl_expl_but_actually_ty_implements)]
-    ButActuallyTyImplements { trait_path: String, has_lifetime: bool, lifetime: usize, ty: String },
+    ButActuallyTyImplements {
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+        has_lifetime: bool,
+        lifetime: usize,
+        ty: String,
+    },
 }
 
 pub enum ActualImplExpectedKind {
@@ -657,13 +694,13 @@ pub enum ActualImplExpectedLifetimeKind {
     Nothing,
 }
 
-impl ActualImplExplNotes {
+impl<'tcx> ActualImplExplNotes<'tcx> {
     pub fn new_expected(
         kind: ActualImplExpectedKind,
         lt_kind: ActualImplExpectedLifetimeKind,
         leading_ellipsis: bool,
-        ty_or_sig: String,
-        trait_path: String,
+        ty_or_sig: TyOrSig<'tcx>,
+        trait_path: Highlighted<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
         lifetime_1: usize,
         lifetime_2: usize,
     ) -> Self {
@@ -728,7 +765,7 @@ impl ActualImplExplNotes {
 
 #[derive(Diagnostic)]
 #[diag(infer_trait_placeholder_mismatch)]
-pub struct TraitPlaceholderMismatch {
+pub struct TraitPlaceholderMismatch<'tcx> {
     #[primary_span]
     pub span: Span,
     #[label(label_satisfy)]
@@ -741,7 +778,7 @@ pub struct TraitPlaceholderMismatch {
     pub trait_def_id: String,
 
     #[subdiagnostic(eager)]
-    pub actual_impl_expl_notes: Vec<ActualImplExplNotes>,
+    pub actual_impl_expl_notes: Vec<ActualImplExplNotes<'tcx>>,
 }
 
 pub struct ConsiderBorrowingParamHelp {
