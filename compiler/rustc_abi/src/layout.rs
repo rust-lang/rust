@@ -731,35 +731,57 @@ pub trait LayoutCalculator {
 
         let optimize = !repr.inhibit_union_abi_opt();
         let mut size = Size::ZERO;
-        let mut abi = Abi::Aggregate { sized: true };
+        let mut abi = None;
+        let mut biggest_zst_align = align;
+        let mut biggest_non_zst_align = align;
         let only_variant = &variants[FIRST_VARIANT];
         for field in only_variant {
-            assert!(field.0.is_sized());
-            align = align.max(field.align());
+            assert!(!field.0.is_unsized());
 
-            // If all non-ZST fields have the same ABI, forward this ABI
-            if optimize && !field.0.is_zst() {
-                // Discard valid range information and allow undef
-                let field_abi = match field.abi() {
-                    Abi::Scalar(x) => Abi::Scalar(x.to_union()),
-                    Abi::ScalarPair(x, y) => Abi::ScalarPair(x.to_union(), y.to_union()),
-                    Abi::Vector { element: x, count } => {
-                        Abi::Vector { element: x.to_union(), count }
+            if optimize {
+                // If all non-ZST fields have the same ABI, forward this ABI
+                if field.0.is_zst() {
+                    biggest_zst_align = biggest_zst_align.max(field.align());
+                } else {
+                    biggest_non_zst_align = biggest_non_zst_align.max(field.align());
+                    // Discard valid range information and allow undef
+                    let field_abi = match field.abi() {
+                        Abi::Scalar(x) => Abi::Scalar(x.to_union()),
+                        Abi::ScalarPair(x, y) => Abi::ScalarPair(x.to_union(), y.to_union()),
+                        Abi::Vector { element: x, count } => {
+                            Abi::Vector { element: x.to_union(), count }
+                        }
+                        Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
+                    };
+
+                    if let Some(abi) = &mut abi {
+                        if *abi != field_abi {
+                            // different fields have different ABI: reset to Aggregate
+                            *abi = Abi::Aggregate { sized: true };
+                        }
+                    } else {
+                        abi = Some(field_abi);
                     }
-                    Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
-                };
-
-                if size == Size::ZERO {
-                    // first non ZST: initialize 'abi'
-                    abi = field_abi;
-                } else if abi != field_abi {
-                    // different fields have different ABI: reset to Aggregate
-                    abi = Abi::Aggregate { sized: true };
                 }
             }
 
+            align = align.max(field.align());
             size = cmp::max(size, field.size());
         }
+
+        let abi = match abi {
+            None => Abi::Aggregate { sized: true },
+            Some(non_zst_abi) => {
+                if biggest_zst_align.abi > biggest_non_zst_align.abi {
+                    // If a zst has a bigger alignment than the non-zst fields,
+                    // we cannot use scalar layout, because scalar(pair)s can't be
+                    // more aligned than their primitive.
+                    Abi::Aggregate { sized: true }
+                } else {
+                    non_zst_abi
+                }
+            }
+        };
 
         if let Some(pack) = repr.pack {
             align = align.min(AbiAndPrefAlign::new(pack));
