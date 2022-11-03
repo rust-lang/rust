@@ -636,16 +636,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (arg); intrinsic);
             let val = arg.load_scalar(fx);
 
-            let res = match fx.bcx.func.dfg.value_type(val) {
-                types::I8 => val,
-                types::I128 => {
-                    // FIXME(bytecodealliance/wasmtime#1092) bswap.i128 is not yet implemented
-                    let (lsb, msb) = fx.bcx.ins().isplit(val);
-                    let lsb_swap = fx.bcx.ins().bswap(lsb);
-                    let msb_swap = fx.bcx.ins().bswap(msb);
-                    fx.bcx.ins().iconcat(msb_swap, lsb_swap)
-                }
-                _ => fx.bcx.ins().bswap(val),
+            let res = if fx.bcx.func.dfg.value_type(val) == types::I8 {
+                val
+            } else {
+                fx.bcx.ins().bswap(val)
             };
             let res = CValue::by_val(res, arg.layout());
             ret.write_cvalue(fx, res);
