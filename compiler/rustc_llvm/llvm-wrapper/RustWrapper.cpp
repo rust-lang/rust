@@ -1696,6 +1696,17 @@ LLVMRustModuleCost(LLVMModuleRef M) {
   return std::distance(std::begin(f), std::end(f));
 }
 
+extern "C" uint64_t
+LLVMRustModuleInstructionStats(LLVMModuleRef M) {
+  auto f = unwrap(M)->functions();
+  for (auto &func : f)
+  {
+    auto name = func.getName();
+    auto count = func.getInstructionCount();
+  }
+  return unwrap(M)->getInstructionCount();
+}
+
 // Vector reductions:
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef B, LLVMValueRef Acc, LLVMValueRef Src) {
