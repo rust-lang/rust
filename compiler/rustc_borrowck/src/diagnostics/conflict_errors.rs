@@ -193,26 +193,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     is_loop_move = true;
                 }
 
-                self.suggest_ref_or_clone(
-                    mpi,
-                    move_span,
-                    &mut err,
-                    &mut seen_spans,
-                    &mut in_pattern,
-                );
+                if !seen_spans.contains(&move_span) {
+                    self.suggest_ref_or_clone(mpi, move_span, &mut err, &mut in_pattern);
 
-                self.explain_captures(
-                    &mut err,
-                    span,
-                    move_span,
-                    move_spans,
-                    *moved_place,
-                    partially_str,
-                    loop_message,
-                    move_msg,
-                    is_loop_move,
-                    maybe_reinitialized_locations.is_empty(),
-                );
+                    self.explain_captures(
+                        &mut err,
+                        span,
+                        move_span,
+                        move_spans,
+                        *moved_place,
+                        partially_str,
+                        loop_message,
+                        move_msg,
+                        is_loop_move,
+                        maybe_reinitialized_locations.is_empty(),
+                    );
+                }
+                seen_spans.insert(move_span);
             }
 
             use_spans.var_path_only_subdiag(&mut err, desired_action);
@@ -313,7 +310,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         mpi: MovePathIndex,
         move_span: Span,
         err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
-        seen_spans: &mut FxHashSet<Span>,
         in_pattern: &mut bool,
     ) {
         struct ExpressionFinder<'hir> {
@@ -437,7 +433,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                 }
             }
-            if let Some(pat) = finder.pat && !seen_spans.contains(&pat.span) {
+            if let Some(pat) = finder.pat {
                 *in_pattern = true;
                 err.span_suggestion_verbose(
                     pat.span.shrink_to_lo(),
@@ -445,7 +441,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     "ref ".to_string(),
                     Applicability::MachineApplicable,
                 );
-                seen_spans.insert(pat.span);
             }
         }
     }
