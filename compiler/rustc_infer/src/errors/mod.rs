@@ -523,23 +523,38 @@ pub struct MismatchedStaticLifetime<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_explicit_lifetime_required, code = "E0621")]
-pub struct ExplicitLifetimeRequired<'a> {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    pub ident_kind: &'static str,
-    pub simple_ident: String,
-    pub named: String,
-
-    #[suggestion(
-        infer_explicit_lifetime_required_sugg,
-        code = "{new_ty}",
-        applicability = "unspecified"
-    )]
-    pub new_ty_span: Span,
-    #[skip_arg]
-    pub new_ty: Ty<'a>,
+pub enum ExplicitLifetimeRequired<'a> {
+    #[diag(infer_explicit_lifetime_required_with_ident, code = "E0621")]
+    WithIdent {
+        #[primary_span]
+        #[label]
+        span: Span,
+        simple_ident: Ident,
+        named: String,
+        #[suggestion(
+            infer_explicit_lifetime_required_sugg_with_ident,
+            code = "{new_ty}",
+            applicability = "unspecified"
+        )]
+        new_ty_span: Span,
+        #[skip_arg]
+        new_ty: Ty<'a>,
+    },
+    #[diag(infer_explicit_lifetime_required_with_param_type, code = "E0621")]
+    WithParamType {
+        #[primary_span]
+        #[label]
+        span: Span,
+        named: String,
+        #[suggestion(
+            infer_explicit_lifetime_required_sugg_with_param_type,
+            code = "{new_ty}",
+            applicability = "unspecified"
+        )]
+        new_ty_span: Span,
+        #[skip_arg]
+        new_ty: Ty<'a>,
+    },
 }
 
 #[derive(Subdiagnostic)]

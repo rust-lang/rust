@@ -89,18 +89,17 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         {
             return None;
         }
-
-        let simple_ident = param.pat.simple_ident();
-        let (ident_kind, simple_ident) = match simple_ident {
-            Some(ident) => ("ident", ident.to_string()),
-            None => ("param_type", String::new()),
-        };
-
         let named = named.to_string();
-
-        let err =
-            ExplicitLifetimeRequired { span, ident_kind, simple_ident, named, new_ty_span, new_ty };
-        let err = self.tcx().sess.parse_sess.create_err(err);
-        Some(err)
+        let err = match param.pat.simple_ident() {
+            Some(simple_ident) => ExplicitLifetimeRequired::WithIdent {
+                span,
+                simple_ident,
+                named,
+                new_ty_span,
+                new_ty,
+            },
+            None => ExplicitLifetimeRequired::WithParamType { span, named, new_ty_span, new_ty },
+        };
+        Some(self.tcx().sess.parse_sess.create_err(err))
     }
 }

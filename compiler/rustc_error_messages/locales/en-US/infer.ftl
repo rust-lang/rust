@@ -173,16 +173,15 @@ infer_msl_trait_note = this has an implicit `'static` lifetime requirement
 infer_msl_trait_sugg = consider relaxing the implicit `'static` requirement
 infer_suggest_add_let_for_letchains = consider adding `let`
 
-infer_explicit_lifetime_required = explicit lifetime required in {$ident_kind ->
-    [ident] the type of `{$simple_ident}`
-    *[param_type] parameter type
-}
+infer_explicit_lifetime_required_with_ident = explicit lifetime required in the type of `{$simple_ident}`
     .label = lifetime `{$named}` required
 
-infer_explicit_lifetime_required_sugg = add explicit lifetime `{$named}` to {$ident_kind ->
-    [ident] the type of `{$simple_ident}`
-    *[param_type] type
-}
+infer_explicit_lifetime_required_with_param_type = explicit lifetime required in parameter type
+    .label = lifetime `{$named}` required
+
+infer_explicit_lifetime_required_sugg_with_ident = add explicit lifetime `{$named}` to the type of `{$simple_ident}`
+
+infer_explicit_lifetime_required_sugg_with_param_type = add explicit lifetime `{$named}` to type
 
 infer_actual_impl_expl_expected_signature_two = {$leading_ellipsis ->
     [true] ...
