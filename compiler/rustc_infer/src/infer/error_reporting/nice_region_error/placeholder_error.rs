@@ -333,7 +333,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             leading_ellipsis,
         );
 
-        let diag = TraitPlaceholderMismatch {
+        self.tcx().sess.create_err(TraitPlaceholderMismatch {
             span,
             satisfy_span,
             where_span,
@@ -341,9 +341,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             def_id,
             trait_def_id: self.tcx().def_path_str(trait_def_id),
             actual_impl_expl_notes,
-        };
-
-        self.tcx().sess.create_err(diag)
+        })
     }
 
     /// Add notes with details about the expected and actual trait refs, with attention to cases

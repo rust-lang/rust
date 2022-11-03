@@ -63,7 +63,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         AssocItemContainer::ImplContainer => (false, String::new()),
                     };
 
-                    let diag = ButCallingIntroduces {
+                    let mut err = self.tcx().sess.create_err(ButCallingIntroduces {
                         param_ty_span: param.param_ty_span,
                         cause_span: cause.span,
                         has_param_name: simple_ident.is_some(),
@@ -73,8 +73,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         assoc_item: ctxt.assoc_item.name,
                         has_impl_path,
                         impl_path,
-                    };
-                    let mut err = self.tcx().sess.create_err(diag);
+                    });
                     if self.find_impl_on_dyn_trait(&mut err, param.param_ty, &ctxt) {
                         let reported = err.emit();
                         return Some(reported);
