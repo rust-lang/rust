@@ -6,7 +6,7 @@ Language
 - [Error on `as` casts of enums with `#[non_exhaustive]` variants](https://github.com/rust-lang/rust/pull/92744/)
 - [Stabilize `let else`](https://github.com/rust-lang/rust/pull/93628/)
 - [Stabilize generic associated types (GATs)](https://github.com/rust-lang/rust/pull/96709/)
-- [Add lints `let_underscore_drop`, `let_underscore_lock`, and `let_underscore_must_use` from Clippy](https://github.com/rust-lang/rust/pull/97739/)
+- [Add lints `let_underscore_drop` and `let_underscore_lock` from Clippy](https://github.com/rust-lang/rust/pull/97739/)
 - [Stabilize `break`ing from arbitrary labeled blocks ("label-break-value")](https://github.com/rust-lang/rust/pull/99332/)
 - [Uninitialized integers, floats, and raw pointers are now considered immediate UB](https://github.com/rust-lang/rust/pull/98919/).
   Usage of `MaybeUninit` is the correct way to work with uninitialized memory.
