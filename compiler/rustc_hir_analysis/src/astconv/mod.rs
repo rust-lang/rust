@@ -2626,12 +2626,25 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
                 tcx.mk_opaque(did, substs)
             }
+            Res::Def(DefKind::TyAlias, def_id) => {
+                assert_eq!(opt_self_ty, None);
+                self.prohibit_generics(path.segments.split_last().unwrap().1.iter(), |_| {});
+
+                if let Some(identity_def_id) = tcx.lang_items().identity_type() {
+                    let item_segment = path.segments.split_last().unwrap();
+
+                    let substs = self.ast_path_substs_for_ty(span, def_id, item_segment.0);
+                    let binder_ty = tcx.bound_type_of(def_id);
+                    let ty = binder_ty.subst(tcx, substs);
+
+                    let substs = tcx.mk_substs_trait(ty, []);
+                    tcx.mk_projection(identity_def_id, substs)
+                } else {
+                    self.ast_path_to_ty(span, def_id, path.segments.last().unwrap())
+                }
+            }
             Res::Def(
-                DefKind::Enum
-                | DefKind::TyAlias
-                | DefKind::Struct
-                | DefKind::Union
-                | DefKind::ForeignTy,
+                DefKind::Enum | DefKind::Struct | DefKind::Union | DefKind::ForeignTy,
                 did,
             ) => {
                 assert_eq!(opt_self_ty, None);
