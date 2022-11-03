@@ -2067,15 +2067,7 @@ macro_rules! int_impl {
         #[rustc_inherit_overflow_checks]
         pub const fn rem_euclid(self, rhs: Self) -> Self {
             let r = self % rhs;
-            if r < 0 {
-                if rhs < 0 {
-                    r - rhs
-                } else {
-                    r + rhs
-                }
-            } else {
-                r
-            }
+            if r < 0 { r + rhs.abs() } else { r }
         }
 
         /// Calculates the quotient of `self` and `rhs`, rounding the result towards negative infinity.
