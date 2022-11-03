@@ -81,6 +81,7 @@ struct TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
+    #[track_caller]
     fn fail(&self, location: Location, msg: impl AsRef<str>) {
         let span = self.body.source_info(location).span;
         // We use `delay_span_bug` as we might see broken MIR when other errors have already
