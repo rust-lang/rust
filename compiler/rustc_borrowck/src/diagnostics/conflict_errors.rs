@@ -7,6 +7,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
+// use rustc_hir::{AsyncGeneratorKind, GeneratorKind, LoopSource::ForLoop};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
@@ -397,8 +398,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         && let Some(node) = hir.find(hir.local_def_id_to_hir_id(def_id))
                         && let Some(fn_sig) = node.fn_sig()
                         && let Some(ident) = node.ident()
-                        && let Some(pos) = args.iter()
-                            .position(|arg| arg.hir_id == expr.hir_id)
+                        && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
                         && let Some(arg) = fn_sig.decl.inputs.get(pos + offset)
                     {
                         let mut span: MultiSpan = arg.span.into();
@@ -425,7 +425,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                     let place = &self.move_data.move_paths[mpi].place;
                     let ty = place.ty(self.body, self.infcx.tcx).ty;
-                    self.suggest_cloning(err, ty, move_span);
+                    if let hir::Node::Expr(parent_expr) = parent
+                        && let hir::ExprKind::Call(call_expr, _) = parent_expr.kind
+                        && let hir::ExprKind::Path(
+                            hir::QPath::LangItem(hir::LangItem::IntoIterIntoIter, _, _)
+                        ) = call_expr.kind
+                    {
+                        // Do not suggest `.clone()` in a `for` loop, we already suggest borrowing.
+                    } else {
+                        self.suggest_cloning(err, ty, move_span);
+                    }
                 }
             }
             if let Some(pat) = finder.pat && !seen_spans.contains(&pat.span) {
