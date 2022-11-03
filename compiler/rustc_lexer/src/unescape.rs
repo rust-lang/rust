@@ -52,10 +52,8 @@ pub enum EscapeError {
 
     /// Unicode escape code in byte literal.
     UnicodeEscapeInByte,
-    /// Non-ascii character in byte literal.
+    /// Non-ascii character in byte literal, byte string literal, or raw byte string literal.
     NonAsciiCharInByte,
-    /// Non-ascii character in byte string literal.
-    NonAsciiCharInByteString,
 
     /// After a line ending with '\', the next line contains whitespace
     /// characters that are not skipped.
@@ -349,8 +347,7 @@ where
         let start = src.len() - chars.as_str().len() - c.len_utf8();
         let result = match c {
             '\r' => Err(EscapeError::BareCarriageReturnInRawString),
-            c if is_byte && !c.is_ascii() => Err(EscapeError::NonAsciiCharInByteString),
-            c => Ok(c),
+            _ => ascii_check(c, is_byte),
         };
         let end = src.len() - chars.as_str().len();
         callback(start..end, result);

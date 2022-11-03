@@ -1,8 +1,8 @@
-error: non-ASCII character in byte constant
+error: non-ASCII character in byte string literal
   --> $DIR/key-value-non-ascii.rs:3:19
    |
 LL | #[rustc_dummy = b"ﬃ.rs"]
-   |                   ^ byte constant must be ASCII
+   |                   ^ must be ASCII
    |
 help: if you meant to use the UTF-8 encoding of 'ﬃ', use \xHH escapes
    |
