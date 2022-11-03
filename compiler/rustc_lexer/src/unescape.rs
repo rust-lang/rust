@@ -275,11 +275,13 @@ where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
     debug_assert!(mode == Mode::Str || mode == Mode::ByteStr);
-    let initial_len = src.len();
     let mut chars = src.chars();
-    while let Some(c) = chars.next() {
-        let start = initial_len - chars.as_str().len() - c.len_utf8();
 
+    // The `start` and `end` computation here is complicated because
+    // `skip_ascii_whitespace` makes us to skip over chars without counting
+    // them in the range computation.
+    while let Some(c) = chars.next() {
+        let start = src.len() - chars.as_str().len() - c.len_utf8();
         let result = match c {
             '\\' => {
                 match chars.clone().next() {
@@ -300,7 +302,7 @@ where
             '\r' => Err(EscapeError::BareCarriageReturn),
             _ => ascii_check(c, mode),
         };
-        let end = initial_len - chars.as_str().len();
+        let end = src.len() - chars.as_str().len();
         callback(start..end, result);
     }
 
@@ -340,19 +342,19 @@ where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
     debug_assert!(mode == Mode::RawStr || mode == Mode::RawByteStr);
-    let initial_len = src.len();
-
     let mut chars = src.chars();
-    while let Some(c) = chars.next() {
-        let start = initial_len - chars.as_str().len() - c.len_utf8();
 
+    // The `start` and `end` computation here matches the one in
+    // `unescape_str_or_byte_str` for consistency, even though this function
+    // doesn't have to worry about skipping any chars.
+    while let Some(c) = chars.next() {
+        let start = src.len() - chars.as_str().len() - c.len_utf8();
         let result = match c {
             '\r' => Err(EscapeError::BareCarriageReturnInRawString),
             c if mode.is_bytes() && !c.is_ascii() => Err(EscapeError::NonAsciiCharInByteString),
             c => Ok(c),
         };
-        let end = initial_len - chars.as_str().len();
-
+        let end = src.len() - chars.as_str().len();
         callback(start..end, result);
     }
 }
