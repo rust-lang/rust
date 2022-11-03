@@ -785,10 +785,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             Abi::ScalarPair(a_layout, b_layout) => {
+                // We can only proceed if *both* scalars need to be initialized.
+                // FIXME: find a way to also check ScalarPair when one side can be uninit but
+                // the other must be init.
                 if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
-                    // We can only proceed if *both* scalars need to be initialized.
-                    // FIXME: find a way to also check ScalarPair when one side can be uninit but
-                    // the other must be init.
                     let (a, b) =
                         self.read_immediate(op, "initiailized scalar value")?.to_scalar_pair();
                     self.visit_scalar(a, a_layout)?;
