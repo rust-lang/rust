@@ -2504,32 +2504,32 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             });
 
             // Check if this ADT has a constrained layout (like `NonNull` and friends).
-            let layout = cx.tcx.layout_of(cx.param_env.and(ty)).unwrap();
-
-            match &layout.abi {
-                Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) => {
-                    let range = scalar.valid_range(cx);
-                    if !range.contains(0) {
-                        Some(
-                            InitError::from(format!("`{}` must be non-null", ty)).nested(field_err),
-                        )
-                    } else if init == InitKind::Uninit && !scalar.is_always_valid(cx) {
-                        // Prefer reporting on the fields over the entire struct for uninit,
-                        // as the information bubbles out and it may be unclear why the type can't
-                        // be null from just its outside signature.
-                        Some(
-                            InitError::from(format!(
-                                "`{}` must be initialized inside its custom valid range",
-                                ty,
-                            ))
-                            .nested(field_err),
-                        )
-                    } else {
-                        field_err
+            if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty)) {
+                match &layout.abi {
+                    Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) => {
+                        let range = scalar.valid_range(cx);
+                        if !range.contains(0) {
+                            return Some(
+                                InitError::from(format!("`{}` must be non-null", ty))
+                                    .nested(field_err),
+                            );
+                        } else if init == InitKind::Uninit && !scalar.is_always_valid(cx) {
+                            // Prefer reporting on the fields over the entire struct for uninit,
+                            // as the information bubbles out and it may be unclear why the type can't
+                            // be null from just its outside signature.
+                            return Some(
+                                InitError::from(format!(
+                                    "`{}` must be initialized inside its custom valid range",
+                                    ty,
+                                ))
+                                .nested(field_err),
+                            );
+                        }
                     }
+                    _ => {}
                 }
-                _ => field_err,
             }
+            field_err
         }
 
         /// Return `Some` only if we are sure this type does *not*
