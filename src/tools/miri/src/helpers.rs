@@ -936,31 +936,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
-    pub fn current_span(&self) -> CurrentSpan<'_, 'mir, 'tcx> {
-        CurrentSpan { current_frame_idx: None, machine: self }
-    }
-}
-
-/// A `CurrentSpan` should be created infrequently (ideally once) per interpreter step. It does
-/// nothing on creation, but when `CurrentSpan::get` is called, searches the current stack for the
-/// topmost frame which corresponds to a local crate, and returns the current span in that frame.
-/// The result of that search is cached so that later calls are approximately free.
-#[derive(Clone)]
-pub struct CurrentSpan<'a, 'mir, 'tcx> {
-    current_frame_idx: Option<usize>,
-    machine: &'a MiriMachine<'mir, 'tcx>,
-}
-
-impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
-    pub fn machine(&self) -> &'a MiriMachine<'mir, 'tcx> {
-        self.machine
-    }
-
-    /// Get the current span, skipping non-local frames.
+    /// Get the current span in the topmost function which is workspace-local and not
+    /// `#[track_caller]`.
     /// This function is backed by a cache, and can be assumed to be very fast.
-    pub fn get(&mut self) -> Span {
-        let idx = self.current_frame_idx();
-        self.stack().get(idx).map(Frame::current_span).unwrap_or(rustc_span::DUMMY_SP)
+    pub fn current_span(&self) -> Span {
+        self.stack()
+            .get(self.top_user_relevant_frame())
+            .map(Frame::current_span)
+            .unwrap_or(rustc_span::DUMMY_SP)
     }
 
     /// Returns the span of the *caller* of the current operation, again
@@ -968,46 +951,27 @@ impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
     /// current operation is not in a local crate.
     /// This is useful when we are processing something which occurs on function-entry and we want
     /// to point at the call to the function, not the function definition generally.
-    pub fn get_caller(&mut self) -> Span {
+    pub fn caller_span(&self) -> Span {
         // We need to go down at least to the caller (len - 2), or however
-        // far we have to go to find a frame in a local crate.
-        let local_frame_idx = self.current_frame_idx();
+        // far we have to go to find a frame in a local crate which is also not #[track_caller].
+        let frame_idx = self.top_user_relevant_frame();
         let stack = self.stack();
-        let idx = cmp::min(local_frame_idx, stack.len().saturating_sub(2));
-        stack.get(idx).map(Frame::current_span).unwrap_or(rustc_span::DUMMY_SP)
+        let frame_idx = cmp::min(frame_idx, stack.len().saturating_sub(2));
+        stack.get(frame_idx).map(Frame::current_span).unwrap_or(rustc_span::DUMMY_SP)
     }
 
     fn stack(&self) -> &[Frame<'mir, 'tcx, Provenance, machine::FrameData<'tcx>>] {
-        self.machine.threads.active_thread_stack()
+        self.threads.active_thread_stack()
     }
 
-    fn current_frame_idx(&mut self) -> usize {
-        *self
-            .current_frame_idx
-            .get_or_insert_with(|| Self::compute_current_frame_index(self.machine))
+    fn top_user_relevant_frame(&self) -> usize {
+        self.threads.active_thread_ref().top_user_relevant_frame()
     }
 
-    // Find the position of the inner-most frame which is part of the crate being
-    // compiled/executed, part of the Cargo workspace, and is also not #[track_caller].
-    #[inline(never)]
-    fn compute_current_frame_index(machine: &MiriMachine<'_, '_>) -> usize {
-        machine
-            .threads
-            .active_thread_stack()
-            .iter()
-            .enumerate()
-            .rev()
-            .find_map(|(idx, frame)| {
-                let def_id = frame.instance.def_id();
-                if (def_id.is_local() || machine.local_crates.contains(&def_id.krate))
-                    && !frame.instance.def.requires_caller_location(machine.tcx)
-                {
-                    Some(idx)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(0)
+    pub fn is_user_relevant(&self, frame: &Frame<'mir, 'tcx, Provenance>) -> bool {
+        let def_id = frame.instance.def_id();
+        (def_id.is_local() || self.local_crates.contains(&def_id.krate))
+            && !frame.instance.def.requires_caller_location(self.tcx)
     }
 }
 

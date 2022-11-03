@@ -5,7 +5,6 @@ use rustc_middle::mir::interpret::{alloc_range, AllocId, AllocRange};
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
-use crate::helpers::CurrentSpan;
 use crate::stacked_borrows::{err_sb_ub, AccessKind, GlobalStateInner, Permission, ProtectorKind};
 use crate::*;
 
@@ -110,42 +109,29 @@ pub struct TagHistory {
     pub protected: Option<(String, SpanData)>,
 }
 
-pub struct DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
+pub struct DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     operation: Operation,
-    // 'span cannot be merged with any other lifetime since they appear invariantly, under the
-    // mutable ref.
-    current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-    threads: &'ecx ThreadManager<'mir, 'tcx>,
+    machine: &'ecx MiriMachine<'mir, 'tcx>,
 }
 
-pub struct DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
+pub struct DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
     operation: Operation,
-    // 'span and 'history cannot be merged, since when we call `unbuild` we need
-    // to return the exact 'span that was used when calling `build`.
-    current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-    threads: &'ecx ThreadManager<'mir, 'tcx>,
+    machine: &'ecx MiriMachine<'mir, 'tcx>,
     history: &'history mut AllocHistory,
     offset: Size,
 }
 
-impl<'span, 'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
+impl<'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     pub fn build<'history>(
         self,
         history: &'history mut AllocHistory,
         offset: Size,
-    ) -> DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
-        DiagnosticCx {
-            operation: self.operation,
-            current_span: self.current_span,
-            threads: self.threads,
-            history,
-            offset,
-        }
+    ) -> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
+        DiagnosticCx { operation: self.operation, machine: self.machine, history, offset }
     }
 
     pub fn retag(
-        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-        threads: &'ecx ThreadManager<'mir, 'tcx>,
+        machine: &'ecx MiriMachine<'mir, 'tcx>,
         cause: RetagCause,
         new_tag: SbTag,
         orig_tag: ProvenanceExtra,
@@ -154,46 +140,36 @@ impl<'span, 'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
         let operation =
             Operation::Retag(RetagOp { cause, new_tag, orig_tag, range, permission: None });
 
-        DiagnosticCxBuilder { current_span, threads, operation }
+        DiagnosticCxBuilder { machine, operation }
     }
 
     pub fn read(
-        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-        threads: &'ecx ThreadManager<'mir, 'tcx>,
+        machine: &'ecx MiriMachine<'mir, 'tcx>,
         tag: ProvenanceExtra,
         range: AllocRange,
     ) -> Self {
         let operation = Operation::Access(AccessOp { kind: AccessKind::Read, tag, range });
-        DiagnosticCxBuilder { current_span, threads, operation }
+        DiagnosticCxBuilder { machine, operation }
     }
 
     pub fn write(
-        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-        threads: &'ecx ThreadManager<'mir, 'tcx>,
+        machine: &'ecx MiriMachine<'mir, 'tcx>,
         tag: ProvenanceExtra,
         range: AllocRange,
     ) -> Self {
         let operation = Operation::Access(AccessOp { kind: AccessKind::Write, tag, range });
-        DiagnosticCxBuilder { current_span, threads, operation }
+        DiagnosticCxBuilder { machine, operation }
     }
 
-    pub fn dealloc(
-        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-        threads: &'ecx ThreadManager<'mir, 'tcx>,
-        tag: ProvenanceExtra,
-    ) -> Self {
+    pub fn dealloc(machine: &'ecx MiriMachine<'mir, 'tcx>, tag: ProvenanceExtra) -> Self {
         let operation = Operation::Dealloc(DeallocOp { tag });
-        DiagnosticCxBuilder { current_span, threads, operation }
+        DiagnosticCxBuilder { machine, operation }
     }
 }
 
-impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
-    pub fn unbuild(self) -> DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
-        DiagnosticCxBuilder {
-            operation: self.operation,
-            current_span: self.current_span,
-            threads: self.threads,
-        }
+impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
+    pub fn unbuild(self) -> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
+        DiagnosticCxBuilder { machine: self.machine, operation: self.operation }
     }
 }
 
@@ -234,10 +210,10 @@ struct DeallocOp {
 }
 
 impl AllocHistory {
-    pub fn new(id: AllocId, item: Item, current_span: &mut CurrentSpan<'_, '_, '_>) -> Self {
+    pub fn new(id: AllocId, item: Item, machine: &MiriMachine<'_, '_>) -> Self {
         Self {
             id,
-            base: (item, current_span.get()),
+            base: (item, machine.current_span()),
             creations: SmallVec::new(),
             invalidations: SmallVec::new(),
             protectors: SmallVec::new(),
@@ -245,7 +221,7 @@ impl AllocHistory {
     }
 }
 
-impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
+impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
     pub fn start_grant(&mut self, perm: Permission) {
         let Operation::Retag(op) = &mut self.operation else {
             unreachable!("start_grant must only be called during a retag, this is: {:?}", self.operation)
@@ -274,15 +250,17 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
         let Operation::Retag(op) = &self.operation else {
             unreachable!("log_creation must only be called during a retag")
         };
-        self.history.creations.push(Creation { retag: op.clone(), span: self.current_span.get() });
+        self.history
+            .creations
+            .push(Creation { retag: op.clone(), span: self.machine.current_span() });
     }
 
     pub fn log_invalidation(&mut self, tag: SbTag) {
-        let mut span = self.current_span.get();
+        let mut span = self.machine.current_span();
         let (range, cause) = match &self.operation {
             Operation::Retag(RetagOp { cause, range, permission, .. }) => {
                 if *cause == RetagCause::FnEntry {
-                    span = self.current_span.get_caller();
+                    span = self.machine.caller_span();
                 }
                 (*range, InvalidationCause::Retag(permission.unwrap(), *cause))
             }
@@ -301,7 +279,9 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
         let Operation::Retag(op) = &self.operation else {
             unreachable!("Protectors can only be created during a retag")
         };
-        self.history.protectors.push(Protection { tag: op.new_tag, span: self.current_span.get() });
+        self.history
+            .protectors
+            .push(Protection { tag: op.new_tag, span: self.machine.current_span() });
     }
 
     pub fn get_logs_relevant_to(
@@ -418,6 +398,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
             ProtectorKind::StrongProtector => "strongly protected",
         };
         let call_id = self
+            .machine
             .threads
             .all_stacks()
             .flatten()
@@ -482,9 +463,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
                 Some((orig_tag, kind))
             }
         };
-        self.current_span
-            .machine()
-            .emit_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(*item, summary));
+        self.machine.emit_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(*item, summary));
     }
 }
 

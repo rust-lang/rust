@@ -50,12 +50,18 @@ pub struct FrameData<'tcx> {
     /// for the start of this frame. When we finish executing this frame,
     /// we use this to register a completed event with `measureme`.
     pub timing: Option<measureme::DetachedTiming>,
+
+    /// Indicates whether a `Frame` is part of a workspace-local crate and is also not
+    /// `#[track_caller]`. We compute this once on creation and store the result, as an
+    /// optimization.
+    /// This is used by `MiriMachine::current_span` and `MiriMachine::caller_span`
+    pub is_user_relevant: bool,
 }
 
 impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameData { stacked_borrows, catch_unwind, timing: _ } = self;
+        let FrameData { stacked_borrows, catch_unwind, timing: _, is_user_relevant: _ } = self;
         f.debug_struct("FrameData")
             .field("stacked_borrows", stacked_borrows)
             .field("catch_unwind", catch_unwind)
@@ -65,7 +71,7 @@ impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
 
 impl VisitTags for FrameData<'_> {
     fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
-        let FrameData { catch_unwind, stacked_borrows, timing: _ } = self;
+        let FrameData { catch_unwind, stacked_borrows, timing: _, is_user_relevant: _ } = self;
 
         catch_unwind.visit_tags(visit);
         stacked_borrows.visit_tags(visit);
@@ -895,13 +901,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
         let alloc = alloc.into_owned();
         let stacks = ecx.machine.stacked_borrows.as_ref().map(|stacked_borrows| {
-            Stacks::new_allocation(
-                id,
-                alloc.size(),
-                stacked_borrows,
-                kind,
-                ecx.machine.current_span(),
-            )
+            Stacks::new_allocation(id, alloc.size(), stacked_borrows, kind, &ecx.machine)
         });
         let race_alloc = ecx.machine.data_race.as_ref().map(|data_race| {
             data_race::AllocExtra::new_allocation(
@@ -1016,8 +1016,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 prov_extra,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
-                machine.current_span(),
-                &machine.threads,
+                machine,
             )?;
         }
         if let Some(weak_memory) = &alloc_extra.weak_memory {
@@ -1048,8 +1047,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 prov_extra,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
-                machine.current_span(),
-                &machine.threads,
+                machine,
             )?;
         }
         if let Some(weak_memory) = &alloc_extra.weak_memory {
@@ -1083,8 +1081,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 prove_extra,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
-                machine.current_span(),
-                &machine.threads,
+                machine,
             )
         } else {
             Ok(())
@@ -1126,7 +1123,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             stacked_borrows: stacked_borrows.map(|sb| sb.borrow_mut().new_frame(&ecx.machine)),
             catch_unwind: None,
             timing,
+            is_user_relevant: ecx.machine.is_user_relevant(&frame),
         };
+
         Ok(frame.with_extra(extra))
     }
 
@@ -1174,6 +1173,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
     #[inline(always)]
     fn after_stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        if ecx.frame().extra.is_user_relevant {
+            // We just pushed a local frame, so we know that the topmost local frame is the topmost
+            // frame. If we push a non-local frame, there's no need to do anything.
+            let stack_len = ecx.active_thread_stack().len();
+            ecx.active_thread_mut().set_top_user_relevant_frame(stack_len - 1);
+        }
+
         if ecx.machine.stacked_borrows.is_some() { ecx.retag_return_place() } else { Ok(()) }
     }
 
@@ -1183,6 +1189,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         mut frame: Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
+        if frame.extra.is_user_relevant {
+            // All that we store is whether or not the frame we just removed is local, so now we
+            // have no idea where the next topmost local frame is. So we recompute it.
+            ecx.active_thread_mut().recompute_top_user_relevant_frame();
+        }
         let timing = frame.extra.timing.take();
         if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
             stacked_borrows.borrow_mut().end_call(&frame.extra);

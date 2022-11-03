@@ -118,6 +118,13 @@ pub struct Thread<'mir, 'tcx> {
     /// The virtual call stack.
     stack: Vec<Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>>,
 
+    /// The index of the topmost user-relevant frame in `stack`. This field must contain
+    /// the value produced by `get_top_user_relevant_frame`.
+    /// The `None` state here represents
+    /// This field is a cache to reduce how often we call that method. The cache is manually
+    /// maintained inside `MiriMachine::after_stack_push` and `MiriMachine::after_stack_pop`.
+    top_user_relevant_frame: Option<usize>,
+
     /// The join status.
     join_status: ThreadJoinStatus,
 
@@ -147,6 +154,38 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
     fn thread_name(&self) -> &[u8] {
         if let Some(ref thread_name) = self.thread_name { thread_name } else { b"<unnamed>" }
     }
+
+    /// Return the top user-relevant frame, if there is one.
+    /// Note that the choice to return `None` here when there is no user-relevant frame is part of
+    /// justifying the optimization that only pushes of user-relevant frames require updating the
+    /// `top_user_relevant_frame` field.
+    fn compute_top_user_relevant_frame(&self) -> Option<usize> {
+        self.stack
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(idx, frame)| if frame.extra.is_user_relevant { Some(idx) } else { None })
+    }
+
+    /// Re-compute the top user-relevant frame from scratch.
+    pub fn recompute_top_user_relevant_frame(&mut self) {
+        self.top_user_relevant_frame = self.compute_top_user_relevant_frame();
+    }
+
+    /// Set the top user-relevant frame to the given value. Must be equal to what
+    /// `get_top_user_relevant_frame` would return!
+    pub fn set_top_user_relevant_frame(&mut self, frame_idx: usize) {
+        debug_assert_eq!(Some(frame_idx), self.compute_top_user_relevant_frame());
+        self.top_user_relevant_frame = Some(frame_idx);
+    }
+
+    pub fn top_user_relevant_frame(&self) -> usize {
+        debug_assert_eq!(self.top_user_relevant_frame, self.compute_top_user_relevant_frame());
+        // This can be called upon creation of an allocation. We create allocations while setting up
+        // parts of the Rust runtime when we do not have any stack frames yet, so we need to handle
+        // empty stacks.
+        self.top_user_relevant_frame.unwrap_or_else(|| self.stack.len().saturating_sub(1))
+    }
 }
 
 impl<'mir, 'tcx> std::fmt::Debug for Thread<'mir, 'tcx> {
@@ -167,6 +206,7 @@ impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
             state: ThreadState::Enabled,
             thread_name: None,
             stack: Vec::new(),
+            top_user_relevant_frame: None,
             join_status: ThreadJoinStatus::Joinable,
             panic_payload: None,
             last_error: None,
@@ -184,8 +224,15 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
 
 impl VisitTags for Thread<'_, '_> {
     fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
-        let Thread { panic_payload, last_error, stack, state: _, thread_name: _, join_status: _ } =
-            self;
+        let Thread {
+            panic_payload,
+            last_error,
+            stack,
+            top_user_relevant_frame: _,
+            state: _,
+            thread_name: _,
+            join_status: _,
+        } = self;
 
         panic_payload.visit_tags(visit);
         last_error.visit_tags(visit);
@@ -414,7 +461,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Get a shared borrow of the currently active thread.
-    fn active_thread_ref(&self) -> &Thread<'mir, 'tcx> {
+    pub fn active_thread_ref(&self) -> &Thread<'mir, 'tcx> {
         &self.threads[self.active_thread]
     }
 
