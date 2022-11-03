@@ -171,7 +171,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (ForLoop(lp, li, lt, ll), ForLoop(rp, ri, rt, rl)) => {
             eq_label(ll, rl) && eq_pat(lp, rp) && eq_expr(li, ri) && eq_block(lt, rt)
         },
-        (Loop(lt, ll), Loop(rt, rl)) => eq_label(ll, rl) && eq_block(lt, rt),
+        (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll, rl) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll, rl) && eq_block(lb, rb),
         (TryBlock(l), TryBlock(r)) => eq_block(l, r),
         (Yield(l), Yield(r)) | (Ret(l), Ret(r)) => eq_expr_opt(l, r),
