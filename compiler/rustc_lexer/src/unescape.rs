@@ -85,14 +85,16 @@ where
     match mode {
         Mode::Char | Mode::Byte => {
             let mut chars = src.chars();
-            let result = unescape_char_or_byte(&mut chars, mode);
+            let result = unescape_char_or_byte(&mut chars, mode == Mode::Byte);
             // The Chars iterator moved forward.
             callback(0..(src.len() - chars.as_str().len()), result);
         }
-        Mode::Str | Mode::ByteStr => unescape_str_or_byte_str(src, mode, callback),
+        Mode::Str | Mode::ByteStr => unescape_str_or_byte_str(src, mode == Mode::ByteStr, callback),
         // NOTE: Raw strings do not perform any explicit character escaping, here we
         // only translate CRLF to LF and produce errors on bare CR.
-        Mode::RawStr | Mode::RawByteStr => unescape_raw_str_or_raw_byte_str(src, mode, callback),
+        Mode::RawStr | Mode::RawByteStr => {
+            unescape_raw_str_or_raw_byte_str(src, mode == Mode::RawByteStr, callback)
+        }
     }
 }
 
@@ -103,7 +105,7 @@ pub fn unescape_byte_literal<F>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<u8, EscapeError>),
 {
-    debug_assert!(mode.is_bytes());
+    debug_assert!(mode.is_byte());
     unescape_literal(src, mode, &mut |range, result| {
         callback(range, result.map(byte_from_char));
     })
@@ -113,15 +115,14 @@ where
 /// unescaped char or an error
 pub fn unescape_char(src: &str) -> Result<char, (usize, EscapeError)> {
     let mut chars = src.chars();
-    unescape_char_or_byte(&mut chars, Mode::Char)
-        .map_err(|err| (src.len() - chars.as_str().len(), err))
+    unescape_char_or_byte(&mut chars, false).map_err(|err| (src.len() - chars.as_str().len(), err))
 }
 
 /// Takes a contents of a byte literal (without quotes), and returns an
 /// unescaped byte or an error.
 pub fn unescape_byte(src: &str) -> Result<u8, (usize, EscapeError)> {
     let mut chars = src.chars();
-    unescape_char_or_byte(&mut chars, Mode::Byte)
+    unescape_char_or_byte(&mut chars, true)
         .map(byte_from_char)
         .map_err(|err| (src.len() - chars.as_str().len(), err))
 }
@@ -145,7 +146,7 @@ impl Mode {
         }
     }
 
-    pub fn is_bytes(self) -> bool {
+    pub fn is_byte(self) -> bool {
         match self {
             Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
             Mode::Char | Mode::Str | Mode::RawStr => false,
@@ -153,7 +154,7 @@ impl Mode {
     }
 }
 
-fn scan_escape(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
+fn scan_escape(chars: &mut Chars<'_>, is_byte: bool) -> Result<char, EscapeError> {
     // Previous character was '\\', unescape what follows.
     let res = match chars.next().ok_or(EscapeError::LoneSlash)? {
         '"' => '"',
@@ -176,7 +177,7 @@ fn scan_escape(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
             let value = hi * 16 + lo;
 
             // For a non-byte literal verify that it is within ASCII range.
-            if !mode.is_bytes() && !is_ascii(value) {
+            if !is_byte && !is_ascii(value) {
                 return Err(EscapeError::OutOfRangeHexEscape);
             }
             let value = value as u8;
@@ -212,7 +213,7 @@ fn scan_escape(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
 
                         // Incorrect syntax has higher priority for error reporting
                         // than unallowed value for a literal.
-                        if mode.is_bytes() {
+                        if is_byte {
                             return Err(EscapeError::UnicodeEscapeInByte);
                         }
 
@@ -244,8 +245,8 @@ fn scan_escape(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
 }
 
 #[inline]
-fn ascii_check(c: char, mode: Mode) -> Result<char, EscapeError> {
-    if mode.is_bytes() && !c.is_ascii() {
+fn ascii_check(c: char, is_byte: bool) -> Result<char, EscapeError> {
+    if is_byte && !c.is_ascii() {
         // Byte literal can't be a non-ascii character.
         Err(EscapeError::NonAsciiCharInByte)
     } else {
@@ -253,14 +254,13 @@ fn ascii_check(c: char, mode: Mode) -> Result<char, EscapeError> {
     }
 }
 
-fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
-    debug_assert!(mode == Mode::Char || mode == Mode::Byte);
+fn unescape_char_or_byte(chars: &mut Chars<'_>, is_byte: bool) -> Result<char, EscapeError> {
     let c = chars.next().ok_or(EscapeError::ZeroChars)?;
     let res = match c {
-        '\\' => scan_escape(chars, mode),
+        '\\' => scan_escape(chars, is_byte),
         '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
         '\r' => Err(EscapeError::BareCarriageReturn),
-        _ => ascii_check(c, mode),
+        _ => ascii_check(c, is_byte),
     }?;
     if chars.next().is_some() {
         return Err(EscapeError::MoreThanOneChar);
@@ -270,11 +270,10 @@ fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, Esca
 
 /// Takes a contents of a string literal (without quotes) and produces a
 /// sequence of escaped characters or errors.
-fn unescape_str_or_byte_str<F>(src: &str, mode: Mode, callback: &mut F)
+fn unescape_str_or_byte_str<F>(src: &str, is_byte: bool, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
-    debug_assert!(mode == Mode::Str || mode == Mode::ByteStr);
     let mut chars = src.chars();
 
     // The `start` and `end` computation here is complicated because
@@ -293,14 +292,14 @@ where
                         skip_ascii_whitespace(&mut chars, start, callback);
                         continue;
                     }
-                    _ => scan_escape(&mut chars, mode),
+                    _ => scan_escape(&mut chars, is_byte),
                 }
             }
             '\n' => Ok('\n'),
             '\t' => Ok('\t'),
             '"' => Err(EscapeError::EscapeOnlyChar),
             '\r' => Err(EscapeError::BareCarriageReturn),
-            _ => ascii_check(c, mode),
+            _ => ascii_check(c, is_byte),
         };
         let end = src.len() - chars.as_str().len();
         callback(start..end, result);
@@ -337,11 +336,10 @@ where
 /// sequence of characters or errors.
 /// NOTE: Raw strings do not perform any explicit character escaping, here we
 /// only translate CRLF to LF and produce errors on bare CR.
-fn unescape_raw_str_or_raw_byte_str<F>(src: &str, mode: Mode, callback: &mut F)
+fn unescape_raw_str_or_raw_byte_str<F>(src: &str, is_byte: bool, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
-    debug_assert!(mode == Mode::RawStr || mode == Mode::RawByteStr);
     let mut chars = src.chars();
 
     // The `start` and `end` computation here matches the one in
@@ -351,7 +349,7 @@ where
         let start = src.len() - chars.as_str().len() - c.len_utf8();
         let result = match c {
             '\r' => Err(EscapeError::BareCarriageReturnInRawString),
-            c if mode.is_bytes() && !c.is_ascii() => Err(EscapeError::NonAsciiCharInByteString),
+            c if is_byte && !c.is_ascii() => Err(EscapeError::NonAsciiCharInByteString),
             c => Ok(c),
         };
         let end = src.len() - chars.as_str().len();
