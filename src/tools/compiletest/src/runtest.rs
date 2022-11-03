@@ -220,11 +220,13 @@ enum WillExecute {
     Disabled,
 }
 
-/// Should `--emit metadata` be used?
+/// What value should be passed to `--emit`?
 #[derive(Copy, Clone)]
-enum EmitMetadata {
-    Yes,
-    No,
+enum Emit {
+    None,
+    Metadata,
+    LlvmIr,
+    Asm,
 }
 
 impl<'test> TestCx<'test> {
@@ -424,7 +426,7 @@ impl<'test> TestCx<'test> {
         }
 
         let should_run = self.run_if_enabled();
-        let mut proc_res = self.compile_test(should_run, EmitMetadata::No);
+        let mut proc_res = self.compile_test(should_run, Emit::None);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -676,7 +678,7 @@ impl<'test> TestCx<'test> {
 
         // compile test file (it should have 'compile-flags:-g' in the header)
         let should_run = self.run_if_enabled();
-        let compile_result = self.compile_test(should_run, EmitMetadata::No);
+        let compile_result = self.compile_test(should_run, Emit::None);
         if !compile_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compile_result);
         }
@@ -796,7 +798,7 @@ impl<'test> TestCx<'test> {
 
         // compile test file (it should have 'compile-flags:-g' in the header)
         let should_run = self.run_if_enabled();
-        let compiler_run_result = self.compile_test(should_run, EmitMetadata::No);
+        let compiler_run_result = self.compile_test(should_run, Emit::None);
         if !compiler_run_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compiler_run_result);
         }
@@ -1028,7 +1030,7 @@ impl<'test> TestCx<'test> {
     fn run_debuginfo_lldb_test_no_opt(&self) {
         // compile test file (it should have 'compile-flags:-g' in the header)
         let should_run = self.run_if_enabled();
-        let compile_result = self.compile_test(should_run, EmitMetadata::No);
+        let compile_result = self.compile_test(should_run, Emit::None);
         if !compile_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compile_result);
         }
@@ -1453,21 +1455,21 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn should_emit_metadata(&self, pm: Option<PassMode>) -> EmitMetadata {
+    fn should_emit_metadata(&self, pm: Option<PassMode>) -> Emit {
         match (pm, self.props.fail_mode, self.config.mode) {
-            (Some(PassMode::Check), ..) | (_, Some(FailMode::Check), Ui) => EmitMetadata::Yes,
-            _ => EmitMetadata::No,
+            (Some(PassMode::Check), ..) | (_, Some(FailMode::Check), Ui) => Emit::Metadata,
+            _ => Emit::None,
         }
     }
 
-    fn compile_test(&self, will_execute: WillExecute, emit_metadata: EmitMetadata) -> ProcRes {
-        self.compile_test_general(will_execute, emit_metadata, self.props.local_pass_mode())
+    fn compile_test(&self, will_execute: WillExecute, emit: Emit) -> ProcRes {
+        self.compile_test_general(will_execute, emit, self.props.local_pass_mode())
     }
 
     fn compile_test_general(
         &self,
         will_execute: WillExecute,
-        emit_metadata: EmitMetadata,
+        emit: Emit,
         local_pm: Option<PassMode>,
     ) -> ProcRes {
         // Only use `make_exe_name` when the test ends up being executed.
@@ -1502,7 +1504,7 @@ impl<'test> TestCx<'test> {
         let rustc = self.make_compile_args(
             &self.testpaths.file,
             output_file,
-            emit_metadata,
+            emit,
             allow_unused,
             LinkToAux::Yes,
         );
@@ -1735,7 +1737,7 @@ impl<'test> TestCx<'test> {
         let mut aux_rustc = aux_cx.make_compile_args(
             input_file,
             aux_output,
-            EmitMetadata::No,
+            Emit::None,
             AllowUnused::No,
             LinkToAux::No,
         );
@@ -1875,7 +1877,7 @@ impl<'test> TestCx<'test> {
         &self,
         input_file: &Path,
         output_file: TargetLocation,
-        emit_metadata: EmitMetadata,
+        emit: Emit,
         allow_unused: AllowUnused,
         link_to_aux: LinkToAux,
     ) -> Command {
@@ -1992,8 +1994,18 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        if let (false, EmitMetadata::Yes) = (is_rustdoc, emit_metadata) {
-            rustc.args(&["--emit", "metadata"]);
+        match emit {
+            Emit::None => {}
+            Emit::Metadata if is_rustdoc => {}
+            Emit::Metadata => {
+                rustc.args(&["--emit", "metadata"]);
+            }
+            Emit::LlvmIr => {
+                rustc.args(&["--emit", "llvm-ir"]);
+            }
+            Emit::Asm => {
+                rustc.args(&["--emit", "asm"]);
+            }
         }
 
         if !is_rustdoc {
@@ -2262,14 +2274,13 @@ impl<'test> TestCx<'test> {
     fn compile_test_and_save_ir(&self) -> ProcRes {
         let output_file = TargetLocation::ThisDirectory(self.output_base_dir());
         let input_file = &self.testpaths.file;
-        let mut rustc = self.make_compile_args(
+        let rustc = self.make_compile_args(
             input_file,
             output_file,
-            EmitMetadata::No,
+            Emit::LlvmIr,
             AllowUnused::No,
             LinkToAux::Yes,
         );
-        rustc.arg("--emit=llvm-ir");
 
         self.compose_and_run_compiler(rustc, None)
     }
@@ -2281,17 +2292,11 @@ impl<'test> TestCx<'test> {
 
         let output_file = TargetLocation::ThisFile(output_path.clone());
         let input_file = &self.testpaths.file;
-        let mut rustc = self.make_compile_args(
-            input_file,
-            output_file,
-            EmitMetadata::No,
-            AllowUnused::No,
-            LinkToAux::Yes,
-        );
 
+        let mut emit = Emit::None;
         match self.props.assembly_output.as_ref().map(AsRef::as_ref) {
             Some("emit-asm") => {
-                rustc.arg("--emit=asm");
+                emit = Emit::Asm;
             }
 
             Some("ptx-linker") => {
@@ -2301,6 +2306,9 @@ impl<'test> TestCx<'test> {
             Some(_) => self.fatal("unknown 'assembly-output' header"),
             None => self.fatal("missing 'assembly-output' header"),
         }
+
+        let rustc =
+            self.make_compile_args(input_file, output_file, emit, AllowUnused::No, LinkToAux::Yes);
 
         (self.compose_and_run_compiler(rustc, None), output_path)
     }
@@ -2426,7 +2434,7 @@ impl<'test> TestCx<'test> {
         let mut rustc = new_rustdoc.make_compile_args(
             &new_rustdoc.testpaths.file,
             output_file,
-            EmitMetadata::No,
+            Emit::None,
             AllowUnused::Yes,
             LinkToAux::Yes,
         );
@@ -2702,7 +2710,7 @@ impl<'test> TestCx<'test> {
     fn run_codegen_units_test(&self) {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
-        let proc_res = self.compile_test(WillExecute::No, EmitMetadata::No);
+        let proc_res = self.compile_test(WillExecute::No, Emit::None);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
@@ -3215,7 +3223,7 @@ impl<'test> TestCx<'test> {
         if let Some(FailMode::Build) = self.props.fail_mode {
             // Make sure a build-fail test cannot fail due to failing analysis (e.g. typeck).
             let pm = Some(PassMode::Check);
-            let proc_res = self.compile_test_general(WillExecute::No, EmitMetadata::Yes, pm);
+            let proc_res = self.compile_test_general(WillExecute::No, Emit::Metadata, pm);
             self.check_if_test_should_compile(&proc_res, pm);
         }
 
