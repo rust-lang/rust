@@ -33,7 +33,7 @@ declare_clippy_lint! {
     ///     if f.is_some() { "yay" } else { "nay" }
     /// }
     /// ```
-    #[clippy::version = "1.64.0"]
+    #[clippy::version = "1.65.0"]
     pub PARTIALEQ_TO_NONE,
     style,
     "Binary comparison to `Option<T>::None` relies on `T: PartialEq`, which is unneeded"
