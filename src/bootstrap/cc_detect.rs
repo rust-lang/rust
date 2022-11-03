@@ -168,23 +168,7 @@ fn set_compiler(
         // compiler already takes into account the triple in question.
         t if t.contains("android") => {
             if let Some(ndk) = config.and_then(|c| c.ndk.as_ref()) {
-                let mut triple_iter = target.triple.split("-");
-                let triple_translated = if let Some(arch) = triple_iter.next() {
-                    let arch_new = match arch {
-                        "arm" | "armv7" | "armv7neon" | "thumbv7" | "thumbv7neon" => "armv7a",
-                        other => other,
-                    };
-                    std::iter::once(arch_new).chain(triple_iter).collect::<Vec<&str>>().join("-")
-                } else {
-                    target.triple.to_string()
-                };
-
-                // API 19 is the earliest API level supported by NDK r25b but AArch64 and x86_64 support
-                // begins at API level 21.
-                let api_level =
-                    if t.contains("aarch64") || t.contains("x86_64") { "21" } else { "19" };
-                let compiler = format!("{}{}-{}", triple_translated, api_level, compiler.clang());
-                cfg.compiler(ndk.join("bin").join(compiler));
+                cfg.compiler(ndk_compiler(compiler, &*target.triple, ndk));
             }
         }
 
@@ -236,8 +220,28 @@ fn set_compiler(
     }
 }
 
+pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> PathBuf {
+    let mut triple_iter = triple.split("-");
+    let triple_translated = if let Some(arch) = triple_iter.next() {
+        let arch_new = match arch {
+            "arm" | "armv7" | "armv7neon" | "thumbv7" | "thumbv7neon" => "armv7a",
+            other => other,
+        };
+        std::iter::once(arch_new).chain(triple_iter).collect::<Vec<&str>>().join("-")
+    } else {
+        triple.to_string()
+    };
+
+    // API 19 is the earliest API level supported by NDK r25b but AArch64 and x86_64 support
+    // begins at API level 21.
+    let api_level =
+        if triple.contains("aarch64") || triple.contains("x86_64") { "21" } else { "19" };
+    let compiler = format!("{}{}-{}", triple_translated, api_level, compiler.clang());
+    ndk.join("bin").join(compiler)
+}
+
 /// The target programming language for a native compiler.
-enum Language {
+pub(crate) enum Language {
     /// The compiler is targeting C.
     C,
     /// The compiler is targeting C++.

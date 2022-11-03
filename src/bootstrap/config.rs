@@ -16,6 +16,7 @@ use std::str::FromStr;
 use crate::builder::TaskPath;
 use crate::cache::{Interned, INTERNER};
 use crate::channel::{self, GitInfo};
+use crate::cc_detect::{ndk_compiler, Language};
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
 use crate::util::{exe, output, t};
@@ -1237,8 +1238,12 @@ impl Config {
                 if let Some(s) = cfg.no_std {
                     target.no_std = s;
                 }
-                target.cc = cfg.cc.map(PathBuf::from);
-                target.cxx = cfg.cxx.map(PathBuf::from);
+                target.cc = cfg.cc.map(PathBuf::from).or_else(|| {
+                    target.ndk.as_ref().map(|ndk| ndk_compiler(Language::C, &triple, ndk))
+                });
+                target.cxx = cfg.cxx.map(PathBuf::from).or_else(|| {
+                    target.ndk.as_ref().map(|ndk| ndk_compiler(Language::CPlusPlus, &triple, ndk))
+                });
                 target.ar = cfg.ar.map(PathBuf::from);
                 target.ranlib = cfg.ranlib.map(PathBuf::from);
                 target.linker = cfg.linker.map(PathBuf::from);
