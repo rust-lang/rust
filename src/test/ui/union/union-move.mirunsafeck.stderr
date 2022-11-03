@@ -9,7 +9,7 @@ LL |         move_out(x.f1_nocopy);
 LL |         move_out(x.f2_nocopy);
    |                  ^^^^^^^^^^^ value used here after move
    |
-note: consider changing this parameter type in `move_out` to borrow instead if ownering the value isn't necessary
+note: consider changing this parameter type in function `move_out` to borrow instead if ownering the value isn't necessary
   --> $DIR/union-move.rs:10:19
    |
 LL | fn move_out<T>(x: T) {}
@@ -28,7 +28,7 @@ LL |         move_out(x.f2_nocopy);
 LL |         move_out(x.f3_copy);
    |                  ^^^^^^^^^ value used here after move
    |
-note: consider changing this parameter type in `move_out` to borrow instead if ownering the value isn't necessary
+note: consider changing this parameter type in function `move_out` to borrow instead if ownering the value isn't necessary
   --> $DIR/union-move.rs:10:19
    |
 LL | fn move_out<T>(x: T) {}

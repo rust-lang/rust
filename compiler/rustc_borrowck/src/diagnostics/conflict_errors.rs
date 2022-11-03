@@ -380,61 +380,46 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let typeck = self.infcx.tcx.typeck(self.mir_def_id());
                 let hir_id = hir.get_parent_node(expr.hir_id);
                 if let Some(parent) = hir.find(hir_id) {
-                    if let hir::Node::Expr(parent_expr) = parent
+                    let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                         && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
                         && let Some(def_id) = typeck.type_dependent_def_id(parent_expr.hir_id)
-                        && let Some(def_id) = def_id.as_local()
-                        && let Some(node) = hir.find(hir.local_def_id_to_hir_id(def_id))
-                        && let Some(fn_sig) = node.fn_sig()
-                        && let Some(ident) = node.ident()
-                        && let Some(pos) = args.iter()
-                            .position(|arg| arg.hir_id == expr.hir_id)
-                        && let Some(arg) = fn_sig.decl.inputs.get(pos + 1)
                     {
-                        let mut span: MultiSpan = arg.span.into();
-                        span.push_span_label(
-                            arg.span,
-                            "this type parameter takes ownership of the value".to_string(),
-                        );
-                        span.push_span_label(
-                            ident.span,
-                            "in this method".to_string(),
-                        );
-                        err.span_note(
-                            span,
-                            format!(
-                                "consider changing this parameter type in `{}` to borrow instead \
-                                 if ownering the value isn't necessary",
-                                ident,
-                            ),
-                        );
-                    }
-                    if let hir::Node::Expr(parent_expr) = parent
+                        (def_id.as_local(), args, 1)
+                    } else if let hir::Node::Expr(parent_expr) = parent
                         && let hir::ExprKind::Call(call, args) = parent_expr.kind
                         && let ty::FnDef(def_id, _) = typeck.node_type(call.hir_id).kind()
-                        && let Some(def_id) = def_id.as_local()
+                    {
+                        (def_id.as_local(), args, 0)
+                    } else {
+                        (None, &[][..], 0)
+                    };
+                    if let Some(def_id) = def_id
                         && let Some(node) = hir.find(hir.local_def_id_to_hir_id(def_id))
                         && let Some(fn_sig) = node.fn_sig()
                         && let Some(ident) = node.ident()
                         && let Some(pos) = args.iter()
                             .position(|arg| arg.hir_id == expr.hir_id)
-                        && let Some(arg) = fn_sig.decl.inputs.get(pos)
+                        && let Some(arg) = fn_sig.decl.inputs.get(pos + offset)
                     {
                         let mut span: MultiSpan = arg.span.into();
                         span.push_span_label(
                             arg.span,
                             "this type parameter takes ownership of the value".to_string(),
                         );
+                        let descr = match node.fn_kind() {
+                            Some(hir::intravisit::FnKind::ItemFn(..)) | None => "function",
+                            Some(hir::intravisit::FnKind::Method(..)) => "method",
+                            Some(hir::intravisit::FnKind::Closure) => "closure",
+                        };
                         span.push_span_label(
                             ident.span,
-                            "in this function".to_string(),
+                            format!("in this {descr}"),
                         );
                         err.span_note(
                             span,
                             format!(
-                                "consider changing this parameter type in `{}` to borrow instead \
-                                 if ownering the value isn't necessary",
-                                ident,
+                                "consider changing this parameter type in {descr} `{ident}` to \
+                                 borrow instead if ownering the value isn't necessary",
                             ),
                         );
                     }
