@@ -67,6 +67,10 @@ pub(crate) fn compare_impl_method<'tcx>(
         return;
     }
 
+    if let Err(_) = compare_asyncness(tcx, impl_m, impl_m_span, trait_m, trait_item_span) {
+        return;
+    }
+
     if let Err(_) = compare_predicate_entailment(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
     {
         return;
@@ -319,6 +323,34 @@ fn compare_predicate_entailment<'tcx>(
         impl_m.def_id.expect_local(),
         &outlives_environment,
     );
+
+    Ok(())
+}
+
+fn compare_asyncness<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_m: &ty::AssocItem,
+    impl_m_span: Span,
+    trait_m: &ty::AssocItem,
+    trait_item_span: Option<Span>,
+) -> Result<(), ErrorGuaranteed> {
+    if tcx.asyncness(trait_m.def_id) == hir::IsAsync::Async {
+        match tcx.fn_sig(impl_m.def_id).skip_binder().output().kind() {
+            ty::Alias(ty::Opaque, ..) => {
+                // allow both `async fn foo()` and `fn foo() -> impl Future`
+            }
+            ty::Error(rustc_errors::ErrorGuaranteed { .. }) => {
+                // We don't know if it's ok, but at least it's already an error.
+            }
+            _ => {
+                return Err(tcx.sess.emit_err(crate::errors::AsyncTraitImplShouldBeAsync {
+                    span: impl_m_span,
+                    method_name: trait_m.name,
+                    trait_item_span,
+                }));
+            }
+        };
+    }
 
     Ok(())
 }
