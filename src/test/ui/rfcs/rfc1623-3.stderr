@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/rfc1623-2.rs:8:42
+  --> $DIR/rfc1623-3.rs:8:42
    |
 LL | static NON_ELIDABLE_FN: &fn(&u8, &u8) -> &u8 =
    |                             ---  ---     ^ expected named lifetime parameter
@@ -12,7 +12,7 @@ LL | static NON_ELIDABLE_FN: &for<'a> fn(&'a u8, &'a u8) -> &'a u8 =
    |                          +++++++     ++      ++         ++
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/rfc1623-2.rs:10:39
+  --> $DIR/rfc1623-3.rs:10:39
    |
 LL |     &(non_elidable as fn(&u8, &u8) -> &u8);
    |                          ---  ---     ^ expected named lifetime parameter
@@ -24,7 +24,7 @@ LL |     &(non_elidable as for<'a> fn(&'a u8, &'a u8) -> &'a u8);
    |                       +++++++     ++      ++         ++
 
 error[E0605]: non-primitive cast: `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8 {non_elidable}` as `for<'a, 'b> fn(&'a u8, &'b u8) -> &u8`
-  --> $DIR/rfc1623-2.rs:10:6
+  --> $DIR/rfc1623-3.rs:10:6
    |
 LL |     &(non_elidable as fn(&u8, &u8) -> &u8);
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
