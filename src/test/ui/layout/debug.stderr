@@ -307,5 +307,98 @@ error: layout_of(i32) = Layout {
 LL | type T = impl std::fmt::Debug;
    | ^^^^^^
 
-error: aborting due to 5 previous errors
+error: layout_of(V) = Layout {
+           size: Size(2 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(2 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: Aggregate {
+               sized: true,
+           },
+           fields: Union(
+               2,
+           ),
+           largest_niche: None,
+           variants: Single {
+               index: 0,
+           },
+       }
+  --> $DIR/debug.rs:21:1
+   |
+LL | pub union V {
+   | ^^^^^^^^^^^
+
+error: layout_of(W) = Layout {
+           size: Size(2 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(2 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: Aggregate {
+               sized: true,
+           },
+           fields: Union(
+               2,
+           ),
+           largest_niche: None,
+           variants: Single {
+               index: 0,
+           },
+       }
+  --> $DIR/debug.rs:27:1
+   |
+LL | pub union W {
+   | ^^^^^^^^^^^
+
+error: layout_of(Y) = Layout {
+           size: Size(0 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(2 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: Aggregate {
+               sized: true,
+           },
+           fields: Union(
+               2,
+           ),
+           largest_niche: None,
+           variants: Single {
+               index: 0,
+           },
+       }
+  --> $DIR/debug.rs:33:1
+   |
+LL | pub union Y {
+   | ^^^^^^^^^^^
+
+error: layout_of(std::mem::MaybeUninit<u8>) = Layout {
+           size: Size(1 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: Scalar(
+               Union {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+               },
+           ),
+           fields: Union(
+               2,
+           ),
+           largest_niche: None,
+           variants: Single {
+               index: 0,
+           },
+       }
+  --> $DIR/debug.rs:39:1
+   |
+LL | type X = std::mem::MaybeUninit<u8>;
+   | ^^^^^^
+
+error: aborting due to 9 previous errors
 
