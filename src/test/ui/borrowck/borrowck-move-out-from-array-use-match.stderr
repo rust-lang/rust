@@ -8,6 +8,10 @@ LL |         [.., ref _y] => {}
    |              ^^^^^^ value borrowed here after move
    |
    = note: move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [_, _, ref _x] => {}
+   |                +++
 
 error[E0382]: borrow of partially moved value: `a[..]`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:23:14
@@ -19,6 +23,10 @@ LL |         [.., ref _y] => {}
    |              ^^^^^^ value borrowed here after partial move
    |
    = note: partial move occurs because `a[..].0` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [_, _, (ref _x, _)] => {}
+   |                 +++
 
 error[E0382]: borrow of moved value: `a[..].0`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:33:15
@@ -30,6 +38,10 @@ LL |         [.., (ref _y, _)] => {}
    |               ^^^^^^ value borrowed here after move
    |
    = note: move occurs because `a[..].0` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [_, _, (ref _x, _)] => {}
+   |                 +++
 
 error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:44:11
@@ -41,6 +53,10 @@ LL |     match a {
    |           ^ value used here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [ref _x, _, _] => {}
+   |          +++
 
 error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:55:11
@@ -52,6 +68,10 @@ LL |     match a {
    |           ^ value used here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [.., ref _x] => {}
+   |              +++
 
 error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:66:11
@@ -63,6 +83,10 @@ LL |     match a {
    |           ^ value used here after partial move
    |
    = note: partial move occurs because `a[..].0` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [(ref _x, _), _, _] => {}
+   |           +++
 
 error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:77:11
@@ -74,6 +98,10 @@ LL |     match a {
    |           ^ value used here after partial move
    |
    = note: partial move occurs because `a[..].0` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [.., (ref _x, _)] => {}
+   |               +++
 
 error[E0382]: borrow of moved value: `a[..]`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:89:11
@@ -85,6 +113,10 @@ LL |         [(ref _x, _), _, _] => {}
    |           ^^^^^^ value borrowed here after move
    |
    = note: move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [ref _y @ .., _, _] => {}
+   |          +++
 
 error[E0382]: borrow of moved value: `a[..]`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:99:15
@@ -96,6 +128,10 @@ LL |         [.., (ref _x, _)] => {}
    |               ^^^^^^ value borrowed here after move
    |
    = note: move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [_, _, ref _y @ ..] => {}
+   |                +++
 
 error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:110:11
@@ -107,6 +143,10 @@ LL |     match a {
    |           ^ value used here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [ref x @ .., _] => {}
+   |          +++
 
 error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:123:5
@@ -118,6 +158,10 @@ LL |     a[2] = Default::default();
    |     ^^^^ value used here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [_, _, ref _x] => {}
+   |                +++
 
 error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:131:5
@@ -129,6 +173,10 @@ LL |     a[2].1 = Default::default();
    |     ^^^^ value used here after partial move
    |
    = note: partial move occurs because `a[..].0` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [_, _, (ref _x, _)] => {}
+   |                 +++
 
 error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:139:5
@@ -140,6 +188,10 @@ LL |     a[0] = Default::default();
    |     ^^^^ value used here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [_, _, ref _x @ ..] => {}
+   |                +++
 
 error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array-use-match.rs:147:5
@@ -151,6 +203,10 @@ LL |     a[0].1 = Default::default();
    |     ^^^^ value used here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         [_, _, ref _x @ ..] => {}
+   |                +++
 
 error: aborting due to 14 previous errors
 

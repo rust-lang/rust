@@ -52,6 +52,11 @@ LL |     let ref mut a @ b = NotCopy;
    |         |           |
    |         |           value moved here
    |         value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref mut a @ ref b = NotCopy;
+   |                     +++
 
 error: aborting due to 6 previous errors
 

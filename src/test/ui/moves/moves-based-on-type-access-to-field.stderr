@@ -13,6 +13,10 @@ note: this function takes ownership of the receiver `self`, which moves `x`
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     consume(x.clone().into_iter().next().unwrap());
+   |              ++++++++
 
 error: aborting due to previous error
 

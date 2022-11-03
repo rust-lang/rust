@@ -16,6 +16,14 @@ LL |         drop_unsized(y);
    |                      - value moved here
 LL |         drop_unsized(y);
    |                      ^ value used here after move
+   |
+note: consider changing this parameter type in `drop_unsized` to borrow instead if ownering the value isn't necessary
+  --> $DIR/double-move.rs:14:31
+   |
+LL | fn drop_unsized<T: ?Sized>(_: T) {}
+   |    ------------               ^ this type parameter takes ownership of the value
+   |    |
+   |    in this function
 
 error[E0382]: use of moved value: `x`
   --> $DIR/double-move.rs:27:22
