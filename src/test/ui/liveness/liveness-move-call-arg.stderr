@@ -3,9 +3,23 @@ error[E0382]: use of moved value: `x`
    |
 LL |     let x: Box<isize> = Box::new(25);
    |         - move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
-...
+LL |
+LL |     loop {
+   |     ---- inside of this loop
 LL |         take(x);
    |              ^ value moved here, in previous iteration of loop
+   |
+note: consider changing this parameter type in `take` to borrow instead if ownering the value isn't necessary
+  --> $DIR/liveness-move-call-arg.rs:1:13
+   |
+LL | fn take(_x: Box<isize>) {}
+   |    ----     ^^^^^^^^^^ this type parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         take(x.clone());
+   |               ++++++++
 
 error: aborting due to previous error
 

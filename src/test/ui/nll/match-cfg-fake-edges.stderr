@@ -26,6 +26,11 @@ LL |         false if { drop(x); true } => 1,
 LL |         true => {
 LL |             x;
    |             ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         false if { drop(x.clone()); true } => 1,
+   |                          ++++++++
 
 error: aborting due to 2 previous errors
 

@@ -8,6 +8,14 @@ LL |         move_out(x.f1_nocopy);
    |                  ----------- value moved here
 LL |         move_out(x.f2_nocopy);
    |                  ^^^^^^^^^^^ value used here after move
+   |
+note: consider changing this parameter type in `move_out` to borrow instead if ownering the value isn't necessary
+  --> $DIR/union-move.rs:10:19
+   |
+LL | fn move_out<T>(x: T) {}
+   |    --------       ^ this type parameter takes ownership of the value
+   |    |
+   |    in this function
 
 error[E0382]: use of moved value: `x`
   --> $DIR/union-move.rs:45:18
@@ -19,6 +27,14 @@ LL |         move_out(x.f2_nocopy);
    |                  ----------- value moved here
 LL |         move_out(x.f3_copy);
    |                  ^^^^^^^^^ value used here after move
+   |
+note: consider changing this parameter type in `move_out` to borrow instead if ownering the value isn't necessary
+  --> $DIR/union-move.rs:10:19
+   |
+LL | fn move_out<T>(x: T) {}
+   |    --------       ^ this type parameter takes ownership of the value
+   |    |
+   |    in this function
 
 error[E0509]: cannot move out of type `U2`, which implements the `Drop` trait
   --> $DIR/union-move.rs:52:18

@@ -1351,9 +1351,10 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_block(body);
             visit_opt(label, |label| vis.visit_label(label));
         }
-        ExprKind::Loop(body, label) => {
+        ExprKind::Loop(body, label, span) => {
             vis.visit_block(body);
             visit_opt(label, |label| vis.visit_label(label));
+            vis.visit_span(span);
         }
         ExprKind::Match(expr, arms) => {
             vis.visit_expr(expr);

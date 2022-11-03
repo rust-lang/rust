@@ -27,6 +27,11 @@ LL |         a @ [.., _] => (),
 ...
 LL |     &x;
    |     ^^ value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref a @ [.., _] => (),
+   |         +++
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:28:5
@@ -78,6 +83,15 @@ LL |         foo @ Some(Test::Foo | Test::Bar) => (),
 ...
 LL |     &x;
    |     ^^ value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref foo @ Some(Test::Foo | Test::Bar) => (),
+   |         +++
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref foo @ Some(Test::Foo | Test::Bar) => (),
+   |         +++
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:86:5
@@ -129,6 +143,15 @@ LL |         a @ [.., Some(Test::Foo | Test::Bar)] => (),
 ...
 LL |     &x;
    |     ^^ value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref a @ [.., Some(Test::Foo | Test::Bar)] => (),
+   |         +++
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref a @ [.., Some(Test::Foo | Test::Bar)] => (),
+   |         +++
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:144:5

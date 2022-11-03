@@ -8,6 +8,10 @@ LL |             val = None;
    |             ---------- this reinitialization might get skipped
    |
    = note: move occurs because value has type `Struct`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     while let Some(ref foo) = val {
+   |                    +++
 
 error[E0382]: use of moved value: `foo`
   --> $DIR/issue-83760.rs:21:14

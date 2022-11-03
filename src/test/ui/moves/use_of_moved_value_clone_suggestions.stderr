@@ -7,6 +7,11 @@ LL |     (t, t)
    |      -  ^ value used here after move
    |      |
    |      value moved here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     (t.clone(), t)
+   |       ++++++++
 
 error: aborting due to previous error
 

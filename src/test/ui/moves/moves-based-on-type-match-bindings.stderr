@@ -8,6 +8,10 @@ LL |     touch(&x);
    |           ^^ value borrowed here after partial move
    |
    = note: partial move occurs because `x.f` has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         Foo {ref f} => {}
+   |              +++
 
 error: aborting due to previous error
 
