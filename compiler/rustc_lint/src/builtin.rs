@@ -52,7 +52,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Abi, VariantIdx};
 use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
@@ -2418,9 +2418,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 Self { span: Some(span), ..self }
             }
 
-            fn nested(self, nested: InitError) -> InitError {
+            fn nested(self, nested: impl Into<Option<InitError>>) -> InitError {
                 assert!(self.nested.is_none());
-                Self { nested: Some(Box::new(nested)), ..self }
+                Self { nested: nested.into().map(Box::new), ..self }
             }
         }
 
@@ -2489,18 +2489,47 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
         fn variant_find_init_error<'tcx>(
             cx: &LateContext<'tcx>,
+            ty: Ty<'tcx>,
             variant: &VariantDef,
             substs: ty::SubstsRef<'tcx>,
             descr: &str,
             init: InitKind,
         ) -> Option<InitError> {
-            variant.fields.iter().find_map(|field| {
+            let field_err = variant.fields.iter().find_map(|field| {
                 ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|err| {
                     InitError::from(format!("in this {descr}"))
                         .spanned(cx.tcx.def_span(field.did))
                         .nested(err)
                 })
-            })
+            });
+
+            // Check if this ADT has a constrained layout (like `NonNull` and friends).
+            let layout = cx.tcx.layout_of(cx.param_env.and(ty)).unwrap();
+
+            match &layout.abi {
+                Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) => {
+                    let range = scalar.valid_range(cx);
+                    if !range.contains(0) {
+                        Some(
+                            InitError::from(format!("`{}` must be non-null", ty)).nested(field_err),
+                        )
+                    } else if init == InitKind::Uninit && !scalar.is_always_valid(cx) {
+                        // Prefer reporting on the fields over the entire struct for uninit,
+                        // as the information bubbles out and it may be unclear why the type can't
+                        // be null from just its outside signature.
+                        Some(
+                            InitError::from(format!(
+                                "`{}` must be initialized inside its custom valid range",
+                                ty,
+                            ))
+                            .nested(field_err),
+                        )
+                    } else {
+                        field_err
+                    }
+                }
+                _ => field_err,
+            }
         }
 
         /// Return `Some` only if we are sure this type does *not*
@@ -2540,36 +2569,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 }
                 // Recurse and checks for some compound types. (but not unions)
                 Adt(adt_def, substs) if !adt_def.is_union() => {
-                    // First check if this ADT has a layout attribute (like `NonNull` and friends).
-                    use std::ops::Bound;
-                    match cx.tcx.layout_scalar_valid_range(adt_def.did()) {
-                        // We exploit here that `layout_scalar_valid_range` will never
-                        // return `Bound::Excluded`.  (And we have tests checking that we
-                        // handle the attribute correctly.)
-                        // We don't add a span since users cannot declare such types anyway.
-                        (Bound::Included(lo), Bound::Included(hi)) if 0 < lo && lo < hi => {
-                            return Some(format!("`{}` must be non-null", ty).into());
-                        }
-                        (Bound::Included(lo), Bound::Unbounded) if 0 < lo => {
-                            return Some(format!("`{}` must be non-null", ty).into());
-                        }
-                        (Bound::Included(_), _) | (_, Bound::Included(_))
-                            if init == InitKind::Uninit =>
-                        {
-                            return Some(
-                                format!(
-                                    "`{}` must be initialized inside its custom valid range",
-                                    ty,
-                                )
-                                .into(),
-                            );
-                        }
-                        _ => {}
-                    }
                     // Handle structs.
                     if adt_def.is_struct() {
                         return variant_find_init_error(
                             cx,
+                            ty,
                             adt_def.non_enum_variant(),
                             substs,
                             "struct field",
@@ -2600,6 +2604,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         // There is only one potentially inhabited variant. So we can recursively check that variant!
                         return variant_find_init_error(
                             cx,
+                            ty,
                             &first_variant.0,
                             substs,
                             "field of the only potentially inhabited enum variant",
