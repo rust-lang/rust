@@ -12,7 +12,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::{Config, TargetSelection};
@@ -84,18 +84,6 @@ book!(
     RustdocBook, "src/doc/rustdoc", "rustdoc";
     StyleGuide, "src/doc/style-guide", "style-guide";
 );
-
-fn open(builder: &Builder<'_>, path: impl AsRef<Path>) {
-    if builder.config.dry_run || !builder.config.cmd.open() {
-        return;
-    }
-
-    let path = path.as_ref();
-    builder.info(&format!("Opening doc {}", path.display()));
-    if let Err(err) = opener::open(path) {
-        builder.info(&format!("{}\n", err));
-    }
-}
 
 // "library/std" -> ["library", "std"]
 //
@@ -240,11 +228,9 @@ impl Step for TheBook {
             invoke_rustdoc(builder, compiler, &shared_assets, target, path);
         }
 
-        if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
-            let out = builder.doc_out(target);
-            let index = out.join("book").join("index.html");
-            open(builder, &index);
-        }
+        let out = builder.doc_out(target);
+        let index = out.join("book").join("index.html");
+        builder.maybe_open_in_browser::<Self>(index);
     }
 }
 
@@ -384,10 +370,7 @@ impl Step for Standalone {
 
         // We open doc/index.html as the default if invoked as `x.py doc --open`
         // with no particular explicit doc requested (e.g. library/core).
-        if builder.paths.is_empty() || builder.was_invoked_explicitly::<Self>(Kind::Doc) {
-            let index = out.join("index.html");
-            open(builder, &index);
-        }
+        builder.maybe_open_in_browser::<Self>(out.join("index.html"));
     }
 }
 
@@ -507,7 +490,7 @@ impl Step for Std {
         for requested_crate in requested_crates {
             if STD_PUBLIC_CRATES.iter().any(|k| *k == requested_crate.as_str()) {
                 let index = out.join(requested_crate).join("index.html");
-                open(builder, &index);
+                builder.open_in_browser(index);
             }
         }
     }
@@ -759,7 +742,7 @@ impl Step for Rustc {
         // Let's open the first crate documentation page:
         if let Some(krate) = to_open {
             let index = out.join(krate).join("index.html");
-            open(builder, &index);
+            builder.open_in_browser(index);
         }
     }
 }
@@ -1019,10 +1002,9 @@ impl Step for RustcBook {
             name: INTERNER.intern_str("rustc"),
             src: INTERNER.intern_path(out_base),
         });
-        if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
-            let out = builder.doc_out(self.target);
-            let index = out.join("rustc").join("index.html");
-            open(builder, &index);
-        }
+
+        let out = builder.doc_out(self.target);
+        let index = out.join("rustc").join("index.html");
+        builder.maybe_open_in_browser::<Self>(index);
     }
 }

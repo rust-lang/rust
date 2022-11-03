@@ -2207,6 +2207,24 @@ impl<'a> Builder<'a> {
 
         false
     }
+
+    pub(crate) fn maybe_open_in_browser<S: Step>(&self, path: impl AsRef<Path>) {
+        if self.was_invoked_explicitly::<S>(Kind::Doc) {
+            self.open_in_browser(path);
+        }
+    }
+
+    pub(crate) fn open_in_browser(&self, path: impl AsRef<Path>) {
+        if self.config.dry_run || !self.config.cmd.open() {
+            return;
+        }
+
+        let path = path.as_ref();
+        self.info(&format!("Opening doc {}", path.display()));
+        if let Err(err) = opener::open(path) {
+            self.info(&format!("{}\n", err));
+        }
+    }
 }
 
 #[cfg(test)]
