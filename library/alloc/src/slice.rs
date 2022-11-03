@@ -653,7 +653,7 @@ impl [u8] {
 ///
 /// ```error
 /// error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predica
-///    --> src/alloc/slice.rs:608:6
+///    --> library/alloc/src/slice.rs:608:6
 ///     |
 /// 608 | impl<T: Clone, V: Borrow<[T]>> Concat for [V] {
 ///     |      ^ unconstrained type parameter
