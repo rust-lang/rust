@@ -178,7 +178,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 )
             }
             InitOnceStatus::Complete => {
-                this.init_once_acquire(id);
+                this.init_once_observe_completed(id);
                 this.write_scalar(this.eval_windows("c", "FALSE")?, &pending_place)?;
             }
         }
