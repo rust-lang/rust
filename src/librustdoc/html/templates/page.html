@@ -18,16 +18,9 @@
     <link rel="stylesheet" {# -#}
           href="{{static_root_path|safe}}rustdoc{{page.resource_suffix}}.css" {# -#}
           id="mainThemeStyle"> {#- -#}
-    {%- for theme in themes -%}
-        <link rel="stylesheet" {# -#}
-            href="{{static_root_path|safe}}{{theme}}{{page.resource_suffix}}.css" {# -#}
-        {%- if theme == "light" -%}
-            id="themeStyle"
-        {%- else -%}
-            disabled
-        {%- endif -%}
-        >
-    {%- endfor -%}
+    <link rel="stylesheet" {# -#}
+        href="{{static_root_path|safe}}light{{page.resource_suffix}}.css" {# -#}
+        id="themeStyle"> {#- -#}
     <script id="default-settings" {# -#}
       {% for (k, v) in layout.default_settings %}
         data-{{k}}="{{v}}"

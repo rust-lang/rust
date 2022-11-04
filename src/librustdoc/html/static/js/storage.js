@@ -140,21 +140,7 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
         return;
     }
 
-    let found = false;
-    if (savedHref.length === 0) {
-        onEachLazy(document.getElementsByTagName("link"), el => {
-            savedHref.push(el.href);
-        });
-    }
-    onEach(savedHref, el => {
-        if (el === newHref) {
-            found = true;
-            return true;
-        }
-    });
-    if (found) {
-        styleElem.href = newHref;
-    }
+    styleElem.href = newHref;
 }
 
 // This function is called from "main.js".
