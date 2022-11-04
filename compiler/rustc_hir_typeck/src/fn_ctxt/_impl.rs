@@ -21,8 +21,8 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMut
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, ToPolyTraitRef,
-    ToPredicate, Ty, UserType,
+    self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, ToPredicate, Ty,
+    UserType,
 };
 use rustc_middle::ty::{GenericArgKind, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts};
 use rustc_session::lint;
@@ -650,12 +650,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn self_type_matches_expected_vid(
-        &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        expected_vid: ty::TyVid,
-    ) -> bool {
-        let self_ty = self.shallow_resolve(trait_ref.skip_binder().self_ty());
+    fn self_type_matches_expected_vid(&self, self_ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
+        let self_ty = self.shallow_resolve(self_ty);
         debug!(?self_ty);
 
         match *self_ty.kind() {
@@ -674,54 +670,61 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn obligations_for_self_ty<'b>(
         &'b self,
         self_ty: ty::TyVid,
-    ) -> impl Iterator<Item = (ty::PolyTraitRef<'tcx>, traits::PredicateObligation<'tcx>)>
-    + Captures<'tcx>
-    + 'b {
+    ) -> impl DoubleEndedIterator<Item = traits::PredicateObligation<'tcx>> + Captures<'tcx> + 'b
+    {
         // FIXME: consider using `sub_root_var` here so we
         // can see through subtyping.
         let ty_var_root = self.root_var(self_ty);
         trace!("pending_obligations = {:#?}", self.fulfillment_cx.borrow().pending_obligations());
 
-        self.fulfillment_cx
-            .borrow()
-            .pending_obligations()
-            .into_iter()
-            .filter_map(move |obligation| {
-                let bound_predicate = obligation.predicate.kind();
-                match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Projection(data) => Some((
-                        bound_predicate.rebind(data).required_poly_trait_ref(self.tcx),
-                        obligation,
-                    )),
-                    ty::PredicateKind::Trait(data) => {
-                        Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
-                    }
-                    ty::PredicateKind::Subtype(..) => None,
-                    ty::PredicateKind::Coerce(..) => None,
-                    ty::PredicateKind::RegionOutlives(..) => None,
-                    ty::PredicateKind::TypeOutlives(..) => None,
-                    ty::PredicateKind::WellFormed(..) => None,
-                    ty::PredicateKind::ObjectSafe(..) => None,
-                    ty::PredicateKind::ConstEvaluatable(..) => None,
-                    ty::PredicateKind::ConstEquate(..) => None,
-                    // N.B., this predicate is created by breaking down a
-                    // `ClosureType: FnFoo()` predicate, where
-                    // `ClosureType` represents some `Closure`. It can't
-                    // possibly be referring to the current closure,
-                    // because we haven't produced the `Closure` for
-                    // this closure yet; this is exactly why the other
-                    // code is looking for a self type of an unresolved
-                    // inference variable.
-                    ty::PredicateKind::ClosureKind(..) => None,
-                    ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+        self.fulfillment_cx.borrow().pending_obligations().into_iter().filter_map(
+            move |obligation| match &obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Projection(data)
+                    if self.self_type_matches_expected_vid(
+                        data.projection_ty.self_ty(),
+                        ty_var_root,
+                    ) =>
+                {
+                    Some(obligation)
                 }
-            })
-            .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))
+                ty::PredicateKind::Trait(data)
+                    if self.self_type_matches_expected_vid(data.self_ty(), ty_var_root) =>
+                {
+                    Some(obligation)
+                }
+
+                ty::PredicateKind::Trait(..)
+                | ty::PredicateKind::Projection(..)
+                | ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Coerce(..)
+                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::TypeOutlives(..)
+                | ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..)
+                // N.B., this predicate is created by breaking down a
+                // `ClosureType: FnFoo()` predicate, where
+                // `ClosureType` represents some `Closure`. It can't
+                // possibly be referring to the current closure,
+                // because we haven't produced the `Closure` for
+                // this closure yet; this is exactly why the other
+                // code is looking for a self type of an unresolved
+                // inference variable.
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+            },
+        )
     }
 
     pub(in super::super) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
-        self.obligations_for_self_ty(self_ty)
-            .any(|(tr, _)| Some(tr.def_id()) == self.tcx.lang_items().sized_trait())
+        let sized_did = self.tcx.lang_items().sized_trait();
+        self.obligations_for_self_ty(self_ty).any(|obligation| {
+            match obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Trait(data) => Some(data.def_id()) == sized_did,
+                _ => false,
+            }
+        })
     }
 
     pub(in super::super) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {

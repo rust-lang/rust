@@ -15,6 +15,7 @@ use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use std::cmp;
@@ -225,33 +226,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expected_vid: ty::TyVid,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
-        let expected_sig =
-            self.obligations_for_self_ty(expected_vid).find_map(|(_, obligation)| {
-                debug!(?obligation.predicate);
+        let mut expected_sig = None;
+        let mut expected_kind = None;
 
-                let bound_predicate = obligation.predicate.kind();
-                if let ty::PredicateKind::Projection(proj_predicate) =
-                    obligation.predicate.kind().skip_binder()
-                {
-                    // Given a Projection predicate, we can potentially infer
-                    // the complete signature.
-                    self.deduce_sig_from_projection(
-                        Some(obligation.cause.span),
-                        bound_predicate.rebind(proj_predicate),
-                    )
-                } else {
-                    None
+        for obligation in traits::elaborate_obligations(
+            self.tcx,
+            // Reverse the obligations here, since `elaborate_*` uses a stack,
+            // and we want to keep inference generally in the same order of
+            // the registered obligations.
+            self.obligations_for_self_ty(expected_vid).rev().collect(),
+        ) {
+            debug!(?obligation.predicate);
+            let bound_predicate = obligation.predicate.kind();
+
+            // Given a Projection predicate, we can potentially infer
+            // the complete signature.
+            if expected_sig.is_none()
+                && let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder()
+            {
+                expected_sig = self.deduce_sig_from_projection(
+                    Some(obligation.cause.span),
+                    bound_predicate.rebind(proj_predicate),
+                );
+            }
+
+            // Even if we can't infer the full signature, we may be able to
+            // infer the kind. This can occur when we elaborate a predicate
+            // like `F : Fn<A>`. Note that due to subtyping we could encounter
+            // many viable options, so pick the most restrictive.
+            let trait_def_id = match bound_predicate.skip_binder() {
+                ty::PredicateKind::Projection(data) => {
+                    Some(data.projection_ty.trait_def_id(self.tcx))
                 }
-            });
-
-        // Even if we can't infer the full signature, we may be able to
-        // infer the kind. This can occur when we elaborate a predicate
-        // like `F : Fn<A>`. Note that due to subtyping we could encounter
-        // many viable options, so pick the most restrictive.
-        let expected_kind = self
-            .obligations_for_self_ty(expected_vid)
-            .filter_map(|(tr, _)| self.tcx.fn_trait_kind_from_lang_item(tr.def_id()))
-            .fold(None, |best, cur| Some(best.map_or(cur, |best| cmp::min(best, cur))));
+                ty::PredicateKind::Trait(data) => Some(data.def_id()),
+                _ => None,
+            };
+            if let Some(closure_kind) =
+                trait_def_id.and_then(|def_id| self.tcx.fn_trait_kind_from_lang_item(def_id))
+            {
+                expected_kind = Some(
+                    expected_kind
+                        .map_or_else(|| closure_kind, |current| cmp::min(current, closure_kind)),
+                );
+            }
+        }
 
         (expected_sig, expected_kind)
     }
@@ -689,7 +707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let output_ty = match *ret_ty.kind() {
             ty::Infer(ty::TyVar(ret_vid)) => {
-                self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
+                self.obligations_for_self_ty(ret_vid).find_map(|obligation| {
                     get_future_output(obligation.predicate, obligation.cause.span)
                 })?
             }
