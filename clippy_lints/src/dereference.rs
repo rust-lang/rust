@@ -805,30 +805,39 @@ fn walk_parents<'tcx>(
                     .position(|arg| arg.hir_id == child_id)
                     .zip(expr_sig(cx, func))
                     .and_then(|(i, sig)| {
-                        sig.input_with_hir(i).map(|(hir_ty, ty)| match hir_ty {
-                            // Type inference for closures can depend on how they're called. Only go by the explicit
-                            // types here.
-                            Some(hir_ty) => binding_ty_auto_deref_stability(cx, hir_ty, precedence, ty.bound_vars()),
-                            None => {
-                                if let ty::Param(param_ty) = ty.skip_binder().kind() {
-                                    needless_borrow_impl_arg_position(
-                                        cx,
-                                        possible_borrowers,
-                                        parent,
-                                        i,
-                                        *param_ty,
-                                        e,
-                                        precedence,
-                                        msrv,
-                                    )
-                                } else {
-                                    ty_auto_deref_stability(cx, cx.tcx.erase_late_bound_regions(ty), precedence)
-                                        .position_for_arg()
-                                }
-                            },
+                        sig.input_with_hir(i).map(|(hir_ty, ty)| {
+                            match hir_ty {
+                                // Type inference for closures can depend on how they're called. Only go by the explicit
+                                // types here.
+                                Some(hir_ty) => {
+                                    binding_ty_auto_deref_stability(cx, hir_ty, precedence, ty.bound_vars())
+                                },
+                                None => {
+                                    // `e.hir_id == child_id` for https://github.com/rust-lang/rust-clippy/issues/9739
+                                    // `!call_is_qualified(func)` for https://github.com/rust-lang/rust-clippy/issues/9782
+                                    if e.hir_id == child_id
+                                        && !call_is_qualified(func)
+                                        && let ty::Param(param_ty) = ty.skip_binder().kind()
+                                    {
+                                        needless_borrow_impl_arg_position(
+                                            cx,
+                                            possible_borrowers,
+                                            parent,
+                                            i,
+                                            *param_ty,
+                                            e,
+                                            precedence,
+                                            msrv,
+                                        )
+                                    } else {
+                                        ty_auto_deref_stability(cx, cx.tcx.erase_late_bound_regions(ty), precedence)
+                                            .position_for_arg()
+                                    }
+                                },
+                            }
                         })
                     }),
-                ExprKind::MethodCall(_, receiver, args, _) => {
+                ExprKind::MethodCall(method, receiver, args, _) => {
                     let id = cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap();
                     if receiver.hir_id == child_id {
                         // Check for calls to trait methods where the trait is implemented on a reference.
@@ -866,7 +875,9 @@ fn walk_parents<'tcx>(
                     }
                     args.iter().position(|arg| arg.hir_id == child_id).map(|i| {
                         let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i + 1];
-                        if let ty::Param(param_ty) = ty.kind() {
+                        // `e.hir_id == child_id` for https://github.com/rust-lang/rust-clippy/issues/9739
+                        // `method.args.is_none()` for https://github.com/rust-lang/rust-clippy/issues/9782
+                        if e.hir_id == child_id && method.args.is_none() && let ty::Param(param_ty) = ty.kind() {
                             needless_borrow_impl_arg_position(
                                 cx,
                                 possible_borrowers,
@@ -1042,6 +1053,18 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
     let mut v = V(false);
     v.visit_ty(ty);
     v.0
+}
+
+fn call_is_qualified(expr: &Expr<'_>) -> bool {
+    if let ExprKind::Path(path) = &expr.kind {
+        match path {
+            QPath::Resolved(_, path) => path.segments.last().map_or(false, |segment| segment.args.is_some()),
+            QPath::TypeRelative(_, segment) => segment.args.is_some(),
+            QPath::LangItem(..) => false,
+        }
+    } else {
+        false
+    }
 }
 
 // Checks whether:
