@@ -83,8 +83,8 @@ where
     match mode {
         Mode::Char | Mode::Byte => {
             let mut chars = src.chars();
-            let result = unescape_char_or_byte(&mut chars, mode == Mode::Byte);
-            callback(0..(src.len() - chars.as_str().len()), result);
+            let res = unescape_char_or_byte(&mut chars, mode == Mode::Byte);
+            callback(0..(src.len() - chars.as_str().len()), res);
         }
         Mode::Str | Mode::ByteStr => unescape_str_or_byte_str(src, mode == Mode::ByteStr, callback),
         Mode::RawStr | Mode::RawByteStr => {
@@ -263,7 +263,7 @@ where
     // them in the range computation.
     while let Some(c) = chars.next() {
         let start = src.len() - chars.as_str().len() - c.len_utf8();
-        let result = match c {
+        let res = match c {
             '\\' => {
                 match chars.clone().next() {
                     Some('\n') => {
@@ -284,7 +284,7 @@ where
             _ => ascii_check(c, is_byte),
         };
         let end = src.len() - chars.as_str().len();
-        callback(start..end, result);
+        callback(start..end, res);
     }
 
     fn skip_ascii_whitespace<F>(chars: &mut Chars<'_>, start: usize, callback: &mut F)
@@ -329,12 +329,12 @@ where
     // doesn't have to worry about skipping any chars.
     while let Some(c) = chars.next() {
         let start = src.len() - chars.as_str().len() - c.len_utf8();
-        let result = match c {
+        let res = match c {
             '\r' => Err(EscapeError::BareCarriageReturnInRawString),
             _ => ascii_check(c, is_byte),
         };
         let end = src.len() - chars.as_str().len();
-        callback(start..end, result);
+        callback(start..end, res);
     }
 }
 
