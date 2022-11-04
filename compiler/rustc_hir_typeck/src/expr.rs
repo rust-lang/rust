@@ -1096,11 +1096,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If the assignment expression itself is ill-formed, don't
             // bother emitting another error
-            let reported = if lhs_ty.references_error() || rhs_ty.references_error() {
-                err.delay_as_bug()
-            } else {
-                err.emit()
-            };
+            let reported = err.emit_unless(lhs_ty.references_error() || rhs_ty.references_error());
             return self.tcx.ty_error_with_guaranteed(reported);
         }
 
