@@ -773,10 +773,10 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.fold_const(bound_to)
         } else {
             let var = self.canonical_var(info, const_var.into());
-            self.tcx().mk_const(ty::ConstS {
-                kind: ty::ConstKind::Bound(self.binder_index, var),
-                ty: self.fold_ty(const_var.ty()),
-            })
+            self.tcx().mk_const(
+                ty::ConstKind::Bound(self.binder_index, var),
+                self.fold_ty(const_var.ty()),
+            )
         }
     }
 }

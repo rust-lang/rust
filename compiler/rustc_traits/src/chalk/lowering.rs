@@ -546,7 +546,7 @@ impl<'tcx> LowerInto<'tcx, ty::Const<'tcx>> for &chalk_ir::Const<RustInterner<'t
             chalk_ir::ConstValue::Placeholder(_p) => unimplemented!(),
             chalk_ir::ConstValue::Concrete(c) => ty::ConstKind::Value(c.interned),
         };
-        interner.tcx.mk_const(ty::ConstS { ty, kind })
+        interner.tcx.mk_const(kind, ty)
     }
 }
 
