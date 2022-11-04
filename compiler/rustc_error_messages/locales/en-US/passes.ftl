@@ -47,7 +47,10 @@ passes_no_coverage_not_coverable =
 
 passes_should_be_applied_to_fn =
     attribute should be applied to a function definition
-    .label = not a function definition
+    .label = {$on_crate ->
+        [true] cannot be applied to crates
+        *[false] not a function definition
+    }
 
 passes_naked_tracked_caller =
     cannot use `#[track_caller]` with `#[naked]`

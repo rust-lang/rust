@@ -2210,22 +2210,45 @@ impl FileWithAnnotatedLines {
 
         if let Some(ref sm) = emitter.source_map() {
             for span_label in msp.span_labels() {
+                let fixup_lo_hi = |span: Span| {
+                    let lo = sm.lookup_char_pos(span.lo());
+                    let mut hi = sm.lookup_char_pos(span.hi());
+
+                    // Watch out for "empty spans". If we get a span like 6..6, we
+                    // want to just display a `^` at 6, so convert that to
+                    // 6..7. This is degenerate input, but it's best to degrade
+                    // gracefully -- and the parser likes to supply a span like
+                    // that for EOF, in particular.
+
+                    if lo.col_display == hi.col_display && lo.line == hi.line {
+                        hi.col_display += 1;
+                    }
+                    (lo, hi)
+                };
+
                 if span_label.span.is_dummy() {
+                    if let Some(span) = msp.primary_span() {
+                        // if we don't know where to render the annotation, emit it as a note
+                        // on the primary span.
+
+                        let (lo, hi) = fixup_lo_hi(span);
+
+                        let ann = Annotation {
+                            start_col: lo.col_display,
+                            end_col: hi.col_display,
+                            is_primary: span_label.is_primary,
+                            label: span_label
+                                .label
+                                .as_ref()
+                                .map(|m| emitter.translate_message(m, args).to_string()),
+                            annotation_type: AnnotationType::Singleline,
+                        };
+                        add_annotation_to_file(&mut output, lo.file, lo.line, ann);
+                    }
                     continue;
                 }
 
-                let lo = sm.lookup_char_pos(span_label.span.lo());
-                let mut hi = sm.lookup_char_pos(span_label.span.hi());
-
-                // Watch out for "empty spans". If we get a span like 6..6, we
-                // want to just display a `^` at 6, so convert that to
-                // 6..7. This is degenerate input, but it's best to degrade
-                // gracefully -- and the parser likes to supply a span like
-                // that for EOF, in particular.
-
-                if lo.col_display == hi.col_display && lo.line == hi.line {
-                    hi.col_display += 1;
-                }
+                let (lo, hi) = fixup_lo_hi(span_label.span);
 
                 if lo.line != hi.line {
                     let ml = MultilineAnnotation {
