@@ -919,29 +919,17 @@ fn link_natively<'a>(
                         )
                         .is_some();
 
-                        sess.note_without_error("`link.exe` returned an unexpected error");
+                        sess.emit_note(errors::LinkExeUnexpectedError);
                         if is_vs_installed && has_linker {
                             // the linker is broken
-                            sess.note_without_error(
-                                "the Visual Studio build tools may need to be repaired \
-                                using the Visual Studio installer",
-                            );
-                            sess.note_without_error(
-                                "or a necessary component may be missing from the \
-                                \"C++ build tools\" workload",
-                            );
+                            sess.emit_note(errors::RepairVSBuildTools);
+                            sess.emit_note(errors::MissingCppBuildToolComponent);
                         } else if is_vs_installed {
                             // the linker is not installed
-                            sess.note_without_error(
-                                "in the Visual Studio installer, ensure the \
-                                \"C++ build tools\" workload is selected",
-                            );
+                            sess.emit_note(errors::SelectCppBuildToolWorkload);
                         } else {
                             // visual studio is not installed
-                            sess.note_without_error(
-                                "you may need to install Visual Studio build tools with the \
-                                \"C++ build tools\" workload",
-                            );
+                            sess.emit_note(errors::VisualStudioNotInstalled);
                         }
                     }
                 }
@@ -954,35 +942,20 @@ fn link_natively<'a>(
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
 
-            let mut linker_error = {
-                if linker_not_found {
-                    sess.struct_err(&format!("linker `{}` not found", linker_path.display()))
-                } else {
-                    sess.struct_err(&format!(
-                        "could not exec the linker `{}`",
-                        linker_path.display()
-                    ))
-                }
-            };
-
-            linker_error.note(&e.to_string());
-
-            if !linker_not_found {
-                linker_error.note(&format!("{:?}", &cmd));
+            if linker_not_found {
+                sess.emit_err(errors::LinkerNotFound { linker_path, error: e });
+            } else {
+                sess.emit_err(errors::UnableToExeLinker {
+                    linker_path,
+                    error: e,
+                    command_formatted: format!("{:?}", &cmd),
+                });
             }
 
-            linker_error.emit();
-
             if sess.target.is_like_msvc && linker_not_found {
-                sess.note_without_error(
-                    "the msvc targets depend on the msvc linker \
-                     but `link.exe` was not found",
-                );
-                sess.note_without_error(
-                    "please ensure that Visual Studio 2017 or later, or Build Tools \
-                     for Visual Studio were installed with the Visual C++ option.",
-                );
-                sess.note_without_error("VS Code is a different product, and is not sufficient.");
+                sess.emit_note(errors::MsvcMissingLinker);
+                sess.emit_note(errors::CheckInstalledVisualStudio);
+                sess.emit_note(errors::UnsufficientVSCodeProduct);
             }
             sess.abort_if_errors();
         }
@@ -1007,15 +980,13 @@ fn link_natively<'a>(
                     if !prog.status.success() {
                         let mut output = prog.stderr.clone();
                         output.extend_from_slice(&prog.stdout);
-                        sess.struct_warn(&format!(
-                            "processing debug info with `dsymutil` failed: {}",
-                            prog.status
-                        ))
-                        .note(&escape_string(&output))
-                        .emit();
+                        sess.emit_warning(errors::ProcessingDymutilFailed {
+                            status: prog.status,
+                            output: escape_string(&output),
+                        });
                     }
                 }
-                Err(e) => sess.fatal(&format!("unable to run `dsymutil`: {}", e)),
+                Err(error) => sess.emit_fatal(errors::UnableToRunDsymutil { error }),
             }
         }
 
@@ -1092,15 +1063,14 @@ fn strip_symbols_with_external_utility<'a>(
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                sess.struct_warn(&format!(
-                    "stripping debug info with `{}` failed: {}",
-                    util, prog.status
-                ))
-                .note(&escape_string(&output))
-                .emit();
+                sess.emit_warning(errors::StrippingDebugInfoFailed {
+                    util,
+                    status: prog.status,
+                    output: escape_string(&output),
+                });
             }
         }
-        Err(e) => sess.fatal(&format!("unable to run `{}`: {}", util, e)),
+        Err(error) => sess.emit_fatal(errors::UnableToRun { util, error }),
     }
 }
 
@@ -1251,7 +1221,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
             )),
             (Some(linker), None) => {
                 let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
-                    sess.fatal("couldn't extract file stem from specified linker")
+                    sess.emit_fatal(errors::LinkerFileStem);
                 });
 
                 let flavor = if stem == "emcc" {
@@ -1378,13 +1348,9 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
         })
         .collect();
     if !lib_args.is_empty() {
-        sess.note_without_error(
-            "Link against the following native artifacts when linking \
-                                 against this static library. The order and any duplication \
-                                 can be significant on some platforms.",
-        );
+        sess.emit_note(errors::StaticLibraryNativeArtifacts);
         // Prefix for greppability
-        sess.note_without_error(&format!("native-static-libs: {}", &lib_args.join(" ")));
+        sess.emit_note(errors::NativeStaticLibs { arguments: lib_args.join(" ") });
     }
 }
 
@@ -1688,14 +1654,14 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
     match (crate_type, &sess.target.link_script) {
         (CrateType::Cdylib | CrateType::Executable, Some(script)) => {
             if !sess.target.linker_flavor.is_gnu() {
-                sess.fatal("can only use link script when linking with GNU-like linker");
+                sess.emit_fatal(errors::LinkScriptUnavailable);
             }
 
             let file_name = ["rustc", &sess.target.llvm_target, "linkfile.ld"].join("-");
 
             let path = tmpdir.join(file_name);
-            if let Err(e) = fs::write(&path, script.as_ref()) {
-                sess.fatal(&format!("failed to write link script to {}: {}", path.display(), e));
+            if let Err(error) = fs::write(&path, script.as_ref()) {
+                sess.emit_fatal(errors::LinkScriptWriteFailure { path, error });
             }
 
             cmd.arg("--script");
@@ -1841,8 +1807,8 @@ fn add_linked_symbol_object(
 
     let path = tmpdir.join("symbols.o");
     let result = std::fs::write(&path, file.write().unwrap());
-    if let Err(e) = result {
-        sess.fatal(&format!("failed to write {}: {}", path.display(), e));
+    if let Err(error) = result {
+        sess.emit_fatal(errors::FailedToWrite { path, error });
     }
     cmd.add_object(&path);
 }
@@ -2299,14 +2265,10 @@ fn collect_natvis_visualizers(
                 visualizer_paths.push(visualizer_out_file);
             }
             Err(error) => {
-                sess.warn(
-                    format!(
-                        "Unable to write debugger visualizer file `{}`: {} ",
-                        visualizer_out_file.display(),
-                        error
-                    )
-                    .as_str(),
-                );
+                sess.emit_warning(errors::UnableToWriteDebuggerVisualizer {
+                    path: visualizer_out_file,
+                    error,
+                });
             }
         };
     }
@@ -2484,7 +2446,7 @@ fn add_upstream_rust_crates<'a>(
                         let rlib = &src.rlib.as_ref().unwrap().0;
                         archive_builder_builder
                             .extract_bundled_libs(rlib, tmpdir, &bundled_libs)
-                            .unwrap_or_else(|e| sess.fatal(e));
+                            .unwrap_or_else(|e| sess.emit_fatal(e));
                     }
 
                     let mut last = (None, NativeLibKind::Unspecified, None);
@@ -2641,7 +2603,7 @@ fn add_upstream_rust_crates<'a>(
                 || !codegen_results.crate_info.is_no_builtins.contains(&cnum);
 
             let mut archive = archive_builder_builder.new_archive_builder(sess);
-            if let Err(e) = archive.add_archive(
+            if let Err(error) = archive.add_archive(
                 cratepath,
                 Box::new(move |f| {
                     if f == METADATA_FILENAME {
@@ -2681,7 +2643,7 @@ fn add_upstream_rust_crates<'a>(
                     false
                 }),
             ) {
-                sess.fatal(&format!("failed to build archive from rlib: {}", e));
+                sess.emit_fatal(errors::RlibArchiveBuildFailure { error });
             }
             if archive.build(&dst) {
                 link_upstream(&dst);
@@ -2813,14 +2775,14 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("arm", "watchos") => "watchos",
         (_, "macos") => "macosx",
         _ => {
-            sess.err(&format!("unsupported arch `{}` for os `{}`", arch, os));
+            sess.emit_err(errors::UnsupportedArch { arch, os });
             return;
         }
     };
     let sdk_root = match get_apple_sdk_root(sdk_name) {
         Ok(s) => s,
         Err(e) => {
-            sess.err(&e);
+            sess.emit_err(e);
             return;
         }
     };
@@ -2836,7 +2798,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     }
 }
 
-fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
+fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootError<'_>> {
     // Following what clang does
     // (https://github.com/llvm/llvm-project/blob/
     // 296a80102a9b72c3eda80558fb78a3ed8849b341/clang/lib/Driver/ToolChains/Darwin.cpp#L1661-L1678)
@@ -2886,7 +2848,7 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
 
     match res {
         Ok(output) => Ok(output.trim().to_string()),
-        Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e)),
+        Err(error) => Err(errors::AppleSdkRootError::SdkPath { sdk_name, error }),
     }
 }
 
@@ -2919,7 +2881,7 @@ fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
                 }
             }
         } else {
-            sess.fatal("option `-Z gcc-ld` is used even though linker flavor is not gcc");
+            sess.emit_fatal(errors::OptionGccOnly);
         }
     }
 }

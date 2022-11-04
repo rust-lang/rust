@@ -10,6 +10,7 @@ regex = "1"
 miropt-test-tools = { path = "../miropt-test-tools" }
 lazy_static = "1"
 walkdir = "2"
+ignore = "0.4.18"
 
 [[bin]]
 name = "rust-tidy"

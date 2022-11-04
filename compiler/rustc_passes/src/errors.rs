@@ -4,7 +4,9 @@ use std::{
 };
 
 use rustc_ast::Label;
-use rustc_errors::{error_code, Applicability, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
+use rustc_errors::{
+    error_code, Applicability, DiagnosticSymbolList, ErrorGuaranteed, IntoDiagnostic, MultiSpan,
+};
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
@@ -1445,4 +1447,60 @@ pub struct MissingConstErr {
     pub fn_sig_span: Span,
     #[label]
     pub const_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+pub enum MultipleDeadCodes<'tcx> {
+    #[diag(passes_dead_codes)]
+    DeadCodes {
+        multiple: bool,
+        num: usize,
+        descr: &'tcx str,
+        participle: &'tcx str,
+        name_list: DiagnosticSymbolList,
+        #[subdiagnostic]
+        parent_info: Option<ParentInfo<'tcx>>,
+        #[subdiagnostic]
+        ignored_derived_impls: Option<IgnoredDerivedImpls>,
+    },
+    #[diag(passes_dead_codes)]
+    UnusedTupleStructFields {
+        multiple: bool,
+        num: usize,
+        descr: &'tcx str,
+        participle: &'tcx str,
+        name_list: DiagnosticSymbolList,
+        #[subdiagnostic]
+        change_fields_suggestion: ChangeFieldsToBeOfUnitType,
+        #[subdiagnostic]
+        parent_info: Option<ParentInfo<'tcx>>,
+        #[subdiagnostic]
+        ignored_derived_impls: Option<IgnoredDerivedImpls>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[label(passes_parent_info)]
+pub struct ParentInfo<'tcx> {
+    pub num: usize,
+    pub descr: &'tcx str,
+    pub parent_descr: &'tcx str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(passes_ignored_derived_impls)]
+pub struct IgnoredDerivedImpls {
+    pub name: Symbol,
+    pub trait_list: DiagnosticSymbolList,
+    pub trait_list_len: usize,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(passes_change_fields_to_be_of_unit_type, applicability = "has-placeholders")]
+pub struct ChangeFieldsToBeOfUnitType {
+    pub num: usize,
+    #[suggestion_part(code = "()")]
+    pub spans: Vec<Span>,
 }
