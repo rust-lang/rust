@@ -53,7 +53,7 @@ pub enum LifetimeElisionHints {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AdjustmentHints {
     Always,
-    MutableOnly,
+    ReborrowOnly,
     Never,
 }
 
@@ -675,7 +675,9 @@ fn adjustment_hints(
     for adjustment in adjustments.into_iter().rev() {
         // FIXME: Add some nicer tooltips to each of these
         let text = match adjustment {
-            Adjust::NeverToAny => "<never-to-any>",
+            Adjust::NeverToAny if config.adjustment_hints == AdjustmentHints::Always => {
+                "<never-to-any>"
+            }
             Adjust::Deref(None) => "*",
             Adjust::Deref(Some(OverloadedDeref(Mutability::Mut))) => "*",
             Adjust::Deref(Some(OverloadedDeref(Mutability::Shared))) => "*",
@@ -685,15 +687,20 @@ fn adjustment_hints(
             Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Mut)) => "&raw mut ",
             // some of these could be represented via `as` casts, but that's not too nice and
             // handling everything as a prefix expr makes the `(` and `)` insertion easier
-            Adjust::Pointer(cast) => match cast {
-                PointerCast::ReifyFnPointer => "<fn-item-to-fn-pointer>",
-                PointerCast::UnsafeFnPointer => "<safe-fn-pointer-to-unsafe-fn-pointer>",
-                PointerCast::ClosureFnPointer(Safety::Unsafe) => "<closure-to-unsafe-fn-pointer>",
-                PointerCast::ClosureFnPointer(Safety::Safe) => "<closure-to-fn-pointer>",
-                PointerCast::MutToConstPointer => "<mut-ptr-to-const-ptr>",
-                PointerCast::ArrayToPointer => "<array-ptr-to-element-ptr>",
-                PointerCast::Unsize => "<unsize>",
-            },
+            Adjust::Pointer(cast) if config.adjustment_hints == AdjustmentHints::Always => {
+                match cast {
+                    PointerCast::ReifyFnPointer => "<fn-item-to-fn-pointer>",
+                    PointerCast::UnsafeFnPointer => "<safe-fn-pointer-to-unsafe-fn-pointer>",
+                    PointerCast::ClosureFnPointer(Safety::Unsafe) => {
+                        "<closure-to-unsafe-fn-pointer>"
+                    }
+                    PointerCast::ClosureFnPointer(Safety::Safe) => "<closure-to-fn-pointer>",
+                    PointerCast::MutToConstPointer => "<mut-ptr-to-const-ptr>",
+                    PointerCast::ArrayToPointer => "<array-ptr-to-element-ptr>",
+                    PointerCast::Unsize => "<unsize>",
+                }
+            }
+            _ => continue,
         };
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
