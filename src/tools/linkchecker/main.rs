@@ -365,6 +365,23 @@ impl Checker {
             }
         });
 
+        self.check_intra_doc_links(file, &pretty_path, &source, report);
+
+        // we don't need the source anymore,
+        // so drop to reduce memory-usage
+        match self.cache.get_mut(&pretty_path).unwrap() {
+            FileEntry::HtmlFile { source, .. } => *source = Rc::new(String::new()),
+            _ => unreachable!("must be html file"),
+        }
+    }
+
+    fn check_intra_doc_links(
+        &mut self,
+        file: &Path,
+        pretty_path: &str,
+        source: &str,
+        report: &mut Report,
+    ) {
         // Search for intra-doc links that rustdoc didn't warn about
         // FIXME(#77199, 77200) Rustdoc should just warn about these directly.
         // NOTE: only looks at one line at a time; in practice this should find most links
@@ -378,12 +395,6 @@ impl Checker {
                     println!("{}", &broken_link[0]);
                 }
             }
-        }
-        // we don't need the source anymore,
-        // so drop to reduce memory-usage
-        match self.cache.get_mut(&pretty_path).unwrap() {
-            FileEntry::HtmlFile { source, .. } => *source = Rc::new(String::new()),
-            _ => unreachable!("must be html file"),
         }
     }
 
