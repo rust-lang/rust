@@ -148,6 +148,7 @@ fn no_data_race_after_complete() {
     let reader = thread::spawn(move || unsafe {
         let mut pending = 0;
 
+        // this doesn't block because reader only executes after `InitOnceComplete` is called
         assert_eq!(InitOnceBeginInitialize(init_once_ptr.0, 0, &mut pending, null_mut()), TRUE);
         assert_eq!(pending, FALSE);
         // this should not data race
@@ -162,9 +163,8 @@ fn no_data_race_after_complete() {
     unsafe {
         assert_eq!(InitOnceComplete(init_once_ptr.0, 0, null_mut()), TRUE);
     }
-    //println!("complete");
 
-    // run reader
+    // run reader (without preemption, it has not taken a step yet)
     assert_eq!(reader.join().unwrap(), 1);
 }
 
