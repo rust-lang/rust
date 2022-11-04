@@ -94,10 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("pointer_kind({:?}, {:?})", t, span);
 
         let t = self.resolve_vars_if_possible(t);
-
-        if let Some(reported) = t.error_reported() {
-            return Err(reported);
-        }
+        t.error_reported()?;
 
         if self.type_is_sized_modulo_regions(self.param_env, t, span) {
             return Ok(Some(PointerKind::Thin));
@@ -222,8 +219,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         // inference is more completely known.
         match cast_ty.kind() {
             ty::Dynamic(_, _, ty::Dyn) | ty::Slice(..) => {
-                let reported = check.report_cast_to_unsized_type(fcx);
-                Err(reported)
+                Err(check.report_cast_to_unsized_type(fcx))
             }
             _ => Ok(check),
         }
@@ -614,10 +610,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn report_cast_to_unsized_type(&self, fcx: &FnCtxt<'a, 'tcx>) -> ErrorGuaranteed {
-        if let Some(reported) =
-            self.cast_ty.error_reported().or_else(|| self.expr_ty.error_reported())
-        {
-            return reported;
+        if let Err(err) = self.cast_ty.error_reported() {
+            return err;
+        }
+        if let Err(err) = self.expr_ty.error_reported() {
+            return err;
         }
 
         let tstr = fcx.ty_to_string(self.cast_ty);

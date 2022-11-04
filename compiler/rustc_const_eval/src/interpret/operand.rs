@@ -4,7 +4,7 @@
 use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
-use rustc_middle::ty::{ConstInt, DelaySpanBugEmitted, Ty};
+use rustc_middle::ty::{ConstInt, Ty};
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
@@ -567,7 +567,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
                         throw_inval!(TooGeneric)
                     }
-                    ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => {
+                    ty::ConstKind::Error(reported) => {
                         throw_inval!(AlreadyReported(reported))
                     }
                     ty::ConstKind::Unevaluated(uv) => {
