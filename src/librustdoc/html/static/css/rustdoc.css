@@ -881,31 +881,24 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: block;
 }
 
-.search-results .desc > span {
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
-	display: block;
-}
-
 .search-results > a {
-	display: block;
+	display: flex;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
 	border-bottom: 1px solid var(--border-color);
+	gap: 1em;
 }
 
 .search-results > a > div {
-	display: flex;
-	flex-flow: row wrap;
+	flex: 1;
 }
 
-.search-results .result-name, .search-results div.desc {
-	width: 50%;
-}
-.search-results .result-name {
-	padding-right: 1em;
+.search-results > a > div.desc {
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	display: block;
 }
 
 .search-results a:hover,
@@ -1867,7 +1860,8 @@ in storage.js
 	}
 
 	/* Display an alternating layout on tablets and phones */
-	.item-table, .item-row, .item-left, .item-right {
+	.item-table, .item-row, .item-left, .item-right,
+	.search-results > a, .search-results > a > div {
 		display: block;
 	}
 
@@ -1875,10 +1869,7 @@ in storage.js
 	.search-results > a {
 		padding: 5px 0px;
 	}
-	.search-results .result-name, .search-results div.desc {
-		width: 100%;
-	}
-	.search-results div.desc, .item-right {
+	.search-results > a > div.desc, .item-right {
 		padding-left: 2em;
 	}
 
