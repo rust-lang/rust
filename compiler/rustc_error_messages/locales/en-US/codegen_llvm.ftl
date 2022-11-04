@@ -20,9 +20,6 @@ codegen_llvm_symbol_already_defined =
 codegen_llvm_branch_protection_requires_aarch64 =
     -Zbranch-protection is only supported on aarch64
 
-codegen_llvm_layout_size_overflow =
-    {$error}
-
 codegen_llvm_invalid_minimum_alignment =
     invalid minimum global alignment: {$err}
 
