@@ -210,18 +210,18 @@ fn trace_macros_note(cx_expansions: &mut FxIndexMap<Span, Vec<String>>, sp: Span
 }
 
 pub(super) trait Tracker<'matcher> {
-    /// This is called before trying to match next MatcherLoc on the current token
+    /// This is called before trying to match next MatcherLoc on the current token.
     fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
 
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When this is called,
-    /// `before_match_loc` was called at least once (with a `MatcherLoc::Eof`)
+    /// `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
     fn after_arm(&mut self, result: &NamedParseResult);
 
-    /// For tracing
+    /// For tracing.
     fn description() -> &'static str;
 }
 
-/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization
+/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization.
 struct NoopTracker;
 
 impl<'matcher> Tracker<'matcher> for NoopTracker {
@@ -256,7 +256,7 @@ fn expand_macro<'cx>(
         trace_macros_note(&mut cx.expansions, sp, msg);
     }
 
-    // Track nothing for the best performance
+    // Track nothing for the best performance.
     let try_success_result = try_match_macro(sess, name, &arg, lhses, &mut NoopTracker);
 
     match try_success_result {
@@ -326,7 +326,7 @@ fn expand_macro<'cx>(
         }
     }
 
-    // An error occured, try the expansion again, tracking the expansion closely for better diagnostics
+    // An error occurred, try the expansion again, tracking the expansion closely for better diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(cx, sp);
 
     let try_success_result = try_match_macro(sess, name, &arg, lhses, &mut tracker);
@@ -378,7 +378,7 @@ fn expand_macro<'cx>(
     DummyResult::any(sp)
 }
 
-/// The tracker used for the slow error path that collects useful info for diagnostics
+/// The tracker used for the slow error path that collects useful info for diagnostics.
 struct CollectTrackerAndEmitter<'a, 'cx> {
     cx: &'a mut ExtCtxt<'cx>,
     /// Which arm's failure should we report? (the one furthest along)
@@ -427,7 +427,7 @@ enum CanRetry {
     No(ErrorGuaranteed),
 }
 
-/// Try expanding the macro. Returns the index of the sucessful arm and its named_matches if it was successful,
+/// Try expanding the macro. Returns the index of the successful arm and its named_matches if it was successful,
 /// and nothing if it failed. On failure, it's the callers job to use `track` accordingly to record all errors
 /// correctly.
 #[instrument(level = "debug", skip(sess, arg, lhses, track), fields(tracking = %T::description()))]
@@ -485,15 +485,16 @@ fn try_match_macro<'matcher, T: Tracker<'matcher>>(
             }
             Failure(_, _) => {
                 trace!("Failed to match arm, trying the next one");
-                // Try the next arm
+                // Try the next arm.
             }
             Error(_, _) => {
                 debug!("Fatal error occurred during matching");
-                // We haven't emitted an error yet
+                // We haven't emitted an error yet, so we can retry.
                 return Err(CanRetry::Yes);
             }
             ErrorReported(guarantee) => {
                 debug!("Fatal error occurred and was reported during matching");
+                // An error has been reported already, we cannot retry as that would cause duplicate errors.
                 return Err(CanRetry::No(guarantee));
             }
         }

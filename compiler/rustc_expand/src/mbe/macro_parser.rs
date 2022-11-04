@@ -70,7 +70,6 @@
 //! eof: [a $( a )* a b ·]
 //! ```
 
-use rustc_errors::ErrorGuaranteed;
 pub(crate) use NamedMatch::*;
 pub(crate) use ParseResult::*;
 
@@ -79,6 +78,7 @@ use crate::mbe::{macro_rules::Tracker, KleeneOp, TokenTree};
 use rustc_ast::token::{self, DocComment, Nonterminal, NonterminalKind, Token};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
 use rustc_parse::parser::{NtOrTt, Parser};
 use rustc_span::symbol::Ident;
@@ -96,7 +96,7 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 ///
 /// This means a matcher can be represented by `&[MatcherLoc]`, and traversal mostly involves
 /// simply incrementing the current matcher position index by one.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub(crate) enum MatcherLoc {
     Token {
         token: Token,
