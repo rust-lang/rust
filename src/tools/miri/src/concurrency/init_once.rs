@@ -3,7 +3,7 @@ use std::num::NonZeroU32;
 
 use rustc_index::vec::Idx;
 
-use super::sync::EvalContextExtPriv;
+use super::sync::EvalContextExtPriv as _;
 use super::thread::MachineCallback;
 use super::vector_clock::VClock;
 use crate::*;
@@ -49,6 +49,43 @@ impl<'mir, 'tcx> VisitTags for InitOnce<'mir, 'tcx> {
         for waiter in self.waiters.iter() {
             waiter.callback.visit_tags(visit);
         }
+    }
+}
+
+impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
+trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+    /// Synchronize with the previous initialization attempt of an InitOnce.
+    #[inline]
+    fn init_once_observe_attempt(&mut self, id: InitOnceId) {
+        let this = self.eval_context_mut();
+        let current_thread = this.get_active_thread();
+
+        if let Some(data_race) = &this.machine.data_race {
+            data_race.validate_lock_acquire(
+                &this.machine.threads.sync.init_onces[id].data_race,
+                current_thread,
+            );
+        }
+    }
+
+    #[inline]
+    fn init_once_wake_waiter(
+        &mut self,
+        id: InitOnceId,
+        waiter: InitOnceWaiter<'mir, 'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let current_thread = this.get_active_thread();
+
+        this.unblock_thread(waiter.thread);
+
+        // Call callback, with the woken-up thread as `current`.
+        this.set_active_thread(waiter.thread);
+        this.init_once_observe_attempt(id);
+        waiter.callback.call(this)?;
+        this.set_active_thread(current_thread);
+
+        Ok(())
     }
 }
 
@@ -141,13 +178,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Wake up everyone.
         // need to take the queue to avoid having `this` be borrowed multiple times
         for waiter in std::mem::take(&mut init_once.waiters) {
-            this.unblock_thread(waiter.thread);
-
-            // Call callback, with the woken-up thread as `current`.
-            this.set_active_thread(waiter.thread);
-            this.init_once_acquire(id);
-            waiter.callback.call(this)?;
-            this.set_active_thread(current_thread);
+            this.init_once_wake_waiter(id, waiter)?;
         }
 
         Ok(())
@@ -171,13 +202,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Wake up one waiting thread, so they can go ahead and try to init this.
         if let Some(waiter) = init_once.waiters.pop_front() {
-            this.unblock_thread(waiter.thread);
-
-            // Call callback, with the woken-up thread as `current`.
-            this.set_active_thread(waiter.thread);
-            this.init_once_acquire(id);
-            waiter.callback.call(this)?;
-            this.set_active_thread(current_thread);
+            this.init_once_wake_waiter(id, waiter)?;
         } else {
             // Nobody there to take this, so go back to 'uninit'
             init_once.status = InitOnceStatus::Uninitialized;
@@ -186,18 +211,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(())
     }
 
-    /// Synchronize with the previous completion or failure of an InitOnce.
-    /// This is required to prevent data races.
+    /// Synchronize with the previous completion of an InitOnce.
+    /// Must only be called after checking that it is complete.
     #[inline]
-    fn init_once_acquire(&mut self, id: InitOnceId) {
+    fn init_once_observe_completed(&mut self, id: InitOnceId) {
         let this = self.eval_context_mut();
-        let current_thread = this.get_active_thread();
 
-        if let Some(data_race) = &this.machine.data_race {
-            data_race.validate_lock_acquire(
-                &this.machine.threads.sync.init_onces[id].data_race,
-                current_thread,
-            );
-        }
+        assert_eq!(
+            this.init_once_status(id),
+            InitOnceStatus::Complete,
+            "observing the completion of incomplete init once"
+        );
+
+        this.init_once_observe_attempt(id);
     }
 }
