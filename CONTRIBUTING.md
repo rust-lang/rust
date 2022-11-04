@@ -23,6 +23,7 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [Issue and PR triage](#issue-and-pr-triage)
   - [Bors and Homu](#bors-and-homu)
   - [Contributions](#contributions)
+  - [License](#license)
 
 [Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
@@ -244,6 +245,38 @@ commands [here][homu_instructions].
 Contributions to Clippy should be made in the form of GitHub pull requests. Each pull request will
 be reviewed by a core contributor (someone with permission to land patches) and either landed in the
 main tree or given feedback for changes that would be required.
+
+All PRs should include a `changelog` entry with a short comment explaining the change. The rule of thumb is basically,
+"what do you believe is important from an outsider's perspective?" Often, PRs are only related to a single property of a
+lint, and then it's good to mention that one. Otherwise, it's better to include too much detail than too little.
+
+Clippy's [changelog] is created from these comments. Every release, someone gets all commits from bors with a
+`changelog: XYZ` entry and combines them into the changelog. This is a manual process.
+
+Examples:
+- New lint
+  ```
+  changelog: new lint: [`missing_trait_methods`]
+  ```
+- False positive fix
+  ```
+  changelog: Fix [`unused_peekable`] false positive when peeked in a closure or called as `f(&mut peekable)`
+  ```
+- Purely internal change
+  ```
+  changelog: none
+  ```
+
+Note this it is fine for a PR to include multiple `changelog` entries, e.g.:
+```
+changelog: Something 1
+changelog: Something 2
+changelog: Something 3
+```
+
+[changelog]: CHANGELOG.md
+
+## License
 
 All code in this repository is under the [Apache-2.0] or the [MIT] license.
 
