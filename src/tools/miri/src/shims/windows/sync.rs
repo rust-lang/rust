@@ -177,8 +177,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     Box::new(Callback { init_once_id: id, pending_place }),
                 )
             }
-            InitOnceStatus::Complete =>
-                this.write_scalar(this.eval_windows("c", "FALSE")?, &pending_place)?,
+            InitOnceStatus::Complete => {
+                this.init_once_observe_completed(id);
+                this.write_scalar(this.eval_windows("c", "FALSE")?, &pending_place)?;
+            }
         }
 
         // This always succeeds (even if the thread is blocked, we will succeed if we ever unblock).
