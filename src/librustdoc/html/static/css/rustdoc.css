@@ -881,13 +881,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: block;
 }
 
-.search-results .desc > span {
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	overflow: hidden;
-	display: block;
-}
-
 .search-results > a {
 	display: flex;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
@@ -899,7 +892,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results > a > div {
 	flex: 1;
+}
+
+.search-results > a > div.desc {
+	white-space: nowrap;
+	text-overflow: ellipsis;
 	overflow: hidden;
+	display: block;
 }
 
 .search-results a:hover,
@@ -1870,7 +1869,7 @@ in storage.js
 	.search-results > a {
 		padding: 5px 0px;
 	}
-	.search-results div.desc, .item-right {
+	.search-results > a > div.desc, .item-right {
 		padding-left: 2em;
 	}
 
