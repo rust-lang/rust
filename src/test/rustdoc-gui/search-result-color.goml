@@ -75,6 +75,12 @@ assert-css: (
     {"color": "rgb(0, 150, 207)"},
 )
 
+// Checking the color of the bottom border.
+assert-css: (
+    ".search-results > a",
+    {"border-bottom-color": "rgb(92, 103, 115)"}
+)
+
 // Checking the color of "keyword" text.
 assert-css: (
     "//*[@class='result-name']//*[text()='(keyword)']",
@@ -181,6 +187,12 @@ assert-css: (
     {"color": "rgb(221, 221, 221)"},
 )
 
+// Checking the color of the bottom border.
+assert-css: (
+    ".search-results > a",
+    {"border-bottom-color": "rgb(224, 224, 224)"}
+)
+
 // Checking the color for "keyword" text.
 assert-css: (
     "//*[@class='result-name']//*[text()='(keyword)']",
@@ -270,6 +282,12 @@ assert-css: (
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']",
     {"color": "rgb(0, 0, 0)"},
+)
+
+// Checking the color of the bottom border.
+assert-css: (
+    ".search-results > a",
+    {"border-bottom-color": "rgb(224, 224, 224)"}
 )
 
 // Checking the color for "keyword" text.
