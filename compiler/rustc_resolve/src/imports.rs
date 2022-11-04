@@ -473,7 +473,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 {
                     // In the case of a new import line, throw a diagnostic message
                     // for the previous line.
-                    self.throw_unresolved_import_error(errors, None);
+                    self.throw_unresolved_import_error(errors);
                     errors = vec![];
                 }
                 if seen_spans.insert(err.span) {
@@ -505,29 +505,21 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
 
         if !errors.is_empty() {
-            self.throw_unresolved_import_error(errors, None);
+            self.throw_unresolved_import_error(errors);
         }
     }
 
-    fn throw_unresolved_import_error(
-        &self,
-        errors: Vec<(String, UnresolvedImportError)>,
-        span: Option<MultiSpan>,
-    ) {
+    fn throw_unresolved_import_error(&self, errors: Vec<(String, UnresolvedImportError)>) {
+        if errors.is_empty() {
+            return;
+        }
+
         /// Upper limit on the number of `span_label` messages.
         const MAX_LABEL_COUNT: usize = 10;
 
-        let (span, msg) = if errors.is_empty() {
-            (span.unwrap(), "unresolved import".to_string())
-        } else {
-            let span = MultiSpan::from_spans(errors.iter().map(|(_, err)| err.span).collect());
-
-            let paths = errors.iter().map(|(path, _)| format!("`{}`", path)).collect::<Vec<_>>();
-
-            let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
-
-            (span, msg)
-        };
+        let span = MultiSpan::from_spans(errors.iter().map(|(_, err)| err.span).collect());
+        let paths = errors.iter().map(|(path, _)| format!("`{}`", path)).collect::<Vec<_>>();
+        let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
 
         let mut diag = struct_span_err!(self.r.session, span, E0432, "{}", &msg);
 
