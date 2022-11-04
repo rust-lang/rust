@@ -505,6 +505,44 @@ fn xmm_reg_index(reg: InlineAsmReg) -> Option<u32> {
     }
 }
 
+/// If the register is an AArch64 integer register then return its index.
+fn a64_reg_index(reg: InlineAsmReg) -> Option<u32> {
+    match reg {
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x0) => Some(0),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x1) => Some(1),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x2) => Some(2),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x3) => Some(3),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x4) => Some(4),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x5) => Some(5),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x6) => Some(6),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x7) => Some(7),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x8) => Some(8),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x9) => Some(9),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x10) => Some(10),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x11) => Some(11),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x12) => Some(12),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x13) => Some(13),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x14) => Some(14),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x15) => Some(15),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x16) => Some(16),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x17) => Some(17),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x18) => Some(18),
+        // x19 is reserved
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x20) => Some(20),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x21) => Some(21),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x22) => Some(22),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x23) => Some(23),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x24) => Some(24),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x25) => Some(25),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x26) => Some(26),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x27) => Some(27),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x28) => Some(28),
+        // x29 is reserved
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) => Some(30),
+        _ => None,
+    }
+}
+
 /// If the register is an AArch64 vector register then return its index.
 fn a64_vreg_index(reg: InlineAsmReg) -> Option<u32> {
     match reg {
@@ -535,6 +573,22 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     'x'
                 };
                 format!("{{{}mm{}}}", class, idx)
+            } else if let Some(idx) = a64_reg_index(reg) {
+                let class = if let Some(layout) = layout {
+                    match layout.size.bytes() {
+                        8 => 'x',
+                        _ => 'w',
+                    }
+                } else {
+                    // We use i32 as the type for discarded outputs
+                    'w'
+                };
+                if class == 'x' && reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
+                    // LLVM doesn't recognize x30. use lr instead.
+                    "{lr}".to_string()
+                } else {
+                    format!("{{{}{}}}", class, idx)
+                }
             } else if let Some(idx) = a64_vreg_index(reg) {
                 let class = if let Some(layout) = layout {
                     match layout.size.bytes() {
@@ -550,9 +604,6 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     'q'
                 };
                 format!("{{{}{}}}", class, idx)
-            } else if reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
-                // LLVM doesn't recognize x30
-                "{lr}".to_string()
             } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14) {
                 // LLVM doesn't recognize r14
                 "{lr}".to_string()
