@@ -99,6 +99,7 @@ function onEach(arr, func, reversed) {
  * @param {function(?)}                   func       - The callback
  * @param {boolean}                       [reversed] - Whether to iterate in reverse
  */
+// eslint-disable-next-line no-unused-vars
 function onEachLazy(lazyArray, func, reversed) {
     return onEach(
         Array.prototype.slice.call(lazyArray),
