@@ -18,7 +18,6 @@ pub mod locks;
 pub mod net;
 #[path = "../unsupported/once.rs"]
 pub mod once;
-#[path = "../unsupported/os.rs"]
 pub mod os;
 #[path = "../unix/os_str.rs"]
 pub mod os_str;
