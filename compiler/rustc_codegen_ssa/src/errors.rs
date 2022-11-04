@@ -488,25 +488,25 @@ pub struct OptionGccOnly;
 #[derive(Diagnostic)]
 pub enum ExtractBundledLibsError<'a> {
     #[diag(codegen_ssa_extract_bundled_libs_open_file)]
-    OpenFile { rlib: &'a Path, error: String },
+    OpenFile { rlib: &'a Path, error: Box<dyn std::error::Error> },
 
     #[diag(codegen_ssa_extract_bundled_libs_mmap_file)]
-    MmapFile { rlib: &'a Path, error: String },
+    MmapFile { rlib: &'a Path, error: Box<dyn std::error::Error> },
 
     #[diag(codegen_ssa_extract_bundled_libs_parse_archive)]
-    ParseArchive { rlib: &'a Path, error: String },
+    ParseArchive { rlib: &'a Path, error: Box<dyn std::error::Error> },
 
     #[diag(codegen_ssa_extract_bundled_libs_read_entry)]
-    ReadEntry { rlib: &'a Path, error: String },
+    ReadEntry { rlib: &'a Path, error: Box<dyn std::error::Error> },
 
     #[diag(codegen_ssa_extract_bundled_libs_archive_member)]
-    ArchiveMember { rlib: &'a Path, error: String },
+    ArchiveMember { rlib: &'a Path, error: Box<dyn std::error::Error> },
 
     #[diag(codegen_ssa_extract_bundled_libs_convert_name)]
-    ConvertName { rlib: &'a Path, error: String },
+    ConvertName { rlib: &'a Path, error: Box<dyn std::error::Error> },
 
     #[diag(codegen_ssa_extract_bundled_libs_write_file)]
-    WriteFile { rlib: &'a Path, error: String },
+    WriteFile { rlib: &'a Path, error: Box<dyn std::error::Error> },
 }
 
 #[derive(Diagnostic)]
