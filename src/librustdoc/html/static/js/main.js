@@ -191,6 +191,15 @@ function loadCss(cssFileName) {
     document.getElementsByTagName("head")[0].appendChild(link);
 }
 
+function preLoadCss(cssFileName) {
+    // https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types/preload
+    const link = document.createElement("link");
+    link.href = resourcePath(cssFileName, ".css");
+    link.rel = "preload";
+    link.as = "style";
+    document.getElementsByTagName("head")[0].appendChild(link);
+}
+
 (function() {
     const isHelpPage = window.location.pathname.endsWith("/help.html");
 
@@ -210,6 +219,16 @@ function loadCss(cssFileName) {
         // hopefully be loaded when the JS will generate the settings content.
         loadCss("settings");
         loadScript(resourcePath("settings", ".js"));
+        // Pre-load all theme CSS files, so that switching feels seamless.
+        //
+        // When loading settings.html as a standalone page, the equivalent HTML is
+        // generated in context.rs.
+        setTimeout(() => {
+            const themes = getVar("themes").split(",");
+            for (const theme of themes) {
+                preLoadCss(theme);
+            }
+        }, 0);
     };
 
     window.searchState = {

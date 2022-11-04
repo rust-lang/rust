@@ -651,7 +651,22 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                      <script defer src=\"{root_path}settings{suffix}.js\"></script>",
                     root_path = page.static_root_path.unwrap_or(""),
                     suffix = page.resource_suffix,
-                )
+                );
+                // Pre-load all theme CSS files, so that switching feels seamless.
+                //
+                // When loading settings.html as a popover, the equivalent HTML is
+                // generated in main.js.
+                for file in &shared.style_files {
+                    if let Ok(theme) = file.basename() {
+                        write!(
+                            buf,
+                            "<link rel=\"preload\" href=\"{root_path}{theme}{suffix}.css\" \
+                                as=\"style\">",
+                            root_path = page.static_root_path.unwrap_or(""),
+                            suffix = page.resource_suffix,
+                        );
+                    }
+                }
             },
             &shared.style_files,
         );
