@@ -1336,6 +1336,10 @@ fn create_mono_items_for_default_impls<'tcx>(
 ) {
     match item.kind {
         hir::ItemKind::Impl(ref impl_) => {
+            if matches!(impl_.polarity, hir::ImplPolarity::Negative(_)) {
+                return;
+            }
+
             for param in impl_.generics.params {
                 match param.kind {
                     hir::GenericParamKind::Lifetime { .. } => {}
