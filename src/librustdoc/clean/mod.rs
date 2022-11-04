@@ -1799,13 +1799,6 @@ pub(crate) fn clean_field_with_def_id(
     Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx)
 }
 
-pub(crate) fn clean_visibility(vis: ty::Visibility<DefId>) -> Visibility {
-    match vis {
-        ty::Visibility::Public => Visibility::Public,
-        ty::Visibility::Restricted(module) => Visibility::Restricted(module),
-    }
-}
-
 pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocContext<'tcx>) -> Item {
     let kind = match variant.ctor_kind {
         CtorKind::Const => Variant::CLike(match variant.discr {
@@ -1962,7 +1955,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
             ItemKind::Macro(ref macro_def, _) => {
-                let ty_vis = clean_visibility(cx.tcx.visibility(def_id));
+                let ty_vis = cx.tcx.visibility(def_id);
                 MacroItem(Macro {
                     source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
                 })

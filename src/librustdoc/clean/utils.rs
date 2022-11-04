@@ -4,9 +4,10 @@ use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
     clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline, Crate,
     ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path,
-    PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
+    PathSegment, Primitive, PrimitiveType, Type, TypeBinding,
 };
 use crate::core::DocContext;
+use crate::html::format::visibility_to_src_with_space;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
@@ -583,7 +584,7 @@ pub(super) fn display_macro_source(
     name: Symbol,
     def: &ast::MacroDef,
     def_id: DefId,
-    vis: Visibility,
+    vis: ty::Visibility<DefId>,
 ) -> String {
     let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
     // Extract the spans of all matchers. They represent the "interface" of the macro.
@@ -595,14 +596,14 @@ pub(super) fn display_macro_source(
         if matchers.len() <= 1 {
             format!(
                 "{}macro {}{} {{\n    ...\n}}",
-                vis.to_src_with_space(cx.tcx, def_id),
+                visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
                 name,
                 matchers.map(|matcher| render_macro_matcher(cx.tcx, matcher)).collect::<String>(),
             )
         } else {
             format!(
                 "{}macro {} {{\n{}}}",
-                vis.to_src_with_space(cx.tcx, def_id),
+                visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
                 name,
                 render_macro_arms(cx.tcx, matchers, ","),
             )

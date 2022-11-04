@@ -1,6 +1,6 @@
 //! A collection of utility functions for the `strip_*` passes.
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_span::symbol::sym;
 use std::mem;
 
@@ -81,13 +81,13 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             }
 
             clean::StructFieldItem(..) => {
-                if !i.visibility(self.tcx).is_public() {
+                if i.visibility(self.tcx) != Some(Visibility::Public) {
                     return Some(strip_item(i));
                 }
             }
 
             clean::ModuleItem(..) => {
-                if i.item_id.is_local() && !i.visibility(self.tcx).is_public() {
+                if i.item_id.is_local() && i.visibility(self.tcx) != Some(Visibility::Public) {
                     debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = strip_item(self.fold_item_recur(i));
@@ -246,7 +246,7 @@ impl<'tcx> DocFolder for ImportStripper<'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
             clean::ExternCrateItem { .. } | clean::ImportItem(..)
-                if !i.visibility(self.tcx).is_public() =>
+                if i.visibility(self.tcx) != Some(Visibility::Public) =>
             {
                 None
             }
