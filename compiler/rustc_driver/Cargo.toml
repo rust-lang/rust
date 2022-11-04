@@ -4,7 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [lib]
-crate-type = ["dylib"]
+crate-type = ["lib"]
 
 [dependencies]
 tracing = { version = "0.1.35" }
