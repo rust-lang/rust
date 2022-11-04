@@ -14,6 +14,7 @@ use std::fmt;
 use std::fmt::Write;
 use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
+use std::process::ExitStatus;
 
 pub struct DiagnosticArgFromDisplay<'a>(pub &'a dyn fmt::Display);
 
@@ -59,6 +60,7 @@ into_diagnostic_arg_using_display!(
     i128,
     u128,
     std::io::Error,
+    std::boxed::Box<dyn std::error::Error>,
     std::num::NonZeroU32,
     hir::Target,
     Edition,
@@ -67,7 +69,8 @@ into_diagnostic_arg_using_display!(
     ParseIntError,
     StackProtector,
     &TargetTriple,
-    SplitDebuginfo
+    SplitDebuginfo,
+    ExitStatus,
 );
 
 impl IntoDiagnosticArg for bool {
