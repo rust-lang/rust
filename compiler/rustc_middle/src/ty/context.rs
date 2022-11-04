@@ -117,7 +117,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type BoundTy = ty::BoundTy;
     type PlaceholderType = ty::PlaceholderType;
     type InferTy = InferTy;
-    type DelaySpanBugEmitted = DelaySpanBugEmitted;
+    type ErrorGuaranteed = ErrorGuaranteed;
     type PredicateKind = ty::PredicateKind<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
 
@@ -126,15 +126,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type FreeRegion = ty::FreeRegion;
     type RegionVid = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
-}
-
-/// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
-/// except through the error-reporting functions on a [`tcx`][TyCtxt].
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
-pub struct DelaySpanBugEmitted {
-    pub reported: ErrorGuaranteed,
-    _priv: (),
 }
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
@@ -1303,7 +1294,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[track_caller]
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_ty(Error(DelaySpanBugEmitted { reported, _priv: () }))
+        self.mk_ty(Error(reported))
     }
 
     /// Like [TyCtxt::ty_error] but for constants.
@@ -1325,10 +1316,7 @@ impl<'tcx> TyCtxt<'tcx> {
         msg: &str,
     ) -> Const<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_const(ty::ConstS {
-            kind: ty::ConstKind::Error(DelaySpanBugEmitted { reported, _priv: () }),
-            ty,
-        })
+        self.mk_const(ty::ConstS { kind: ty::ConstKind::Error(reported), ty })
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {

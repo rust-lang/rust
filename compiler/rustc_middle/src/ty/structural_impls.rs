@@ -240,7 +240,6 @@ TrivialTypeTraversalAndLiftImpls! {
     Field,
     interpret::Scalar,
     rustc_target::abi::Size,
-    ty::DelaySpanBugEmitted,
     rustc_type_ir::DebruijnIndex,
     ty::BoundVar,
     ty::Placeholder<ty::BoundVar>,
