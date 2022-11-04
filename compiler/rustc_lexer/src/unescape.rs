@@ -93,19 +93,6 @@ where
     }
 }
 
-/// Takes a contents of a byte, byte string or raw byte string (without quotes)
-/// and produces a sequence of bytes or errors.
-/// Values are returned through invoking of the provided callback.
-pub fn unescape_byte_literal<F>(src: &str, mode: Mode, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<u8, EscapeError>),
-{
-    debug_assert!(mode.is_byte());
-    unescape_literal(src, mode, &mut |range, result| {
-        callback(range, result.map(byte_from_char));
-    })
-}
-
 /// Takes a contents of a char literal (without quotes), and returns an
 /// unescaped char or an error
 pub fn unescape_char(src: &str) -> Result<char, (usize, EscapeError)> {
@@ -351,7 +338,8 @@ where
     }
 }
 
-fn byte_from_char(c: char) -> u8 {
+#[inline]
+pub fn byte_from_char(c: char) -> u8 {
     let res = c as u32;
     debug_assert!(res <= u8::MAX as u32, "guaranteed because of Mode::ByteStr");
     res as u8
