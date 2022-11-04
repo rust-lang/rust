@@ -183,6 +183,7 @@ mod sip;
 /// [impl]: ../../std/primitive.str.html#impl-Hash-for-str
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Hash"]
+#[const_trait]
 pub trait Hash {
     /// Feeds this value into the given [`Hasher`].
     ///
@@ -234,12 +235,19 @@ pub trait Hash {
     /// [`hash`]: Hash::hash
     /// [`hash_slice`]: Hash::hash_slice
     #[stable(feature = "hash_slice", since = "1.3.0")]
-    fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
+    fn hash_slice<H: ~const Hasher>(data: &[Self], state: &mut H)
     where
         Self: Sized,
     {
-        for piece in data {
-            piece.hash(state);
+        //FIXME(const_iter_slice): Revert to for loop
+        //for piece in data {
+        //    piece.hash(state);
+        //}
+
+        let mut i = 0;
+        while i < data.len() {
+            data[i].hash(state);
+            i += 1;
         }
     }
 }
@@ -313,6 +321,7 @@ pub use macros::Hash;
 /// [`write_u8`]: Hasher::write_u8
 /// [`write_u32`]: Hasher::write_u32
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait Hasher {
     /// Returns the hash value for the values written so far.
     ///
@@ -558,7 +567,8 @@ pub trait Hasher {
 }
 
 #[stable(feature = "indirect_hasher_impl", since = "1.22.0")]
-impl<H: Hasher + ?Sized> Hasher for &mut H {
+#[rustc_const_unstable(feature = "const_hash", issue = "none")]
+impl<H: ~const Hasher + ?Sized> const Hasher for &mut H {
     fn finish(&self) -> u64 {
         (**self).finish()
     }
@@ -806,14 +816,15 @@ mod impls {
     macro_rules! impl_write {
         ($(($ty:ident, $meth:ident),)*) => {$(
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl Hash for $ty {
+            #[rustc_const_unstable(feature = "const_hash", issue = "none")]
+            impl const Hash for $ty {
                 #[inline]
-                fn hash<H: Hasher>(&self, state: &mut H) {
+                fn hash<H: ~const Hasher>(&self, state: &mut H) {
                     state.$meth(*self)
                 }
 
                 #[inline]
-                fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
+                fn hash_slice<H: ~const Hasher>(data: &[$ty], state: &mut H) {
                     let newlen = data.len() * mem::size_of::<$ty>();
                     let ptr = data.as_ptr() as *const u8;
                     // SAFETY: `ptr` is valid and aligned, as this macro is only used
@@ -842,33 +853,37 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl Hash for bool {
+    #[rustc_const_unstable(feature = "const_hash", issue = "none")]
+    impl const Hash for bool {
         #[inline]
-        fn hash<H: Hasher>(&self, state: &mut H) {
+        fn hash<H: ~const Hasher>(&self, state: &mut H) {
             state.write_u8(*self as u8)
         }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl Hash for char {
+    #[rustc_const_unstable(feature = "const_hash", issue = "none")]
+    impl const Hash for char {
         #[inline]
-        fn hash<H: Hasher>(&self, state: &mut H) {
+        fn hash<H: ~const Hasher>(&self, state: &mut H) {
             state.write_u32(*self as u32)
         }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl Hash for str {
+    #[rustc_const_unstable(feature = "const_hash", issue = "none")]
+    impl const Hash for str {
         #[inline]
-        fn hash<H: Hasher>(&self, state: &mut H) {
+        fn hash<H: ~const Hasher>(&self, state: &mut H) {
             state.write_str(self);
         }
     }
 
     #[stable(feature = "never_hash", since = "1.29.0")]
-    impl Hash for ! {
+    #[rustc_const_unstable(feature = "const_hash", issue = "none")]
+    impl const Hash for ! {
         #[inline]
-        fn hash<H: Hasher>(&self, _: &mut H) {
+        fn hash<H: ~const Hasher>(&self, _: &mut H) {
             *self
         }
     }
@@ -876,9 +891,10 @@ mod impls {
     macro_rules! impl_hash_tuple {
         () => (
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl Hash for () {
+            #[rustc_const_unstable(feature = "const_hash", issue = "none")]
+            impl const Hash for () {
                 #[inline]
-                fn hash<H: Hasher>(&self, _state: &mut H) {}
+                fn hash<H: ~const Hasher>(&self, _state: &mut H) {}
             }
         );
 
@@ -886,10 +902,11 @@ mod impls {
             maybe_tuple_doc! {
                 $($name)+ @
                 #[stable(feature = "rust1", since = "1.0.0")]
-                impl<$($name: Hash),+> Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
+                #[rustc_const_unstable(feature = "const_hash", issue = "none")]
+                impl<$($name: ~const Hash),+> const Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
                     #[allow(non_snake_case)]
                     #[inline]
-                    fn hash<S: Hasher>(&self, state: &mut S) {
+                    fn hash<S: ~const Hasher>(&self, state: &mut S) {
                         let ($(ref $name,)+) = *self;
                         $($name.hash(state);)+
                     }
@@ -932,24 +949,27 @@ mod impls {
     impl_hash_tuple! { T B C D E F G H I J K L }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: Hash> Hash for [T] {
+    #[rustc_const_unstable(feature = "const_hash", issue = "none")]
+    impl<T: ~const Hash> const Hash for [T] {
         #[inline]
-        fn hash<H: Hasher>(&self, state: &mut H) {
+        fn hash<H: ~const Hasher>(&self, state: &mut H) {
             state.write_length_prefix(self.len());
             Hash::hash_slice(self, state)
         }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized + Hash> Hash for &T {
+    #[rustc_const_unstable(feature = "const_hash", issue = "none")]
+    impl<T: ?Sized + ~const Hash> const Hash for &T {
         #[inline]
-        fn hash<H: Hasher>(&self, state: &mut H) {
+        fn hash<H: ~const Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized + Hash> Hash for &mut T {
+    #[rustc_const_unstable(feature = "const_hash", issue = "none")]
+    impl<T: ?Sized + ~const Hash> const Hash for &mut T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
