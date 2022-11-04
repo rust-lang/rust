@@ -78,7 +78,7 @@ assert-css: (
 // Checking the color of the bottom border.
 assert-css: (
     ".search-results > a",
-    {"border-bottom-color": "rgb(92, 103, 115)"}
+    {"border-bottom-color": "rgba(170, 170, 170, 0.2)"}
 )
 
 // Checking the color of "keyword" text.
@@ -190,7 +190,7 @@ assert-css: (
 // Checking the color of the bottom border.
 assert-css: (
     ".search-results > a",
-    {"border-bottom-color": "rgb(224, 224, 224)"}
+    {"border-bottom-color": "rgba(170, 170, 170, 0.2)"}
 )
 
 // Checking the color for "keyword" text.
@@ -287,7 +287,7 @@ assert-css: (
 // Checking the color of the bottom border.
 assert-css: (
     ".search-results > a",
-    {"border-bottom-color": "rgb(224, 224, 224)"}
+    {"border-bottom-color": "rgba(170, 170, 170, 0.2)"}
 )
 
 // Checking the color for "keyword" text.
