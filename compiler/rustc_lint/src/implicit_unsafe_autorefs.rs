@@ -1,9 +1,9 @@
 use crate::{LateContext, LateLintPass, LintContext};
 
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Expr, ExprKind, UnOp};
+use rustc_hir::{Expr, ExprKind, Mutability, UnOp};
 use rustc_middle::ty::{
-    adjustment::{Adjust, AutoBorrow},
+    adjustment::{Adjust, Adjustment, AutoBorrow, OverloadedDeref},
     TyCtxt, TypeckResults,
 };
 
@@ -63,13 +63,13 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitUnsafeAutorefs {
         if let Some(adjustments) = adjustments_table.get(expr.hir_id)
         && let [adjustment] = &**adjustments
         // An auto-borrow
-        && let Adjust::Borrow(AutoBorrow::Ref(_, mutbl)) = adjustment.kind
+        && let Some(mutbl) = has_implicit_borrow(adjustment)
         // ... of a place derived from a deref
         && let ExprKind::Unary(UnOp::Deref, dereferenced) = peel_place_mappers(cx.tcx, typeck, &expr).kind
         // ... of a raw pointer
         && typeck.expr_ty(dereferenced).is_unsafe_ptr()
         {
-            let mutbl = hir::Mutability::prefix_str(&mutbl.into());
+            let mutbl = Mutability::prefix_str(&mutbl.into());
 
             let msg = "implicit auto-ref creates a reference to a dereference of a raw pointer";
             cx.struct_span_lint(IMPLICIT_UNSAFE_AUTOREFS, expr.span, msg, |lint| {
@@ -107,5 +107,14 @@ fn peel_place_mappers<'tcx>(
             ExprKind::Field(e, _) => expr = &e,
             _ => break expr,
         }
+    }
+}
+
+/// Returns `Some(mutability)` if the argument adjustment has implicit borrow in it.
+fn has_implicit_borrow(Adjustment { kind, .. }: &Adjustment<'_>) -> Option<Mutability> {
+    match kind {
+        &Adjust::Deref(Some(OverloadedDeref { mutbl, .. })) => Some(mutbl),
+        &Adjust::Borrow(AutoBorrow::Ref(_, mutbl)) => Some(mutbl.into()),
+        _ => None,
     }
 }

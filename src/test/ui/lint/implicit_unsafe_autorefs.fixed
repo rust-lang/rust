@@ -1,6 +1,7 @@
 // check-pass
 // run-rustfix
 #![allow(dead_code)]
+use std::mem::ManuallyDrop;
 use std::ptr::{addr_of, addr_of_mut};
 
 unsafe fn test_mut(ptr: *mut [u8]) -> *mut [u8] {
@@ -32,6 +33,16 @@ unsafe fn test_builtin_index(a: *mut [String]) {
 
     // overloaded (should warn before index)
     _ = (&(*a))[..1][0].len();
+    //~^ warn: implicit auto-ref creates a reference to a dereference of a raw pointer
+}
+
+unsafe fn test_overloaded_deref_const(ptr: *const ManuallyDrop<Test>) {
+    _ = addr_of!((&(*ptr)).field);
+    //~^ warn: implicit auto-ref creates a reference to a dereference of a raw pointer
+}
+
+unsafe fn test_overloaded_deref_mut(ptr: *mut ManuallyDrop<Test>) {
+    _ = addr_of_mut!((&mut (*ptr)).field);
     //~^ warn: implicit auto-ref creates a reference to a dereference of a raw pointer
 }
 
