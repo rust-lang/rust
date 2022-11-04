@@ -1617,10 +1617,8 @@ function initSearch(rawSearchIndex) {
 
                 const description = document.createElement("div");
                 description.className = "desc";
-                const spanDesc = document.createElement("span");
-                spanDesc.insertAdjacentHTML("beforeend", item.desc);
+                description.insertAdjacentHTML("beforeend", item.desc);
 
-                description.appendChild(spanDesc);
                 link.appendChild(description);
                 output.appendChild(link);
             });
