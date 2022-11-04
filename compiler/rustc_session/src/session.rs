@@ -677,6 +677,7 @@ impl Session {
             || self.opts.unstable_opts.unpretty.is_some()
             || self.opts.output_types.contains_key(&OutputType::Mir)
             || std::env::var_os("RUSTC_LOG").is_some()
+            || std::env::var_os("RUSTC_ICE_LOG").is_some()
         {
             return;
         }

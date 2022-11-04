@@ -4,3 +4,4 @@ query stack during panic:
 #0 [layout_of] computing layout of `Foo`
 #1 [eval_to_allocation_raw] const-evaluating + checking `FOO`
 end of query stack
+note: run with `RUSTC_ICE_LOG=trace` environment variable to display a SpanTrace

@@ -45,6 +45,7 @@
 use std::env::{self, VarError};
 use std::fmt::{self, Display};
 use std::io::{self, IsTerminal};
+use std::str::FromStr;
 use tracing_core::{Event, Subscriber};
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
 use tracing_subscriber::fmt::{
@@ -52,12 +53,23 @@ use tracing_subscriber::fmt::{
     FmtContext,
 };
 use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::Layer;
 
-pub fn init_env_logger(env: &str) -> Result<(), Error> {
-    let filter = match env::var(env) {
+/// In contrast to `init_rustc_env_logger` this allows you to choose an env var
+/// other than `RUSTC_LOG`.
+pub fn init_env_logger(env: &str, ice_env: &str) -> Result<(), Error> {
+    let log_filter = match env::var(env) {
         Ok(env) => EnvFilter::new(env),
         _ => EnvFilter::default().add_directive(Directive::from(LevelFilter::WARN)),
     };
+
+    let error_filter = match env::var(ice_env) {
+        Ok(env) => tracing::Level::from_str(&env).unwrap(),
+        _ => tracing::Level::WARN,
+    };
+    let error_filter = tracing_subscriber::filter::filter_fn(move |metadata| {
+        metadata.is_span() && metadata.level() <= &error_filter
+    });
 
     let color_logs = match env::var(String::from(env) + "_COLOR") {
         Ok(value) => match value.as_ref() {
@@ -75,7 +87,7 @@ pub fn init_env_logger(env: &str) -> Result<(), Error> {
         Some(v) => &v != "0",
     };
 
-    let layer = tracing_tree::HierarchicalLayer::default()
+    let log_layer = tracing_tree::HierarchicalLayer::default()
         .with_writer(io::stderr)
         .with_indent_lines(true)
         .with_ansi(color_logs)
@@ -84,9 +96,12 @@ pub fn init_env_logger(env: &str) -> Result<(), Error> {
         .with_verbose_entry(verbose_entry_exit)
         .with_indent_amount(2);
     #[cfg(parallel_compiler)]
-    let layer = layer.with_thread_ids(true).with_thread_names(true);
+    let log_layer = log_layer.with_thread_ids(true).with_thread_names(true);
+    let error_layer = tracing_error::ErrorLayer::default();
+    let subscriber = tracing_subscriber::Registry::default()
+        .with(error_layer.with_filter(error_filter))
+        .with(log_layer.with_filter(log_filter));
 
-    let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
     match env::var(format!("{env}_BACKTRACE")) {
         Ok(str) => {
             let fmt_layer = tracing_subscriber::fmt::layer()

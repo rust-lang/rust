@@ -1,6 +1,7 @@
 // edition:2021
 // known-bug: unknown
 // unset-rustc-env:RUST_BACKTRACE
+// rustc-env:RUSTC_ICE_LOG=trace
 // compile-flags:-Z trait-solver=chalk
 // error-pattern:internal compiler error
 // failure-status:101

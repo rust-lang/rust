@@ -11,3 +11,4 @@ query stack during panic:
 #3 [lint_mod] linting top-level module
 #4 [analysis] running analysis passes on this crate
 end of query stack
+note: run with `RUSTC_ICE_LOG=trace` environment variable to display a SpanTrace

@@ -4,3 +4,4 @@ query stack during panic:
 #0 [typeck] type-checking `weird`
 #1 [typeck_item_bodies] type-checking all item bodies
 end of query stack
+note: run with `RUSTC_ICE_LOG=trace` environment variable to display a SpanTrace

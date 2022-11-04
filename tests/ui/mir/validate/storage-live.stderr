@@ -11,3 +11,4 @@ query stack during panic:
 #0 [mir_const] preparing `multiple_storage` for borrow checking
 #1 [mir_promoted] processing MIR for `multiple_storage`
 end of query stack
+note: run with `RUSTC_ICE_LOG=trace` environment variable to display a SpanTrace

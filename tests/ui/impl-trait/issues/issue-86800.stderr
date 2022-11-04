@@ -22,3 +22,4 @@ query stack during panic:
 #1 [check_mod_item_types] checking item types in top-level module
 #2 [analysis] running analysis passes on this crate
 end of query stack
+

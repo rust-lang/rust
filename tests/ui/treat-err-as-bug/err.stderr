@@ -10,3 +10,4 @@ query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `C`
 #1 [eval_to_allocation_raw] const-evaluating + checking `C`
 end of query stack
+note: run with `RUSTC_ICE_LOG=trace` environment variable to display a SpanTrace

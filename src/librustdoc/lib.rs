@@ -167,7 +167,7 @@ pub fn main() {
     // `debug_logging = true` is because all rustc logging goes to its version of tracing (the one
     // in the sysroot), and all of rustdoc's logging goes to its version (the one in Cargo.toml).
     init_logging();
-    rustc_driver::init_env_logger("RUSTDOC_LOG");
+    rustc_driver::init_env_logger("RUSTDOC_LOG", "RUSTDOC_ICE_LOG");
 
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
         Some(args) => main_args(&args),

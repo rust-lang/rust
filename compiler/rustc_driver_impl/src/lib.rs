@@ -1245,6 +1245,15 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 
     interface::try_print_query_stack(&handler, num_frames);
 
+    let spantrace = tracing_error::SpanTrace::capture().to_string();
+    if !spantrace.is_empty() {
+        eprintln!("SpanTrace:\n{}", spantrace);
+    } else {
+        eprintln!(
+            "note: run with `RUSTC_ICE_LOG=trace` environment variable to display a SpanTrace"
+        );
+    }
+
     #[cfg(windows)]
     unsafe {
         if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
@@ -1273,14 +1282,14 @@ pub fn install_ice_hook() {
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version.
 pub fn init_rustc_env_logger() {
-    init_env_logger("RUSTC_LOG");
+    init_env_logger("RUSTC_LOG", "RUSTC_ICE_LOG");
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to choose an env var
 /// other than `RUSTC_LOG`.
-pub fn init_env_logger(env: &str) {
-    if let Err(error) = rustc_log::init_env_logger(env) {
+pub fn init_env_logger(env: &str, ice_env: &str) {
+    if let Err(error) = rustc_log::init_env_logger(env, ice_env) {
         early_error(ErrorOutputType::default(), &error.to_string());
     }
 }
