@@ -70,3 +70,27 @@ borrowck_var_borrow_by_use_place_in_closure =
 
 borrowck_var_borrow_by_use_place =
     borrow occurs due to use of {$place}
+
+borrowck_borrow_due_to_use_generator =
+    borrow occurs due to use in generator
+
+borrowck_use_due_to_use_generator =
+    use occurs due to use in generator
+
+borrowck_assign_due_to_use_generator =
+    assign occurs due to use in generator
+
+borrowck_assign_part_due_to_use_generator =
+    assign to part occurs due to use in generator
+
+borrowck_borrow_due_to_use_closure =
+    borrow occurs due to use in closure
+
+borrowck_use_due_to_use_closure =
+    use occurs due to use in closure
+
+borrowck_assign_due_to_use_closure =
+    assign occurs due to use in closure
+
+borrowck_assign_part_due_to_use_closure =
+    assign to part occurs due to use in closure

@@ -595,11 +595,34 @@ impl UseSpans<'_> {
         }
     }
 
-    // Add a span label to the use of the captured variable, if it exists.
-    // only adds label to the `path_span`
-    pub(super) fn var_span_label_path_only(self, err: &mut Diagnostic, message: impl Into<String>) {
-        if let UseSpans::ClosureUse { path_span, .. } = self {
-            err.span_label(path_span, message);
+    /// Add a span label to the use of the captured variable, if it exists.
+    /// only adds label to the `path_span`
+    pub(super) fn var_path_only_subdiag(
+        self,
+        err: &mut Diagnostic,
+        action: crate::InitializationRequiringAction,
+    ) {
+        use crate::session_diagnostics::CaptureVarPathUseCause::*;
+        use crate::InitializationRequiringAction::*;
+        if let UseSpans::ClosureUse { generator_kind, path_span, .. } = self {
+            match generator_kind {
+                Some(_) => {
+                    err.subdiagnostic(match action {
+                        Borrow => BorrowInGenerator { path_span },
+                        MatchOn | Use => UseInGenerator { path_span },
+                        Assignment => AssignInGenerator { path_span },
+                        PartialAssignment => AssignPartInGenerator { path_span },
+                    });
+                }
+                None => {
+                    err.subdiagnostic(match action {
+                        Borrow => BorrowInClosure { path_span },
+                        MatchOn | Use => UseInClosure { path_span },
+                        Assignment => AssignInClosure { path_span },
+                        PartialAssignment => AssignPartInClosure { path_span },
+                    });
+                }
+            }
         }
     }
 
