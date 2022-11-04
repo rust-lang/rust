@@ -1,7 +1,10 @@
 use std::fmt;
 
 use either::Either;
-use hir::{known, Callable, HasVisibility, HirDisplay, Mutability, Semantics, TypeInfo};
+use hir::{
+    known, Adjust, AutoBorrow, Callable, HasVisibility, HirDisplay, Mutability, OverloadedDeref,
+    PointerCast, Safety, Semantics, TypeInfo,
+};
 use ide_db::{
     base_db::FileRange, famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty, FxHashMap,
     RootDatabase,
@@ -22,7 +25,7 @@ pub struct InlayHintsConfig {
     pub type_hints: bool,
     pub parameter_hints: bool,
     pub chaining_hints: bool,
-    pub reborrow_hints: ReborrowHints,
+    pub adjustment_hints: AdjustmentHints,
     pub closure_return_type_hints: ClosureReturnTypeHints,
     pub binding_mode_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
@@ -48,7 +51,7 @@ pub enum LifetimeElisionHints {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ReborrowHints {
+pub enum AdjustmentHints {
     Always,
     MutableOnly,
     Never,
@@ -61,7 +64,8 @@ pub enum InlayKind {
     ClosingBraceHint,
     ClosureReturnTypeHint,
     GenericParamListHint,
-    ImplicitReborrowHint,
+    AdjustmentHint,
+    AdjustmentHintClosingParenthesis,
     LifetimeHint,
     ParameterHint,
     TypeHint,
@@ -112,6 +116,12 @@ impl InlayHintLabel {
 impl From<String> for InlayHintLabel {
     fn from(s: String) -> Self {
         Self { parts: vec![InlayHintLabelPart { text: s, linked_location: None }] }
+    }
+}
+
+impl From<&str> for InlayHintLabel {
+    fn from(s: &str) -> Self {
+        Self { parts: vec![InlayHintLabelPart { text: s.into(), linked_location: None }] }
     }
 }
 
@@ -221,6 +231,7 @@ fn hints(
         match node {
             ast::Expr(expr) => {
                 chaining_hints(hints, sema, &famous_defs, config, file_id, &expr);
+                adjustment_hints(hints, sema, config, &expr);
                 match expr {
                     ast::Expr::CallExpr(it) => param_name_hints(hints, sema, config, ast::Expr::from(it)),
                     ast::Expr::MethodCallExpr(it) => {
@@ -229,7 +240,7 @@ fn hints(
                     ast::Expr::ClosureExpr(it) => closure_ret_hints(hints, sema, &famous_defs, config, file_id, it),
                     // We could show reborrows for all expressions, but usually that is just noise to the user
                     // and the main point here is to show why "moving" a mutable reference doesn't necessarily move it
-                    ast::Expr::PathExpr(_) => reborrow_hints(hints, sema, config, &expr),
+                    // ast::Expr::PathExpr(_) => reborrow_hints(hints, sema, config, &expr),
                     _ => None,
                 }
             },
@@ -617,30 +628,83 @@ fn closure_ret_hints(
     Some(())
 }
 
-fn reborrow_hints(
+fn adjustment_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     expr: &ast::Expr,
 ) -> Option<()> {
-    if config.reborrow_hints == ReborrowHints::Never {
-        return None;
+    if config.adjustment_hints == AdjustmentHints::Never {
+        // return None;
     }
 
+    let parent = expr.syntax().parent().and_then(ast::Expr::cast);
     let descended = sema.descend_node_into_attributes(expr.clone()).pop();
     let desc_expr = descended.as_ref().unwrap_or(expr);
-    let mutability = sema.is_implicit_reborrow(desc_expr)?;
-    let label = match mutability {
-        hir::Mutability::Shared if config.reborrow_hints != ReborrowHints::MutableOnly => "&*",
-        hir::Mutability::Mut => "&mut *",
-        _ => return None,
+    let adjustments = sema.expr_adjustments(desc_expr).filter(|it| !it.is_empty())?;
+    let needs_parens = match parent {
+        Some(parent) => {
+            match parent {
+                ast::Expr::AwaitExpr(_)
+                | ast::Expr::CallExpr(_)
+                | ast::Expr::CastExpr(_)
+                | ast::Expr::FieldExpr(_)
+                | ast::Expr::MethodCallExpr(_)
+                | ast::Expr::TryExpr(_) => true,
+                // FIXME: shorthands need special casing, though not sure if adjustments are even valid there
+                ast::Expr::RecordExpr(_) => false,
+                ast::Expr::IndexExpr(index) => index.base().as_ref() == Some(expr),
+                _ => false,
+            }
+        }
+        None => false,
     };
-    acc.push(InlayHint {
-        range: expr.syntax().text_range(),
-        kind: InlayKind::ImplicitReborrowHint,
-        label: label.to_string().into(),
-        tooltip: Some(InlayTooltip::String("Compiler inserted reborrow".into())),
-    });
+    if needs_parens {
+        acc.push(InlayHint {
+            range: expr.syntax().text_range(),
+            kind: InlayKind::AdjustmentHint,
+            label: "(".into(),
+            tooltip: None,
+        });
+    }
+    for adjustment in adjustments.into_iter().rev() {
+        // FIXME: Add some nicer tooltips to each of these
+        let text = match adjustment {
+            Adjust::NeverToAny => "<never-to-any>",
+            Adjust::Deref(None) => "*",
+            Adjust::Deref(Some(OverloadedDeref(Mutability::Mut))) => "*",
+            Adjust::Deref(Some(OverloadedDeref(Mutability::Shared))) => "*",
+            Adjust::Borrow(AutoBorrow::Ref(Mutability::Shared)) => "&",
+            Adjust::Borrow(AutoBorrow::Ref(Mutability::Mut)) => "&mut ",
+            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Shared)) => "&raw const ",
+            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Mut)) => "&raw mut ",
+            // some of these could be represented via `as` casts, but that's not too nice and
+            // handling everything as a prefix expr makes the `(` and `)` insertion easier
+            Adjust::Pointer(cast) => match cast {
+                PointerCast::ReifyFnPointer => "<fn-item-to-fn-pointer>",
+                PointerCast::UnsafeFnPointer => "<safe-fn-pointer-to-unsafe-fn-pointer>",
+                PointerCast::ClosureFnPointer(Safety::Unsafe) => "<closure-to-unsafe-fn-pointer>",
+                PointerCast::ClosureFnPointer(Safety::Safe) => "<closure-to-fn-pointer>",
+                PointerCast::MutToConstPointer => "<mut-ptr-to-const-ptr>",
+                PointerCast::ArrayToPointer => "<array-ptr-to-element-ptr>",
+                PointerCast::Unsize => "<unsize>",
+            },
+        };
+        acc.push(InlayHint {
+            range: expr.syntax().text_range(),
+            kind: InlayKind::AdjustmentHint,
+            label: text.into(),
+            tooltip: None,
+        });
+    }
+    if needs_parens {
+        acc.push(InlayHint {
+            range: expr.syntax().text_range(),
+            kind: InlayKind::AdjustmentHintClosingParenthesis,
+            label: ")".into(),
+            tooltip: None,
+        });
+    }
     Some(())
 }
 
@@ -785,23 +849,23 @@ fn binding_mode_hints(
             tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
         });
     });
-    match pat {
-        ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
-            let bm = sema.binding_mode_of_pat(pat)?;
-            let bm = match bm {
-                hir::BindingMode::Move => return None,
-                hir::BindingMode::Ref(Mutability::Mut) => "ref mut",
-                hir::BindingMode::Ref(Mutability::Shared) => "ref",
-            };
-            acc.push(InlayHint {
-                range,
-                kind: InlayKind::BindingModeHint,
-                label: bm.to_string().into(),
-                tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
-            });
-        }
-        _ => (),
-    }
+    // match pat {
+    //     ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
+    //         let bm = sema.binding_mode_of_pat(pat)?;
+    //         let bm = match bm {
+    //             hir::BindingMode::Move => return None,
+    //             hir::BindingMode::Ref(Mutability::Mut) => "ref mut",
+    //             hir::BindingMode::Ref(Mutability::Shared) => "ref",
+    //         };
+    //         acc.push(InlayHint {
+    //             range,
+    //             kind: InlayKind::BindingModeHint,
+    //             label: bm.to_string().into(),
+    //             tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
+    //         });
+    //     }
+    //     _ => (),
+    // }
 
     Some(())
 }
@@ -1218,7 +1282,7 @@ mod tests {
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
-    use crate::inlay_hints::ReborrowHints;
+    use crate::inlay_hints::AdjustmentHints;
     use crate::{fixture, inlay_hints::InlayHintsConfig, LifetimeElisionHints};
 
     use super::ClosureReturnTypeHints;
@@ -1230,7 +1294,7 @@ mod tests {
         chaining_hints: false,
         lifetime_elision_hints: LifetimeElisionHints::Never,
         closure_return_type_hints: ClosureReturnTypeHints::Never,
-        reborrow_hints: ReborrowHints::Always,
+        adjustment_hints: AdjustmentHints::Always,
         binding_mode_hints: false,
         hide_named_constructor_hints: false,
         hide_closure_initialization_hints: false,
@@ -1242,7 +1306,7 @@ mod tests {
         type_hints: true,
         parameter_hints: true,
         chaining_hints: true,
-        reborrow_hints: ReborrowHints::Always,
+        adjustment_hints: AdjustmentHints::Always,
         closure_return_type_hints: ClosureReturnTypeHints::WithBlock,
         binding_mode_hints: true,
         lifetime_elision_hints: LifetimeElisionHints::Always,
@@ -2849,7 +2913,7 @@ impl () {
     fn hints_implicit_reborrow() {
         check_with_config(
             InlayHintsConfig {
-                reborrow_hints: ReborrowHints::Always,
+                adjustment_hints: AdjustmentHints::Always,
                 parameter_hints: true,
                 ..DISABLED_CONFIG
             },

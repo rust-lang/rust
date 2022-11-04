@@ -117,7 +117,7 @@ pub use {
         name::{known, Name},
         ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
-    hir_ty::display::HirDisplay,
+    hir_ty::{display::HirDisplay, PointerCast, Safety},
 };
 
 // These are negative re-exports: pub using these names is forbidden, they
@@ -3650,6 +3650,28 @@ impl From<ItemInNs> for ScopeDef {
         }
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Adjust {
+    /// Go from ! to any type.
+    NeverToAny,
+    /// Dereference once, producing a place.
+    Deref(Option<OverloadedDeref>),
+    /// Take the address and produce either a `&` or `*` pointer.
+    Borrow(AutoBorrow),
+    Pointer(PointerCast),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AutoBorrow {
+    /// Converts from T to &T.
+    Ref(Mutability),
+    /// Converts from T to *T.
+    RawPtr(Mutability),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct OverloadedDeref(pub Mutability);
 
 pub trait HasVisibility {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility;

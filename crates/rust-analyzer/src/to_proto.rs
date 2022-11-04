@@ -440,32 +440,35 @@ pub(crate) fn inlay_hint(
     Ok(lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // before annotated thing
-            InlayKind::ParameterHint
-            | InlayKind::ImplicitReborrowHint
-            | InlayKind::BindingModeHint => position(line_index, inlay_hint.range.start()),
+            InlayKind::ParameterHint | InlayKind::AdjustmentHint | InlayKind::BindingModeHint => {
+                position(line_index, inlay_hint.range.start())
+            }
             // after annotated thing
             InlayKind::ClosureReturnTypeHint
             | InlayKind::TypeHint
             | InlayKind::ChainingHint
             | InlayKind::GenericParamListHint
+            | InlayKind::AdjustmentHintClosingParenthesis
             | InlayKind::LifetimeHint
             | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
         },
         padding_left: Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
             InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
-            InlayKind::BindingModeHint
+            InlayKind::AdjustmentHintClosingParenthesis
+            | InlayKind::BindingModeHint
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
-            | InlayKind::ImplicitReborrowHint
+            | InlayKind::AdjustmentHint
             | InlayKind::LifetimeHint
             | InlayKind::ParameterHint => false,
         }),
         padding_right: Some(match inlay_hint.kind {
-            InlayKind::ChainingHint
+            InlayKind::AdjustmentHintClosingParenthesis
+            | InlayKind::ChainingHint
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
-            | InlayKind::ImplicitReborrowHint
+            | InlayKind::AdjustmentHint
             | InlayKind::TypeHint
             | InlayKind::ClosingBraceHint => false,
             InlayKind::BindingModeHint => inlay_hint.label.as_simple_str() != Some("&"),
@@ -476,10 +479,11 @@ pub(crate) fn inlay_hint(
             InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
                 Some(lsp_types::InlayHintKind::TYPE)
             }
-            InlayKind::BindingModeHint
+            InlayKind::AdjustmentHintClosingParenthesis
+            | InlayKind::BindingModeHint
             | InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint
-            | InlayKind::ImplicitReborrowHint
+            | InlayKind::AdjustmentHint
             | InlayKind::ClosingBraceHint => None,
         },
         text_edits: None,

@@ -111,7 +111,7 @@ impl StaticIndex<'_> {
                     chaining_hints: true,
                     closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
                     lifetime_elision_hints: crate::LifetimeElisionHints::Never,
-                    reborrow_hints: crate::ReborrowHints::Never,
+                    adjustment_hints: crate::AdjustmentHints::Never,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
                     param_names_for_lifetime_elision_hints: false,

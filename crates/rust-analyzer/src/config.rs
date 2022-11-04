@@ -261,6 +261,7 @@ config_data! {
         files_excludeDirs: Vec<PathBuf> = "[]",
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = "\"client\"",
+
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
         /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
@@ -1200,10 +1201,10 @@ impl Config {
             hide_closure_initialization_hints: self
                 .data
                 .inlayHints_typeHints_hideClosureInitialization,
-            reborrow_hints: match self.data.inlayHints_reborrowHints_enable {
-                ReborrowHintsDef::Always => ide::ReborrowHints::Always,
-                ReborrowHintsDef::Never => ide::ReborrowHints::Never,
-                ReborrowHintsDef::Mutable => ide::ReborrowHints::MutableOnly,
+            adjustment_hints: match self.data.inlayHints_reborrowHints_enable {
+                ReborrowHintsDef::Always => ide::AdjustmentHints::Always,
+                ReborrowHintsDef::Never => ide::AdjustmentHints::Never,
+                ReborrowHintsDef::Mutable => ide::AdjustmentHints::MutableOnly,
             },
             binding_mode_hints: self.data.inlayHints_bindingModeHints_enable,
             param_names_for_lifetime_elision_hints: self
