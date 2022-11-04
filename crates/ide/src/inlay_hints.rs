@@ -635,7 +635,12 @@ fn adjustment_hints(
     expr: &ast::Expr,
 ) -> Option<()> {
     if config.adjustment_hints == AdjustmentHints::Never {
-        // return None;
+        return None;
+    }
+
+    if let ast::Expr::ParenExpr(_) = expr {
+        // These inherit from the inner expression which would result in duplicate hints
+        return None;
     }
 
     let parent = expr.syntax().parent().and_then(ast::Expr::cast);
@@ -2910,48 +2915,6 @@ impl () {
     }
 
     #[test]
-    fn hints_implicit_reborrow() {
-        check_with_config(
-            InlayHintsConfig {
-                adjustment_hints: AdjustmentHints::Always,
-                parameter_hints: true,
-                ..DISABLED_CONFIG
-            },
-            r#"
-fn __() {
-    let unique = &mut ();
-    let r_mov = unique;
-    let foo: &mut _ = unique;
-                    //^^^^^^ &mut *
-    ref_mut_id(unique);
-             //^^^^^^ mut_ref
-             //^^^^^^ &mut *
-    let shared = ref_id(unique);
-                      //^^^^^^ shared_ref
-                      //^^^^^^ &*
-    let mov = shared;
-    let r_mov: &_ = shared;
-    ref_id(shared);
-         //^^^^^^ shared_ref
-
-    identity(unique);
-    identity(shared);
-}
-fn identity<T>(t: T) -> T {
-    t
-}
-fn ref_mut_id(mut_ref: &mut ()) -> &mut () {
-    mut_ref
-  //^^^^^^^ &mut *
-}
-fn ref_id(shared_ref: &()) -> &() {
-    shared_ref
-}
-"#,
-        );
-    }
-
-    #[test]
     fn hints_binding_modes() {
         check_with_config(
             InlayHintsConfig { binding_mode_hints: true, ..DISABLED_CONFIG },
@@ -3057,5 +3020,77 @@ fn f() {
 //^ fn f
 "#,
         );
+    }
+
+    #[test]
+    fn adjustment_hints() {
+        check_with_config(
+            InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
+            r#"
+//- minicore: coerce_unsized
+fn main() {
+    let _: u32         = loop {};
+                       //^^^^^^^<never-to-any>
+    let _: &u32        = &mut 0;
+                       //^^^^^^&
+                       //^^^^^^*
+    let _: &mut u32    = &mut 0;
+                       //^^^^^^&mut $
+                       //^^^^^^*
+    let _: *const u32  = &mut 0;
+                       //^^^^^^&raw const $
+                       //^^^^^^*
+    let _: *mut u32    = &mut 0;
+                       //^^^^^^&raw mut $
+                       //^^^^^^*
+    let _: fn()        = main;
+                       //^^^^<fn-item-to-fn-pointer>
+    let _: unsafe fn() = main;
+                       //^^^^<safe-fn-pointer-to-unsafe-fn-pointer>
+                       //^^^^<fn-item-to-fn-pointer>
+    let _: unsafe fn() = main as fn();
+                       //^^^^^^^^^^^^<safe-fn-pointer-to-unsafe-fn-pointer>
+    let _: fn()        = || {};
+                       //^^^^^<closure-to-fn-pointer>
+    let _: unsafe fn() = || {};
+                       //^^^^^<closure-to-unsafe-fn-pointer>
+    let _: *const u32  = &mut 0u32 as *mut u32;
+                       //^^^^^^^^^^^^^^^^^^^^^<mut-ptr-to-const-ptr>
+    let _: &mut [_]    = &mut [0; 0];
+                       //^^^^^^^^^^^<unsize>
+                       //^^^^^^^^^^^&mut $
+                       //^^^^^^^^^^^*
+
+    Struct.consume();
+    Struct.by_ref();
+  //^^^^^^(
+  //^^^^^^&
+  //^^^^^^)
+    Struct.by_ref_mut();
+  //^^^^^^(
+  //^^^^^^&mut $
+  //^^^^^^)
+
+    (&Struct).consume();
+   //^^^^^^^*
+    (&Struct).by_ref();
+
+    (&mut Struct).consume();
+   //^^^^^^^^^^^*
+    (&mut Struct).by_ref();
+   //^^^^^^^^^^^&
+   //^^^^^^^^^^^*
+    (&mut Struct).by_ref_mut();
+}
+
+#[derive(Copy, Clone)]
+struct Struct;
+impl Struct {
+    fn consume(self) {}
+    fn by_ref(&self) {}
+    fn by_ref_mut(&mut self) {}
+}
+"#,
+        )
     }
 }
