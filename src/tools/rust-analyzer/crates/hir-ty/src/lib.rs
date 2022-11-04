@@ -210,6 +210,7 @@ pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
 pub struct CallableSig {
     params_and_return: Arc<[Ty]>,
     is_varargs: bool,
+    safety: Safety,
 }
 
 has_interner!(CallableSig);
@@ -218,9 +219,14 @@ has_interner!(CallableSig);
 pub type PolyFnSig = Binders<CallableSig>;
 
 impl CallableSig {
-    pub fn from_params_and_return(mut params: Vec<Ty>, ret: Ty, is_varargs: bool) -> CallableSig {
+    pub fn from_params_and_return(
+        mut params: Vec<Ty>,
+        ret: Ty,
+        is_varargs: bool,
+        safety: Safety,
+    ) -> CallableSig {
         params.push(ret);
-        CallableSig { params_and_return: params.into(), is_varargs }
+        CallableSig { params_and_return: params.into(), is_varargs, safety }
     }
 
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
@@ -237,13 +243,14 @@ impl CallableSig {
                 .map(|arg| arg.assert_ty_ref(Interner).clone())
                 .collect(),
             is_varargs: fn_ptr.sig.variadic,
+            safety: fn_ptr.sig.safety,
         }
     }
 
     pub fn to_fn_ptr(&self) -> FnPointer {
         FnPointer {
             num_binders: 0,
-            sig: FnSig { abi: (), safety: Safety::Safe, variadic: self.is_varargs },
+            sig: FnSig { abi: (), safety: self.safety, variadic: self.is_varargs },
             substitution: FnSubst(Substitution::from_iter(
                 Interner,
                 self.params_and_return.iter().cloned(),
@@ -268,7 +275,11 @@ impl TypeFoldable<Interner> for CallableSig {
     ) -> Result<Self, E> {
         let vec = self.params_and_return.to_vec();
         let folded = vec.try_fold_with(folder, outer_binder)?;
-        Ok(CallableSig { params_and_return: folded.into(), is_varargs: self.is_varargs })
+        Ok(CallableSig {
+            params_and_return: folded.into(),
+            is_varargs: self.is_varargs,
+            safety: self.safety,
+        })
     }
 }
 
@@ -573,5 +584,5 @@ pub fn callable_sig_from_fnonce(
 
     let ret_ty = db.normalize_projection(projection, env);
 
-    Some(CallableSig::from_params_and_return(params, ret_ty.clone(), false))
+    Some(CallableSig::from_params_and_return(params, ret_ty.clone(), false, Safety::Safe))
 }
