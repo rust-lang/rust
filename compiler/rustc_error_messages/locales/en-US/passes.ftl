@@ -665,3 +665,36 @@ passes_missing_const_err =
     attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
     .help = make the function or method const
     .label = attribute specified here
+
+passes_dead_codes =
+    { $multiple ->
+      *[true] multiple {$descr}s are
+       [false] { $num ->
+         [one] {$descr} {$name_list} is
+        *[other] {$descr}s {$name_list} are
+       }
+    } never {$participle}
+
+passes_change_fields_to_be_of_unit_type =
+    consider changing the { $num ->
+      [one] field
+     *[other] fields
+    } to be of unit type to suppress this warning while preserving the field numbering, or remove the { $num ->
+      [one] field
+     *[other] fields
+    }
+
+passes_parent_info =
+    {$num ->
+      [one] {$descr}
+     *[other] {$descr}s
+    } in this {$parent_descr}
+
+passes_ignored_derived_impls =
+    `{$name}` has {$trait_list_len ->
+      [one] a derived impl
+     *[other] derived impls
+    } for the {$trait_list_len ->
+      [one] trait {$trait_list}, but this is
+     *[other] traits {$trait_list}, but these are
+    } intentionally ignored during dead code analysis
