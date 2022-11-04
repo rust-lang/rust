@@ -1310,7 +1310,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
         reported: ErrorGuaranteed,
     ) -> Const<'tcx> {
-        self.mk_const(ty::ConstS { kind: ty::ConstKind::Error(reported), ty })
+        self.mk_const(ty::ConstKind::Error(reported), ty)
     }
 
     /// Like [TyCtxt::ty_error] but for constants.
