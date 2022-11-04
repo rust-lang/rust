@@ -753,10 +753,7 @@ fn signal_string(signal: i32) -> &'static str {
         libc::SIGPROF => " (SIGPROF)",
         #[cfg(not(target_os = "l4re"))]
         libc::SIGWINCH => " (SIGWINCH)",
-        #[cfg(not(any(
-            target_os = "haiku",
-            target_os = "l4re"
-        )))]
+        #[cfg(not(any(target_os = "haiku", target_os = "l4re")))]
         libc::SIGIO => " (SIGIO)",
         #[cfg(not(target_os = "l4re"))]
         libc::SIGSYS => " (SIGSYS)",
