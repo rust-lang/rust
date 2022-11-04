@@ -9,6 +9,7 @@ cargo_metadata = "0.14"
 regex = "1"
 lazy_static = "1"
 walkdir = "2"
+ignore = "0.4.18"
 
 [[bin]]
 name = "rust-tidy"
