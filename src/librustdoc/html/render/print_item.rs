@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::middle::stability;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::{Adt, TyCtxt};
+use rustc_middle::ty::{self, Adt, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::{Layout, Primitive, TagEncoding, Variants};
@@ -28,7 +28,7 @@ use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
     join_with_double_colon, print_abi_with_space, print_constness_with_space, print_where_clause,
-    Buffer, Ending, PrintWithSpace,
+    visibility_print_with_space, Buffer, Ending, PrintWithSpace,
 };
 use crate::html::highlight;
 use crate::html::layout::Page;
@@ -328,14 +328,14 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     Some(src) => write!(
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {} as {};",
-                        myitem.visibility(tcx).print_with_space(myitem.item_id, cx),
+                        visibility_print_with_space(myitem.visibility(tcx), myitem.item_id, cx),
                         anchor(myitem.item_id.expect_def_id(), src, cx),
                         myitem.name.unwrap(),
                     ),
                     None => write!(
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {};",
-                        myitem.visibility(tcx).print_with_space(myitem.item_id, cx),
+                        visibility_print_with_space(myitem.visibility(tcx), myitem.item_id, cx),
                         anchor(myitem.item_id.expect_def_id(), myitem.name.unwrap(), cx),
                     ),
                 }
@@ -385,7 +385,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                      </div>\
                      {stab_tags_before}{stab_tags}{stab_tags_after}",
                     stab = stab.unwrap_or_default(),
-                    vis = myitem.visibility(tcx).print_with_space(myitem.item_id, cx),
+                    vis = visibility_print_with_space(myitem.visibility(tcx), myitem.item_id, cx),
                     imp = import.print(cx),
                 );
                 w.write_str(ITEM_TABLE_ROW_CLOSE);
@@ -410,7 +410,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 let add = if stab.is_some() { " " } else { "" };
 
                 let visibility_emoji = match myitem.visibility(tcx) {
-                    clean::Visibility::Restricted(_) => {
+                    Some(ty::Visibility::Restricted(_)) => {
                         "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
                     }
                     _ => "",
@@ -503,7 +503,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
     let unsafety = header.unsafety.print_with_space();
     let abi = print_abi_with_space(header.abi).to_string();
     let asyncness = header.asyncness.print_with_space();
-    let visibility = it.visibility(tcx).print_with_space(it.item_id, cx).to_string();
+    let visibility = visibility_print_with_space(it.visibility(tcx), it.item_id, cx).to_string();
     let name = it.name.unwrap();
 
     let generics_len = format!("{:#}", f.generics.print(cx)).len();
@@ -561,7 +561,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             write!(
                 w,
                 "{}{}{}trait {}{}{}",
-                it.visibility(tcx).print_with_space(it.item_id, cx),
+                visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
                 t.unsafety(tcx).print_with_space(),
                 if t.is_auto(tcx) { "auto " } else { "" },
                 it.name.unwrap(),
@@ -1086,7 +1086,7 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
     fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
         wrap_item(w, "typedef", |w| {
             render_attributes_in_pre(w, it, "");
-            write!(w, "{}", it.visibility(cx.tcx()).print_with_space(it.item_id, cx));
+            write!(w, "{}", visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx));
             write!(
                 w,
                 "type {}{}{where_clause} = {type_};",
@@ -1183,7 +1183,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             write!(
                 w,
                 "{}enum {}{}",
-                it.visibility(tcx).print_with_space(it.item_id, cx),
+                visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
                 it.name.unwrap(),
                 e.generics.print(cx),
             );
@@ -1398,7 +1398,7 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
             write!(
                 w,
                 "{vis}const {name}: {typ}",
-                vis = it.visibility(tcx).print_with_space(it.item_id, cx),
+                vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
                 name = it.name.unwrap(),
                 typ = c.type_.print(cx),
             );
@@ -1499,7 +1499,7 @@ fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             write!(
                 w,
                 "{vis}static {mutability}{name}: {typ}",
-                vis = it.visibility(cx.tcx()).print_with_space(it.item_id, cx),
+                vis = visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
                 mutability = s.mutability.print_with_space(),
                 name = it.name.unwrap(),
                 typ = s.type_.print(cx)
@@ -1517,7 +1517,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
             write!(
                 w,
                 "    {}type {};\n}}",
-                it.visibility(cx.tcx()).print_with_space(it.item_id, cx),
+                visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
                 it.name.unwrap(),
             );
         });
@@ -1671,7 +1671,12 @@ fn render_union(
     cx: &Context<'_>,
 ) {
     let tcx = cx.tcx();
-    write!(w, "{}union {}", it.visibility(tcx).print_with_space(it.item_id, cx), it.name.unwrap(),);
+    write!(
+        w,
+        "{}union {}",
+        visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
+        it.name.unwrap(),
+    );
 
     let where_displayed = g
         .map(|g| {
@@ -1698,7 +1703,7 @@ fn render_union(
             write!(
                 w,
                 "    {}{}: {},\n{}",
-                field.visibility(tcx).print_with_space(field.item_id, cx),
+                visibility_print_with_space(field.visibility(tcx), field.item_id, cx),
                 field.name.unwrap(),
                 ty.print(cx),
                 tab
@@ -1729,7 +1734,7 @@ fn render_struct(
     write!(
         w,
         "{}{}{}",
-        it.visibility(tcx).print_with_space(it.item_id, cx),
+        visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
         if structhead { "struct " } else { "" },
         it.name.unwrap()
     );
@@ -1759,7 +1764,7 @@ fn render_struct(
                         w,
                         "\n{}    {}{}: {},",
                         tab,
-                        field.visibility(tcx).print_with_space(field.item_id, cx),
+                        visibility_print_with_space(field.visibility(tcx), field.item_id, cx),
                         field.name.unwrap(),
                         ty.print(cx),
                     );
@@ -1791,7 +1796,7 @@ fn render_struct(
                         write!(
                             w,
                             "{}{}",
-                            field.visibility(tcx).print_with_space(field.item_id, cx),
+                            visibility_print_with_space(field.visibility(tcx), field.item_id, cx),
                             ty.print(cx),
                         )
                     }

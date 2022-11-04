@@ -24,7 +24,7 @@ use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, TyCtxt, Visibility};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
@@ -34,7 +34,6 @@ use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;
-use crate::clean::clean_visibility;
 use crate::clean::external_path;
 use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
@@ -51,7 +50,6 @@ pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
     RawPointer, Slice, Tuple,
 };
-pub(crate) use self::Visibility::{Inherited, Public};
 
 #[cfg(test)]
 mod tests;
@@ -703,26 +701,28 @@ impl Item {
         Some(header)
     }
 
-    pub(crate) fn visibility(&self, tcx: TyCtxt<'_>) -> Visibility {
+    /// Returns the visibility of the current item. If the visibility is "inherited", then `None`
+    /// is returned.
+    pub(crate) fn visibility(&self, tcx: TyCtxt<'_>) -> Option<Visibility<DefId>> {
         let def_id = match self.item_id {
             // Anything but DefId *shouldn't* matter, but return a reasonable value anyway.
-            ItemId::Auto { .. } | ItemId::Blanket { .. } => return Visibility::Inherited,
+            ItemId::Auto { .. } | ItemId::Blanket { .. } => return None,
             // Primitives and Keywords are written in the source code as private modules.
             // The modules need to be private so that nobody actually uses them, but the
             // keywords and primitives that they are documenting are public.
-            ItemId::Primitive(..) => return Visibility::Public,
+            ItemId::Primitive(..) => return Some(Visibility::Public),
             ItemId::DefId(def_id) => def_id,
         };
 
         match *self.kind {
             // Explication on `ItemId::Primitive` just above.
-            ItemKind::KeywordItem | ItemKind::PrimitiveItem(_) => return Visibility::Public,
+            ItemKind::KeywordItem | ItemKind::PrimitiveItem(_) => return Some(Visibility::Public),
             // Variant fields inherit their enum's visibility.
             StructFieldItem(..) if is_field_vis_inherited(tcx, def_id) => {
-                return Visibility::Inherited;
+                return None;
             }
             // Variants always inherit visibility
-            VariantItem(..) => return Visibility::Inherited,
+            VariantItem(..) => return None,
             // Trait items inherit the trait's visibility
             AssocConstItem(..) | TyAssocConstItem(..) | AssocTypeItem(..) | TyAssocTypeItem(..)
             | TyMethodItem(..) | MethodItem(..) => {
@@ -736,7 +736,7 @@ impl Item {
                     }
                 };
                 if is_trait_item {
-                    return Visibility::Inherited;
+                    return None;
                 }
             }
             _ => {}
@@ -745,7 +745,7 @@ impl Item {
             Some(inlined) => inlined,
             None => def_id,
         };
-        clean_visibility(tcx.visibility(def_id))
+        Some(tcx.visibility(def_id))
     }
 }
 
@@ -2072,24 +2072,6 @@ impl From<hir::PrimTy> for PrimitiveType {
             hir::PrimTy::Bool => PrimitiveType::Bool,
             hir::PrimTy::Char => PrimitiveType::Char,
         }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub(crate) enum Visibility {
-    /// `pub`
-    Public,
-    /// Visibility inherited from parent.
-    ///
-    /// For example, this is the visibility of private items and of enum variants.
-    Inherited,
-    /// `pub(crate)`, `pub(super)`, or `pub(in path::to::somewhere)`
-    Restricted(DefId),
-}
-
-impl Visibility {
-    pub(crate) fn is_public(&self) -> bool {
-        matches!(self, Visibility::Public)
     }
 }
 
