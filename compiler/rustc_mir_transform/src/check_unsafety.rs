@@ -1,10 +1,10 @@
-use hir::{BlockCheckMode, ExprKind, Node};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::HirId;
 use rustc_hir::intravisit;
+use rustc_hir::{BlockCheckMode, ExprKind, Node};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
@@ -521,10 +521,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         match kind {
             UnsafetyViolationKind::General => {
                 // once
-                // Mutable statics always require an unsafe block
-                let unsafe_fn_msg = if unsafe_op_in_unsafe_fn_allowed(tcx, lint_root)
-                    && details != UnsafetyViolationDetails::UseOfMutableStatic
-                {
+                let unsafe_fn_msg = if unsafe_op_in_unsafe_fn_allowed(tcx, lint_root) {
                     " function or"
                 } else {
                     ""
@@ -542,12 +539,14 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 let note_non_inherited = tcx.hir().parent_iter(lint_root).find(|(id, node)| {
                     if let Node::Expr(block) = node
                         && let ExprKind::Block(block, _) = block.kind
-                        && let BlockCheckMode::UnsafeBlock(_) = block.rules {
-                            true
-                        }
+                        && let BlockCheckMode::UnsafeBlock(_) = block.rules
+                    {
+                        true
+                    }
                     else if let Some(sig) = tcx.hir().fn_sig_by_hir_id(*id)
-                        && sig.header.is_unsafe() {
-                            true
+                        && sig.header.is_unsafe()
+                    {
+                        true
                     } else {
                         false
                     }
