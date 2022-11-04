@@ -1,7 +1,7 @@
 use crate::infer::InferCtxt;
 use crate::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use crate::traits::query::NoSolution;
-use crate::traits::{ObligationCause, TraitEngine, TraitEngineExt};
+use crate::traits::ObligationCause;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -74,20 +74,20 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
             debug!(?constraints);
             // Instantiation may have produced new inference variables and constraints on those
             // variables. Process these constraints.
-            let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self.tcx);
             let cause = ObligationCause::misc(span, body_id);
-            for &constraint in &constraints.outlives {
-                let obligation = self.query_outlives_constraint_to_obligation(
-                    constraint,
-                    cause.clone(),
-                    param_env,
-                );
-                fulfill_cx.register_predicate_obligation(self, obligation);
-            }
+            let errors = super::fully_solve_obligations(
+                self,
+                constraints.outlives.iter().map(|constraint| {
+                    self.query_outlives_constraint_to_obligation(
+                        *constraint,
+                        cause.clone(),
+                        param_env,
+                    )
+                }),
+            );
             if !constraints.member_constraints.is_empty() {
                 span_bug!(span, "{:#?}", constraints.member_constraints);
             }
-            let errors = fulfill_cx.select_all_or_error(self);
             if !errors.is_empty() {
                 self.tcx.sess.delay_span_bug(
                     span,
