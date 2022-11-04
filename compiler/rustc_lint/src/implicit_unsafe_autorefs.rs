@@ -2,7 +2,10 @@ use crate::{LateContext, LateLintPass, LintContext};
 
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind, UnOp};
-use rustc_middle::ty::adjustment::{Adjust, AutoBorrow};
+use rustc_middle::ty::{
+    adjustment::{Adjust, AutoBorrow},
+    TyCtxt, TypeckResults,
+};
 
 declare_lint! {
     /// The `implicit_unsafe_autorefs` lint checks for implicitly taken references to dereferences of raw pointers.
@@ -62,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitUnsafeAutorefs {
         // An auto-borrow
         && let Adjust::Borrow(AutoBorrow::Ref(_, mutbl)) = adjustment.kind
         // ... of a place derived from a deref
-        && let ExprKind::Unary(UnOp::Deref, dereferenced) = skip_field_access(&expr.kind)
+        && let ExprKind::Unary(UnOp::Deref, dereferenced) = peel_place_mappers(cx.tcx, typeck, &expr).kind
         // ... of a raw pointer
         && typeck.expr_ty(dereferenced).is_unsafe_ptr()
         {
@@ -85,9 +88,24 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitUnsafeAutorefs {
     }
 }
 
-fn skip_field_access<'a>(mut expr: &'a ExprKind<'a>) -> &'a ExprKind<'a> {
-    while let ExprKind::Field(e, _) = expr {
-        expr = &e.kind;
+/// Peels expressions from `expr` that can map a place.
+///
+/// For example `(*ptr).field[0]/*<-- built-in index */.field` -> `*ptr`, `f(*ptr)` -> `f(*ptr)`, etc.
+fn peel_place_mappers<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typeck: &TypeckResults<'tcx>,
+    mut expr: &'tcx Expr<'tcx>,
+) -> &'tcx Expr<'tcx> {
+    loop {
+        match expr.kind {
+            ExprKind::Index(base, idx)
+                if typeck.expr_ty(base).builtin_index() == Some(typeck.expr_ty(expr))
+                    && typeck.expr_ty(idx) == tcx.types.usize =>
+            {
+                expr = &base;
+            }
+            ExprKind::Field(e, _) => expr = &e,
+            _ => break expr,
+        }
     }
-    expr
 }

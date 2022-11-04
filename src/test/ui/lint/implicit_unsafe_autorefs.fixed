@@ -25,4 +25,14 @@ unsafe fn test_field(ptr: *const Test) -> *const [u8] {
     //~^ warn: implicit auto-ref creates a reference to a dereference of a raw pointer
 }
 
+unsafe fn test_builtin_index(a: *mut [String]) {
+    // built-in (should warn before `.len()`)
+    _ = (&(*a)[0]).len();
+    //~^ warn: implicit auto-ref creates a reference to a dereference of a raw pointer
+
+    // overloaded (should warn before index)
+    _ = (&(*a))[..1][0].len();
+    //~^ warn: implicit auto-ref creates a reference to a dereference of a raw pointer
+}
+
 fn main() {}
