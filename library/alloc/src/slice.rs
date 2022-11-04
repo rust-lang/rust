@@ -1072,11 +1072,13 @@ where
 }
 
 // When dropped, copies from `src` into `dest`.
+#[cfg(not(no_global_oom_handling))]
 struct InsertionHole<T> {
     src: *const T,
     dest: *mut T,
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<T> Drop for InsertionHole<T> {
     fn drop(&mut self) {
         unsafe {
@@ -1398,6 +1400,7 @@ impl<T: IsCopyMarker> IsCopy for T {
 }
 
 #[inline]
+#[cfg(not(no_global_oom_handling))]
 fn qualifies_for_branchless_sort<T>() -> bool {
     // This is a heuristic, and as such it will guess wrong from time to time. The two parts broken
     // down:
@@ -1416,6 +1419,7 @@ fn qualifies_for_branchless_sort<T>() -> bool {
 
 /// Swap two values in array pointed to by a_ptr and b_ptr if b is less than a.
 #[inline]
+#[cfg(not(no_global_oom_handling))]
 unsafe fn branchless_swap<T>(a_ptr: *mut T, b_ptr: *mut T, should_swap: bool) {
     // This is a branchless version of swap if.
     // The equivalent code with a branch would be:
@@ -1443,6 +1447,7 @@ unsafe fn branchless_swap<T>(a_ptr: *mut T, b_ptr: *mut T, should_swap: bool) {
 
 /// Swap two values in array pointed to by a_ptr and b_ptr if b is less than a.
 #[inline]
+#[cfg(not(no_global_oom_handling))]
 unsafe fn swap_if_less<T, F>(arr_ptr: *mut T, a: usize, b: usize, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
@@ -1470,6 +1475,7 @@ where
 /// Comparing and swapping anything but adjacent elements will yield a non stable sort.
 /// So this must be fundamental building block for stable sorting networks.
 #[inline]
+#[cfg(not(no_global_oom_handling))]
 unsafe fn swap_next_if_less<T, F>(arr_ptr: *mut T, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
