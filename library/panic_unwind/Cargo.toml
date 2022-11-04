@@ -17,4 +17,4 @@ core = { path = "../core" }
 libc = { version = "0.2", default-features = false }
 unwind = { path = "../unwind" }
 compiler_builtins = "0.1.0"
-cfg-if = "0.1.8"
+cfg-if = "1.0"
