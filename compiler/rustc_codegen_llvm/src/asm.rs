@@ -285,13 +285,13 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let mut attrs = SmallVec::<[_; 2]>::new();
         if options.contains(InlineAsmOptions::PURE) {
             if options.contains(InlineAsmOptions::NOMEM) {
-                attrs.push(llvm::AttributeKind::ReadNone.create_attr(self.cx.llcx));
+                attrs.push(llvm::MemoryEffects::None.create_attr(self.cx.llcx));
             } else if options.contains(InlineAsmOptions::READONLY) {
-                attrs.push(llvm::AttributeKind::ReadOnly.create_attr(self.cx.llcx));
+                attrs.push(llvm::MemoryEffects::ReadOnly.create_attr(self.cx.llcx));
             }
             attrs.push(llvm::AttributeKind::WillReturn.create_attr(self.cx.llcx));
         } else if options.contains(InlineAsmOptions::NOMEM) {
-            attrs.push(llvm::AttributeKind::InaccessibleMemOnly.create_attr(self.cx.llcx));
+            attrs.push(llvm::MemoryEffects::InaccessibleMemOnly.create_attr(self.cx.llcx));
         } else {
             // LLVM doesn't have an attribute to represent ReadOnly + SideEffect
         }
