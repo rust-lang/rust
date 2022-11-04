@@ -35,6 +35,7 @@
 //!
 //! Once stack has been unwound down to the handler frame level, unwinding stops
 //! and the last personality routine transfers control to the catch block.
+#![cfg(not(target_os = "l4re"))]
 
 use super::dwarf::eh::{self, EHAction, EHContext};
 use libc::{c_int, uintptr_t};
