@@ -886,7 +886,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
-	border-bottom: 1px solid var(--border-color);
+	border-bottom: 1px solid var(--search-result-border-color);
 	gap: 1em;
 }
 
