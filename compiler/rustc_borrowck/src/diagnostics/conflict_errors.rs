@@ -7,7 +7,6 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
-// use rustc_hir::{AsyncGeneratorKind, GeneratorKind, LoopSource::ForLoop};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
