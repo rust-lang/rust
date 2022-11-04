@@ -56,14 +56,6 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 pub(crate) struct BranchProtectionRequiresAArch64;
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_layout_size_overflow)]
-pub(crate) struct LayoutSizeOverflow {
-    #[primary_span]
-    pub span: Span,
-    pub error: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_invalid_minimum_alignment)]
 pub(crate) struct InvalidMinimumAlignment {
     pub err: String,
