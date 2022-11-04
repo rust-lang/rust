@@ -224,10 +224,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            use_spans.var_span_label_path_only(
-                &mut err,
-                format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
-            );
+            use_spans.var_path_only_subdiag(&mut err, desired_action);
 
             if !is_loop_move {
                 err.span_label(
@@ -404,10 +401,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let used = desired_action.as_general_verb_in_past_tense();
         let mut err =
             struct_span_err!(self, span, E0381, "{used} binding {desc}{isnt_initialized}");
-        use_spans.var_span_label_path_only(
-            &mut err,
-            format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
-        );
+        use_spans.var_path_only_subdiag(&mut err, desired_action);
 
         if let InitializationRequiringAction::PartialAssignment
         | InitializationRequiringAction::Assignment = desired_action
@@ -678,10 +672,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_msg));
         err.span_label(span, format!("move out of {} occurs here", value_msg));
 
-        borrow_spans.var_span_label_path_only(
-            &mut err,
-            format!("borrow occurs due to use{}", borrow_spans.describe()),
-        );
+        borrow_spans.var_path_only_subdiag(&mut err, crate::InitializationRequiringAction::Borrow);
 
         move_spans.var_span_label(
             &mut err,

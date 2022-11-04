@@ -178,3 +178,47 @@ pub(crate) enum CaptureVarCause {
         var_span: Span,
     },
 }
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CaptureVarPathUseCause {
+    #[label(borrowck_borrow_due_to_use_generator)]
+    BorrowInGenerator {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_use_due_to_use_generator)]
+    UseInGenerator {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_assign_due_to_use_generator)]
+    AssignInGenerator {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_assign_part_due_to_use_generator)]
+    AssignPartInGenerator {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_borrow_due_to_use_closure)]
+    BorrowInClosure {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_use_due_to_use_closure)]
+    UseInClosure {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_assign_due_to_use_closure)]
+    AssignInClosure {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_assign_part_due_to_use_closure)]
+    AssignPartInClosure {
+        #[primary_span]
+        path_span: Span,
+    },
+}
