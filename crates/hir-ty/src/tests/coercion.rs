@@ -390,7 +390,7 @@ fn test() {
     let f: fn(u32) -> isize = foo;
                            // ^^^ adjustments: Pointer(ReifyFnPointer)
     let f: unsafe fn(u32) -> isize = foo;
-                                  // ^^^ adjustments: Pointer(ReifyFnPointer)
+                                  // ^^^ adjustments: Pointer(ReifyFnPointer), Pointer(UnsafeFnPointer)
 }",
     );
 }
@@ -421,7 +421,10 @@ fn coerce_closure_to_fn_ptr() {
     check_no_mismatches(
         r"
 fn test() {
-    let f: fn(u32) -> isize = |x| { 1 };
+    let f: fn(u32) -> u32 = |x| x;
+                         // ^^^^^ adjustments: Pointer(ClosureFnPointer(Safe))
+    let f: unsafe fn(u32) -> u32 = |x| x;
+                                // ^^^^^ adjustments: Pointer(ClosureFnPointer(Unsafe))
 }",
     );
 }
