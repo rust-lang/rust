@@ -123,6 +123,11 @@
                 "category": "rust-analyzer (debug command)"
             },
             {
+                "command": "rust-analyzer.memoryUsage",
+                "title": "Memory Usage (Clears Database)",
+                "category": "rust-analyzer (debug command)"
+            },
+            {
                 "command": "rust-analyzer.viewCrateGraph",
                 "title": "View Crate Graph",
                 "category": "rust-analyzer"
@@ -175,11 +180,6 @@
             {
                 "command": "rust-analyzer.analyzerStatus",
                 "title": "Status",
-                "category": "rust-analyzer"
-            },
-            {
-                "command": "rust-analyzer.memoryUsage",
-                "title": "Memory Usage (Clears Database)",
                 "category": "rust-analyzer"
             },
             {
