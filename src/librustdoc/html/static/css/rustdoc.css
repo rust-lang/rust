@@ -367,7 +367,8 @@ img {
 	overflow: visible;
 }
 
-.sub-logo-container {
+.sub-logo-container, .logo-container {
+	/* zero text boxes so that computed line height = image height exactly */
 	line-height: 0;
 }
 
@@ -465,10 +466,9 @@ img {
 }
 
 .sidebar .logo-container {
-	display: flex;
 	margin-top: 10px;
 	margin-bottom: 10px;
-	justify-content: center;
+	text-align: center;
 }
 
 .version {
@@ -1753,10 +1753,6 @@ in storage.js
 		text-overflow: ellipsis;
 		overflow: hidden;
 		white-space: nowrap;
-	}
-
-	.mobile-topbar .logo-container {
-		max-height: 45px;
 	}
 
 	.mobile-topbar .logo-container > img {
