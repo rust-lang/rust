@@ -86,7 +86,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
-use crate::marker;
+use crate::marker::{self, Destruct};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
@@ -648,6 +648,7 @@ impl<H: ~const Hasher + ?Sized> const Hasher for &mut H {
 /// [`build_hasher`]: BuildHasher::build_hasher
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 #[stable(since = "1.7.0", feature = "build_hasher")]
+#[const_trait]
 pub trait BuildHasher {
     /// Type of the hasher that will be created.
     #[stable(since = "1.7.0", feature = "build_hasher")]
@@ -708,9 +709,10 @@ pub trait BuildHasher {
     /// );
     /// ```
     #[unstable(feature = "build_hasher_simple_hash_one", issue = "86161")]
-    fn hash_one<T: Hash>(&self, x: T) -> u64
+    fn hash_one<T: ~const Hash + ~const Destruct>(&self, x: T) -> u64
     where
         Self: Sized,
+        Self::Hasher: ~const Hasher + ~const Destruct,
     {
         let mut hasher = self.build_hasher();
         x.hash(&mut hasher);
@@ -774,7 +776,8 @@ impl<H> fmt::Debug for BuildHasherDefault<H> {
 }
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
-impl<H: Default + Hasher> BuildHasher for BuildHasherDefault<H> {
+#[rustc_const_unstable(feature = "const_hash", issue = "none")]
+impl<H: ~const Default + Hasher> const BuildHasher for BuildHasherDefault<H> {
     type Hasher = H;
 
     fn build_hasher(&self) -> H {
