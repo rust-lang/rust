@@ -55,30 +55,6 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
 
 #[rustfmt::skip]
 const INTRA_DOC_LINK_EXCEPTIONS: &[(&str, &[&str])] = &[
-    // This will never have links that are not in other pages.
-    // To avoid repeating the exceptions twice, an empty list means all broken links are allowed.
-    ("reference/print.html", &[]),
-    // All the reference 'links' are actually ENBF highlighted as code
-    ("reference/comments.html", &[
-         "/</code> <code>!",
-         "*</code> <code>!",
-    ]),
-    ("reference/identifiers.html", &[
-         "a</code>-<code>z</code> <code>A</code>-<code>Z",
-         "a</code>-<code>z</code> <code>A</code>-<code>Z</code> <code>0</code>-<code>9</code> <code>_",
-         "a</code>-<code>z</code> <code>A</code>-<code>Z</code>] [<code>a</code>-<code>z</code> <code>A</code>-<code>Z</code> <code>0</code>-<code>9</code> <code>_",
-    ]),
-    ("reference/tokens.html", &[
-         "0</code>-<code>1",
-         "0</code>-<code>7",
-         "0</code>-<code>9",
-         "0</code>-<code>9",
-         "0</code>-<code>9</code> <code>a</code>-<code>f</code> <code>A</code>-<code>F",
-    ]),
-    ("reference/notation.html", &[
-         "b</code> <code>B",
-         "a</code>-<code>z",
-    ]),
     // This is being used in the sense of 'inclusive range', not a markdown link
     ("core/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
     ("std/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
@@ -382,6 +358,16 @@ impl Checker {
         source: &str,
         report: &mut Report,
     ) {
+        let relative = file.strip_prefix(&self.root).expect("should always be relative to root");
+        // Don't check the reference. It has several legitimate things that
+        // look like [<code>…</code>]. The reference has its own broken link
+        // checker in its CI which handles this using pulldown_cmark.
+        //
+        // This checks both the end of the root (when checking just the
+        // reference directory) or the beginning (when checking all docs).
+        if self.root.ends_with("reference") || relative.starts_with("reference") {
+            return;
+        }
         // Search for intra-doc links that rustdoc didn't warn about
         // FIXME(#77199, 77200) Rustdoc should just warn about these directly.
         // NOTE: only looks at one line at a time; in practice this should find most links
