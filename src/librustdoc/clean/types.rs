@@ -795,7 +795,7 @@ pub(crate) enum ItemKind {
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
-    TyAssocTypeItem(Box<Generics>, Vec<GenericBound>),
+    TyAssocTypeItem(Generics, Vec<GenericBound>),
     /// An associated type in a trait impl or a provided one in a trait declaration.
     AssocTypeItem(Box<Typedef>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
@@ -1462,8 +1462,8 @@ impl GenericParamDef {
 // maybe use a Generic enum and use Vec<Generic>?
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Generics {
-    pub(crate) params: Vec<GenericParamDef>,
-    pub(crate) where_predicates: Vec<WherePredicate>,
+    pub(crate) params: ThinVec<GenericParamDef>,
+    pub(crate) where_predicates: ThinVec<WherePredicate>,
 }
 
 impl Generics {
@@ -2594,6 +2594,7 @@ mod size_asserts {
     static_assert_size!(GenericArg, 48);
     static_assert_size!(GenericArgs, 32);
     static_assert_size!(GenericParamDef, 56);
+    static_assert_size!(Generics, 16);
     static_assert_size!(Item, 56);
     static_assert_size!(ItemKind, 88);
     static_assert_size!(PathSegment, 40);
