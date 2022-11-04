@@ -7,7 +7,7 @@ use std::path::Path;
 
 const ENTRY_LIMIT: usize = 1000;
 // FIXME: The following limits should be reduced eventually.
-const ROOT_ENTRY_LIMIT: usize = 948;
+const ROOT_ENTRY_LIMIT: usize = 941;
 const ISSUES_ENTRY_LIMIT: usize = 2117;
 
 fn check_entries(path: &Path, bad: &mut bool) {
