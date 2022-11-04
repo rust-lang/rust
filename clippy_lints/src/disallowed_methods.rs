@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{fn_def_id, get_parent_expr, path_def_id};
 
-use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -79,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         for (index, conf) in self.conf_disallowed.iter().enumerate() {
             let segs: Vec<_> = conf.path().split("::").collect();
-            if let Res::Def(_, id) = clippy_utils::def_path_res(cx, &segs, Some(Namespace::ValueNS)) {
+            for id in clippy_utils::def_path_def_ids(cx, &segs) {
                 self.disallowed.insert(id, index);
             }
         }
@@ -104,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
         let msg = format!("use of a disallowed method `{}`", conf.path());
         span_lint_and_then(cx, DISALLOWED_METHODS, expr.span, &msg, |diag| {
             if let Some(reason) = conf.reason() {
-                diag.note(&format!("{reason} (from clippy.toml)"));
+                diag.note(reason);
             }
         });
     }

@@ -2,7 +2,7 @@ use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
-use clippy_utils::{def_path_res, is_expn_of, match_def_path, paths};
+use clippy_utils::{def_path_def_ids, is_expn_of, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
         }
 
         for &module in &[&paths::KW_MODULE, &paths::SYM_MODULE] {
-            if let Some(def_id) = def_path_res(cx, module, None).opt_def_id() {
+            for def_id in def_path_def_ids(cx, module) {
                 for item in cx.tcx.module_children(def_id).iter() {
                     if_chain! {
                         if let Res::Def(DefKind::Const, item_def_id) = item.res;
