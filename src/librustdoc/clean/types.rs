@@ -694,12 +694,9 @@ impl Item {
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
-            ItemKind::FunctionItem(_) | ItemKind::MethodItem(_, _) => {
+            ItemKind::FunctionItem(_) | ItemKind::MethodItem(_, _) | ItemKind::TyMethodItem(_) => {
                 let def_id = self.item_id.as_def_id().unwrap();
                 build_fn_header(def_id, tcx, tcx.asyncness(def_id))
-            }
-            ItemKind::TyMethodItem(_) => {
-                build_fn_header(self.item_id.as_def_id().unwrap(), tcx, hir::IsAsync::NotAsync)
             }
             _ => return None,
         };
