@@ -2096,8 +2096,7 @@ declare_clippy_lint! {
     /// let s = "Hello world!";
     /// let cow = Cow::Borrowed(s);
     ///
-    /// let data = cow.into_owned();
-    /// assert!(matches!(data, String))
+    /// let _data: String = cow.into_owned();
     /// ```
     #[clippy::version = "1.65.0"]
     pub SUSPICIOUS_TO_OWNED,
