@@ -324,17 +324,18 @@ impl AnonPipe {
         let mut async_result: Option<AsyncResult> = None;
         struct AsyncResult {
             error: u32,
-            transfered: u32,
+            transferred: u32,
         }
 
         // STEP 3: The callback.
         unsafe extern "system" fn callback(
             dwErrorCode: u32,
-            dwNumberOfBytesTransfered: u32,
+            dwNumberOfBytesTransferred: u32,
             lpOverlapped: *mut c::OVERLAPPED,
         ) {
             // Set `async_result` using a pointer smuggled through `hEvent`.
-            let result = AsyncResult { error: dwErrorCode, transfered: dwNumberOfBytesTransfered };
+            let result =
+                AsyncResult { error: dwErrorCode, transferred: dwNumberOfBytesTransferred };
             *(*lpOverlapped).hEvent.cast::<Option<AsyncResult>>() = Some(result);
         }
 
@@ -365,7 +366,7 @@ impl AnonPipe {
         // STEP 4: Return the result.
         // `async_result` is always `Some` at this point
         match result.error {
-            c::ERROR_SUCCESS => Ok(result.transfered as usize),
+            c::ERROR_SUCCESS => Ok(result.transferred as usize),
             error => Err(io::Error::from_raw_os_error(error as _)),
         }
     }

@@ -1856,7 +1856,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// }
 /// ```
 ///
-/// Coverting in the other direction from a `&mut T`
+/// Converting in the other direction from a `&mut T`
 /// to an `&UnsafeCell<T>` is allowed:
 ///
 /// ```rust
