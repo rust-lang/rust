@@ -4,7 +4,7 @@
 
 use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
 use crate::query::caches::QueryCache;
-use crate::query::config::{QueryDescription, QueryVTable};
+use crate::query::config::QueryVTable;
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use crate::values::Value;
@@ -26,6 +26,8 @@ use std::hash::Hash;
 use std::mem;
 use std::ptr;
 use thin_vec::ThinVec;
+
+use super::QueryConfig;
 
 pub struct QueryState<K> {
     #[cfg(parallel_compiler)]
@@ -715,7 +717,7 @@ pub enum QueryMode {
 
 pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
 where
-    Q: QueryDescription<CTX>,
+    Q: QueryConfig<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
     Q::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
@@ -748,7 +750,7 @@ where
 
 pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, dep_node: DepNode<CTX::DepKind>)
 where
-    Q: QueryDescription<CTX>,
+    Q: QueryConfig<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
     Q::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
