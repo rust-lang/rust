@@ -180,7 +180,8 @@ fn exported_symbols_provider_local<'tcx>(
         .collect();
 
     if tcx.entry_fn(()).is_some() {
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, "main"));
+        let exported_symbol =
+            ExportedSymbol::NoDefId(SymbolName::new(tcx, tcx.sess.target.entry_name.as_ref()));
 
         symbols.push((
             exported_symbol,
