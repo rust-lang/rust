@@ -2509,7 +2509,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             if let hir::TyKind::Rptr(lifetime, _) = &fn_decl.inputs[index].kind {
                                 // With access to the lifetime, we can get
                                 // the span of it.
-                                arguments.push((*argument, lifetime.span));
+                                arguments.push((*argument, lifetime.ident.span));
                             } else {
                                 bug!("ty type is a ref but hir type is not");
                             }
@@ -2528,7 +2528,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let mut return_span = fn_decl.output.span();
                 if let hir::FnRetTy::Return(ty) = &fn_decl.output {
                     if let hir::TyKind::Rptr(lifetime, _) = ty.kind {
-                        return_span = lifetime.span;
+                        return_span = lifetime.ident.span;
                     }
                 }
 

@@ -398,7 +398,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
                 Some(rl::Region::Static | rl::Region::EarlyBound(..)) => {}
                 Some(rl::Region::LateBound(debruijn, _, _)) if debruijn < self.outer_index => {}
                 Some(rl::Region::LateBound(..) | rl::Region::Free(..)) | None => {
-                    self.has_late_bound_regions = Some(lt.span);
+                    self.has_late_bound_regions = Some(lt.ident.span);
                 }
             }
         }

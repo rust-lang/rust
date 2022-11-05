@@ -375,7 +375,7 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
                 return false;
             };
 
-            if !lifetime_sub.name.is_anonymous() || !lifetime_sup.name.is_anonymous() {
+            if !lifetime_sub.is_anonymous() || !lifetime_sup.is_anonymous() {
                 return false;
             };
 
@@ -407,20 +407,20 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
             let suggestion_param_name =
                 suggestion_param_name.map(|n| n.to_string()).unwrap_or_else(|| "'a".to_owned());
 
-            debug!(?lifetime_sup.span);
-            debug!(?lifetime_sub.span);
-            let make_suggestion = |span: rustc_span::Span| {
-                if span.is_empty() {
-                    (span, format!("{}, ", suggestion_param_name))
-                } else if let Ok("&") = self.tcx.sess.source_map().span_to_snippet(span).as_deref()
-                {
-                    (span.shrink_to_hi(), format!("{} ", suggestion_param_name))
+            debug!(?lifetime_sup.ident.span);
+            debug!(?lifetime_sub.ident.span);
+            let make_suggestion = |ident: Ident| {
+                let sugg = if ident.name == kw::Empty {
+                    format!("{}, ", suggestion_param_name)
+                } else if ident.name == kw::UnderscoreLifetime && ident.span.is_empty() {
+                    format!("{} ", suggestion_param_name)
                 } else {
-                    (span, suggestion_param_name.clone())
-                }
+                    suggestion_param_name.clone()
+                };
+                (ident.span, sugg)
             };
             let mut suggestions =
-                vec![make_suggestion(lifetime_sub.span), make_suggestion(lifetime_sup.span)];
+                vec![make_suggestion(lifetime_sub.ident), make_suggestion(lifetime_sup.ident)];
 
             if introduce_new {
                 let new_param_suggestion = if let Some(first) =

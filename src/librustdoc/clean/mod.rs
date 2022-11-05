@@ -208,7 +208,7 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
             return lt;
         }
     }
-    Lifetime(lifetime.name.ident().name)
+    Lifetime(lifetime.ident.name)
 }
 
 pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg, cx: &mut DocContext<'tcx>) -> Constant {
@@ -1524,16 +1524,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Never => Primitive(PrimitiveType::Never),
         TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(clean_ty(m.ty, cx))),
         TyKind::Rptr(ref l, ref m) => {
-            // There are two times a `Fresh` lifetime can be created:
-            // 1. For `&'_ x`, written by the user. This corresponds to `lower_lifetime` in `rustc_ast_lowering`.
-            // 2. For `&x` as a parameter to an `async fn`. This corresponds to `elided_ref_lifetime in `rustc_ast_lowering`.
-            //    See #59286 for more information.
-            // Ideally we would only hide the `'_` for case 2., but I don't know a way to distinguish it.
-            // Turning `fn f(&'_ self)` into `fn f(&self)` isn't the worst thing in the world, though;
-            // there's no case where it could cause the function to fail to compile.
-            let elided =
-                l.is_elided() || matches!(l.name, LifetimeName::Param(_, ParamName::Fresh));
-            let lifetime = if elided { None } else { Some(clean_lifetime(*l, cx)) };
+            let lifetime = if l.is_anonymous() { None } else { Some(clean_lifetime(*l, cx)) };
             BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),

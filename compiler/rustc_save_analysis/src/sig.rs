@@ -167,7 +167,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
             }
             hir::TyKind::Rptr(ref lifetime, ref mt) => {
                 let mut prefix = "&".to_owned();
-                prefix.push_str(&lifetime.name.ident().to_string());
+                prefix.push_str(&lifetime.ident.to_string());
                 prefix.push(' ');
                 if let hir::Mutability::Mut = mt.mutbl {
                     prefix.push_str("mut ");

@@ -1255,7 +1255,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     } else {
                         self.next_node_id()
                     };
-                    let span = self.tcx.sess.source_map().start_point(t.span);
+                    let span = self.tcx.sess.source_map().start_point(t.span).shrink_to_hi();
                     Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
                 });
                 let lifetime = self.lower_lifetime(&region);
@@ -1546,15 +1546,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let lifetimes =
             self.arena.alloc_from_iter(collected_lifetimes.into_iter().map(|(_, lifetime)| {
                 let id = self.next_node_id();
-                let span = lifetime.ident.span;
-
-                let ident = if lifetime.ident.name == kw::UnderscoreLifetime {
-                    Ident::with_dummy_span(kw::UnderscoreLifetime)
-                } else {
-                    lifetime.ident
-                };
-
-                let l = self.new_named_lifetime(lifetime.id, id, span, ident);
+                let l = self.new_named_lifetime(lifetime.id, id, lifetime.ident);
                 hir::GenericArg::Lifetime(l)
             }));
         debug!(?lifetimes);
@@ -2014,18 +2006,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let generic_args = self.arena.alloc_from_iter(collected_lifetimes.into_iter().map(
             |(_, lifetime, res)| {
                 let id = self.next_node_id();
-                let span = lifetime.ident.span;
-
-                let ident = if lifetime.ident.name == kw::UnderscoreLifetime {
-                    Ident::with_dummy_span(kw::UnderscoreLifetime)
-                } else {
-                    lifetime.ident
-                };
-
                 let res = res.unwrap_or(
                     self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error),
                 );
-                hir::GenericArg::Lifetime(self.new_named_lifetime_with_res(id, span, ident, res))
+                hir::GenericArg::Lifetime(self.new_named_lifetime_with_res(id, lifetime.ident, res))
             },
         ));
 
@@ -2095,43 +2079,41 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> &'hir hir::Lifetime {
-        let span = self.lower_span(l.ident.span);
         let ident = self.lower_ident(l.ident);
-        self.new_named_lifetime(l.id, l.id, span, ident)
+        self.new_named_lifetime(l.id, l.id, ident)
     }
 
     #[instrument(level = "debug", skip(self))]
     fn new_named_lifetime_with_res(
         &mut self,
         id: NodeId,
-        span: Span,
         ident: Ident,
         res: LifetimeRes,
     ) -> &'hir hir::Lifetime {
-        let name = match res {
+        let res = match res {
             LifetimeRes::Param { param, .. } => {
-                let p_name = ParamName::Plain(ident);
                 let param = self.get_remapped_def_id(param);
-
-                hir::LifetimeName::Param(param, p_name)
+                hir::LifetimeName::Param(param)
             }
             LifetimeRes::Fresh { param, .. } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
                 let param = self.local_def_id(param);
-
-                hir::LifetimeName::Param(param, ParamName::Fresh)
+                hir::LifetimeName::Param(param)
             }
             LifetimeRes::Infer => hir::LifetimeName::Infer,
             LifetimeRes::Static => hir::LifetimeName::Static,
             LifetimeRes::Error => hir::LifetimeName::Error,
-            res => panic!("Unexpected lifetime resolution {:?} for {:?} at {:?}", res, ident, span),
+            res => panic!(
+                "Unexpected lifetime resolution {:?} for {:?} at {:?}",
+                res, ident, ident.span
+            ),
         };
 
-        debug!(?name);
+        debug!(?res);
         self.arena.alloc(hir::Lifetime {
             hir_id: self.lower_node_id(id),
-            span: self.lower_span(span),
-            name,
+            ident: self.lower_ident(ident),
+            res,
         })
     }
 
@@ -2140,11 +2122,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         id: NodeId,
         new_id: NodeId,
-        span: Span,
         ident: Ident,
     ) -> &'hir hir::Lifetime {
         let res = self.resolver.get_lifetime_res(id).unwrap_or(LifetimeRes::Error);
-        self.new_named_lifetime_with_res(new_id, span, ident, res)
+        self.new_named_lifetime_with_res(new_id, ident, res)
     }
 
     fn lower_generic_params_mut<'s>(
@@ -2556,8 +2537,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn elided_dyn_bound(&mut self, span: Span) -> &'hir hir::Lifetime {
         let r = hir::Lifetime {
             hir_id: self.next_id(),
-            span: self.lower_span(span),
-            name: hir::LifetimeName::ImplicitObjectLifetimeDefault,
+            ident: Ident::new(kw::Empty, self.lower_span(span)),
+            res: hir::LifetimeName::ImplicitObjectLifetimeDefault,
         };
         debug!("elided_dyn_bound: r={:?}", r);
         self.arena.alloc(r)

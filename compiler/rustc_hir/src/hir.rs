@@ -29,7 +29,7 @@ use std::fmt;
 #[derive(Debug, Copy, Clone, Encodable, HashStable_Generic)]
 pub struct Lifetime {
     pub hir_id: HirId,
-    pub span: Span,
+    pub ident: Ident,
 
     /// Either "`'a`", referring to a named lifetime definition,
     /// or "``" (i.e., `kw::Empty`), for elision placeholders.
@@ -37,7 +37,7 @@ pub struct Lifetime {
     /// HIR lowering inserts these placeholders in type paths that
     /// refer to type definitions needing lifetime parameters,
     /// `&T` and `&mut T`, and trait objects without `... + 'a`.
-    pub name: LifetimeName,
+    pub res: LifetimeName,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Encodable, Hash, Copy)]
@@ -88,7 +88,7 @@ impl ParamName {
 #[derive(HashStable_Generic)]
 pub enum LifetimeName {
     /// User-given names or fresh (synthetic) names.
-    Param(LocalDefId, ParamName),
+    Param(LocalDefId),
 
     /// Implicit lifetime in a context like `dyn Foo`. This is
     /// distinguished from implicit lifetimes elsewhere because the
@@ -116,25 +116,6 @@ pub enum LifetimeName {
 }
 
 impl LifetimeName {
-    pub fn ident(&self) -> Ident {
-        match *self {
-            LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Error => Ident::empty(),
-            LifetimeName::Infer => Ident::with_dummy_span(kw::UnderscoreLifetime),
-            LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
-            LifetimeName::Param(_, param_name) => param_name.ident(),
-        }
-    }
-
-    pub fn is_anonymous(&self) -> bool {
-        match *self {
-            LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Infer
-            | LifetimeName::Param(_, ParamName::Fresh)
-            | LifetimeName::Error => true,
-            LifetimeName::Static | LifetimeName::Param(..) => false,
-        }
-    }
-
     pub fn is_elided(&self) -> bool {
         match self {
             LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Infer => true,
@@ -146,34 +127,25 @@ impl LifetimeName {
             LifetimeName::Error | LifetimeName::Param(..) | LifetimeName::Static => false,
         }
     }
-
-    fn is_static(&self) -> bool {
-        self == &LifetimeName::Static
-    }
-
-    pub fn normalize_to_macros_2_0(&self) -> LifetimeName {
-        match *self {
-            LifetimeName::Param(def_id, param_name) => {
-                LifetimeName::Param(def_id, param_name.normalize_to_macros_2_0())
-            }
-            lifetime_name => lifetime_name,
-        }
-    }
 }
 
 impl fmt::Display for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.name.ident().fmt(f)
+        self.ident.fmt(f)
     }
 }
 
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
-        self.name.is_elided()
+        self.res.is_elided()
+    }
+
+    pub fn is_anonymous(&self) -> bool {
+        self.ident.name == kw::Empty || self.ident.name == kw::UnderscoreLifetime
     }
 
     pub fn is_static(&self) -> bool {
-        self.name.is_static()
+        self.res == LifetimeName::Static
     }
 }
 
@@ -267,7 +239,7 @@ pub enum GenericArg<'hir> {
 impl GenericArg<'_> {
     pub fn span(&self) -> Span {
         match self {
-            GenericArg::Lifetime(l) => l.span,
+            GenericArg::Lifetime(l) => l.ident.span,
             GenericArg::Type(t) => t.span,
             GenericArg::Const(c) => c.span,
             GenericArg::Infer(i) => i.span,
@@ -284,7 +256,7 @@ impl GenericArg<'_> {
     }
 
     pub fn is_synthetic(&self) -> bool {
-        matches!(self, GenericArg::Lifetime(lifetime) if lifetime.name.ident() == Ident::empty())
+        matches!(self, GenericArg::Lifetime(lifetime) if lifetime.ident == Ident::empty())
     }
 
     pub fn descr(&self) -> &'static str {
@@ -446,7 +418,7 @@ impl GenericBound<'_> {
         match self {
             GenericBound::Trait(t, ..) => t.span,
             GenericBound::LangItemTrait(_, span, ..) => *span,
-            GenericBound::Outlives(l) => l.span,
+            GenericBound::Outlives(l) => l.ident.span,
         }
     }
 }
@@ -556,6 +528,19 @@ impl<'hir> Generics<'hir> {
             self.span.into()
         } else {
             self.params.iter().map(|p| p.span).collect::<Vec<Span>>().into()
+        }
+    }
+
+    /// If there are generic parameters, return where to introduce a new one.
+    pub fn span_for_lifetime_suggestion(&self) -> Option<Span> {
+        if let Some(first) = self.params.first()
+            && self.span.contains(first.span)
+        {
+            // `fn foo<A>(t: impl Trait)`
+            //         ^ suggest `'a, ` here
+            Some(first.span.shrink_to_lo())
+        } else {
+            None
         }
     }
 
@@ -765,10 +750,7 @@ pub struct WhereRegionPredicate<'hir> {
 impl<'hir> WhereRegionPredicate<'hir> {
     /// Returns `true` if `param_def_id` matches the `lifetime` of this predicate.
     pub fn is_param_bound(&self, param_def_id: LocalDefId) -> bool {
-        match self.lifetime.name {
-            LifetimeName::Param(id, _) => id == param_def_id,
-            _ => false,
-        }
+        self.lifetime.res == LifetimeName::Param(param_def_id)
     }
 }
 
@@ -3453,7 +3435,7 @@ impl<'hir> Node<'hir> {
             | Node::Variant(Variant { ident, .. })
             | Node::Item(Item { ident, .. })
             | Node::PathSegment(PathSegment { ident, .. }) => Some(*ident),
-            Node::Lifetime(lt) => Some(lt.name.ident()),
+            Node::Lifetime(lt) => Some(lt.ident),
             Node::GenericParam(p) => Some(p.name.ident()),
             Node::TypeBinding(b) => Some(b.ident),
             Node::Param(..)
