@@ -8,7 +8,7 @@ use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{
-    global_state::GlobalStateSnapshot, line_index::OffsetEncoding, lsp_ext,
+    global_state::GlobalStateSnapshot, line_index::PositionEncoding, lsp_ext,
     to_proto::url_from_abs_path,
 };
 
@@ -66,17 +66,17 @@ fn location(
     let uri = url_from_abs_path(&file_name);
 
     let range = {
-        let offset_encoding = snap.config.offset_encoding();
+        let position_encoding = snap.config.position_encoding();
         lsp_types::Range::new(
-            position(&offset_encoding, span, span.line_start, span.column_start),
-            position(&offset_encoding, span, span.line_end, span.column_end),
+            position(&position_encoding, span, span.line_start, span.column_start),
+            position(&position_encoding, span, span.line_end, span.column_end),
         )
     };
     lsp_types::Location::new(uri, range)
 }
 
 fn position(
-    offset_encoding: &OffsetEncoding,
+    position_encoding: &PositionEncoding,
     span: &DiagnosticSpan,
     line_offset: usize,
     column_offset: usize,
@@ -93,9 +93,9 @@ fn position(
             };
         }
         let mut char_offset = 0;
-        let len_func = match offset_encoding {
-            OffsetEncoding::Utf8 => char::len_utf8,
-            OffsetEncoding::Utf16 => char::len_utf16,
+        let len_func = match position_encoding {
+            PositionEncoding::Utf8 => char::len_utf8,
+            PositionEncoding::Utf16 => char::len_utf16,
         };
         for c in line.text.chars() {
             char_offset += 1;

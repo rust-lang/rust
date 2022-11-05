@@ -38,13 +38,13 @@ mod outer { //~ ERROR Direct: pub(crate), Reexported: pub(crate), Reachable: pub
     }
 
     #[rustc_effective_visibility]
-    macro_rules! none_macro { //~ Direct: pub(crate), Reexported: pub(crate), Reachable: pub(crate), ReachableThroughImplTrait: pub(crate)
+    macro_rules! none_macro { //~ ERROR not in the table
         () => {};
     }
 
     #[macro_export]
     #[rustc_effective_visibility]
-    macro_rules! public_macro { //~ Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+    macro_rules! public_macro { //~ ERROR Direct: pub(self), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
         () => {};
     }
 

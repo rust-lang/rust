@@ -104,6 +104,7 @@ macro_rules! maybe_whole {
 macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery
+                    && $self.may_recover()
                     && $self.look_ahead(1, |t| t == &token::ModSep)
                     && let token::Interpolated(nt) = &$self.token.kind
                     && let token::NtTy(ty) = &**nt

@@ -1,3 +1,4 @@
+use crate::error::StrictCoherenceNeedsNegativeCoherence;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::visit::TypeVisitable;
 use crate::ty::{self, TyCtxt};
@@ -65,9 +66,21 @@ impl OverlapMode {
 
         if with_negative_coherence {
             if strict_coherence { OverlapMode::Strict } else { OverlapMode::WithNegative }
-        } else if strict_coherence {
-            bug!("To use strict_coherence you need to set with_negative_coherence feature flag");
         } else {
+            if strict_coherence {
+                let attr_span = trait_id
+                    .as_local()
+                    .into_iter()
+                    .flat_map(|local_def_id| {
+                        tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(local_def_id))
+                    })
+                    .find(|attr| attr.has_name(sym::rustc_strict_coherence))
+                    .map(|attr| attr.span);
+                tcx.sess.emit_err(StrictCoherenceNeedsNegativeCoherence {
+                    span: tcx.def_span(trait_id),
+                    attr_span,
+                });
+            }
             OverlapMode::Stable
         }
     }
@@ -249,7 +262,7 @@ pub fn ancestors<'tcx>(
 
     if let Some(reported) = specialization_graph.has_errored {
         Err(reported)
-    } else if let Some(reported) = tcx.type_of(start_from_impl).error_reported() {
+    } else if let Err(reported) = tcx.type_of(start_from_impl).error_reported() {
         Err(reported)
     } else {
         Ok(Ancestors {

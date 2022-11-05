@@ -2,11 +2,12 @@ pub use self::Mode::*;
 
 use std::ffi::OsString;
 use std::fmt;
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 
-use crate::util::PathBufExt;
+use crate::util::{add_dylib_path, PathBufExt};
 use lazycell::LazyCell;
 use test::ColorConfig;
 
@@ -385,8 +386,7 @@ impl Config {
     }
 
     fn target_cfg(&self) -> &TargetCfg {
-        self.target_cfg
-            .borrow_with(|| TargetCfg::new(&self.rustc_path, &self.target, &self.target_rustcflags))
+        self.target_cfg.borrow_with(|| TargetCfg::new(self))
     }
 
     pub fn matches_arch(&self, arch: &str) -> bool {
@@ -457,21 +457,23 @@ pub enum Endian {
 }
 
 impl TargetCfg {
-    fn new(rustc_path: &Path, target: &str, target_rustcflags: &Vec<String>) -> TargetCfg {
-        let output = match Command::new(rustc_path)
+    fn new(config: &Config) -> TargetCfg {
+        let mut command = Command::new(&config.rustc_path);
+        add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
+        let output = match command
             .arg("--print=cfg")
             .arg("--target")
-            .arg(target)
-            .args(target_rustcflags)
+            .arg(&config.target)
+            .args(&config.target_rustcflags)
             .output()
         {
             Ok(output) => output,
-            Err(e) => panic!("error: failed to get cfg info from {:?}: {e}", rustc_path),
+            Err(e) => panic!("error: failed to get cfg info from {:?}: {e}", config.rustc_path),
         };
         if !output.status.success() {
             panic!(
                 "error: failed to get cfg info from {:?}\n--- stdout\n{}\n--- stderr\n{}",
-                rustc_path,
+                config.rustc_path,
                 String::from_utf8(output.stdout).unwrap(),
                 String::from_utf8(output.stderr).unwrap(),
             );

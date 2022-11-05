@@ -2065,13 +2065,13 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                 if ty.has_non_region_param() || ty.has_non_region_infer() {
                     bug!("const `{ct}`'s type should not reference params or types");
                 }
-                tcx.mk_const(ty::ConstS {
-                    ty,
-                    kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
+                tcx.mk_const(
+                    ty::ConstKind::Placeholder(ty::PlaceholderConst {
                         universe: ty::UniverseIndex::ROOT,
                         name: ty::BoundVar::from_usize(idx),
                     }),
-                })
+                    ty,
+                )
                 .into()
             }
             _ => arg,

@@ -95,11 +95,11 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
-    fn error_reported(&self) -> Option<ErrorGuaranteed> {
+    fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
         if self.references_error() {
-            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         } else {
-            None
+            Ok(())
         }
     }
     fn has_non_region_param(&self) -> bool {

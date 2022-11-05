@@ -113,8 +113,9 @@ pub struct MissingParentheseInRange {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion_verbose(
+#[multipart_suggestion(
     hir_analysis_add_missing_parentheses_in_range,
+    style = "verbose",
     applicability = "maybe-incorrect"
 )]
 pub struct AddMissingParenthesesInRange {

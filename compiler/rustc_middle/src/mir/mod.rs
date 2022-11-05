@@ -1186,6 +1186,11 @@ impl<'tcx> BasicBlockData<'tcx> {
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
         if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
     }
+
+    /// Does the block have no statements and an unreachable terminator?
+    pub fn is_empty_unreachable(&self) -> bool {
+        self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
+    }
 }
 
 impl<O> AssertKind<O> {
@@ -2409,10 +2414,8 @@ impl<'tcx> ConstantKind<'tcx> {
                 let generics = tcx.generics_of(item_def_id.to_def_id());
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.hir().name(hir_id);
-                let ty_const = tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
-                    ty,
-                });
+                let ty_const =
+                    tcx.mk_const(ty::ConstKind::Param(ty::ParamConst::new(index, name)), ty);
                 debug!(?ty_const);
 
                 return Self::Ty(ty_const);

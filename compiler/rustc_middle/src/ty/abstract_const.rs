@@ -1,7 +1,7 @@
 //! A subset of a mir body used for const evaluatability checking.
 use crate::mir;
 use crate::ty::visit::TypeVisitable;
-use crate::ty::{self, DelaySpanBugEmitted, EarlyBinder, SubstsRef, Ty, TyCtxt};
+use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use std::cmp;
@@ -43,7 +43,7 @@ impl<'tcx> AbstractConst<'tcx> {
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
         match ct.kind() {
             ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv),
-            ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => Err(reported),
+            ty::ConstKind::Error(reported) => Err(reported),
             _ => Ok(None),
         }
     }

@@ -288,7 +288,7 @@ fn mir_const<'tcx>(
 
     let mut body = tcx.mir_built(def).steal();
 
-    rustc_middle::mir::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
+    pass_manager::dump_mir_for_phase_change(tcx, &body);
 
     pm::run_passes(
         tcx,

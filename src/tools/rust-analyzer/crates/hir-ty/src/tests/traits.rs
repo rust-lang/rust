@@ -3963,3 +3963,124 @@ fn g(t: &(dyn T + Send)) {
         "#,
     );
 }
+
+#[test]
+fn gats_in_path() {
+    check_types(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+trait PointerFamily {
+    type Pointer<T>: Deref<Target = T>;
+}
+
+fn f<P: PointerFamily>(p: P::Pointer<i32>) {
+    let a = *p;
+      //^ i32
+}
+fn g<P: PointerFamily>(p: <P as PointerFamily>::Pointer<i32>) {
+    let a = *p;
+      //^ i32
+}
+        "#,
+    );
+}
+
+#[test]
+fn gats_with_impl_trait() {
+    // FIXME: the last function (`fn i()`) is not valid Rust as of this writing because you cannot
+    // specify the same associated type multiple times even if their arguments are different (c.f.
+    // `fn h()`, which is valid). Reconsider how to treat these invalid types.
+    check_types(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+trait Trait {
+    type Assoc<T>: Deref<Target = T>;
+    fn get<U>(&self) -> Self::Assoc<U>;
+}
+
+fn f<T>(v: impl Trait) {
+    let a = v.get::<i32>().deref();
+      //^ &i32
+    let a = v.get::<T>().deref();
+      //^ &T
+}
+fn g<'a, T: 'a>(v: impl Trait<Assoc<T> = &'a T>) {
+    let a = v.get::<T>();
+      //^ &T
+    let a = v.get::<()>();
+      //^ Trait::Assoc<(), impl Trait<Assoc<T> = &T>>
+}
+fn h<'a>(v: impl Trait<Assoc<i32> = &'a i32> + Trait<Assoc<i64> = &'a i64>) {
+    let a = v.get::<i32>();
+      //^ &i32
+    let a = v.get::<i64>();
+      //^ &i64
+}
+fn i<'a>(v: impl Trait<Assoc<i32> = &'a i32, Assoc<i64> = &'a i64>) {
+    let a = v.get::<i32>();
+      //^ &i32
+    let a = v.get::<i64>();
+      //^ &i64
+}
+    "#,
+    );
+}
+
+#[test]
+fn gats_with_dyn() {
+    // This test is here to keep track of how we infer things despite traits with GATs being not
+    // object-safe currently.
+    // FIXME: reconsider how to treat these invalid types.
+    check_infer_with_mismatches(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+trait Trait {
+    type Assoc<T>: Deref<Target = T>;
+    fn get<U>(&self) -> Self::Assoc<U>;
+}
+
+fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
+    v.get::<i32>().deref();
+}
+    "#,
+        expect![[r#"
+            90..94 'self': &Self
+            127..128 'v': &(dyn Trait<Assoc<i32> = &i32>)
+            164..195 '{     ...f(); }': ()
+            170..171 'v': &(dyn Trait<Assoc<i32> = &i32>)
+            170..184 'v.get::<i32>()': &i32
+            170..192 'v.get:...eref()': &i32
+        "#]],
+    );
+}
+
+#[test]
+fn gats_in_associated_type_binding() {
+    check_types(
+        r#"
+trait Trait {
+    type Assoc<T>;
+    fn get<U>(&self) -> Self::Assoc<U>;
+}
+
+fn f<T>(t: T)
+where
+    T: Trait<Assoc<i32> = u32>,
+    T: Trait<Assoc<isize> = usize>,
+{
+    let a = t.get::<i32>();
+      //^ u32
+    let a = t.get::<isize>();
+      //^ usize
+    let a = t.get::<()>();
+      //^ Trait::Assoc<(), T>
+}
+
+    "#,
+    );
+}

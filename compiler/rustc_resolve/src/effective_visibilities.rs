@@ -57,26 +57,45 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
                     while let NameBindingKind::Import { binding: nested_binding, import, .. } =
                         binding.kind
                     {
-                        let mut update = |node_id| self.update(
-                            self.r.local_def_id(node_id),
-                            binding.vis.expect_local(),
-                            prev_parent_id,
-                            level,
-                        );
-                        // In theory all the import IDs have individual visibilities and effective
-                        // visibilities, but in practice these IDs go straigth to HIR where all
-                        // their few uses assume that their (effective) visibility applies to the
-                        // whole syntactic `use` item. So we update them all to the maximum value
-                        // among the potential individual effective visibilities. Maybe HIR for
-                        // imports shouldn't use three IDs at all.
-                        update(import.id);
-                        if let ImportKind::Single { additional_ids, .. } = import.kind {
-                            update(additional_ids.0);
-                            update(additional_ids.1);
+                        let mut update = |node_id| {
+                            self.update(
+                                self.r.local_def_id(node_id),
+                                binding.vis.expect_local(),
+                                prev_parent_id,
+                                level,
+                            )
+                        };
+                        match import.kind {
+                            ImportKind::Single { id, additional_ids, .. } => {
+                                // In theory all the import IDs have individual visibilities and
+                                // effective visibilities, but in practice these IDs go straigth to
+                                // HIR where all their few uses assume that their (effective)
+                                // visibility applies to the whole syntactic `use` item. So we
+                                // update them all to the maximum value among the potential
+                                // individual effective visibilities. Maybe HIR for imports
+                                // shouldn't use three IDs at all.
+                                update(id);
+                                update(additional_ids.0);
+                                update(additional_ids.1);
+                                prev_parent_id = self.r.local_def_id(id);
+                            }
+                            ImportKind::Glob { id, .. } | ImportKind::ExternCrate { id, .. } => {
+                                update(id);
+                                prev_parent_id = self.r.local_def_id(id);
+                            }
+                            ImportKind::MacroUse => {
+                                // In theory we should reset the parent id to something private
+                                // here, but `macro_use` imports always refer to external items,
+                                // so it doesn't matter and we can just do nothing.
+                            }
+                            ImportKind::MacroExport => {
+                                // In theory we should reset the parent id to something public
+                                // here, but it has the same effect as leaving the previous parent,
+                                // so we can just do nothing.
+                            }
                         }
 
                         level = Level::Reexported;
-                        prev_parent_id = self.r.local_def_id(import.id);
                         binding = nested_binding;
                     }
                 }
@@ -136,13 +155,6 @@ impl<'r, 'ast> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r> {
             ast::ItemKind::ForeignMod(..) => {
                 let parent_id = self.r.local_parent(def_id);
                 self.update(def_id, Visibility::Public, parent_id, Level::Direct);
-            }
-
-            // Only exported `macro_rules!` items are public, but they always are
-            ast::ItemKind::MacroDef(ref macro_def) if macro_def.macro_rules => {
-                let parent_id = self.r.local_parent(def_id);
-                let vis = self.r.visibilities[&def_id];
-                self.update(def_id, vis, parent_id, Level::Direct);
             }
 
             ast::ItemKind::Mod(..) => {

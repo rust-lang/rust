@@ -109,8 +109,9 @@ pub struct InferenceBadError<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum SourceKindSubdiag<'a> {
-    #[suggestion_verbose(
+    #[suggestion(
         infer_source_kind_subdiag_let,
+        style = "verbose",
         code = ": {type_name}",
         applicability = "has-placeholders"
     )]
@@ -135,8 +136,9 @@ pub enum SourceKindSubdiag<'a> {
         parent_prefix: String,
         parent_name: String,
     },
-    #[suggestion_verbose(
+    #[suggestion(
         infer_source_kind_subdiag_generic_suggestion,
+        style = "verbose",
         code = "::<{args}>",
         applicability = "has-placeholders"
     )]
@@ -150,8 +152,9 @@ pub enum SourceKindSubdiag<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum SourceKindMultiSuggestion<'a> {
-    #[multipart_suggestion_verbose(
+    #[multipart_suggestion(
         infer_source_kind_fully_qualified,
+        style = "verbose",
         applicability = "has-placeholders"
     )]
     FullyQualified {
@@ -163,8 +166,9 @@ pub enum SourceKindMultiSuggestion<'a> {
         adjustment: &'a str,
         successor_pos: &'a str,
     },
-    #[multipart_suggestion_verbose(
+    #[multipart_suggestion(
         infer_source_kind_closure_return,
+        style = "verbose",
         applicability = "has-placeholders"
     )]
     ClosureReturn {
@@ -478,8 +482,9 @@ pub enum ImplicitStaticLifetimeSubdiag {
         #[primary_span]
         span: Span,
     },
-    #[suggestion_verbose(
+    #[suggestion(
         infer_implicit_static_lifetime_suggestion,
+        style = "verbose",
         code = " + '_",
         applicability = "maybe-incorrect"
     )]

@@ -1593,7 +1593,6 @@ function initSearch(rawSearchIndex) {
                 link.className = "result-" + type;
                 link.href = item.href;
 
-                const wrapper = document.createElement("div");
                 const resultName = document.createElement("div");
                 resultName.className = "result-name";
 
@@ -1614,16 +1613,13 @@ function initSearch(rawSearchIndex) {
                 resultName.insertAdjacentHTML(
                     "beforeend",
                     item.displayPath + "<span class=\"" + type + "\">" + name + extra + "</span>");
-                wrapper.appendChild(resultName);
+                link.appendChild(resultName);
 
                 const description = document.createElement("div");
                 description.className = "desc";
-                const spanDesc = document.createElement("span");
-                spanDesc.insertAdjacentHTML("beforeend", item.desc);
+                description.insertAdjacentHTML("beforeend", item.desc);
 
-                description.appendChild(spanDesc);
-                wrapper.appendChild(description);
-                link.appendChild(wrapper);
+                link.appendChild(description);
                 output.appendChild(link);
             });
         } else if (query.error === null) {

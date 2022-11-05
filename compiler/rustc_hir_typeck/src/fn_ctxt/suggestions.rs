@@ -22,6 +22,14 @@ use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
+        self.typeck_results
+            .borrow()
+            .liberated_fn_sigs()
+            .get(self.tcx.hir().get_parent_node(self.body_id))
+            .copied()
+    }
+
     pub(in super::super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut Diagnostic) {
         err.span_suggestion_short(
             span.shrink_to_hi(),
