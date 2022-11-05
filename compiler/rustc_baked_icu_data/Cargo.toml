@@ -1,0 +1,9 @@
+[package]
+name = "rustc_baked_icu_data"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+icu_list = "1.0.0"
+icu_provider = "1.0.1"
+litemap = "0.6.0"
