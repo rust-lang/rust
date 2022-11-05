@@ -389,6 +389,10 @@ define_Conf! {
     ///
     /// Whether `dbg!` should be allowed in test functions
     (allow_dbg_in_tests: bool = false),
+    /// Lint: PRINT_STDOUT, PRINT_STDERR.
+    ///
+    /// Whether print macros (ex. `println!`) should be allowed in test functions
+    (allow_print_in_tests: bool = false),
     /// Lint: RESULT_LARGE_ERR.
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
