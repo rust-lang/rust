@@ -55,6 +55,38 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
             visit::walk_crate(&mut visitor, krate);
         }
 
+        // Update visibilities for import def ids. These are not used during the
+        // `EffectiveVisibilitiesVisitor` pass, because we have more detailed binding-based
+        // information, but are used by later passes. Effective visibility of an import def id
+        // is the maximum value among visibilities of bindings corresponding to that def id.
+        for (binding, eff_vis) in visitor.import_effective_visibilities.iter() {
+            let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
+            if let Some(node_id) = import.id() {
+                let mut update = |node_id| {
+                    r.effective_visibilities.update_eff_vis(
+                        r.local_def_id(node_id),
+                        eff_vis,
+                        ResolverTree(&r.definitions, &r.crate_loader),
+                    )
+                };
+                update(node_id);
+                if let ImportKind::Single { additional_ids: (id1, id2), .. } = import.kind {
+                    // In theory all the single import IDs have individual visibilities and
+                    // effective visibilities, but in practice these IDs go straigth to HIR
+                    // where all their few uses assume that their (effective) visibility
+                    // applies to the whole syntactic `use` item. So they all get the same
+                    // value which is the maximum of all bindings. Maybe HIR for imports
+                    // shouldn't use three IDs at all.
+                    if id1 != ast::DUMMY_NODE_ID {
+                        update(id1);
+                    }
+                    if id2 != ast::DUMMY_NODE_ID {
+                        update(id2);
+                    }
+                }
+            }
+        }
+
         info!("resolve::effective_visibilities: {:#?}", r.effective_visibilities);
     }
 
@@ -75,40 +107,9 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
                 // sets the rest of the `use` chain to `Level::Reexported` until
                 // we hit the actual exported item.
                 let mut parent_id = ParentId::Def(module_id);
-                while let NameBindingKind::Import { binding: nested_binding, import, .. } =
-                    binding.kind
-                {
+                while let NameBindingKind::Import { binding: nested_binding, .. } = binding.kind {
                     let binding_id = ImportId::new_unchecked(binding);
                     self.update_import(binding_id, parent_id);
-
-                    // Update visibilities for import ids. These are not used during this pass,
-                    // because we have more detailed binding-based information, but are used by
-                    // later passes. Effective visibility of an import def id is the maximum value
-                    // among visibilities of bindings corresponding to that def id.
-                    if let Some(node_id) = import.id() {
-                        let mut update = |node_id| {
-                            self.update_def(
-                                self.r.local_def_id(node_id),
-                                binding.vis.expect_local(),
-                                parent_id,
-                            )
-                        };
-                        update(node_id);
-                        if let ImportKind::Single { additional_ids: (id1, id2), .. } = import.kind {
-                            // In theory all the single import IDs have individual visibilities and
-                            // effective visibilities, but in practice these IDs go straigth to HIR
-                            // where all their few uses assume that their (effective) visibility
-                            // applies to the whole syntactic `use` item. So they all get the same
-                            // value which is the maximum of all bindings. Maybe HIR for imports
-                            // shouldn't use three IDs at all.
-                            if id1 != ast::DUMMY_NODE_ID {
-                                update(id1);
-                            }
-                            if id2 != ast::DUMMY_NODE_ID {
-                                update(id2);
-                            }
-                        }
-                    }
 
                     parent_id = ParentId::Import(binding_id);
                     binding = nested_binding;
