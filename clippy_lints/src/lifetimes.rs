@@ -10,7 +10,7 @@ use rustc_hir::lang_items;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin, TraitFn, TraitItem,
+    ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, PolyTraitRef, PredicateOrigin, TraitFn, TraitItem,
     TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -180,7 +180,7 @@ fn check_fn_inner<'tcx>(
                             _ => None,
                         });
                         for bound in lifetimes {
-                            if bound.name != LifetimeName::Static && !bound.is_elided() {
+                            if !bound.is_static() && !bound.is_elided() {
                                 return;
                             }
                         }
@@ -414,17 +414,13 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
 
     fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let Some(ref lt) = *lifetime {
-            if lt.name == LifetimeName::Static {
+            if lt.is_static() {
                 self.lts.push(RefLt::Static);
-            } else if let LifetimeName::Param(_, ParamName::Fresh) = lt.name {
+            } else if lt.is_anonymous() {
                 // Fresh lifetimes generated should be ignored.
                 self.lts.push(RefLt::Unnamed);
-            } else if lt.is_elided() {
-                self.lts.push(RefLt::Unnamed);
-            } else if let LifetimeName::Param(def_id, _) = lt.name {
+            } else if let LifetimeName::Param(def_id) = lt.res {
                 self.lts.push(RefLt::Named(def_id));
-            } else {
-                self.lts.push(RefLt::Unnamed);
             }
         } else {
             self.lts.push(RefLt::Unnamed);
@@ -472,7 +468,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 walk_item(self, item);
                 self.lts.truncate(len);
                 self.lts.extend(bounds.iter().filter_map(|bound| match bound {
-                    GenericArg::Lifetime(l) => Some(if let LifetimeName::Param(def_id, _) = l.name {
+                    GenericArg::Lifetime(l) => Some(if let LifetimeName::Param(def_id) = l.res {
                         RefLt::Named(def_id)
                     } else {
                         RefLt::Unnamed
@@ -498,10 +494,8 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
     }
 
     fn visit_generic_arg(&mut self, generic_arg: &'tcx GenericArg<'tcx>) {
-        if let GenericArg::Lifetime(l) = generic_arg
-            && let LifetimeName::Param(def_id, _) = l.name
-        {
-            self.lifetime_generic_arg_spans.entry(def_id).or_insert(l.span);
+        if let GenericArg::Lifetime(l) = generic_arg && let LifetimeName::Param(def_id) = l.res {
+            self.lifetime_generic_arg_spans.entry(def_id).or_insert(l.ident.span);
         }
         // Replace with `walk_generic_arg` if/when https://github.com/rust-lang/rust/pull/103692 lands.
         // walk_generic_arg(self, generic_arg);
@@ -577,7 +571,7 @@ where
 
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        self.map.remove(&lifetime.name.ident().name);
+        self.map.remove(&lifetime.ident.name);
     }
 
     fn visit_generic_param(&mut self, param: &'tcx GenericParam<'_>) {
@@ -653,7 +647,7 @@ struct BodyLifetimeChecker {
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        if lifetime.name.ident().name != kw::UnderscoreLifetime && lifetime.name.ident().name != kw::StaticLifetime {
+        if lifetime.ident.name != kw::UnderscoreLifetime && lifetime.ident.name != kw::StaticLifetime {
             self.lifetimes_used_in_body = true;
         }
     }
