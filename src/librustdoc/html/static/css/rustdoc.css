@@ -1204,6 +1204,12 @@ a.test-arrow {
 	top: 5px;
 	right: 5px;
 	z-index: 1;
+	color: var(--test-arrow-color);
+	background-color: var(--test-arrow-background-color);
+}
+a.test-arrow:hover {
+	color: var(--test-arrow-hover-color);
+	background-color: var(--test-arrow-hover-background-color);
 }
 .example-wrap:hover .test-arrow {
 	visibility: visible;
