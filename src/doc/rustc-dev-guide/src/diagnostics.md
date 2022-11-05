@@ -269,7 +269,7 @@ book][rustc-lint-levels] and the [reference][reference-diagnostics].
 
 ### Finding the source of errors
 
-There are two main ways to find where a given error is emitted:
+There are three main ways to find where a given error is emitted:
 
 - `grep` for either a sub-part of the error message/label or error code. This
   usually works well and is straightforward, but there are some cases where
@@ -287,6 +287,8 @@ There are two main ways to find where a given error is emitted:
   - The _construction_ of the error is far away from where it is _emitted_,
     a problem similar to the one we faced with the `grep` approach.
     In some cases, we buffer multiple errors in order to emit them in order.
+- Invoking `rustc` with the nightly-only flag `-Z track-diagnostics` will print error creation
+  locations alongside the error.
 
 The regular development practices apply: judicious use of `debug!()` statements
 and use of a debugger to trigger break points in order to figure out in what

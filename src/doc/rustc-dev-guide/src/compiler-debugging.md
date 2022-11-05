@@ -185,6 +185,40 @@ stack backtrace:
 
 Cool, now I have a backtrace for the error!
 
+## Getting the the error creation location
+
+`-Z track-diagnostics` can help figure out where errors are emitted. It uses `#[track_caller]`
+for this and prints its location alongside the error:
+
+```bash
+$ RUST_BACKTRACE=1 rustc +stage1 error.rs -Z track-diagnostics
+error[E0277]: cannot add `()` to `{integer}`
+ --> src\error.rs:2:7
+  |
+2 |     1 + ();
+  |       ^ no implementation for `{integer} + ()`
+-Ztrack-diagnostics: created at compiler/rustc_trait_selection/src/traits/error_reporting/mod.rs:638:39
+  |
+  = help: the trait `Add<()>` is not implemented for `{integer}`
+  = help: the following other types implement trait `Add<Rhs>`:
+            <&'a f32 as Add<f32>>
+            <&'a f64 as Add<f64>>
+            <&'a i128 as Add<i128>>
+            <&'a i16 as Add<i16>>
+            <&'a i32 as Add<i32>>
+            <&'a i64 as Add<i64>>
+            <&'a i8 as Add<i8>>
+            <&'a isize as Add<isize>>
+          and 48 others
+
+For more information about this error, try `rustc --explain E0277`.
+```
+
+This is similar but different to `-Z treat-err-as-bug`:
+- it will print the locations for all errors emitted
+- it does not require a compiler built with debug symbols
+- you don't have to read through a big stack trace.
+
 ## Getting logging output
 
 The compiler uses the [`tracing`] crate for logging.
