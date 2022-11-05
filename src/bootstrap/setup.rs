@@ -82,7 +82,7 @@ impl fmt::Display for Profile {
 }
 
 pub fn setup(config: &Config, profile: Profile) {
-    let path = &config.config;
+    let path = &config.config.clone().unwrap_or(PathBuf::from("config.toml"));
 
     if path.exists() {
         eprintln!(
