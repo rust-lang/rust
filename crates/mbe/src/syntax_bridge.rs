@@ -12,6 +12,9 @@ use tt::buffer::{Cursor, TokenBuffer};
 
 use crate::{to_parser_input::to_parser_input, tt_iter::TtIter, TokenMap};
 
+#[cfg(test)]
+mod tests;
+
 /// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).
 pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree, TokenMap) {
@@ -228,7 +231,7 @@ fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree {
             }
 
             let spacing = match conv.peek().map(|next| next.kind(conv)) {
-                Some(kind) if !kind.is_trivia() => tt::Spacing::Joint,
+                Some(kind) if is_single_token_op(kind) => tt::Spacing::Joint,
                 _ => tt::Spacing::Alone,
             };
             let char = match token.to_char(conv) {
@@ -305,6 +308,35 @@ fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree {
     } else {
         subtree
     }
+}
+
+fn is_single_token_op(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        EQ | L_ANGLE
+            | R_ANGLE
+            | BANG
+            | AMP
+            | PIPE
+            | TILDE
+            | AT
+            | DOT
+            | COMMA
+            | SEMICOLON
+            | COLON
+            | POUND
+            | DOLLAR
+            | QUESTION
+            | PLUS
+            | MINUS
+            | STAR
+            | SLASH
+            | PERCENT
+            | CARET
+            // LIFETIME_IDENT will be split into a sequence of `'` (a single quote) and an
+            // identifier.
+            | LIFETIME_IDENT
+    )
 }
 
 /// Returns the textual content of a doc comment block as a quoted string
@@ -591,10 +623,10 @@ impl SynToken {
 }
 
 impl SrcToken<Converter> for SynToken {
-    fn kind(&self, _ctx: &Converter) -> SyntaxKind {
+    fn kind(&self, ctx: &Converter) -> SyntaxKind {
         match self {
             SynToken::Ordinary(token) => token.kind(),
-            SynToken::Punch(token, _) => token.kind(),
+            SynToken::Punch(..) => SyntaxKind::from_char(self.to_char(ctx).unwrap()).unwrap(),
             SynToken::Synthetic(token) => token.kind,
         }
     }
@@ -651,7 +683,7 @@ impl TokenConverter for Converter {
         }
 
         let curr = self.current.clone()?;
-        if !&self.range.contains_range(curr.text_range()) {
+        if !self.range.contains_range(curr.text_range()) {
             return None;
         }
         let (new_current, new_synth) =
@@ -809,12 +841,15 @@ impl<'a> TtTreeSink<'a> {
         let next = last.bump();
         if let (
             Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Punct(curr), _)),
-            Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Punct(_), _)),
+            Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Punct(next), _)),
         ) = (last.token_tree(), next.token_tree())
         {
             // Note: We always assume the semi-colon would be the last token in
             // other parts of RA such that we don't add whitespace here.
-            if curr.spacing == tt::Spacing::Alone && curr.char != ';' {
+            //
+            // When `next` is a `Punct` of `'`, that's a part of a lifetime identifier so we don't
+            // need to add whitespace either.
+            if curr.spacing == tt::Spacing::Alone && curr.char != ';' && next.char != '\'' {
                 self.inner.token(WHITESPACE, " ");
                 self.text_pos += TextSize::of(' ');
             }

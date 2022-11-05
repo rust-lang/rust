@@ -82,14 +82,14 @@ fn attribute_macro_syntax_completion_2() {
 #[proc_macros::identity_when_valid]
 fn foo() { bar.; blub }
 "#,
-        expect![[r##"
+        expect![[r#"
 #[proc_macros::identity_when_valid]
 fn foo() { bar.; blub }
 
 fn foo() {
-    bar.;
+    bar. ;
     blub
-}"##]],
+}"#]],
     );
 }
 
