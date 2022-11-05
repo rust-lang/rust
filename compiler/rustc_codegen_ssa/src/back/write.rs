@@ -1945,6 +1945,10 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             self.backend.print_pass_timings()
         }
 
+        if sess.print_llvm_stats() {
+            self.backend.print_statistics()
+        }
+
         (
             CodegenResults {
                 metadata: self.metadata,
