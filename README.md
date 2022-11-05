@@ -59,6 +59,7 @@ by running it with the `--help` flag or reading the [rustc dev guide][rustcguide
    * `curl`
    * `git`
    * `ssl` which comes in `libssl-dev` or `openssl-devel`
+   * `gettext` (which also provides `envsubst`)
    * `pkg-config` if you are compiling on Linux and targeting Linux
 
 2. Clone the [source] with `git`:
