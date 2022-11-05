@@ -135,7 +135,10 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: Scalar) -> Self::Value;
 
     fn alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
-    fn byte_array_alloca(&mut self, len: Self::Value, align: Align) -> Self::Value;
+    fn array_alloca(&mut self, ty: Self::Type, len: Self::Value, align: Align) -> Self::Value;
+    fn byte_array_alloca(&mut self, len: Self::Value, align: Align) -> Self::Value {
+        self.array_alloca(self.cx().type_i8(), len, align)
+    }
 
     fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
     fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
