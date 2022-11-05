@@ -120,7 +120,7 @@ pub struct TypeofReservedKeywordUsed<'tcx> {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[suggestion_verbose(code = "{ty}")]
+    #[suggestion(style = "verbose", code = "{ty}")]
     pub opt_sugg: Option<(Span, Applicability)>,
 }
 
@@ -156,6 +156,7 @@ pub struct MissingTypeParams {
 
 // Manual implementation of `IntoDiagnostic` to be able to call `span_to_snippet`.
 impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
+    #[track_caller]
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = handler.struct_span_err_with_code(
             self.span,
@@ -238,7 +239,11 @@ pub struct UnusedExternCrate {
 #[derive(LintDiagnostic)]
 #[diag(hir_analysis_extern_crate_not_idiomatic)]
 pub struct ExternCrateNotIdiomatic {
-    #[suggestion_short(applicability = "machine-applicable", code = "{suggestion_code}")]
+    #[suggestion(
+        style = "short",
+        applicability = "machine-applicable",
+        code = "{suggestion_code}"
+    )]
     pub span: Span,
     pub msg_code: String,
     pub suggestion_code: String,

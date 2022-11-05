@@ -2314,7 +2314,7 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
             tcx,
             closure_substs,
             self.num_external_vids,
-            tcx.typeck_root_def_id(closure_def_id),
+            closure_def_id.expect_local(),
         );
         debug!("apply_requirements: closure_mapping={:?}", closure_mapping);
 

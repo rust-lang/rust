@@ -23,7 +23,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
@@ -55,7 +54,7 @@ pub struct PathSeg(pub DefId, pub usize);
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
-    fn item_def_id(&self) -> Option<DefId>;
+    fn item_def_id(&self) -> DefId;
 
     /// Returns predicates in scope of the form `X: Foo<T>`, where `X`
     /// is a type parameter `X` with the given id `def_id` and T
@@ -501,6 +500,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     GenericParamDefKind::Const { has_default } => {
                         let ty = tcx.at(self.span).type_of(param.def_id);
+                        if ty.references_error() {
+                            return tcx.const_error(ty).into();
+                        }
                         if !infer_args && has_default {
                             tcx.bound_const_param_default(param.def_id)
                                 .subst(tcx, substs.unwrap())
@@ -884,9 +886,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        let sized_def_id = tcx.lang_items().require(LangItem::Sized);
+        let sized_def_id = tcx.lang_items().sized_trait();
         match (&sized_def_id, unbound) {
-            (Ok(sized_def_id), Some(tpb))
+            (Some(sized_def_id), Some(tpb))
                 if tpb.path.res == Res::Def(DefKind::Trait, *sized_def_id) =>
             {
                 // There was in fact a `?Sized` bound, return without doing anything
@@ -906,7 +908,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // There was no `?Sized` bound; add implicitly sized if `Sized` is available.
             }
         }
-        if sized_def_id.is_err() {
+        if sized_def_id.is_none() {
             // No lang item for `Sized`, so we can't add it as a bound.
             return;
         }
@@ -1908,6 +1910,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 }
             }
+
+            // see if we can satisfy using an inherent associated type
+            for impl_ in tcx.inherent_impls(adt_def.did()) {
+                let assoc_ty = tcx.associated_items(impl_).find_by_name_and_kind(
+                    tcx,
+                    assoc_ident,
+                    ty::AssocKind::Type,
+                    *impl_,
+                );
+                if let Some(assoc_ty) = assoc_ty {
+                    let ty = tcx.type_of(assoc_ty.def_id);
+                    return Ok((ty, DefKind::AssocTy, assoc_ty.def_id));
+                }
+            }
         }
 
         // Find the type of the associated item, and the trait where the associated
@@ -1977,7 +1993,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
 
                     err.emit()
-                } else if let Some(reported) = qself_ty.error_reported() {
+                } else if let Err(reported) = qself_ty.error_reported() {
                     reported
                 } else {
                     // Don't print `TyErr` to the user.
@@ -2080,17 +2096,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             debug!("qpath_to_ty: self.item_def_id()={:?}", def_id);
 
-            let parent_def_id = def_id
-                .and_then(|def_id| {
-                    def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
-                })
+            let parent_def_id = def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
                 .map(|hir_id| tcx.hir().get_parent_item(hir_id).to_def_id());
 
             debug!("qpath_to_ty: parent_def_id={:?}", parent_def_id);
 
             // If the trait in segment is the same as the trait defining the item,
             // use the `<Self as ..>` syntax in the error.
-            let is_part_of_self_trait_constraints = def_id == Some(trait_def_id);
+            let is_part_of_self_trait_constraints = def_id == trait_def_id;
             let is_part_of_fn_in_self_trait = parent_def_id == Some(trait_def_id);
 
             let type_name = if is_part_of_self_trait_constraints || is_part_of_fn_in_self_trait {

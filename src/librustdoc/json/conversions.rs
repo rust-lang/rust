@@ -48,7 +48,8 @@ impl JsonRenderer<'_> {
             .map(rustc_ast_pretty::pprust::attribute_to_string)
             .collect();
         let span = item.span(self.tcx);
-        let clean::Item { name, attrs: _, kind: _, visibility, item_id, cfg: _ } = item;
+        let visibility = item.visibility(self.tcx);
+        let clean::Item { name, attrs: _, kind: _, item_id, cfg: _, .. } = item;
         let inner = match *item.kind {
             clean::KeywordItem => return None,
             clean::StrippedItem(ref inner) => {
@@ -99,13 +100,12 @@ impl JsonRenderer<'_> {
         }
     }
 
-    fn convert_visibility(&self, v: clean::Visibility) -> Visibility {
-        use clean::Visibility::*;
+    fn convert_visibility(&self, v: Option<ty::Visibility<DefId>>) -> Visibility {
         match v {
-            Public => Visibility::Public,
-            Inherited => Visibility::Default,
-            Restricted(did) if did.is_crate_root() => Visibility::Crate,
-            Restricted(did) => Visibility::Restricted {
+            None => Visibility::Default,
+            Some(ty::Visibility::Public) => Visibility::Public,
+            Some(ty::Visibility::Restricted(did)) if did.is_crate_root() => Visibility::Crate,
+            Some(ty::Visibility::Restricted(did)) => Visibility::Restricted {
                 parent: from_item_id(did.into(), self.tcx),
                 path: self.tcx.def_path(did).to_string_no_crate_verbose(),
             },
@@ -283,7 +283,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
             ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {
-            generics: (*g).into_tcx(tcx),
+            generics: g.into_tcx(tcx),
             bounds: b.into_tcx(tcx),
             default: None,
         },

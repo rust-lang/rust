@@ -36,10 +36,6 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => None,
         }
     }
-
-    pub fn is_weak_lang_item(self, item_def_id: DefId) -> bool {
-        self.lang_items().is_weak_lang_item(item_def_id)
-    }
 }
 
 /// Returns `true` if the specified `lang_item` must be present for this

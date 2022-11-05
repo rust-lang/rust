@@ -831,9 +831,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderConst { universe, name: bound_const };
                 self.mapped_consts.insert(p, bound_const);
-                self.infcx
-                    .tcx
-                    .mk_const(ty::ConstS { kind: ty::ConstKind::Placeholder(p), ty: ct.ty() })
+                self.infcx.tcx.mk_const(ty::ConstKind::Placeholder(p), ct.ty())
             }
             _ => ct.super_fold_with(self),
         }
@@ -968,10 +966,7 @@ impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
                     let db = ty::DebruijnIndex::from_usize(
                         self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                     );
-                    self.tcx().mk_const(ty::ConstS {
-                        kind: ty::ConstKind::Bound(db, *replace_var),
-                        ty: ct.ty(),
-                    })
+                    self.tcx().mk_const(ty::ConstKind::Bound(db, *replace_var), ct.ty())
                 }
                 None => ct,
             }
@@ -2173,7 +2168,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             crate::traits::InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         let did = ty::WithOptConstParam::unknown(assoc_ty.item.def_id);
         let kind = ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
-        ty.map_bound(|ty| tcx.mk_const(ty::ConstS { ty, kind }).into())
+        ty.map_bound(|ty| tcx.mk_const(kind, ty).into())
     } else {
         ty.map_bound(|ty| ty.into())
     };

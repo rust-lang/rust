@@ -132,7 +132,7 @@ impl<'a> Parser<'a> {
             Ok(expr) => Ok(expr),
             Err(mut err) => match self.token.ident() {
                 Some((Ident { name: kw::Underscore, .. }, false))
-                    if self.look_ahead(1, |t| t == &token::Comma) =>
+                    if self.may_recover() && self.look_ahead(1, |t| t == &token::Comma) =>
                 {
                     // Special-case handling of `foo(_, _, _)`
                     err.emit();
@@ -456,7 +456,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
             (Some(op), _) => (op, self.token.span),
-            (None, Some((Ident { name: sym::and, span }, false))) => {
+            (None, Some((Ident { name: sym::and, span }, false))) if self.may_recover() => {
                 self.sess.emit_err(InvalidLogicalOperator {
                     span: self.token.span,
                     incorrect: "and".into(),
@@ -464,7 +464,7 @@ impl<'a> Parser<'a> {
                 });
                 (AssocOp::LAnd, span)
             }
-            (None, Some((Ident { name: sym::or, span }, false))) => {
+            (None, Some((Ident { name: sym::or, span }, false))) if self.may_recover() => {
                 self.sess.emit_err(InvalidLogicalOperator {
                     span: self.token.span,
                     incorrect: "or".into(),
@@ -615,7 +615,7 @@ impl<'a> Parser<'a> {
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
             }
-            token::Ident(..) if this.is_mistaken_not_ident_negation() => {
+            token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
             _ => return this.parse_dot_or_call_expr(Some(attrs)),
@@ -718,6 +718,10 @@ impl<'a> Parser<'a> {
         let cast_expr = match self.parse_as_cast_ty() {
             Ok(rhs) => mk_expr(self, lhs, rhs),
             Err(type_err) => {
+                if !self.may_recover() {
+                    return Err(type_err);
+                }
+
                 // Rewind to before attempting to parse the type with generics, to recover
                 // from situations like `x as usize < y` in which we first tried to parse
                 // `usize < y` as a type with generic arguments.
@@ -1197,6 +1201,10 @@ impl<'a> Parser<'a> {
         seq: &mut PResult<'a, P<Expr>>,
         snapshot: Option<(SnapshotParser<'a>, ExprKind)>,
     ) -> Option<P<Expr>> {
+        if !self.may_recover() {
+            return None;
+        }
+
         match (seq.as_mut(), snapshot) {
             (Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
                 snapshot.bump(); // `(`
@@ -1360,7 +1368,7 @@ impl<'a> Parser<'a> {
             )
         } else if self.check_inline_const(0) {
             self.parse_const_block(lo.to(self.token.span), false)
-        } else if self.is_do_catch_block() {
+        } else if self.may_recover() && self.is_do_catch_block() {
             self.recover_do_catch()
         } else if self.is_try_block() {
             self.expect_keyword(kw::Try)?;
@@ -1532,6 +1540,7 @@ impl<'a> Parser<'a> {
         {
             self.parse_block_expr(label, lo, BlockCheckMode::Default)
         } else if !ate_colon
+            && self.may_recover()
             && (matches!(self.token.kind, token::CloseDelim(_) | token::Comma)
                 || self.token.is_op())
         {
@@ -1999,6 +2008,10 @@ impl<'a> Parser<'a> {
         prev_span: Span,
         open_delim_span: Span,
     ) -> PResult<'a, ()> {
+        if !self.may_recover() {
+            return Ok(());
+        }
+
         if self.token.kind == token::Comma {
             if !self.sess.source_map().is_multiline(prev_span.until(self.token.span)) {
                 return Ok(());
@@ -2039,7 +2052,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         blk_mode: BlockCheckMode,
     ) -> PResult<'a, P<Expr>> {
-        if self.is_array_like_block() {
+        if self.may_recover() && self.is_array_like_block() {
             if let Some(arr) = self.maybe_suggest_brackets_instead_of_braces(lo) {
                 return Ok(arr);
             }

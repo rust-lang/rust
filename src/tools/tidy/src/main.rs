@@ -31,6 +31,7 @@ fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
 
     let verbose = args.iter().any(|s| *s == "--verbose");
+    let bless = args.iter().any(|s| *s == "--bless");
 
     let bad = std::sync::Arc::new(AtomicBool::new(false));
 
@@ -64,6 +65,7 @@ fn main() {
         // Checks over tests.
         check!(debug_artifacts, &src_path);
         check!(ui_tests, &src_path);
+        check!(mir_opt_tests, &src_path, bless);
 
         // Checks that only make sense for the compiler.
         check!(errors, &compiler_path);

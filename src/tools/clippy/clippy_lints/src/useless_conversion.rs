@@ -5,7 +5,7 @@ use clippy_utils::ty::{is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{get_parent_expr, is_trait_method, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, HirId, LangItem, MatchSource};
+use rustc_hir::{Expr, ExprKind, HirId, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -153,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         }
 
                         if_chain! {
-                            if cx.tcx.lang_items().require(LangItem::FromFrom).ok() == Some(def_id);
+                            if Some(def_id) == cx.tcx.lang_items().from_fn();
                             if same_type_and_consts(a, b);
 
                             then {
