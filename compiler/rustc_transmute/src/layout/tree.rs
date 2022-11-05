@@ -436,8 +436,8 @@ pub(crate) mod rustc {
 
             // finally: padding
             let padding_span = trace_span!("adding trailing padding").entered();
-            let padding_needed = layout_summary.total_size - variant_layout.size();
-            if padding_needed > 0 {
+            if layout_summary.total_size > variant_layout.size() {
+                let padding_needed = layout_summary.total_size - variant_layout.size();
                 tree = tree.then(Self::padding(padding_needed));
             };
             drop(padding_span);
