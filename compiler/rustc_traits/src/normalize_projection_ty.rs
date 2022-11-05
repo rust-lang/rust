@@ -20,16 +20,16 @@ fn normalize_projection_ty<'tcx>(
     debug!("normalize_provider(goal={:#?})", goal);
 
     tcx.sess.perf_stats.normalize_projection_ty.fetch_add(1, Ordering::Relaxed);
-    tcx.infer_ctxt().enter_canonical_trait_query(
-        &goal,
-        |ocx, ParamEnvAnd { param_env, value: goal }| {
+    tcx.infer_ctxt()
+        .considering_regions(goal.value.value.considering_regions)
+        .enter_canonical_trait_query(&goal, |ocx, ParamEnvAnd { param_env, value: goal }| {
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
             let mut obligations = vec![];
             let answer = traits::normalize_projection_type(
                 selcx,
                 param_env,
-                goal,
+                goal.projection_ty,
                 cause,
                 0,
                 &mut obligations,
@@ -39,6 +39,5 @@ fn normalize_projection_ty<'tcx>(
             // a type, but there is the possibility it could've been a const now. Maybe change
             // it to a Term later?
             Ok(NormalizationResult { normalized_ty: answer.ty().unwrap() })
-        },
-    )
+        })
 }

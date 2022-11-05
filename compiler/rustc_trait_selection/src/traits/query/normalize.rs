@@ -21,6 +21,7 @@ use std::ops::ControlFlow;
 use super::NoSolution;
 
 pub use rustc_middle::traits::query::NormalizationResult;
+use rustc_middle::traits::query::ProjectionGoal;
 
 pub trait AtExt<'tcx> {
     fn normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
@@ -241,7 +242,10 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // we don't need to replace them with placeholders (see branch below).
 
                 let tcx = self.infcx.tcx;
-                let data = data.try_fold_with(self)?;
+                let data = ProjectionGoal {
+                    projection_ty: data.try_fold_with(self)?,
+                    considering_regions: self.infcx.considering_regions,
+                };
 
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
@@ -292,7 +296,10 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let infcx = self.infcx;
                 let (data, mapped_regions, mapped_types, mapped_consts) =
                     BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
-                let data = data.try_fold_with(self)?;
+                let data = ProjectionGoal {
+                    projection_ty: data.try_fold_with(self)?,
+                    considering_regions: self.infcx.considering_regions,
+                };
 
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,

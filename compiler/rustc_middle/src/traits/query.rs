@@ -78,7 +78,14 @@ pub mod type_op {
 }
 
 pub type CanonicalProjectionGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::ProjectionTy<'tcx>>>;
+    Canonical<'tcx, ty::ParamEnvAnd<'tcx, ProjectionGoal<'tcx>>>;
+
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub struct ProjectionGoal<'tcx> {
+    pub projection_ty: ty::ProjectionTy<'tcx>,
+    pub considering_regions: bool,
+}
 
 pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
 

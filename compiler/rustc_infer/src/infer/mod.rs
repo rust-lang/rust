@@ -587,6 +587,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         self
     }
 
+    pub fn considering_regions(mut self, c: bool) -> Self {
+        self.considering_regions = c;
+        self
+    }
+
     pub fn with_normalize_fn_sig_for_diagnostic(
         mut self,
         fun: Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>,

@@ -27,7 +27,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq +
     goal: ParamEnvAnd<'tcx, T>,
 ) -> Result<T, NoSolution> {
     let ParamEnvAnd { param_env, value } = goal;
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().ignoring_regions().build();
     let cause = ObligationCause::dummy();
     match infcx.at(&cause, param_env).normalize(value) {
         Ok(Normalized { value: normalized_value, obligations: normalized_obligations }) => {
