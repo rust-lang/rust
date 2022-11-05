@@ -193,7 +193,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                 self.sess.emit_err(BreakInsideAsyncBlock { span, closure_span, name });
             }
             Normal | AnonConst => {
-                self.sess.emit_err(OutsideLoop { span, name });
+                self.sess.emit_err(OutsideLoop { span, name, is_break: name == "break" });
             }
         }
     }

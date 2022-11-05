@@ -451,8 +451,14 @@ passes_break_inside_async_block =
     .async_block_label = enclosing `async` block
 
 passes_outside_loop =
-    `{$name}` outside of a loop
-    .label = cannot `{$name}` outside of a loop
+    `{$name}` outside of a loop{$is_break ->
+        [true] {" or labeled block"}
+        *[false] {""}
+    }
+    .label = cannot `{$name}` outside of a loop{$is_break ->
+        [true] {" or labeled block"}
+        *[false] {""}
+    }
 
 passes_unlabeled_in_labeled_block =
     unlabeled `{$cf_type}` inside of a labeled block
