@@ -5,7 +5,7 @@ use itertools::Itertools;
 
 use crate::{
     chalk_db, db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, mapping::from_chalk,
-    CallableDefId, Interner,
+    CallableDefId, Interner, ProjectionTyExt,
 };
 use hir_def::{AdtId, ItemContainerId, Lookup, TypeAliasId};
 
@@ -63,17 +63,31 @@ impl DebugContext<'_> {
             ItemContainerId::TraitId(t) => t,
             _ => panic!("associated type not in trait"),
         };
-        let trait_data = self.0.trait_data(trait_);
-        let params = projection_ty.substitution.as_slice(Interner);
-        write!(fmt, "<{:?} as {}", &params[0], trait_data.name,)?;
-        if params.len() > 1 {
+        let trait_name = &self.0.trait_data(trait_).name;
+        let trait_ref = projection_ty.trait_ref(self.0);
+        let trait_params = trait_ref.substitution.as_slice(Interner);
+        let self_ty = trait_ref.self_type_parameter(Interner);
+        write!(fmt, "<{:?} as {}", self_ty, trait_name)?;
+        if trait_params.len() > 1 {
             write!(
                 fmt,
                 "<{}>",
-                &params[1..].iter().format_with(", ", |x, f| f(&format_args!("{:?}", x))),
+                trait_params[1..].iter().format_with(", ", |x, f| f(&format_args!("{:?}", x))),
             )?;
         }
-        write!(fmt, ">::{}", type_alias_data.name)
+        write!(fmt, ">::{}", type_alias_data.name)?;
+
+        let proj_params_count = projection_ty.substitution.len(Interner) - trait_params.len();
+        let proj_params = &projection_ty.substitution.as_slice(Interner)[..proj_params_count];
+        if !proj_params.is_empty() {
+            write!(
+                fmt,
+                "<{}>",
+                proj_params.iter().format_with(", ", |x, f| f(&format_args!("{:?}", x))),
+            )?;
+        }
+
+        Ok(())
     }
 
     pub(crate) fn debug_fn_def_id(

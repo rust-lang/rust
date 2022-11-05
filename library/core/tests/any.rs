@@ -131,6 +131,24 @@ fn distinct_type_names() {
     assert_ne!(type_name_of_val(Velocity), type_name_of_val(Velocity(0.0, -9.8)),);
 }
 
+#[cfg(not(bootstrap))]
+#[test]
+fn dyn_type_name() {
+    trait Foo {
+        type Bar;
+    }
+
+    assert_eq!(
+        "dyn core::ops::function::Fn(i32, i32) -> i32",
+        std::any::type_name::<dyn Fn(i32, i32) -> i32>()
+    );
+    assert_eq!(
+        "dyn coretests::any::dyn_type_name::Foo<Bar = i32> \
+        + core::marker::Send + core::marker::Sync",
+        std::any::type_name::<dyn Foo<Bar = i32> + Send + Sync>()
+    );
+}
+
 // Test the `Provider` API.
 
 struct SomeConcreteType {

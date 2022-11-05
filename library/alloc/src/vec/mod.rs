@@ -2588,7 +2588,7 @@ impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
         let (this, spare, len) = unsafe { self.split_at_spare_mut_with_len() };
 
         // SAFETY:
-        // - caller guaratees that src is a valid index
+        // - caller guarantees that src is a valid index
         let to_clone = unsafe { this.get_unchecked(src) };
 
         iter::zip(to_clone, spare)
@@ -2607,7 +2607,7 @@ impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
             let (init, spare) = self.split_at_spare_mut();
 
             // SAFETY:
-            // - caller guaratees that `src` is a valid index
+            // - caller guarantees that `src` is a valid index
             let source = unsafe { init.get_unchecked(src) };
 
             // SAFETY:

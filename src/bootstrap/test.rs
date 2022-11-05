@@ -464,6 +464,58 @@ pub struct Miri {
     target: TargetSelection,
 }
 
+impl Miri {
+    /// Run `cargo miri setup` for the given target, return where the Miri sysroot was put.
+    pub fn build_miri_sysroot(builder: &Builder<'_>, compiler: Compiler, miri: &Path, target: TargetSelection) -> String {
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            compiler.host,
+            "run",
+            "src/tools/miri/cargo-miri",
+            SourceType::InTree,
+            &[],
+        );
+        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.arg("--").arg("miri").arg("setup");
+        cargo.arg("--target").arg(target.rustc_target_arg());
+
+        // Tell `cargo miri setup` where to find the sources.
+        cargo.env("MIRI_LIB_SRC", builder.src.join("library"));
+        // Tell it where to find Miri.
+        cargo.env("MIRI", &miri);
+        // Debug things.
+        cargo.env("RUST_BACKTRACE", "1");
+
+        let mut cargo = Command::from(cargo);
+        builder.run(&mut cargo);
+
+        // # Determine where Miri put its sysroot.
+        // To this end, we run `cargo miri setup --print-sysroot` and capture the output.
+        // (We do this separately from the above so that when the setup actually
+        // happens we get some output.)
+        // We re-use the `cargo` from above.
+        cargo.arg("--print-sysroot");
+
+        // FIXME: Is there a way in which we can re-use the usual `run` helpers?
+        if builder.config.dry_run {
+            String::new()
+        } else {
+            builder.verbose(&format!("running: {:?}", cargo));
+            let out =
+                cargo.output().expect("We already ran `cargo miri setup` before and that worked");
+            assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
+            // Output is "<sysroot>\n".
+            let stdout = String::from_utf8(out.stdout)
+                .expect("`cargo miri setup` stdout is not valid UTF-8");
+            let sysroot = stdout.trim_end();
+            builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {:?}", sysroot));
+            sysroot.to_owned()
+        }
+    }
+}
+
 impl Step for Miri {
     type Output = ();
     const ONLY_HOSTS: bool = false;
@@ -500,54 +552,8 @@ impl Step for Miri {
         // sysroot does not seem to populate it, so we do that first.
         builder.ensure(compile::Std::new(compiler_std, host));
         let sysroot = builder.sysroot(compiler_std);
-
-        // # Run `cargo miri setup` for the given target.
-        let mut cargo = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            Mode::ToolRustc,
-            host,
-            "run",
-            "src/tools/miri/cargo-miri",
-            SourceType::Submodule,
-            &[],
-        );
-        cargo.add_rustc_lib_path(builder, compiler);
-        cargo.arg("--").arg("miri").arg("setup");
-        cargo.arg("--target").arg(target.rustc_target_arg());
-
-        // Tell `cargo miri setup` where to find the sources.
-        cargo.env("MIRI_LIB_SRC", builder.src.join("library"));
-        // Tell it where to find Miri.
-        cargo.env("MIRI", &miri);
-        // Debug things.
-        cargo.env("RUST_BACKTRACE", "1");
-
-        let mut cargo = Command::from(cargo);
-        builder.run(&mut cargo);
-
-        // # Determine where Miri put its sysroot.
-        // To this end, we run `cargo miri setup --print-sysroot` and capture the output.
-        // (We do this separately from the above so that when the setup actually
-        // happens we get some output.)
-        // We re-use the `cargo` from above.
-        cargo.arg("--print-sysroot");
-
-        // FIXME: Is there a way in which we can re-use the usual `run` helpers?
-        let miri_sysroot = if builder.config.dry_run {
-            String::new()
-        } else {
-            builder.verbose(&format!("running: {:?}", cargo));
-            let out =
-                cargo.output().expect("We already ran `cargo miri setup` before and that worked");
-            assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
-            // Output is "<sysroot>\n".
-            let stdout = String::from_utf8(out.stdout)
-                .expect("`cargo miri setup` stdout is not valid UTF-8");
-            let sysroot = stdout.trim_end();
-            builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {:?}", sysroot));
-            sysroot.to_owned()
-        };
+        // We also need a Miri sysroot.
+        let miri_sysroot = Miri::build_miri_sysroot(builder, compiler, &miri, target);
 
         // # Run `cargo test`.
         let mut cargo = tool::prepare_tool_cargo(
@@ -557,7 +563,7 @@ impl Step for Miri {
             host,
             "test",
             "src/tools/miri",
-            SourceType::Submodule,
+            SourceType::InTree,
             &[],
         );
         cargo.add_rustc_lib_path(builder, compiler);
@@ -565,7 +571,6 @@ impl Step for Miri {
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", sysroot);
-        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
         cargo.env("MIRI", &miri);
         // propagate --bless
         if builder.config.cmd.bless() {
@@ -606,7 +611,6 @@ impl Step for Miri {
         // Tell `cargo miri` where to find things.
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", sysroot);
-        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
         cargo.env("MIRI", &miri);
         // Debug things.
         cargo.env("RUST_BACKTRACE", "1");
@@ -771,7 +775,10 @@ impl Step for RustdocTheme {
             cmd.env("RUSTDOC_LINKER", linker);
         }
         if builder.is_fuse_ld_lld(self.compiler.host) {
-            cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
+            cmd.env(
+                "RUSTDOC_LLD_NO_THREADS",
+                util::lld_flag_no_threads(self.compiler.host.contains("windows")),
+            );
         }
         try_run(builder, &mut cmd);
     }
@@ -983,6 +990,7 @@ impl Step for RustdocGUI {
                     .arg("doc")
                     .arg("--target-dir")
                     .arg(&out_dir)
+                    .env("RUSTC_BOOTSTRAP", "1")
                     .env("RUSTDOC", builder.rustdoc(self.compiler))
                     .env("RUSTC", builder.rustc(self.compiler))
                     .current_dir(path);
@@ -1047,6 +1055,9 @@ impl Step for Tidy {
         cmd.arg(builder.jobs().to_string());
         if builder.is_verbose() {
             cmd.arg("--verbose");
+        }
+        if builder.config.cmd.bless() {
+            cmd.arg("--bless");
         }
 
         builder.info("tidy check");
@@ -1722,6 +1733,8 @@ impl BookTest {
 
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
         let path = builder.src.join(&self.path);
+        // Books often have feature-gated example text.
+        rustbook_cmd.env("RUSTC_BOOTSTRAP", "1");
         rustbook_cmd.env("PATH", new_path).arg("test").arg(path);
         builder.add_rust_test_threads(&mut rustbook_cmd);
         builder.info(&format!("Testing rustbook {}", self.path.display()));

@@ -380,11 +380,9 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
         })
         .collect::<Vec<_>>();
 
-    for item in tcx.lang_items().items().iter() {
-        if let Some(def_id) = *item {
-            if let Some(def_id) = def_id.as_local() {
-                reachable_context.worklist.push(def_id);
-            }
+    for (_, def_id) in tcx.lang_items().iter() {
+        if let Some(def_id) = def_id.as_local() {
+            reachable_context.worklist.push(def_id);
         }
     }
     {

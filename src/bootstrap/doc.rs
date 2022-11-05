@@ -765,7 +765,7 @@ impl Step for Rustc {
 }
 
 macro_rules! tool_doc {
-    ($tool: ident, $should_run: literal, $path: literal, [$($krate: literal),+ $(,)?], in_tree = $in_tree:expr $(,)?) => {
+    ($tool: ident, $should_run: literal, $path: literal, [$($krate: literal),+ $(,)?] $(,)?) => {
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
             target: TargetSelection,
@@ -821,12 +821,6 @@ macro_rules! tool_doc {
                 t!(fs::create_dir_all(&out_dir));
                 t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
-                let source_type = if $in_tree == true {
-                    SourceType::InTree
-                } else {
-                    SourceType::Submodule
-                };
-
                 // Build cargo command.
                 let mut cargo = prepare_tool_cargo(
                     builder,
@@ -835,7 +829,7 @@ macro_rules! tool_doc {
                     target,
                     "doc",
                     $path,
-                    source_type,
+                    SourceType::InTree,
                     &[],
                 );
 
@@ -851,38 +845,21 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--show-type-layout");
                 cargo.rustdocflag("--generate-link-to-definition");
                 cargo.rustdocflag("-Zunstable-options");
-                if $in_tree == true {
-                    builder.run(&mut cargo.into());
-                } else {
-                    // Allow out-of-tree docs to fail (since the tool might be in a broken state).
-                    if !builder.try_run(&mut cargo.into()) {
-                        builder.info(&format!(
-                            "WARNING: tool {} failed to document; ignoring failure because it is an out-of-tree tool",
-                            stringify!($tool).to_lowercase(),
-                        ));
-                    }
-                }
+                builder.run(&mut cargo.into());
             }
         }
     }
 }
 
-tool_doc!(
-    Rustdoc,
-    "rustdoc-tool",
-    "src/tools/rustdoc",
-    ["rustdoc", "rustdoc-json-types"],
-    in_tree = true
-);
+tool_doc!(Rustdoc, "rustdoc-tool", "src/tools/rustdoc", ["rustdoc", "rustdoc-json-types"],);
 tool_doc!(
     Rustfmt,
     "rustfmt-nightly",
     "src/tools/rustfmt",
     ["rustfmt-nightly", "rustfmt-config_proc_macro"],
-    in_tree = true
 );
-tool_doc!(Clippy, "clippy", "src/tools/clippy", ["clippy_utils"], in_tree = true);
-tool_doc!(Miri, "miri", "src/tools/miri", ["miri"], in_tree = false);
+tool_doc!(Clippy, "clippy", "src/tools/clippy", ["clippy_utils"]);
+tool_doc!(Miri, "miri", "src/tools/miri", ["miri"]);
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {

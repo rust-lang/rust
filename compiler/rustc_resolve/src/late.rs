@@ -32,7 +32,7 @@ use smallvec::{smallvec, SmallVec};
 use rustc_span::source_map::{respan, Spanned};
 use std::assert_matches::debug_assert_matches;
 use std::collections::{hash_map::Entry, BTreeSet};
-use std::mem::{replace, take};
+use std::mem::{replace, swap, take};
 
 mod diagnostics;
 
@@ -3369,11 +3369,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             let (mut err, candidates) =
                 this.smart_resolve_report_errors(path, path_span, PathSource::Type, None);
 
-            if candidates.is_empty() {
-                err.cancel();
-                return Some(parent_err);
-            }
-
             // There are two different error messages user might receive at
             // this point:
             // - E0412 cannot find type `{}` in this scope
@@ -3383,37 +3378,62 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // latter one - for paths in expression-position.
             //
             // Thus (since we're in expression-position at this point), not to
-            // confuse the user, we want to keep the *message* from E0432 (so
+            // confuse the user, we want to keep the *message* from E0433 (so
             // `parent_err`), but we want *hints* from E0412 (so `err`).
             //
             // And that's what happens below - we're just mixing both messages
             // into a single one.
             let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
 
+            // overwrite all properties with the parent's error message
             err.message = take(&mut parent_err.message);
             err.code = take(&mut parent_err.code);
+            swap(&mut err.span, &mut parent_err.span);
             err.children = take(&mut parent_err.children);
+            err.sort_span = parent_err.sort_span;
+            err.is_lint = parent_err.is_lint;
+
+            // merge the parent's suggestions with the typo suggestions
+            fn append_result<T, E>(res1: &mut Result<Vec<T>, E>, res2: Result<Vec<T>, E>) {
+                match res1 {
+                    Ok(vec1) => match res2 {
+                        Ok(mut vec2) => vec1.append(&mut vec2),
+                        Err(e) => *res1 = Err(e),
+                    },
+                    Err(_) => (),
+                };
+            }
+            append_result(&mut err.suggestions, parent_err.suggestions.clone());
 
             parent_err.cancel();
 
             let def_id = this.parent_scope.module.nearest_parent_mod();
 
             if this.should_report_errs() {
-                this.r.use_injections.push(UseError {
-                    err,
-                    candidates,
-                    def_id,
-                    instead: false,
-                    suggestion: None,
-                    path: path.into(),
-                    is_call: source.is_call(),
-                });
+                if candidates.is_empty() {
+                    // When there is no suggested imports, we can just emit the error
+                    // and suggestions immediately. Note that we bypass the usually error
+                    // reporting routine (ie via `self.r.report_error`) because we need
+                    // to post-process the `ResolutionError` above.
+                    err.emit();
+                } else {
+                    // If there are suggested imports, the error reporting is delayed
+                    this.r.use_injections.push(UseError {
+                        err,
+                        candidates,
+                        def_id,
+                        instead: false,
+                        suggestion: None,
+                        path: path.into(),
+                        is_call: source.is_call(),
+                    });
+                }
             } else {
                 err.cancel();
             }
 
             // We don't return `Some(parent_err)` here, because the error will
-            // be already printed as part of the `use` injections
+            // be already printed either immediately or as part of the `use` injections
             None
         };
 

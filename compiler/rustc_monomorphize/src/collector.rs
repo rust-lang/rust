@@ -201,7 +201,7 @@ use std::iter;
 use std::ops::Range;
 use std::path::PathBuf;
 
-use crate::errors::{LargeAssignmentsLint, RecursionLimit, RequiresLangItem, TypeLengthLimit};
+use crate::errors::{LargeAssignmentsLint, RecursionLimit, TypeLengthLimit};
 
 #[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
@@ -1298,14 +1298,7 @@ impl<'v> RootCollector<'_, 'v> {
             return;
         };
 
-        let start_def_id = match self.tcx.lang_items().require(LangItem::Start) {
-            Ok(s) => s,
-            Err(lang_item_err) => {
-                self.tcx
-                    .sess
-                    .emit_fatal(RequiresLangItem { lang_item: lang_item_err.0.name().to_string() });
-            }
-        };
+        let start_def_id = self.tcx.require_lang_item(LangItem::Start, None);
         let main_ret_ty = self.tcx.fn_sig(main_def_id).output();
 
         // Given that `main()` has no arguments,
@@ -1343,6 +1336,10 @@ fn create_mono_items_for_default_impls<'tcx>(
 ) {
     match item.kind {
         hir::ItemKind::Impl(ref impl_) => {
+            if matches!(impl_.polarity, hir::ImplPolarity::Negative(_)) {
+                return;
+            }
+
             for param in impl_.generics.params {
                 match param.kind {
                     hir::GenericParamKind::Lifetime { .. } => {}

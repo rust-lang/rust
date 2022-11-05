@@ -1152,8 +1152,8 @@ impl Build {
                 options[0] = Some("-Clink-arg=-fuse-ld=lld".to_string());
             }
 
-            let threads = if target.contains("windows") { "/threads:1" } else { "--threads=1" };
-            options[1] = Some(format!("-Clink-arg=-Wl,{}", threads));
+            let no_threads = util::lld_flag_no_threads(target.contains("windows"));
+            options[1] = Some(format!("-Clink-arg=-Wl,{}", no_threads));
         }
 
         IntoIterator::into_iter(options).flatten()

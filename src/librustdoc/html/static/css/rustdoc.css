@@ -163,9 +163,6 @@ h1.fqn {
 	padding-bottom: 6px;
 	margin-bottom: 15px;
 }
-#toggle-all-docs {
-	text-decoration: none;
-}
 /* The only headings that get underlines are:
 	 Markdown-generated headings within the top-doc
 	 Rustdoc-generated h2 section headings (e.g. "Implementations", "Required Methods", etc)
@@ -209,7 +206,7 @@ ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
-a#toggle-all-docs,
+#toggle-all-docs,
 a.anchor,
 .small-section-header a,
 #source-sidebar a,
@@ -297,6 +294,16 @@ p:last-child {
 button {
 	/* Buttons on Safari have different default padding than other platforms. Make them the same. */
 	padding: 1px 6px;
+}
+
+button#toggle-all-docs {
+	padding: 0;
+	background: none;
+	border: none;
+	cursor: pointer;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
 }
 
 /* end tweaks for normalize.css 8 */
@@ -670,7 +677,6 @@ pre, .rustdoc.source .example-wrap {
 }
 
 #main-content > .item-info {
-	margin-top: 0;
 	margin-left: 0;
 }
 
@@ -869,40 +875,30 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results {
 	display: none;
-	padding-bottom: 2em;
 }
 
 .search-results.active {
 	display: block;
-	/* prevent overhanging tabs from moving the first result */
-	clear: both;
 }
 
-.search-results .desc > span {
+.search-results > a {
+	display: flex;
+	/* A little margin ensures the browser's outlining of focused links has room to display. */
+	margin-left: 2px;
+	margin-right: 2px;
+	border-bottom: 1px solid var(--border-color);
+	gap: 1em;
+}
+
+.search-results > a > div {
+	flex: 1;
+}
+
+.search-results > a > div.desc {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	display: block;
-}
-
-.search-results > a {
-	display: block;
-	/* A little margin ensures the browser's outlining of focused links has room to display. */
-	margin-left: 2px;
-	margin-right: 2px;
-	border-bottom: 1px solid #aaa3;
-}
-
-.search-results > a > div {
-	display: flex;
-	flex-flow: row wrap;
-}
-
-.search-results .result-name, .search-results div.desc {
-	width: 50%;
-}
-.search-results .result-name {
-	padding-right: 1em;
 }
 
 .search-results a:hover,
@@ -1086,7 +1082,7 @@ pre.rust .bool-val {
 pre.rust .self {
 	color: var(--code-highlight-self-color);
 }
-pre.rust .attribute {
+pre.rust .attr {
 	color: var(--code-highlight-attribute-color);
 }
 pre.rust .macro,
@@ -1673,7 +1669,6 @@ in storage.js
 	}
 
 	.rustdoc {
-		padding-top: 0px;
 		/* Sidebar should overlay main content, rather than pushing main content to the right.
 		   Turn off `display: flex` on the body element. */
 		display: block;
@@ -1793,7 +1788,6 @@ in storage.js
 
 	.sidebar-elems {
 		margin-top: 1em;
-		background-color: var(--sidebar-background-color);
 	}
 
 	.content {
@@ -1866,26 +1860,16 @@ in storage.js
 	}
 
 	/* Display an alternating layout on tablets and phones */
-	.item-table {
+	.item-table, .item-row, .item-left, .item-right,
+	.search-results > a, .search-results > a > div {
 		display: block;
-	}
-	.item-row {
-		display: flex;
-		flex-flow: column wrap;
-	}
-	.item-left, .item-right {
-		width: 100%;
 	}
 
 	/* Display an alternating layout on tablets and phones */
 	.search-results > a {
-		border-bottom: 1px solid #aaa9;
 		padding: 5px 0px;
 	}
-	.search-results .result-name, .search-results div.desc {
-		width: 100%;
-	}
-	.search-results div.desc, .item-right {
+	.search-results > a > div.desc, .item-right {
 		padding-left: 2em;
 	}
 
@@ -1962,24 +1946,26 @@ in storage.js
 	}
 }
 
-.method-toggle > summary,
 .implementors-toggle > summary,
 .impl,
 #implementors-list > .docblock,
 .impl-items > section,
-.methods > section
+.impl-items > .rustdoc-toggle > summary,
+.methods > section,
+.methods > .rustdoc-toggle > summary
 {
 	margin-bottom: 0.75em;
 }
 
-.method-toggle[open]:not(:last-child),
+.impl-items > .rustdoc-toggle[open]:not(:last-child),
+.methods > .rustdoc-toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {
 	margin-bottom: 2em;
 }
 
-#trait-implementations-list .method-toggle:not(:last-child),
-#synthetic-implementations-list .method-toggle:not(:last-child),
-#blanket-implementations-list .method-toggle:not(:last-child) {
+#trait-implementations-list .impl-items > .rustdoc-toggle:not(:last-child),
+#synthetic-implementations-list .impl-items > .rustdoc-toggle:not(:last-child),
+#blanket-implementations-list .impl-items > .rustdoc-toggle:not(:last-child) {
 	margin-bottom: 1em;
 }
 

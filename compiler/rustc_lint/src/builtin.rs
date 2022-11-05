@@ -40,7 +40,7 @@ use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, Gate
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
-use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, PatKind, PredicateOrigin};
+use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, Node, PatKind, PredicateOrigin};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -1423,7 +1423,11 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
-        let def_id = cx.tcx.hir().local_def_id(field.hir_id);
+        let map = cx.tcx.hir();
+        let def_id = map.local_def_id(field.hir_id);
+        if matches!(map.get(map.get_parent_node(field.hir_id)), Node::Variant(_)) {
+            return;
+        }
         self.perform_lint(cx, "field", def_id, field.vis_span, false);
     }
 

@@ -177,11 +177,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .all_traits()
             .filter(|trait_def_id| {
                 let viz = self.tcx().visibility(*trait_def_id);
-                if let Some(def_id) = self.item_def_id() {
-                    viz.is_accessible_from(def_id, self.tcx())
-                } else {
-                    viz.is_visible_locally()
-                }
+                let def_id = self.item_def_id();
+                viz.is_accessible_from(def_id, self.tcx())
             })
             .collect();
 

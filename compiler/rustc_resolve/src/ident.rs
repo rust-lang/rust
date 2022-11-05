@@ -1,11 +1,9 @@
-use rustc_ast::{self as ast, NodeId};
+use rustc_ast as ast;
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty;
-use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
-use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
@@ -19,7 +17,7 @@ use crate::late::{
 };
 use crate::macros::{sub_namespace_match, MacroRulesScope};
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
-use crate::{ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{Import, ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res};
 use crate::{ResolutionError, Resolver, Scope, ScopeSet, Segment, ToNameBinding, Weak};
 
@@ -101,7 +99,7 @@ impl<'a> Resolver<'a> {
         };
         let mut scope = match ns {
             _ if is_absolute_path => Scope::CrateRoot,
-            TypeNS | ValueNS => Scope::Module(module, None),
+            TypeNS | ValueNS => Scope::Module(module),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
         let mut ctxt = ctxt.normalize_to_macros_2_0();
@@ -165,7 +163,7 @@ impl<'a> Resolver<'a> {
                     MacroRulesScope::Invocation(invoc_id) => {
                         Scope::MacroRules(self.invocation_parent_scopes[&invoc_id].macro_rules)
                     }
-                    MacroRulesScope::Empty => Scope::Module(module, None),
+                    MacroRulesScope::Empty => Scope::Module(module),
                 },
                 Scope::CrateRoot => match ns {
                     TypeNS => {
@@ -174,16 +172,10 @@ impl<'a> Resolver<'a> {
                     }
                     ValueNS | MacroNS => break,
                 },
-                Scope::Module(module, prev_lint_id) => {
+                Scope::Module(module) => {
                     use_prelude = !module.no_implicit_prelude;
-                    let derive_fallback_lint_id = match scope_set {
-                        ScopeSet::Late(.., lint_id) => lint_id,
-                        _ => None,
-                    };
-                    match self.hygienic_lexical_parent(module, &mut ctxt, derive_fallback_lint_id) {
-                        Some((parent_module, lint_id)) => {
-                            Scope::Module(parent_module, lint_id.or(prev_lint_id))
-                        }
+                    match self.hygienic_lexical_parent(module, &mut ctxt) {
+                        Some(parent_module) => Scope::Module(parent_module),
                         None => {
                             ctxt.adjust(ExpnId::root());
                             match ns {
@@ -215,45 +207,13 @@ impl<'a> Resolver<'a> {
         &mut self,
         module: Module<'a>,
         ctxt: &mut SyntaxContext,
-        derive_fallback_lint_id: Option<NodeId>,
-    ) -> Option<(Module<'a>, Option<NodeId>)> {
+    ) -> Option<Module<'a>> {
         if !module.expansion.outer_expn_is_descendant_of(*ctxt) {
-            return Some((self.expn_def_scope(ctxt.remove_mark()), None));
+            return Some(self.expn_def_scope(ctxt.remove_mark()));
         }
 
         if let ModuleKind::Block = module.kind {
-            return Some((module.parent.unwrap().nearest_item_scope(), None));
-        }
-
-        // We need to support the next case under a deprecation warning
-        // ```
-        // struct MyStruct;
-        // ---- begin: this comes from a proc macro derive
-        // mod implementation_details {
-        //     // Note that `MyStruct` is not in scope here.
-        //     impl SomeTrait for MyStruct { ... }
-        // }
-        // ---- end
-        // ```
-        // So we have to fall back to the module's parent during lexical resolution in this case.
-        if derive_fallback_lint_id.is_some() {
-            if let Some(parent) = module.parent {
-                // Inner module is inside the macro, parent module is outside of the macro.
-                if module.expansion != parent.expansion
-                    && module.expansion.is_descendant_of(parent.expansion)
-                {
-                    // The macro is a proc macro derive
-                    if let Some(def_id) = module.expansion.expn_data().macro_def_id {
-                        let ext = self.get_macro_by_def_id(def_id).ext;
-                        if ext.builtin_name.is_none()
-                            && ext.macro_kind() == MacroKind::Derive
-                            && parent.expansion.outer_expn_is_descendant_of(*ctxt)
-                        {
-                            return Some((parent, derive_fallback_lint_id));
-                        }
-                    }
-                }
-            }
+            return Some(module.parent.unwrap().nearest_item_scope());
         }
 
         None
@@ -510,7 +470,7 @@ impl<'a> Resolver<'a> {
                             Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                         }
                     }
-                    Scope::Module(module, derive_fallback_lint_id) => {
+                    Scope::Module(module) => {
                         let adjusted_parent_scope = &ParentScope { module, ..*parent_scope };
                         let binding = this.resolve_ident_in_module_unadjusted_ext(
                             ModuleOrUniformRoot::Module(module),
@@ -523,21 +483,6 @@ impl<'a> Resolver<'a> {
                         );
                         match binding {
                             Ok(binding) => {
-                                if let Some(lint_id) = derive_fallback_lint_id {
-                                    this.lint_buffer.buffer_lint_with_diagnostic(
-                                        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-                                        lint_id,
-                                        orig_ident.span,
-                                        &format!(
-                                            "cannot find {} `{}` in this scope",
-                                            ns.descr(),
-                                            ident
-                                        ),
-                                        BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(
-                                            orig_ident.span,
-                                        ),
-                                    );
-                                }
                                 let misc_flags = if ptr::eq(module, this.graph_root) {
                                     Flags::MISC_SUGGEST_CRATE
                                 } else if module.is_normal() {
@@ -915,7 +860,11 @@ impl<'a> Resolver<'a> {
             }
 
             if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
-                if let NameBindingKind::Res(_, true) = binding.kind {
+                if let NameBindingKind::Import {
+                    import: Import { kind: ImportKind::MacroExport, .. },
+                    ..
+                } = binding.kind
+                {
                     self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
                 }
             }

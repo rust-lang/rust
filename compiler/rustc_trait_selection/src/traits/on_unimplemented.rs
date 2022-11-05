@@ -27,6 +27,7 @@ pub struct OnUnimplementedDirective {
 }
 
 #[derive(Default)]
+/// For the `#[rustc_on_unimplemented]` attribute
 pub struct OnUnimplementedNote {
     pub message: Option<String>,
     pub label: Option<String>,

@@ -2,15 +2,13 @@ import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 
 import * as commands from "./commands";
-import { CommandFactory, Ctx, Workspace } from "./ctx";
-import { isRustDocument } from "./util";
+import { CommandFactory, Ctx, fetchWorkspace } from "./ctx";
 import { activateTaskProvider } from "./tasks";
 import { setContextValue } from "./util";
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
 export interface RustAnalyzerExtensionApi {
-    // FIXME: this should be non-optional
     readonly client?: lc.LanguageClient;
 }
 
@@ -32,32 +30,7 @@ export async function activate(
             .then(() => {}, console.error);
     }
 
-    // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
-    // only those are in use.
-    // (r-a still somewhat works with Live Share, because commands are tunneled to the host)
-    const folders = (vscode.workspace.workspaceFolders || []).filter(
-        (folder) => folder.uri.scheme === "file"
-    );
-    const rustDocuments = vscode.workspace.textDocuments.filter((document) =>
-        isRustDocument(document)
-    );
-
-    if (folders.length === 0 && rustDocuments.length === 0) {
-        // FIXME: Ideally we would choose not to activate at all (and avoid registering
-        // non-functional editor commands), but VS Code doesn't seem to have a good way of doing
-        // that
-        return {};
-    }
-
-    const workspace: Workspace =
-        folders.length === 0
-            ? {
-                  kind: "Detached Files",
-                  files: rustDocuments,
-              }
-            : { kind: "Workspace Folder" };
-
-    const ctx = new Ctx(context, workspace, createCommands());
+    const ctx = new Ctx(context, createCommands(), fetchWorkspace());
     // VS Code doesn't show a notification when an extension fails to activate
     // so we do it ourselves.
     const api = await activateServer(ctx).catch((err) => {
@@ -75,18 +48,23 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
         ctx.pushExtCleanup(activateTaskProvider(ctx.config));
     }
 
+    vscode.workspace.onDidChangeWorkspaceFolders(
+        async (_) => ctx.onWorkspaceFolderChanges(),
+        null,
+        ctx.subscriptions
+    );
     vscode.workspace.onDidChangeConfiguration(
         async (_) => {
-            await ctx
-                .clientFetcher()
-                .client?.sendNotification("workspace/didChangeConfiguration", { settings: "" });
+            await ctx.client?.sendNotification("workspace/didChangeConfiguration", {
+                settings: "",
+            });
         },
         null,
         ctx.subscriptions
     );
 
-    await ctx.activate();
-    return ctx.clientFetcher();
+    await ctx.start();
+    return ctx;
 }
 
 function createCommands(): Record<string, CommandFactory> {
@@ -98,33 +76,30 @@ function createCommands(): Record<string, CommandFactory> {
         reload: {
             enabled: (ctx) => async () => {
                 void vscode.window.showInformationMessage("Reloading rust-analyzer...");
-                // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
-                await ctx.stop();
-                await ctx.activate();
+                await ctx.restart();
             },
             disabled: (ctx) => async () => {
                 void vscode.window.showInformationMessage("Reloading rust-analyzer...");
-                await ctx.activate();
+                await ctx.start();
             },
         },
         startServer: {
             enabled: (ctx) => async () => {
-                await ctx.activate();
+                await ctx.start();
             },
             disabled: (ctx) => async () => {
-                await ctx.activate();
+                await ctx.start();
             },
         },
         stopServer: {
             enabled: (ctx) => async () => {
                 // FIXME: We should re-use the client, that is ctx.deactivate() if none of the configs have changed
-                await ctx.stop();
+                await ctx.stopAndDispose();
                 ctx.setServerStatus({
-                    health: "ok",
-                    quiescent: true,
-                    message: "server is not running",
+                    health: "stopped",
                 });
             },
+            disabled: (_) => async () => {},
         },
 
         analyzerStatus: { enabled: commands.analyzerStatus },

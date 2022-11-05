@@ -1,0 +1,26 @@
+error: ambiguous `+` in a type
+  --> $DIR/impl-fn-parsing-ambiguities.rs:4:27
+   |
+LL | fn a() -> impl Fn(&u8) -> impl Debug + '_ {
+   |                           ^^^^^^^^^^^^^^^ help: use parentheses to disambiguate: `(impl Debug + '_)`
+
+error: ambiguous `+` in a type
+  --> $DIR/impl-fn-parsing-ambiguities.rs:10:24
+   |
+LL | fn b() -> impl Fn() -> impl Debug + Send {
+   |                        ^^^^^^^^^^^^^^^^^ help: use parentheses to disambiguate: `(impl Debug + Send)`
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/impl-fn-parsing-ambiguities.rs:4:40
+   |
+LL | fn a() -> impl Fn(&u8) -> impl Debug + '_ {
+   |                                        ^^
+   |
+note: lifetime declared here
+  --> $DIR/impl-fn-parsing-ambiguities.rs:4:19
+   |
+LL | fn a() -> impl Fn(&u8) -> impl Debug + '_ {
+   |                   ^
+
+error: aborting due to 3 previous errors
+
