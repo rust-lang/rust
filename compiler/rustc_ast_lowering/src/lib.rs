@@ -119,7 +119,6 @@ struct LoweringContext<'a, 'hir> {
 
     current_hir_id_owner: hir::OwnerId,
     item_local_id_counter: hir::ItemLocalId,
-    local_id_to_def_id: SortedMap<ItemLocalId, LocalDefId>,
     trait_map: FxHashMap<ItemLocalId, Box<[TraitCandidate]>>,
 
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
@@ -567,7 +566,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_node_ids = std::mem::take(&mut self.node_id_to_local_id);
-        let current_id_to_def_id = std::mem::take(&mut self.local_id_to_def_id);
         let current_trait_map = std::mem::take(&mut self.trait_map);
         let current_owner =
             std::mem::replace(&mut self.current_hir_id_owner, hir::OwnerId { def_id });
@@ -594,7 +592,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.attrs = current_attrs;
         self.bodies = current_bodies;
         self.node_id_to_local_id = current_node_ids;
-        self.local_id_to_def_id = current_id_to_def_id;
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
@@ -629,7 +626,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> &'hir hir::OwnerInfo<'hir> {
         let attrs = std::mem::take(&mut self.attrs);
         let mut bodies = std::mem::take(&mut self.bodies);
-        let local_id_to_def_id = std::mem::take(&mut self.local_id_to_def_id);
         let trait_map = std::mem::take(&mut self.trait_map);
 
         #[cfg(debug_assertions)]
@@ -645,13 +641,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
         let (nodes, parenting) =
             index::index_hir(self.tcx.sess, &*self.tcx.definitions_untracked(), node, &bodies);
-        let nodes = hir::OwnerNodes {
-            hash_including_bodies,
-            hash_without_bodies,
-            nodes,
-            bodies,
-            local_id_to_def_id,
-        };
+        let nodes = hir::OwnerNodes { hash_including_bodies, hash_without_bodies, nodes, bodies };
         let attrs = {
             let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
                 let mut stable_hasher = StableHasher::new();
@@ -710,7 +700,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 assert_ne!(local_id, hir::ItemLocalId::new(0));
                 if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
                     self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
-                    self.local_id_to_def_id.insert(local_id, def_id);
                 }
 
                 if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {

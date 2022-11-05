@@ -549,8 +549,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let generators = std::mem::take(&mut *self.deferred_generator_interiors.borrow_mut());
         debug!(?generators);
 
-        for &(expr_hir_id, body_id, interior, _) in generators.iter() {
-            let expr_def_id = self.tcx.hir().local_def_id(expr_hir_id);
+        for &(expr_def_id, body_id, interior, _) in generators.iter() {
             debug!(?expr_def_id);
 
             // Create the `GeneratorWitness` type that we will unify with `interior`.

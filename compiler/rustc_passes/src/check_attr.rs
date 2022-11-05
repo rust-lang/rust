@@ -453,7 +453,9 @@ impl CheckAttrVisitor<'_> {
     /// Debugging aid for `object_lifetime_default` query.
     fn check_object_lifetime_default(&self, hir_id: HirId) {
         let tcx = self.tcx;
-        if let Some(generics) = tcx.hir().get_generics(tcx.hir().local_def_id(hir_id)) {
+        if let Some(owner_id) = hir_id.as_owner()
+            && let Some(generics) = tcx.hir().get_generics(owner_id.def_id)
+        {
             for p in generics.params {
                 let hir::GenericParamKind::Type { .. } = p.kind else { continue };
                 let default = tcx.object_lifetime_default(p.def_id);
@@ -1943,7 +1945,7 @@ impl CheckAttrVisitor<'_> {
     ) -> bool {
         match target {
             Target::Fn | Target::Method(_)
-                if self.tcx.is_const_fn_raw(self.tcx.hir().local_def_id(hir_id).to_def_id()) =>
+                if self.tcx.is_const_fn_raw(hir_id.expect_owner().to_def_id()) =>
             {
                 true
             }

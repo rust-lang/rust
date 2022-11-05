@@ -809,7 +809,7 @@ pub struct DerefClosure {
 ///
 /// note: this only works on single line immutable closures with exactly one input parameter.
 pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Option<DerefClosure> {
-    if let hir::ExprKind::Closure(&Closure { fn_decl, body, .. }) = closure.kind {
+    if let hir::ExprKind::Closure(&Closure { fn_decl, def_id, body, .. }) = closure.kind {
         let closure_body = cx.tcx.hir().body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
         // a type annotation is present if param `kind` is different from `TyKind::Infer`
@@ -829,10 +829,8 @@ pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Opti
             applicability: Applicability::MachineApplicable,
         };
 
-        let fn_def_id = cx.tcx.hir().local_def_id(closure.hir_id);
         let infcx = cx.tcx.infer_ctxt().build();
-        ExprUseVisitor::new(&mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results())
-            .consume_body(closure_body);
+        ExprUseVisitor::new(&mut visitor, &infcx, def_id, cx.param_env, cx.typeck_results()).consume_body(closure_body);
 
         if !visitor.suggestion_start.is_empty() {
             return Some(DerefClosure {

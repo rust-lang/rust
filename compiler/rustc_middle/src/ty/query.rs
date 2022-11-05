@@ -118,6 +118,7 @@ fn copy<T: Copy>(x: &T) -> T {
 
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
+    (LocalDefId) => { impl IntoQueryParam<LocalDefId> };
     ($K:ty) => { $K };
 }
 
@@ -415,6 +416,13 @@ mod sealed {
         #[inline(always)]
         fn into_query_param(self) -> P {
             *self
+        }
+    }
+
+    impl IntoQueryParam<LocalDefId> for OwnerId {
+        #[inline(always)]
+        fn into_query_param(self) -> LocalDefId {
+            self.def_id
         }
     }
 

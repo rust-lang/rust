@@ -1239,9 +1239,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_static(&mut self, id: hir::HirId, span: Span) {
-        let def_id = self.cx.tcx.hir().local_def_id(id);
-        let ty = self.cx.tcx.type_of(def_id);
+    fn check_foreign_static(&mut self, id: hir::OwnerId, span: Span) {
+        let ty = self.cx.tcx.type_of(id);
         self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
 
@@ -1264,7 +1263,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
                     vis.check_foreign_fn(it.owner_id.def_id, decl);
                 }
                 hir::ForeignItemKind::Static(ref ty, _) => {
-                    vis.check_foreign_static(it.hir_id(), ty.span);
+                    vis.check_foreign_static(it.owner_id, ty.span);
                 }
                 hir::ForeignItemKind::Type => (),
             }

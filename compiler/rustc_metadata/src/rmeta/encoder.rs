@@ -1310,8 +1310,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         hir::ItemKind::Struct(ref vdata, _) => {
                             yield item_id.owner_id.def_id.local_def_index;
                             // Encode constructors which take a separate slot in value namespace.
-                            if let Some(ctor_hir_id) = vdata.ctor_hir_id() {
-                                yield tcx.hir().local_def_id(ctor_hir_id).local_def_index;
+                            if let Some(ctor_def_id) = vdata.ctor_def_id() {
+                                yield ctor_def_id.local_def_index;
                             }
                         }
                         _ if tcx.def_key(item_id.owner_id.to_def_id()).get_opt_name().is_some() => {

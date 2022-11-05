@@ -399,7 +399,7 @@ fn predicate_constraint(generics: &hir::Generics<'_>, pred: ty::Predicate<'_>) -
 /// param for cleaner code.
 fn suggest_restriction<'tcx>(
     tcx: TyCtxt<'tcx>,
-    hir_id: HirId,
+    item_id: LocalDefId,
     hir_generics: &hir::Generics<'tcx>,
     msg: &str,
     err: &mut Diagnostic,
@@ -418,7 +418,6 @@ fn suggest_restriction<'tcx>(
     {
         return;
     }
-    let Some(item_id) = hir_id.as_owner() else { return; };
     let generics = tcx.generics_of(item_id);
     // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...
     if let Some((param, bound_str, fn_sig)) =
@@ -523,7 +522,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         mut err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         associated_ty: Option<(&'static str, Ty<'tcx>)>,
-        body_id: LocalDefId,
+        mut body_id: LocalDefId,
     ) {
         let trait_pred = self.resolve_numeric_literals_with_default(trait_pred);
 
@@ -536,9 +535,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
         //        don't suggest `T: Sized + ?Sized`.
-        let mut body_id = body_id;
         while let Some(node) = self.tcx.hir().find_by_def_id(body_id) {
-            let hir_id = self.tcx.hir().local_def_id_to_hir_id(body_id);
             match node {
                 hir::Node::Item(hir::Item {
                     ident,
@@ -549,7 +546,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // Restricting `Self` for a single method.
                     suggest_restriction(
                         self.tcx,
-                        hir_id,
+                        body_id,
                         &generics,
                         "`Self`",
                         err,
@@ -569,7 +566,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     assert!(param_ty);
                     // Restricting `Self` for a single method.
                     suggest_restriction(
-                        self.tcx, hir_id, &generics, "`Self`", err, None, projection, trait_pred,
+                        self.tcx, body_id, &generics, "`Self`", err, None, projection, trait_pred,
                         None,
                     );
                     return;
@@ -591,7 +588,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // Missing restriction on associated type of type parameter (unmet projection).
                     suggest_restriction(
                         self.tcx,
-                        hir_id,
+                        body_id,
                         &generics,
                         "the associated type",
                         err,
@@ -611,7 +608,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // Missing restriction on associated type of type parameter (unmet projection).
                     suggest_restriction(
                         self.tcx,
-                        hir_id,
+                        body_id,
                         &generics,
                         "the associated type",
                         err,

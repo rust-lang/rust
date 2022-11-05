@@ -54,15 +54,14 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // ty which is a fully resolved projection.
             // For the code example above, this would mean converting Self::Assoc<3>
             // into a ty::Alias(ty::Projection, <Self as Foo>::Assoc<3>)
-            let item_hir_id = tcx
+            let item_def_id = tcx
                 .hir()
-                .parent_iter(hir_id)
-                .filter(|(_, node)| matches!(node, Node::Item(_)))
-                .map(|(id, _)| id)
-                .next()
-                .unwrap();
-            let item_did = tcx.hir().local_def_id(item_hir_id).to_def_id();
-            let item_ctxt = &ItemCtxt::new(tcx, item_did) as &dyn crate::astconv::AstConv<'_>;
+                .parent_owner_iter(hir_id)
+                .find(|(_, node)| matches!(node, OwnerNode::Item(_)))
+                .unwrap()
+                .0
+                .to_def_id();
+            let item_ctxt = &ItemCtxt::new(tcx, item_def_id) as &dyn crate::astconv::AstConv<'_>;
             let ty = item_ctxt.ast_ty_to_ty(hir_ty);
 
             // Iterate through the generics of the projection to find the one that corresponds to

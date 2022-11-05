@@ -22,8 +22,8 @@ pub enum MethodLateContext {
     PlainImpl,
 }
 
-pub fn method_context(cx: &LateContext<'_>, def_id: LocalDefId) -> MethodLateContext {
-    let item = cx.tcx.associated_item(def_id);
+pub fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLateContext {
+    let item = cx.tcx.associated_item(id);
     match item.container {
         ty::TraitContainer => MethodLateContext::TraitAutoImpl,
         ty::ImplContainer => match cx.tcx.impl_trait_ref(item.container_id(cx.tcx)) {
