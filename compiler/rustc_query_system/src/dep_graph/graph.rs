@@ -573,10 +573,10 @@ impl<K: DepKind> DepGraph<K> {
     /// a node index can be found for that node.
     pub fn try_mark_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
-        tcx: Ctxt,
+        qcx: Ctxt,
         dep_node: &DepNode<K>,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
-        debug_assert!(!tcx.dep_context().is_eval_always(dep_node.kind));
+        debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
 
         // Return None if the dep graph is disabled
         let data = self.data.as_ref()?;
@@ -592,16 +592,16 @@ impl<K: DepKind> DepGraph<K> {
                 // in the previous compilation session too, so we can try to
                 // mark it as green by recursively marking all of its
                 // dependencies green.
-                self.try_mark_previous_green(tcx, data, prev_index, &dep_node)
+                self.try_mark_previous_green(qcx, data, prev_index, &dep_node)
                     .map(|dep_node_index| (prev_index, dep_node_index))
             }
         }
     }
 
-    #[instrument(skip(self, tcx, data, parent_dep_node_index), level = "debug")]
+    #[instrument(skip(self, qcx, data, parent_dep_node_index), level = "debug")]
     fn try_mark_parent_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
-        tcx: Ctxt,
+        qcx: Ctxt,
         data: &DepGraphData<K>,
         parent_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
@@ -630,14 +630,14 @@ impl<K: DepKind> DepGraph<K> {
 
         // We don't know the state of this dependency. If it isn't
         // an eval_always node, let's try to mark it green recursively.
-        if !tcx.dep_context().is_eval_always(dep_dep_node.kind) {
+        if !qcx.dep_context().is_eval_always(dep_dep_node.kind) {
             debug!(
                 "state of dependency {:?} ({}) is unknown, trying to mark it green",
                 dep_dep_node, dep_dep_node.hash,
             );
 
             let node_index =
-                self.try_mark_previous_green(tcx, data, parent_dep_node_index, dep_dep_node);
+                self.try_mark_previous_green(qcx, data, parent_dep_node_index, dep_dep_node);
 
             if node_index.is_some() {
                 debug!("managed to MARK dependency {dep_dep_node:?} as green",);
@@ -647,7 +647,7 @@ impl<K: DepKind> DepGraph<K> {
 
         // We failed to mark it green, so we try to force the query.
         debug!("trying to force dependency {dep_dep_node:?}");
-        if !tcx.dep_context().try_force_from_dep_node(*dep_dep_node) {
+        if !qcx.dep_context().try_force_from_dep_node(*dep_dep_node) {
             // The DepNode could not be forced.
             debug!("dependency {dep_dep_node:?} could not be forced");
             return None;
@@ -667,7 +667,7 @@ impl<K: DepKind> DepGraph<K> {
             None => {}
         }
 
-        if !tcx.dep_context().sess().has_errors_or_delayed_span_bugs() {
+        if !qcx.dep_context().sess().has_errors_or_delayed_span_bugs() {
             panic!("try_mark_previous_green() - Forcing the DepNode should have set its color")
         }
 
@@ -686,10 +686,10 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
-    #[instrument(skip(self, tcx, data, prev_dep_node_index), level = "debug")]
+    #[instrument(skip(self, qcx, data, prev_dep_node_index), level = "debug")]
     fn try_mark_previous_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
-        tcx: Ctxt,
+        qcx: Ctxt,
         data: &DepGraphData<K>,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
@@ -701,14 +701,14 @@ impl<K: DepKind> DepGraph<K> {
         }
 
         // We never try to mark eval_always nodes as green
-        debug_assert!(!tcx.dep_context().is_eval_always(dep_node.kind));
+        debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
 
         debug_assert_eq!(data.previous.index_to_node(prev_dep_node_index), *dep_node);
 
         let prev_deps = data.previous.edge_targets_from(prev_dep_node_index);
 
         for &dep_dep_node_index in prev_deps {
-            self.try_mark_parent_green(tcx, data, dep_dep_node_index, dep_node)?
+            self.try_mark_parent_green(qcx, data, dep_dep_node_index, dep_node)?
         }
 
         // If we got here without hitting a `return` that means that all
@@ -720,7 +720,7 @@ impl<K: DepKind> DepGraph<K> {
         // We allocating an entry for the node in the current dependency graph and
         // adding all the appropriate edges imported from the previous graph
         let dep_node_index = data.current.promote_node_and_deps_to_current(
-            tcx.dep_context().profiler(),
+            qcx.dep_context().profiler(),
             &data.previous,
             prev_dep_node_index,
         );
@@ -729,7 +729,7 @@ impl<K: DepKind> DepGraph<K> {
 
         // FIXME: Store the fact that a node has diagnostics in a bit in the dep graph somewhere
         // Maybe store a list on disk and encode this fact in the DepNodeState
-        let side_effects = tcx.load_side_effects(prev_dep_node_index);
+        let side_effects = qcx.load_side_effects(prev_dep_node_index);
 
         #[cfg(not(parallel_compiler))]
         debug_assert!(
@@ -740,7 +740,7 @@ impl<K: DepKind> DepGraph<K> {
         );
 
         if !side_effects.is_empty() {
-            self.emit_side_effects(tcx, data, dep_node_index, side_effects);
+            self.emit_side_effects(qcx, data, dep_node_index, side_effects);
         }
 
         // ... and finally storing a "Green" entry in the color map.
@@ -757,7 +757,7 @@ impl<K: DepKind> DepGraph<K> {
     #[inline(never)]
     fn emit_side_effects<Ctxt: QueryContext<DepKind = K>>(
         &self,
-        tcx: Ctxt,
+        qcx: Ctxt,
         data: &DepGraphData<K>,
         dep_node_index: DepNodeIndex,
         side_effects: QuerySideEffects,
@@ -769,9 +769,9 @@ impl<K: DepKind> DepGraph<K> {
             // must process side effects
 
             // Promote the previous diagnostics to the current session.
-            tcx.store_side_effects(dep_node_index, side_effects.clone());
+            qcx.store_side_effects(dep_node_index, side_effects.clone());
 
-            let handle = tcx.dep_context().sess().diagnostic();
+            let handle = qcx.dep_context().sess().diagnostic();
 
             for mut diagnostic in side_effects.diagnostics {
                 handle.emit_diagnostic(&mut diagnostic);
