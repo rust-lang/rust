@@ -56,6 +56,7 @@ pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
 pub type LPSECURITY_ATTRIBUTES = *mut SECURITY_ATTRIBUTES;
 pub type LPSTARTUPINFO = *mut STARTUPINFO;
 pub type LPVOID = *mut c_void;
+pub type LPCVOID = *const c_void;
 pub type LPWCH = *mut WCHAR;
 pub type LPWIN32_FIND_DATAW = *mut WIN32_FIND_DATAW;
 pub type LPWSADATA = *mut WSADATA;
@@ -773,6 +774,16 @@ pub struct timeval {
     pub tv_usec: c_long,
 }
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct CONSOLE_READCONSOLE_CONTROL {
+    pub nLength: ULONG,
+    pub nInitialChars: ULONG,
+    pub dwCtrlWakeupMask: ULONG,
+    pub dwControlKeyState: ULONG,
+}
+pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
+
 // Desktop specific functions & types
 cfg_if::cfg_if! {
 if #[cfg(not(target_vendor = "uwp"))] {
@@ -802,17 +813,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
         extern "system" fn(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG;
 
     #[repr(C)]
-    #[derive(Copy, Clone)]
-    pub struct CONSOLE_READCONSOLE_CONTROL {
-        pub nLength: ULONG,
-        pub nInitialChars: ULONG,
-        pub dwCtrlWakeupMask: ULONG,
-        pub dwControlKeyState: ULONG,
-    }
-
-    pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
-
-    #[repr(C)]
     pub struct BY_HANDLE_FILE_INFORMATION {
         pub dwFileAttributes: DWORD,
         pub ftCreationTime: FILETIME,
@@ -827,7 +827,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
     }
 
     pub type LPBY_HANDLE_FILE_INFORMATION = *mut BY_HANDLE_FILE_INFORMATION;
-    pub type LPCVOID = *const c_void;
 
     pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
@@ -855,24 +854,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     #[link(name = "kernel32")]
     extern "system" {
-        // Functions forbidden when targeting UWP
-        pub fn ReadConsoleW(
-            hConsoleInput: HANDLE,
-            lpBuffer: LPVOID,
-            nNumberOfCharsToRead: DWORD,
-            lpNumberOfCharsRead: LPDWORD,
-            pInputControl: PCONSOLE_READCONSOLE_CONTROL,
-        ) -> BOOL;
-
-        pub fn WriteConsoleW(
-            hConsoleOutput: HANDLE,
-            lpBuffer: LPCVOID,
-            nNumberOfCharsToWrite: DWORD,
-            lpNumberOfCharsWritten: LPDWORD,
-            lpReserved: LPVOID,
-        ) -> BOOL;
-
-        pub fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: LPDWORD) -> BOOL;
         // Allowed but unused by UWP
         pub fn GetFileInformationByHandle(
             hFile: HANDLE,
@@ -913,6 +894,22 @@ if #[cfg(target_vendor = "uwp")] {
 #[link(name = "kernel32")]
 extern "system" {
     pub fn GetCurrentProcessId() -> DWORD;
+
+    pub fn ReadConsoleW(
+        hConsoleInput: HANDLE,
+        lpBuffer: LPVOID,
+        nNumberOfCharsToRead: DWORD,
+        lpNumberOfCharsRead: LPDWORD,
+        pInputControl: PCONSOLE_READCONSOLE_CONTROL,
+    ) -> BOOL;
+    pub fn WriteConsoleW(
+        hConsoleOutput: HANDLE,
+        lpBuffer: LPCVOID,
+        nNumberOfCharsToWrite: DWORD,
+        lpNumberOfCharsWritten: LPDWORD,
+        lpReserved: LPVOID,
+    ) -> BOOL;
+    pub fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: LPDWORD) -> BOOL;
 
     pub fn GetSystemDirectoryW(lpBuffer: LPWSTR, uSize: UINT) -> UINT;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;

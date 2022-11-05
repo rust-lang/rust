@@ -150,8 +150,9 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion_verbose(
+#[suggestion(
     lint_opaque_hidden_inferred_bound_sugg,
+    style = "verbose",
     applicability = "machine-applicable",
     code = " + {trait_ref}"
 )]

@@ -38,6 +38,8 @@
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
 )]
+// Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
+#![recursion_limit = "256"]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;

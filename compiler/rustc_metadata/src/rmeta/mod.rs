@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::{BitSet, FiniteBitSet};
 use rustc_index::vec::IndexVec;
 use rustc_middle::metadata::ModChild;
@@ -223,6 +223,7 @@ pub(crate) struct CrateRoot {
     panic_in_drop_strategy: PanicStrategy,
     edition: Edition,
     has_global_allocator: bool,
+    has_alloc_error_handler: bool,
     has_panic_handler: bool,
     has_default_lib_allocator: bool,
 
@@ -230,8 +231,8 @@ pub(crate) struct CrateRoot {
     dylib_dependency_formats: LazyArray<Option<LinkagePreference>>,
     lib_features: LazyArray<(Symbol, Option<Symbol>)>,
     stability_implications: LazyArray<(Symbol, Symbol)>,
-    lang_items: LazyArray<(DefIndex, usize)>,
-    lang_items_missing: LazyArray<lang_items::LangItem>,
+    lang_items: LazyArray<(DefIndex, LangItem)>,
+    lang_items_missing: LazyArray<LangItem>,
     diagnostic_items: LazyArray<(Symbol, DefIndex)>,
     native_libraries: LazyArray<NativeLib>,
     foreign_modules: LazyArray<ForeignModule>,

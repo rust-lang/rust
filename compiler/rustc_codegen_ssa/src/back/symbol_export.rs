@@ -193,8 +193,11 @@ fn exported_symbols_provider_local<'tcx>(
     }
 
     if tcx.allocator_kind(()).is_some() {
-        for method in ALLOCATOR_METHODS {
-            let symbol_name = format!("__rust_{}", method.name);
+        for symbol_name in ALLOCATOR_METHODS
+            .iter()
+            .map(|method| format!("__rust_{}", method.name))
+            .chain(["__rust_alloc_error_handler".to_string(), OomStrategy::SYMBOL.to_string()])
+        {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
             symbols.push((

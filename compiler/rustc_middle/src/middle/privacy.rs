@@ -6,8 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_span::def_id::{DefId, LocalDefId};
-use std::hash::Hash;
+use rustc_span::def_id::LocalDefId;
 
 /// Represents the levels of effective visibility an item can have.
 ///
@@ -75,33 +74,33 @@ impl EffectiveVisibility {
 }
 
 /// Holds a map of effective visibilities for reachable HIR nodes.
-#[derive(Debug, Clone)]
-pub struct EffectiveVisibilities<Id = LocalDefId> {
-    map: FxHashMap<Id, EffectiveVisibility>,
+#[derive(Default, Clone, Debug)]
+pub struct EffectiveVisibilities {
+    map: FxHashMap<LocalDefId, EffectiveVisibility>,
 }
 
-impl<Id: Hash + Eq + Copy> EffectiveVisibilities<Id> {
-    pub fn is_public_at_level(&self, id: Id, level: Level) -> bool {
+impl EffectiveVisibilities {
+    pub fn is_public_at_level(&self, id: LocalDefId, level: Level) -> bool {
         self.effective_vis(id)
             .map_or(false, |effective_vis| effective_vis.is_public_at_level(level))
     }
 
     /// See `Level::Reachable`.
-    pub fn is_reachable(&self, id: Id) -> bool {
+    pub fn is_reachable(&self, id: LocalDefId) -> bool {
         self.is_public_at_level(id, Level::Reachable)
     }
 
     /// See `Level::Reexported`.
-    pub fn is_exported(&self, id: Id) -> bool {
+    pub fn is_exported(&self, id: LocalDefId) -> bool {
         self.is_public_at_level(id, Level::Reexported)
     }
 
     /// See `Level::Direct`.
-    pub fn is_directly_public(&self, id: Id) -> bool {
+    pub fn is_directly_public(&self, id: LocalDefId) -> bool {
         self.is_public_at_level(id, Level::Direct)
     }
 
-    pub fn public_at_level(&self, id: Id) -> Option<Level> {
+    pub fn public_at_level(&self, id: LocalDefId) -> Option<Level> {
         self.effective_vis(id).and_then(|effective_vis| {
             for level in Level::all_levels() {
                 if effective_vis.is_public_at_level(level) {
@@ -112,24 +111,17 @@ impl<Id: Hash + Eq + Copy> EffectiveVisibilities<Id> {
         })
     }
 
-    pub fn effective_vis(&self, id: Id) -> Option<&EffectiveVisibility> {
+    pub fn effective_vis(&self, id: LocalDefId) -> Option<&EffectiveVisibility> {
         self.map.get(&id)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&Id, &EffectiveVisibility)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&LocalDefId, &EffectiveVisibility)> {
         self.map.iter()
-    }
-
-    pub fn map_id<OutId: Hash + Eq + Copy>(
-        &self,
-        f: impl Fn(Id) -> OutId,
-    ) -> EffectiveVisibilities<OutId> {
-        EffectiveVisibilities { map: self.map.iter().map(|(k, v)| (f(*k), *v)).collect() }
     }
 
     pub fn set_public_at_level(
         &mut self,
-        id: Id,
+        id: LocalDefId,
         default_vis: impl FnOnce() -> Visibility,
         level: Level,
     ) {
@@ -144,23 +136,21 @@ impl<Id: Hash + Eq + Copy> EffectiveVisibilities<Id> {
         }
         self.map.insert(id, effective_vis);
     }
-}
 
-impl<Id: Hash + Eq + Copy + Into<DefId>> EffectiveVisibilities<Id> {
     // `parent_id` is not necessarily a parent in source code tree,
     // it is the node from which the maximum effective visibility is inherited.
     pub fn update(
         &mut self,
-        id: Id,
+        id: LocalDefId,
         nominal_vis: Visibility,
         default_vis: impl FnOnce() -> Visibility,
-        parent_id: Id,
+        parent_id: LocalDefId,
         level: Level,
         tree: impl DefIdTree,
     ) -> bool {
         let mut changed = false;
         let mut current_effective_vis = self.effective_vis(id).copied().unwrap_or_else(|| {
-            if id.into().is_crate_root() {
+            if id.is_top_level_module() {
                 EffectiveVisibility::from_vis(Visibility::Public)
             } else {
                 EffectiveVisibility::from_vis(default_vis())
@@ -201,12 +191,6 @@ impl<Id: Hash + Eq + Copy + Into<DefId>> EffectiveVisibilities<Id> {
         }
         self.map.insert(id, current_effective_vis);
         changed
-    }
-}
-
-impl<Id> Default for EffectiveVisibilities<Id> {
-    fn default() -> Self {
-        EffectiveVisibilities { map: Default::default() }
     }
 }
 

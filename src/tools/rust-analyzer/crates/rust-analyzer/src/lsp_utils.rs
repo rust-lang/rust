@@ -6,7 +6,7 @@ use lsp_server::Notification;
 use crate::{
     from_proto,
     global_state::GlobalState,
-    line_index::{LineEndings, LineIndex, OffsetEncoding},
+    line_index::{LineEndings, LineIndex, PositionEncoding},
     LspError,
 };
 
@@ -140,7 +140,7 @@ pub(crate) fn apply_document_changes(
         index: Arc::new(ide::LineIndex::new(old_text)),
         // We don't care about line endings or offset encoding here.
         endings: LineEndings::Unix,
-        encoding: OffsetEncoding::Utf16,
+        encoding: PositionEncoding::Utf16,
     };
 
     // The changes we got must be applied sequentially, but can cross lines so we

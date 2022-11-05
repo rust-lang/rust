@@ -102,7 +102,7 @@ pub fn do_not_run_ignored_tests() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
     let result = rx.recv().unwrap().result;
     assert_ne!(result, TrOk);
 }
@@ -125,7 +125,7 @@ pub fn ignored_tests_result_in_ignored() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
     let result = rx.recv().unwrap().result;
     assert_eq!(result, TrIgnored);
 }
@@ -150,7 +150,7 @@ fn test_should_panic() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
     let result = rx.recv().unwrap().result;
     assert_eq!(result, TrOk);
 }
@@ -175,7 +175,7 @@ fn test_should_panic_good_message() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
     let result = rx.recv().unwrap().result;
     assert_eq!(result, TrOk);
 }
@@ -205,7 +205,7 @@ fn test_should_panic_bad_message() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
     let result = rx.recv().unwrap().result;
     assert_eq!(result, TrFailedMsg(failed_msg.to_string()));
 }
@@ -239,7 +239,7 @@ fn test_should_panic_non_string_message_type() {
         testfn: DynTestFn(Box::new(f)),
     };
     let (tx, rx) = channel();
-    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx, Concurrent::No);
+    run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
     let result = rx.recv().unwrap().result;
     assert_eq!(result, TrFailedMsg(failed_msg));
 }
@@ -267,15 +267,7 @@ fn test_should_panic_but_succeeds() {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(
-            &TestOpts::new(),
-            false,
-            TestId(0),
-            desc,
-            RunStrategy::InProcess,
-            tx,
-            Concurrent::No,
-        );
+        run_test(&TestOpts::new(), false, TestId(0), desc, RunStrategy::InProcess, tx);
         let result = rx.recv().unwrap().result;
         assert_eq!(
             result,
@@ -306,7 +298,7 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
 
     let test_opts = TestOpts { time_options, ..TestOpts::new() };
     let (tx, rx) = channel();
-    run_test(&test_opts, false, TestId(0), desc, RunStrategy::InProcess, tx, Concurrent::No);
+    run_test(&test_opts, false, TestId(0), desc, RunStrategy::InProcess, tx);
     let exec_time = rx.recv().unwrap().exec_time;
     exec_time
 }
@@ -345,7 +337,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
 
     let test_opts = TestOpts { time_options: Some(time_options), ..TestOpts::new() };
     let (tx, rx) = channel();
-    run_test(&test_opts, false, TestId(0), desc, RunStrategy::InProcess, tx, Concurrent::No);
+    run_test(&test_opts, false, TestId(0), desc, RunStrategy::InProcess, tx);
     let result = rx.recv().unwrap().result;
 
     result

@@ -203,11 +203,18 @@ pub struct UnifyReceiverContext<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, Default)]
+#[derive(Clone, PartialEq, Eq, Hash, Lift, Default)]
 pub struct InternedObligationCauseCode<'tcx> {
     /// `None` for `ObligationCauseCode::MiscObligation` (a common case, occurs ~60% of
     /// the time). `Some` otherwise.
     code: Option<Lrc<ObligationCauseCode<'tcx>>>,
+}
+
+impl<'tcx> std::fmt::Debug for InternedObligationCauseCode<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let cause: &ObligationCauseCode<'_> = self;
+        cause.fmt(f)
+    }
 }
 
 impl<'tcx> ObligationCauseCode<'tcx> {

@@ -74,12 +74,12 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     // This covers the case where somebody does an import which should pull in an item,
     // but there's already an item with the same namespace and same name. Rust gives
     // priority to the not-imported one, so we should, too.
-    items.extend(doc.items.iter().flat_map(|(item, renamed)| {
+    items.extend(doc.items.iter().flat_map(|(item, renamed, import_id)| {
         // First, lower everything other than imports.
         if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
             return Vec::new();
         }
-        let v = clean_maybe_renamed_item(cx, item, *renamed);
+        let v = clean_maybe_renamed_item(cx, item, *renamed, *import_id);
         for item in &v {
             if let Some(name) = item.name && !item.attrs.lists(sym::doc).has_word(sym::hidden) {
                 inserted.insert((item.type_(), name));
@@ -87,7 +87,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         v
     }));
-    items.extend(doc.items.iter().flat_map(|(item, renamed)| {
+    items.extend(doc.items.iter().flat_map(|(item, renamed, _)| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
             let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
@@ -601,7 +601,7 @@ pub(crate) fn clean_generics<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    let mut params = Vec::with_capacity(gens.params.len());
+    let mut params = ThinVec::with_capacity(gens.params.len());
     for p in gens.params.iter().filter(|p| !is_impl_trait(p) && !is_elided_lifetime(p)) {
         let p = clean_generic_param(cx, Some(gens), p);
         params.push(p);
@@ -675,7 +675,7 @@ fn clean_ty_generics<'tcx>(
             }
             ty::GenericParamDefKind::Const { .. } => Some(clean_generic_param_def(param, cx)),
         })
-        .collect::<Vec<GenericParamDef>>();
+        .collect::<ThinVec<GenericParamDef>>();
 
     // param index -> [(trait DefId, associated type name & generics, type, higher-ranked params)]
     let mut impl_trait_proj =
@@ -880,7 +880,7 @@ fn clean_fn_or_proc_macro<'tcx>(
             ProcMacroItem(ProcMacro { kind, helpers })
         }
         None => {
-            let mut func = clean_function(cx, sig, generics, body_id);
+            let mut func = clean_function(cx, sig, generics, FunctionArgs::Body(body_id));
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
             FunctionItem(func)
         }
@@ -917,16 +917,28 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
     }
 }
 
+enum FunctionArgs<'tcx> {
+    Body(hir::BodyId),
+    Names(&'tcx [Ident]),
+}
+
 fn clean_function<'tcx>(
     cx: &mut DocContext<'tcx>,
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
-    body_id: hir::BodyId,
+    args: FunctionArgs<'tcx>,
 ) -> Box<Function> {
     let (generics, decl) = enter_impl_trait(cx, |cx| {
         // NOTE: generics must be cleaned before args
         let generics = clean_generics(generics, cx);
-        let args = clean_args_from_types_and_body_id(cx, sig.decl.inputs, body_id);
+        let args = match args {
+            FunctionArgs::Body(body_id) => {
+                clean_args_from_types_and_body_id(cx, sig.decl.inputs, body_id)
+            }
+            FunctionArgs::Names(names) => {
+                clean_args_from_types_and_names(cx, sig.decl.inputs, names)
+            }
+        };
         let mut decl = clean_fn_decl_with_args(cx, sig.decl, args);
         if sig.header.is_async() {
             decl.output = decl.sugared_async_return_type();
@@ -1051,18 +1063,12 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             ),
             hir::TraitItemKind::Const(ty, None) => TyAssocConstItem(clean_ty(ty, cx)),
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                let m = clean_function(cx, sig, trait_item.generics, body);
+                let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Body(body));
                 MethodItem(m, None)
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
-                let (generics, decl) = enter_impl_trait(cx, |cx| {
-                    // NOTE: generics must be cleaned before args
-                    let generics = clean_generics(trait_item.generics, cx);
-                    let args = clean_args_from_types_and_names(cx, sig.decl.inputs, names);
-                    let decl = clean_fn_decl_with_args(cx, sig.decl, args);
-                    (generics, decl)
-                });
-                TyMethodItem(Box::new(Function { decl, generics }))
+                let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Names(names));
+                TyMethodItem(m)
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
@@ -1080,13 +1086,10 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             hir::TraitItemKind::Type(bounds, None) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
-                TyAssocTypeItem(Box::new(generics), bounds)
+                TyAssocTypeItem(generics, bounds)
             }
         };
-        let what_rustc_thinks =
-            Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx);
-        // Trait items always inherit the trait's visibility -- we don't want to show `pub`.
-        Item { visibility: Inherited, ..what_rustc_thinks }
+        Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx)
     })
 }
 
@@ -1102,7 +1105,7 @@ pub(crate) fn clean_impl_item<'tcx>(
                 AssocConstItem(clean_ty(ty, cx), default)
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
-                let m = clean_function(cx, sig, impl_.generics, body);
+                let m = clean_function(cx, sig, impl_.generics, FunctionArgs::Body(body));
                 let defaultness = cx.tcx.impl_defaultness(impl_.owner_id);
                 MethodItem(m, Some(defaultness))
             }
@@ -1117,18 +1120,7 @@ pub(crate) fn clean_impl_item<'tcx>(
             }
         };
 
-        let mut what_rustc_thinks =
-            Item::from_def_id_and_parts(local_did, Some(impl_.ident.name), inner, cx);
-
-        let impl_ref = cx.tcx.impl_trait_ref(cx.tcx.local_parent(impl_.owner_id.def_id));
-
-        // Trait impl items always inherit the impl's visibility --
-        // we don't want to show `pub`.
-        if impl_ref.is_some() {
-            what_rustc_thinks.visibility = Inherited;
-        }
-
-        what_rustc_thinks
+        Item::from_def_id_and_parts(local_did, Some(impl_.ident.name), inner, cx)
     })
 }
 
@@ -1225,56 +1217,47 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     tcx.generics_of(assoc_item.def_id),
                     ty::GenericPredicates { parent: None, predicates },
                 );
-                // Move bounds that are (likely) directly attached to the associated type
-                // from the where clause to the associated type.
-                // There is no guarantee that this is what the user actually wrote but we have
-                // no way of knowing.
-                let mut bounds = generics
-                    .where_predicates
-                    .drain_filter(|pred| match *pred {
-                        WherePredicate::BoundPredicate {
-                            ty: QPath(box QPathData { ref assoc, ref self_type, ref trait_, .. }),
-                            ..
-                        } => {
-                            if assoc.name != my_name {
-                                return false;
-                            }
-                            if trait_.def_id() != assoc_item.container_id(tcx) {
-                                return false;
-                            }
-                            match *self_type {
-                                Generic(ref s) if *s == kw::SelfUpper => {}
-                                _ => return false,
-                            }
-                            match &assoc.args {
-                                GenericArgs::AngleBracketed { args, bindings } => {
-                                    if !bindings.is_empty()
-                                        || generics
-                                            .params
-                                            .iter()
-                                            .zip(args.iter())
-                                            .any(|(param, arg)| !param_eq_arg(param, arg))
-                                    {
-                                        return false;
-                                    }
-                                }
-                                GenericArgs::Parenthesized { .. } => {
-                                    // The only time this happens is if we're inside the rustdoc for Fn(),
-                                    // which only has one associated type, which is not a GAT, so whatever.
+                // Filter out the bounds that are (likely?) directly attached to the associated type,
+                // as opposed to being located in the where clause.
+                let mut bounds: Vec<GenericBound> = Vec::new();
+                generics.where_predicates.retain_mut(|pred| match *pred {
+                    WherePredicate::BoundPredicate {
+                        ty: QPath(box QPathData { ref assoc, ref self_type, ref trait_, .. }),
+                        bounds: ref mut pred_bounds,
+                        ..
+                    } => {
+                        if assoc.name != my_name {
+                            return true;
+                        }
+                        if trait_.def_id() != assoc_item.container_id(tcx) {
+                            return true;
+                        }
+                        match *self_type {
+                            Generic(ref s) if *s == kw::SelfUpper => {}
+                            _ => return true,
+                        }
+                        match &assoc.args {
+                            GenericArgs::AngleBracketed { args, bindings } => {
+                                if !bindings.is_empty()
+                                    || generics
+                                        .params
+                                        .iter()
+                                        .zip(args.iter())
+                                        .any(|(param, arg)| !param_eq_arg(param, arg))
+                                {
+                                    return true;
                                 }
                             }
-                            true
+                            GenericArgs::Parenthesized { .. } => {
+                                // The only time this happens is if we're inside the rustdoc for Fn(),
+                                // which only has one associated type, which is not a GAT, so whatever.
+                            }
                         }
-                        _ => false,
-                    })
-                    .flat_map(|pred| {
-                        if let WherePredicate::BoundPredicate { bounds, .. } = pred {
-                            bounds
-                        } else {
-                            unreachable!()
-                        }
-                    })
-                    .collect::<Vec<_>>();
+                        bounds.extend(mem::replace(pred_bounds, Vec::new()));
+                        false
+                    }
+                    _ => true,
+                });
                 // Our Sized/?Sized bound didn't get handled when creating the generics
                 // because we didn't actually get our whole set of bounds until just now
                 // (some of them may have come from the trait). If we do have a sized
@@ -1290,7 +1273,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 // (generic) associated type from the where clause to the respective parameter.
                 // There is no guarantee that this is what the user actually wrote but we have
                 // no way of knowing.
-                let mut where_predicates = Vec::new();
+                let mut where_predicates = ThinVec::new();
                 for mut pred in generics.where_predicates {
                     if let WherePredicate::BoundPredicate { ty: Generic(arg), bounds, .. } = &mut pred
                     && let Some(GenericParamDef {
@@ -1320,7 +1303,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                         bounds,
                     )
                 } else {
-                    TyAssocTypeItem(Box::new(generics), bounds)
+                    TyAssocTypeItem(generics, bounds)
                 }
             } else {
                 // FIXME: when could this happen? Associated items in inherent impls?
@@ -1331,7 +1314,10 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                             cx,
                             Some(assoc_item.def_id),
                         ),
-                        generics: Generics { params: Vec::new(), where_predicates: Vec::new() },
+                        generics: Generics {
+                            params: ThinVec::new(),
+                            where_predicates: ThinVec::new(),
+                        },
                         item_type: None,
                     }),
                     Vec::new(),
@@ -1340,18 +1326,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
         }
     };
 
-    let mut what_rustc_thinks =
-        Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name), kind, cx);
-
-    let impl_ref = tcx.impl_trait_ref(tcx.parent(assoc_item.def_id));
-
-    // Trait impl items always inherit the impl's visibility --
-    // we don't want to show `pub`.
-    if impl_ref.is_some() {
-        what_rustc_thinks.visibility = Visibility::Inherited;
-    }
-
-    what_rustc_thinks
+    Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name), kind, cx)
 }
 
 fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
@@ -1406,7 +1381,8 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
                 ty::Projection(proj) => Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id),
                 // Rustdoc handles `ty::Error`s by turning them into `Type::Infer`s.
                 ty::Error(_) => return Type::Infer,
-                _ => bug!("clean: expected associated type, found `{:?}`", ty),
+                // Otherwise, this is an inherent associated type.
+                _ => return clean_middle_ty(ty, cx, None),
             };
             let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
             register_res(cx, trait_.res);
@@ -1431,7 +1407,7 @@ fn maybe_expand_private_type_alias<'tcx>(
     let Res::Def(DefKind::TyAlias, def_id) = path.res else { return None };
     // Substitute private type aliases
     let def_id = def_id.as_local()?;
-    let alias = if !cx.cache.effective_visibilities.is_exported(def_id.to_def_id()) {
+    let alias = if !cx.cache.effective_visibilities.is_exported(cx.tcx, def_id.to_def_id()) {
         &cx.tcx.hir().expect_item(def_id).kind
     } else {
         return None;
@@ -1821,30 +1797,7 @@ pub(crate) fn clean_field_with_def_id(
     ty: Type,
     cx: &mut DocContext<'_>,
 ) -> Item {
-    let what_rustc_thinks =
-        Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx);
-    if is_field_vis_inherited(cx.tcx, def_id) {
-        // Variant fields inherit their enum's visibility.
-        Item { visibility: Visibility::Inherited, ..what_rustc_thinks }
-    } else {
-        what_rustc_thinks
-    }
-}
-
-fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let parent = tcx.parent(def_id);
-    match tcx.def_kind(parent) {
-        DefKind::Struct | DefKind::Union => false,
-        DefKind::Variant => true,
-        parent_kind => panic!("unexpected parent kind: {:?}", parent_kind),
-    }
-}
-
-pub(crate) fn clean_visibility(vis: ty::Visibility<DefId>) -> Visibility {
-    match vis {
-        ty::Visibility::Public => Visibility::Public,
-        ty::Visibility::Restricted(module) => Visibility::Restricted(module),
-    }
+    Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx)
 }
 
 pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocContext<'tcx>) -> Item {
@@ -1861,10 +1814,7 @@ pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocCont
             fields: variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
         }),
     };
-    let what_rustc_thinks =
-        Item::from_def_id_and_parts(variant.def_id, Some(variant.name), VariantItem(kind), cx);
-    // don't show `pub` for variants, which always inherit visibility
-    Item { visibility: Inherited, ..what_rustc_thinks }
+    Item::from_def_id_and_parts(variant.def_id, Some(variant.name), VariantItem(kind), cx)
 }
 
 fn clean_variant_data<'tcx>(
@@ -1955,6 +1905,7 @@ fn clean_maybe_renamed_item<'tcx>(
     cx: &mut DocContext<'tcx>,
     item: &hir::Item<'tcx>,
     renamed: Option<Symbol>,
+    import_id: Option<hir::HirId>,
 ) -> Vec<Item> {
     use hir::ItemKind;
 
@@ -2005,7 +1956,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
             ItemKind::Macro(ref macro_def, _) => {
-                let ty_vis = clean_visibility(cx.tcx.visibility(def_id));
+                let ty_vis = cx.tcx.visibility(def_id);
                 MacroItem(Macro {
                     source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
                 })
@@ -2031,17 +1982,29 @@ fn clean_maybe_renamed_item<'tcx>(
             }
             _ => unreachable!("not yet converted"),
         };
-
-        vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
+        if let Some(import_id) = import_id {
+            let (attrs, cfg) = inline::merge_attrs(
+                cx,
+                Some(cx.tcx.parent_module(import_id).to_def_id()),
+                inline::load_attrs(cx, def_id),
+                Some(inline::load_attrs(cx, cx.tcx.hir().local_def_id(import_id).to_def_id())),
+            );
+            vec![Item::from_def_id_and_attrs_and_parts(
+                def_id,
+                Some(name),
+                kind,
+                Box::new(attrs),
+                cfg,
+            )]
+        } else {
+            vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
+        }
     })
 }
 
 fn clean_variant<'tcx>(variant: &hir::Variant<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let kind = VariantItem(clean_variant_data(&variant.data, &variant.disr_expr, cx));
-    let what_rustc_thinks =
-        Item::from_hir_id_and_parts(variant.id, Some(variant.ident.name), kind, cx);
-    // don't show `pub` for variants, which are always public
-    Item { visibility: Inherited, ..what_rustc_thinks }
+    Item::from_hir_id_and_parts(variant.id, Some(variant.ident.name), kind, cx)
 }
 
 fn clean_impl<'tcx>(
@@ -2114,6 +2077,7 @@ fn clean_extern_crate<'tcx>(
                 }
         });
 
+    let krate_owner_def_id = krate.owner_id.to_def_id();
     if please_inline {
         let mut visited = FxHashSet::default();
 
@@ -2122,7 +2086,7 @@ fn clean_extern_crate<'tcx>(
         if let Some(items) = inline::try_inline(
             cx,
             cx.tcx.parent_module(krate.hir_id()).to_def_id(),
-            Some(krate.owner_id.to_def_id()),
+            Some(krate_owner_def_id),
             res,
             name,
             Some(attrs),
@@ -2137,9 +2101,9 @@ fn clean_extern_crate<'tcx>(
         name: Some(name),
         attrs: Box::new(Attributes::from_ast(attrs)),
         item_id: crate_def_id.into(),
-        visibility: clean_visibility(ty_vis),
         kind: Box::new(ExternCrateItem { src: orig_name }),
         cfg: attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
+        inline_stmt_id: Some(krate_owner_def_id),
     }]
 }
 
