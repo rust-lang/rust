@@ -31,13 +31,11 @@ pub(super) fn check_fn<'a, 'tcx>(
     fn_id: hir::HirId,
     body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
-    return_type_pre_known: bool,
 ) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
     // Create the function context. This is either derived from scratch or,
     // in the case of closures, based on the outer context.
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.hir_id);
     fcx.ps.set(UnsafetyState::function(fn_sig.unsafety, fn_id));
-    fcx.return_type_pre_known = return_type_pre_known;
 
     let tcx = fcx.tcx;
     let hir = tcx.hir();
@@ -51,9 +49,6 @@ pub(super) fn check_fn<'a, 'tcx>(
             decl.output.span(),
             param_env,
         ));
-    // If we replaced declared_ret_ty with infer vars, then we must be inferring
-    // an opaque type, so set a flag so we can improve diagnostics.
-    fcx.return_type_has_opaque = ret_ty != declared_ret_ty;
 
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
 

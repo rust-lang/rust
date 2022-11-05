@@ -956,6 +956,7 @@ pub struct OutsideLoop<'a> {
     #[label]
     pub span: Span,
     pub name: &'a str,
+    pub is_break: bool,
 }
 
 #[derive(Diagnostic)]

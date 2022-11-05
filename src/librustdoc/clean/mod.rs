@@ -1381,7 +1381,8 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
                 ty::Projection(proj) => Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id),
                 // Rustdoc handles `ty::Error`s by turning them into `Type::Infer`s.
                 ty::Error(_) => return Type::Infer,
-                _ => bug!("clean: expected associated type, found `{:?}`", ty),
+                // Otherwise, this is an inherent associated type.
+                _ => return clean_middle_ty(ty, cx, None),
             };
             let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
             register_res(cx, trait_.res);
