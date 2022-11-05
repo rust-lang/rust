@@ -1699,10 +1699,13 @@ LLVMRustModuleCost(LLVMModuleRef M) {
 extern "C" uint64_t
 LLVMRustModuleInstructionStats(LLVMModuleRef M) {
   auto f = unwrap(M)->functions();
+  raw_fd_ostream OS(2, false); // stderr.
   for (auto &func : f)
   {
     auto name = func.getName();
+
     auto count = func.getInstructionCount();
+    OS << name << "\t" << count << "\n";
   }
   return unwrap(M)->getInstructionCount();
 }
