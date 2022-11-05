@@ -30,10 +30,10 @@ use crate::html::format::{
     join_with_double_colon, print_abi_with_space, print_constness_with_space, print_where_clause,
     visibility_print_with_space, Buffer, Ending, PrintWithSpace,
 };
-use crate::html::highlight;
 use crate::html::layout::Page;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::url_parts_builder::UrlPartsBuilder;
+use crate::html::{highlight, static_files};
 
 use askama::Template;
 use itertools::Itertools;
@@ -52,8 +52,8 @@ struct PathComponent {
 #[derive(Template)]
 #[template(path = "print_item.html")]
 struct ItemVars<'a> {
-    page: &'a Page<'a>,
     static_root_path: &'a str,
+    clipboard_svg: &'static static_files::StaticFile,
     typ: &'a str,
     name: &'a str,
     item_type: &'a str,
@@ -147,8 +147,8 @@ pub(super) fn print_item(
     };
 
     let item_vars = ItemVars {
-        page,
-        static_root_path: page.get_static_root_path(),
+        static_root_path: &page.get_static_root_path(),
+        clipboard_svg: &static_files::STATIC_FILES.clipboard_svg,
         typ,
         name: item.name.as_ref().unwrap().as_str(),
         item_type: &item.type_().to_string(),
