@@ -2447,7 +2447,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let sysroot = match &sysroot_opt {
         Some(s) => s,
         None => {
-            tmp_buf = crate::filesearch::get_or_default_sysroot();
+            tmp_buf = crate::filesearch::get_or_default_sysroot().expect("Failed finding sysroot");
             &tmp_buf
         }
     };

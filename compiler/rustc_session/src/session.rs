@@ -1309,7 +1309,7 @@ pub fn build_session(
 
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
-        None => filesearch::get_or_default_sysroot(),
+        None => filesearch::get_or_default_sysroot().expect("Failed finding sysroot"),
     };
 
     let target_cfg = config::build_target_config(&sopts, target_override, &sysroot);
