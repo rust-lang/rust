@@ -778,20 +778,20 @@ fn walk_parents<'tcx>(
 
             Node::Expr(parent) if parent.span.ctxt() == ctxt => match parent.kind {
                 ExprKind::Ret(_) => {
-                    let owner_id = cx.tcx.hir().body_owner(cx.enclosing_body.unwrap());
+                    let owner_id = cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap());
                     Some(
                         if let Node::Expr(
                             closure_expr @ Expr {
                                 kind: ExprKind::Closure(closure),
                                 ..
                             },
-                        ) = cx.tcx.hir().get(owner_id)
+                        ) = cx.tcx.hir().get_by_def_id(owner_id)
                         {
                             closure_result_position(cx, closure, cx.typeck_results().expr_ty(closure_expr), precedence)
                         } else {
                             let output = cx
                                 .tcx
-                                .erase_late_bound_regions(cx.tcx.fn_sig(cx.tcx.hir().local_def_id(owner_id)).subst_identity().output());
+                                .erase_late_bound_regions(cx.tcx.fn_sig(owner_id).subst_identity().output());
                             ty_auto_deref_stability(cx, output, precedence).position_for_result(cx)
                         },
                     )
