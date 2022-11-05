@@ -9,8 +9,10 @@
 
 use crate::mir;
 use crate::traits::query::NoSolution;
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt};
+
+use super::TypeVisitable;
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
 pub enum NormalizationError<'tcx> {
@@ -208,10 +210,28 @@ impl<'tcx> TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let ty = if !ty.needs_normalization(self.param_env.reveal()) {
+            return ty;
+        } else {
+            ty.super_fold_with(self)
+        };
+        if !ty.needs_normalization(self.param_env.reveal()) {
+            return ty;
+        }
+
         self.normalize_generic_arg_after_erasing_regions(ty.into()).expect_ty()
     }
 
     fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        let c = if !c.needs_normalization(self.param_env.reveal()) {
+            return c;
+        } else {
+            c.super_fold_with(self)
+        };
+        if !c.needs_normalization(self.param_env.reveal()) {
+            return c;
+        }
+
         self.normalize_generic_arg_after_erasing_regions(c.into()).expect_const()
     }
 }
@@ -246,6 +266,15 @@ impl<'tcx> FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'t
     }
 
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        let ty = if !ty.needs_normalization(self.param_env.reveal()) {
+            return Ok(ty);
+        } else {
+            ty.try_super_fold_with(self)?
+        };
+        if !ty.needs_normalization(self.param_env.reveal()) {
+            return Ok(ty);
+        }
+
         match self.try_normalize_generic_arg_after_erasing_regions(ty.into()) {
             Ok(t) => Ok(t.expect_ty()),
             Err(_) => Err(NormalizationError::Type(ty)),
@@ -253,6 +282,15 @@ impl<'tcx> FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'t
     }
 
     fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+        let c = if !c.needs_normalization(self.param_env.reveal()) {
+            return Ok(c);
+        } else {
+            c.try_super_fold_with(self)?
+        };
+        if !c.needs_normalization(self.param_env.reveal()) {
+            return Ok(c);
+        }
+
         match self.try_normalize_generic_arg_after_erasing_regions(c.into()) {
             Ok(t) => Ok(t.expect_const()),
             Err(_) => Err(NormalizationError::Const(c)),
