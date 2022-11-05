@@ -563,6 +563,7 @@ where
     Some((result, dep_node_index))
 }
 
+#[instrument(skip(tcx, result, query), level = "debug")]
 fn incremental_verify_ich<CTX, K, V: Debug>(
     tcx: CTX::DepContext,
     result: &V,
@@ -577,12 +578,11 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
         dep_node,
     );
 
-    debug!("BEGIN verify_ich({:?})", dep_node);
     let new_hash = query.hash_result.map_or(Fingerprint::ZERO, |f| {
         tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
     });
+
     let old_hash = tcx.dep_graph().prev_fingerprint_of(dep_node);
-    debug!("END verify_ich({:?})", dep_node);
 
     if Some(new_hash) != old_hash {
         incremental_verify_ich_failed(
