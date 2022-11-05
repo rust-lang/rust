@@ -826,6 +826,12 @@ fn record_layout_for_printing_outlined<'tcx>(
             return;
         }
 
+        ty::Generator(..) => {
+            debug!("print-type-size t: `{:?}` record generator", layout.ty);
+            record(DataTypeKind::Generator, false, None, vec![]);
+            return;
+        }
+
         _ => {
             debug!("print-type-size t: `{:?}` skip non-nominal", layout.ty);
             return;

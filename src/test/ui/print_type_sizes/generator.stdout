@@ -1,0 +1,2 @@
+print-type-size type: `[generator@$DIR/generator.rs:10:5: 10:14]`: 8193 bytes, alignment: 1 bytes
+print-type-size     end padding: 8193 bytes

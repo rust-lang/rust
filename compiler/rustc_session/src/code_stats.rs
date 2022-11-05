@@ -33,6 +33,7 @@ pub enum DataTypeKind {
     Union,
     Enum,
     Closure,
+    Generator,
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]
@@ -113,7 +114,7 @@ impl CodeStats {
             let mut max_variant_size = discr_size;
 
             let struct_like = match kind {
-                DataTypeKind::Struct | DataTypeKind::Closure => true,
+                DataTypeKind::Struct | DataTypeKind::Closure | DataTypeKind::Generator => true,
                 DataTypeKind::Enum | DataTypeKind::Union => false,
             };
             for (i, variant_info) in variants.into_iter().enumerate() {
