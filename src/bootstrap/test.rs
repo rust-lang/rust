@@ -16,6 +16,7 @@ use crate::cache::Interned;
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::dist;
+use crate::doc::DocumentationFormat;
 use crate::flags::Subcommand;
 use crate::native;
 use crate::tool::{self, SourceType, Tool};
@@ -822,7 +823,11 @@ impl Step for RustdocJSStd {
                     command.arg("--test-file").arg(path);
                 }
             }
-            builder.ensure(crate::doc::Std { target: self.target, stage: builder.top_stage });
+            builder.ensure(crate::doc::Std {
+                target: self.target,
+                stage: builder.top_stage,
+                format: DocumentationFormat::HTML,
+            });
             builder.run(&mut command);
         } else {
             builder.info("No nodejs found, skipping \"src/test/rustdoc-js-std\" tests");
