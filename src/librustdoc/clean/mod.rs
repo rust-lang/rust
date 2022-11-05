@@ -227,7 +227,7 @@ pub(crate) fn clean_middle_const<'tcx>(
     // FIXME: instead of storing the stringified expression, store `self` directly instead.
     Constant {
         type_: clean_middle_ty(constant.ty(), cx, None),
-        kind: ConstantKind::TyConst { expr: constant.to_string() },
+        kind: ConstantKind::TyConst { expr: constant.to_string().into() },
     }
 }
 
@@ -1200,7 +1200,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                         true
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(c)) => match &c.kind {
-                        ConstantKind::TyConst { expr } => expr == param.name.as_str(),
+                        ConstantKind::TyConst { expr } => **expr == *param.name.as_str(),
                         _ => false,
                     },
                     _ => false,
@@ -1529,7 +1529,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                 }
             };
 
-            Array(Box::new(clean_ty(ty, cx)), length)
+            Array(Box::new(clean_ty(ty, cx)), length.into())
         }
         TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
         TyKind::OpaqueDef(item_id, _, _) => {
@@ -1601,7 +1601,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Array(ty, mut n) => {
             n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
             let n = print_const(cx, n);
-            Array(Box::new(clean_middle_ty(ty, cx, None)), n)
+            Array(Box::new(clean_middle_ty(ty, cx, None)), n.into())
         }
         ty::RawPtr(mt) => RawPointer(mt.mutbl, Box::new(clean_middle_ty(mt.ty, cx, None))),
         ty::Ref(r, ty, mutbl) => BorrowedRef {
