@@ -13,8 +13,8 @@ represents either a literal or a placeholder for an operand (just like format st
 
   ```rust
   pub enum InlineAsmTemplatePiece {
-	  String(String),
-	  Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
+      String(String),
+      Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
   }
   ```
 
@@ -38,17 +38,17 @@ string parsing. The remaining options are mostly passed through to LLVM with lit
 
   ```rust
   bitflags::bitflags! {
-	  pub struct InlineAsmOptions: u16 {
-		  const PURE = 1 << 0;
-		  const NOMEM = 1 << 1;
-		  const READONLY = 1 << 2;
-		  const PRESERVES_FLAGS = 1 << 3;
-		  const NORETURN = 1 << 4;
-		  const NOSTACK = 1 << 5;
-		  const ATT_SYNTAX = 1 << 6;
-		  const RAW = 1 << 7;
-		  const MAY_UNWIND = 1 << 8;
-	  }
+      pub struct InlineAsmOptions: u16 {
+          const PURE = 1 << 0;
+          const NOMEM = 1 << 1;
+          const READONLY = 1 << 2;
+          const PRESERVES_FLAGS = 1 << 3;
+          const NORETURN = 1 << 4;
+          const NOSTACK = 1 << 5;
+          const ATT_SYNTAX = 1 << 6;
+          const RAW = 1 << 7;
+          const MAY_UNWIND = 1 << 8;
+      }
   }
   ```
 
