@@ -242,19 +242,13 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
 
             s
         }
-        _ => {
-            let mut s = n.to_string();
-            // array lengths are obviously usize
-            if s.ends_with("_usize") {
-                let n = s.len() - "_usize".len();
-                s.truncate(n);
-                if s.ends_with(": ") {
-                    let n = s.len() - ": ".len();
-                    s.truncate(n);
-                }
-            }
-            s
+        // array lengths are obviously usize
+        ty::ConstKind::Value(ty::ValTree::Leaf(scalar))
+            if *n.ty().kind() == ty::Uint(ty::UintTy::Usize) =>
+        {
+            scalar.to_string()
         }
+        _ => n.to_string(),
     }
 }
 
