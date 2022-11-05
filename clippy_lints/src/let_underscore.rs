@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{is_must_use_ty, match_type};
+use clippy_utils::ty::{implements_trait, is_must_use_ty, match_type};
 use clippy_utils::{is_must_use_func_call, paths};
 use rustc_hir::{Local, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.42.0"]
     pub LET_UNDERSCORE_MUST_USE,
     restriction,
-    "non-binding let on a `#[must_use]` expression"
+    "non-binding `let` on a `#[must_use]` expression"
 }
 
 declare_clippy_lint! {
@@ -56,10 +56,41 @@ declare_clippy_lint! {
     #[clippy::version = "1.43.0"]
     pub LET_UNDERSCORE_LOCK,
     correctness,
-    "non-binding let on a synchronization lock"
+    "non-binding `let` on a synchronization lock"
 }
 
-declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK]);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `let _ = <expr>` where the resulting type of expr implements `Future`
+    ///
+    /// ### Why is this bad?
+    /// Futures must be polled for work to be done. The original intention was most likely to await the future
+    /// and ignore the resulting value.
+    ///
+    /// ### Example
+    /// ```rust
+    /// async fn foo() -> Result<(), ()> {
+    ///     Ok(())
+    /// }
+    /// let _ = foo();
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # async fn context() {
+    /// async fn foo() -> Result<(), ()> {
+    ///     Ok(())
+    /// }
+    /// let _ = foo().await;
+    /// # }
+    /// ```
+    #[clippy::version = "1.66"]
+    pub LET_UNDERSCORE_FUTURE,
+    suspicious,
+    "non-binding `let` on a future"
+}
+
+declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_FUTURE]);
 
 const SYNC_GUARD_PATHS: [&[&str]; 3] = [
     &paths::PARKING_LOT_MUTEX_GUARD,
@@ -83,17 +114,27 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     cx,
                     LET_UNDERSCORE_LOCK,
                     local.span,
-                    "non-binding let on a synchronization lock",
+                    "non-binding `let` on a synchronization lock",
                     None,
                     "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`",
+                );
+            } else if let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
+                && implements_trait(cx, cx.typeck_results().expr_ty(init), future_trait_def_id, &[]) {
+                span_lint_and_help(
+                    cx,
+                    LET_UNDERSCORE_FUTURE,
+                    local.span,
+                    "non-binding `let` on a future",
+                    None,
+                    "consider awaiting the future or dropping explicitly with `std::mem::drop`"
                 );
             } else if is_must_use_ty(cx, cx.typeck_results().expr_ty(init)) {
                 span_lint_and_help(
                     cx,
                     LET_UNDERSCORE_MUST_USE,
                     local.span,
-                    "non-binding let on an expression with `#[must_use]` type",
+                    "non-binding `let` on an expression with `#[must_use]` type",
                     None,
                     "consider explicitly using expression value",
                 );
@@ -102,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     cx,
                     LET_UNDERSCORE_MUST_USE,
                     local.span,
-                    "non-binding let on a result of a `#[must_use]` function",
+                    "non-binding `let` on a result of a `#[must_use]` function",
                     None,
                     "consider explicitly using function result",
                 );

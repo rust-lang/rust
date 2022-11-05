@@ -1,4 +1,4 @@
-error: non-binding let on a result of a `#[must_use]` function
+error: non-binding `let` on a result of a `#[must_use]` function
   --> $DIR/let_underscore_must_use.rs:67:5
    |
 LL |     let _ = f();
@@ -7,7 +7,7 @@ LL |     let _ = f();
    = help: consider explicitly using function result
    = note: `-D clippy::let-underscore-must-use` implied by `-D warnings`
 
-error: non-binding let on an expression with `#[must_use]` type
+error: non-binding `let` on an expression with `#[must_use]` type
   --> $DIR/let_underscore_must_use.rs:68:5
    |
 LL |     let _ = g();
@@ -15,7 +15,7 @@ LL |     let _ = g();
    |
    = help: consider explicitly using expression value
 
-error: non-binding let on a result of a `#[must_use]` function
+error: non-binding `let` on a result of a `#[must_use]` function
   --> $DIR/let_underscore_must_use.rs:70:5
    |
 LL |     let _ = l(0_u32);
@@ -23,7 +23,7 @@ LL |     let _ = l(0_u32);
    |
    = help: consider explicitly using function result
 
-error: non-binding let on a result of a `#[must_use]` function
+error: non-binding `let` on a result of a `#[must_use]` function
   --> $DIR/let_underscore_must_use.rs:74:5
    |
 LL |     let _ = s.f();
@@ -31,7 +31,7 @@ LL |     let _ = s.f();
    |
    = help: consider explicitly using function result
 
-error: non-binding let on an expression with `#[must_use]` type
+error: non-binding `let` on an expression with `#[must_use]` type
   --> $DIR/let_underscore_must_use.rs:75:5
    |
 LL |     let _ = s.g();
@@ -39,7 +39,7 @@ LL |     let _ = s.g();
    |
    = help: consider explicitly using expression value
 
-error: non-binding let on a result of a `#[must_use]` function
+error: non-binding `let` on a result of a `#[must_use]` function
   --> $DIR/let_underscore_must_use.rs:78:5
    |
 LL |     let _ = S::h();
@@ -47,7 +47,7 @@ LL |     let _ = S::h();
    |
    = help: consider explicitly using function result
 
-error: non-binding let on an expression with `#[must_use]` type
+error: non-binding `let` on an expression with `#[must_use]` type
   --> $DIR/let_underscore_must_use.rs:79:5
    |
 LL |     let _ = S::p();
@@ -55,7 +55,7 @@ LL |     let _ = S::p();
    |
    = help: consider explicitly using expression value
 
-error: non-binding let on a result of a `#[must_use]` function
+error: non-binding `let` on a result of a `#[must_use]` function
   --> $DIR/let_underscore_must_use.rs:81:5
    |
 LL |     let _ = S::a();
@@ -63,7 +63,7 @@ LL |     let _ = S::a();
    |
    = help: consider explicitly using function result
 
-error: non-binding let on an expression with `#[must_use]` type
+error: non-binding `let` on an expression with `#[must_use]` type
   --> $DIR/let_underscore_must_use.rs:83:5
    |
 LL |     let _ = if true { Ok(()) } else { Err(()) };
@@ -71,7 +71,7 @@ LL |     let _ = if true { Ok(()) } else { Err(()) };
    |
    = help: consider explicitly using expression value
 
-error: non-binding let on a result of a `#[must_use]` function
+error: non-binding `let` on a result of a `#[must_use]` function
   --> $DIR/let_underscore_must_use.rs:87:5
    |
 LL |     let _ = a.is_ok();
@@ -79,7 +79,7 @@ LL |     let _ = a.is_ok();
    |
    = help: consider explicitly using function result
 
-error: non-binding let on an expression with `#[must_use]` type
+error: non-binding `let` on an expression with `#[must_use]` type
   --> $DIR/let_underscore_must_use.rs:89:5
    |
 LL |     let _ = a.map(|_| ());
@@ -87,7 +87,7 @@ LL |     let _ = a.map(|_| ());
    |
    = help: consider explicitly using expression value
 
-error: non-binding let on an expression with `#[must_use]` type
+error: non-binding `let` on an expression with `#[must_use]` type
   --> $DIR/let_underscore_must_use.rs:91:5
    |
 LL |     let _ = a;
