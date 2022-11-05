@@ -175,8 +175,8 @@ Defining a query takes place in two steps:
 To declare the query name and arguments, you simply add an entry to
 the big macro invocation in [`compiler/rustc_middle/src/query/mod.rs`][query-mod].
 Then you need to add a documentation comment to it with some _internal_ description.
-Then, provide the `desc` attribute which contains a short description of the query.
-This description is shown to the user in query cycles.
+Then, provide the `desc` attribute which contains a _user-facing_ description of the query.
+The `desc` attribute is shown to the user in query cycles.
 
 This looks something like:
 
@@ -236,35 +236,6 @@ So, to add a query:
 which is used to cheaply modify MIR in place. See the definition
 of `Steal` for more details. New uses of `Steal` should **not** be
 added without alerting `@rust-lang/compiler`.
-
-### Query structs and descriptions
-
-For each query, the `rustc_queries` macro will generate a "query struct"
-named after the query. This struct is a kind of placeholder
-describing the query. Each query struct implements the
-[`self::config::QueryConfig`][QueryConfig] trait, which has associated types for the
-key/value of that particular query. Basically the code generated looks something
-like this:
-
-```rust,ignore
-// Dummy struct representing a particular kind of query:
-pub struct type_of<'tcx> { data: PhantomData<&'tcx ()> }
-
-impl<'tcx> QueryConfig for type_of<'tcx> {
-  type Key = DefId;
-  type Value = Ty<'tcx>;
-
-  const NAME: QueryName = QueryName::type_of;
-  const CATEGORY: ProfileCategory = ProfileCategory::Other;
-}
-```
-
-There is an additional trait with more methods called
-[`self::config::QueryDescription`][QueryDescription]. This trait contains a few
-extra methods which are used by the query system.
-
-[QueryConfig]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_system/query/config/trait.QueryConfig.html
-[QueryDescription]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_system/query/config/trait.QueryDescription.html
 
 ## External links
 
