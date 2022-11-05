@@ -1,6 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-  <Type Name="str">
+  <Type Name="ref$&lt;str$&gt;">
+    <AlternativeType Name="ref_mut$&lt;str$&gt;" />
+    <AlternativeType Name="ptr_const$&lt;str$&gt;" />
+    <AlternativeType Name="ptr_mut$&lt;str$&gt;" />
+
     <DisplayString>{(char*)data_ptr,[length]s8}</DisplayString>
     <StringView>(char*)data_ptr,[length]s8</StringView>
     <Expand>
@@ -15,7 +19,11 @@
       </Synthetic>
     </Expand>
   </Type>
-  <Type Name="slice$&lt;*&gt;">
+  <Type Name="ref$&lt;slice2$&lt;*&gt; &gt;">
+    <AlternativeType Name="ref_mut$&lt;slice2$&lt;*&gt; &gt;" />
+    <AlternativeType Name="ptr_const$&lt;slice2$&lt;*&gt; &gt;" />
+    <AlternativeType Name="ptr_mut$&lt;slice2$&lt;*&gt; &gt;" />
+
     <DisplayString>{{ len={length} }}</DisplayString>
     <Expand>
       <Item Name="[len]" ExcludeView="simple">length</Item>
