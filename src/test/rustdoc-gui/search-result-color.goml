@@ -67,7 +67,7 @@ reload:
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-css: (
-    "//*[@class='desc']//*[text()='Just a normal struct.']",
+    "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(197, 197, 197)"},
 )
 assert-css: (
@@ -159,7 +159,7 @@ assert-css: (
 )
 
 // Checking color and background on hover.
-move-cursor-to: "//*[@class='desc']//*[text()='Just a normal struct.']"
+move-cursor-to: "//*[@class='desc'][text()='Just a normal struct.']"
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']",
     {"color": "rgb(255, 255, 255)"},
@@ -179,7 +179,7 @@ reload:
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-css: (
-    "//*[@class='desc']//*[text()='Just a normal struct.']",
+    "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(221, 221, 221)"},
 )
 assert-css: (
@@ -276,7 +276,7 @@ reload:
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-css: (
-    "//*[@class='desc']//*[text()='Just a normal struct.']",
+    "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(0, 0, 0)"},
 )
 assert-css: (

@@ -1380,21 +1380,46 @@ impl Config {
         git
     }
 
-    pub(crate) fn artifact_channel(&self, builder: &Builder<'_>, commit: &str) -> String {
-        if builder.rust_info.is_managed_git_subrepository() {
+    /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
+    /// Return the version it would have used for the given commit.
+    pub(crate) fn artifact_version_part(&self, builder: &Builder<'_>, commit: &str) -> String {
+        let (channel, version) = if builder.rust_info.is_managed_git_subrepository() {
             let mut channel = self.git();
             channel.arg("show").arg(format!("{}:src/ci/channel", commit));
             let channel = output(&mut channel);
-            channel.trim().to_owned()
-        } else if let Ok(channel) = fs::read_to_string(builder.src.join("src/ci/channel")) {
-            channel.trim().to_owned()
+            let mut version = self.git();
+            version.arg("show").arg(format!("{}:src/version", commit));
+            let version = output(&mut version);
+            (channel.trim().to_owned(), version.trim().to_owned())
         } else {
-            let src = builder.src.display();
-            eprintln!("error: failed to determine artifact channel");
-            eprintln!(
-                "help: either use git or ensure that {src}/src/ci/channel contains the name of the channel to use"
-            );
-            panic!();
+            let channel = fs::read_to_string(builder.src.join("src/ci/channel"));
+            let version = fs::read_to_string(builder.src.join("src/version"));
+            match (channel, version) {
+                (Ok(channel), Ok(version)) => {
+                    (channel.trim().to_owned(), version.trim().to_owned())
+                }
+                (channel, version) => {
+                    let src = builder.src.display();
+                    eprintln!("error: failed to determine artifact channel and/or version");
+                    eprintln!(
+                        "help: consider using a git checkout or ensure these files are readable"
+                    );
+                    if let Err(channel) = channel {
+                        eprintln!("reading {}/src/ci/channel failed: {:?}", src, channel);
+                    }
+                    if let Err(version) = version {
+                        eprintln!("reading {}/src/version failed: {:?}", src, version);
+                    }
+                    panic!();
+                }
+            }
+        };
+
+        match channel.as_str() {
+            "stable" => version,
+            "beta" => channel,
+            "nightly" => channel,
+            other => unreachable!("{:?} is not recognized as a valid channel", other),
         }
     }
 
@@ -1637,7 +1662,7 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
 
 fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     builder.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
-    let channel = builder.config.artifact_channel(builder, commit);
+    let version = builder.config.artifact_version_part(builder, commit);
     let host = builder.config.build.triple;
     let bin_root = builder.out.join(host).join("ci-rustc");
     let rustc_stamp = bin_root.join(".rustc-stamp");
@@ -1646,13 +1671,13 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
         if bin_root.exists() {
             t!(fs::remove_dir_all(&bin_root));
         }
-        let filename = format!("rust-std-{channel}-{host}.tar.xz");
+        let filename = format!("rust-std-{version}-{host}.tar.xz");
         let pattern = format!("rust-std-{host}");
         download_ci_component(builder, filename, &pattern, commit);
-        let filename = format!("rustc-{channel}-{host}.tar.xz");
+        let filename = format!("rustc-{version}-{host}.tar.xz");
         download_ci_component(builder, filename, "rustc", commit);
         // download-rustc doesn't need its own cargo, it can just use beta's.
-        let filename = format!("rustc-dev-{channel}-{host}.tar.xz");
+        let filename = format!("rustc-dev-{version}-{host}.tar.xz");
         download_ci_component(builder, filename, "rustc-dev", commit);
 
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
