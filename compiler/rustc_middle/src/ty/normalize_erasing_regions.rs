@@ -52,7 +52,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let value = self.erase_regions(value);
         debug!(?value);
 
-        if !value.has_projections() {
+        if !value.needs_normalization(param_env.reveal()) {
             value
         } else {
             value.fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, param_env })
@@ -84,7 +84,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let value = self.erase_regions(value);
         debug!(?value);
 
-        if !value.has_projections() {
+        if !value.needs_normalization(param_env.reveal()) {
             Ok(value)
         } else {
             let mut folder = TryNormalizeAfterErasingRegionsFolder::new(self, param_env);

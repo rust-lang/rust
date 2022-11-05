@@ -160,6 +160,19 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     fn still_further_specializable(&self) -> bool {
         self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
     }
+
+    fn needs_normalization(&self, reveal: ty::Reveal) -> bool {
+        match reveal {
+            ty::Reveal::UserFacing => {
+                self.has_type_flags(TypeFlags::HAS_TY_PROJECTION | TypeFlags::HAS_CT_PROJECTION)
+            }
+            ty::Reveal::All => self.has_type_flags(
+                TypeFlags::HAS_TY_PROJECTION
+                    | TypeFlags::HAS_TY_OPAQUE
+                    | TypeFlags::HAS_CT_PROJECTION,
+            ),
+        }
+    }
 }
 
 pub trait TypeSuperVisitable<'tcx>: TypeVisitable<'tcx> {
@@ -537,7 +550,7 @@ struct FoundFlags;
 
 // FIXME: Optimize for checking for infer flags
 struct HasTypeFlagsVisitor {
-    flags: ty::TypeFlags,
+    flags: TypeFlags,
 }
 
 impl std::fmt::Debug for HasTypeFlagsVisitor {

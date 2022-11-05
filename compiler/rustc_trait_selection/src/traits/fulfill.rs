@@ -285,7 +285,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
-        if obligation.predicate.has_projections() {
+        if obligation.predicate.needs_normalization(obligation.param_env.reveal()) {
             let mut obligations = Vec::new();
             let predicate = crate::traits::project::try_normalize_with_depth_to(
                 &mut self.selcx,
