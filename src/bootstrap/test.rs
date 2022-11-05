@@ -694,7 +694,11 @@ impl Step for Clippy {
         let compiler = builder.compiler(stage, host);
 
         builder
-            .ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() })
+            .ensure(tool::Clippy {
+                compiler,
+                target: self.host,
+                extra_features: vec!["internal".into()],
+            })
             .expect("in-tree tool");
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -704,7 +708,7 @@ impl Step for Clippy {
             "test",
             "src/tools/clippy",
             SourceType::InTree,
-            &[],
+            &["internal".into()],
         );
 
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
