@@ -1857,12 +1857,12 @@ rustc_queries! {
 
     /// Do not call this query directly: invoke `normalize` instead.
     query normalize_projection_ty(
-        goal: CanonicalProjectionGoal<'tcx>
+        key: CanonicalProjectionGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{}`", goal.value.value }
+        desc { "normalizing `{}` {}", key.value.value.projection_ty, if key.value.value.considering_regions { "considering regions" } else { "modulo regions" } }
         remap_env_constness
     }
 
