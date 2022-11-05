@@ -759,7 +759,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = String>,
+        suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
@@ -793,7 +793,7 @@ impl Diagnostic {
         suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self {
-        let suggestions: Vec<_> = suggestions.collect();
+        let suggestions: Vec<_> = suggestions.into_iter().collect();
         debug_assert!(
             !(suggestions
                 .iter()
