@@ -1782,7 +1782,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             // may occur at the first return expression we see in the closure
             // (if it conflicts with the declared return type). Skip adding a
             // note in this case, since it would be incorrect.
-            && !fcx.return_type_pre_known
+            && let Some(fn_sig) = fcx.body_fn_sig()
+            && fn_sig.output().is_ty_var()
         {
             err.span_note(
                 sp,
