@@ -169,12 +169,16 @@ they define both a `provide` and a `provide_extern` function, through
 How do you add a new query?
 Defining a query takes place in two steps:
 
-1. Specify the query name and its arguments.
+1. Declare the query name, its arguments and description.
 2. Supply query providers where needed.
 
-To specify the query name and arguments, you simply add an entry to
-the big macro invocation in
-[`compiler/rustc_middle/src/query/mod.rs`][query-mod], which looks something like:
+To declare the query name and arguments, you simply add an entry to
+the big macro invocation in [`compiler/rustc_middle/src/query/mod.rs`][query-mod].
+Then you need to add a documentation comment to it with some _internal_ description.
+Then, provide the `desc` attribute which contains a short description of the query.
+This description is shown to the user in query cycles.
+
+This looks something like:
 
 [query-mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/query/index.html
 
@@ -182,7 +186,8 @@ the big macro invocation in
 rustc_queries! {
     /// Records the type of every item.
     query type_of(key: DefId) -> Ty<'tcx> {
-        cache { key.is_local() }
+        cache_on_disk_if { key.is_local() }
+        desc { |tcx| "computing the type of `{}`", tcx.def_path_str(key) }
     }
     ...
 }
@@ -260,21 +265,6 @@ extra methods which are used by the query system.
 
 [QueryConfig]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_system/query/config/trait.QueryConfig.html
 [QueryDescription]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_system/query/config/trait.QueryDescription.html
-
-
-Queries also have a description, which is specified using the `desc` modifier.
-This description is shown to the user when cycle errors happen.
-
-```rust,ignore
-rustc_queries! {
-    Other {
-        /// Records the type of every item.
-        query type_of(key: DefId) -> Ty<'tcx> {
-            desc { |tcx| "computing the type of `{}`", tcx.def_path_str(key) }
-        }
-    }
-}
-```
 
 ## External links
 
