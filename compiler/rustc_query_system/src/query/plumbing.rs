@@ -62,10 +62,10 @@ where
         }
     }
 
-    pub fn try_collect_active_jobs<CTX: Copy>(
+    pub fn try_collect_active_jobs<Qcx: Copy>(
         &self,
-        qcx: CTX,
-        make_query: fn(CTX, K) -> QueryStackFrame,
+        qcx: Qcx,
+        make_query: fn(Qcx, K) -> QueryStackFrame,
         jobs: &mut QueryMap,
     ) -> Option<()> {
         #[cfg(parallel_compiler)]
@@ -119,15 +119,15 @@ where
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<CTX, V, R>(
-    qcx: CTX,
+fn mk_cycle<Qcx, V, R>(
+    qcx: Qcx,
     cycle_error: CycleError,
     handler: HandleCycleError,
     cache: &dyn crate::query::QueryStorage<Value = V, Stored = R>,
 ) -> R
 where
-    CTX: QueryContext,
-    V: std::fmt::Debug + Value<CTX::DepContext>,
+    Qcx: QueryContext,
+    V: std::fmt::Debug + Value<Qcx::DepContext>,
     R: Clone,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
@@ -135,15 +135,15 @@ where
     cache.store_nocache(value)
 }
 
-fn handle_cycle_error<CTX, V>(
-    tcx: CTX,
+fn handle_cycle_error<Tcx, V>(
+    tcx: Tcx,
     cycle_error: &CycleError,
     mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
     handler: HandleCycleError,
 ) -> V
 where
-    CTX: DepContext,
-    V: Value<CTX>,
+    Tcx: DepContext,
+    V: Value<Tcx>,
 {
     use HandleCycleError::*;
     match handler {
@@ -176,14 +176,14 @@ where
     /// This function is inlined because that results in a noticeable speed-up
     /// for some compile-time benchmarks.
     #[inline(always)]
-    fn try_start<'b, CTX>(
-        qcx: &'b CTX,
+    fn try_start<'b, Qcx>(
+        qcx: &'b Qcx,
         state: &'b QueryState<K>,
         span: Span,
         key: K,
     ) -> TryGetJob<'b, K>
     where
-        CTX: QueryContext,
+        Qcx: QueryContext,
     {
         #[cfg(parallel_compiler)]
         let mut state_lock = state.active.get_shard_by_value(&key).lock();
@@ -335,8 +335,8 @@ where
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
 #[inline]
-pub fn try_get_cached<'a, CTX, C, R, OnHit>(
-    tcx: CTX,
+pub fn try_get_cached<'a, Tcx, C, R, OnHit>(
+    tcx: Tcx,
     cache: &'a C,
     key: &C::Key,
     // `on_hit` can be called while holding a lock to the query cache
@@ -344,7 +344,7 @@ pub fn try_get_cached<'a, CTX, C, R, OnHit>(
 ) -> Result<R, ()>
 where
     C: QueryCache,
-    CTX: DepContext,
+    Tcx: DepContext,
     OnHit: FnOnce(&C::Stored) -> R,
 {
     cache.lookup(&key, |value, index| {
@@ -356,20 +356,20 @@ where
     })
 }
 
-fn try_execute_query<CTX, C>(
-    qcx: CTX,
+fn try_execute_query<Qcx, C>(
+    qcx: Qcx,
     state: &QueryState<C::Key>,
     cache: &C,
     span: Span,
     key: C::Key,
-    dep_node: Option<DepNode<CTX::DepKind>>,
-    query: &QueryVTable<CTX, C::Key, C::Value>,
+    dep_node: Option<DepNode<Qcx::DepKind>>,
+    query: &QueryVTable<Qcx, C::Key, C::Value>,
 ) -> (C::Stored, Option<DepNodeIndex>)
 where
     C: QueryCache,
-    C::Key: Clone + DepNodeParams<CTX::DepContext>,
-    C::Value: Value<CTX::DepContext>,
-    CTX: QueryContext,
+    C::Key: Clone + DepNodeParams<Qcx::DepContext>,
+    C::Value: Value<Qcx::DepContext>,
+    Qcx: QueryContext,
 {
     match JobOwner::<'_, C::Key>::try_start(&qcx, state, span, key.clone()) {
         TryGetJob::NotYetStarted(job) => {
@@ -397,17 +397,17 @@ where
     }
 }
 
-fn execute_job<CTX, K, V>(
-    qcx: CTX,
+fn execute_job<Qcx, K, V>(
+    qcx: Qcx,
     key: K,
-    mut dep_node_opt: Option<DepNode<CTX::DepKind>>,
-    query: &QueryVTable<CTX, K, V>,
+    mut dep_node_opt: Option<DepNode<Qcx::DepKind>>,
+    query: &QueryVTable<Qcx, K, V>,
     job_id: QueryJobId,
 ) -> (V, DepNodeIndex)
 where
-    K: Clone + DepNodeParams<CTX::DepContext>,
+    K: Clone + DepNodeParams<Qcx::DepContext>,
     V: Debug,
-    CTX: QueryContext,
+    Qcx: QueryContext,
 {
     let dep_graph = qcx.dep_context().dep_graph();
 
@@ -470,15 +470,15 @@ where
     (result, dep_node_index)
 }
 
-fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
-    qcx: CTX,
+fn try_load_from_disk_and_cache_in_memory<Qcx, K, V>(
+    qcx: Qcx,
     key: &K,
-    dep_node: &DepNode<CTX::DepKind>,
-    query: &QueryVTable<CTX, K, V>,
+    dep_node: &DepNode<Qcx::DepKind>,
+    query: &QueryVTable<Qcx, K, V>,
 ) -> Option<(V, DepNodeIndex)>
 where
     K: Clone,
-    CTX: QueryContext,
+    Qcx: QueryContext,
     V: Debug,
 {
     // Note this function can be called concurrently from the same query
@@ -564,13 +564,13 @@ where
 }
 
 #[instrument(skip(qcx, result, query), level = "debug")]
-fn incremental_verify_ich<CTX, K, V: Debug>(
-    qcx: CTX::DepContext,
+fn incremental_verify_ich<Qcx, K, V: Debug>(
+    qcx: Qcx::DepContext,
     result: &V,
-    dep_node: &DepNode<CTX::DepKind>,
-    query: &QueryVTable<CTX, K, V>,
+    dep_node: &DepNode<Qcx::DepKind>,
+    query: &QueryVTable<Qcx, K, V>,
 ) where
-    CTX: QueryContext,
+    Qcx: QueryContext,
 {
     assert!(
         qcx.dep_graph().is_green(dep_node),
@@ -676,14 +676,14 @@ fn incremental_verify_ich_failed(sess: &Session, dep_node: DebugArg<'_>, result:
 ///
 /// Note: The optimization is only available during incr. comp.
 #[inline(never)]
-fn ensure_must_run<CTX, K, V>(
-    qcx: CTX,
+fn ensure_must_run<Qcx, K, V>(
+    qcx: Qcx,
     key: &K,
-    query: &QueryVTable<CTX, K, V>,
-) -> (bool, Option<DepNode<CTX::DepKind>>)
+    query: &QueryVTable<Qcx, K, V>,
+) -> (bool, Option<DepNode<Qcx::DepKind>>)
 where
-    K: crate::dep_graph::DepNodeParams<CTX::DepContext>,
-    CTX: QueryContext,
+    K: crate::dep_graph::DepNodeParams<Qcx::DepContext>,
+    Qcx: QueryContext,
 {
     if query.eval_always {
         return (true, None);
@@ -719,12 +719,12 @@ pub enum QueryMode {
     Ensure,
 }
 
-pub fn get_query<Q, CTX>(qcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
+pub fn get_query<Q, Qcx>(qcx: Qcx, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
 where
-    Q: QueryConfig<CTX>,
-    Q::Key: DepNodeParams<CTX::DepContext>,
-    Q::Value: Value<CTX::DepContext>,
-    CTX: QueryContext,
+    Q: QueryConfig<Qcx>,
+    Q::Key: DepNodeParams<Qcx::DepContext>,
+    Q::Value: Value<Qcx::DepContext>,
+    Qcx: QueryContext,
 {
     let query = Q::make_vtable(qcx, &key);
     let dep_node = if let QueryMode::Ensure = mode {
@@ -752,12 +752,12 @@ where
     Some(result)
 }
 
-pub fn force_query<Q, CTX>(qcx: CTX, key: Q::Key, dep_node: DepNode<CTX::DepKind>)
+pub fn force_query<Q, Qcx>(qcx: Qcx, key: Q::Key, dep_node: DepNode<Qcx::DepKind>)
 where
-    Q: QueryConfig<CTX>,
-    Q::Key: DepNodeParams<CTX::DepContext>,
-    Q::Value: Value<CTX::DepContext>,
-    CTX: QueryContext,
+    Q: QueryConfig<Qcx>,
+    Q::Key: DepNodeParams<Qcx::DepContext>,
+    Q::Value: Value<Qcx::DepContext>,
+    Qcx: QueryContext,
 {
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
