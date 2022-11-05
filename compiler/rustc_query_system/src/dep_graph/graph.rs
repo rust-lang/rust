@@ -598,6 +598,7 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
+    #[instrument(skip(self, tcx, data, parent_dep_node_index), level = "debug")]
     fn try_mark_parent_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
@@ -613,11 +614,7 @@ impl<K: DepKind> DepGraph<K> {
                 // This dependency has been marked as green before, we are
                 // still fine and can continue with checking the other
                 // dependencies.
-                debug!(
-                    "try_mark_previous_green({:?}) --- found dependency {:?} to \
-                            be immediately green",
-                    dep_node, dep_dep_node,
-                );
+                debug!("dependency {dep_dep_node:?} was immediately green");
                 return Some(());
             }
             Some(DepNodeColor::Red) => {
@@ -625,10 +622,7 @@ impl<K: DepKind> DepGraph<K> {
                 // compared to the previous compilation session. We cannot
                 // mark the DepNode as green and also don't need to bother
                 // with checking any of the other dependencies.
-                debug!(
-                    "try_mark_previous_green({:?}) - END - dependency {:?} was immediately red",
-                    dep_node, dep_dep_node,
-                );
+                debug!("dependency {dep_dep_node:?} was immediately red");
                 return None;
             }
             None => {}
@@ -638,33 +632,24 @@ impl<K: DepKind> DepGraph<K> {
         // an eval_always node, let's try to mark it green recursively.
         if !tcx.dep_context().is_eval_always(dep_dep_node.kind) {
             debug!(
-                "try_mark_previous_green({:?}) --- state of dependency {:?} ({}) \
-                                 is unknown, trying to mark it green",
-                dep_node, dep_dep_node, dep_dep_node.hash,
+                "state of dependency {:?} ({}) is unknown, trying to mark it green",
+                dep_dep_node, dep_dep_node.hash,
             );
 
             let node_index =
                 self.try_mark_previous_green(tcx, data, parent_dep_node_index, dep_dep_node);
+
             if node_index.is_some() {
-                debug!(
-                    "try_mark_previous_green({:?}) --- managed to MARK dependency {:?} as green",
-                    dep_node, dep_dep_node
-                );
+                debug!("managed to MARK dependency {dep_dep_node:?} as green",);
                 return Some(());
             }
         }
 
         // We failed to mark it green, so we try to force the query.
-        debug!(
-            "try_mark_previous_green({:?}) --- trying to force dependency {:?}",
-            dep_node, dep_dep_node
-        );
+        debug!("trying to force dependency {dep_dep_node:?}");
         if !tcx.dep_context().try_force_from_dep_node(*dep_dep_node) {
             // The DepNode could not be forced.
-            debug!(
-                "try_mark_previous_green({:?}) - END - dependency {:?} could not be forced",
-                dep_node, dep_dep_node
-            );
+            debug!("dependency {dep_dep_node:?} could not be forced");
             return None;
         }
 
@@ -672,17 +657,11 @@ impl<K: DepKind> DepGraph<K> {
 
         match dep_dep_node_color {
             Some(DepNodeColor::Green(_)) => {
-                debug!(
-                    "try_mark_previous_green({:?}) --- managed to FORCE dependency {:?} to green",
-                    dep_node, dep_dep_node
-                );
+                debug!("managed to FORCE dependency {dep_dep_node:?} to green");
                 return Some(());
             }
             Some(DepNodeColor::Red) => {
-                debug!(
-                    "try_mark_previous_green({:?}) - END - dependency {:?} was red after forcing",
-                    dep_node, dep_dep_node
-                );
+                debug!("dependency {dep_dep_node:?} was red after forcing",);
                 return None;
             }
             None => {}
@@ -702,14 +681,12 @@ impl<K: DepKind> DepGraph<K> {
         // invalid state will not be persisted to the
         // incremental compilation cache because of
         // compilation errors being present.
-        debug!(
-            "try_mark_previous_green({:?}) - END - dependency {:?} resulted in compilation error",
-            dep_node, dep_dep_node
-        );
+        debug!("dependency {dep_dep_node:?} resulted in compilation error",);
         return None;
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
+    #[instrument(skip(self, tcx, data, prev_dep_node_index), level = "debug")]
     fn try_mark_previous_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
@@ -717,8 +694,6 @@ impl<K: DepKind> DepGraph<K> {
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
     ) -> Option<DepNodeIndex> {
-        debug!("try_mark_previous_green({:?}) - BEGIN", dep_node);
-
         #[cfg(not(parallel_compiler))]
         {
             debug_assert!(!self.dep_node_exists(dep_node));
@@ -772,7 +747,7 @@ impl<K: DepKind> DepGraph<K> {
         // Multiple threads can all write the same color here
         data.colors.insert(prev_dep_node_index, DepNodeColor::Green(dep_node_index));
 
-        debug!("try_mark_previous_green({:?}) - END - successfully marked as green", dep_node);
+        debug!("successfully marked {dep_node:?} as green");
         Some(dep_node_index)
     }
 
