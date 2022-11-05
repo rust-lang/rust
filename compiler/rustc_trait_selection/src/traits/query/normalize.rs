@@ -6,7 +6,7 @@ use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::TypeErrCtxtExt;
-use crate::traits::project::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
+use crate::traits::project::{BoundVarReplacer, PlaceholderReplacer};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -53,7 +53,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             self.param_env,
             self.cause,
         );
-        if !needs_normalization(&value, self.param_env.reveal()) {
+        if !value.needs_normalization(self.param_env.reveal()) {
             return Ok(Normalized { value, obligations: vec![] });
         }
 
@@ -182,7 +182,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        if !needs_normalization(&ty, self.param_env.reveal()) {
+        if !ty.needs_normalization(self.param_env.reveal()) {
             return Ok(ty);
         }
 
@@ -368,7 +368,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         &mut self,
         p: ty::Predicate<'tcx>,
     ) -> Result<ty::Predicate<'tcx>, Self::Error> {
-        if p.allow_normalization() && needs_normalization(&p, self.param_env.reveal()) {
+        if p.allow_normalization() && p.needs_normalization(self.param_env.reveal()) {
             p.try_super_fold_with(self)
         } else {
             Ok(p)

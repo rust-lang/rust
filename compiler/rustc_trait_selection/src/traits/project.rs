@@ -381,18 +381,6 @@ where
     result
 }
 
-pub(crate) fn needs_normalization<'tcx, T: TypeVisitable<'tcx>>(value: &T, reveal: Reveal) -> bool {
-    match reveal {
-        Reveal::UserFacing => value
-            .has_type_flags(ty::TypeFlags::HAS_TY_PROJECTION | ty::TypeFlags::HAS_CT_PROJECTION),
-        Reveal::All => value.has_type_flags(
-            ty::TypeFlags::HAS_TY_PROJECTION
-                | ty::TypeFlags::HAS_TY_OPAQUE
-                | ty::TypeFlags::HAS_CT_PROJECTION,
-        ),
-    }
-}
-
 struct AssocTypeNormalizer<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -453,7 +441,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             value
         );
 
-        if !needs_normalization(&value, self.param_env.reveal()) {
+        if !value.needs_normalization(self.param_env.reveal()) {
             value
         } else {
             value.fold_with(self)
@@ -477,7 +465,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !needs_normalization(&ty, self.param_env.reveal()) {
+        if !ty.needs_normalization(self.param_env.reveal()) {
             return ty;
         }
 
@@ -663,7 +651,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
 
     #[inline]
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        if p.allow_normalization() && needs_normalization(&p, self.param_env.reveal()) {
+        if p.allow_normalization() && p.needs_normalization(self.param_env.reveal()) {
             p.super_fold_with(self)
         } else {
             p
@@ -1124,7 +1112,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
             let projected_term = selcx.infcx().resolve_vars_if_possible(projected_term);
 
-            let mut result = if projected_term.has_projections() {
+            let mut result = if projected_term.needs_normalization(param_env.reveal()) {
                 let mut normalizer = AssocTypeNormalizer::new(
                     selcx,
                     param_env,

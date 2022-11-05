@@ -431,9 +431,9 @@ fn layout_of_uncached<'tcx>(
 
         // Arrays and slices.
         ty::Array(element, mut count) => {
-            if count.has_projections() {
+            if count.needs_normalization(param_env.reveal()) {
                 count = tcx.normalize_erasing_regions(param_env, count);
-                if count.has_projections() {
+                if count.needs_normalization(param_env.reveal()) {
                     return Err(LayoutError::Unknown(ty));
                 }
             }
