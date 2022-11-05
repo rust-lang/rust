@@ -489,9 +489,9 @@ You can follow instructions for installing <<rust-analyzer-language-server-binar
 
 === Crates
 
-There is a package named `ra_ap_rust_analyzer` available on [crates.io](https://crates.io/crates/ra_ap_rust-analyzer), for someone who wants to use it programmatically.
+There is a package named `ra_ap_rust_analyzer` available on https://crates.io/crates/ra_ap_rust-analyzer[crates.io], for someone who wants to use it programmatically.
 
-For more details, see [the publish workflow](https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/publish.yml).
+For more details, see https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/publish.yml[the publish workflow].
 
 == Troubleshooting
 
