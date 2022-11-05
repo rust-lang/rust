@@ -377,9 +377,9 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Executes something within an "anonymous" task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
-    pub fn with_anon_task<Ctxt: DepContext<DepKind = K>, OP, R>(
+    pub fn with_anon_task<Tcx: DepContext<DepKind = K>, OP, R>(
         &self,
-        cx: Ctxt,
+        cx: Tcx,
         dep_kind: K,
         op: OP,
     ) -> (R, DepNodeIndex)
@@ -571,9 +571,9 @@ impl<K: DepKind> DepGraph<K> {
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    pub fn try_mark_green<Ctxt: QueryContext<DepKind = K>>(
+    pub fn try_mark_green<Qcx: QueryContext<DepKind = K>>(
         &self,
-        qcx: Ctxt,
+        qcx: Qcx,
         dep_node: &DepNode<K>,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
         debug_assert!(!qcx.dep_context().is_eval_always(dep_node.kind));
@@ -599,9 +599,9 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     #[instrument(skip(self, qcx, data, parent_dep_node_index), level = "debug")]
-    fn try_mark_parent_green<Ctxt: QueryContext<DepKind = K>>(
+    fn try_mark_parent_green<Qcx: QueryContext<DepKind = K>>(
         &self,
-        qcx: Ctxt,
+        qcx: Qcx,
         data: &DepGraphData<K>,
         parent_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
@@ -687,9 +687,9 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
     #[instrument(skip(self, qcx, data, prev_dep_node_index), level = "debug")]
-    fn try_mark_previous_green<Ctxt: QueryContext<DepKind = K>>(
+    fn try_mark_previous_green<Qcx: QueryContext<DepKind = K>>(
         &self,
-        qcx: Ctxt,
+        qcx: Qcx,
         data: &DepGraphData<K>,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
@@ -755,9 +755,9 @@ impl<K: DepKind> DepGraph<K> {
     /// This may be called concurrently on multiple threads for the same dep node.
     #[cold]
     #[inline(never)]
-    fn emit_side_effects<Ctxt: QueryContext<DepKind = K>>(
+    fn emit_side_effects<Qcx: QueryContext<DepKind = K>>(
         &self,
-        qcx: Ctxt,
+        qcx: Qcx,
         data: &DepGraphData<K>,
         dep_node_index: DepNodeIndex,
         side_effects: QuerySideEffects,
@@ -799,7 +799,7 @@ impl<K: DepKind> DepGraph<K> {
     //
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
-    pub fn exec_cache_promotions<Ctxt: DepContext<DepKind = K>>(&self, tcx: Ctxt) {
+    pub fn exec_cache_promotions<Tcx: DepContext<DepKind = K>>(&self, tcx: Tcx) {
         let _prof_timer = tcx.profiler().generic_activity("incr_comp_query_cache_promotion");
 
         let data = self.data.as_ref().unwrap();

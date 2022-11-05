@@ -596,8 +596,8 @@ pub(crate) fn report_cycle<'a>(
     cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
 }
 
-pub fn print_query_stack<CTX: QueryContext>(
-    qcx: CTX,
+pub fn print_query_stack<Qcx: QueryContext>(
+    qcx: Qcx,
     mut current_query: Option<QueryJobId>,
     handler: &Handler,
     num_frames: Option<usize>,
