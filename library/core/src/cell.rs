@@ -1936,7 +1936,7 @@ impl<T> UnsafeCell<T> {
     /// Constructs a new instance of `UnsafeCell` which will wrap the specified
     /// value.
     ///
-    /// All access to the inner value through methods is `unsafe`.
+    /// All access to the inner value through `&UnsafeCell<T>` requires `unsafe` code.
     ///
     /// # Examples
     ///
