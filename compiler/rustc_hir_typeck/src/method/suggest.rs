@@ -399,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if static_candidates.len() == 1 {
                     let mut has_unsuggestable_args = false;
                     let ty_str = if let Some(CandidateSource::Impl(impl_did)) =
-                    static_candidates.get(0)
+                        static_candidates.get(0)
                     {
                         // When the "method" is resolved through dereferencing, we really want the
                         // original type that has the associated function for accurate suggestions.
@@ -453,7 +453,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.ty_to_value_string(actual.peel_refs())
                     };
                     if let SelfSource::MethodCall(_) = source {
-                        let first_arg = if let Some(CandidateSource::Impl(impl_did)) = static_sources.get(0) &&
+                        let first_arg = if let Some(CandidateSource::Impl(impl_did)) = static_candidates.get(0) &&
                             let Some(assoc) = self.associated_value(*impl_did, item_name) {
                             let sig = self.tcx.fn_sig(assoc.def_id);
                             if let Some(first) = sig.inputs().skip_binder().get(0) {
