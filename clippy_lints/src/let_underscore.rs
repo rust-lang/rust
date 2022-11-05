@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     cx,
                     LET_UNDERSCORE_LOCK,
                     local.span,
-                    "non-binding let on a synchronization lock",
+                    "non-binding `let` on a synchronization lock",
                     None,
                     "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`",
@@ -125,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     cx,
                     LET_UNDERSCORE_FUTURE,
                     local.span,
-                    "non-binding let on a future",
+                    "non-binding `let` on a future",
                     None,
                     "consider awaiting the future or dropping explicitly with `std::mem::drop`"
                 );
@@ -134,7 +134,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     cx,
                     LET_UNDERSCORE_MUST_USE,
                     local.span,
-                    "non-binding let on an expression with `#[must_use]` type",
+                    "non-binding `let` on an expression with `#[must_use]` type",
                     None,
                     "consider explicitly using expression value",
                 );
@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     cx,
                     LET_UNDERSCORE_MUST_USE,
                     local.span,
-                    "non-binding let on a result of a `#[must_use]` function",
+                    "non-binding `let` on a result of a `#[must_use]` function",
                     None,
                     "consider explicitly using function result",
                 );
