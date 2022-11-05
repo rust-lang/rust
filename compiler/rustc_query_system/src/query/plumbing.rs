@@ -585,7 +585,11 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
     debug!("END verify_ich({:?})", dep_node);
 
     if Some(new_hash) != old_hash {
-        incremental_verify_ich_cold(tcx.sess(), DebugArg::from(&dep_node), DebugArg::from(&result));
+        incremental_verify_ich_failed(
+            tcx.sess(),
+            DebugArg::from(&dep_node),
+            DebugArg::from(&result),
+        );
     }
 }
 
@@ -631,13 +635,7 @@ impl std::fmt::Debug for DebugArg<'_> {
 // different implementations for LLVM to chew on (and filling up the final
 // binary, too).
 #[cold]
-fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: DebugArg<'_>) {
-    let run_cmd = if let Some(crate_name) = &sess.opts.crate_name {
-        format!("`cargo clean -p {}` or `cargo clean`", crate_name)
-    } else {
-        "`cargo clean`".to_string()
-    };
-
+fn incremental_verify_ich_failed(sess: &Session, dep_node: DebugArg<'_>, result: DebugArg<'_>) {
     // When we emit an error message and panic, we try to debug-print the `DepNode`
     // and query result. Unfortunately, this can cause us to run additional queries,
     // which may result in another fingerprint mismatch while we're in the middle
@@ -653,6 +651,12 @@ fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: D
     if old_in_panic {
         sess.emit_err(crate::error::Reentrant);
     } else {
+        let run_cmd = if let Some(crate_name) = &sess.opts.crate_name {
+            format!("`cargo clean -p {}` or `cargo clean`", crate_name)
+        } else {
+            "`cargo clean`".to_string()
+        };
+
         sess.emit_err(crate::error::IncrementCompilation {
             run_cmd,
             dep_node: format!("{:?}", dep_node),
