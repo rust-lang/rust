@@ -6,10 +6,11 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use crate::util::{add_dylib_path, PathBufExt};
 use lazycell::LazyCell;
-use test::ColorConfig;
+pub use test::ColorConfig;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -177,6 +178,21 @@ pub enum PanicStrategy {
     Abort,
 }
 
+#[derive(Clone, Default)]
+pub struct Hooks {
+    /// Return `true` to exclude a given [Path] from being considered a test file
+    pub exclude_file: Option<Arc<dyn Fn(&Path) -> bool + Send + Sync>>,
+
+    /// Modify a compiler [`Command`] just before it's executed
+    pub modify_compiler_command: Option<Arc<dyn Fn(&Path, &mut Command) + Send + Sync>>,
+}
+
+impl fmt::Debug for Hooks {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        f.debug_struct("Hooks").finish_non_exhaustive()
+    }
+}
+
 /// Configuration for compiletest
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -224,6 +240,9 @@ pub struct Config {
     /// `None` then these tests will be ignored.
     pub run_clang_based_tests_with: Option<String>,
 
+    /// The project root directory
+    pub source_root: PathBuf,
+
     /// The directory containing the tests to run
     pub src_base: PathBuf,
 
@@ -235,6 +254,9 @@ pub struct Config {
 
     /// The test mode, e.g. ui or debuginfo.
     pub mode: Mode,
+
+    /// Don't require compile-fail or build-fail tests to contain `//~ ERROR` style comments
+    pub no_expected_comments: bool,
 
     /// The test suite (essentially which directory is running, but without the
     /// directory prefix such as src/test)
@@ -375,6 +397,9 @@ pub struct Config {
     pub force_rerun: bool,
 
     pub target_cfg: LazyCell<TargetCfg>,
+
+    /// Contains callbacks to be invoked at certain points in the test, used by Clippy
+    pub hooks: Hooks,
 }
 
 impl Config {

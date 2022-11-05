@@ -7,7 +7,6 @@ extern crate test;
 
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
-use crate::util::logv;
 use getopts::Options;
 use lazycell::LazyCell;
 use std::env;
@@ -27,31 +26,14 @@ use self::header::{make_test_description, EarlyProps};
 mod tests;
 
 pub mod common;
-pub mod compute_diff;
-pub mod errors;
-pub mod header;
+mod compute_diff;
+mod errors;
+mod header;
 mod json;
 mod raise_fd_limit;
 mod read2;
-pub mod runtest;
+mod runtest;
 pub mod util;
-
-fn main() {
-    tracing_subscriber::fmt::init();
-
-    let config = parse_config(env::args().collect());
-
-    if config.valgrind_path.is_none() && config.force_valgrind {
-        panic!("Can't find Valgrind to run Valgrind tests");
-    }
-
-    if !config.has_tidy && config.mode == Mode::Rustdoc {
-        eprintln!("warning: `tidy` is not installed; diffs will not be generated");
-    }
-
-    log_config(&config);
-    run_tests(config);
-}
 
 pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
@@ -67,6 +49,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
+        .reqopt("", "source-root", "root directory of the project", "PATH")
         .reqopt("", "src-base", "directory to scan for test files", "PATH")
         .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
@@ -232,10 +215,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
         llvm_filecheck: matches.opt_str("llvm-filecheck").map(PathBuf::from),
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
+        source_root: opt_path(matches, "source-root"),
         src_base,
         build_base: opt_path(matches, "build-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode,
+        no_expected_comments: false,
         suite: matches.opt_str("suite").unwrap(),
         debugger: None,
         run_ignored,
@@ -296,55 +281,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         npm: matches.opt_str("npm"),
 
         force_rerun: matches.opt_present("force-rerun"),
-
         target_cfg: LazyCell::new(),
+        hooks: Default::default(),
     }
 }
 
-pub fn log_config(config: &Config) {
-    let c = config;
-    logv(c, "configuration:".to_string());
-    logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
-    logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
-    logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
-    logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
-    logv(c, format!("rust_demangler_path: {:?}", config.rust_demangler_path));
-    logv(c, format!("src_base: {:?}", config.src_base.display()));
-    logv(c, format!("build_base: {:?}", config.build_base.display()));
-    logv(c, format!("stage_id: {}", config.stage_id));
-    logv(c, format!("mode: {}", config.mode));
-    logv(c, format!("run_ignored: {}", config.run_ignored));
-    logv(c, format!("filters: {:?}", config.filters));
-    logv(c, format!("skip: {:?}", config.skip));
-    logv(c, format!("filter_exact: {}", config.filter_exact));
-    logv(
-        c,
-        format!("force_pass_mode: {}", opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),),
-    );
-    logv(c, format!("runtool: {}", opt_str(&config.runtool)));
-    logv(c, format!("host-rustcflags: {:?}", config.host_rustcflags));
-    logv(c, format!("target-rustcflags: {:?}", config.target_rustcflags));
-    logv(c, format!("target: {}", config.target));
-    logv(c, format!("host: {}", config.host));
-    logv(c, format!("android-cross-path: {:?}", config.android_cross_path.display()));
-    logv(c, format!("adb_path: {:?}", config.adb_path));
-    logv(c, format!("adb_test_dir: {:?}", config.adb_test_dir));
-    logv(c, format!("adb_device_status: {}", config.adb_device_status));
-    logv(c, format!("ar: {}", config.ar));
-    logv(c, format!("linker: {:?}", config.linker));
-    logv(c, format!("verbose: {}", config.verbose));
-    logv(c, format!("quiet: {}", config.quiet));
-    logv(c, "\n".to_string());
-}
-
-pub fn opt_str(maybestr: &Option<String>) -> &str {
-    match *maybestr {
-        None => "(none)",
-        Some(ref s) => s,
-    }
-}
-
-pub fn opt_str2(maybestr: Option<String>) -> String {
+fn opt_str2(maybestr: Option<String>) -> String {
     match maybestr {
         None => "(none)".to_owned(),
         Some(s) => s,
@@ -524,7 +466,11 @@ pub fn make_tests(config: &Config, tests: &mut Vec<test::TestDescAndFn>) {
 
 /// Returns a stamp constructed from input files common to all test cases.
 fn common_inputs_stamp(config: &Config) -> Stamp {
-    let rust_src_dir = config.find_rust_src_root().expect("Could not find Rust source root");
+    if config.force_rerun {
+        return Stamp { time: SystemTime::UNIX_EPOCH };
+    }
+
+    let rust_src_dir = config.find_rust_src_root();
 
     let mut stamp = Stamp::from_path(&config.rustc_path);
 
@@ -627,6 +573,12 @@ pub fn is_test(file_name: &OsString) -> bool {
 }
 
 fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test::TestDescAndFn> {
+    if let Some(hook) = &config.hooks.exclude_file {
+        if hook(&testpaths.file) {
+            return Vec::new();
+        }
+    }
+
     let test_path = if config.mode == Mode::RunMake {
         // Parse directives in the Makefile
         testpaths.file.join("Makefile")
@@ -648,7 +600,7 @@ fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test
             let src_file =
                 std::fs::File::open(&test_path).expect("open test file to parse ignores");
             let cfg = revision.map(|v| &**v);
-            let test_name = crate::make_test_name(config, testpaths, revision);
+            let test_name = make_test_name(config, testpaths, revision);
             let mut desc = make_test_description(config, test_name, &test_path, src_file, cfg);
             // Ignore tests that already run and are up to date with respect to inputs.
             if !config.force_rerun {
@@ -770,10 +722,7 @@ fn make_test_name(
     testpaths: &TestPaths,
     revision: Option<&String>,
 ) -> test::TestName {
-    // Print the name of the file, relative to the repository root.
-    // `src_base` looks like `/path/to/rust/src/test/ui`
-    let root_directory = config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
-    let path = testpaths.file.strip_prefix(root_directory).unwrap();
+    let path = testpaths.file.strip_prefix(&config.source_root).unwrap();
     let debugger = match config.debugger {
         Some(d) => format!("-{}", d),
         None => String::new(),

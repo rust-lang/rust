@@ -44,6 +44,7 @@ fn config() -> Config {
         "--run-lib-path=",
         "--python=",
         "--jsondocck-path=",
+        "--source-root=",
         "--src-base=",
         "--build-base=",
         "--stage-id=stage2",

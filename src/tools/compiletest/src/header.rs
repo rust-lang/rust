@@ -736,17 +736,10 @@ impl Config {
         }
     }
 
-    pub fn find_rust_src_root(&self) -> Option<PathBuf> {
-        let mut path = self.src_base.clone();
-        let path_postfix = Path::new("src/etc/lldb_batchmode.py");
+    pub fn find_rust_src_root(&self) -> &Path {
+        assert!(self.source_root.join("x.py").exists(), "Not running in Rust source root");
 
-        while path.pop() {
-            if path.join(&path_postfix).is_file() {
-                return Some(path);
-            }
-        }
-
-        None
+        &self.source_root
     }
 
     fn parse_edition(&self, line: &str) -> Option<String> {

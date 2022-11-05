@@ -898,8 +898,7 @@ impl<'test> TestCx<'test> {
                 println!("Adb process is already finished.");
             }
         } else {
-            let rust_src_root =
-                self.config.find_rust_src_root().expect("Could not find Rust source root");
+            let rust_src_root = self.config.find_rust_src_root();
             let rust_pp_module_rel_path = Path::new("./src/etc");
             let rust_pp_module_abs_path =
                 rust_src_root.join(rust_pp_module_rel_path).to_str().unwrap().to_owned();
@@ -1064,8 +1063,7 @@ impl<'test> TestCx<'test> {
         script_str.push_str("version\n");
 
         // Switch LLDB into "Rust mode"
-        let rust_src_root =
-            self.config.find_rust_src_root().expect("Could not find Rust source root");
+        let rust_src_root = self.config.find_rust_src_root();
         let rust_pp_module_rel_path = Path::new("./src/etc/lldb_lookup.py");
         let rust_pp_module_abs_path =
             rust_src_root.join(rust_pp_module_rel_path).to_str().unwrap().to_owned();
@@ -1314,22 +1312,29 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("process did not return an error status", proc_res);
         }
 
-        if self.props.known_bug {
-            if !expected_errors.is_empty() {
-                self.fatal_proc_rec(
-                    "`known_bug` tests should not have an expected errors",
-                    proc_res,
-                );
-            }
-            return;
-        }
-
         // On Windows, keep all '\' path separators to match the paths reported in the JSON output
         // from the compiler
         let os_file_name = self.testpaths.file.display().to_string();
 
         // on windows, translate all '\' path separators to '/'
         let file_name = format!("{}", self.testpaths.file.display()).replace(r"\", "/");
+
+        if self.props.known_bug || self.config.no_expected_comments {
+            for expected in &expected_errors {
+                self.error(&format!(
+                    "{file_name}:{}: found expectation comment `{}`",
+                    expected.line_num, expected.msg,
+                ))
+            }
+
+            if !expected_errors.is_empty() {
+                self.fatal_proc_rec(
+                    "`known_bug` or `--no-expected-comments` tests should not have an expected errors",
+                    proc_res,
+                );
+            }
+            return;
+        }
 
         // If the testcase being checked contains at least one expected "help"
         // message, then we'll ensure that all "help" messages are expected.
@@ -1360,7 +1365,6 @@ impl<'test> TestCx<'test> {
                 }
 
                 None => {
-                    // If the test is a known bug, don't require that the error is annotated
                     if self.is_unexpected_compiler_message(actual_error, expect_help, expect_note) {
                         self.error(&format!(
                             "{}:{}: unexpected {}: '{}'",
@@ -1683,6 +1687,11 @@ impl<'test> TestCx<'test> {
         let aux_dir = self.build_all_auxiliary(&mut rustc);
         self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
         rustc.envs(self.props.rustc_env.clone());
+
+        if let Some(hook) = &self.config.hooks.modify_compiler_command {
+            hook(&self.testpaths.file, &mut rustc);
+        }
+
         self.compose_and_run(
             rustc,
             self.config.compile_lib_path.to_str().unwrap(),
@@ -2347,7 +2356,7 @@ impl<'test> TestCx<'test> {
         if self.props.check_test_line_numbers_match {
             self.check_rustdoc_test_option(proc_res);
         } else {
-            let root = self.config.find_rust_src_root().unwrap();
+            let root = self.config.find_rust_src_root();
             let mut cmd = Command::new(&self.config.python);
             cmd.arg(root.join("src/etc/htmldocck.py")).arg(&out_dir).arg(&self.testpaths.file);
             if self.config.bless {
@@ -2528,7 +2537,7 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }
 
-        let root = self.config.find_rust_src_root().unwrap();
+        let root = self.config.find_rust_src_root();
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
         let res = self.cmd2procres(
@@ -3087,7 +3096,7 @@ impl<'test> TestCx<'test> {
 
             self.document(&out_dir);
 
-            let root = self.config.find_rust_src_root().unwrap();
+            let root = self.config.find_rust_src_root();
             let file_stem =
                 self.testpaths.file.file_stem().and_then(|f| f.to_str()).expect("no file stem");
             let res = self.cmd2procres(
@@ -3339,13 +3348,16 @@ impl<'test> TestCx<'test> {
         if self.props.run_rustfix && self.config.compare_mode.is_none() {
             // And finally, compile the fixed code and make sure it both
             // succeeds and has no diagnostics.
-            let rustc = self.make_compile_args(
-                &self.testpaths.file.with_extension(UI_FIXED),
+            let mut rustc = self.make_compile_args(
+                &self.expected_output_path(UI_FIXED),
                 TargetLocation::ThisFile(self.make_exe_name()),
                 emit_metadata,
                 AllowUnused::No,
                 LinkToAux::Yes,
             );
+            // Set the crate name to avoid `file.revision.fixed` inferring the
+            // invalid name `file.revision`
+            rustc.arg("--crate-name=fixed");
             let res = self.compose_and_run_compiler(rustc, None);
             if !res.status.success() {
                 self.fatal_proc_rec("failed to compile fixed code", &res);
@@ -3530,14 +3542,13 @@ impl<'test> TestCx<'test> {
         normalize_path(parent_dir, "$DIR");
 
         // Paths into the libstd/libcore
-        let base_dir = self.config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
-        let src_dir = base_dir.join("library");
+        let src_dir = self.config.source_root.join("library");
         normalize_path(&src_dir, "$SRC_DIR");
 
         // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
         // `rustc_macros`
         // eg. /home/user/rust/compiler
-        let compiler_src_dir = base_dir.join("compiler");
+        let compiler_src_dir = self.config.source_root.join("compiler");
         normalize_path(&compiler_src_dir, "$COMPILER_DIR");
 
         if let Some(virtual_rust_source_base_dir) =
