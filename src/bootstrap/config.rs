@@ -80,7 +80,7 @@ pub struct Config {
     pub keep_stage_std: Vec<u32>,
     pub src: PathBuf,
     /// defaults to `config.toml`
-    pub config: PathBuf,
+    pub config: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
@@ -942,7 +942,7 @@ impl Config {
         }
 
         config.changelog_seen = toml.changelog_seen;
-        config.config = toml_path;
+        config.config = if toml_path.exists() { Some(toml_path) } else { None };
 
         let build = toml.build.unwrap_or_default();
 
