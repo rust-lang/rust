@@ -959,6 +959,10 @@ impl Session {
         self.opts.unstable_opts.instrument_mcount
     }
 
+    pub fn print_llvm_stats(&self) -> bool {
+        self.opts.unstable_opts.print_llvm_stats
+    }
+
     pub fn time_passes(&self) -> bool {
         self.opts.unstable_opts.time_passes
     }

@@ -172,6 +172,11 @@ impl WriteBackendMethods for LlvmCodegenBackend {
             llvm::LLVMRustPrintPassTimings();
         }
     }
+    fn print_statistics(&self) {
+        unsafe {
+            llvm::LLVMRustPrintStatistics();
+        }
+    }
     fn run_link(
         cgcx: &CodegenContext<Self>,
         diag_handler: &Handler,

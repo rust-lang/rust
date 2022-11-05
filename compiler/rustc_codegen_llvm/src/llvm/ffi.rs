@@ -1826,6 +1826,9 @@ extern "C" {
     /// Print the pass timings since static dtors aren't picking them up.
     pub fn LLVMRustPrintPassTimings();
 
+    /// Print the statistics since static dtors aren't picking them up.
+    pub fn LLVMRustPrintStatistics();
+
     pub fn LLVMStructCreateNamed(C: &Context, Name: *const c_char) -> &Type;
 
     pub fn LLVMStructSetBody<'a>(

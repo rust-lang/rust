@@ -1,4 +1,5 @@
 #include "LLVMWrapper.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticHandler.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -111,6 +112,11 @@ extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,
 extern "C" void LLVMRustPrintPassTimings() {
   raw_fd_ostream OS(2, false); // stderr.
   TimerGroup::printAll(OS);
+}
+
+extern "C" void LLVMRustPrintStatistics() {
+  raw_fd_ostream OS(2, false); // stderr.
+  llvm::PrintStatistics(OS);
 }
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,

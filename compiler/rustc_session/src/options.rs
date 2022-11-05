@@ -1465,6 +1465,9 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::print_llvm_passes` instead of this field")]
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::print_llvm_stats` instead of this field")]
+    print_llvm_stats: bool = (true, parse_bool, [UNTRACKED],
+        "print LLVM statistics (default: no)"),
     print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "print the result of the monomorphization collection pass"),
     print_type_sizes: bool = (false, parse_bool, [UNTRACKED],
