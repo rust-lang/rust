@@ -76,11 +76,11 @@ pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext<
 
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    let snippet = format!("Result<{}, ${{0:_}}>", type_ref);
+                    let snippet = format!("Result<{type_ref}, ${{0:_}}>");
                     builder.replace_snippet(cap, type_ref.syntax().text_range(), snippet)
                 }
                 None => builder
-                    .replace(type_ref.syntax().text_range(), format!("Result<{}, _>", type_ref)),
+                    .replace(type_ref.syntax().text_range(), format!("Result<{type_ref}, _>")),
             }
         },
     )
