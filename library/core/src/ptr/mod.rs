@@ -35,7 +35,8 @@
 //!   be used for inter-thread synchronization.
 //! * The result of casting a reference to a pointer is valid for as long as the
 //!   underlying object is live and no reference (just raw pointers) is used to
-//!   access the same memory.
+//!   access the same memory. That is, reference and pointer accesses cannot be
+//!   interleaved.
 //!
 //! These axioms, along with careful use of [`offset`] for pointer arithmetic,
 //! are enough to correctly implement many useful things in unsafe code. Stronger guarantees
@@ -63,7 +64,6 @@
 //! Common examples of allocated objects include stack-allocated variables (each variable is a
 //! separate allocated object), heap allocations (each allocation created by the global allocator is
 //! a separate allocated object), and `static` variables.
-//!
 //!
 //! # Strict Provenance
 //!
