@@ -451,7 +451,11 @@ impl Step for Std {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
-        let out = builder.doc_out(target);
+        let out = match self.format {
+            DocumentationFormat::HTML => builder.doc_out(target),
+            DocumentationFormat::JSON => builder.json_doc_out(target),
+        };
+
         t!(fs::create_dir_all(&out));
 
         builder.ensure(SharedAssets { target: self.target });
