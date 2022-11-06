@@ -391,7 +391,7 @@ fn check_predicates<'tcx>(
     );
 
     for (predicate, span) in impl1_predicates {
-        if !impl2_predicates.iter().any(|pred2| trait_predicates_eq(predicate, *pred2)) {
+        if !impl2_predicates.iter().any(|pred2| trait_predicates_eq(tcx, predicate, *pred2, span)) {
             check_specialization_on(tcx, predicate, span)
         }
     }
@@ -400,8 +400,8 @@ fn check_predicates<'tcx>(
 /// Checks if some predicate on the specializing impl (`predicate1`) is the same
 /// as some predicate on the base impl (`predicate2`).
 ///
-/// This is slightly more complicated than simple syntactic equivalence, since
-/// we want to equate `T: Tr` with `T: ~const Tr` so this can work:
+/// This basically just checks syntactic equivalence, but is a little more
+/// forgiving since we want to equate `T: Tr` with `T: ~const Tr` so this can work:
 ///
 /// ```ignore (illustrative)
 /// #[rustc_specialization_trait]
@@ -410,27 +410,54 @@ fn check_predicates<'tcx>(
 /// impl<T: Bound> Tr for T { }
 /// impl<T: ~const Bound + Specialize> const Tr for T { }
 /// ```
+///
+/// However, we *don't* want to allow the reverse, i.e., when the bound on the
+/// specializing impl is not as const as the bound on the base impl:
+///
+/// ```ignore (illustrative)
+/// impl<T: ~const Bound> const Tr for T { }
+/// impl<T: Bound + Specialize> const Tr for T { } // should be T: ~const Bound
+/// ```
+///
+/// So we make that check in this function and try to raise a helpful error message.
 fn trait_predicates_eq<'tcx>(
+    tcx: TyCtxt<'tcx>,
     predicate1: ty::Predicate<'tcx>,
     predicate2: ty::Predicate<'tcx>,
+    span: Span,
 ) -> bool {
-    let predicate_kind_without_constness = |kind: ty::PredicateKind<'tcx>| match kind {
-        ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref, constness: _, polarity }) => {
-            ty::PredicateKind::Trait(ty::TraitPredicate {
-                trait_ref,
-                constness: ty::BoundConstness::NotConst,
-                polarity,
-            })
+    let pred1_kind = predicate1.kind().no_bound_vars();
+    let pred2_kind = predicate2.kind().no_bound_vars();
+    let (trait_pred1, trait_pred2) = match (pred1_kind, pred2_kind) {
+        (Some(ty::PredicateKind::Trait(pred1)), Some(ty::PredicateKind::Trait(pred2))) => {
+            (pred1, pred2)
         }
-        _ => kind,
+        // Just use plain syntactic equivalence if either of the predicates aren't
+        // trait predicates or have bound vars.
+        _ => return pred1_kind == pred2_kind,
     };
 
-    // We rely on `check_constness` above to ensure that pred1 is const if pred2
-    // is const.
-    let pred1_kind_not_const = predicate1.kind().map_bound(predicate_kind_without_constness);
-    let pred2_kind_not_const = predicate2.kind().map_bound(predicate_kind_without_constness);
+    let predicates_equal_modulo_constness = {
+        let pred1_unconsted =
+            ty::TraitPredicate { constness: ty::BoundConstness::NotConst, ..trait_pred1 };
+        let pred2_unconsted =
+            ty::TraitPredicate { constness: ty::BoundConstness::NotConst, ..trait_pred2 };
+        pred1_unconsted == pred2_unconsted
+    };
 
-    pred1_kind_not_const == pred2_kind_not_const
+    if !predicates_equal_modulo_constness {
+        return false;
+    }
+
+    // Check that the predicate on the specializing impl is at least as const as
+    // the one on the base.
+    if trait_pred2.constness == ty::BoundConstness::ConstIfConst
+        && trait_pred1.constness == ty::BoundConstness::NotConst
+    {
+        tcx.sess.struct_span_err(span, "missing `~const` qualifier").emit();
+    }
+
+    true
 }
 
 #[instrument(level = "debug", skip(tcx))]
