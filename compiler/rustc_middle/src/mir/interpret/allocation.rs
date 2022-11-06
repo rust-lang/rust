@@ -30,7 +30,7 @@ use provenance_map::*;
 /// module provides higher-level access.
 // Note: for performance reasons when interning, some of the `Allocation` fields can be partially
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct Allocation<Prov = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
@@ -110,9 +110,9 @@ pub struct ConstAllocation<'tcx, Prov = AllocId, Extra = ()>(
 
 impl<'tcx> fmt::Debug for ConstAllocation<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // This matches how `Allocation` is printed. We print it like this to
-        // avoid having to update expected output in a lot of tests.
-        write!(f, "{:?}", self.inner())
+        // The debug-representation of this is very verbose and basically useless,
+        // so don't print it.
+        write!(f, "ConstAllocation {{ .. }}")
     }
 }
 
