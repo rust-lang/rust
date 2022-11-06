@@ -134,7 +134,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
         alloc.mutability = Mutability::Not;
     };
     // link the alloc id to the actual allocation
-    leftover_allocations.extend(alloc.provenance().iter().map(|&(_, alloc_id)| alloc_id));
+    leftover_allocations.extend(alloc.provenance().ptrs().iter().map(|&(_, alloc_id)| alloc_id));
     let alloc = tcx.intern_const_alloc(alloc);
     tcx.set_alloc_id_memory(alloc_id, alloc);
     None
@@ -439,7 +439,7 @@ pub fn intern_const_alloc_recursive<
             }
             let alloc = tcx.intern_const_alloc(alloc);
             tcx.set_alloc_id_memory(alloc_id, alloc);
-            for &(_, alloc_id) in alloc.inner().provenance().iter() {
+            for &(_, alloc_id) in alloc.inner().provenance().ptrs().iter() {
                 if leftover_allocations.insert(alloc_id) {
                     todo.push(alloc_id);
                 }

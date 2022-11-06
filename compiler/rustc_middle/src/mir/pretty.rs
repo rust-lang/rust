@@ -685,7 +685,7 @@ pub fn write_allocations<'tcx>(
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
     ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
-        alloc.inner().provenance().values().map(|id| *id)
+        alloc.inner().provenance().ptrs().values().map(|id| *id)
     }
 
     fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
@@ -882,7 +882,7 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
         if i != line_start {
             write!(w, " ")?;
         }
-        if let Some(&prov) = alloc.provenance().get(&i) {
+        if let Some(prov) = alloc.provenance().get_ptr(i) {
             // Memory with provenance must be defined
             assert!(alloc.init_mask().is_range_initialized(i, i + ptr_size).is_ok());
             let j = i.bytes_usize();
@@ -904,9 +904,9 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
                 let overflow = ptr_size - remainder;
                 let remainder_width = provenance_width(remainder.bytes_usize()) - 2;
                 let overflow_width = provenance_width(overflow.bytes_usize() - 1) + 1;
-                ascii.push('╾');
-                for _ in 0..remainder.bytes() - 1 {
-                    ascii.push('─');
+                ascii.push('╾'); // HEAVY LEFT AND LIGHT RIGHT
+                for _ in 1..remainder.bytes() {
+                    ascii.push('─'); // LIGHT HORIZONTAL
                 }
                 if overflow_width > remainder_width && overflow_width >= target.len() {
                     // The case where the provenance fits into the part in the next line
@@ -926,7 +926,7 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
                 for _ in 0..overflow.bytes() - 1 {
                     ascii.push('─');
                 }
-                ascii.push('╼');
+                ascii.push('╼'); // LIGHT LEFT AND HEAVY RIGHT
                 i += ptr_size;
                 continue;
             } else {
@@ -941,6 +941,16 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
                 ascii.push('╼');
                 i += ptr_size;
             }
+        } else if let Some(prov) = alloc.provenance().get(i, &tcx) {
+            // Memory with provenance must be defined
+            assert!(alloc.init_mask().is_range_initialized(i, i + Size::from_bytes(1)).is_ok());
+            ascii.push('━'); // HEAVY HORIZONTAL
+            // We have two characters to display this, which is obviously not enough.
+            // Format is similar to "oversized" above.
+            let j = i.bytes_usize();
+            let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
+            write!(w, "╾{:02x}{:#?} (1 ptr byte)╼", c, prov)?;
+            i += Size::from_bytes(1);
         } else if alloc.init_mask().is_range_initialized(i, i + Size::from_bytes(1)).is_ok() {
             let j = i.bytes_usize();
 
