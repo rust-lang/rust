@@ -4,7 +4,7 @@ use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
     clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline, Crate,
     ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path,
-    PathSegment, Primitive, PrimitiveType, Type, TypeBinding,
+    PathSegment, Primitive, PrimitiveType, Term, Type, TypeBinding, TypeBindingKind,
 };
 use crate::core::DocContext;
 use crate::html::format::visibility_to_src_with_space;
@@ -113,12 +113,12 @@ fn external_generic_args<'tcx>(
                 ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(t, cx, None)).collect::<Vec<_>>().into(),
                 _ => return GenericArgs::AngleBracketed { args: args.into(), bindings },
             };
-        let output = None;
-        // FIXME(#20299) return type comes from a projection now
-        // match types[1].kind {
-        //     ty::Tuple(ref v) if v.is_empty() => None, // -> ()
-        //     _ => Some(types[1].clean(cx))
-        // };
+        let output = bindings.into_iter().next().and_then(|binding| match binding.kind {
+            TypeBindingKind::Equality { term: Term::Type(ty) } if ty != Type::Tuple(Vec::new()) => {
+                Some(Box::new(ty))
+            }
+            _ => None,
+        });
         GenericArgs::Parenthesized { inputs, output }
     } else {
         GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() }
