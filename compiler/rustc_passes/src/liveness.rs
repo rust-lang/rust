@@ -413,7 +413,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 }
                 intravisit::walk_expr(self, expr);
             }
-            hir::ExprKind::Closure { .. } => {
+            hir::ExprKind::Closure(closure) => {
                 // Interesting control flow (for loops can contain labeled
                 // breaks or continues)
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
@@ -423,8 +423,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 // in better error messages than just pointing at the closure
                 // construction site.
                 let mut call_caps = Vec::new();
-                let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
-                if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
+                if let Some(upvars) = self.tcx.upvars_mentioned(closure.def_id) {
                     call_caps.extend(upvars.keys().map(|var_id| {
                         let upvar = upvars[var_id];
                         let upvar_ln = self.add_live_node(UpvarNode(upvar.span));

@@ -311,10 +311,9 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure { .. } = expr.kind {
-            let def_id = self.tcx.hir().local_def_id(expr.hir_id);
-            self.tcx.ensure().generics_of(def_id);
-            self.tcx.ensure().codegen_fn_attrs(def_id);
+        if let hir::ExprKind::Closure(closure) = expr.kind {
+            self.tcx.ensure().generics_of(closure.def_id);
+            self.tcx.ensure().codegen_fn_attrs(closure.def_id);
             // We do not call `type_of` for closures here as that
             // depends on typecheck and would therefore hide
             // any further errors in case one typeck fails.

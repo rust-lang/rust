@@ -636,9 +636,8 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             self.tcx.hir()
         }
         fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-            if let hir::ExprKind::Closure { .. } = ex.kind {
-                let def_id = self.tcx.hir().local_def_id(ex.hir_id);
-                self.check(def_id);
+            if let hir::ExprKind::Closure(closure) = ex.kind {
+                self.check(closure.def_id);
             }
             intravisit::walk_expr(self, ex);
         }
@@ -771,9 +770,8 @@ fn find_opaque_ty_constraints_for_rpit(
             self.tcx.hir()
         }
         fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-            if let hir::ExprKind::Closure { .. } = ex.kind {
-                let def_id = self.tcx.hir().local_def_id(ex.hir_id);
-                self.check(def_id);
+            if let hir::ExprKind::Closure(closure) = ex.kind {
+                self.check(closure.def_id);
             }
             intravisit::walk_expr(self, ex);
         }

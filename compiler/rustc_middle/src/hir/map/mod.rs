@@ -1412,8 +1412,8 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     }
 
     fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
-        if matches!(ex.kind, ExprKind::Closure { .. }) {
-            self.body_owners.push(self.tcx.hir().local_def_id(ex.hir_id));
+        if let ExprKind::Closure(closure) = ex.kind {
+            self.body_owners.push(closure.def_id);
         }
         intravisit::walk_expr(self, ex)
     }

@@ -921,6 +921,7 @@ pub struct Crate<'hir> {
 
 #[derive(Debug, HashStable_Generic)]
 pub struct Closure<'hir> {
+    pub def_id: LocalDefId,
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
     pub bound_generic_params: &'hir [GenericParam<'hir>],
