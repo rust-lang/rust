@@ -116,13 +116,25 @@ struct RwLock {
 
 declare_id!(CondvarId);
 
+#[derive(Debug, Copy, Clone)]
+pub enum RwLockMode {
+    Read,
+    Write,
+}
+
+#[derive(Debug)]
+pub enum CondvarLock {
+    Mutex(MutexId),
+    RwLock { id: RwLockId, mode: RwLockMode },
+}
+
 /// A thread waiting on a conditional variable.
 #[derive(Debug)]
 struct CondvarWaiter {
     /// The thread that is waiting on this variable.
     thread: ThreadId,
-    /// The mutex on which the thread is waiting.
-    mutex: MutexId,
+    /// The mutex or rwlock on which the thread is waiting.
+    lock: CondvarLock,
 }
 
 /// The conditional variable state.
@@ -569,16 +581,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Mark that the thread is waiting on the conditional variable.
-    fn condvar_wait(&mut self, id: CondvarId, thread: ThreadId, mutex: MutexId) {
+    fn condvar_wait(&mut self, id: CondvarId, thread: ThreadId, lock: CondvarLock) {
         let this = self.eval_context_mut();
         let waiters = &mut this.machine.threads.sync.condvars[id].waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
-        waiters.push_back(CondvarWaiter { thread, mutex });
+        waiters.push_back(CondvarWaiter { thread, lock });
     }
 
     /// Wake up some thread (if there is any) sleeping on the conditional
     /// variable.
-    fn condvar_signal(&mut self, id: CondvarId) -> Option<(ThreadId, MutexId)> {
+    fn condvar_signal(&mut self, id: CondvarId) -> Option<(ThreadId, CondvarLock)> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
         let condvar = &mut this.machine.threads.sync.condvars[id];
@@ -592,7 +604,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             if let Some(data_race) = data_race {
                 data_race.validate_lock_acquire(&condvar.data_race, waiter.thread);
             }
-            (waiter.thread, waiter.mutex)
+            (waiter.thread, waiter.lock)
         })
     }
 
