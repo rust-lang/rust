@@ -2670,6 +2670,8 @@ pub struct FnDecl<'hir> {
     pub c_variadic: bool,
     /// Does the function have an implicit self?
     pub implicit_self: ImplicitSelfKind,
+    /// Is lifetime elision allowed.
+    pub lifetime_elision_allowed: bool,
 }
 
 /// Represents what type of implicit self a function has, if any.
