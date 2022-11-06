@@ -467,7 +467,13 @@ pub struct Miri {
 
 impl Miri {
     /// Run `cargo miri setup` for the given target, return where the Miri sysroot was put.
-    pub fn build_miri_sysroot(builder: &Builder<'_>, compiler: Compiler, miri: &Path, target: TargetSelection) -> String {
+    pub fn build_miri_sysroot(
+        builder: &Builder<'_>,
+        compiler: Compiler,
+        miri: &Path,
+        target: TargetSelection,
+    ) -> String {
+        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysrot");
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -486,6 +492,8 @@ impl Miri {
         cargo.env("MIRI_LIB_SRC", builder.src.join("library"));
         // Tell it where to find Miri.
         cargo.env("MIRI", &miri);
+        // Tell it where to put the sysroot.
+        cargo.env("MIRI_SYSROOT", &miri_sysroot);
         // Debug things.
         cargo.env("RUST_BACKTRACE", "1");
 
