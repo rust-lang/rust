@@ -378,6 +378,10 @@ img {
 	object-fit: contain;
 }
 
+.rust-logo {
+	filter: var(--rust-logo-filter);
+}
+
 .sidebar, .mobile-topbar, .sidebar-menu-toggle {
 	background-color: var(--sidebar-background-color);
 }
