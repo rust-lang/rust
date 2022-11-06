@@ -2283,7 +2283,7 @@ fn add_native_libs_from_crate(
         return;
     }
 
-    if sess.opts.unstable_opts.packed_bundled_libs && link_static && cnum != LOCAL_CRATE {
+    if link_static && cnum != LOCAL_CRATE && !bundled_libs.is_empty() {
         // If rlib contains native libs as archives, unpack them to tmpdir.
         let rlib = &codegen_results.crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap().0;
         archive_builder_builder
@@ -2329,9 +2329,9 @@ fn add_native_libs_from_crate(
                             && sess.opts.test);
 
                     if bundle && cnum != LOCAL_CRATE {
-                        if sess.opts.unstable_opts.packed_bundled_libs {
+                        if let Some(filename) = lib.filename {
                             // If rlib contains native libs as archives, they are unpacked to tmpdir.
-                            let path = tmpdir.join(lib.filename.unwrap().as_str());
+                            let path = tmpdir.join(filename.as_str());
                             if whole_archive {
                                 cmd.link_whole_rlib(&path);
                             } else {
@@ -2464,12 +2464,10 @@ fn add_upstream_rust_crates<'a>(
         match linkage {
             Linkage::Static | Linkage::IncludedFromDylib => {
                 if link_static_crate {
-                    if sess.opts.unstable_opts.packed_bundled_libs {
-                        bundled_libs = codegen_results.crate_info.native_libraries[&cnum]
-                            .iter()
-                            .filter_map(|lib| lib.filename)
-                            .collect();
-                    }
+                    bundled_libs = codegen_results.crate_info.native_libraries[&cnum]
+                        .iter()
+                        .filter_map(|lib| lib.filename)
+                        .collect();
                     add_static_crate(
                         cmd,
                         sess,
