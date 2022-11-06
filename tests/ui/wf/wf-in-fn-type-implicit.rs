@@ -1,11 +1,7 @@
-// check-pass
-// known-bug: #104005
+// issue: #104005
 
-// Should fail. Function type parameters with implicit type annotations are not
-// checked for well-formedness, which allows incorrect borrowing.
-
-// In contrast, user annotations are always checked for well-formedness, and the
-// commented code below is correctly rejected by the borrow checker.
+// Function type parameters with implicit type annotations were not
+// checked for well-formedness, which allowed incorrect borrowing.
 
 use std::fmt::Display;
 
@@ -27,11 +23,8 @@ where
 }
 
 fn main() {
-    // *incorrectly* compiles
+    // This used to compile
     let val = extend_lt(&String::from("blah blah blah"));
+    //~^ ERROR temporary value dropped while borrowed
     println!("{}", val);
-
-    // *correctly* fails to compile
-    // let val = extend_lt::<_, &_>(&String::from("blah blah blah"));
-    // println!("{}", val);
 }

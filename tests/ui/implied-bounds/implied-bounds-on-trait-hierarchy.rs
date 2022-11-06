@@ -1,9 +1,7 @@
-// check-pass
-// known-bug: #84591
+// issue: #84591
 
-// Should fail. Subtrait can incorrectly extend supertrait lifetimes even when
-// supertrait has weaker implied bounds than subtrait. Strongly related to
-// issue #25860.
+// Subtrait was able to incorrectly extend supertrait lifetimes even when
+// supertrait had weaker implied bounds than subtrait.
 
 trait Subtrait<T>: Supertrait {}
 trait Supertrait {
@@ -34,6 +32,7 @@ fn main() {
     {
         let x = "Hello World".to_string();
         subs_to_soup((x.as_str(), &mut d));
+        //~^ does not live long enough
     }
     println!("{}", d);
 }
