@@ -425,7 +425,7 @@ fn example() {
 
 ## `comment_width`
 
-Maximum length of comments. No effect unless`wrap_comments = true`.
+Maximum length of comments. No effect unless `wrap_comments = true`.
 
 - **Default value**: `80`
 - **Possible values**: any positive integer
