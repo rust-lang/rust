@@ -29,7 +29,9 @@ use crate::sync::OnceLock;
 ///     println!("ready");
 ///     std::thread::spawn(|| {
 ///         println!("{:?}", HASHMAP.get(&13));
-///     }).join().unwrap();
+///     })
+///     .join()
+///     .unwrap();
 ///     println!("{:?}", HASHMAP.get(&74));
 ///
 ///     // Prints:

@@ -57,7 +57,7 @@ impl WaitTimeoutResult {
     ///     started = result.0;
     ///     if *started == true {
     ///         // We received the notification and the value has been updated, we can leave.
-    ///         break
+    ///         break;
     ///     }
     /// }
     /// ```
@@ -83,14 +83,14 @@ impl WaitTimeoutResult {
 /// # Examples
 ///
 /// ```
-/// use std::sync::{Arc, Mutex, Condvar};
+/// use std::sync::{Arc, Condvar, Mutex};
 /// use std::thread;
 ///
 /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
 /// let pair2 = Arc::clone(&pair);
 ///
 /// // Inside of our lock, spawn a new thread, and then wait for it to start.
-/// thread::spawn(move|| {
+/// thread::spawn(move || {
 ///     let (lock, cvar) = &*pair2;
 ///     let mut started = lock.lock().unwrap();
 ///     *started = true;
@@ -162,13 +162,13 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// use std::sync::{Arc, Condvar, Mutex};
     /// use std::thread;
     ///
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -217,13 +217,13 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// use std::sync::{Arc, Condvar, Mutex};
     /// use std::thread;
     ///
     /// let pair = Arc::new((Mutex::new(true), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut pending = lock.lock().unwrap();
     ///     *pending = false;
@@ -234,7 +234,7 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let (lock, cvar) = &*pair;
     /// // As long as the value inside the `Mutex<bool>` is `true`, we wait.
-    /// let _guard = cvar.wait_while(lock.lock().unwrap(), |pending| { *pending }).unwrap();
+    /// let _guard = cvar.wait_while(lock.lock().unwrap(), |pending| *pending).unwrap();
     /// ```
     #[stable(feature = "wait_until", since = "1.42.0")]
     pub fn wait_while<'a, T, F>(
@@ -276,13 +276,13 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// use std::sync::{Arc, Condvar, Mutex};
     /// use std::thread;
     ///
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -300,7 +300,7 @@ impl Condvar {
     ///     started = result.0;
     ///     if *started == true {
     ///         // We received the notification and the value has been updated, we can leave.
-    ///         break
+    ///         break;
     ///     }
     /// }
     /// ```
@@ -347,14 +347,14 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// use std::sync::{Arc, Condvar, Mutex};
     /// use std::thread;
     /// use std::time::Duration;
     ///
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -372,7 +372,7 @@ impl Condvar {
     ///     started = result.0;
     ///     if *started == true {
     ///         // We received the notification and the value has been updated, we can leave.
-    ///         break
+    ///         break;
     ///     }
     /// }
     /// ```
@@ -415,14 +415,14 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// use std::sync::{Arc, Condvar, Mutex};
     /// use std::thread;
     /// use std::time::Duration;
     ///
     /// let pair = Arc::new((Mutex::new(true), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut pending = lock.lock().unwrap();
     ///     *pending = false;
@@ -432,11 +432,11 @@ impl Condvar {
     ///
     /// // wait for the thread to start up
     /// let (lock, cvar) = &*pair;
-    /// let result = cvar.wait_timeout_while(
-    ///     lock.lock().unwrap(),
-    ///     Duration::from_millis(100),
-    ///     |&mut pending| pending,
-    /// ).unwrap();
+    /// let result = cvar
+    ///     .wait_timeout_while(lock.lock().unwrap(), Duration::from_millis(100), |&mut pending| {
+    ///         pending
+    ///     })
+    ///     .unwrap();
     /// if result.1.timed_out() {
     ///     // timed-out without the condition ever evaluating to false.
     /// }
@@ -480,13 +480,13 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// use std::sync::{Arc, Condvar, Mutex};
     /// use std::thread;
     ///
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
@@ -520,13 +520,13 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex, Condvar};
+    /// use std::sync::{Arc, Condvar, Mutex};
     /// use std::thread;
     ///
     /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
     /// let pair2 = Arc::clone(&pair);
     ///
-    /// thread::spawn(move|| {
+    /// thread::spawn(move || {
     ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;

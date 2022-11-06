@@ -264,9 +264,11 @@ pub use self::local::statik::Key as __StaticLocalKeyInner;
 ///
 /// let builder = thread::Builder::new();
 ///
-/// let handler = builder.spawn(|| {
-///     // thread code
-/// }).unwrap();
+/// let handler = builder
+///     .spawn(|| {
+///         // thread code
+///     })
+///     .unwrap();
 ///
 /// handler.join().unwrap();
 /// ```
@@ -298,13 +300,13 @@ impl Builder {
     /// ```
     /// use std::thread;
     ///
-    /// let builder = thread::Builder::new()
-    ///                               .name("foo".into())
-    ///                               .stack_size(32 * 1024);
+    /// let builder = thread::Builder::new().name("foo".into()).stack_size(32 * 1024);
     ///
-    /// let handler = builder.spawn(|| {
-    ///     // thread code
-    /// }).unwrap();
+    /// let handler = builder
+    ///     .spawn(|| {
+    ///         // thread code
+    ///     })
+    ///     .unwrap();
     ///
     /// handler.join().unwrap();
     /// ```
@@ -326,12 +328,9 @@ impl Builder {
     /// ```
     /// use std::thread;
     ///
-    /// let builder = thread::Builder::new()
-    ///     .name("foo".into());
+    /// let builder = thread::Builder::new().name("foo".into());
     ///
-    /// let handler = builder.spawn(|| {
-    ///     assert_eq!(thread::current().name(), Some("foo"))
-    /// }).unwrap();
+    /// let handler = builder.spawn(|| assert_eq!(thread::current().name(), Some("foo"))).unwrap();
     ///
     /// handler.join().unwrap();
     /// ```
@@ -395,9 +394,11 @@ impl Builder {
     ///
     /// let builder = thread::Builder::new();
     ///
-    /// let handler = builder.spawn(|| {
-    ///     // thread code
-    /// }).unwrap();
+    /// let handler = builder
+    ///     .spawn(|| {
+    ///         // thread code
+    ///     })
+    ///     .unwrap();
     ///
     /// handler.join().unwrap();
     /// ```
@@ -457,9 +458,11 @@ impl Builder {
     /// let thread_x = &x;
     ///
     /// let handler = unsafe {
-    ///     builder.spawn_unchecked(move || {
-    ///         println!("x = {}", *thread_x);
-    ///     }).unwrap()
+    ///     builder
+    ///         .spawn_unchecked(move || {
+    ///             println!("x = {}", *thread_x);
+    ///         })
+    ///         .unwrap()
     /// };
     ///
     /// // caller has to ensure `join()` is called, otherwise
@@ -660,14 +663,13 @@ impl Builder {
 /// of values to a thread.
 ///
 /// ```
-/// use std::thread;
 /// use std::sync::mpsc::channel;
+/// use std::thread;
 ///
 /// let (tx, rx) = channel();
 ///
 /// let sender = thread::spawn(move || {
-///     tx.send("Hello, thread".to_owned())
-///         .expect("Unable to send on channel");
+///     tx.send("Hello, thread".to_owned()).expect("Unable to send on channel");
 /// });
 ///
 /// let receiver = thread::spawn(move || {
@@ -956,8 +958,11 @@ impl Drop for PanicGuard {
 /// # Examples
 ///
 /// ```
+/// use std::sync::{
+///     atomic::{AtomicBool, Ordering},
+///     Arc,
+/// };
 /// use std::thread;
-/// use std::sync::{Arc, atomic::{Ordering, AtomicBool}};
 /// use std::time::Duration;
 ///
 /// let flag = Arc::new(AtomicBool::new(false));
@@ -1043,7 +1048,7 @@ pub fn park_timeout_ms(ms: u32) {
 ///
 /// ```rust,no_run
 /// use std::thread::park_timeout;
-/// use std::time::{Instant, Duration};
+/// use std::time::{Duration, Instant};
 ///
 /// let timeout = Duration::from_secs(2);
 /// let beginning_park = Instant::now();
@@ -1089,9 +1094,7 @@ pub fn park_timeout(dur: Duration) {
 /// ```
 /// use std::thread;
 ///
-/// let other_thread = thread::spawn(|| {
-///     thread::current().id()
-/// });
+/// let other_thread = thread::spawn(|| thread::current().id());
 ///
 /// let other_thread_id = other_thread.join().unwrap();
 /// assert!(thread::current().id() != other_thread_id);
@@ -1267,9 +1270,7 @@ impl Thread {
     /// ```
     /// use std::thread;
     ///
-    /// let other_thread = thread::spawn(|| {
-    ///     thread::current().id()
-    /// });
+    /// let other_thread = thread::spawn(|| thread::current().id());
     ///
     /// let other_thread_id = other_thread.join().unwrap();
     /// assert!(thread::current().id() != other_thread_id);
@@ -1294,9 +1295,11 @@ impl Thread {
     ///
     /// let builder = thread::Builder::new();
     ///
-    /// let handler = builder.spawn(|| {
-    ///     assert!(thread::current().name().is_none());
-    /// }).unwrap();
+    /// let handler = builder
+    ///     .spawn(|| {
+    ///         assert!(thread::current().name().is_none());
+    ///     })
+    ///     .unwrap();
     ///
     /// handler.join().unwrap();
     /// ```
@@ -1306,12 +1309,9 @@ impl Thread {
     /// ```
     /// use std::thread;
     ///
-    /// let builder = thread::Builder::new()
-    ///     .name("foo".into());
+    /// let builder = thread::Builder::new().name("foo".into());
     ///
-    /// let handler = builder.spawn(|| {
-    ///     assert_eq!(thread::current().name(), Some("foo"))
-    /// }).unwrap();
+    /// let handler = builder.spawn(|| assert_eq!(thread::current().name(), Some("foo"))).unwrap();
     ///
     /// handler.join().unwrap();
     /// ```
@@ -1366,12 +1366,13 @@ impl fmt::Debug for Thread {
 /// Matching on the result of a joined thread:
 ///
 /// ```no_run
-/// use std::{fs, thread, panic};
+/// use std::{fs, panic, thread};
 ///
 /// fn copy_in_thread() -> thread::Result<()> {
 ///     thread::spawn(|| {
 ///         fs::copy("foo.txt", "bar.txt").unwrap();
-///     }).join()
+///     })
+///     .join()
 /// }
 ///
 /// fn main() {
@@ -1483,9 +1484,11 @@ impl<'scope, T> JoinInner<'scope, T> {
 ///
 /// let builder = thread::Builder::new();
 ///
-/// let join_handle: thread::JoinHandle<_> = builder.spawn(|| {
-///     // some work here
-/// }).unwrap();
+/// let join_handle: thread::JoinHandle<_> = builder
+///     .spawn(|| {
+///         // some work here
+///     })
+///     .unwrap();
 /// ```
 ///
 /// A thread being detached and outliving the thread that spawned it:
@@ -1532,9 +1535,11 @@ impl<T> JoinHandle<T> {
     ///
     /// let builder = thread::Builder::new();
     ///
-    /// let join_handle: thread::JoinHandle<_> = builder.spawn(|| {
-    ///     // some work here
-    /// }).unwrap();
+    /// let join_handle: thread::JoinHandle<_> = builder
+    ///     .spawn(|| {
+    ///         // some work here
+    ///     })
+    ///     .unwrap();
     ///
     /// let thread = join_handle.thread();
     /// println!("thread id: {:?}", thread.id());
@@ -1573,9 +1578,11 @@ impl<T> JoinHandle<T> {
     ///
     /// let builder = thread::Builder::new();
     ///
-    /// let join_handle: thread::JoinHandle<_> = builder.spawn(|| {
-    ///     // some work here
-    /// }).unwrap();
+    /// let join_handle: thread::JoinHandle<_> = builder
+    ///     .spawn(|| {
+    ///         // some work here
+    ///     })
+    ///     .unwrap();
     /// join_handle.join().expect("Couldn't join on the associated thread");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

@@ -74,16 +74,16 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 ///
 /// ```
 /// # #![allow(unused_variables)]
-/// trait Foo { }
-/// trait Bar: Sized { }
+/// trait Foo {}
+/// trait Bar: Sized {}
 ///
 /// struct Impl;
-/// impl Foo for Impl { }
-/// impl Bar for Impl { }
+/// impl Foo for Impl {}
+/// impl Bar for Impl {}
 ///
-/// let x: &dyn Foo = &Impl;    // OK
+/// let x: &dyn Foo = &Impl; // OK
 /// // let y: &dyn Bar = &Impl; // error: the trait `Bar` cannot
-///                             // be made into an object
+/// // be made into an object
 /// ```
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
@@ -182,7 +182,7 @@ pub trait StructuralPartialEq {
 /// #[derive(PartialEq, Eq)]
 /// struct Wrap<X>(X);
 ///
-/// fn higher_order(_: &()) { }
+/// fn higher_order(_: &()) {}
 ///
 /// const CFN: Wrap<fn(&())> = Wrap(higher_order);
 ///
@@ -264,7 +264,7 @@ pub trait StructuralEq {
 /// ```
 /// struct MyStruct;
 ///
-/// impl Copy for MyStruct { }
+/// impl Copy for MyStruct {}
 ///
 /// impl Clone for MyStruct {
 ///     fn clone(&self) -> MyStruct {
@@ -301,8 +301,8 @@ pub trait StructuralEq {
 /// # #[allow(dead_code)]
 /// #[derive(Copy, Clone)]
 /// struct Point {
-///    x: i32,
-///    y: i32,
+///     x: i32,
+///     y: i32,
 /// }
 /// ```
 ///
@@ -555,11 +555,7 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// # }
 /// fn borrow_vec<T>(vec: &Vec<T>) -> Slice<'_, T> {
 ///     let ptr = vec.as_ptr();
-///     Slice {
-///         start: ptr,
-///         end: unsafe { ptr.add(vec.len()) },
-///         phantom: PhantomData,
-///     }
+///     Slice { start: ptr, end: unsafe { ptr.add(vec.len()) }, phantom: PhantomData }
 /// }
 /// ```
 ///
@@ -588,17 +584,14 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// use std::mem;
 ///
 /// struct ExternalResource<R> {
-///    resource_handle: *mut (),
-///    resource_type: PhantomData<R>,
+///     resource_handle: *mut (),
+///     resource_type: PhantomData<R>,
 /// }
 ///
 /// impl<R: ResType> ExternalResource<R> {
 ///     fn new() -> Self {
 ///         let size_of_res = mem::size_of::<R>();
-///         Self {
-///             resource_handle: foreign_lib::new(size_of_res),
-///             resource_type: PhantomData,
-///         }
+///         Self { resource_handle: foreign_lib::new(size_of_res), resource_type: PhantomData }
 ///     }
 ///
 ///     fn do_stuff(&self, param: ParamType) {

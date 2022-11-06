@@ -32,8 +32,8 @@ pub trait FileExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
     /// use std::fs::File;
+    /// use std::io;
     /// use std::os::windows::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
@@ -138,10 +138,7 @@ pub trait OpenOptionsExt {
     ///
     /// // Do not allow others to read or modify this file while we have it open
     /// // for writing.
-    /// let file = OpenOptions::new()
-    ///     .write(true)
-    ///     .share_mode(0)
-    ///     .open("foo.txt");
+    /// let file = OpenOptions::new().write(true).share_mode(0).open("foo.txt");
     /// ```
     ///
     /// [`CreateFile`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea
@@ -249,10 +246,8 @@ pub trait OpenOptionsExt {
     /// let file = OpenOptions::new()
     ///     .write(true)
     ///     .create(true)
-    ///
     ///     // Sets the flag value to `SecurityIdentification`.
     ///     .security_qos_flags(winapi::SECURITY_IDENTIFICATION)
-    ///
     ///     .open(r"\\.\pipe\MyPipe");
     /// ```
     ///
@@ -310,8 +305,8 @@ pub trait MetadataExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
     /// use std::fs;
+    /// use std::io;
     /// use std::os::windows::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
@@ -340,8 +335,8 @@ pub trait MetadataExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
     /// use std::fs;
+    /// use std::io;
     /// use std::os::windows::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
@@ -375,8 +370,8 @@ pub trait MetadataExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
     /// use std::fs;
+    /// use std::io;
     /// use std::os::windows::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
@@ -408,8 +403,8 @@ pub trait MetadataExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
     /// use std::fs;
+    /// use std::io;
     /// use std::os::windows::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
@@ -431,8 +426,8 @@ pub trait MetadataExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
     /// use std::fs;
+    /// use std::io;
     /// use std::os::windows::prelude::*;
     ///
     /// fn main() -> io::Result<()> {

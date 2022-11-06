@@ -264,7 +264,11 @@ pub macro PartialEq($item:item) {
 /// `Eq`, which has no methods:
 ///
 /// ```
-/// enum BookFormat { Paperback, Hardback, Ebook }
+/// enum BookFormat {
+///     Paperback,
+///     Hardback,
+///     Ebook,
+/// }
 /// struct Book {
 ///     isbn: i32,
 ///     format: BookFormat,

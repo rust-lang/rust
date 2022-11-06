@@ -199,14 +199,17 @@ pub macro assert_matches {
 /// // expression given.
 /// debug_assert!(true);
 ///
-/// fn some_expensive_computation() -> bool { true } // a very simple function
+/// fn some_expensive_computation() -> bool {
+///     true
+/// } // a very simple function
 /// debug_assert!(some_expensive_computation());
 ///
 /// // assert with a custom message
 /// let x = true;
 /// debug_assert!(x, "x wasn't true!");
 ///
-/// let a = 3; let b = 27;
+/// let a = 3;
+/// let b = 27;
 /// debug_assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
@@ -372,12 +375,12 @@ macro_rules! matches {
 /// # Examples
 ///
 /// ```
-/// use std::io;
 /// use std::fs::File;
+/// use std::io;
 /// use std::io::prelude::*;
 ///
 /// enum MyError {
-///     FileWriteError
+///     FileWriteError,
 /// }
 ///
 /// impl From<io::Error> for MyError {
@@ -489,7 +492,7 @@ macro_rules! r#try {
 ///
 /// impl fmt::Write for Example {
 ///     fn write_str(&mut self, _s: &str) -> core::fmt::Result {
-///          unimplemented!();
+///         unimplemented!();
 ///     }
 /// }
 /// ```
@@ -505,11 +508,11 @@ macro_rules! r#try {
 ///
 /// impl Write for Example {
 ///     fn write_str(&mut self, _s: &str) -> core::fmt::Result {
-///          unimplemented!();
+///         unimplemented!();
 ///     }
 /// }
 ///
-/// let mut m = Example{};
+/// let mut m = Example {};
 /// write!(&mut m, "Hello World").expect("Not written");
 /// ```
 #[macro_export]
@@ -534,7 +537,7 @@ macro_rules! write {
 /// # Examples
 ///
 /// ```
-/// use std::io::{Write, Result};
+/// use std::io::{Result, Write};
 ///
 /// fn main() -> Result<()> {
 ///     let mut w = Vec::new();
@@ -592,9 +595,9 @@ macro_rules! writeln {
 /// fn foo(x: Option<i32>) {
 ///     match x {
 ///         Some(n) if n >= 0 => println!("Some(Non-negative)"),
-///         Some(n) if n <  0 => println!("Some(Negative)"),
-///         Some(_)           => unreachable!(), // compile error if commented out
-///         None              => println!("None")
+///         Some(n) if n < 0 => println!("Some(Negative)"),
+///         Some(_) => unreachable!(), // compile error if commented out
+///         None => println!("None"),
 ///     }
 /// }
 /// ```
@@ -603,10 +606,15 @@ macro_rules! writeln {
 ///
 /// ```
 /// # #[allow(dead_code)]
-/// fn divide_by_three(x: u32) -> u32 { // one of the poorest implementations of x/3
+/// fn divide_by_three(x: u32) -> u32 {
+///     // one of the poorest implementations of x/3
 ///     for i in 0.. {
-///         if 3*i < i { panic!("u32 overflow"); }
-///         if x < 3*i { return i-1; }
+///         if 3 * i < i {
+///             panic!("u32 overflow");
+///         }
+///         if x < 3 * i {
+///             return i - 1;
+///         }
 ///     }
 ///     unreachable!("The loop should always return");
 /// }
@@ -994,7 +1002,9 @@ pub(crate) mod builtin {
     /// #![feature(concat_idents)]
     ///
     /// # fn main() {
-    /// fn foobar() -> u32 { 23 }
+    /// fn foobar() -> u32 {
+    ///     23
+    /// }
     ///
     /// let f = concat_idents!(foo, bar);
     /// println!("{}", f());
@@ -1307,11 +1317,7 @@ pub(crate) mod builtin {
     /// # Examples
     ///
     /// ```
-    /// let my_directory = if cfg!(windows) {
-    ///     "windows-specific-directory"
-    /// } else {
-    ///     "unix-directory"
-    /// };
+    /// let my_directory = if cfg!(windows) { "windows-specific-directory" } else { "unix-directory" };
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
@@ -1405,7 +1411,9 @@ pub(crate) mod builtin {
     /// // expression given.
     /// assert!(true);
     ///
-    /// fn some_computation() -> bool { true } // a very simple function
+    /// fn some_computation() -> bool {
+    ///     true
+    /// } // a very simple function
     ///
     /// assert!(some_computation());
     ///
@@ -1413,7 +1421,8 @@ pub(crate) mod builtin {
     /// let x = true;
     /// assert!(x, "x wasn't true!");
     ///
-    /// let a = 3; let b = 27;
+    /// let a = 3;
+    /// let b = 27;
     /// assert!(a + b == 30, "a = {}, b = {}", a, b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

@@ -106,14 +106,12 @@
 //!
 //! struct Graph {
 //!     edges: Vec<(i32, i32)>,
-//!     span_tree_cache: RefCell<Option<Vec<(i32, i32)>>>
+//!     span_tree_cache: RefCell<Option<Vec<(i32, i32)>>>,
 //! }
 //!
 //! impl Graph {
 //!     fn minimum_spanning_tree(&self) -> Vec<(i32, i32)> {
-//!         self.span_tree_cache.borrow_mut()
-//!             .get_or_insert_with(|| self.calc_span_tree())
-//!             .clone()
+//!         self.span_tree_cache.borrow_mut().get_or_insert_with(|| self.calc_span_tree()).clone()
 //!     }
 //!
 //!     fn calc_span_tree(&self) -> Vec<(i32, i32)> {
@@ -133,9 +131,9 @@
 //!
 //! ```
 //! use std::cell::Cell;
-//! use std::ptr::NonNull;
-//! use std::process::abort;
 //! use std::marker::PhantomData;
+//! use std::process::abort;
+//! use std::ptr::NonNull;
 //!
 //! struct Rc<T: ?Sized> {
 //!     ptr: NonNull<RcBox<T>>,
@@ -151,15 +149,11 @@
 //! impl<T: ?Sized> Clone for Rc<T> {
 //!     fn clone(&self) -> Rc<T> {
 //!         self.inc_strong();
-//!         Rc {
-//!             ptr: self.ptr,
-//!             phantom: PhantomData,
-//!         }
+//!         Rc { ptr: self.ptr, phantom: PhantomData }
 //!     }
 //! }
 //!
 //! trait RcBoxPtr<T: ?Sized> {
-//!
 //!     fn inner(&self) -> &RcBox<T>;
 //!
 //!     fn strong(&self) -> usize {
@@ -167,20 +161,14 @@
 //!     }
 //!
 //!     fn inc_strong(&self) {
-//!         self.inner()
-//!             .strong
-//!             .set(self.strong()
-//!                      .checked_add(1)
-//!                      .unwrap_or_else(|| abort() ));
+//!         self.inner().strong.set(self.strong().checked_add(1).unwrap_or_else(|| abort()));
 //!     }
 //! }
 //!
 //! impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
-//!    fn inner(&self) -> &RcBox<T> {
-//!        unsafe {
-//!            self.ptr.as_ref()
-//!        }
-//!    }
+//!     fn inner(&self) -> &RcBox<T> {
+//!         unsafe { self.ptr.as_ref() }
+//!     }
 //! }
 //! ```
 //!
@@ -222,10 +210,7 @@ pub use once::OnceCell;
 ///     special_field: Cell<u8>,
 /// }
 ///
-/// let my_struct = SomeStruct {
-///     regular_field: 0,
-///     special_field: Cell::new(1),
-/// };
+/// let my_struct = SomeStruct { regular_field: 0, special_field: Cell::new(1) };
 ///
 /// let new_value = 100;
 ///
@@ -1374,7 +1359,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, Ref};
+    /// use std::cell::{Ref, RefCell};
     ///
     /// let c = RefCell::new((5, 'b'));
     /// let b1: Ref<(u32, char)> = c.borrow();
@@ -1403,7 +1388,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, Ref};
+    /// use std::cell::{Ref, RefCell};
     ///
     /// let c = RefCell::new(vec![1, 2, 3]);
     /// let b1: Ref<Vec<u32>> = c.borrow();
@@ -1471,7 +1456,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     ///
     /// ```
     /// #![feature(cell_leak)]
-    /// use std::cell::{RefCell, Ref};
+    /// use std::cell::{Ref, RefCell};
     /// let cell = RefCell::new(0);
     ///
     /// let value = Ref::leak(cell.borrow());
@@ -1838,10 +1823,10 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// ```rust,no_run
 /// # use std::cell::UnsafeCell;
 /// unsafe fn not_allowed<T>(ptr: &UnsafeCell<T>) -> &mut T {
-///   let t = ptr as *const UnsafeCell<T> as *mut T;
-///   // This is undefined behavior, because the `*mut T` pointer
-///   // was not obtained through `.get()` nor `.raw_get()`:
-///   unsafe { &mut *t }
+///     let t = ptr as *const UnsafeCell<T> as *mut T;
+///     // This is undefined behavior, because the `*mut T` pointer
+///     // was not obtained through `.get()` nor `.raw_get()`:
+///     unsafe { &mut *t }
 /// }
 /// ```
 ///
@@ -1852,7 +1837,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// // Safety: the caller must ensure that there are no references that
 /// // point to the *contents* of the `UnsafeCell`.
 /// unsafe fn get_mut<T>(ptr: &UnsafeCell<T>) -> &mut T {
-///   unsafe { &mut *ptr.get() }
+///     unsafe { &mut *ptr.get() }
 /// }
 /// ```
 ///
@@ -1862,9 +1847,9 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// ```rust
 /// # use std::cell::UnsafeCell;
 /// fn get_shared<T>(ptr: &mut T) -> &UnsafeCell<T> {
-///   let t = ptr as *mut T as *const UnsafeCell<T>;
-///   // SAFETY: `T` and `UnsafeCell<T>` have the same memory layout
-///   unsafe { &*t }
+///     let t = ptr as *mut T as *const UnsafeCell<T>;
+///     // SAFETY: `T` and `UnsafeCell<T>` have the same memory layout
+///     unsafe { &*t }
 /// }
 /// ```
 ///
@@ -1905,8 +1890,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// ```rust
 /// #![forbid(unsafe_code)] // with exclusive accesses,
-///                         // `UnsafeCell` is a transparent no-op wrapper,
-///                         // so no need for `unsafe` here.
+/// // `UnsafeCell` is a transparent no-op wrapper,
+/// // so no need for `unsafe` here.
 /// use std::cell::UnsafeCell;
 ///
 /// let mut x: UnsafeCell<i32> = 42.into();
@@ -2041,7 +2026,9 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let m = MaybeUninit::<UnsafeCell<i32>>::uninit();
-    /// unsafe { UnsafeCell::raw_get(m.as_ptr()).write(5); }
+    /// unsafe {
+    ///     UnsafeCell::raw_get(m.as_ptr()).write(5);
+    /// }
     /// let uc = unsafe { m.assume_init() };
     ///
     /// assert_eq!(uc.into_inner(), 5);

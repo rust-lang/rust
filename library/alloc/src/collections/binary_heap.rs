@@ -34,8 +34,7 @@
 //!         // Notice that the we flip the ordering on costs.
 //!         // In case of a tie we compare positions - this step is necessary
 //!         // to make implementations of `PartialEq` and `Ord` consistent.
-//!         other.cost.cmp(&self.cost)
-//!             .then_with(|| self.position.cmp(&other.position))
+//!         other.cost.cmp(&self.cost).then_with(|| self.position.cmp(&other.position))
 //!     }
 //! }
 //!
@@ -71,10 +70,14 @@
 //!     // Examine the frontier with lower cost nodes first (min-heap)
 //!     while let Some(State { cost, position }) = heap.pop() {
 //!         // Alternatively we could have continued to find all shortest paths
-//!         if position == goal { return Some(cost); }
+//!         if position == goal {
+//!             return Some(cost);
+//!         }
 //!
 //!         // Important as we may have already found a better way
-//!         if cost > dist[position] { continue; }
+//!         if cost > dist[position] {
+//!             continue;
+//!         }
 //!
 //!         // For each node we can reach, see if we can find a way with
 //!         // a lower cost going through this node
@@ -118,19 +121,16 @@
 //!     // Chosen for its efficiency.
 //!     let graph = vec![
 //!         // Node 0
-//!         vec![Edge { node: 2, cost: 10 },
-//!              Edge { node: 1, cost: 1 }],
+//!         vec![Edge { node: 2, cost: 10 }, Edge { node: 1, cost: 1 }],
 //!         // Node 1
 //!         vec![Edge { node: 3, cost: 2 }],
 //!         // Node 2
-//!         vec![Edge { node: 1, cost: 1 },
-//!              Edge { node: 3, cost: 3 },
-//!              Edge { node: 4, cost: 1 }],
+//!         vec![Edge { node: 1, cost: 1 }, Edge { node: 3, cost: 3 }, Edge { node: 4, cost: 1 }],
 //!         // Node 3
-//!         vec![Edge { node: 0, cost: 7 },
-//!              Edge { node: 4, cost: 2 }],
+//!         vec![Edge { node: 0, cost: 7 }, Edge { node: 4, cost: 2 }],
 //!         // Node 4
-//!         vec![]];
+//!         vec![],
+//!     ];
 //!
 //!     assert_eq!(shortest_path(&graph, 0, 1), Some(1));
 //!     assert_eq!(shortest_path(&graph, 0, 3), Some(3));
@@ -229,8 +229,8 @@ mod tests;
 /// value instead of the greatest one.
 ///
 /// ```
-/// use std::collections::BinaryHeap;
 /// use std::cmp::Reverse;
+/// use std::collections::BinaryHeap;
 ///
 /// let mut heap = BinaryHeap::new();
 ///
@@ -877,7 +877,6 @@ impl<T> BinaryHeap<T> {
     /// heap.push(5);
     /// heap.push(2);
     /// assert_eq!(heap.peek(), Some(&5));
-    ///
     /// ```
     ///
     /// # Time complexity

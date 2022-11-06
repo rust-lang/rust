@@ -709,7 +709,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(dl.front(), Some(&1));
     ///
     /// match dl.front_mut() {
-    ///     None => {},
+    ///     None => {}
     ///     Some(x) => *x = 5,
     /// }
     /// assert_eq!(dl.front(), Some(&5));
@@ -761,7 +761,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(dl.back(), Some(&1));
     ///
     /// match dl.back_mut() {
-    ///     None => {},
+    ///     None => {}
     ///     Some(x) => *x = 5,
     /// }
     /// assert_eq!(dl.back(), Some(&5));

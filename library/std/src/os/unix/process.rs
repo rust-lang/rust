@@ -166,14 +166,10 @@ pub trait CommandExt: Sealed {
     /// A process group ID of 0 will use the process ID as the PGID.
     ///
     /// ```no_run
-    /// use std::process::Command;
     /// use std::os::unix::process::CommandExt;
+    /// use std::process::Command;
     ///
-    /// Command::new("sleep")
-    ///     .arg("10")
-    ///     .process_group(0)
-    ///     .spawn()?
-    ///     .wait()?;
+    /// Command::new("sleep").arg("10").process_group(0).spawn()?.wait()?;
     /// #
     /// # Ok::<_, Box<dyn std::error::Error>>(())
     /// ```

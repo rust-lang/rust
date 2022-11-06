@@ -43,9 +43,9 @@ use crate::sys_common::mutex as sys;
 /// # Examples
 ///
 /// ```
+/// use std::sync::mpsc::channel;
 /// use std::sync::{Arc, Mutex};
 /// use std::thread;
-/// use std::sync::mpsc::channel;
 ///
 /// const N: usize = 10;
 ///
@@ -95,7 +95,8 @@ use crate::sys_common::mutex as sys;
 ///     // This panic while holding the lock (`_guard` is in scope) will poison
 ///     // the mutex.
 ///     panic!();
-/// }).join();
+/// })
+/// .join();
 ///
 /// // The lock is poisoned by this point, but the returned result can be
 /// // pattern matched on to return the underlying guard on both branches.
@@ -152,11 +153,9 @@ use crate::sys_common::mutex as sys;
 /// // no deadlock.
 /// *res_mutex.lock().unwrap() += result;
 ///
-/// threads.into_iter().for_each(|thread| {
-///     thread
-///         .join()
-///         .expect("The thread creating or execution failed !")
-/// });
+/// threads
+///     .into_iter()
+///     .for_each(|thread| thread.join().expect("The thread creating or execution failed !"));
 ///
 /// assert_eq!(*res_mutex.lock().unwrap(), 800);
 /// ```
@@ -258,7 +257,9 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// thread::spawn(move || {
     ///     *c_mutex.lock().unwrap() = 10;
-    /// }).join().expect("thread::spawn failed");
+    /// })
+    /// .join()
+    /// .expect("thread::spawn failed");
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -305,7 +306,9 @@ impl<T: ?Sized> Mutex<T> {
     ///     } else {
     ///         println!("try_lock failed");
     ///     }
-    /// }).join().expect("thread::spawn failed");
+    /// })
+    /// .join()
+    /// .expect("thread::spawn failed");
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -357,7 +360,8 @@ impl<T: ?Sized> Mutex<T> {
     /// let _ = thread::spawn(move || {
     ///     let _lock = c_mutex.lock().unwrap();
     ///     panic!(); // the mutex gets poisoned
-    /// }).join();
+    /// })
+    /// .join();
     /// assert_eq!(mutex.is_poisoned(), true);
     /// ```
     #[inline]
@@ -388,7 +392,8 @@ impl<T: ?Sized> Mutex<T> {
     /// let _ = thread::spawn(move || {
     ///     let _lock = c_mutex.lock().unwrap();
     ///     panic!(); // the mutex gets poisoned
-    /// }).join();
+    /// })
+    /// .join();
     ///
     /// assert_eq!(mutex.is_poisoned(), true);
     /// let x = mutex.lock().unwrap_or_else(|mut e| {

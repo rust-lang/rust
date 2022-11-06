@@ -19,8 +19,12 @@ use crate::task::{Context, Poll};
 ///
 /// use std::future::join;
 ///
-/// async fn one() -> usize { 1 }
-/// async fn two() -> usize { 2 }
+/// async fn one() -> usize {
+///     1
+/// }
+/// async fn two() -> usize {
+///     2
+/// }
 ///
 /// # let _ =  async {
 /// let x = join!(one(), two()).await;
@@ -35,9 +39,15 @@ use crate::task::{Context, Poll};
 ///
 /// use std::future::join;
 ///
-/// async fn one() -> usize { 1 }
-/// async fn two() -> usize { 2 }
-/// async fn three() -> usize { 3 }
+/// async fn one() -> usize {
+///     1
+/// }
+/// async fn two() -> usize {
+///     2
+/// }
+/// async fn three() -> usize {
+///     3
+/// }
 ///
 /// # let _ = async {
 /// let x = join!(one(), two(), three()).await;

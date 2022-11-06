@@ -48,8 +48,8 @@
 //! use runtime reflection instead.
 //!
 //! ```rust
-//! use std::fmt::Debug;
 //! use std::any::Any;
+//! use std::fmt::Debug;
 //!
 //! // Logger function for any type that implements Debug.
 //! fn log<T: Any + Debug>(value: &T) {
@@ -111,7 +111,7 @@
 //!
 //! ```
 //! # #![feature(provide_any)]
-//! use std::any::{Provider, Demand, request_ref};
+//! use std::any::{request_ref, Demand, Provider};
 //!
 //! // Definition of MyTrait, a data provider.
 //! trait MyTrait: Provider {
@@ -790,13 +790,12 @@ pub trait Provider {
     ///
     /// ```rust
     /// # #![feature(provide_any)]
-    /// use std::any::{Provider, Demand};
+    /// use std::any::{Demand, Provider};
     /// # struct SomeConcreteType { field: String, num_field: i32 }
     ///
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
-    ///         demand.provide_ref::<str>(&self.field)
-    ///             .provide_value::<i32>(self.num_field);
+    ///         demand.provide_ref::<str>(&self.field).provide_value::<i32>(self.num_field);
     ///     }
     /// }
     /// ```
@@ -812,7 +811,7 @@ pub trait Provider {
 ///
 /// ```rust
 /// # #![feature(provide_any)]
-/// use std::any::{Provider, request_value};
+/// use std::any::{request_value, Provider};
 ///
 /// fn get_string(provider: &impl Provider) -> String {
 ///     request_value::<String>(provider).unwrap()
@@ -834,7 +833,7 @@ where
 ///
 /// ```rust
 /// # #![feature(provide_any)]
-/// use std::any::{Provider, request_ref};
+/// use std::any::{request_ref, Provider};
 ///
 /// fn get_str(provider: &impl Provider) -> &str {
 ///     request_ref::<str>(provider).unwrap()
@@ -886,7 +885,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use std::any::{Demand, Provider};
     /// # struct SomeConcreteType { field: u8 }
     ///
     /// impl Provider for SomeConcreteType {
@@ -912,7 +911,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use std::any::{Demand, Provider};
     /// # struct SomeConcreteType { field: String }
     ///
     /// impl Provider for SomeConcreteType {
@@ -939,7 +938,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use std::any::{Demand, Provider};
     /// # struct SomeConcreteType { field: String }
     ///
     /// impl Provider for SomeConcreteType {
@@ -963,18 +962,14 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use std::any::{Demand, Provider};
     /// # struct SomeConcreteType { business: String, party: String }
     /// # fn today_is_a_weekday() -> bool { true }
     ///
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
     ///         demand.provide_ref_with::<str>(|| {
-    ///             if today_is_a_weekday() {
-    ///                 &self.business
-    ///             } else {
-    ///                 &self.party
-    ///             }
+    ///             if today_is_a_weekday() { &self.business } else { &self.party }
     ///         });
     ///     }
     /// }
@@ -1021,7 +1016,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use std::any::{Demand, Provider};
     ///
     /// struct Parent(Option<u8>);
     ///
@@ -1092,7 +1087,7 @@ impl<'a> Demand<'a> {
     /// ```rust
     /// #![feature(provide_any)]
     ///
-    /// use std::any::{Provider, Demand};
+    /// use std::any::{Demand, Provider};
     ///
     /// struct Parent(Option<String>);
     ///

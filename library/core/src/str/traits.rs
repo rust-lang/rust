@@ -148,9 +148,9 @@ unsafe impl const SliceIndex<str> for ops::RangeFull {
 ///
 /// ```
 /// let s = "Löwe 老虎 Léopard";
-/// assert_eq!(&s[0 .. 1], "L");
+/// assert_eq!(&s[0..1], "L");
 ///
-/// assert_eq!(&s[1 .. 9], "öwe 老");
+/// assert_eq!(&s[1..9], "öwe 老");
 ///
 /// // these will panic:
 /// // byte 2 lies within `ö`:
@@ -511,7 +511,7 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// #[derive(Debug, PartialEq)]
 /// struct Point {
 ///     x: i32,
-///     y: i32
+///     y: i32,
 /// }
 ///
 /// #[derive(Debug, PartialEq, Eq)]

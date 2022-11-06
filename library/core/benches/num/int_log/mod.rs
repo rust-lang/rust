@@ -18,7 +18,7 @@ macro_rules! int_log_bench {
         #[bench]
         fn $random(bench: &mut Bencher) {
             let mut rng = crate::bench_rng();
-            /* Exponentially distributed random numbers from the whole range of the type.  */
+            /* Exponentially distributed random numbers from the whole range of the type. */
             let numbers: Vec<$t> = (0..256)
                 .map(|_| {
                     let x = rng.gen::<$t>() >> rng.gen_range(0, <$t>::BITS);
@@ -35,7 +35,7 @@ macro_rules! int_log_bench {
         #[bench]
         fn $random_small(bench: &mut Bencher) {
             let mut rng = crate::bench_rng();
-            /* Exponentially distributed random numbers from the range 0..256.  */
+            /* Exponentially distributed random numbers from the range 0..256. */
             let numbers: Vec<$t> = (0..256)
                 .map(|_| {
                     let x = (rng.gen::<u8>() >> rng.gen_range(0, u8::BITS)) as $t;

@@ -81,11 +81,17 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(uniq_by_fst_comp().next_back(), Some((2, 'b')));
     ///
     /// assert_eq!(
-    ///     uniq_by_fst_comp().fold(vec![], |mut v, x| {v.push(x); v}),
+    ///     uniq_by_fst_comp().fold(vec![], |mut v, x| {
+    ///         v.push(x);
+    ///         v
+    ///     }),
     ///     vec![(1, 'a'), (2, 'a')]
     /// );
     /// assert_eq!(
-    ///     uniq_by_fst_comp().rfold(vec![], |mut v, x| {v.push(x); v}),
+    ///     uniq_by_fst_comp().rfold(vec![], |mut v, x| {
+    ///         v.push(x);
+    ///         v
+    ///     }),
     ///     vec![(2, 'b'), (1, 'c')]
     /// );
     /// ```
@@ -195,9 +201,8 @@ pub trait DoubleEndedIterator: Iterator {
     ///
     /// ```
     /// let a = ["1", "2", "3"];
-    /// let sum = a.iter()
-    ///     .map(|&s| s.parse::<i32>())
-    ///     .try_rfold(0, |acc, x| x.and_then(|y| Ok(acc + y)));
+    /// let sum =
+    ///     a.iter().map(|&s| s.parse::<i32>()).try_rfold(0, |acc, x| x.and_then(|y| Ok(acc + y)));
     /// assert_eq!(sum, Ok(6));
     /// ```
     ///
@@ -206,10 +211,8 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     /// let a = ["1", "rust", "3"];
     /// let mut it = a.iter();
-    /// let sum = it
-    ///     .by_ref()
-    ///     .map(|&s| s.parse::<i32>())
-    ///     .try_rfold(0, |acc, x| x.and_then(|y| Ok(acc + y)));
+    /// let sum =
+    ///     it.by_ref().map(|&s| s.parse::<i32>()).try_rfold(0, |acc, x| x.and_then(|y| Ok(acc + y)));
     /// assert!(sum.is_err());
     ///
     /// // Because it short-circuited, the remaining elements are still
@@ -265,8 +268,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// let a = [1, 2, 3];
     ///
     /// // the sum of all of the elements of a
-    /// let sum = a.iter()
-    ///            .rfold(0, |acc, &x| acc + x);
+    /// let sum = a.iter().rfold(0, |acc, &x| acc + x);
     ///
     /// assert_eq!(sum, 6);
     /// ```
@@ -280,9 +282,7 @@ pub trait DoubleEndedIterator: Iterator {
     ///
     /// let zero = "0".to_string();
     ///
-    /// let result = numbers.iter().rfold(zero, |acc, &x| {
-    ///     format!("({x} + {acc})")
-    /// });
+    /// let result = numbers.iter().rfold(zero, |acc, &x| format!("({x} + {acc})"));
     ///
     /// assert_eq!(result, "(1 + (2 + (3 + (4 + (5 + 0)))))");
     /// ```

@@ -17,9 +17,7 @@ use crate::mem;
 /// let cell = OnceCell::new();
 /// assert!(cell.get().is_none());
 ///
-/// let value: &String = cell.get_or_init(|| {
-///     "Hello, World!".to_string()
-/// });
+/// let value: &String = cell.get_or_init(|| "Hello, World!".to_string());
 /// assert_eq!(value, "Hello, World!");
 /// assert!(cell.get().is_some());
 /// ```
@@ -149,9 +147,7 @@ impl<T> OnceCell<T> {
     /// let cell = OnceCell::new();
     /// assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
     /// assert!(cell.get().is_none());
-    /// let value = cell.get_or_try_init(|| -> Result<i32, ()> {
-    ///     Ok(92)
-    /// });
+    /// let value = cell.get_or_try_init(|| -> Result<i32, ()> { Ok(92) });
     /// assert_eq!(value, Ok(&92));
     /// assert_eq!(cell.get(), Some(&92))
     /// ```

@@ -42,7 +42,7 @@
 /// use std::ops::Deref;
 ///
 /// struct DerefExample<T> {
-///     value: T
+///     value: T,
 /// }
 ///
 /// impl<T> Deref for DerefExample<T> {
@@ -146,7 +146,7 @@ impl<T: ?Sized> const Deref for &mut T {
 /// use std::ops::{Deref, DerefMut};
 ///
 /// struct DerefMutExample<T> {
-///     value: T
+///     value: T,
 /// }
 ///
 /// impl<T> Deref for DerefMutExample<T> {

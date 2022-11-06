@@ -21,7 +21,9 @@ impl bool {
     ///
     /// ```
     /// let mut a = 0;
-    /// let mut function_with_side_effects = || { a += 1; };
+    /// let mut function_with_side_effects = || {
+    ///     a += 1;
+    /// };
     ///
     /// true.then_some(function_with_side_effects());
     /// false.then_some(function_with_side_effects());
@@ -53,8 +55,12 @@ impl bool {
     /// ```
     /// let mut a = 0;
     ///
-    /// true.then(|| { a += 1; });
-    /// false.then(|| { a += 1; });
+    /// true.then(|| {
+    ///     a += 1;
+    /// });
+    /// false.then(|| {
+    ///     a += 1;
+    /// });
     ///
     /// // `a` is incremented once because the closure is evaluated lazily by
     /// // `then`.

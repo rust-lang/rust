@@ -105,9 +105,9 @@ impl<T> Poll<T> {
     /// ```rust
     /// #![feature(poll_ready)]
     ///
-    /// use std::task::{Context, Poll};
     /// use std::future::{self, Future};
     /// use std::pin::Pin;
+    /// use std::task::{Context, Poll};
     ///
     /// pub fn do_poll(cx: &mut Context<'_>) -> Poll<()> {
     ///     let mut fut = future::ready(42);

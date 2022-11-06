@@ -203,7 +203,7 @@ pub const fn identity<T>(x: T) -> T {
 ///
 /// ```
 /// fn is_hello<T: AsRef<str>>(s: T) {
-///    assert_eq!("hello", s.as_ref());
+///     assert_eq!("hello", s.as_ref());
 /// }
 ///
 /// let s = "hello";
@@ -338,7 +338,7 @@ pub trait AsRef<T: ?Sized> {
 ///     // functionality, helps to minimize monomorphization overhead.
 ///     fn doit(data: &mut Vec<u8>) {
 ///         let len = data.len();
-///         if len == 0 || data[len-1] != 0 {
+///         if len == 0 || data[len - 1] != 0 {
 ///             data.push(0);
 ///         }
 ///     }
@@ -351,10 +351,7 @@ pub trait AsRef<T: ?Sized> {
 ///     assert_eq!(v, [6, 7, 8]);
 ///     null_terminate(&mut v);
 ///     assert_eq!(v, [6, 7, 8, 0]);
-///     let mut doc = Document {
-///         info: String::from("Example"),
-///         content: vec![17, 19, 8],
-///     };
+///     let mut doc = Document { info: String::from("Example"), content: vec![17, 19, 8] };
 ///     caesar(&mut doc, 1);
 ///     assert_eq!(doc.content, [18, 20, 9]);
 ///     null_terminate(&mut doc);
@@ -431,8 +428,8 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// ```
 /// fn is_hello<T: Into<Vec<u8>>>(s: T) {
-///    let bytes = b"hello".to_vec();
-///    assert_eq!(bytes, s.into());
+///     let bytes = b"hello".to_vec();
+///     assert_eq!(bytes, s.into());
 /// }
 ///
 /// let s = "hello".to_string();

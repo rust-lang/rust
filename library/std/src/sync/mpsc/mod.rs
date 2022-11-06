@@ -46,12 +46,12 @@
 //! Simple usage:
 //!
 //! ```
-//! use std::thread;
 //! use std::sync::mpsc::channel;
+//! use std::thread;
 //!
 //! // Create a simple streaming channel
 //! let (tx, rx) = channel();
-//! thread::spawn(move|| {
+//! thread::spawn(move || {
 //!     tx.send(10).unwrap();
 //! });
 //! assert_eq!(rx.recv().unwrap(), 10);
@@ -60,8 +60,8 @@
 //! Shared usage:
 //!
 //! ```
-//! use std::thread;
 //! use std::sync::mpsc::channel;
+//! use std::thread;
 //!
 //! // Create a shared channel that can be sent along from many threads
 //! // where tx is the sending half (tx for transmission), and rx is the receiving
@@ -69,7 +69,7 @@
 //! let (tx, rx) = channel();
 //! for i in 0..10 {
 //!     let tx = tx.clone();
-//!     thread::spawn(move|| {
+//!     thread::spawn(move || {
 //!         tx.send(i).unwrap();
 //!     });
 //! }
@@ -95,11 +95,11 @@
 //! Synchronous channels:
 //!
 //! ```
-//! use std::thread;
 //! use std::sync::mpsc::sync_channel;
+//! use std::thread;
 //!
 //! let (tx, rx) = sync_channel::<i32>(0);
-//! thread::spawn(move|| {
+//! thread::spawn(move || {
 //!     // This will wait for the parent thread to start receiving
 //!     tx.send(53).unwrap();
 //! });
@@ -698,7 +698,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// let (sender, receiver) = channel();
 ///
 /// // Spawn off an expensive computation
-/// thread::spawn(move|| {
+/// thread::spawn(move || {
 /// #   fn expensive_computation() {}
 ///     sender.send(expensive_computation()).unwrap();
 /// });
@@ -749,7 +749,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// // this returns immediately
 /// sender.send(1).unwrap();
 ///
-/// thread::spawn(move|| {
+/// thread::spawn(move || {
 ///     // this will block until the previous message has been received
 ///     sender.send(2).unwrap();
 /// });
@@ -943,11 +943,11 @@ impl<T> SyncSender<T> {
     /// let (sync_sender, receiver) = sync_channel(0);
     ///
     /// thread::spawn(move || {
-    ///    println!("sending message...");
-    ///    sync_sender.send(1).unwrap();
-    ///    // Thread is now blocked until the message is received
+    ///     println!("sending message...");
+    ///     sync_sender.send(1).unwrap();
+    ///     // Thread is now blocked until the message is received
     ///
-    ///    println!("...message received!");
+    ///     println!("...message received!");
     /// });
     ///
     /// let msg = receiver.recv().unwrap();
@@ -1061,7 +1061,7 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::sync::mpsc::{Receiver, channel};
+    /// use std::sync::mpsc::{channel, Receiver};
     ///
     /// let (_, receiver): (_, Receiver<i32>) = channel();
     ///
@@ -1135,8 +1135,8 @@ impl<T> Receiver<T> {
     ///
     /// ```
     /// use std::sync::mpsc;
-    /// use std::thread;
     /// use std::sync::mpsc::RecvError;
+    /// use std::thread;
     ///
     /// let (send, recv) = mpsc::channel();
     /// let handle = thread::spawn(move || {
@@ -1231,9 +1231,9 @@ impl<T> Receiver<T> {
     /// Successfully receiving value before encountering timeout:
     ///
     /// ```no_run
+    /// use std::sync::mpsc;
     /// use std::thread;
     /// use std::time::Duration;
-    /// use std::sync::mpsc;
     ///
     /// let (send, recv) = mpsc::channel();
     ///
@@ -1241,18 +1241,15 @@ impl<T> Receiver<T> {
     ///     send.send('a').unwrap();
     /// });
     ///
-    /// assert_eq!(
-    ///     recv.recv_timeout(Duration::from_millis(400)),
-    ///     Ok('a')
-    /// );
+    /// assert_eq!(recv.recv_timeout(Duration::from_millis(400)), Ok('a'));
     /// ```
     ///
     /// Receiving an error upon reaching timeout:
     ///
     /// ```no_run
+    /// use std::sync::mpsc;
     /// use std::thread;
     /// use std::time::Duration;
-    /// use std::sync::mpsc;
     ///
     /// let (send, recv) = mpsc::channel();
     ///
@@ -1261,10 +1258,7 @@ impl<T> Receiver<T> {
     ///     send.send('a').unwrap();
     /// });
     ///
-    /// assert_eq!(
-    ///     recv.recv_timeout(Duration::from_millis(400)),
-    ///     Err(mpsc::RecvTimeoutError::Timeout)
-    /// );
+    /// assert_eq!(recv.recv_timeout(Duration::from_millis(400)), Err(mpsc::RecvTimeoutError::Timeout));
     /// ```
     #[stable(feature = "mpsc_recv_timeout", since = "1.12.0")]
     pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
@@ -1301,9 +1295,9 @@ impl<T> Receiver<T> {
     ///
     /// ```no_run
     /// #![feature(deadline_api)]
+    /// use std::sync::mpsc;
     /// use std::thread;
     /// use std::time::{Duration, Instant};
-    /// use std::sync::mpsc;
     ///
     /// let (send, recv) = mpsc::channel();
     ///
@@ -1311,19 +1305,16 @@ impl<T> Receiver<T> {
     ///     send.send('a').unwrap();
     /// });
     ///
-    /// assert_eq!(
-    ///     recv.recv_deadline(Instant::now() + Duration::from_millis(400)),
-    ///     Ok('a')
-    /// );
+    /// assert_eq!(recv.recv_deadline(Instant::now() + Duration::from_millis(400)), Ok('a'));
     /// ```
     ///
     /// Receiving an error upon reaching deadline:
     ///
     /// ```no_run
     /// #![feature(deadline_api)]
+    /// use std::sync::mpsc;
     /// use std::thread;
     /// use std::time::{Duration, Instant};
-    /// use std::sync::mpsc;
     ///
     /// let (send, recv) = mpsc::channel();
     ///

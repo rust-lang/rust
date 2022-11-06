@@ -71,8 +71,8 @@
 //! Feel free to [skip to where the theoretical discussion continues](#drop-guarantee).
 //!
 //! ```rust
-//! use std::pin::Pin;
 //! use std::marker::PhantomPinned;
+//! use std::pin::Pin;
 //! use std::ptr::NonNull;
 //!
 //! // This is a self-referential struct because the slice field points to the data field.
@@ -187,7 +187,7 @@
 //!     fn drop(&mut self) {
 //!         // `new_unchecked` is okay because we know this value is never used
 //!         // again after being dropped.
-//!         inner_drop(unsafe { Pin::new_unchecked(self)});
+//!         inner_drop(unsafe { Pin::new_unchecked(self) });
 //!         fn inner_drop(this: Pin<&mut Type>) {
 //!             // Actual drop code goes here.
 //!         }
@@ -1003,12 +1003,12 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// };
 ///
 /// fn generator_fn() -> impl Generator<Yield = usize, Return = ()> /* not Unpin */ {
-///  // Allow generator to be self-referential (not `Unpin`)
-///  // vvvvvv        so that locals can cross yield points.
+///     // Allow generator to be self-referential (not `Unpin`)
+///     // vvvvvv        so that locals can cross yield points.
 ///     static || {
 ///         let foo = String::from("foo");
 ///         let foo_ref = &foo; // ------+
-///         yield 0;                  // | <- crosses yield point!
+///         yield 0; // | <- crosses yield point!
 ///         println!("{foo_ref}"); // <--+
 ///         yield foo.len();
 ///     }
@@ -1017,16 +1017,16 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// fn main() {
 ///     let mut generator = pin!(generator_fn());
 ///     match generator.as_mut().resume(()) {
-///         GeneratorState::Yielded(0) => {},
+///         GeneratorState::Yielded(0) => {}
 ///         _ => unreachable!(),
 ///     }
 ///     match generator.as_mut().resume(()) {
-///         GeneratorState::Yielded(3) => {},
+///         GeneratorState::Yielded(3) => {}
 ///         _ => unreachable!(),
 ///     }
 ///     match generator.resume(()) {
 ///         GeneratorState::Yielded(_) => unreachable!(),
-///         GeneratorState::Complete(()) => {},
+///         GeneratorState::Complete(()) => {}
 ///     }
 /// }
 /// ```
@@ -1089,11 +1089,16 @@ pub macro pin($value:expr $(,)?) {
     // review such a hypothetical macro (that any user-code could define):
     //
     // ```rust
-    // macro_rules! pin {( $value:expr ) => (
-    //     match &mut { $value } { at_value => unsafe { // Do not wrap `$value` in an `unsafe` block.
-    //         $crate::pin::Pin::<&mut _>::new_unchecked(at_value)
-    //     }}
-    // )}
+    // macro_rules! pin {
+    //     ( $value:expr ) => {
+    //         match &mut { $value } {
+    //             at_value => unsafe {
+    //                 // Do not wrap `$value` in an `unsafe` block.
+    //                 $crate::pin::Pin::<&mut _>::new_unchecked(at_value)
+    //             },
+    //         }
+    //     };
+    // }
     // ```
     //
     // Safety:

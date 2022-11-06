@@ -101,7 +101,7 @@ fn div_rem_upto_16<'a>(
 pub fn format_shortest<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
+) -> (/* digits */ &'a [u8], /* exp */ i16) {
     // the number `v` to format is known to be:
     // - equal to `mant * 2^exp`;
     // - preceded by `(mant - 2 * minus) * 2^exp` in the original type; and
@@ -262,7 +262,7 @@ pub fn format_exact<'a>(
     d: &Decoded,
     buf: &'a mut [MaybeUninit<u8>],
     limit: i16,
-) -> (/*digits*/ &'a [u8], /*exp*/ i16) {
+) -> (/* digits */ &'a [u8], /* exp */ i16) {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);

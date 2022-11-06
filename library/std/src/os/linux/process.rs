@@ -24,17 +24,12 @@ struct FileDesc;
 /// Example:
 /// ```no_run
 /// #![feature(linux_pidfd)]
-/// use std::os::linux::process::{CommandExt, ChildExt};
+/// use std::os::linux::process::{ChildExt, CommandExt};
 /// use std::process::Command;
 ///
-/// let mut child = Command::new("echo")
-///     .create_pidfd(true)
-///     .spawn()
-///     .expect("Failed to spawn child");
+/// let mut child = Command::new("echo").create_pidfd(true).spawn().expect("Failed to spawn child");
 ///
-/// let pidfd = child
-///     .take_pidfd()
-///     .expect("Failed to retrieve pidfd");
+/// let pidfd = child.take_pidfd().expect("Failed to retrieve pidfd");
 ///
 /// // The file descriptor will be closed when `pidfd` is dropped.
 /// ```

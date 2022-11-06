@@ -78,9 +78,7 @@ mod prim_bool {}
 /// ```
 /// #![feature(never_type)]
 /// # fn foo() -> u32 {
-/// let x: ! = {
-///     return 123
-/// };
+/// let x: ! = { return 123 };
 /// # }
 /// ```
 ///
@@ -215,11 +213,7 @@ mod prim_bool {}
 /// use std::ops::Add;
 ///
 /// fn foo() -> impl Add<u32> {
-///     if true {
-///         unimplemented!()
-///     } else {
-///         0
-///     }
+///     if true { unimplemented!() } else { 0 }
 /// }
 /// ```
 ///
@@ -266,11 +260,9 @@ mod prim_bool {}
 /// Since `!` has no values, it has no default value either. It's true that we could write an
 /// `impl` for this which simply panics, but the same is true for any type (we could `impl
 /// Default` for (eg.) [`File`] by just making [`default()`] panic.)
-///
 #[doc = concat!("[`File`]: ", include_str!("../primitive_docs/fs_file.md"))]
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
-///
 #[unstable(feature = "never_type", issue = "35121")]
 mod prim_never {}
 
@@ -322,8 +314,8 @@ mod prim_never {}
 /// ```
 /// let c: char = 'a';
 /// match c {
-///     '\0' ..= '\u{D7FF}' => false,
-///     '\u{E000}' ..= '\u{10FFFF}' => true,
+///     '\0'..='\u{D7FF}' => false,
+///     '\u{E000}'..='\u{10FFFF}' => true,
 /// };
 /// ```
 ///
@@ -354,7 +346,6 @@ mod prim_never {}
 /// // five elements times one byte per element
 /// assert_eq!(5, s.len() * std::mem::size_of::<u8>());
 /// ```
-///
 #[doc = concat!("[`String`]: ", include_str!("../primitive_docs/string_string.md"))]
 ///
 /// As always, remember that a human intuition for 'character' might not map to
@@ -428,14 +419,11 @@ mod prim_char {}
 ///     1i64;
 /// }
 ///
-/// let is_i64 = {
-///     returns_i64()
-/// };
+/// let is_i64 = { returns_i64() };
 /// let is_unit = {
 ///     returns_i64();
 /// };
 /// ```
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_unit {}
 
@@ -649,7 +637,7 @@ mod prim_pointer {}
 /// ```
 /// let array: [i32; 3] = [0; 3];
 ///
-/// for x in &array { }
+/// for x in &array {}
 /// ```
 ///
 /// You can use `<ArrayType>::try_from(slice)` or `slice.try_into()` to get an array from
@@ -664,7 +652,8 @@ mod prim_pointer {}
 /// You can use a [slice pattern] to move elements out of an array:
 ///
 /// ```
-/// fn move_away(_: String) { /* Do interesting things. */ }
+/// fn move_away(_: String) { /* Do interesting things. */
+/// }
 ///
 /// let [john, roa] = ["John".to_string(), "Roa".to_string()];
 /// move_away(john);
@@ -979,7 +968,6 @@ mod prim_str {}
 /// sequentially until the first non-equal set is found.
 ///
 /// For more about tuples, see [the book](../book/ch03-02-data-types.html#the-tuple-type).
-///
 // Hardcoded anchor in src/librustdoc/html/format.rs
 // linked to as `#trait-implementations-1`
 /// # Trait implementations
@@ -1050,7 +1038,6 @@ mod prim_str {}
 /// assert_eq!(x, 4);
 /// assert_eq!(y, 5);
 /// ```
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_tuple {}
 
@@ -1486,7 +1473,7 @@ mod prim_ref {}
 /// You cast function pointers directly to integers:
 ///
 /// ```rust
-/// let fnptr: fn(i32) -> i32 = |x| x+2;
+/// let fnptr: fn(i32) -> i32 = |x| x + 2;
 /// let fnptr_addr = fnptr as usize;
 /// ```
 ///

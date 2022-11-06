@@ -260,7 +260,7 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 /// let key = "HOME";
 /// match env::var_os(key) {
 ///     Some(val) => println!("{key}: {val:?}"),
-///     None => println!("{key} is not defined in the environment.")
+///     None => println!("{key} is not defined in the environment."),
 /// }
 /// ```
 #[must_use]
@@ -428,7 +428,7 @@ pub struct SplitPaths<'a> {
 ///             println!("'{}'", path.display());
 ///         }
 ///     }
-///     None => println!("{key} is not defined in the environment.")
+///     None => println!("{key} is not defined in the environment."),
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -676,8 +676,7 @@ pub fn temp_dir() -> PathBuf {
 /// use std::env;
 ///
 /// match env::current_exe() {
-///     Ok(exe_path) => println!("Path of this executable is: {}",
-///                              exe_path.display()),
+///     Ok(exe_path) => println!("Path of this executable is: {}", exe_path.display()),
 ///     Err(e) => println!("failed to get current exe path: {e}"),
 /// };
 /// ```

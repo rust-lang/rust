@@ -37,8 +37,8 @@ pub trait FileExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
     /// use std::fs::File;
+    /// use std::io;
     /// use std::os::unix::prelude::FileExt;
     ///
     /// fn main() -> io::Result<()> {
@@ -85,8 +85,8 @@ pub trait FileExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
     /// use std::fs::File;
+    /// use std::io;
     /// use std::os::unix::prelude::FileExt;
     ///
     /// fn main() -> io::Result<()> {
@@ -376,8 +376,8 @@ pub trait MetadataExt {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
     /// use std::fs;
+    /// use std::io;
     /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
@@ -394,8 +394,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -411,16 +411,16 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
     ///     let mode = meta.mode();
-    ///     let user_has_write_access      = mode & 0o200;
+    ///     let user_has_write_access = mode & 0o200;
     ///     let user_has_read_write_access = mode & 0o600;
-    ///     let group_has_read_access      = mode & 0o040;
-    ///     let others_have_exec_access    = mode & 0o001;
+    ///     let group_has_read_access = mode & 0o040;
+    ///     let others_have_exec_access = mode & 0o001;
     ///     Ok(())
     /// }
     /// ```
@@ -432,8 +432,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -449,8 +449,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -466,8 +466,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -483,8 +483,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -500,8 +500,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -517,8 +517,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -536,8 +536,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -553,8 +553,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -572,8 +572,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -589,8 +589,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -608,8 +608,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -625,8 +625,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -644,8 +644,8 @@ pub trait MetadataExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::MetadataExt;
     /// use std::io;
+    /// use std::os::unix::fs::MetadataExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -728,8 +728,8 @@ pub trait FileTypeExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::FileTypeExt;
     /// use std::io;
+    /// use std::os::unix::fs::FileTypeExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("block_device_file")?;
@@ -746,8 +746,8 @@ pub trait FileTypeExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::FileTypeExt;
     /// use std::io;
+    /// use std::os::unix::fs::FileTypeExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("char_device_file")?;
@@ -764,8 +764,8 @@ pub trait FileTypeExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::FileTypeExt;
     /// use std::io;
+    /// use std::os::unix::fs::FileTypeExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("fifo_file")?;
@@ -782,8 +782,8 @@ pub trait FileTypeExt {
     ///
     /// ```no_run
     /// use std::fs;
-    /// use std::os::unix::fs::FileTypeExt;
     /// use std::io;
+    /// use std::os::unix::fs::FileTypeExt;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("unix.socket")?;

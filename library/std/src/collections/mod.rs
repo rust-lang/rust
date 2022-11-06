@@ -199,7 +199,7 @@
 //! ```
 //! let vec = vec![1, 2, 3, 4];
 //! for x in vec.iter() {
-//!    println!("vec contained {x:?}");
+//!     println!("vec contained {x:?}");
 //! }
 //! ```
 //!
@@ -209,7 +209,7 @@
 //! ```
 //! let mut vec = vec![1, 2, 3, 4];
 //! for x in vec.iter_mut() {
-//!    *x += 1;
+//!     *x += 1;
 //! }
 //! ```
 //!
@@ -246,7 +246,7 @@
 //! ```
 //! let vec = vec![1, 2, 3, 4];
 //! for x in vec.iter().rev() {
-//!    println!("vec contained {x:?}");
+//!     println!("vec contained {x:?}");
 //! }
 //! ```
 //!
@@ -320,7 +320,9 @@
 //! use std::collections::btree_map::BTreeMap;
 //!
 //! // A client of the bar. They have a blood alcohol level.
-//! struct Person { blood_alcohol: f32 }
+//! struct Person {
+//!     blood_alcohol: f32,
+//! }
 //!
 //! // All the orders made to the bar, by client ID.
 //! let orders = vec![1, 2, 1, 2, 3, 4, 1, 2, 2, 3, 4, 1, 1, 1];
@@ -365,22 +367,30 @@
 //!
 //! // we will compare `Foo`s by their `a` value only.
 //! impl PartialEq for Foo {
-//!     fn eq(&self, other: &Self) -> bool { self.a == other.a }
+//!     fn eq(&self, other: &Self) -> bool {
+//!         self.a == other.a
+//!     }
 //! }
 //!
 //! impl Eq for Foo {}
 //!
 //! // we will hash `Foo`s by their `a` value only.
 //! impl Hash for Foo {
-//!     fn hash<H: Hasher>(&self, h: &mut H) { self.a.hash(h); }
+//!     fn hash<H: Hasher>(&self, h: &mut H) {
+//!         self.a.hash(h);
+//!     }
 //! }
 //!
 //! impl PartialOrd for Foo {
-//!     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { self.a.partial_cmp(&other.a) }
+//!     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+//!         self.a.partial_cmp(&other.a)
+//!     }
 //! }
 //!
 //! impl Ord for Foo {
-//!     fn cmp(&self, other: &Self) -> Ordering { self.a.cmp(&other.a) }
+//!     fn cmp(&self, other: &Self) -> Ordering {
+//!         self.a.cmp(&other.a)
+//!     }
 //! }
 //!
 //! let mut map = BTreeMap::new();

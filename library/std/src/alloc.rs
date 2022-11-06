@@ -14,7 +14,7 @@
 //! to route all default allocation requests to a custom object.
 //!
 //! ```rust
-//! use std::alloc::{GlobalAlloc, System, Layout};
+//! use std::alloc::{GlobalAlloc, Layout, System};
 //!
 //! struct MyAllocator;
 //!
@@ -92,7 +92,7 @@ pub use alloc_crate::alloc::*;
 /// keeping track of the number of all bytes allocated:
 ///
 /// ```rust
-/// use std::alloc::{System, GlobalAlloc, Layout};
+/// use std::alloc::{GlobalAlloc, Layout, System};
 /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 ///
 /// struct Counter;
@@ -305,10 +305,10 @@ static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 /// ```
 /// #![feature(alloc_error_hook)]
 ///
-/// use std::alloc::{Layout, set_alloc_error_hook};
+/// use std::alloc::{set_alloc_error_hook, Layout};
 ///
 /// fn custom_alloc_error_hook(layout: Layout) {
-///    panic!("memory allocation of {} bytes failed", layout.size());
+///     panic!("memory allocation of {} bytes failed", layout.size());
 /// }
 ///
 /// set_alloc_error_hook(custom_alloc_error_hook);

@@ -104,23 +104,13 @@
 //!
 //! fn main() {
 //!     // Create a reference-counted `Owner`.
-//!     let gadget_owner: Rc<Owner> = Rc::new(
-//!         Owner {
-//!             name: "Gadget Man".to_string(),
-//!         }
-//!     );
+//!     let gadget_owner: Rc<Owner> = Rc::new(Owner { name: "Gadget Man".to_string() });
 //!
 //!     // Create `Gadget`s belonging to `gadget_owner`. Cloning the `Rc<Owner>`
 //!     // gives us a new pointer to the same `Owner` allocation, incrementing
 //!     // the reference count in the process.
-//!     let gadget1 = Gadget {
-//!         id: 1,
-//!         owner: Rc::clone(&gadget_owner),
-//!     };
-//!     let gadget2 = Gadget {
-//!         id: 2,
-//!         owner: Rc::clone(&gadget_owner),
-//!     };
+//!     let gadget1 = Gadget { id: 1, owner: Rc::clone(&gadget_owner) };
+//!     let gadget2 = Gadget { id: 2, owner: Rc::clone(&gadget_owner) };
 //!
 //!     // Dispose of our local variable `gadget_owner`.
 //!     drop(gadget_owner);
@@ -157,9 +147,9 @@
 //! [`RefCell`] enforces Rust's borrowing rules at runtime.
 //!
 //! ```
+//! use std::cell::RefCell;
 //! use std::rc::Rc;
 //! use std::rc::Weak;
-//! use std::cell::RefCell;
 //!
 //! struct Owner {
 //!     name: String,
@@ -177,26 +167,12 @@
 //!     // Create a reference-counted `Owner`. Note that we've put the `Owner`'s
 //!     // vector of `Gadget`s inside a `RefCell` so that we can mutate it through
 //!     // a shared reference.
-//!     let gadget_owner: Rc<Owner> = Rc::new(
-//!         Owner {
-//!             name: "Gadget Man".to_string(),
-//!             gadgets: RefCell::new(vec![]),
-//!         }
-//!     );
+//!     let gadget_owner: Rc<Owner> =
+//!         Rc::new(Owner { name: "Gadget Man".to_string(), gadgets: RefCell::new(vec![]) });
 //!
 //!     // Create `Gadget`s belonging to `gadget_owner`, as before.
-//!     let gadget1 = Rc::new(
-//!         Gadget {
-//!             id: 1,
-//!             owner: Rc::clone(&gadget_owner),
-//!         }
-//!     );
-//!     let gadget2 = Rc::new(
-//!         Gadget {
-//!             id: 2,
-//!             owner: Rc::clone(&gadget_owner),
-//!         }
-//!     );
+//!     let gadget1 = Rc::new(Gadget { id: 1, owner: Rc::clone(&gadget_owner) });
+//!     let gadget2 = Rc::new(Gadget { id: 2, owner: Rc::clone(&gadget_owner) });
 //!
 //!     // Add the `Gadget`s to their `Owner`.
 //!     {
@@ -209,7 +185,6 @@
 //!
 //!     // Iterate over our `Gadget`s, printing their details out.
 //!     for gadget_weak in gadget_owner.gadgets.borrow().iter() {
-//!
 //!         // `gadget_weak` is a `Weak<Gadget>`. Since `Weak` pointers can't
 //!         // guarantee the allocation still exists, we need to call
 //!         // `upgrade`, which returns an `Option<Rc<Gadget>>`.
@@ -1095,9 +1070,7 @@ impl<T: ?Sized> Rc<T> {
     /// use std::rc::Rc;
     ///
     /// let mut x = Rc::new(String::new());
-    /// unsafe {
-    ///     Rc::get_mut_unchecked(&mut x).push_str("foo")
-    /// }
+    /// unsafe { Rc::get_mut_unchecked(&mut x).push_str("foo") }
     /// assert_eq!(*x, "foo");
     /// ```
     #[inline]
@@ -1154,11 +1127,11 @@ impl<T: Clone> Rc<T> {
     ///
     /// let mut data = Rc::new(5);
     ///
-    /// *Rc::make_mut(&mut data) += 1;         // Won't clone anything
+    /// *Rc::make_mut(&mut data) += 1; // Won't clone anything
     /// let mut other_data = Rc::clone(&data); // Won't clone inner data
-    /// *Rc::make_mut(&mut data) += 1;         // Clones inner data
-    /// *Rc::make_mut(&mut data) += 1;         // Won't clone anything
-    /// *Rc::make_mut(&mut other_data) *= 2;   // Won't clone anything
+    /// *Rc::make_mut(&mut data) += 1; // Clones inner data
+    /// *Rc::make_mut(&mut data) += 1; // Won't clone anything
+    /// *Rc::make_mut(&mut other_data) *= 2; // Won't clone anything
     ///
     /// // Now `data` and `other_data` point to different allocations.
     /// assert_eq!(*data, 8);
@@ -1545,11 +1518,11 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     ///     }
     /// }
     ///
-    /// let foo  = Rc::new(Foo);
+    /// let foo = Rc::new(Foo);
     /// let foo2 = Rc::clone(&foo);
     ///
-    /// drop(foo);    // Doesn't print anything
-    /// drop(foo2);   // Prints "dropped!"
+    /// drop(foo); // Doesn't print anything
+    /// drop(foo2); // Prints "dropped!"
     /// ```
     fn drop(&mut self) {
         unsafe {
@@ -1719,8 +1692,8 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::rc::Rc;
     /// use std::cmp::Ordering;
+    /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
     ///
@@ -1813,8 +1786,8 @@ impl<T: ?Sized + Ord> Ord for Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::rc::Rc;
     /// use std::cmp::Ordering;
+    /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
     ///
@@ -2058,9 +2031,11 @@ impl<T> iter::FromIterator<T> for Rc<[T]> {
     ///
     /// ```rust
     /// # use std::rc::Rc;
-    /// let evens: Rc<[u8]> = (0..10).filter(|&x| x % 2 == 0)
+    /// let evens: Rc<[u8]> = (0..10)
+    ///     .filter(|&x| x % 2 == 0)
     ///     .collect::<Vec<_>>() // The first set of allocations happens here.
     ///     .into(); // A second allocation for `Rc<[T]>` happens here.
+    /// //
     /// # assert_eq!(&*evens, &[0, 2, 4, 6, 8]);
     /// ```
     ///
@@ -2075,6 +2050,7 @@ impl<T> iter::FromIterator<T> for Rc<[T]> {
     /// ```rust
     /// # use std::rc::Rc;
     /// let evens: Rc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
+    /// //
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
     fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
@@ -2206,8 +2182,8 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::rc::Rc;
     /// use std::ptr;
+    /// use std::rc::Rc;
     ///
     /// let strong = Rc::new("hello".to_owned());
     /// let weak = Rc::downgrade(&strong);
@@ -2487,8 +2463,8 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Weak<T> {
     /// let weak_foo = Rc::downgrade(&foo);
     /// let other_weak_foo = Weak::clone(&weak_foo);
     ///
-    /// drop(weak_foo);   // Doesn't print anything
-    /// drop(foo);        // Prints "dropped!"
+    /// drop(weak_foo); // Doesn't print anything
+    /// drop(foo); // Prints "dropped!"
     ///
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```

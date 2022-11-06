@@ -157,10 +157,8 @@ where
     ///
     /// ```
     /// let v = vec![1, 2];
-    /// let res: Result<i32, &'static str> = v.iter().map(|&x: &i32|
-    ///     if x < 0 { Err("Negative element found") }
-    ///     else { Ok(x) }
-    /// ).sum();
+    /// let res: Result<i32, &'static str> =
+    ///     v.iter().map(|&x: &i32| if x < 0 { Err("Negative element found") } else { Ok(x) }).sum();
     /// assert_eq!(res, Ok(3));
     /// ```
     fn sum<I>(iter: I) -> Result<T, E>

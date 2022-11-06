@@ -15,9 +15,9 @@
 //! [`File`]s:
 //!
 //! ```no_run
+//! use std::fs::File;
 //! use std::io;
 //! use std::io::prelude::*;
-//! use std::fs::File;
 //!
 //! fn main() -> io::Result<()> {
 //!     let mut f = File::open("foo.txt")?;
@@ -43,10 +43,10 @@
 //! coming from:
 //!
 //! ```no_run
+//! use std::fs::File;
 //! use std::io;
 //! use std::io::prelude::*;
 //! use std::io::SeekFrom;
-//! use std::fs::File;
 //!
 //! fn main() -> io::Result<()> {
 //!     let mut f = File::open("foo.txt")?;
@@ -78,10 +78,10 @@
 //! methods to any reader:
 //!
 //! ```no_run
+//! use std::fs::File;
 //! use std::io;
 //! use std::io::prelude::*;
 //! use std::io::BufReader;
-//! use std::fs::File;
 //!
 //! fn main() -> io::Result<()> {
 //!     let f = File::open("foo.txt")?;
@@ -100,10 +100,10 @@
 //! to [`write`][`Write::write`]:
 //!
 //! ```no_run
+//! use std::fs::File;
 //! use std::io;
 //! use std::io::prelude::*;
 //! use std::io::BufWriter;
-//! use std::fs::File;
 //!
 //! fn main() -> io::Result<()> {
 //!     let f = File::create("foo.txt")?;
@@ -112,7 +112,6 @@
 //!
 //!         // write a byte to the buffer
 //!         writer.write(&[42])?;
-//!
 //!     } // the buffer is flushed once writer goes out of scope
 //!
 //!     Ok(())
@@ -170,10 +169,10 @@
 //! lines:
 //!
 //! ```no_run
+//! use std::fs::File;
 //! use std::io;
 //! use std::io::prelude::*;
 //! use std::io::BufReader;
-//! use std::fs::File;
 //!
 //! fn main() -> io::Result<()> {
 //!     let f = File::open("foo.txt")?;
@@ -500,9 +499,9 @@ where
 /// [`File`]s implement `Read`:
 ///
 /// ```no_run
+/// use std::fs::File;
 /// use std::io;
 /// use std::io::prelude::*;
-/// use std::fs::File;
 ///
 /// fn main() -> io::Result<()> {
 ///     let mut f = File::open("foo.txt")?;
@@ -614,9 +613,9 @@ pub trait Read {
     /// [`TcpStream`]: crate::net::TcpStream
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut f = File::open("foo.txt")?;
@@ -687,9 +686,9 @@ pub trait Read {
     /// [`File`]: crate::fs::File
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut f = File::open("foo.txt")?;
@@ -731,9 +730,9 @@ pub trait Read {
     /// [`File`]: crate::fs::File
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut f = File::open("foo.txt")?;
@@ -790,9 +789,9 @@ pub trait Read {
     /// [`File`]: crate::fs::File
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut f = File::open("foo.txt")?;
@@ -853,9 +852,9 @@ pub trait Read {
     /// [`File`]: crate::fs::File
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::Read;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut f = File::open("foo.txt")?;
@@ -867,7 +866,6 @@ pub trait Read {
     ///
     ///         // read at most 5 bytes
     ///         reference.take(5).read_to_end(&mut buffer)?;
-    ///
     ///     } // drop our &mut reference so we can use f again
     ///
     ///     // original file still usable, read the rest
@@ -904,10 +902,10 @@ pub trait Read {
     /// [io::Error]: self::Error "io::Error"
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
     /// use std::io::BufReader;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let f = BufReader::new(File::open("foo.txt")?);
@@ -939,9 +937,9 @@ pub trait Read {
     /// [`File`]: crate::fs::File
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let f1 = File::open("foo.txt")?;
@@ -980,9 +978,9 @@ pub trait Read {
     /// [`read()`]: Read::read
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let f = File::open("foo.txt")?;
@@ -1356,8 +1354,8 @@ impl<'a> Deref for IoSlice<'a> {
 /// # Examples
 ///
 /// ```no_run
-/// use std::io::prelude::*;
 /// use std::fs::File;
+/// use std::io::prelude::*;
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let data = b"some bytes";
@@ -1412,8 +1410,8 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::prelude::*;
     /// use std::fs::File;
+    /// use std::io::prelude::*;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut buffer = File::create("foo.txt")?;
@@ -1440,9 +1438,9 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::IoSlice;
-    /// use std::io::prelude::*;
     /// use std::fs::File;
+    /// use std::io::prelude::*;
+    /// use std::io::IoSlice;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let data1 = [1; 8];
@@ -1490,9 +1488,9 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io::prelude::*;
     /// use std::io::BufWriter;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut buffer = BufWriter::new(File::create("foo.txt")?);
@@ -1526,8 +1524,8 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::prelude::*;
     /// use std::fs::File;
+    /// use std::io::prelude::*;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut buffer = File::create("foo.txt")?;
@@ -1586,14 +1584,10 @@ pub trait Write {
     /// #![feature(write_all_vectored)]
     /// # fn main() -> std::io::Result<()> {
     ///
-    /// use std::io::{Write, IoSlice};
+    /// use std::io::{IoSlice, Write};
     ///
     /// let mut writer = Vec::new();
-    /// let bufs = &mut [
-    ///     IoSlice::new(&[1]),
-    ///     IoSlice::new(&[2, 3]),
-    ///     IoSlice::new(&[4, 5, 6]),
-    /// ];
+    /// let bufs = &mut [IoSlice::new(&[1]), IoSlice::new(&[2, 3]), IoSlice::new(&[4, 5, 6])];
     ///
     /// writer.write_all_vectored(bufs)?;
     /// // Note: the contents of `bufs` is now undefined, see the Notes section.
@@ -1644,8 +1638,8 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::prelude::*;
     /// use std::fs::File;
+    /// use std::io::prelude::*;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut buffer = File::create("foo.txt")?;
@@ -1700,8 +1694,8 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::Write;
     /// use std::fs::File;
+    /// use std::io::Write;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut buffer = File::create("foo.txt")?;
@@ -1735,9 +1729,9 @@ pub trait Write {
 /// [`File`]: crate::fs::File
 ///
 /// ```no_run
+/// use std::fs::File;
 /// use std::io;
 /// use std::io::prelude::*;
-/// use std::fs::File;
 /// use std::io::SeekFrom;
 ///
 /// fn main() -> io::Result<()> {
@@ -1778,14 +1772,10 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// use std::io::{Read, Seek, Write};
     /// use std::fs::OpenOptions;
+    /// use std::io::{Read, Seek, Write};
     ///
-    /// let mut f = OpenOptions::new()
-    ///     .write(true)
-    ///     .read(true)
-    ///     .create(true)
-    ///     .open("foo.txt").unwrap();
+    /// let mut f = OpenOptions::new().write(true).read(true).create(true).open("foo.txt").unwrap();
     ///
     /// let hello = "Hello!\n";
     /// write!(f, "{hello}").unwrap();
@@ -1823,8 +1813,8 @@ pub trait Seek {
     /// ```no_run
     /// #![feature(seek_stream_len)]
     /// use std::{
-    ///     io::{self, Seek},
     ///     fs::File,
+    ///     io::{self, Seek},
     /// };
     ///
     /// fn main() -> io::Result<()> {
@@ -1857,8 +1847,8 @@ pub trait Seek {
     ///
     /// ```no_run
     /// use std::{
-    ///     io::{self, BufRead, BufReader, Seek},
     ///     fs::File,
+    ///     io::{self, BufRead, BufReader, Seek},
     /// };
     ///
     /// fn main() -> io::Result<()> {
@@ -1965,9 +1955,9 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
 /// [`lines`]: BufRead::lines
 ///
 /// ```no_run
-/// use std::io::{self, BufReader};
-/// use std::io::prelude::*;
 /// use std::fs::File;
+/// use std::io::prelude::*;
+/// use std::io::{self, BufReader};
 ///
 /// fn main() -> io::Result<()> {
 ///     let f = File::open("foo.txt")?;
@@ -2112,22 +2102,19 @@ pub trait BufRead: Read {
     /// let mut buf = vec![];
     ///
     /// // cursor is at 'l'
-    /// let num_bytes = cursor.read_until(b'-', &mut buf)
-    ///     .expect("reading from cursor won't fail");
+    /// let num_bytes = cursor.read_until(b'-', &mut buf).expect("reading from cursor won't fail");
     /// assert_eq!(num_bytes, 6);
     /// assert_eq!(buf, b"lorem-");
     /// buf.clear();
     ///
     /// // cursor is at 'i'
-    /// let num_bytes = cursor.read_until(b'-', &mut buf)
-    ///     .expect("reading from cursor won't fail");
+    /// let num_bytes = cursor.read_until(b'-', &mut buf).expect("reading from cursor won't fail");
     /// assert_eq!(num_bytes, 5);
     /// assert_eq!(buf, b"ipsum");
     /// buf.clear();
     ///
     /// // cursor is at EOF
-    /// let num_bytes = cursor.read_until(b'-', &mut buf)
-    ///     .expect("reading from cursor won't fail");
+    /// let num_bytes = cursor.read_until(b'-', &mut buf).expect("reading from cursor won't fail");
     /// assert_eq!(num_bytes, 0);
     /// assert_eq!(buf, b"");
     /// ```
@@ -2176,22 +2163,19 @@ pub trait BufRead: Read {
     /// let mut buf = String::new();
     ///
     /// // cursor is at 'f'
-    /// let num_bytes = cursor.read_line(&mut buf)
-    ///     .expect("reading from cursor won't fail");
+    /// let num_bytes = cursor.read_line(&mut buf).expect("reading from cursor won't fail");
     /// assert_eq!(num_bytes, 4);
     /// assert_eq!(buf, "foo\n");
     /// buf.clear();
     ///
     /// // cursor is at 'b'
-    /// let num_bytes = cursor.read_line(&mut buf)
-    ///     .expect("reading from cursor won't fail");
+    /// let num_bytes = cursor.read_line(&mut buf).expect("reading from cursor won't fail");
     /// assert_eq!(num_bytes, 3);
     /// assert_eq!(buf, "bar");
     /// buf.clear();
     ///
     /// // cursor is at EOF
-    /// let num_bytes = cursor.read_line(&mut buf)
-    ///     .expect("reading from cursor won't fail");
+    /// let num_bytes = cursor.read_line(&mut buf).expect("reading from cursor won't fail");
     /// assert_eq!(num_bytes, 0);
     /// assert_eq!(buf, "");
     /// ```
@@ -2299,9 +2283,9 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut foo_file = File::open("foo.txt")?;
@@ -2322,9 +2306,9 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut foo_file = File::open("foo.txt")?;
@@ -2349,9 +2333,9 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut foo_file = File::open("foo.txt")?;
@@ -2450,9 +2434,9 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let f = File::open("foo.txt")?;
@@ -2477,9 +2461,9 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let f = File::open("foo.txt")?;
@@ -2502,9 +2486,9 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut file = File::open("foo.txt")?;
@@ -2527,9 +2511,9 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut file = File::open("foo.txt")?;
@@ -2556,9 +2540,9 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::fs::File;
     /// use std::io;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut file = File::open("foo.txt")?;

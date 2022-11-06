@@ -246,14 +246,10 @@ impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
     ///
-    /// map.entry("poneyland")
-    ///    .and_modify(|e| { *e += 1 })
-    ///    .or_insert(42);
+    /// map.entry("poneyland").and_modify(|e| *e += 1).or_insert(42);
     /// assert_eq!(map["poneyland"], 42);
     ///
-    /// map.entry("poneyland")
-    ///    .and_modify(|e| { *e += 1 })
-    ///    .or_insert(42);
+    /// map.entry("poneyland").and_modify(|e| *e += 1).or_insert(42);
     /// assert_eq!(map["poneyland"], 43);
     /// ```
     #[stable(feature = "entry_and_modify", since = "1.26.0")]
@@ -316,8 +312,8 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::BTreeMap;
     /// use std::collections::btree_map::Entry;
+    /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
     ///
@@ -336,8 +332,8 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::BTreeMap;
     /// use std::collections::btree_map::Entry;
+    /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, u32> = BTreeMap::new();
     ///
@@ -406,8 +402,8 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::BTreeMap;
     /// use std::collections::btree_map::Entry;
+    /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -430,8 +426,8 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::BTreeMap;
     /// use std::collections::btree_map::Entry;
+    /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -456,8 +452,8 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::BTreeMap;
     /// use std::collections::btree_map::Entry;
+    /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -486,8 +482,8 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::BTreeMap;
     /// use std::collections::btree_map::Entry;
+    /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -510,8 +506,8 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::BTreeMap;
     /// use std::collections::btree_map::Entry;
+    /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
     /// map.entry("poneyland").or_insert(12);
@@ -531,8 +527,8 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::BTreeMap;
     /// use std::collections::btree_map::Entry;
+    /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
     /// map.entry("poneyland").or_insert(12);

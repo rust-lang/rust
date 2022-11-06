@@ -48,8 +48,12 @@ use crate::iter::{FusedIterator, TrustedLen};
 ///
 /// // From the zeroth to the third power of two:
 /// let mut curr = 1;
-/// let mut pow2 = iter::repeat_with(|| { let tmp = curr; curr *= 2; tmp })
-///                     .take(4);
+/// let mut pow2 = iter::repeat_with(|| {
+///     let tmp = curr;
+///     curr *= 2;
+///     tmp
+/// })
+/// .take(4);
 ///
 /// assert_eq!(Some(1), pow2.next());
 /// assert_eq!(Some(2), pow2.next());

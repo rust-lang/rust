@@ -218,23 +218,21 @@ impl Builder {
     /// thread::scope(|s| {
     ///     thread::Builder::new()
     ///         .name("first".to_string())
-    ///         .spawn_scoped(s, ||
-    ///     {
-    ///         println!("hello from the {:?} scoped thread", thread::current().name());
-    ///         // We can borrow `a` here.
-    ///         dbg!(&a);
-    ///     })
-    ///     .unwrap();
+    ///         .spawn_scoped(s, || {
+    ///             println!("hello from the {:?} scoped thread", thread::current().name());
+    ///             // We can borrow `a` here.
+    ///             dbg!(&a);
+    ///         })
+    ///         .unwrap();
     ///     thread::Builder::new()
     ///         .name("second".to_string())
-    ///         .spawn_scoped(s, ||
-    ///     {
-    ///         println!("hello from the {:?} scoped thread", thread::current().name());
-    ///         // We can even mutably borrow `x` here,
-    ///         // because no other threads are using it.
-    ///         x += a[0] + a[2];
-    ///     })
-    ///     .unwrap();
+    ///         .spawn_scoped(s, || {
+    ///             println!("hello from the {:?} scoped thread", thread::current().name());
+    ///             // We can even mutably borrow `x` here,
+    ///             // because no other threads are using it.
+    ///             x += a[0] + a[2];
+    ///         })
+    ///         .unwrap();
     ///     println!("hello from the main thread");
     /// });
     ///

@@ -72,8 +72,8 @@ pub use crate::intrinsics::transmute;
 /// the space taken by the variable but never close the underlying system resource:
 ///
 /// ```no_run
-/// use std::mem;
 /// use std::fs::File;
+/// use std::mem;
 ///
 /// let file = File::open("foo.txt").unwrap();
 /// mem::forget(file);
@@ -95,7 +95,7 @@ pub use crate::intrinsics::transmute;
 /// // Build a `String` using the contents of `v`
 /// let s = unsafe { String::from_raw_parts(v.as_mut_ptr(), v.len(), v.capacity()) };
 /// // leak `v` because its memory is now managed by `s`
-/// mem::forget(v);  // ERROR - v is invalid and must not be passed to a function
+/// mem::forget(v); // ERROR - v is invalid and must not be passed to a function
 /// assert_eq!(s, "Az");
 /// // `s` is implicitly dropped and its memory deallocated.
 /// ```
@@ -247,7 +247,6 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// assert_eq!(12, mem::size_of::<[i32; 3]>());
 /// assert_eq!(0, mem::size_of::<[i32; 0]>());
 ///
-///
 /// // Pointer size equality
 /// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<*const i32>());
 /// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<Box<i32>>());
@@ -264,7 +263,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// struct FieldStruct {
 ///     first: u8,
 ///     second: u16,
-///     third: u8
+///     third: u8,
 /// }
 ///
 /// // The size of the first field is 1, so add 1 to the size. Size is 1.
@@ -288,7 +287,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// struct FieldStructOptimized {
 ///     first: u8,
 ///     third: u8,
-///     second: u16
+///     second: u16,
 /// }
 ///
 /// assert_eq!(4, mem::size_of::<FieldStructOptimized>());
@@ -297,7 +296,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// #[repr(C)]
 /// union ExampleUnion {
 ///     smaller: u8,
-///     larger: u16
+///     larger: u16,
 /// }
 ///
 /// assert_eq!(2, mem::size_of::<ExampleUnion>());
@@ -931,7 +930,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// This function is not magic; it is literally defined as
 ///
 /// ```
-/// pub fn drop<T>(_x: T) { }
+/// pub fn drop<T>(_x: T) {}
 /// ```
 ///
 /// Because `_x` is moved into the function, it is automatically dropped before
@@ -990,7 +989,9 @@ pub fn drop<T>(_x: T) {}
 ///
 /// This function is not magic; it is literally defined as
 /// ```
-/// pub fn copy<T: Copy>(x: &T) -> T { *x }
+/// pub fn copy<T: Copy>(x: &T) -> T {
+///     *x
+/// }
 /// ```
 ///
 /// It is useful when you want to pass a function pointer to a combinator, rather than defining a new closure.
@@ -1131,7 +1132,11 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// ```
 /// use std::mem;
 ///
-/// enum Foo { A(&'static str), B(i32), C(i32) }
+/// enum Foo {
+///     A(&'static str),
+///     B(i32),
+///     C(i32),
+/// }
 ///
 /// assert_eq!(mem::discriminant(&Foo::A("bar")), mem::discriminant(&Foo::A("baz")));
 /// assert_eq!(mem::discriminant(&Foo::B(1)), mem::discriminant(&Foo::B(2)));
@@ -1164,7 +1169,11 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// use std::mem;
 ///
 /// enum Void {}
-/// enum Foo { A(&'static str), B(i32), C(i32) }
+/// enum Foo {
+///     A(&'static str),
+///     B(i32),
+///     C(i32),
+/// }
 ///
 /// assert_eq!(mem::variant_count::<Void>(), 0);
 /// assert_eq!(mem::variant_count::<Foo>(), 3);

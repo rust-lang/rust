@@ -42,16 +42,15 @@ use crate::io::{self, buffered::LineWriterShim, BufWriter, IntoInnerError, IoSli
 ///     // the internal buffer is filled).
 ///     assert_eq!(fs::read_to_string("poem.txt")?, "");
 ///     file.write_all(b"\n")?;
-///     assert_eq!(
-///         fs::read_to_string("poem.txt")?,
-///         "I shall be telling this with a sigh\n",
-///     );
+///     assert_eq!(fs::read_to_string("poem.txt")?, "I shall be telling this with a sigh\n",);
 ///
 ///     // Write the rest of the poem.
-///     file.write_all(b"Somewhere ages and ages hence:
+///     file.write_all(
+///         b"Somewhere ages and ages hence:
 /// Two roads diverged in a wood, and I -
 /// I took the one less traveled by,
-/// And that has made all the difference.")?;
+/// And that has made all the difference.",
+///     )?;
 ///
 ///     // The last line of the poem doesn't end in a newline, so
 ///     // we have to flush or drop the `LineWriter` to finish

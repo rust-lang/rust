@@ -11,8 +11,8 @@ use crate::{fmt, io, mem};
 /// # Examples
 ///
 /// ```no_run
+/// use std::os::unix::net::{UnixListener, UnixStream};
 /// use std::thread;
-/// use std::os::unix::net::{UnixStream, UnixListener};
 ///
 /// fn handle_client(stream: UnixStream) {
 ///     // ...
@@ -64,7 +64,7 @@ impl UnixListener {
     ///     Ok(sock) => sock,
     ///     Err(e) => {
     ///         println!("Couldn't connect: {e:?}");
-    ///         return
+    ///         return;
     ///     }
     /// };
     /// ```
@@ -91,7 +91,7 @@ impl UnixListener {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixListener};
+    /// use std::os::unix::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let listener1 = UnixListener::bind("path/to/socket")?;
@@ -253,8 +253,8 @@ impl UnixListener {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::os::unix::net::{UnixListener, UnixStream};
     /// use std::thread;
-    /// use std::os::unix::net::{UnixStream, UnixListener};
     ///
     /// fn handle_client(stream: UnixStream) {
     ///     // ...
@@ -347,8 +347,8 @@ impl<'a> IntoIterator for &'a UnixListener {
 /// # Examples
 ///
 /// ```no_run
+/// use std::os::unix::net::{UnixListener, UnixStream};
 /// use std::thread;
-/// use std::os::unix::net::{UnixStream, UnixListener};
 ///
 /// fn handle_client(stream: UnixStream) {
 ///     // ...

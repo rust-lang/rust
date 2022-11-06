@@ -69,7 +69,6 @@ use crate::intrinsics;
 ///     do_computation(100, &divisors)
 /// };
 /// assert_eq!(result, 12);
-///
 /// ```
 ///
 /// While using `unreachable_unchecked()` is perfectly sound in the following
@@ -85,8 +84,7 @@ use crate::intrinsics;
 ///     // `b.saturating_add(1)` is always positive (not zero),
 ///     // hence `checked_div` will never return `None`.
 ///     // Therefore, the else branch is unreachable.
-///     a.checked_div(b.saturating_add(1))
-///         .unwrap_or_else(|| unsafe { unreachable_unchecked() })
+///     a.checked_div(b.saturating_add(1)).unwrap_or_else(|| unsafe { unreachable_unchecked() })
 /// }
 ///
 /// assert_eq!(div_1(7, 0), 7);

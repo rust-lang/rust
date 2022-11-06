@@ -16,7 +16,6 @@
 //! # How to use the core library
 //!
 //! Please note that all of these details are currently not considered stable.
-//!
 // FIXME: Fill me in with more detail when the interface settles
 //! This library is built on the assumption of a few existing symbols:
 //!

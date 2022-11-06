@@ -40,7 +40,7 @@
 ///     }
 /// }
 ///
-/// let nucleotide_count = NucleotideCount {a: 14, c: 9, g: 10, t: 12};
+/// let nucleotide_count = NucleotideCount { a: 14, c: 9, g: 10, t: 12 };
 /// assert_eq!(nucleotide_count[Nucleotide::A], 14);
 /// assert_eq!(nucleotide_count[Nucleotide::C], 9);
 /// assert_eq!(nucleotide_count[Nucleotide::G], 10);
@@ -125,10 +125,7 @@ pub trait Index<Idx: ?Sized> {
 ///     }
 /// }
 ///
-/// let mut balance = Balance {
-///     right: Weight::Kilogram(2.5),
-///     left: Weight::Pound(1.5),
-/// };
+/// let mut balance = Balance { right: Weight::Kilogram(2.5), left: Weight::Pound(1.5) };
 ///
 /// // In this case, `balance[Side::Right]` is sugar for
 /// // `*balance.index(Side::Right)`, since we are only *reading*

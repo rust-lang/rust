@@ -210,9 +210,7 @@ mod private {
 /// # }
 ///
 /// fn main() -> Result<(), Report<SuperError>> {
-///     get_super_error()
-///         .map_err(Report::from)
-///         .map_err(|r| r.pretty(true).show_backtrace(true))?;
+///     get_super_error().map_err(Report::from).map_err(|r| r.pretty(true).show_backtrace(true))?;
 ///     Ok(())
 /// }
 /// ```
@@ -375,8 +373,8 @@ impl<E> Report<E> {
     /// # use std::error::Error;
     /// # use std::fmt;
     /// use std::any::Demand;
-    /// use std::error::Report;
     /// use std::backtrace::Backtrace;
+    /// use std::error::Report;
     ///
     /// # #[derive(Debug)]
     /// # struct SuperError {

@@ -52,7 +52,7 @@
 //!     type Output = Self;
 //!
 //!     fn add(self, other: Self) -> Self {
-//!         Self {x: self.x + other.x, y: self.y + other.y}
+//!         Self { x: self.x + other.x, y: self.y + other.y }
 //!     }
 //! }
 //!
@@ -60,12 +60,12 @@
 //!     type Output = Self;
 //!
 //!     fn sub(self, other: Self) -> Self {
-//!         Self {x: self.x - other.x, y: self.y - other.y}
+//!         Self { x: self.x - other.x, y: self.y - other.y }
 //!     }
 //! }
 //!
-//! assert_eq!(Point {x: 3, y: 3}, Point {x: 1, y: 0} + Point {x: 2, y: 3});
-//! assert_eq!(Point {x: -1, y: -3}, Point {x: 1, y: 0} - Point {x: 2, y: 3});
+//! assert_eq!(Point { x: 3, y: 3 }, Point { x: 1, y: 0 } + Point { x: 2, y: 3 });
+//! assert_eq!(Point { x: -1, y: -3 }, Point { x: 1, y: 0 } - Point { x: 2, y: 3 });
 //! ```
 //!
 //! See the documentation for each trait for an example implementation.
@@ -82,7 +82,8 @@
 //!
 //! ```rust
 //! fn call_with_one<F>(func: F) -> usize
-//!     where F: Fn(usize) -> usize
+//! where
+//!     F: Fn(usize) -> usize,
 //! {
 //!     func(1)
 //! }
@@ -95,7 +96,8 @@
 //!
 //! ```rust
 //! fn do_twice<F>(mut func: F)
-//!     where F: FnMut()
+//! where
+//!     F: FnMut(),
 //! {
 //!     func();
 //!     func();
@@ -114,7 +116,8 @@
 //!
 //! ```rust
 //! fn consume_with_relish<F>(func: F)
-//!     where F: FnOnce() -> String
+//! where
+//!     F: FnOnce() -> String,
 //! {
 //!     // `func` consumes its captured variables, so it cannot be run more
 //!     // than once

@@ -456,8 +456,8 @@ impl<'a> Iterator for Messages<'a> {
 /// # Example
 /// ```no_run
 /// #![feature(unix_socket_ancillary_data)]
-/// use std::os::unix::net::{UnixStream, SocketAncillary, AncillaryData};
 /// use std::io::IoSliceMut;
+/// use std::os::unix::net::{AncillaryData, SocketAncillary, UnixStream};
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let sock = UnixStream::connect("/tmp/sock")?;
@@ -538,8 +538,8 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// ```no_run
     /// #![feature(unix_socket_ancillary_data)]
-    /// use std::os::unix::net::{UnixStream, SocketAncillary};
     /// use std::io::IoSliceMut;
+    /// use std::os::unix::net::{SocketAncillary, UnixStream};
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixStream::connect("/tmp/sock")?;
@@ -572,9 +572,9 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// ```no_run
     /// #![feature(unix_socket_ancillary_data)]
-    /// use std::os::unix::net::{UnixStream, SocketAncillary};
-    /// use std::os::unix::io::AsRawFd;
     /// use std::io::IoSlice;
+    /// use std::os::unix::io::AsRawFd;
+    /// use std::os::unix::net::{SocketAncillary, UnixStream};
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixStream::connect("/tmp/sock")?;
@@ -607,7 +607,6 @@ impl<'a> SocketAncillary<'a> {
     /// If there was not enough space then no credentials was appended.
     /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
     /// and type `SCM_CREDENTIALS` or `SCM_CREDS`.
-    ///
     #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "netbsd",))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn add_creds(&mut self, creds: &[SocketCred]) -> bool {
@@ -630,8 +629,8 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// ```no_run
     /// #![feature(unix_socket_ancillary_data)]
-    /// use std::os::unix::net::{UnixStream, SocketAncillary, AncillaryData};
     /// use std::io::IoSliceMut;
+    /// use std::os::unix::net::{AncillaryData, SocketAncillary, UnixStream};
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixStream::connect("/tmp/sock")?;

@@ -31,7 +31,7 @@ use crate::future::Future;
 /// multiple times before being `.await`ed.
 ///
 /// ```rust
-/// use std::future::{ready, Ready, IntoFuture};
+/// use std::future::{ready, IntoFuture, Ready};
 ///
 /// /// Eventually multiply two numbers
 /// pub struct Multiply {
@@ -70,10 +70,10 @@ use crate::future::Future;
 /// // NOTE: Rust does not yet have an `async fn main` function, that functionality
 /// // currently only exists in the ecosystem.
 /// async fn run() {
-///     let num = Multiply::new(0, 0)  // initialize the builder to number: 0, factor: 0
-///         .number(2)                 // change the number to 2
-///         .factor(2)                 // change the factor to 2
-///         .await;                    // convert to future and .await
+///     let num = Multiply::new(0, 0) // initialize the builder to number: 0, factor: 0
+///         .number(2) // change the number to 2
+///         .factor(2) // change the factor to 2
+///         .await; // convert to future and .await
 ///
 ///     assert_eq!(num, 4);
 /// }

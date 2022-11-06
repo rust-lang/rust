@@ -28,8 +28,7 @@ pub trait TcpStreamExt: Sealed {
     /// use std::net::TcpStream;
     /// use std::os::linux::net::TcpStreamExt;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
-    ///         .expect("Couldn't connect to the server...");
+    /// let stream = TcpStream::connect("127.0.0.1:8080").expect("Couldn't connect to the server...");
     /// stream.set_quickack(true).expect("set_quickack call failed");
     /// ```
     #[unstable(feature = "tcp_quickack", issue = "96256")]
@@ -46,8 +45,7 @@ pub trait TcpStreamExt: Sealed {
     /// use std::net::TcpStream;
     /// use std::os::linux::net::TcpStreamExt;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
-    ///         .expect("Couldn't connect to the server...");
+    /// let stream = TcpStream::connect("127.0.0.1:8080").expect("Couldn't connect to the server...");
     /// stream.set_quickack(true).expect("set_quickack call failed");
     /// assert_eq!(stream.quickack().unwrap_or(false), true);
     /// ```

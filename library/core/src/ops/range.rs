@@ -27,12 +27,12 @@ use crate::hash::Hash;
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]); // This is the `RangeFull`
-/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
-/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
-/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
-/// assert_eq!(arr[1.. 3], [   1, 2      ]);
-/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
+/// assert_eq!(arr[..], [0, 1, 2, 3, 4]); // This is the `RangeFull`
+/// assert_eq!(arr[..3], [0, 1, 2]);
+/// assert_eq!(arr[..=3], [0, 1, 2, 3]);
+/// assert_eq!(arr[1..], [1, 2, 3, 4]);
+/// assert_eq!(arr[1..3], [1, 2]);
+/// assert_eq!(arr[1..=3], [1, 2, 3]);
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
@@ -66,12 +66,12 @@ impl fmt::Debug for RangeFull {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
-/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
-/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
-/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
-/// assert_eq!(arr[1.. 3], [   1, 2      ]); // This is a `Range`
-/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
+/// assert_eq!(arr[..], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[..3], [0, 1, 2]);
+/// assert_eq!(arr[..=3], [0, 1, 2, 3]);
+/// assert_eq!(arr[1..], [1, 2, 3, 4]);
+/// assert_eq!(arr[1..3], [1, 2]); // This is a `Range`
+/// assert_eq!(arr[1..=3], [1, 2, 3]);
 /// ```
 #[lang = "Range"]
 #[doc(alias = "..")]
@@ -103,14 +103,14 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     ///
     /// ```
     /// assert!(!(3..5).contains(&2));
-    /// assert!( (3..5).contains(&3));
-    /// assert!( (3..5).contains(&4));
+    /// assert!((3..5).contains(&3));
+    /// assert!((3..5).contains(&4));
     /// assert!(!(3..5).contains(&5));
     ///
     /// assert!(!(3..3).contains(&3));
     /// assert!(!(3..2).contains(&3));
     ///
-    /// assert!( (0.0..1.0).contains(&0.5));
+    /// assert!((0.0..1.0).contains(&0.5));
     /// assert!(!(0.0..1.0).contains(&f32::NAN));
     /// assert!(!(0.0..f32::NAN).contains(&0.5));
     /// assert!(!(f32::NAN..1.0).contains(&0.5));
@@ -130,16 +130,16 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     ///
     /// ```
     /// assert!(!(3..5).is_empty());
-    /// assert!( (3..3).is_empty());
-    /// assert!( (3..2).is_empty());
+    /// assert!((3..3).is_empty());
+    /// assert!((3..2).is_empty());
     /// ```
     ///
     /// The range is empty if either side is incomparable:
     ///
     /// ```
     /// assert!(!(3.0..5.0).is_empty());
-    /// assert!( (3.0..f32::NAN).is_empty());
-    /// assert!( (f32::NAN..5.0).is_empty());
+    /// assert!((3.0..f32::NAN).is_empty());
+    /// assert!((f32::NAN..5.0).is_empty());
     /// ```
     #[stable(feature = "range_is_empty", since = "1.47.0")]
     pub fn is_empty(&self) -> bool {
@@ -173,12 +173,12 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
-/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
-/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
-/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]); // This is a `RangeFrom`
-/// assert_eq!(arr[1.. 3], [   1, 2      ]);
-/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
+/// assert_eq!(arr[..], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[..3], [0, 1, 2]);
+/// assert_eq!(arr[..=3], [0, 1, 2, 3]);
+/// assert_eq!(arr[1..], [1, 2, 3, 4]); // This is a `RangeFrom`
+/// assert_eq!(arr[1..3], [1, 2]);
+/// assert_eq!(arr[1..=3], [1, 2, 3]);
 /// ```
 #[lang = "RangeFrom"]
 #[doc(alias = "..")]
@@ -206,10 +206,10 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     ///
     /// ```
     /// assert!(!(3..).contains(&2));
-    /// assert!( (3..).contains(&3));
-    /// assert!( (3..).contains(&1_000_000_000));
+    /// assert!((3..).contains(&3));
+    /// assert!((3..).contains(&1_000_000_000));
     ///
-    /// assert!( (0.0..).contains(&0.5));
+    /// assert!((0.0..).contains(&0.5));
     /// assert!(!(0.0..).contains(&f32::NAN));
     /// assert!(!(f32::NAN..).contains(&0.5));
     /// ```
@@ -252,12 +252,12 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
-/// assert_eq!(arr[ .. 3], [0, 1, 2      ]); // This is a `RangeTo`
-/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
-/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
-/// assert_eq!(arr[1.. 3], [   1, 2      ]);
-/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
+/// assert_eq!(arr[..], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[..3], [0, 1, 2]); // This is a `RangeTo`
+/// assert_eq!(arr[..=3], [0, 1, 2, 3]);
+/// assert_eq!(arr[1..], [1, 2, 3, 4]);
+/// assert_eq!(arr[1..3], [1, 2]);
+/// assert_eq!(arr[1..=3], [1, 2, 3]);
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
@@ -286,11 +286,11 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// # Examples
     ///
     /// ```
-    /// assert!( (..5).contains(&-1_000_000_000));
-    /// assert!( (..5).contains(&4));
+    /// assert!((..5).contains(&-1_000_000_000));
+    /// assert!((..5).contains(&4));
     /// assert!(!(..5).contains(&5));
     ///
-    /// assert!( (..1.0).contains(&0.5));
+    /// assert!((..1.0).contains(&0.5));
     /// assert!(!(..1.0).contains(&f32::NAN));
     /// assert!(!(..f32::NAN).contains(&0.5));
     /// ```
@@ -327,12 +327,12 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
-/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
-/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
-/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
-/// assert_eq!(arr[1.. 3], [   1, 2      ]);
-/// assert_eq!(arr[1..=3], [   1, 2, 3   ]); // This is a `RangeInclusive`
+/// assert_eq!(arr[..], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[..3], [0, 1, 2]);
+/// assert_eq!(arr[..=3], [0, 1, 2, 3]);
+/// assert_eq!(arr[1..], [1, 2, 3, 4]);
+/// assert_eq!(arr[1..3], [1, 2]);
+/// assert_eq!(arr[1..=3], [1, 2, 3]); // This is a `RangeInclusive`
 /// ```
 #[lang = "RangeInclusive"]
 #[doc(alias = "..=")]
@@ -476,15 +476,15 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     ///
     /// ```
     /// assert!(!(3..=5).contains(&2));
-    /// assert!( (3..=5).contains(&3));
-    /// assert!( (3..=5).contains(&4));
-    /// assert!( (3..=5).contains(&5));
+    /// assert!((3..=5).contains(&3));
+    /// assert!((3..=5).contains(&4));
+    /// assert!((3..=5).contains(&5));
     /// assert!(!(3..=5).contains(&6));
     ///
-    /// assert!( (3..=3).contains(&3));
+    /// assert!((3..=3).contains(&3));
     /// assert!(!(3..=2).contains(&3));
     ///
-    /// assert!( (0.0..=1.0).contains(&1.0));
+    /// assert!((0.0..=1.0).contains(&1.0));
     /// assert!(!(0.0..=1.0).contains(&f32::NAN));
     /// assert!(!(0.0..=f32::NAN).contains(&0.0));
     /// assert!(!(f32::NAN..=1.0).contains(&1.0));
@@ -515,15 +515,15 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// ```
     /// assert!(!(3..=5).is_empty());
     /// assert!(!(3..=3).is_empty());
-    /// assert!( (3..=2).is_empty());
+    /// assert!((3..=2).is_empty());
     /// ```
     ///
     /// The range is empty if either side is incomparable:
     ///
     /// ```
     /// assert!(!(3.0..=5.0).is_empty());
-    /// assert!( (3.0..=f32::NAN).is_empty());
-    /// assert!( (f32::NAN..=5.0).is_empty());
+    /// assert!((3.0..=f32::NAN).is_empty());
+    /// assert!((f32::NAN..=5.0).is_empty());
     /// ```
     ///
     /// This method returns `true` after iteration has finished:
@@ -551,7 +551,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// The `..=end` syntax is a `RangeToInclusive`:
 ///
 /// ```
-/// assert_eq!((..=5), std::ops::RangeToInclusive{ end: 5 });
+/// assert_eq!((..=5), std::ops::RangeToInclusive { end: 5 });
 /// ```
 ///
 /// It does not have an [`IntoIterator`] implementation, so you can't use it in a
@@ -570,12 +570,12 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
-/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
-/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]); // This is a `RangeToInclusive`
-/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
-/// assert_eq!(arr[1.. 3], [   1, 2      ]);
-/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
+/// assert_eq!(arr[..], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[..3], [0, 1, 2]);
+/// assert_eq!(arr[..=3], [0, 1, 2, 3]); // This is a `RangeToInclusive`
+/// assert_eq!(arr[1..], [1, 2, 3, 4]);
+/// assert_eq!(arr[1..3], [1, 2]);
+/// assert_eq!(arr[1..=3], [1, 2, 3]);
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
@@ -604,11 +604,11 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// assert!( (..=5).contains(&-1_000_000_000));
-    /// assert!( (..=5).contains(&5));
+    /// assert!((..=5).contains(&-1_000_000_000));
+    /// assert!((..=5).contains(&5));
     /// assert!(!(..=5).contains(&6));
     ///
-    /// assert!( (..=1.0).contains(&1.0));
+    /// assert!((..=1.0).contains(&1.0));
     /// assert!(!(..=1.0).contains(&f32::NAN));
     /// assert!(!(..=f32::NAN).contains(&0.5));
     /// ```

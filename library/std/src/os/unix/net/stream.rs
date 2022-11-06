@@ -42,8 +42,8 @@ pub use ucred::UCred;
 /// # Examples
 ///
 /// ```no_run
-/// use std::os::unix::net::UnixStream;
 /// use std::io::prelude::*;
+/// use std::os::unix::net::UnixStream;
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let mut stream = UnixStream::connect("/path/to/my/socket")?;
@@ -84,7 +84,7 @@ impl UnixStream {
     ///     Ok(sock) => sock,
     ///     Err(e) => {
     ///         println!("Couldn't connect: {e:?}");
-    ///         return
+    ///         return;
     ///     }
     /// };
     /// ```
@@ -117,7 +117,7 @@ impl UnixStream {
     ///         Ok(sock) => sock,
     ///         Err(e) => {
     ///             println!("Couldn't connect: {e:?}");
-    ///             return Err(e)
+    ///             return Err(e);
     ///         }
     ///     };
     ///     Ok(())
@@ -149,7 +149,7 @@ impl UnixStream {
     ///     Ok((sock1, sock2)) => (sock1, sock2),
     ///     Err(e) => {
     ///         println!("Couldn't create a pair of sockets: {e:?}");
-    ///         return
+    ///         return;
     ///     }
     /// };
     /// ```
@@ -306,8 +306,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_write_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("Couldn't set write timeout");
+    ///     socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
     ///     Ok(())
     /// }
     /// ```
@@ -363,8 +362,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_write_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("Couldn't set write timeout");
+    ///     socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
     ///     assert_eq!(socket.write_timeout()?, Some(Duration::new(1, 0)));
     ///     Ok(())
     /// }
@@ -397,7 +395,6 @@ impl UnixStream {
     /// Set the socket option `SO_PASSCRED`.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -428,7 +425,6 @@ impl UnixStream {
     }
 
     /// Set the id of the socket for network filtering purpose
-    ///
     #[cfg_attr(
         any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
         doc = "```no_run"
@@ -484,8 +480,8 @@ impl UnixStream {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::os::unix::net::UnixStream;
     /// use std::net::Shutdown;
+    /// use std::os::unix::net::UnixStream;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
@@ -529,7 +525,6 @@ impl UnixStream {
     /// On success, returns the number of bytes read.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
@@ -578,7 +573,6 @@ impl UnixStream {
     /// On success, returns the number of bytes written.
     ///
     /// # Examples
-    ///
     #[cfg_attr(any(target_os = "android", target_os = "linux"), doc = "```no_run")]
     #[cfg_attr(not(any(target_os = "android", target_os = "linux")), doc = "```ignore")]
     /// #![feature(unix_socket_ancillary_data)]
