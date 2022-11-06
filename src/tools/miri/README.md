@@ -432,7 +432,9 @@ Moreover, Miri recognizes some environment variables:
   must point to the `library` subdirectory of a `rust-lang/rust` repository
   checkout. Note that changing files in that directory does not automatically
   trigger a re-build of the standard library; you have to clear the Miri build
-  cache manually (on Linux, `rm -rf ~/.cache/miri`).
+  cache manually (on Linux, `rm -rf ~/.cache/miri`;
+  on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`;
+  and on macOS, `rm -rf ~/Library/Caches/org.rust-lang.miri`).
 * `MIRI_SYSROOT` (recognized by `cargo miri` and the Miri driver) indicates the sysroot to use. When
   using `cargo miri`, only set this if you do not want to use the automatically created sysroot. For
   directly invoking the Miri driver, this variable (or a `--sysroot` flag) is mandatory.
