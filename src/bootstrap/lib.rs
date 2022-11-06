@@ -1019,10 +1019,12 @@ impl Build {
     }
 
     fn info(&self, msg: &str) {
-        if self.config.dry_run() {
-            return;
+        match self.config.dry_run {
+            DryRun::SelfCheck => return,
+            DryRun::Disabled | DryRun::UserSelected => {
+                println!("{}", msg);
+            }
         }
-        println!("{}", msg);
     }
 
     /// Returns the number of parallel jobs that have been configured for this
