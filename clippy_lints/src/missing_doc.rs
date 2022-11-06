@@ -199,7 +199,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_variant(&mut self, cx: &LateContext<'tcx>, v: &'tcx hir::Variant<'_>) {
-        let attrs = cx.tcx.hir().attrs(v.id);
+        let attrs = cx.tcx.hir().attrs(v.hir_id);
         if !is_from_proc_macro(cx, v) {
             self.check_missing_docs_attrs(cx, attrs, v.span, "a", "variant");
         }
