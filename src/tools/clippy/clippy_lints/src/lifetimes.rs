@@ -10,8 +10,8 @@ use rustc_hir::lang_items;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, PolyTraitRef, PredicateOrigin, TraitFn, TraitItem,
-    TraitItemKind, Ty, TyKind, WherePredicate,
+    ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, PolyTraitRef, PredicateOrigin, TraitFn,
+    TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
@@ -595,7 +595,9 @@ fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, 
         .params
         .iter()
         .filter_map(|par| match par.kind {
-            GenericParamKind::Lifetime { .. } => Some((par.name.ident().name, par.span)),
+            GenericParamKind::Lifetime {
+                kind: LifetimeParamKind::Explicit,
+            } => Some((par.name.ident().name, par.span)),
             _ => None,
         })
         .collect();
@@ -620,7 +622,9 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
         .params
         .iter()
         .filter_map(|par| match par.kind {
-            GenericParamKind::Lifetime { .. } => Some((par.name.ident().name, par.span)),
+            GenericParamKind::Lifetime {
+                kind: LifetimeParamKind::Explicit,
+            } => Some((par.name.ident().name, par.span)),
             _ => None,
         })
         .collect();
@@ -647,7 +651,7 @@ struct BodyLifetimeChecker {
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        if lifetime.ident.name != kw::UnderscoreLifetime && lifetime.ident.name != kw::StaticLifetime {
+        if !lifetime.is_anonymous() && lifetime.ident.name != kw::StaticLifetime {
             self.lifetimes_used_in_body = true;
         }
     }

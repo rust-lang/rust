@@ -29,14 +29,15 @@ use std::fmt;
 #[derive(Debug, Copy, Clone, Encodable, HashStable_Generic)]
 pub struct Lifetime {
     pub hir_id: HirId,
-    pub ident: Ident,
 
     /// Either "`'a`", referring to a named lifetime definition,
-    /// or "``" (i.e., `kw::Empty`), for elision placeholders.
+    /// `'_` referring to an anonymous lifetime (either explicitly `'_` or `&type`),
+    /// or "``" (i.e., `kw::Empty`) when appearing in path.
     ///
-    /// HIR lowering inserts these placeholders in type paths that
-    /// refer to type definitions needing lifetime parameters,
-    /// `&T` and `&mut T`, and trait objects without `... + 'a`.
+    /// See `Lifetime::suggestion_position` for practical use.
+    pub ident: Ident,
+
+    /// Semantics of this lifetime.
     pub res: LifetimeName,
 }
 
@@ -135,6 +136,19 @@ impl fmt::Display for Lifetime {
     }
 }
 
+pub enum LifetimeSuggestionPosition {
+    /// The user wrote `'a` or `'_`.
+    Normal,
+    /// The user wrote `&type` or `&mut type`.
+    Ampersand,
+    /// The user wrote `Path` and omitted the `<'_>`.
+    ElidedPath,
+    /// The user wrote `Path<T>`, and omitted the `'_,`.
+    ElidedPathArgument,
+    /// The user wrote `dyn Trait` and omitted the `+ '_`.
+    ObjectDefault,
+}
+
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
         self.res.is_elided()
@@ -142,6 +156,22 @@ impl Lifetime {
 
     pub fn is_anonymous(&self) -> bool {
         self.ident.name == kw::Empty || self.ident.name == kw::UnderscoreLifetime
+    }
+
+    pub fn suggestion_position(&self) -> (LifetimeSuggestionPosition, Span) {
+        if self.ident.name == kw::Empty {
+            if self.ident.span.is_empty() {
+                (LifetimeSuggestionPosition::ElidedPathArgument, self.ident.span)
+            } else {
+                (LifetimeSuggestionPosition::ElidedPath, self.ident.span.shrink_to_hi())
+            }
+        } else if self.res == LifetimeName::ImplicitObjectLifetimeDefault {
+            (LifetimeSuggestionPosition::ObjectDefault, self.ident.span)
+        } else if self.ident.span.is_empty() {
+            (LifetimeSuggestionPosition::Ampersand, self.ident.span)
+        } else {
+            (LifetimeSuggestionPosition::Normal, self.ident.span)
+        }
     }
 
     pub fn is_static(&self) -> bool {

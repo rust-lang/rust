@@ -2101,7 +2101,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::LifetimeName::Param(param)
             }
             LifetimeRes::Fresh { param, .. } => {
-                debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
                 let param = self.local_def_id(param);
                 hir::LifetimeName::Param(param)
             }

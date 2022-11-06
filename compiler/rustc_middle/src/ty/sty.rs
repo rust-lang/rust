@@ -83,7 +83,9 @@ pub struct BoundRegion {
 impl BoundRegionKind {
     pub fn is_named(&self) -> bool {
         match *self {
-            BoundRegionKind::BrNamed(_, name) => name != kw::UnderscoreLifetime,
+            BoundRegionKind::BrNamed(_, name) => {
+                name != kw::UnderscoreLifetime && name != kw::Empty
+            }
             _ => false,
         }
     }

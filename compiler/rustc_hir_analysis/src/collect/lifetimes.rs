@@ -19,7 +19,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use std::fmt;
 
@@ -1218,13 +1218,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 (generics.span, "<'a>".to_owned())
                             };
 
-                            let lifetime_sugg = match lifetime_ref.ident.name {
-                                kw::Empty => "'a, ".to_owned(),
-                                kw::UnderscoreLifetime => "'a ".to_owned(),
-                                _ => "'a ".to_owned(),
+                            let lifetime_sugg = match lifetime_ref.suggestion_position() {
+                                (hir::LifetimeSuggestionPosition::Normal, span) => (span, "'a".to_owned()),
+                                (hir::LifetimeSuggestionPosition::Ampersand, span) => (span, "'a ".to_owned()),
+                                (hir::LifetimeSuggestionPosition::ElidedPath, span) => (span, "<'a>".to_owned()),
+                                (hir::LifetimeSuggestionPosition::ElidedPathArgument, span) => (span, "'a, ".to_owned()),
+                                (hir::LifetimeSuggestionPosition::ObjectDefault, span) => (span, "+ 'a".to_owned()),
                             };
                             let suggestions = vec![
-                                (lifetime_ref.ident.span.shrink_to_hi(), lifetime_sugg),
+                                lifetime_sugg,
                                 new_param_sugg,
                             ];
 

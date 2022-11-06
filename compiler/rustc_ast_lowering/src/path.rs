@@ -309,7 +309,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let id = NodeId::from_u32(i);
                 let l = self.lower_lifetime(&Lifetime {
                     id,
-                    ident: Ident::new(kw::UnderscoreLifetime, elided_lifetime_span),
+                    ident: Ident::new(kw::Empty, elided_lifetime_span),
                 });
                 GenericArg::Lifetime(l)
             }),

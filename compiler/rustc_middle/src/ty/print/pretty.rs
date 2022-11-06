@@ -1963,17 +1963,13 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         match *region {
-            ty::ReEarlyBound(ref data) => {
-                data.name != kw::Empty && data.name != kw::UnderscoreLifetime
-            }
+            ty::ReEarlyBound(ref data) => data.has_name(),
 
             ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
-                if let ty::BrNamed(_, name) = br {
-                    if name != kw::Empty && name != kw::UnderscoreLifetime {
-                        return true;
-                    }
+                if br.is_named() {
+                    return true;
                 }
 
                 if let Some((region, _)) = highlight.highlight_bound_region {
@@ -2049,11 +2045,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
-                if let ty::BrNamed(_, name) = br {
-                    if name != kw::Empty && name != kw::UnderscoreLifetime {
-                        p!(write("{}", name));
-                        return Ok(self);
-                    }
+                if let ty::BrNamed(_, name) = br && br.is_named() {
+                    p!(write("{}", name));
+                    return Ok(self);
                 }
 
                 if let Some((region, counter)) = highlight.highlight_bound_region {
@@ -2266,7 +2260,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
                         (name, ty::BrNamed(CRATE_DEF_ID.to_def_id(), name))
                     }
-                    ty::BrNamed(def_id, kw::UnderscoreLifetime) => {
+                    ty::BrNamed(def_id, kw::UnderscoreLifetime | kw::Empty) => {
                         let name = next_name(&self);
 
                         if let Some(lt_idx) = lifetime_idx {
