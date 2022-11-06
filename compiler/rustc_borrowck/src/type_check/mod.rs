@@ -406,6 +406,16 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     instantiated_predicates,
                     locations,
                 );
+
+                assert!(!matches!(
+                    tcx.impl_of_method(def_id).map(|imp| tcx.def_kind(imp)),
+                    Some(DefKind::Impl { of_trait: true })
+                ));
+                self.cx.prove_predicates(
+                    args.types().map(|ty| ty::ClauseKind::WellFormed(ty.into())),
+                    locations,
+                    ConstraintCategory::Boring,
+                );
             }
         }
     }

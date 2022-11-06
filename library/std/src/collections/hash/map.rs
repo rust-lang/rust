@@ -3049,8 +3049,9 @@ where
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
 impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
 where
-    K: Eq + Hash + Copy,
-    V: Copy,
+    // FIXME(aliemjay): the bound `+ 'a` should not be necessary.
+    K: Eq + Hash + Copy + 'a,
+    V: Copy + 'a,
     S: BuildHasher,
 {
     #[inline]
