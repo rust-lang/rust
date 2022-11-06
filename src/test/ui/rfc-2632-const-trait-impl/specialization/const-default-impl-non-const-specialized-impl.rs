@@ -1,5 +1,4 @@
-// Tests that a const default trait impl cannot be specialized by a non-const
-// trait impl.
+// Tests that specializing trait impls must be at least as const as the default impl.
 
 #![feature(const_trait_impl)]
 #![feature(min_specialization)]

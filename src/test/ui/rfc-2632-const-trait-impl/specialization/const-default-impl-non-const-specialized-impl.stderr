@@ -1,5 +1,5 @@
 error: cannot specialize on const impl with non-const impl
-  --> $DIR/const-default-non-const-specialized.rs:20:1
+  --> $DIR/const-default-impl-non-const-specialized-impl.rs:19:1
    |
 LL | impl Value for FortyTwo {
    | ^^^^^^^^^^^^^^^^^^^^^^^
