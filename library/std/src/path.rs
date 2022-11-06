@@ -2847,7 +2847,7 @@ impl Path {
     /// assert_eq!(link_path.is_symlink(), true);
     /// assert_eq!(link_path.exists(), false);
     /// ```
-    /// 
+    ///
     /// # See Also
     ///
     /// This is a convenience function that coerces errors to false. If you want to

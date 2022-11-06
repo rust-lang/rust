@@ -294,13 +294,14 @@ use crate::vec::Vec;
 ///
 /// assert_eq!(String::from("Once upon a time..."), s);
 /// ```
-/// 
+///
 /// [`as_ptr`]: str::as_ptr
 /// [`len`]: String::len
 /// [`capacity`]: String::capacity
 ///
 /// If a `String` has enough capacity, adding elements to it will not
 /// re-allocate. For example, consider this program:
+///
 /// ```
 /// let mut s = String::new();
 ///
@@ -311,8 +312,9 @@ use crate::vec::Vec;
 ///     println!("{}", s.capacity());
 /// }
 /// ```
-/// 
+///
 /// This will output the following:
+///
 /// ```text
 /// 0
 /// 8
@@ -321,10 +323,11 @@ use crate::vec::Vec;
 /// 32
 /// 32
 /// ```
-/// 
+///
 /// At first, we have no memory allocated at all, but as we append to the
 /// string, it increases its capacity appropriately. If we instead use the
 /// [`with_capacity`] method to allocate the correct capacity initially:
+///
 /// ```
 /// let mut s = String::with_capacity(25);
 ///
@@ -335,10 +338,11 @@ use crate::vec::Vec;
 ///     println!("{}", s.capacity());
 /// }
 /// ```
-/// 
+///
 /// [`with_capacity`]: String::with_capacity
 ///
 /// We end up with a different output:
+///
 /// ```text
 /// 25
 /// 25
@@ -347,7 +351,7 @@ use crate::vec::Vec;
 /// 25
 /// 25
 /// ```
-/// 
+///
 /// Here, there's no need to allocate more memory inside the loop.
 ///
 /// [str]: prim@str "str"

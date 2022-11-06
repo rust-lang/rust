@@ -34,7 +34,7 @@ struct ThreadInner {
     /// source code.
     ///
     /// ```text
-    /// 
+    ///
     ///    <P>: parent, <C>: child, (?): don't-care
     ///
     ///       DETACHED (-1)  -------------------->  EXITED (?)
@@ -60,6 +60,7 @@ struct ThreadInner {
     ///                \                       /
     ///                 '--> JOIN_FINALIZE ---'
     ///                          (-1)
+    ///
     lifecycle: AtomicUsize,
 }
 

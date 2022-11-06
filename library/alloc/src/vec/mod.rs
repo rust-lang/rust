@@ -556,8 +556,9 @@ impl<T> Vec<T> {
     ///     assert_eq!(rebuilt, [4, 5, 6]);
     /// }
     /// ```
-    /// 
+    ///
     /// Using memory that was allocated elsewhere:
+    ///
     /// ```rust
     /// #![feature(allocator_api)]
     ///
@@ -750,8 +751,9 @@ impl<T, A: Allocator> Vec<T, A> {
     ///     assert_eq!(rebuilt, [4, 5, 6]);
     /// }
     /// ```
-    /// 
+    ///
     /// Using memory that was allocated elsewhere:
+    ///
     /// ```rust
     /// use std::alloc::{alloc, Layout};
     ///

@@ -1178,10 +1178,11 @@ extern "rust-intrinsic" {
     ///                         v_clone.capacity())
     /// };
     /// ```
-    /// 
+    ///
     /// [`from_raw_parts`]: ../../std/vec/struct.Vec.html#method.from_raw_parts
     ///
     /// Implementing `split_at_mut`:
+    ///
     /// ```
     /// use std::{slice, mem};
     ///
@@ -2152,7 +2153,7 @@ extern "rust-intrinsic" {
     /// let x = inconsistent();
     /// if x != X { unsafe { unreachable_unchecked(); }}
     /// ```
-    /// 
+    ///
     /// This code causes Undefined Behavior when being run, since the
     /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
     /// which violates the principle that a `const fn` must behave the same at
