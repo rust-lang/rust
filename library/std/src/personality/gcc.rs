@@ -147,6 +147,7 @@ cfg_if::cfg_if! {
             } else {
                 match eh_action {
                     EHAction::None => return continue_unwind(exception_object, context),
+                    EHAction::Filter(_) if state & uw::_US_FORCE_UNWIND as c_int != 0 => return continue_unwind(exception_object, context),
                     EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
                         uw::_Unwind_SetGR(
                             context,
@@ -207,6 +208,8 @@ cfg_if::cfg_if! {
             } else {
                 match eh_action {
                     EHAction::None => uw::_URC_CONTINUE_UNWIND,
+                    // Forced unwinding hits a terminate action.
+                    EHAction::Filter(_) if actions as i32 & uw::_UA_FORCE_UNWIND as i32 != 0 => uw::_URC_CONTINUE_UNWIND,
                     EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
                         uw::_Unwind_SetGR(
                             context,
