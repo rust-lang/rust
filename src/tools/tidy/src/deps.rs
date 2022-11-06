@@ -136,6 +136,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "icu_list",
     "icu_locid",
     "icu_provider",
+    "icu_provider_adapters",
     "icu_provider_macros",
     "if_chain",
     "indexmap",

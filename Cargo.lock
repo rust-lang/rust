@@ -3291,7 +3291,9 @@ dependencies = [
  "icu_list",
  "icu_locid",
  "icu_provider",
+ "icu_provider_adapters",
  "litemap",
+ "zerovec",
 ]
 
 [[package]]
