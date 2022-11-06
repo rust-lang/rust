@@ -93,6 +93,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
 
     /// Normalizes associated types in `value`, potentially returning
     /// new obligations that must further be processed.
+    #[instrument(level = "debug", skip(self, cause, param_env), ret)]
     fn partially_normalize_associated_types_in<T>(
         &self,
         cause: ObligationCause<'tcx>,
@@ -102,17 +103,13 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        debug!("partially_normalize_associated_types_in(value={:?})", value);
         let mut selcx = traits::SelectionContext::new(self);
         let traits::Normalized { value, obligations } =
             traits::normalize(&mut selcx, param_env, cause, value);
-        debug!(
-            "partially_normalize_associated_types_in: result={:?} predicates={:?}",
-            value, obligations
-        );
         InferOk { value, obligations }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn type_implements_trait(
         &self,
         trait_def_id: DefId,
@@ -120,11 +117,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         params: SubstsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult {
-        debug!(
-            "type_implements_trait: trait_def_id={:?}, type={:?}, params={:?}, param_env={:?}",
-            trait_def_id, ty, params, param_env
-        );
-
         let trait_ref =
             ty::TraitRef { def_id: trait_def_id, substs: self.tcx.mk_substs_trait(ty, params) };
 
