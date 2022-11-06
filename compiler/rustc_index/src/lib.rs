@@ -1,12 +1,17 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-#![cfg_attr(feature = "nightly", feature(allow_internal_unstable))]
-#![cfg_attr(feature = "nightly", feature(extend_one))]
-#![cfg_attr(feature = "nightly", feature(min_specialization))]
-#![cfg_attr(feature = "nightly", feature(new_uninit))]
-#![cfg_attr(feature = "nightly", feature(step_trait))]
-#![cfg_attr(feature = "nightly", feature(stmt_expr_attributes))]
-#![cfg_attr(feature = "nightly", feature(test))]
+#![cfg_attr(
+    feature = "nightly",
+    feature(
+        allow_internal_unstable,
+        extend_one,
+        min_specialization,
+        new_uninit,
+        step_trait,
+        stmt_expr_attributes,
+        test
+    )
+)]
 
 #[cfg(feature = "nightly")]
 pub mod bit_set;

@@ -755,7 +755,7 @@ fn generator_layout<'tcx>(
 
     size = size.align_to(align.abi);
 
-    let abi = if prefix.abi.is_uninhabited() || variants.iter().all(|v| v.abi().is_uninhabited()) {
+    let abi = if prefix.abi.is_uninhabited() || variants.iter().all(|v| v.abi.is_uninhabited()) {
         Abi::Uninhabited
     } else {
         Abi::Aggregate { sized: true }

@@ -1893,10 +1893,10 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
 
 fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
     fn write_size_of_layout(w: &mut Buffer, layout: &LayoutS<VariantIdx>, tag_size: u64) {
-        if layout.abi().is_unsized() {
+        if layout.abi.is_unsized() {
             write!(w, "(unsized)");
         } else {
-            let bytes = layout.size().bytes() - tag_size;
+            let bytes = layout.size.bytes() - tag_size;
             write!(w, "{size} byte{pl}", size = bytes, pl = if bytes == 1 { "" } else { "s" },);
         }
     }

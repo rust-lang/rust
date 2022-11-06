@@ -3203,6 +3203,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_abi"
+version = "0.0.0"
+dependencies = [
+ "bitflags",
+ "rand 0.8.5",
+ "rand_xoshiro",
+ "rustc_data_structures",
+ "rustc_index",
+ "rustc_macros",
+ "rustc_serialize",
+ "tracing",
+]
+
+[[package]]
 name = "rustc_apfloat"
 version = "0.0.0"
 dependencies = [
@@ -4281,8 +4295,7 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "rand 0.8.5",
- "rand_xoshiro",
+ "rustc_abi",
  "rustc_data_structures",
  "rustc_feature",
  "rustc_index",
@@ -4363,8 +4376,6 @@ dependencies = [
 name = "rustc_ty_utils"
 version = "0.0.0"
 dependencies = [
- "rand 0.8.5",
- "rand_xoshiro",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",

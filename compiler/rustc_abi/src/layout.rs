@@ -7,7 +7,9 @@ use std::{
     ops::{Bound, Deref},
 };
 
+#[cfg(feature = "randomize")]
 use rand::{seq::SliceRandom, SeedableRng};
+#[cfg(feature = "randomize")]
 use rand_xoshiro::Xoshiro128StarStar;
 
 use tracing::debug;
@@ -91,14 +93,16 @@ pub trait LayoutCalculator {
             // If `-Z randomize-layout` was enabled for the type definition we can shuffle
             // the field ordering to try and catch some code making assumptions about layouts
             // we don't guarantee
-            if repr.can_randomize_type_layout() {
-                // `ReprOptions.layout_seed` is a deterministic seed that we can use to
-                // randomize field ordering with
-                let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed);
+            if repr.can_randomize_type_layout() && cfg!(feature = "randomize") {
+                #[cfg(feature = "randomize")]
+                {
+                    // `ReprOptions.layout_seed` is a deterministic seed that we can use to
+                    // randomize field ordering with
+                    let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed);
 
-                // Shuffle the ordering of the fields
-                optimizing.shuffle(&mut rng);
-
+                    // Shuffle the ordering of the fields
+                    optimizing.shuffle(&mut rng);
+                }
                 // Otherwise we just leave things alone and actually optimize the type's fields
             } else {
                 match kind {
@@ -900,7 +904,7 @@ pub trait LayoutCalculator {
         let mut abi = Abi::Aggregate { sized: true };
         let index = V::new(0);
         for field in &variants[index] {
-            assert!(!field.is_unsized());
+            assert!(field.is_sized());
             align = align.max(field.align);
 
             // If all non-ZST fields have the same ABI, forward this ABI

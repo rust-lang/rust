@@ -32,7 +32,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::repr_options_of_def;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, IsSuggestable, Ty, TyCtxt};
 use rustc_session::lint;
@@ -860,7 +859,7 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
         bug!();
     };
 
-    let repr = repr_options_of_def(tcx, def_id.to_def_id());
+    let repr = tcx.repr_options_of_def(def_id.to_def_id());
     let (kind, variants) = match item.kind {
         ItemKind::Enum(ref def, _) => {
             let mut distance_from_explicit = 0;

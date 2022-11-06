@@ -1233,7 +1233,7 @@ impl<'tcx> TyCtxt<'tcx> {
             global_ctxt: untracked_resolutions,
             ast_lowering: untracked_resolver_for_lowering,
         } = resolver_outputs;
-        let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
+        let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);

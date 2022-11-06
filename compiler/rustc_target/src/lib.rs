@@ -8,13 +8,13 @@
 //! LLVM.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(feature = "nightly", feature(assert_matches))]
-#![cfg_attr(feature = "nightly", feature(associated_type_bounds))]
-#![cfg_attr(feature = "nightly", feature(exhaustive_patterns))]
-#![cfg_attr(feature = "nightly", feature(min_specialization))]
-#![cfg_attr(feature = "nightly", feature(never_type))]
-#![cfg_attr(feature = "nightly", feature(rustc_attrs))]
-#![cfg_attr(feature = "nightly", feature(step_trait))]
+#![feature(assert_matches)]
+#![feature(associated_type_bounds)]
+#![feature(exhaustive_patterns)]
+#![feature(min_specialization)]
+#![feature(never_type)]
+#![feature(rustc_attrs)]
+#![feature(step_trait)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
@@ -22,27 +22,20 @@ use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 
 #[macro_use]
-#[cfg(feature = "nightly")]
 extern crate rustc_macros;
 
 #[macro_use]
-#[cfg(feature = "nightly")]
 extern crate tracing;
 
 pub mod abi;
-#[cfg(feature = "nightly")]
 pub mod asm;
 pub mod json;
-#[cfg(feature = "nightly")]
 pub mod spec;
 
 #[cfg(test)]
 mod tests;
 
-/// Requirements for a `StableHashingContext` to be used in this crate.
-/// This is a hack to allow using the `HashStable_Generic` derive macro
-/// instead of implementing everything in `rustc_middle`.
-pub trait HashStableContext {}
+pub use rustc_abi::HashStableContext;
 
 /// The name of rustc's own place to organize libraries.
 ///

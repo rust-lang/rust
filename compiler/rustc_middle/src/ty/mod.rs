@@ -1995,78 +1995,6 @@ impl Hash for FieldDef {
     }
 }
 
-pub fn repr_options_of_def(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
-    let mut flags = ReprFlags::empty();
-    let mut size = None;
-    let mut max_align: Option<Align> = None;
-    let mut min_pack: Option<Align> = None;
-
-    // Generate a deterministically-derived seed from the item's path hash
-    // to allow for cross-crate compilation to actually work
-    let mut field_shuffle_seed = tcx.def_path_hash(did).0.to_smaller_hash();
-
-    // If the user defined a custom seed for layout randomization, xor the item's
-    // path hash with the user defined seed, this will allowing determinism while
-    // still allowing users to further randomize layout generation for e.g. fuzzing
-    if let Some(user_seed) = tcx.sess.opts.unstable_opts.layout_seed {
-        field_shuffle_seed ^= user_seed;
-    }
-
-    for attr in tcx.get_attrs(did, sym::repr) {
-        for r in attr::parse_repr_attr(&tcx.sess, attr) {
-            flags.insert(match r {
-                attr::ReprC => ReprFlags::IS_C,
-                attr::ReprPacked(pack) => {
-                    let pack = Align::from_bytes(pack as u64).unwrap();
-                    min_pack =
-                        Some(if let Some(min_pack) = min_pack { min_pack.min(pack) } else { pack });
-                    ReprFlags::empty()
-                }
-                attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
-                attr::ReprSimd => ReprFlags::IS_SIMD,
-                attr::ReprInt(i) => {
-                    size = Some(match i {
-                        attr::IntType::SignedInt(x) => match x {
-                            ast::IntTy::Isize => IntegerType::Pointer(true),
-                            ast::IntTy::I8 => IntegerType::Fixed(Integer::I8, true),
-                            ast::IntTy::I16 => IntegerType::Fixed(Integer::I16, true),
-                            ast::IntTy::I32 => IntegerType::Fixed(Integer::I32, true),
-                            ast::IntTy::I64 => IntegerType::Fixed(Integer::I64, true),
-                            ast::IntTy::I128 => IntegerType::Fixed(Integer::I128, true),
-                        },
-                        attr::IntType::UnsignedInt(x) => match x {
-                            ast::UintTy::Usize => IntegerType::Pointer(false),
-                            ast::UintTy::U8 => IntegerType::Fixed(Integer::I8, false),
-                            ast::UintTy::U16 => IntegerType::Fixed(Integer::I16, false),
-                            ast::UintTy::U32 => IntegerType::Fixed(Integer::I32, false),
-                            ast::UintTy::U64 => IntegerType::Fixed(Integer::I64, false),
-                            ast::UintTy::U128 => IntegerType::Fixed(Integer::I128, false),
-                        },
-                    });
-                    ReprFlags::empty()
-                }
-                attr::ReprAlign(align) => {
-                    max_align = max_align.max(Some(Align::from_bytes(align as u64).unwrap()));
-                    ReprFlags::empty()
-                }
-            });
-        }
-    }
-
-    // If `-Z randomize-layout` was enabled for the type definition then we can
-    // consider performing layout randomization
-    if tcx.sess.opts.unstable_opts.randomize_layout {
-        flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
-    }
-
-    // This is here instead of layout because the choice must make it into metadata.
-    if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.def_path_str(did))) {
-        flags.insert(ReprFlags::IS_LINEAR);
-    }
-
-    ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
-}
-
 impl<'tcx> FieldDef {
     /// Returns the type of this field. The resulting type is not normalized. The `subst` is
     /// typically obtained via the second field of [`TyKind::Adt`].
@@ -2132,6 +2060,81 @@ impl<'tcx> TyCtxt<'tcx> {
         self.associated_items(id)
             .in_definition_order()
             .filter(move |item| item.kind == AssocKind::Fn && item.defaultness(self).has_value())
+    }
+
+    pub fn repr_options_of_def(self, did: DefId) -> ReprOptions {
+        let mut flags = ReprFlags::empty();
+        let mut size = None;
+        let mut max_align: Option<Align> = None;
+        let mut min_pack: Option<Align> = None;
+
+        // Generate a deterministically-derived seed from the item's path hash
+        // to allow for cross-crate compilation to actually work
+        let mut field_shuffle_seed = self.def_path_hash(did).0.to_smaller_hash();
+
+        // If the user defined a custom seed for layout randomization, xor the item's
+        // path hash with the user defined seed, this will allowing determinism while
+        // still allowing users to further randomize layout generation for e.g. fuzzing
+        if let Some(user_seed) = self.sess.opts.unstable_opts.layout_seed {
+            field_shuffle_seed ^= user_seed;
+        }
+
+        for attr in self.get_attrs(did, sym::repr) {
+            for r in attr::parse_repr_attr(&self.sess, attr) {
+                flags.insert(match r {
+                    attr::ReprC => ReprFlags::IS_C,
+                    attr::ReprPacked(pack) => {
+                        let pack = Align::from_bytes(pack as u64).unwrap();
+                        min_pack = Some(if let Some(min_pack) = min_pack {
+                            min_pack.min(pack)
+                        } else {
+                            pack
+                        });
+                        ReprFlags::empty()
+                    }
+                    attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
+                    attr::ReprSimd => ReprFlags::IS_SIMD,
+                    attr::ReprInt(i) => {
+                        size = Some(match i {
+                            attr::IntType::SignedInt(x) => match x {
+                                ast::IntTy::Isize => IntegerType::Pointer(true),
+                                ast::IntTy::I8 => IntegerType::Fixed(Integer::I8, true),
+                                ast::IntTy::I16 => IntegerType::Fixed(Integer::I16, true),
+                                ast::IntTy::I32 => IntegerType::Fixed(Integer::I32, true),
+                                ast::IntTy::I64 => IntegerType::Fixed(Integer::I64, true),
+                                ast::IntTy::I128 => IntegerType::Fixed(Integer::I128, true),
+                            },
+                            attr::IntType::UnsignedInt(x) => match x {
+                                ast::UintTy::Usize => IntegerType::Pointer(false),
+                                ast::UintTy::U8 => IntegerType::Fixed(Integer::I8, false),
+                                ast::UintTy::U16 => IntegerType::Fixed(Integer::I16, false),
+                                ast::UintTy::U32 => IntegerType::Fixed(Integer::I32, false),
+                                ast::UintTy::U64 => IntegerType::Fixed(Integer::I64, false),
+                                ast::UintTy::U128 => IntegerType::Fixed(Integer::I128, false),
+                            },
+                        });
+                        ReprFlags::empty()
+                    }
+                    attr::ReprAlign(align) => {
+                        max_align = max_align.max(Some(Align::from_bytes(align as u64).unwrap()));
+                        ReprFlags::empty()
+                    }
+                });
+            }
+        }
+
+        // If `-Z randomize-layout` was enabled for the type definition then we can
+        // consider performing layout randomization
+        if self.sess.opts.unstable_opts.randomize_layout {
+            flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
+        }
+
+        // This is here instead of layout because the choice must make it into metadata.
+        if !self.consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did))) {
+            flags.insert(ReprFlags::IS_LINEAR);
+        }
+
+        ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.

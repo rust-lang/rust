@@ -11,7 +11,7 @@ use crate::{lint, HashStableContext};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use rustc_data_structures::stable_hasher::ToStableHashKey;
-use rustc_target::abi::{Align, TargetDataLayout};
+use rustc_target::abi::Align;
 use rustc_target::spec::{PanicStrategy, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
@@ -900,7 +900,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     let min_atomic_width = sess.target.min_atomic_width();
     let max_atomic_width = sess.target.max_atomic_width();
     let atomic_cas = sess.target.atomic_cas;
-    let layout = TargetDataLayout::parse(&sess.target).unwrap_or_else(|err| {
+    let layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
         sess.emit_fatal(err);
     });
 
