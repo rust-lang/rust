@@ -77,9 +77,11 @@ impl f32 {
     /// ```
     /// let f = 3.3_f32;
     /// let g = -3.3_f32;
+    /// let h = -3.7_f32;
     ///
     /// assert_eq!(f.round(), 3.0);
     /// assert_eq!(g.round(), -3.0);
+    /// assert_eq!(h.round(), -4.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
