@@ -219,18 +219,6 @@ impl CheckAttrVisitor<'_> {
             return;
         }
 
-        // FIXME(@lcnr): this doesn't belong here.
-        if matches!(
-            target,
-            Target::Closure
-                | Target::Fn
-                | Target::Method(_)
-                | Target::ForeignFn
-                | Target::ForeignStatic
-        ) {
-            self.tcx.ensure().codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
-        }
-
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_used(attrs, target);
     }
