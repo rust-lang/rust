@@ -27,7 +27,7 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef, UserSubsts};
+use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, Dynamic,
@@ -61,7 +61,7 @@ use crate::{
     region_infer::values::{
         LivenessValues, PlaceholderIndex, PlaceholderIndices, RegionValueElements,
     },
-    region_infer::{ClosureRegionRequirementsExt, TypeTest},
+    region_infer::TypeTest,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
     Upvar,
@@ -144,7 +144,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
         liveness_constraints: LivenessValues::new(elements.clone()),
         outlives_constraints: OutlivesConstraintSet::default(),
         member_constraints: MemberConstraintSet::default(),
-        closure_bounds_mapping: Default::default(),
         type_tests: Vec::default(),
         universe_causes: FxHashMap::default(),
     };
@@ -584,8 +583,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         // modify their locations.
         let all_facts = &mut None;
         let mut constraints = Default::default();
-        let mut type_tests = Default::default();
-        let mut closure_bounds = Default::default();
         let mut liveness_constraints =
             LivenessValues::new(Rc::new(RegionValueElements::new(&promoted_body)));
         // Don't try to add borrow_region facts for the promoted MIR
@@ -595,11 +592,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             mem::swap(
                 &mut this.cx.borrowck_context.constraints.outlives_constraints,
                 &mut constraints,
-            );
-            mem::swap(&mut this.cx.borrowck_context.constraints.type_tests, &mut type_tests);
-            mem::swap(
-                &mut this.cx.borrowck_context.constraints.closure_bounds_mapping,
-                &mut closure_bounds,
             );
             mem::swap(
                 &mut this.cx.borrowck_context.constraints.liveness_constraints,
@@ -621,13 +613,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         swap_constraints(self);
 
         let locations = location.to_locations();
-
-        // Use location of promoted const in collected constraints
-        for type_test in type_tests.iter() {
-            let mut type_test = type_test.clone();
-            type_test.locations = locations;
-            self.cx.borrowck_context.constraints.type_tests.push(type_test)
-        }
         for constraint in constraints.outlives().iter() {
             let mut constraint = constraint.clone();
             constraint.locations = locations;
@@ -652,18 +637,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     .liveness_constraints
                     .add_element(region, location);
             }
-        }
-
-        if !closure_bounds.is_empty() {
-            let combined_bounds_mapping =
-                closure_bounds.into_iter().flat_map(|(_, value)| value).collect();
-            let existing = self
-                .cx
-                .borrowck_context
-                .constraints
-                .closure_bounds_mapping
-                .insert(location, combined_bounds_mapping);
-            assert!(existing.is_none(), "Multiple promoteds/closures at the same location.");
         }
     }
 
@@ -940,9 +913,6 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     pub(crate) outlives_constraints: OutlivesConstraintSet<'tcx>,
 
     pub(crate) member_constraints: MemberConstraintSet<'tcx, RegionVid>,
-
-    pub(crate) closure_bounds_mapping:
-        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory<'tcx>, Span)>>,
 
     pub(crate) universe_causes: FxHashMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
@@ -2562,6 +2532,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 span: location.to_locations().span(body),
                                 category,
                                 variance_info: ty::VarianceDiagInfo::default(),
+                                from_closure: false,
                             });
 
                             match mutbl {
@@ -2679,62 +2650,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
-        if let Some(ref closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements
-        {
-            let closure_constraints = QueryRegionConstraints {
-                outlives: closure_region_requirements.apply_requirements(
-                    tcx,
-                    def_id.to_def_id(),
-                    substs,
-                ),
-
-                // Presently, closures never propagate member
-                // constraints to their parents -- they are enforced
-                // locally.  This is largely a non-issue as member
-                // constraints only come from `-> impl Trait` and
-                // friends which don't appear (thus far...) in
-                // closures.
-                member_constraints: vec![],
-            };
-
-            let bounds_mapping = closure_constraints
-                .outlives
-                .iter()
-                .enumerate()
-                .filter_map(|(idx, constraint)| {
-                    let ty::OutlivesPredicate(k1, r2) =
-                        constraint.0.no_bound_vars().unwrap_or_else(|| {
-                            bug!("query_constraint {:?} contained bound vars", constraint,);
-                        });
-
-                    match k1.unpack() {
-                        GenericArgKind::Lifetime(r1) => {
-                            // constraint is r1: r2
-                            let r1_vid = self.borrowck_context.universal_regions.to_region_vid(r1);
-                            let r2_vid = self.borrowck_context.universal_regions.to_region_vid(r2);
-                            let outlives_requirements =
-                                &closure_region_requirements.outlives_requirements[idx];
-                            Some((
-                                (r1_vid, r2_vid),
-                                (outlives_requirements.category, outlives_requirements.blame_span),
-                            ))
-                        }
-                        GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
-                    }
-                })
-                .collect();
-
-            let existing = self
-                .borrowck_context
-                .constraints
-                .closure_bounds_mapping
-                .insert(location, bounds_mapping);
-            assert!(existing.is_none(), "Multiple closures at the same location.");
-
-            self.push_region_constraints(
+        if let Some(ref closure_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
+            constraint_conversion::ConstraintConversion::new(
+                self.infcx,
+                self.borrowck_context.universal_regions,
+                self.region_bound_pairs,
+                self.implicit_region_bound,
+                self.param_env,
                 location.to_locations(),
-                ConstraintCategory::ClosureBounds,
-                &closure_constraints,
+                DUMMY_SP,                   // irrelevant; will be overrided.
+                ConstraintCategory::Boring, // same as above.
+                &mut self.borrowck_context.constraints,
+            )
+            .apply_closure_requirements(
+                &closure_requirements,
+                def_id.to_def_id(),
+                substs,
             );
         }
 

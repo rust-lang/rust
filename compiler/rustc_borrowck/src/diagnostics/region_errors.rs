@@ -181,7 +181,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     // Try to convert the lower-bound region into something named we can print for the user.
                     let lower_bound_region = self.to_error_region(type_test.lower_bound);
 
-                    let type_test_span = type_test.locations.span(&self.body);
+                    let type_test_span = type_test.span;
 
                     if let Some(lower_bound_region) = lower_bound_region {
                         let generic_ty = type_test.generic_kind.to_ty(self.infcx.tcx);
