@@ -1,9 +1,4 @@
-// check-fail
-// known-bug: #47511
-
-// Regression test for #47511: anonymous lifetimes can appear
-// unconstrained in a return type, but only if they appear just once
-// in the input, as the input to a projection.
+// check-pass
 
 fn f(_: X) -> X {
     unimplemented!()
