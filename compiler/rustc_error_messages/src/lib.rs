@@ -607,19 +607,20 @@ pub fn fluent_value_from_str_list_sep_by_and<'source>(
             Self: Sized,
         {
             let baked_data_provider = rustc_baked_icu_data::baked_data_provider();
-            let locale_fallbacker = LocaleFallbacker::try_new_unstable(&baked_data_provider);
-            let data_provider = LocaleFallbackProvider::new_with_fallbacker(
-                &baked_data_provider,
-                locale_fallbacker,
-            );
+            let locale_fallbacker =
+                LocaleFallbacker::try_new_with_any_provider(&baked_data_provider)
+                    .expect("Failed to create fallback provider");
+            let data_provider =
+                LocaleFallbackProvider::new_with_fallbacker(baked_data_provider, locale_fallbacker);
             let locale = icu_locale_from_unic_langid(lang)
                 .unwrap_or_else(|| rustc_baked_icu_data::supported_locales::EN);
-            let list_formatter = icu_list::ListFormatter::try_new_and_with_length_unstable(
-                &data_provider,
-                &locale.into(),
-                icu_list::ListLength::Wide,
-            )
-            .expect("Failed to create list formatter");
+            let list_formatter =
+                icu_list::ListFormatter::try_new_and_with_length_with_any_provider(
+                    &data_provider,
+                    &locale.into(),
+                    icu_list::ListLength::Wide,
+                )
+                .expect("Failed to create list formatter");
 
             Ok(MemoizableListFormatter(list_formatter))
         }

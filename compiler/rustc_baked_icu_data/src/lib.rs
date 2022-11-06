@@ -5,11 +5,27 @@
 /* generated with:
 ```text
 icu4x-datagen -W --pretty --fingerprint --use-separate-crates --cldr-tag latest --icuexport-tag latest \
---format mod -l en es fr it ja pt ru tr zh-Hans zh-Hant -k list/and@1 -o src/data
+--format mod -l en es fr it ja pt ru tr zh-Hans zh-Hant -k list/and@1 fallback/likelysubtags@1 fallback/parents@1 fallback/supplement/co@1 \
+-o src/data
 ```
 */
 
-mod data;
+// FIXME: Workaround https://github.com/unicode-org/icu4x/issues/2815
+mod data {
+    /*
+    use super::data::BakedDataProvider;
+    use icu_provider::{
+        AnyPayload, AnyProvider, AnyResponse, DataError, DataErrorKind, DataKey, DataRequest,
+        KeyedDataMarker,
+    };
+
+    use crate::data::fallback;
+    use crate::data::list;
+     */
+
+    include!("data/mod.rs");
+    include!("data/any.rs");
+}
 
 pub use data::BakedDataProvider;
 
