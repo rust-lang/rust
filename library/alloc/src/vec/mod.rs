@@ -1840,6 +1840,34 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
+    /// Appends an element to the back of a collection and returns a reference to the new element.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec = vec![1, 2];
+    /// let int_ref = vec.push_with_ref(3);
+    /// assert_eq!(vec.last(), int_ref);
+    /// ```
+    #[inline]
+    #[unstable(feature = "vec_push_with_ref", issue = "104075")]
+    pub fn push_with_ref(&mut self, value: T) -> &T {
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if self.len == self.buf.capacity() {
+            self.buf.reserve_for_push(self.len);
+        }
+        unsafe {
+            let end = self.as_mut_ptr().add(self.len);
+            ptr::write(end, value);
+            self.len += 1;
+            &*end as &T
+        }
+    }
     /// Appends an element if there is sufficient spare capacity, otherwise an error is returned
     /// with the element.
     ///
