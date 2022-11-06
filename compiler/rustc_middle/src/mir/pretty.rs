@@ -12,8 +12,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstAllocation, ConstValue, GlobalAlloc, Pointer,
-    Provenance,
+    alloc_range, read_target_uint, AllocId, Allocation, ConstAllocation, ConstValue, GlobalAlloc,
+    Pointer, Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::MirSource;
@@ -884,7 +884,7 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
         }
         if let Some(prov) = alloc.provenance().get_ptr(i) {
             // Memory with provenance must be defined
-            assert!(alloc.init_mask().is_range_initialized(i, i + ptr_size).is_ok());
+            assert!(alloc.init_mask().is_range_initialized(alloc_range(i, ptr_size)).is_ok());
             let j = i.bytes_usize();
             let offset = alloc
                 .inspect_with_uninit_and_ptr_outside_interpreter(j..j + ptr_size.bytes_usize());
@@ -943,7 +943,9 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
             }
         } else if let Some(prov) = alloc.provenance().get(i, &tcx) {
             // Memory with provenance must be defined
-            assert!(alloc.init_mask().is_range_initialized(i, i + Size::from_bytes(1)).is_ok());
+            assert!(
+                alloc.init_mask().is_range_initialized(alloc_range(i, Size::from_bytes(1))).is_ok()
+            );
             ascii.push('━'); // HEAVY HORIZONTAL
             // We have two characters to display this, which is obviously not enough.
             // Format is similar to "oversized" above.
@@ -951,7 +953,11 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
             let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
             write!(w, "╾{:02x}{:#?} (1 ptr byte)╼", c, prov)?;
             i += Size::from_bytes(1);
-        } else if alloc.init_mask().is_range_initialized(i, i + Size::from_bytes(1)).is_ok() {
+        } else if alloc
+            .init_mask()
+            .is_range_initialized(alloc_range(i, Size::from_bytes(1)))
+            .is_ok()
+        {
             let j = i.bytes_usize();
 
             // Checked definedness (and thus range) and provenance. This access also doesn't

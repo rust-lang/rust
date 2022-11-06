@@ -1089,7 +1089,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .prepare_copy(src_range, dest_offset, num_copies, self)
             .map_err(|e| e.to_interp_error(dest_alloc_id))?;
         // Prepare a copy of the initialization mask.
-        let init = src_alloc.compress_uninit_range(src_range);
+        let init = src_alloc.init_mask().prepare_copy(src_range);
 
         // Destination alloc preparations and access hooks.
         let (dest_alloc, extra) = self.get_alloc_raw_mut(dest_alloc_id)?;
@@ -1155,8 +1155,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         // now fill in all the "init" data
-        dest_alloc.mark_compressed_init_range(
-            &init,
+        dest_alloc.init_mask_apply_copy(
+            init,
             alloc_range(dest_offset, size), // just a single copy (i.e., not full `dest_range`)
             num_copies,
         );

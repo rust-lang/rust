@@ -264,9 +264,6 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
     /// Applies a provenance copy.
     /// The affected range, as defined in the parameters to `prepare_copy` is expected
     /// to be clear of provenance.
-    ///
-    /// This is dangerous to use as it can violate internal `Allocation` invariants!
-    /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
     pub fn apply_copy(&mut self, copy: ProvenanceCopy<Prov>) {
         self.ptrs.insert_presorted(copy.dest_ptrs);
         self.bytes.insert_presorted(copy.dest_bytes);
