@@ -18,7 +18,7 @@ use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
-    OpTy, PlaceTy, Pointer, Scalar, StackPopUnwind,
+    OpTy, Operand, PlaceTy, Pointer, Scalar, StackPopUnwind,
 };
 
 use super::error::*;
@@ -471,11 +471,40 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         &ecx.machine.stack
     }
 
-    #[inline(always)]
-    fn stack_mut<'a>(
+    fn push_frame(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        frame: Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+    ) {
+        ecx.machine.stack.push(frame);
+    }
+
+    fn pop_frame(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+    ) -> Option<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
+        ecx.machine.stack.pop()
+    }
+
+    fn frame<'a>(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra> {
+        ecx.machine.stack.last().expect("no call frames exist")
+    }
+
+    fn frame_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
-        &mut ecx.machine.stack
+    ) -> &'a mut Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra> {
+        ecx.machine.stack.last_mut().expect("no call frames exist")
+    }
+
+    fn access_local_mut<'a>(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+        frame: usize,
+        local: mir::Local,
+    ) -> InterpResult<'tcx, &'a mut Operand<Self::Provenance>>
+    where
+        'tcx: 'mir,
+    {
+        ecx.machine.stack[frame].locals[local].access_mut()
     }
 
     fn before_access_global(

@@ -1138,10 +1138,40 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx.active_thread_stack()
     }
 
-    fn stack_mut<'a>(
+    fn push_frame(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        frame: Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+    ) {
+        ecx.push_frame(frame);
+    }
+
+    fn pop_frame(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+    ) -> Option<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
+        ecx.pop_frame()
+    }
+
+    fn frame<'a>(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra> {
+        ecx.active_thread_stack().last().expect("no call frames exist")
+    }
+
+    fn frame_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
-        ecx.active_thread_stack_mut()
+    ) -> &'a mut Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra> {
+        ecx.active_thread_stack_mut().last_mut().expect("no call frames exist")
+    }
+
+    fn access_local_mut<'a>(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+        frame: usize,
+        local: mir::Local,
+    ) -> InterpResult<'tcx, &'a mut Operand<Self::Provenance>>
+    where
+        'tcx: 'mir,
+    {
+        ecx.active_thread_stack_mut()[frame].locals[local].access_mut()
     }
 
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {

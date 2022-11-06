@@ -16,6 +16,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::data_race;
 use crate::concurrency::sync::SynchronizationState;
+use crate::concurrency::stack::Stack;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -116,7 +117,7 @@ pub struct Thread<'mir, 'tcx> {
     thread_name: Option<Vec<u8>>,
 
     /// The virtual call stack.
-    stack: Vec<Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>>,
+    stack: Stack<'mir, 'tcx>,
 
     /// The join status.
     join_status: ThreadJoinStatus,
@@ -166,7 +167,7 @@ impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
         Self {
             state: ThreadState::Enabled,
             thread_name: None,
-            stack: Vec::new(),
+            stack: Stack::new(),
             join_status: ThreadJoinStatus::Joinable,
             panic_payload: None,
             last_error: None,
@@ -189,9 +190,7 @@ impl VisitTags for Thread<'_, '_> {
 
         panic_payload.visit_tags(visit);
         last_error.visit_tags(visit);
-        for frame in stack {
-            frame.visit_tags(visit)
-        }
+        stack.visit_tags(visit);
     }
 }
 
@@ -345,20 +344,18 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
     /// Borrow the stack of the active thread.
     pub fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>] {
-        &self.threads[self.active_thread].stack
+        self.threads[self.active_thread].stack.frames()
     }
 
     /// Mutably borrow the stack of the active thread.
-    fn active_thread_stack_mut(
-        &mut self,
-    ) -> &mut Vec<Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>> {
-        &mut self.threads[self.active_thread].stack
+    pub fn active_thread_stack_mut(&mut self) -> &mut [Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>] {
+        self.threads[self.active_thread].stack.frames_mut()
     }
 
     pub fn all_stacks(
         &self,
     ) -> impl Iterator<Item = &[Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>]> {
-        self.threads.iter().map(|t| &t.stack[..])
+        self.threads.iter().map(|t| t.stack.frames())
     }
 
     /// Create a new thread and returns its id.
@@ -561,10 +558,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         // this allows us to have a deterministic scheduler.
         for thread in self.threads.indices() {
             match self.timeout_callbacks.entry(thread) {
-                Entry::Occupied(entry) =>
+                Entry::Occupied(entry) => {
                     if entry.get().call_time.get_wait_time(clock) == Duration::new(0, 0) {
                         return Some((thread, entry.remove().callback));
-                    },
+                    }
+                }
                 Entry::Vacant(_) => {}
             }
         }
@@ -863,11 +861,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     #[inline]
-    fn active_thread_stack_mut(
-        &mut self,
-    ) -> &mut Vec<Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>> {
+    fn active_thread_stack_mut(&mut self) -> &mut [Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>] {
         let this = self.eval_context_mut();
         this.machine.threads.active_thread_stack_mut()
+    }
+
+    fn push_frame(&mut self, frame: Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>) {
+        let this = self.eval_context_mut();
+        this.machine.threads.active_thread_mut().stack.push(frame);
+    }
+
+    fn pop_frame(&mut self) -> Option<Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>> {
+        let this = self.eval_context_mut();
+        this.machine.threads.active_thread_mut().stack.pop()
     }
 
     /// Set the name of the current thread. The buffer must not include the null terminator.

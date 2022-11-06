@@ -222,17 +222,13 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ///
     /// Due to borrow checker trouble, we indicate the `frame` as an index rather than an `&mut
     /// Frame`.
-    #[inline]
     fn access_local_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
         frame: usize,
         local: mir::Local,
     ) -> InterpResult<'tcx, &'a mut Operand<Self::Provenance>>
     where
-        'tcx: 'mir,
-    {
-        ecx.stack_mut()[frame].locals[local].access_mut()
-    }
+        'tcx: 'mir;
 
     /// Called before a basic block terminator is executed.
     /// You can use this to detect endlessly running programs.
@@ -394,10 +390,22 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
     ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>];
 
-    /// Mutably borrow the current thread's stack.
-    fn stack_mut<'a>(
+    fn push_frame(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        frame: Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+    );
+
+    fn pop_frame(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+    ) -> Option<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>>;
+
+    fn frame<'a>(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>;
+
+    fn frame_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>>;
+    ) -> &'a mut Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>;
 
     /// Called immediately after a stack frame got pushed and its locals got initialized.
     fn after_stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {

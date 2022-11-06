@@ -305,11 +305,29 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         &ecx.machine.stack
     }
 
-    #[inline(always)]
-    fn stack_mut<'a>(
+    fn push_frame(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        frame: Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+    ) {
+        ecx.machine.stack.push(frame);
+    }
+
+    fn pop_frame(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+    ) -> Option<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
+        ecx.machine.stack.pop()
+    }
+
+    fn frame<'a>(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra> {
+        ecx.machine.stack.last().expect("no call frames exist")
+    }
+
+    fn frame_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
-        &mut ecx.machine.stack
+    ) -> &'a mut Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra> {
+        ecx.machine.stack.last_mut().expect("no call frames exist")
     }
 }
 

@@ -517,7 +517,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 match res {
                     Err(err) => {
-                        self.stack_mut().pop();
+                        self.pop_frame();
                         Err(err)
                     }
                     Ok(()) => Ok(()),

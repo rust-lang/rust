@@ -426,11 +426,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         M::stack(self)
     }
 
-    #[inline(always)]
-    pub(crate) fn stack_mut(
-        &mut self,
-    ) -> &mut Vec<Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>> {
-        M::stack_mut(self)
+    pub(crate) fn push_frame(&mut self, frame: Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>) {
+        M::push_frame(self, frame)
+    }
+
+    pub(crate) fn pop_frame(&mut self) -> Option<Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>> {
+        M::pop_frame(self)
     }
 
     #[inline(always)]
@@ -442,12 +443,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn frame(&self) -> &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra> {
-        self.stack().last().expect("no call frames exist")
+        M::frame(self)
     }
 
     #[inline(always)]
     pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::Provenance, M::FrameExtra> {
-        self.stack_mut().last_mut().expect("no call frames exist")
+        M::frame_mut(self)
     }
 
     #[inline(always)]
@@ -690,7 +691,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             extra: (),
         };
         let frame = M::init_frame_extra(self, pre_frame)?;
-        self.stack_mut().push(frame);
+        self.push_frame(frame);
 
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
         for ct in &body.required_consts {
@@ -830,8 +831,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // All right, now it is time to actually pop the frame.
         // Note that its locals are gone already, but that's fine.
-        let frame =
-            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
+        let frame = self.pop_frame().expect("tried to pop a stack frame, but there were none");
         // Report error from return value copy, if any.
         copy_ret_result?;
 
