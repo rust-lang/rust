@@ -11,7 +11,8 @@ pub static DATA: litemap::LiteMap<&str, &DataStruct, &[(&str, &DataStruct)]> =
         ("ru", RU),
         ("tr", TR),
         ("und", UND),
-        ("zh-Hans", ZH_HANS),
+        ("zh", ZH_ZH_HANS),
+        ("zh-Hans", ZH_ZH_HANS),
         ("zh-Hant", ZH_HANT),
     ]);
 static EN: &DataStruct = &::icu_list::provider::ListFormatterPatternsV1([
@@ -1010,80 +1011,6 @@ static UND: &DataStruct = &::icu_list::provider::ListFormatterPatternsV1([
         special_case: None,
     },
 ]);
-static ZH_HANS: &DataStruct = &::icu_list::provider::ListFormatterPatternsV1([
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("和", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("和", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("和", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("和", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
-        },
-        special_case: None,
-    },
-    ::icu_list::provider::ConditionalListJoinerPattern {
-        default: unsafe {
-            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
-        },
-        special_case: None,
-    },
-]);
 static ZH_HANT: &DataStruct = &::icu_list::provider::ListFormatterPatternsV1([
     ::icu_list::provider::ConditionalListJoinerPattern {
         default: unsafe {
@@ -1154,6 +1081,80 @@ static ZH_HANT: &DataStruct = &::icu_list::provider::ListFormatterPatternsV1([
     ::icu_list::provider::ConditionalListJoinerPattern {
         default: unsafe {
             ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("和", 3u8)
+        },
+        special_case: None,
+    },
+]);
+static ZH_ZH_HANS: &DataStruct = &::icu_list::provider::ListFormatterPatternsV1([
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("和", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("和", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("和", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("和", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
+        },
+        special_case: None,
+    },
+    ::icu_list::provider::ConditionalListJoinerPattern {
+        default: unsafe {
+            ::icu_list::provider::ListJoinerPattern::from_parts_unchecked("、", 3u8)
         },
         special_case: None,
     },

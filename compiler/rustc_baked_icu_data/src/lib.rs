@@ -5,7 +5,7 @@
 /* generated with:
 ```text
 icu4x-datagen -W --pretty --fingerprint --use-separate-crates --cldr-tag latest --icuexport-tag latest \
---format mod -l en es fr it ja pt ru tr zh-Hans zh-Hant -k list/and@1 fallback/likelysubtags@1 fallback/parents@1 fallback/supplement/co@1 \
+--format mod -l en es fr it ja pt ru tr zh zh-Hans zh-Hant -k list/and@1 fallback/likelysubtags@1 fallback/parents@1 fallback/supplement/co@1 \
 -o src/data
 ```
 */
