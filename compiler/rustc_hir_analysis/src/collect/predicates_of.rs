@@ -316,10 +316,9 @@ fn const_evaluatable_predicates_of<'tcx>(
 
     impl<'tcx> intravisit::Visitor<'tcx> for ConstCollector<'tcx> {
         fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
-            let def_id = self.tcx.hir().local_def_id(c.hir_id);
-            let ct = ty::Const::from_anon_const(self.tcx, def_id);
+            let ct = ty::Const::from_anon_const(self.tcx, c.def_id);
             if let ty::ConstKind::Unevaluated(_) = ct.kind() {
-                let span = self.tcx.hir().span(c.hir_id);
+                let span = self.tcx.def_span(c.def_id);
                 self.preds.insert((
                     ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct))
                         .to_predicate(self.tcx),

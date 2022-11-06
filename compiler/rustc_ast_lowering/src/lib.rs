@@ -1160,7 +1160,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 let node_id = self.next_node_id();
 
                                 // Add a definition for the in-band const def.
-                                self.create_def(
+                                let def_id = self.create_def(
                                     parent_def_id.def_id,
                                     node_id,
                                     DefPathData::AnonConst,
@@ -1176,6 +1176,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 };
 
                                 let ct = self.with_new_scopes(|this| hir::AnonConst {
+                                    def_id,
                                     hir_id: this.lower_node_id(node_id),
                                     body: this.lower_const_body(path_expr.span, Some(&path_expr)),
                                 });
@@ -2346,6 +2347,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
         self.with_new_scopes(|this| hir::AnonConst {
+            def_id: this.local_def_id(c.id),
             hir_id: this.lower_node_id(c.id),
             body: this.lower_const_body(c.value.span, Some(&c.value)),
         })

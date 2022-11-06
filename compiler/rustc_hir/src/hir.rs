@@ -1617,7 +1617,7 @@ pub enum ArrayLen {
 impl ArrayLen {
     pub fn hir_id(&self) -> HirId {
         match self {
-            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, body: _ }) => hir_id,
+            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, .. }) => hir_id,
         }
     }
 }
@@ -1633,6 +1633,7 @@ impl ArrayLen {
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
 pub struct AnonConst {
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub body: BodyId,
 }
 
@@ -3550,7 +3551,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
-    static_assert_size!(GenericArg<'_>, 24);
+    static_assert_size!(GenericArg<'_>, 32);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);

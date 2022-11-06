@@ -297,9 +297,8 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
                 hir::GenericParamKind::Const { default, .. } => {
                     self.tcx.ensure().type_of(param.def_id);
                     if let Some(default) = default {
-                        let default_def_id = self.tcx.hir().local_def_id(default.hir_id);
                         // need to store default and type of default
-                        self.tcx.ensure().type_of(default_def_id);
+                        self.tcx.ensure().type_of(default.def_id);
                         self.tcx.ensure().const_param_default(param.def_id);
                     }
                 }
@@ -877,7 +876,7 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
 
                     let discr = if let Some(ref e) = v.disr_expr {
                         distance_from_explicit = 0;
-                        ty::VariantDiscr::Explicit(tcx.hir().local_def_id(e.hir_id).to_def_id())
+                        ty::VariantDiscr::Explicit(e.def_id.to_def_id())
                     } else {
                         ty::VariantDiscr::Relative(distance_from_explicit)
                     };

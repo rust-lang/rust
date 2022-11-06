@@ -1407,7 +1407,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     }
 
     fn visit_anon_const(&mut self, c: &'hir AnonConst) {
-        self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
+        self.body_owners.push(c.def_id);
         intravisit::walk_anon_const(self, c)
     }
 

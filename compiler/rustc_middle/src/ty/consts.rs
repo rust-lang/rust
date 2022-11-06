@@ -266,9 +266,9 @@ impl<'tcx> Const<'tcx> {
 pub fn const_param_default<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Const<'tcx> {
     let default_def_id = match tcx.hir().get_by_def_id(def_id.expect_local()) {
         hir::Node::GenericParam(hir::GenericParam {
-            kind: hir::GenericParamKind::Const { ty: _, default: Some(ac) },
+            kind: hir::GenericParamKind::Const { default: Some(ac), .. },
             ..
-        }) => tcx.hir().local_def_id(ac.hir_id),
+        }) => ac.def_id,
         _ => span_bug!(
             tcx.def_span(def_id),
             "`const_param_default` expected a generic parameter with a constant"
