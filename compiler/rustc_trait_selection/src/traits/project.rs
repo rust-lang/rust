@@ -638,6 +638,10 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
         if tcx.lazy_normalization() {
             constant
         } else {
+            if !constant.needs_normalization(self.param_env.reveal()) {
+                return constant;
+            }
+
             let constant = constant.super_fold_with(self);
             debug!(?constant, ?self.param_env);
             with_replaced_escaping_bound_vars(
