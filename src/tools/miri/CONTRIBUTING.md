@@ -150,7 +150,8 @@ is set the `MIRI_LIB_SRC` environment variable to the `library` folder of a
 `rust-lang/rust` repository checkout. Note that changing files in that directory
 does not automatically trigger a re-build of the standard library; you have to
 clear the Miri build cache manually (on Linux, `rm -rf ~/.cache/miri`;
-and on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`).
+on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`;
+and on macOS, `rm -rf ~/Library/Caches/org.rust-lang.miri`).
 
 ### Benchmarking
 
