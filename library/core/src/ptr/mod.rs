@@ -908,21 +908,15 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         );
     }
 
-    // NOTE(scottmcm) Miri is disabled here as reading in smaller units is a
-    // pessimization for it.  Also, if the type contains any unaligned pointers,
-    // copying those over multiple reads is difficult to support.
-    #[cfg(not(miri))]
+    // Split up the slice into small power-of-two-sized chunks that LLVM is able
+    // to vectorize (unless it's a special type with more-than-pointer alignment,
+    // because we don't want to pessimize things like slices of SIMD vectors.)
+    if mem::align_of::<T>() <= mem::size_of::<usize>()
+        && (!mem::size_of::<T>().is_power_of_two()
+            || mem::size_of::<T>() > mem::size_of::<usize>() * 2)
     {
-        // Split up the slice into small power-of-two-sized chunks that LLVM is able
-        // to vectorize (unless it's a special type with more-than-pointer alignment,
-        // because we don't want to pessimize things like slices of SIMD vectors.)
-        if mem::align_of::<T>() <= mem::size_of::<usize>()
-            && (!mem::size_of::<T>().is_power_of_two()
-                || mem::size_of::<T>() > mem::size_of::<usize>() * 2)
-        {
-            attempt_swap_as_chunks!(usize);
-            attempt_swap_as_chunks!(u8);
-        }
+        attempt_swap_as_chunks!(usize);
+        attempt_swap_as_chunks!(u8);
     }
 
     // SAFETY: Same preconditions as this function
