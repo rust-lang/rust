@@ -6,9 +6,11 @@
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
 
+#[const_trait]
 #[rustc_specialization_trait]
 trait Specialize {}
 
+#[const_trait]
 trait Foo {}
 
 impl<T> const Foo for T {}
@@ -18,6 +20,7 @@ where
     T: ~const Specialize,
 {}
 
+#[const_trait]
 trait Bar {}
 
 impl<T> const Bar for T

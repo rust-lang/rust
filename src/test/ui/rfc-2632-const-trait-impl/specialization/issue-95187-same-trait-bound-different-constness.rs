@@ -10,8 +10,10 @@
 #[rustc_specialization_trait]
 trait Specialize {}
 
+#[const_trait]
 trait Foo {}
 
+#[const_trait]
 trait Bar {}
 
 impl<T> Bar for T

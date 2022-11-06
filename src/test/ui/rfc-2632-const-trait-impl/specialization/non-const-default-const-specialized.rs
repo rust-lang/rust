@@ -6,6 +6,7 @@
 #![feature(const_trait_impl)]
 #![feature(min_specialization)]
 
+#[const_trait]
 trait Value {
     fn value() -> u32;
 }
