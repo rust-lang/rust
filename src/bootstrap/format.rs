@@ -43,7 +43,7 @@ struct RustfmtConfig {
 }
 
 pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
-    if build.config.dry_run {
+    if build.config.dry_run() {
         return;
     }
     let mut builder = ignore::types::TypesBuilder::new();

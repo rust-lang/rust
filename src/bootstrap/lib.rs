@@ -112,7 +112,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
-use config::Target;
+use config::{DryRun, Target};
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
 
@@ -430,7 +430,7 @@ impl Build {
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-project"));
 
-        let initial_target_libdir_str = if config.dry_run {
+        let initial_target_libdir_str = if config.dry_run() {
             "/dummy/lib/path/to/lib/".to_string()
         } else {
             output(
@@ -444,7 +444,7 @@ impl Build {
         let initial_target_dir = Path::new(&initial_target_libdir_str).parent().unwrap();
         let initial_lld = initial_target_dir.join("bin").join("rust-lld");
 
-        let initial_sysroot = if config.dry_run {
+        let initial_sysroot = if config.dry_run() {
             "/dummy".to_string()
         } else {
             output(Command::new(&config.initial_rustc).arg("--print").arg("sysroot"))
@@ -689,13 +689,13 @@ impl Build {
             }
         }
 
-        if !self.config.dry_run {
+        if !self.config.dry_run() {
             {
-                self.config.dry_run = true;
+                self.config.dry_run = DryRun::SelfCheck;
                 let builder = builder::Builder::new(&self);
                 builder.execute_cli();
             }
-            self.config.dry_run = false;
+            self.config.dry_run = DryRun::Disabled;
             let builder = builder::Builder::new(&self);
             builder.execute_cli();
         } else {
@@ -947,7 +947,7 @@ impl Build {
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return;
         }
         self.verbose(&format!("running: {:?}", cmd));
@@ -956,7 +956,7 @@ impl Build {
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return;
         }
         self.verbose(&format!("running: {:?}", cmd));
@@ -967,7 +967,7 @@ impl Build {
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn try_run(&self, cmd: &mut Command) -> bool {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return true;
         }
         self.verbose(&format!("running: {:?}", cmd));
@@ -978,7 +978,7 @@ impl Build {
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn try_run_quiet(&self, cmd: &mut Command) -> bool {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return true;
         }
         self.verbose(&format!("running: {:?}", cmd));
@@ -989,7 +989,7 @@ impl Build {
     /// Returns false if do not execute at all, otherwise returns its
     /// `status.success()`.
     fn check_run(&self, cmd: &mut Command) -> bool {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return true;
         }
         self.verbose(&format!("running: {:?}", cmd));
@@ -1019,10 +1019,12 @@ impl Build {
     }
 
     fn info(&self, msg: &str) {
-        if self.config.dry_run {
-            return;
+        match self.config.dry_run {
+            DryRun::SelfCheck => return,
+            DryRun::Disabled | DryRun::UserSelected => {
+                println!("{}", msg);
+            }
         }
-        println!("{}", msg);
     }
 
     /// Returns the number of parallel jobs that have been configured for this
@@ -1400,7 +1402,7 @@ impl Build {
     }
 
     fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, DependencyType)> {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return Vec::new();
         }
 
@@ -1440,7 +1442,7 @@ impl Build {
     }
 
     fn copy_internal(&self, src: &Path, dst: &Path, dereference_symlinks: bool) {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return;
         }
         self.verbose_than(1, &format!("Copy {:?} to {:?}", src, dst));
@@ -1477,7 +1479,7 @@ impl Build {
     /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
     /// when this function is called.
     pub fn cp_r(&self, src: &Path, dst: &Path) {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return;
         }
         for f in self.read_dir(src) {
@@ -1530,7 +1532,7 @@ impl Build {
     }
 
     fn install(&self, src: &Path, dstdir: &Path, perms: u32) {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return;
         }
         let dst = dstdir.join(src.file_name().unwrap());
@@ -1544,28 +1546,28 @@ impl Build {
     }
 
     fn create(&self, path: &Path, s: &str) {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return;
         }
         t!(fs::write(path, s));
     }
 
     fn read(&self, path: &Path) -> String {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return String::new();
         }
         t!(fs::read_to_string(path))
     }
 
     fn create_dir(&self, dir: &Path) {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return;
         }
         t!(fs::create_dir_all(dir))
     }
 
     fn remove_dir(&self, dir: &Path) {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return;
         }
         t!(fs::remove_dir_all(dir))
@@ -1574,7 +1576,7 @@ impl Build {
     fn read_dir(&self, dir: &Path) -> impl Iterator<Item = fs::DirEntry> {
         let iter = match fs::read_dir(dir) {
             Ok(v) => v,
-            Err(_) if self.config.dry_run => return vec![].into_iter(),
+            Err(_) if self.config.dry_run() => return vec![].into_iter(),
             Err(err) => panic!("could not read dir {:?}: {:?}", dir, err),
         };
         iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
@@ -1585,11 +1587,11 @@ impl Build {
         use std::os::unix::fs::symlink as symlink_file;
         #[cfg(windows)]
         use std::os::windows::fs::symlink_file;
-        if !self.config.dry_run { symlink_file(src.as_ref(), link.as_ref()) } else { Ok(()) }
+        if !self.config.dry_run() { symlink_file(src.as_ref(), link.as_ref()) } else { Ok(()) }
     }
 
     fn remove(&self, f: &Path) {
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return;
         }
         fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
