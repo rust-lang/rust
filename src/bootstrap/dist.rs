@@ -19,6 +19,7 @@ use crate::cache::{Interned, INTERNER};
 use crate::channel;
 use crate::compile;
 use crate::config::TargetSelection;
+use crate::doc::DocumentationFormat;
 use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, output, t, timeit};
@@ -97,7 +98,11 @@ impl Step for JsonDocs {
     /// Builds the `rust-docs-json` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        builder.ensure(crate::doc::JsonStd { stage: builder.top_stage, target: host });
+        builder.ensure(crate::doc::Std {
+            stage: builder.top_stage,
+            target: host,
+            format: DocumentationFormat::JSON,
+        });
 
         let dest = "share/doc/rust/json";
 
