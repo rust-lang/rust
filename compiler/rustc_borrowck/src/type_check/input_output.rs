@@ -42,8 +42,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_provided_sig = None;
         } else {
             let typeck_results = self.tcx().typeck(mir_def_id);
-            user_provided_sig = typeck_results.user_provided_sigs.get(&mir_def_id.to_def_id()).map(
-                |user_provided_poly_sig| {
+            user_provided_sig =
+                typeck_results.user_provided_sigs.get(&mir_def_id).map(|user_provided_poly_sig| {
                     // Instantiate the canonicalized variables from
                     // user-provided signature (e.g., the `_` in the code
                     // above) with fresh variables.
@@ -60,8 +60,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         LateBoundRegionConversionTime::FnCall,
                         poly_sig,
                     )
-                },
-            );
+                });
         }
 
         debug!(?normalized_input_tys, ?body.local_decls);

@@ -664,7 +664,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result = self.normalize_associated_types_in(self.tcx.hir().span(hir_id), result);
 
         let c_result = self.inh.infcx.canonicalize_response(result);
-        self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
+        self.typeck_results
+            .borrow_mut()
+            .user_provided_sigs
+            .insert(expr_def_id.expect_local(), c_result);
 
         result
     }
