@@ -323,7 +323,7 @@ impl<'a> Tarball<'a> {
         // Ensure there are no symbolic links in the tarball. In particular,
         // rustup-toolchain-install-master and most versions of Windows can't handle symbolic links.
         let decompressed_output = self.temp_dir.join(&package_name);
-        if !self.builder.config.dry_run && !self.permit_symlinks {
+        if !self.builder.config.dry_run() && !self.permit_symlinks {
             for entry in walkdir::WalkDir::new(&decompressed_output) {
                 let entry = t!(entry);
                 if entry.path_is_symlink() {

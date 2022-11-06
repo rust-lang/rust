@@ -226,7 +226,7 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
     let llvm_stamp = llvm_root.join(".llvm-stamp");
     let llvm_sha = detect_llvm_sha(&config, builder.rust_info.is_managed_git_subrepository());
     let key = format!("{}{}", llvm_sha, config.llvm_assertions);
-    if program_out_of_date(&llvm_stamp, &key) && !config.dry_run {
+    if program_out_of_date(&llvm_stamp, &key) && !config.dry_run() {
         download_ci_llvm(builder, &llvm_sha);
         for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
             builder.fix_bin_or_dylib(&t!(entry).path());
@@ -505,7 +505,7 @@ impl Step for Llvm {
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if target != builder.config.build {
             let llvm_config = builder.ensure(Llvm { target: builder.config.build });
-            if !builder.config.dry_run {
+            if !builder.config.dry_run() {
                 let llvm_bindir = output(Command::new(&llvm_config).arg("--bindir"));
                 let host_bin = Path::new(llvm_bindir.trim());
                 cfg.define(
@@ -519,7 +519,7 @@ impl Step for Llvm {
             if builder.config.llvm_clang {
                 let build_bin = builder.llvm_out(builder.config.build).join("build").join("bin");
                 let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
-                if !builder.config.dry_run && !clang_tblgen.exists() {
+                if !builder.config.dry_run() && !clang_tblgen.exists() {
                     panic!("unable to find {}", clang_tblgen.display());
                 }
                 cfg.define("CLANG_TABLEGEN", clang_tblgen);
@@ -553,7 +553,7 @@ impl Step for Llvm {
         //        tools. Figure out how to filter them down and only build the right
         //        tools and libs on all platforms.
 
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return build_llvm_config;
         }
 
@@ -611,7 +611,7 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
         return;
     }
 
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return;
     }
 
@@ -872,7 +872,7 @@ impl Step for Lld {
 
     /// Compile LLD for `target`.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return PathBuf::from("lld-out-dir-test-gen");
         }
         let target = self.target;
@@ -990,7 +990,7 @@ impl Step for TestHelpers {
     /// Compiles the `rust_test_helpers.c` library which we used in various
     /// `run-pass` tests for ABI testing.
     fn run(self, builder: &Builder<'_>) {
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return;
         }
         // The x86_64-fortanix-unknown-sgx target doesn't have a working C
@@ -1066,7 +1066,7 @@ impl Step for Sanitizers {
         }
 
         let llvm_config = builder.ensure(Llvm { target: builder.config.build });
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return runtimes;
         }
 
@@ -1240,7 +1240,7 @@ impl Step for CrtBeginEnd {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let out_dir = builder.native_dir(self.target).join("crt");
 
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return out_dir;
         }
 
@@ -1304,7 +1304,7 @@ impl Step for Libunwind {
 
     /// Build linunwind.a
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return PathBuf::new();
         }
 

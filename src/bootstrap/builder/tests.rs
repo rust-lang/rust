@@ -1,5 +1,5 @@
 use super::*;
-use crate::config::{Config, TargetSelection};
+use crate::config::{Config, DryRun, TargetSelection};
 use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
@@ -10,7 +10,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
     let mut config = Config::parse(cmd);
     // don't save toolstates
     config.save_toolstates = None;
-    config.dry_run = true;
+    config.dry_run = DryRun::SelfCheck;
 
     // Ignore most submodules, since we don't need them for a dry run.
     // But make sure to check out the `doc` and `rust-analyzer` submodules, since some steps need them

@@ -163,7 +163,7 @@ than building it.
             continue;
         }
 
-        if !build.config.dry_run {
+        if !build.config.dry_run() {
             cmd_finder.must_have(build.cc(*target));
             if let Some(ar) = build.ar(*target) {
                 cmd_finder.must_have(ar);
@@ -172,7 +172,7 @@ than building it.
     }
 
     for host in &build.hosts {
-        if !build.config.dry_run {
+        if !build.config.dry_run() {
             cmd_finder.must_have(build.cxx(*host).unwrap());
         }
     }

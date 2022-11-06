@@ -33,6 +33,17 @@ macro_rules! check_ci_llvm {
     };
 }
 
+#[derive(Clone, Default)]
+pub enum DryRun {
+    /// This isn't a dry run.
+    #[default]
+    Disabled,
+    /// This is a dry run enabled by bootstrap itself, so it can verify that no work is done.
+    SelfCheck,
+    /// This is a dry run enabled by the `--dry-run` flag.
+    UserSelected,
+}
+
 /// Global configuration for the entire build and/or bootstrap.
 ///
 /// This structure is derived from a combination of both `config.toml` and
@@ -84,7 +95,7 @@ pub struct Config {
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
-    pub dry_run: bool,
+    pub dry_run: DryRun,
     /// `None` if we shouldn't download CI compiler artifacts, or the commit to download if we should.
     #[cfg(not(test))]
     download_rustc_commit: Option<String>,
@@ -820,7 +831,7 @@ impl Config {
         config.jobs = flags.jobs.map(threads_from_config);
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
-        config.dry_run = flags.dry_run;
+        config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
         config.color = flags.color;
@@ -965,7 +976,7 @@ impl Config {
             .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/cargo"));
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
-        if config.dry_run {
+        if config.dry_run() {
             let dir = config.out.join("tmp-dry-run");
             t!(fs::create_dir_all(&dir));
             config.out = dir;
@@ -1372,6 +1383,13 @@ impl Config {
         config
     }
 
+    pub(crate) fn dry_run(&self) -> bool {
+        match self.dry_run {
+            DryRun::Disabled => false,
+            DryRun::SelfCheck | DryRun::UserSelected => true,
+        }
+    }
+
     /// A git invocation which runs inside the source directory.
     ///
     /// Use this rather than `Command::new("git")` in order to support out-of-tree builds.
@@ -1461,7 +1479,7 @@ impl Config {
     /// This is computed on demand since LLVM might have to first be downloaded from CI.
     pub(crate) fn llvm_link_shared(builder: &Builder<'_>) -> bool {
         let mut opt = builder.config.llvm_link_shared.get();
-        if opt.is_none() && builder.config.dry_run {
+        if opt.is_none() && builder.config.dry_run() {
             // just assume static for now - dynamic linking isn't supported on all platforms
             return false;
         }
@@ -1488,7 +1506,7 @@ impl Config {
     /// Return whether we will use a downloaded, pre-compiled version of rustc, or just build from source.
     pub(crate) fn download_rustc(builder: &Builder<'_>) -> bool {
         static DOWNLOAD_RUSTC: OnceCell<bool> = OnceCell::new();
-        if builder.config.dry_run && DOWNLOAD_RUSTC.get().is_none() {
+        if builder.config.dry_run() && DOWNLOAD_RUSTC.get().is_none() {
             // avoid trying to actually download the commit
             return false;
         }
@@ -1507,7 +1525,7 @@ impl Config {
             RustfmtState::SystemToolchain(p) | RustfmtState::Downloaded(p) => Some(p.clone()),
             RustfmtState::Unavailable => None,
             r @ RustfmtState::LazyEvaluated => {
-                if builder.config.dry_run {
+                if builder.config.dry_run() {
                     return Some(PathBuf::new());
                 }
                 let path = maybe_download_rustfmt(builder);
