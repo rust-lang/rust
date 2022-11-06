@@ -575,3 +575,17 @@ pub struct MetadataObjectFileWrite {
 pub struct InvalidWindowsSubsystem {
     pub subsystem: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_erroneous_constant)]
+pub struct ErroneousConstant {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_shuffle_indices_evaluation)]
+pub struct ShuffleIndicesEvaluation {
+    #[primary_span]
+    pub span: Span,
+}

@@ -1,3 +1,4 @@
+use crate::errors;
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
 use rustc_middle::mir;
@@ -44,7 +45,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.cx.tcx().const_eval_resolve(ty::ParamEnv::reveal_all(), uv, None).map_err(|err| {
             match err {
                 ErrorHandled::Reported(_) => {
-                    self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
+                    self.cx.tcx().sess.emit_err(errors::ErroneousConstant { span: constant.span });
                 }
                 ErrorHandled::TooGeneric => {
                     span_bug!(constant.span, "codegen encountered polymorphic constant: {:?}", err);
@@ -87,7 +88,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (llval, c.ty())
             })
             .unwrap_or_else(|_| {
-                bx.tcx().sess.span_err(span, "could not evaluate shuffle_indices at compile time");
+                bx.tcx().sess.emit_err(errors::ShuffleIndicesEvaluation { span });
                 // We've errored, so we don't have to produce working code.
                 let ty = self.monomorphize(ty);
                 let llty = bx.backend_type(bx.layout_of(ty));

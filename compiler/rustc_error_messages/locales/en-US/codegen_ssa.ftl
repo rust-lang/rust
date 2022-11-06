@@ -201,3 +201,7 @@ codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple time
 codegen_ssa_metadata_object_file_write = error writing metadata object file: {$error}
 
 codegen_ssa_invalid_windows_subsystem = invalid windows subsystem `{$subsystem}`, only `windows` and `console` are allowed
+
+codegen_ssa_erroneous_constant = erroneous constant encountered
+
+codegen_ssa_shuffle_indices_evaluation = could not evaluate shuffle_indices at compile time
