@@ -2880,7 +2880,7 @@ impl<'a> Parser<'a> {
         };
 
         while self.token != token::CloseDelim(close_delim) {
-            if self.eat(&token::DotDot) || self.recover_struct_fileds_dots(close_delim) {
+            if self.eat(&token::DotDot) || self.recover_struct_field_dots(close_delim) {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(&token::CloseDelim(close_delim)) {
@@ -3027,7 +3027,7 @@ impl<'a> Parser<'a> {
         self.recover_stmt();
     }
 
-    fn recover_struct_fileds_dots(&mut self, close_delim: Delimiter) -> bool {
+    fn recover_struct_field_dots(&mut self, close_delim: Delimiter) -> bool {
         if !self.look_ahead(1, |t| *t == token::CloseDelim(close_delim))
             && self.eat(&token::DotDotDot)
         {
