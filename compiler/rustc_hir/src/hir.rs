@@ -132,7 +132,7 @@ impl LifetimeName {
 
 impl fmt::Display for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.ident.fmt(f)
+        if self.ident.name != kw::Empty { self.ident.name.fmt(f) } else { "'_".fmt(f) }
     }
 }
 

@@ -78,7 +78,7 @@ fn gen_args(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> String {
             .args
             .iter()
             .map(|arg| match arg {
-                GenericArg::Lifetime(lt) => lt.ident.to_string(),
+                GenericArg::Lifetime(lt) => lt.to_string(),
                 GenericArg::Type(ty) => {
                     cx.tcx.sess.source_map().span_to_snippet(ty.span).unwrap_or_else(|_| "_".into())
                 }
