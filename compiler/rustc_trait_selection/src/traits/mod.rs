@@ -900,25 +900,13 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
         def_id: unsize_trait_did,
         substs: tcx.mk_substs_trait(source, &[target.into()]),
     };
-    let obligation = Obligation::new(
-        ObligationCause::dummy(),
-        ty::ParamEnv::reveal_all(),
-        ty::Binder::dummy(ty::TraitPredicate {
-            trait_ref,
-            constness: ty::BoundConstness::NotConst,
-            polarity: ty::ImplPolarity::Positive,
-        }),
-    );
 
-    let infcx = tcx.infer_ctxt().build();
-    let mut selcx = SelectionContext::new(&infcx);
-    let implsrc = selcx.select(&obligation).unwrap();
-
-    let Some(ImplSource::TraitUpcasting(implsrc_traitcasting)) = implsrc else {
-        bug!();
-    };
-
-    implsrc_traitcasting.vtable_vptr_slot
+    match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), ty::Binder::dummy(trait_ref))) {
+        Ok(ImplSource::TraitUpcasting(implsrc_traitcasting)) => {
+            implsrc_traitcasting.vtable_vptr_slot
+        }
+        otherwise => bug!("expected TraitUpcasting candidate, got {otherwise:?}"),
+    }
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
