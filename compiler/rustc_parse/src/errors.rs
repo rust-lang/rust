@@ -369,6 +369,15 @@ pub(crate) struct MissingSemicolonBeforeArray {
 }
 
 #[derive(Diagnostic)]
+#[diag(parser_expect_dotdot_not_dotdotdot)]
+pub(crate) struct MissingDotDot {
+    #[primary_span]
+    pub token_span: Span,
+    #[suggestion(applicability = "maybe-incorrect", code = "..", style = "verbose")]
+    pub sugg_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parser_invalid_block_macro_segment)]
 pub(crate) struct InvalidBlockMacroSegment {
     #[primary_span]

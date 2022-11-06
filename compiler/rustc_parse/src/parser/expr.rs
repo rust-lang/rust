@@ -20,9 +20,9 @@ use crate::errors::{
     InvalidNumLiteralSuffix, LabeledLoopInBreak, LeadingPlusNotSupported, LeftArrowOperator,
     LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
     MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm,
-    MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall,
-    NotAsNegationOperator, NotAsNegationOperatorSub, OctalFloatLiteralNotSupported,
-    OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
+    MissingDotDot, MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
+    NoFieldsForFnCall, NotAsNegationOperator, NotAsNegationOperatorSub,
+    OctalFloatLiteralNotSupported, OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
     RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, StructLiteralNotAllowedHere,
     StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
     UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
@@ -2880,7 +2880,7 @@ impl<'a> Parser<'a> {
         };
 
         while self.token != token::CloseDelim(close_delim) {
-            if self.eat(&token::DotDot) {
+            if self.eat(&token::DotDot) || self.recover_struct_field_dots(close_delim) {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(&token::CloseDelim(close_delim)) {
@@ -3025,6 +3025,18 @@ impl<'a> Parser<'a> {
             comma: self.token.span,
         });
         self.recover_stmt();
+    }
+
+    fn recover_struct_field_dots(&mut self, close_delim: Delimiter) -> bool {
+        if !self.look_ahead(1, |t| *t == token::CloseDelim(close_delim))
+            && self.eat(&token::DotDotDot)
+        {
+            // recover from typo of `...`, suggest `..`
+            let span = self.prev_token.span;
+            self.sess.emit_err(MissingDotDot { token_span: span, sugg_span: span });
+            return true;
+        }
+        false
     }
 
     /// Parses `ident (COLON expr)?`.
