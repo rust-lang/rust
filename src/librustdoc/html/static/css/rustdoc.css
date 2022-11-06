@@ -367,7 +367,8 @@ img {
 	overflow: visible;
 }
 
-.sub-logo-container {
+.sub-logo-container, .logo-container {
+	/* zero text boxes so that computed line height = image height exactly */
 	line-height: 0;
 }
 
@@ -465,10 +466,9 @@ img {
 }
 
 .sidebar .logo-container {
-	display: flex;
 	margin-top: 10px;
 	margin-bottom: 10px;
-	justify-content: center;
+	text-align: center;
 }
 
 .version {
@@ -1204,6 +1204,12 @@ a.test-arrow {
 	top: 5px;
 	right: 5px;
 	z-index: 1;
+	color: var(--test-arrow-color);
+	background-color: var(--test-arrow-background-color);
+}
+a.test-arrow:hover {
+	color: var(--test-arrow-hover-color);
+	background-color: var(--test-arrow-hover-background-color);
 }
 .example-wrap:hover .test-arrow {
 	visibility: visible;
@@ -1753,10 +1759,6 @@ in storage.js
 		text-overflow: ellipsis;
 		overflow: hidden;
 		white-space: nowrap;
-	}
-
-	.mobile-topbar .logo-container {
-		max-height: 45px;
 	}
 
 	.mobile-topbar .logo-container > img {
