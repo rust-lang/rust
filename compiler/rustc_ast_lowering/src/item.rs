@@ -709,11 +709,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant<'hir> {
-        let id = self.lower_node_id(v.id);
-        self.lower_attrs(id, &v.attrs);
+        let hir_id = self.lower_node_id(v.id);
+        self.lower_attrs(hir_id, &v.attrs);
         hir::Variant {
-            id,
-            data: self.lower_variant_data(id, &v.data),
+            hir_id,
+            def_id: self.local_def_id(v.id),
+            data: self.lower_variant_data(hir_id, &v.data),
             disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
             ident: self.lower_ident(v.ident),
             span: self.lower_span(v.span),
@@ -739,12 +740,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         fields.iter().enumerate().map(|f| self.lower_field_def(f)),
                     ),
                     ctor_id,
+                    self.local_def_id(id),
                 )
             }
             VariantData::Unit(id) => {
                 let ctor_id = self.lower_node_id(id);
                 self.alias_attrs(ctor_id, parent_id);
-                hir::VariantData::Unit(ctor_id)
+                hir::VariantData::Unit(ctor_id, self.local_def_id(id))
             }
         }
     }
@@ -767,6 +769,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::FieldDef {
             span: self.lower_span(f.span),
             hir_id,
+            def_id: self.local_def_id(f.id),
             ident: match f.ident {
                 Some(ident) => self.lower_ident(ident),
                 // FIXME(jseyfried): positional field hygiene.

@@ -693,7 +693,7 @@ impl<'hir> Sig for hir::Variant<'hir> {
                 text.push('}');
                 Ok(Signature { text, defs, refs })
             }
-            hir::VariantData::Tuple(fields, id) => {
+            hir::VariantData::Tuple(fields, id, _) => {
                 let name_def = SigElement {
                     id: id_from_hir_id(id, scx),
                     start: offset,
@@ -712,7 +712,7 @@ impl<'hir> Sig for hir::Variant<'hir> {
                 text.push(')');
                 Ok(Signature { text, defs, refs })
             }
-            hir::VariantData::Unit(id) => {
+            hir::VariantData::Unit(id, _) => {
                 let name_def = SigElement {
                     id: id_from_hir_id(id, scx),
                     start: offset,

@@ -1085,7 +1085,7 @@ pub fn walk_enum_def<'v, V: Visitor<'v>>(
 
 pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V, variant: &'v Variant<'v>) {
     visitor.visit_ident(variant.ident);
-    visitor.visit_id(variant.id);
+    visitor.visit_id(variant.hir_id);
     visitor.visit_variant_data(&variant.data);
     walk_list!(visitor, visit_anon_const, &variant.disr_expr);
 }

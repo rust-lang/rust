@@ -2801,7 +2801,8 @@ pub struct Variant<'hir> {
     /// Name of the variant.
     pub ident: Ident,
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
-    pub id: HirId,
+    pub hir_id: HirId,
+    pub def_id: LocalDefId,
     /// Fields and constructor id of the variant.
     pub data: VariantData<'hir>,
     /// Explicit discriminant (e.g., `Foo = 1`).
@@ -2868,6 +2869,7 @@ pub struct FieldDef<'hir> {
     pub vis_span: Span,
     pub ident: Ident,
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub ty: &'hir Ty<'hir>,
 }
 
@@ -2889,11 +2891,11 @@ pub enum VariantData<'hir> {
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(&'hir [FieldDef<'hir>], HirId),
+    Tuple(&'hir [FieldDef<'hir>], HirId, LocalDefId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
-    Unit(HirId),
+    Unit(HirId, LocalDefId),
 }
 
 impl<'hir> VariantData<'hir> {
@@ -2905,11 +2907,19 @@ impl<'hir> VariantData<'hir> {
         }
     }
 
+    /// Return the `LocalDefId` of this variant's constructor, if it has one.
+    pub fn ctor_def_id(&self) -> Option<LocalDefId> {
+        match *self {
+            VariantData::Struct(_, _) => None,
+            VariantData::Tuple(_, _, def_id) | VariantData::Unit(_, def_id) => Some(def_id),
+        }
+    }
+
     /// Return the `HirId` of this variant's constructor, if it has one.
     pub fn ctor_hir_id(&self) -> Option<HirId> {
         match *self {
             VariantData::Struct(_, _) => None,
-            VariantData::Tuple(_, hir_id) | VariantData::Unit(hir_id) => Some(hir_id),
+            VariantData::Tuple(_, hir_id, _) | VariantData::Unit(hir_id, _) => Some(hir_id),
         }
     }
 }
@@ -3535,7 +3545,7 @@ impl<'hir> Node<'hir> {
     /// Get the fields for the tuple-constructor,
     /// if this node is a tuple constructor, otherwise None
     pub fn tuple_fields(&self) -> Option<&'hir [FieldDef<'hir>]> {
-        if let Node::Ctor(&VariantData::Tuple(fields, _)) = self { Some(fields) } else { None }
+        if let Node::Ctor(&VariantData::Tuple(fields, _, _)) = self { Some(fields) } else { None }
     }
 }
 

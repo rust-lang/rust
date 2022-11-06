@@ -633,14 +633,12 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure().predicates_of(def_id);
 
             for f in struct_def.fields() {
-                let def_id = tcx.hir().local_def_id(f.hir_id);
-                tcx.ensure().generics_of(def_id);
-                tcx.ensure().type_of(def_id);
-                tcx.ensure().predicates_of(def_id);
+                tcx.ensure().generics_of(f.def_id);
+                tcx.ensure().type_of(f.def_id);
+                tcx.ensure().predicates_of(f.def_id);
             }
 
-            if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
-                let ctor_def_id = tcx.hir().local_def_id(ctor_hir_id);
+            if let Some(ctor_def_id) = struct_def.ctor_def_id() {
                 convert_variant_ctor(tcx, ctor_def_id);
             }
         }
@@ -817,7 +815,6 @@ fn convert_variant(
         .fields()
         .iter()
         .map(|f| {
-            let fid = tcx.hir().local_def_id(f.hir_id);
             let dup_span = seen_fields.get(&f.ident.normalize_to_macros_2_0()).cloned();
             if let Some(prev_span) = dup_span {
                 tcx.sess.emit_err(errors::FieldAlreadyDeclared {
@@ -829,7 +826,11 @@ fn convert_variant(
                 seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
 
-            ty::FieldDef { did: fid.to_def_id(), name: f.ident.name, vis: tcx.visibility(fid) }
+            ty::FieldDef {
+                did: f.def_id.to_def_id(),
+                name: f.ident.name,
+                vis: tcx.visibility(f.def_id),
+            }
         })
         .collect();
     let recovered = match def {
@@ -870,10 +871,6 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
                 .variants
                 .iter()
                 .map(|v| {
-                    let variant_did = Some(tcx.hir().local_def_id(v.id));
-                    let ctor_did =
-                        v.data.ctor_hir_id().map(|hir_id| tcx.hir().local_def_id(hir_id));
-
                     let discr = if let Some(ref e) = v.disr_expr {
                         distance_from_explicit = 0;
                         ty::VariantDiscr::Explicit(e.def_id.to_def_id())
@@ -884,8 +881,8 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
 
                     convert_variant(
                         tcx,
-                        variant_did,
-                        ctor_did,
+                        Some(v.def_id),
+                        v.data.ctor_def_id(),
                         v.ident,
                         discr,
                         &v.data,
@@ -898,13 +895,10 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
             (AdtKind::Enum, variants)
         }
         ItemKind::Struct(ref def, _) => {
-            let variant_did = None::<LocalDefId>;
-            let ctor_did = def.ctor_hir_id().map(|hir_id| tcx.hir().local_def_id(hir_id));
-
             let variants = std::iter::once(convert_variant(
                 tcx,
-                variant_did,
-                ctor_did,
+                None,
+                def.ctor_def_id(),
                 item.ident,
                 ty::VariantDiscr::Relative(0),
                 def,
@@ -916,13 +910,10 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
             (AdtKind::Struct, variants)
         }
         ItemKind::Union(ref def, _) => {
-            let variant_did = None;
-            let ctor_did = def.ctor_hir_id().map(|hir_id| tcx.hir().local_def_id(hir_id));
-
             let variants = std::iter::once(convert_variant(
                 tcx,
-                variant_did,
-                ctor_did,
+                None,
+                def.ctor_def_id(),
                 item.ident,
                 ty::VariantDiscr::Relative(0),
                 def,
@@ -1182,8 +1173,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor_hir_id().is_some() => {
             let ty = tcx.type_of(tcx.hir().get_parent_item(hir_id));
-            let inputs =
-                data.fields().iter().map(|f| tcx.type_of(tcx.hir().local_def_id(f.hir_id)));
+            let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id));
             ty::Binder::dummy(tcx.mk_fn_sig(
                 inputs,
                 ty,

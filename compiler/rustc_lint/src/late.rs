@@ -205,7 +205,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
-        self.with_lint_attrs(v.id, |cx| {
+        self.with_lint_attrs(v.hir_id, |cx| {
             lint_callback!(cx, check_variant, v);
             hir_visit::walk_variant(cx, v);
         })

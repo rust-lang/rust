@@ -217,19 +217,18 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
-    struct GatherCtors<'a, 'tcx> {
-        tcx: TyCtxt<'tcx>,
+    struct GatherCtors<'a> {
         set: &'a mut FxIndexSet<LocalDefId>,
     }
-    impl<'tcx> Visitor<'tcx> for GatherCtors<'_, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for GatherCtors<'_> {
         fn visit_variant_data(&mut self, v: &'tcx hir::VariantData<'tcx>) {
-            if let hir::VariantData::Tuple(_, hir_id) = *v {
-                self.set.insert(self.tcx.hir().local_def_id(hir_id));
+            if let hir::VariantData::Tuple(_, _, def_id) = *v {
+                self.set.insert(def_id);
             }
             intravisit::walk_struct_def(self, v)
         }
     }
-    tcx.hir().visit_all_item_likes_in_crate(&mut GatherCtors { tcx, set: &mut set });
+    tcx.hir().visit_all_item_likes_in_crate(&mut GatherCtors { set: &mut set });
 
     set
 }

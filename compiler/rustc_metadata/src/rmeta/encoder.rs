@@ -1558,9 +1558,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Encode def_ids for each field and method
                 // for methods, write all the stuff get_trait_method
                 // needs to know
-                let ctor = struct_def
-                    .ctor_hir_id()
-                    .map(|ctor_hir_id| self.tcx.hir().local_def_id(ctor_hir_id).local_def_index);
+                let ctor = struct_def.ctor_def_id().map(|ctor_def_id| ctor_def_id.local_def_index);
 
                 let variant = adt_def.non_enum_variant();
                 record!(self.tables.variant_data[def_id] <- VariantData {
@@ -1685,8 +1683,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let def = self.tcx.adt_def(item.owner_id.to_def_id());
                 // If the struct has a constructor, encode it.
-                if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
-                    let ctor_def_id = self.tcx.hir().local_def_id(ctor_hir_id);
+                if let Some(ctor_def_id) = struct_def.ctor_def_id() {
                     self.encode_struct_ctor(def, ctor_def_id.to_def_id());
                 }
             }
