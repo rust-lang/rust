@@ -1853,6 +1853,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let int_ref = vec.push_with_ref(3);
     /// assert_eq!(vec.last(), int_ref);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "vec_push_with_ref", issue = "104075")]
     pub fn push_with_ref(&mut self, value: T) -> &T {
