@@ -58,6 +58,7 @@
 	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
 	--test-arrow-hover-color: #f5f5f5;
 	--test-arrow-hover-background-color: #4e8bca;
+	--rust-logo-filter: initial;
 }
 
 .slider {
@@ -68,12 +69,6 @@
 }
 input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
-}
-
-.rust-logo {
-	/* This rule exists to force other themes to explicitly style the logo.
-	 * Rustdoc has a custom linter for this purpose.
-	 */
 }
 
 .content .item-info::before { color: #ccc; }
