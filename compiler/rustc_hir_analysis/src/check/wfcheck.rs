@@ -21,6 +21,7 @@ use rustc_middle::ty::{GenericArgKind, InternalSubsts};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
@@ -1542,6 +1543,33 @@ fn check_fn_or_method<'tcx>(
         sig.output(),
         hir_decl.output.span(),
     );
+
+    if sig.abi == Abi::RustCall {
+        let span = tcx.def_span(def_id);
+        let has_implicit_self = hir_decl.implicit_self != hir::ImplicitSelfKind::None;
+        let mut inputs = sig.inputs().iter().skip(if has_implicit_self { 1 } else { 0 });
+        // Check that the argument is a tuple
+        if let Some(ty) = inputs.next() {
+            wfcx.register_bound(
+                ObligationCause::new(span, wfcx.body_id, ObligationCauseCode::RustCall),
+                wfcx.param_env,
+                *ty,
+                tcx.require_lang_item(hir::LangItem::Tuple, Some(span)),
+            );
+        } else {
+            tcx.sess.span_err(
+                hir_decl.inputs.last().map_or(span, |input| input.span),
+                "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
+            );
+        }
+        // No more inputs other than the `self` type and the tuple type
+        if inputs.next().is_some() {
+            tcx.sess.span_err(
+                hir_decl.inputs.last().map_or(span, |input| input.span),
+                "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
+            );
+        }
+    }
 }
 
 /// Basically `check_associated_type_bounds`, but separated for now and should be
