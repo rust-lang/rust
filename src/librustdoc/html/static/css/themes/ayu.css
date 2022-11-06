@@ -59,6 +59,10 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--example-line-numbers-border-color: none;
 	--src-line-numbers-span-color: #5c6773;
 	--src-line-number-highlighted-background-color: rgba(255, 236, 164, 0.06);
+	--test-arrow-color: #788797;
+	--test-arrow-background-color: rgba(57, 175, 215, 0.09);
+	--test-arrow-hover-color: #c5c5c5;
+	--test-arrow-hover-background-color: rgba(57, 175, 215, 0.368);
 }
 
 .slider {
@@ -170,18 +174,6 @@ details.rustdoc-toggle > summary::before {
 
 .result-name .primitive > i, .result-name .keyword > i {
 	color: #788797;
-}
-
-a.test-arrow {
-	font-size: 100%;
-	color: #788797;
-	border-radius: 4px;
-	background-color: rgba(57, 175, 215, 0.09);
-}
-
-a.test-arrow:hover {
-	background-color: rgba(57, 175, 215, 0.368);
-	color: #c5c5c5;
 }
 
 :target {

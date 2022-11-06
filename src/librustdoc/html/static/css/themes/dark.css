@@ -54,6 +54,10 @@
 	--example-line-numbers-border-color: #4a4949;
 	--src-line-numbers-span-color: #3b91e2;
 	--src-line-number-highlighted-background-color: #0a042f;
+	--test-arrow-color: #dedede;
+	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
+	--test-arrow-hover-color: #dedede;
+	--test-arrow-hover-background-color: #4e8bca;
 }
 
 .slider {
@@ -92,15 +96,6 @@ details.rustdoc-toggle > summary::before {
 }
 #crate-search-div:hover::after, #crate-search-div:focus-within::after {
 	filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg) brightness(100%) contrast(91%);
-}
-
-a.test-arrow {
-	color: #dedede;
-	background-color: rgba(78, 139, 202, 0.2);
-}
-
-a.test-arrow:hover{
-	background-color: #4e8bca;
 }
 
 :target {
