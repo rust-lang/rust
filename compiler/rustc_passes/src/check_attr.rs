@@ -411,8 +411,7 @@ impl CheckAttrVisitor<'_> {
         if let Some(generics) = tcx.hir().get_generics(tcx.hir().local_def_id(hir_id)) {
             for p in generics.params {
                 let hir::GenericParamKind::Type { .. } = p.kind else { continue };
-                let param_id = tcx.hir().local_def_id(p.hir_id);
-                let default = tcx.object_lifetime_default(param_id);
+                let default = tcx.object_lifetime_default(p.def_id);
                 let repr = match default {
                     ObjectLifetimeDefault::Empty => "BaseDefault".to_owned(),
                     ObjectLifetimeDefault::Static => "'static".to_owned(),

@@ -15,7 +15,6 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirIdMap, LifetimeName, Node};
 use rustc_middle::bug;
-use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt, TypeSuperVisitable, TypeVisitor};
@@ -25,9 +24,9 @@ use rustc_span::Span;
 use std::fmt;
 
 trait RegionExt {
-    fn early(hir_map: Map<'_>, param: &GenericParam<'_>) -> (LocalDefId, Region);
+    fn early(param: &GenericParam<'_>) -> (LocalDefId, Region);
 
-    fn late(index: u32, hir_map: Map<'_>, param: &GenericParam<'_>) -> (LocalDefId, Region);
+    fn late(index: u32, param: &GenericParam<'_>) -> (LocalDefId, Region);
 
     fn id(&self) -> Option<DefId>;
 
@@ -35,20 +34,18 @@ trait RegionExt {
 }
 
 impl RegionExt for Region {
-    fn early(hir_map: Map<'_>, param: &GenericParam<'_>) -> (LocalDefId, Region) {
-        let def_id = hir_map.local_def_id(param.hir_id);
-        debug!("Region::early: def_id={:?}", def_id);
-        (def_id, Region::EarlyBound(def_id.to_def_id()))
+    fn early(param: &GenericParam<'_>) -> (LocalDefId, Region) {
+        debug!("Region::early: def_id={:?}", param.def_id);
+        (param.def_id, Region::EarlyBound(param.def_id.to_def_id()))
     }
 
-    fn late(idx: u32, hir_map: Map<'_>, param: &GenericParam<'_>) -> (LocalDefId, Region) {
+    fn late(idx: u32, param: &GenericParam<'_>) -> (LocalDefId, Region) {
         let depth = ty::INNERMOST;
-        let def_id = hir_map.local_def_id(param.hir_id);
         debug!(
             "Region::late: idx={:?}, param={:?} depth={:?} def_id={:?}",
-            idx, param, depth, def_id,
+            idx, param, depth, param.def_id,
         );
-        (def_id, Region::LateBound(depth, idx, def_id.to_def_id()))
+        (param.def_id, Region::LateBound(depth, idx, param.def_id.to_def_id()))
     }
 
     fn id(&self) -> Option<DefId> {
@@ -395,7 +392,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     .filter(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
                     .enumerate()
                     .map(|(late_bound_idx, param)| {
-                        let pair = Region::late(late_bound_idx as u32, self.tcx.hir(), param);
+                        let pair = Region::late(late_bound_idx as u32, param);
                         let r = late_region_as_bound_region(self.tcx, &pair.1);
                         (pair, r)
                     })
@@ -492,7 +489,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 for param in generics.params {
                     match param.kind {
                         GenericParamKind::Lifetime { .. } => {
-                            let (def_id, reg) = Region::early(self.tcx.hir(), &param);
+                            let (def_id, reg) = Region::early(&param);
                             lifetimes.insert(def_id, reg);
                         }
                         GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {}
@@ -523,9 +520,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     .params
                     .iter()
                     .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
-                            Some(Region::early(self.tcx.hir(), param))
-                        }
+                        GenericParamKind::Lifetime { .. } => Some(Region::early(param)),
                         GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => None,
                     })
                     .collect();
@@ -573,7 +568,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     .filter(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
                     .enumerate()
                     .map(|(late_bound_idx, param)| {
-                        let pair = Region::late(late_bound_idx as u32, self.tcx.hir(), param);
+                        let pair = Region::late(late_bound_idx as u32, param);
                         let r = late_region_as_bound_region(self.tcx, &pair.1);
                         (pair, r)
                     })
@@ -731,9 +726,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     .params
                     .iter()
                     .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
-                            Some(Region::early(self.tcx.hir(), param))
-                        }
+                        GenericParamKind::Lifetime { .. } => Some(Region::early(param)),
                         GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => None,
                     })
                     .collect();
@@ -779,9 +772,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     .params
                     .iter()
                     .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
-                            Some(Region::early(self.tcx.hir(), param))
-                        }
+                        GenericParamKind::Lifetime { .. } => Some(Region::early(param)),
                         GenericParamKind::Const { .. } | GenericParamKind::Type { .. } => None,
                     })
                     .collect();
@@ -886,7 +877,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 })
                                 .enumerate()
                                 .map(|(late_bound_idx, param)| {
-                                        Region::late(late_bound_idx as u32, this.tcx.hir(), param)
+                                        Region::late(late_bound_idx as u32, param)
                                 })
                                 .collect();
                         let binders: Vec<_> =
@@ -999,8 +990,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             .filter(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
             .enumerate()
             .map(|(late_bound_idx, param)| {
-                let pair =
-                    Region::late(initial_bound_vars + late_bound_idx as u32, self.tcx.hir(), param);
+                let pair = Region::late(initial_bound_vars + late_bound_idx as u32, param);
                 let r = late_region_as_bound_region(self.tcx, &pair.1);
                 lifetimes.insert(pair.0, pair.1);
                 r
@@ -1131,9 +1121,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     if self.tcx.is_late_bound(param.hir_id) {
                         let late_bound_idx = named_late_bound_vars;
                         named_late_bound_vars += 1;
-                        Some(Region::late(late_bound_idx, self.tcx.hir(), param))
+                        Some(Region::late(late_bound_idx, param))
                     } else {
-                        Some(Region::early(self.tcx.hir(), param))
+                        Some(Region::early(param))
                     }
                 }
                 GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => None,
@@ -1149,7 +1139,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             })
             .enumerate()
             .map(|(late_bound_idx, param)| {
-                let pair = Region::late(late_bound_idx as u32, self.tcx.hir(), param);
+                let pair = Region::late(late_bound_idx as u32, param);
                 late_region_as_bound_region(self.tcx, &pair.1)
             })
             .collect();

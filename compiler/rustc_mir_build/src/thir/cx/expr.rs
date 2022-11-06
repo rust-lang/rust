@@ -859,9 +859,7 @@ impl<'tcx> Cx<'tcx> {
 
             Res::Def(DefKind::ConstParam, def_id) => {
                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                let item_id = self.tcx.hir().get_parent_node(hir_id);
-                let item_def_id = self.tcx.hir().local_def_id(item_id);
-                let generics = self.tcx.generics_of(item_def_id);
+                let generics = self.tcx.generics_of(hir_id.owner);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = self.tcx.hir().name(hir_id);
                 let param = ty::ParamConst::new(index, name);

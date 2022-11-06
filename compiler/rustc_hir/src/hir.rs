@@ -487,6 +487,7 @@ pub enum GenericParamKind<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub struct GenericParam<'hir> {
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub name: ParamName,
     pub span: Span,
     pub pure_wrt_drop: bool,
@@ -1628,7 +1629,7 @@ impl ArrayLen {
 /// explicit discriminant values for enum variants.
 ///
 /// You can check if this anon const is a default in a const param
-/// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_hir_id(..)`
+/// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_def_id(..)`
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
 pub struct AnonConst {
     pub hir_id: HirId,

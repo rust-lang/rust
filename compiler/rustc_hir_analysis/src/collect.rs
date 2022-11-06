@@ -291,18 +291,16 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
                 hir::GenericParamKind::Type { default: Some(_), .. } => {
-                    let def_id = self.tcx.hir().local_def_id(param.hir_id);
-                    self.tcx.ensure().type_of(def_id);
+                    self.tcx.ensure().type_of(param.def_id);
                 }
                 hir::GenericParamKind::Type { .. } => {}
                 hir::GenericParamKind::Const { default, .. } => {
-                    let def_id = self.tcx.hir().local_def_id(param.hir_id);
-                    self.tcx.ensure().type_of(def_id);
+                    self.tcx.ensure().type_of(param.def_id);
                     if let Some(default) = default {
                         let default_def_id = self.tcx.hir().local_def_id(default.hir_id);
                         // need to store default and type of default
                         self.tcx.ensure().type_of(default_def_id);
-                        self.tcx.ensure().const_param_default(def_id);
+                        self.tcx.ensure().const_param_default(param.def_id);
                     }
                 }
             }

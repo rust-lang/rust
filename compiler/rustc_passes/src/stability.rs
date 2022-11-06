@@ -500,7 +500,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         };
 
         self.annotate(
-            self.tcx.hir().local_def_id(p.hir_id),
+            p.def_id,
             p.span,
             None,
             kind,

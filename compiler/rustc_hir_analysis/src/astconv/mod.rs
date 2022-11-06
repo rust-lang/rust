@@ -856,7 +856,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         bounds: &mut Bounds<'hir>,
         ast_bounds: &'hir [hir::GenericBound<'hir>],
-        self_ty_where_predicates: Option<(hir::HirId, &'hir [hir::WherePredicate<'hir>])>,
+        self_ty_where_predicates: Option<(LocalDefId, &'hir [hir::WherePredicate<'hir>])>,
         span: Span,
     ) {
         let tcx = self.tcx();
@@ -876,10 +876,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
         search_bounds(ast_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
-            let self_ty_def_id = tcx.hir().local_def_id(self_ty).to_def_id();
             for clause in where_clause {
                 if let hir::WherePredicate::BoundPredicate(pred) = clause {
-                    if pred.is_param_bound(self_ty_def_id) {
+                    if pred.is_param_bound(self_ty.to_def_id()) {
                         search_bounds(pred.bounds);
                     }
                 }
