@@ -150,7 +150,7 @@ impl InitMask {
     }
 
     #[inline]
-    fn get(&self, i: Size) -> bool {
+    pub fn get(&self, i: Size) -> bool {
         let (block, bit) = Self::bit_index(i);
         (self.blocks[block] & (1 << bit)) != 0
     }
