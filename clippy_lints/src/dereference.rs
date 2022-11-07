@@ -1362,6 +1362,7 @@ fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedenc
                 continue;
             },
             ty::Param(_) => TyPosition::new_deref_stable_for_result(precedence, ty),
+            ty::Projection(_) if ty.has_non_region_param() => TyPosition::new_deref_stable_for_result(precedence, ty),
             ty::Infer(_) | ty::Error(_) | ty::Bound(..) | ty::Opaque(..) | ty::Placeholder(_) | ty::Dynamic(..) => {
                 Position::ReborrowStable(precedence).into()
             },
