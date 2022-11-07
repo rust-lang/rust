@@ -861,7 +861,11 @@ fn assoc_method(
         name = name,
         generics = g.print(cx),
         decl = d.full_print(header_len, indent, cx),
-        notable_traits = notable_traits_decl(d, cx),
+        notable_traits = d
+            .output
+            .as_return()
+            .and_then(|output| notable_traits_decl(output, cx))
+            .unwrap_or_default(),
         where_clause = print_where_clause(g, cx, indent, end_newline),
     )
 }
@@ -1273,71 +1277,64 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
-fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
+fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> Option<String> {
     let mut out = Buffer::html();
 
-    if let Some((did, ty)) = decl.output.as_return().and_then(|t| Some((t.def_id(cx.cache())?, t)))
+    let did = ty.def_id(cx.cache())?;
+
+    // Box has pass-through impls for Read, Write, Iterator, and Future when the
+    // boxed type implements one of those. We don't want to treat every Box return
+    // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
+    // issue, with a pass-through impl for Future.
+    if Some(did) == cx.tcx().lang_items().owned_box()
+        || Some(did) == cx.tcx().lang_items().pin_type()
     {
-        // Box has pass-through impls for Read, Write, Iterator, and Future when the
-        // boxed type implements one of those. We don't want to treat every Box return
-        // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
-        // issue, with a pass-through impl for Future.
-        if Some(did) == cx.tcx().lang_items().owned_box()
-            || Some(did) == cx.tcx().lang_items().pin_type()
-        {
-            return "".to_string();
-        }
-        if let Some(impls) = cx.cache().impls.get(&did) {
-            for i in impls {
-                let impl_ = i.inner_impl();
-                if !impl_.for_.without_borrowed_ref().is_same(ty.without_borrowed_ref(), cx.cache())
+        return None;
+    }
+    if let Some(impls) = cx.cache().impls.get(&did) {
+        for i in impls {
+            let impl_ = i.inner_impl();
+            if !impl_.for_.without_borrowed_ref().is_same(ty.without_borrowed_ref(), cx.cache()) {
+                // Two different types might have the same did,
+                // without actually being the same.
+                continue;
+            }
+            if let Some(trait_) = &impl_.trait_ {
+                let trait_did = trait_.def_id();
+
+                if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx()))
                 {
-                    // Two different types might have the same did,
-                    // without actually being the same.
-                    continue;
-                }
-                if let Some(trait_) = &impl_.trait_ {
-                    let trait_did = trait_.def_id();
-
-                    if cx
-                        .cache()
-                        .traits
-                        .get(&trait_did)
-                        .map_or(false, |t| t.is_notable_trait(cx.tcx()))
-                    {
-                        if out.is_empty() {
-                            write!(
-                                &mut out,
-                                "<span class=\"notable\">Notable traits for {}</span>\
-                             <code class=\"content\">",
-                                impl_.for_.print(cx)
-                            );
-                        }
-
-                        //use the "where" class here to make it small
+                    if out.is_empty() {
                         write!(
                             &mut out,
-                            "<span class=\"where fmt-newline\">{}</span>",
-                            impl_.print(false, cx)
+                            "<span class=\"notable\">Notable traits for {}</span>\
+                         <code class=\"content\">",
+                            impl_.for_.print(cx)
                         );
-                        for it in &impl_.items {
-                            if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
-                                out.push_str("<span class=\"where fmt-newline\">    ");
-                                let empty_set = FxHashSet::default();
-                                let src_link =
-                                    AssocItemLink::GotoSource(trait_did.into(), &empty_set);
-                                assoc_type(
-                                    &mut out,
-                                    it,
-                                    &tydef.generics,
-                                    &[], // intentionally leaving out bounds
-                                    Some(&tydef.type_),
-                                    src_link,
-                                    0,
-                                    cx,
-                                );
-                                out.push_str(";</span>");
-                            }
+                    }
+
+                    //use the "where" class here to make it small
+                    write!(
+                        &mut out,
+                        "<span class=\"where fmt-newline\">{}</span>",
+                        impl_.print(false, cx)
+                    );
+                    for it in &impl_.items {
+                        if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
+                            out.push_str("<span class=\"where fmt-newline\">    ");
+                            let empty_set = FxHashSet::default();
+                            let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
+                            assoc_type(
+                                &mut out,
+                                it,
+                                &tydef.generics,
+                                &[], // intentionally leaving out bounds
+                                Some(&tydef.type_),
+                                src_link,
+                                0,
+                                cx,
+                            );
+                            out.push_str(";</span>");
                         }
                     }
                 }
@@ -1345,16 +1342,18 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
         }
     }
 
-    if !out.is_empty() {
-        out.insert_str(
-            0,
-            "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\">ⓘ\
-            <span class=\"notable-traits-tooltiptext\"><span class=\"docblock\">",
-        );
-        out.push_str("</code></span></span></span></span>");
+    if out.is_empty() {
+        return None;
     }
 
-    out.into_inner()
+    out.insert_str(
+        0,
+        "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\">ⓘ\
+        <span class=\"notable-traits-tooltiptext\"><span class=\"docblock\">",
+    );
+    out.push_str("</code></span></span></span></span>");
+
+    Some(out.into_inner())
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -533,7 +533,12 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
                 generics = f.generics.print(cx),
                 where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
                 decl = f.decl.full_print(header_len, 0, cx),
-                notable_traits = notable_traits_decl(&f.decl, cx),
+                notable_traits = f
+                    .decl
+                    .output
+                    .as_return()
+                    .and_then(|output| notable_traits_decl(output, cx))
+                    .unwrap_or_default(),
             );
         });
     });
