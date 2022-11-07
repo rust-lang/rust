@@ -241,10 +241,12 @@ impl<'a> Resolver<'a> {
         ));
 
         err.span_label(span, format!("`{}` re{} here", name, new_participle));
-        err.span_label(
-            self.session.source_map().guess_head_span(old_binding.span),
-            format!("previous {} of the {} `{}` here", old_noun, old_kind, name),
-        );
+        if !old_binding.span.is_dummy() && old_binding.span != span {
+            err.span_label(
+                self.session.source_map().guess_head_span(old_binding.span),
+                format!("previous {} of the {} `{}` here", old_noun, old_kind, name),
+            );
+        }
 
         // See https://github.com/rust-lang/rust/issues/32354
         use NameBindingKind::Import;

@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
-  --> $DIR/collect-into-slice.rs:8:9
+  --> $DIR/collect-into-slice.rs:6:9
    |
 LL |     let some_generated_vec = (0..10).collect();
    |         ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -9,7 +9,7 @@ LL |     let some_generated_vec = (0..10).collect();
    = help: unsized locals are gated as an unstable feature
 
 error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
-  --> $DIR/collect-into-slice.rs:8:38
+  --> $DIR/collect-into-slice.rs:6:38
    |
 LL |     let some_generated_vec = (0..10).collect();
    |                                      ^^^^^^^ doesn't have a size known at compile-time
@@ -22,7 +22,7 @@ LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
    |                ^ required by this bound in `collect`
 
 error[E0277]: a slice of type `[i32]` cannot be built since `[i32]` has no definite size
-  --> $DIR/collect-into-slice.rs:8:30
+  --> $DIR/collect-into-slice.rs:6:30
    |
 LL |     let some_generated_vec = (0..10).collect();
    |                              ^^^^^^^ ------- required by a bound introduced by this call

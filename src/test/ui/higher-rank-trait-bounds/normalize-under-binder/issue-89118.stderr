@@ -12,9 +12,6 @@ LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
 note: required by a bound in `StackContext`
   --> $DIR/issue-89118.rs:9:14
    |
-LL | trait StackContext
-   |       ------------ required by a bound in this
-LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StackContext`
 
@@ -32,9 +29,6 @@ LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
 note: required by a bound in `EthernetWorker`
   --> $DIR/issue-89118.rs:28:14
    |
-LL | struct EthernetWorker<C>(C)
-   |        -------------- required by a bound in this
-LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EthernetWorker`
 
@@ -52,9 +46,6 @@ LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
 note: required by a bound in `StackContext`
   --> $DIR/issue-89118.rs:9:14
    |
-LL | trait StackContext
-   |       ------------ required by a bound in this
-LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StackContext`
 

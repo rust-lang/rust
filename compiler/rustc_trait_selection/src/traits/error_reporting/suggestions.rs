@@ -2439,17 +2439,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let mut multispan = MultiSpan::from(span);
-                if let Some(ident) = tcx.opt_item_ident(item_def_id) {
-                    let sm = tcx.sess.source_map();
-                    let same_line =
-                        match (sm.lookup_line(ident.span.hi()), sm.lookup_line(span.lo())) {
-                            (Ok(l), Ok(r)) => l.line == r.line,
-                            _ => true,
-                        };
-                    if !ident.span.overlaps(span) && !same_line {
-                        multispan.push_span_label(ident.span, "required by a bound in this");
-                    }
-                }
                 let descr = format!("required by a bound in `{}`", item_name);
                 if span != DUMMY_SP {
                     let msg = format!("required by this bound in `{}`", item_name);

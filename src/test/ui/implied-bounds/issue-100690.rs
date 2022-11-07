@@ -4,7 +4,6 @@
 use std::io;
 
 fn real_dispatch<T, F>(f: F) -> Result<(), io::Error>
-//~^ NOTE required by a bound in this
 where
     F: FnOnce(&mut UIView<T>) -> Result<(), io::Error> + Send + 'static,
     //~^ NOTE required by this bound in `real_dispatch`

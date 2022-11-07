@@ -34,9 +34,6 @@ LL | impl Foo for FooImpl {}
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:15:25
    |
-LL | trait Foo
-   |       --- required by a bound in this
-...
 LL |     <u8 as Baz>::Quaks: Bar,
    |                         ^^^ required by this bound in `Foo`
 
@@ -52,9 +49,6 @@ LL | impl Foo for FooImpl {}
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:14:30
    |
-LL | trait Foo
-   |       --- required by a bound in this
-LL | where
 LL |     [<u8 as Baz>::Quaks; 2]: Bar,
    |                              ^^^ required by this bound in `Foo`
 
@@ -70,9 +64,6 @@ LL | fn f(_: impl Foo) {}
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:14:30
    |
-LL | trait Foo
-   |       --- required by a bound in this
-LL | where
 LL |     [<u8 as Baz>::Quaks; 2]: Bar,
    |                              ^^^ required by this bound in `Foo`
 
@@ -88,9 +79,6 @@ LL | fn f(_: impl Foo) {}
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:15:25
    |
-LL | trait Foo
-   |       --- required by a bound in this
-...
 LL |     <u8 as Baz>::Quaks: Bar,
    |                         ^^^ required by this bound in `Foo`
 
