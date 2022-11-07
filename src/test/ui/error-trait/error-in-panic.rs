@@ -4,6 +4,7 @@
 #![allow(unused_imports)]
 #![feature(core_panic)]
 #![feature(error_in_core)]
+#![feature(error_in_panic)]
 
 extern crate core;
 

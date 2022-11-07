@@ -1,6 +1,8 @@
-thread 'main' panicked at 'here's my panic error message', $DIR/error-in-panic.rs:49:5
+thread 'main' panicked at 'here's my panic error message', $DIR/error-in-panic.rs:50:5
+
 Source: my source error message
 
 Caused by:
       my source's source error message
+
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
