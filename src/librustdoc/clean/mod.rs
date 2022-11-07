@@ -12,7 +12,7 @@ pub(crate) mod utils;
 
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -182,10 +182,9 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
         .collect_referenced_late_bound_regions(&poly_trait_ref)
         .into_iter()
         .filter_map(|br| match br {
-            ty::BrNamed(_, name) if name != kw::UnderscoreLifetime => Some(GenericParamDef {
-                name,
-                kind: GenericParamDefKind::Lifetime { outlives: vec![] },
-            }),
+            ty::BrNamed(_, name) if name != kw::UnderscoreLifetime => {
+                Some(GenericParamDef::lifetime(name))
+            }
             _ => None,
         })
         .collect();
@@ -741,10 +740,7 @@ fn clean_ty_generics<'tcx>(
                             p.get_bound_params()
                                 .into_iter()
                                 .flatten()
-                                .map(|param| GenericParamDef {
-                                    name: param.0,
-                                    kind: GenericParamDefKind::Lifetime { outlives: Vec::new() },
-                                })
+                                .map(|param| GenericParamDef::lifetime(param.0))
                                 .collect(),
                         ));
                     }
@@ -957,12 +953,14 @@ fn clean_args_from_types_and_names<'tcx>(
         values: types
             .iter()
             .enumerate()
-            .map(|(i, ty)| {
-                let mut name = names.get(i).map_or(kw::Empty, |ident| ident.name);
-                if name.is_empty() {
-                    name = kw::Underscore;
-                }
-                Argument { name, type_: clean_ty(ty, cx), is_const: false }
+            .map(|(i, ty)| Argument {
+                type_: clean_ty(ty, cx),
+                name: names
+                    .get(i)
+                    .map(|ident| ident.name)
+                    .filter(|ident| !ident.is_empty())
+                    .unwrap_or(kw::Underscore),
+                is_const: false,
             })
             .collect(),
     }
@@ -1024,7 +1022,11 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
                 .iter()
                 .map(|t| Argument {
                     type_: clean_middle_ty(*t, cx, None),
-                    name: names.next().map_or(kw::Empty, |i| i.name),
+                    name: names
+                        .next()
+                        .map(|i| i.name)
+                        .filter(|i| !i.is_empty())
+                        .unwrap_or(kw::Underscore),
                     is_const: false,
                 })
                 .collect(),
@@ -1144,12 +1146,25 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             }
         }
         ty::AssocKind::Fn => {
-            let generics = clean_ty_generics(
+            let sig = tcx.fn_sig(assoc_item.def_id);
+
+            let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
+                ty::BoundVariableKind::Region(ty::BrNamed(_, name))
+                    if name != kw::UnderscoreLifetime =>
+                {
+                    Some(GenericParamDef::lifetime(name))
+                }
+                _ => None,
+            });
+
+            let mut generics = clean_ty_generics(
                 cx,
                 tcx.generics_of(assoc_item.def_id),
                 tcx.explicit_predicates_of(assoc_item.def_id),
             );
-            let sig = tcx.fn_sig(assoc_item.def_id);
+            // FIXME: This does not place parameters in source order (late-bound ones come last)
+            generics.params.extend(late_bound_regions);
+
             let mut decl = clean_fn_decl_from_did_and_sig(cx, Some(assoc_item.def_id), sig);
 
             if assoc_item.fn_has_self_parameter {
@@ -1281,7 +1296,16 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                         ..
                     }) = generics.params.iter_mut().find(|param| &param.name == arg)
                     {
-                        param_bounds.extend(mem::take(bounds));
+                        param_bounds.append(bounds);
+                    } else if let WherePredicate::RegionPredicate { lifetime: Lifetime(arg), bounds } = &mut pred
+                    && let Some(GenericParamDef {
+                        kind: GenericParamDefKind::Lifetime { outlives: param_bounds },
+                        ..
+                    }) = generics.params.iter_mut().find(|param| &param.name == arg) {
+                        param_bounds.extend(bounds.drain(..).map(|bound| match bound {
+                            GenericBound::Outlives(lifetime) => lifetime,
+                            _ => unreachable!(),
+                        }));
                     } else {
                         where_predicates.push(pred);
                     }
@@ -1653,6 +1677,9 @@ pub(crate) fn clean_middle_ty<'tcx>(
 
             inline::record_extern_fqn(cx, did, ItemType::Trait);
 
+            // FIXME(fmease): Hide the trait-object lifetime bound if it coincides with its default
+            // to partially address #44306. Follow the rules outlined at
+            // https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
             let lifetime = clean_middle_region(*reg);
             let mut bounds = dids
                 .map(|did| {
@@ -1680,8 +1707,22 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 })
                 .collect();
 
+            let late_bound_regions: FxIndexSet<_> = obj
+                .iter()
+                .flat_map(|pb| pb.bound_vars())
+                .filter_map(|br| match br {
+                    ty::BoundVariableKind::Region(ty::BrNamed(_, name))
+                        if name != kw::UnderscoreLifetime =>
+                    {
+                        Some(GenericParamDef::lifetime(name))
+                    }
+                    _ => None,
+                })
+                .collect();
+            let late_bound_regions = late_bound_regions.into_iter().collect();
+
             let path = external_path(cx, did, false, bindings, substs);
-            bounds.insert(0, PolyTrait { trait_: path, generic_params: Vec::new() });
+            bounds.insert(0, PolyTrait { trait_: path, generic_params: late_bound_regions });
 
             DynTrait(bounds, lifetime)
         }

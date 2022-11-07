@@ -1437,6 +1437,10 @@ pub(crate) struct GenericParamDef {
 }
 
 impl GenericParamDef {
+    pub(crate) fn lifetime(name: Symbol) -> Self {
+        Self { name, kind: GenericParamDefKind::Lifetime { outlives: Vec::new() } }
+    }
+
     pub(crate) fn is_synthetic_type_param(&self) -> bool {
         match self.kind {
             GenericParamDefKind::Lifetime { .. } | GenericParamDefKind::Const { .. } => false,
