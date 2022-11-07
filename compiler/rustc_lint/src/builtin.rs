@@ -2568,13 +2568,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     Some("characters must be a valid Unicode codepoint".into())
                 }
                 Int(_) | Uint(_) if init == InitKind::Uninit => {
-                    Some("integers must not be uninitialized".into())
+                    Some("integers must be initialized".into())
                 }
-                Float(_) if init == InitKind::Uninit => {
-                    Some("floats must not be uninitialized".into())
-                }
+                Float(_) if init == InitKind::Uninit => Some("floats must be initialized".into()),
                 RawPtr(_) if init == InitKind::Uninit => {
-                    Some("raw pointers must not be uninitialized".into())
+                    Some("raw pointers must be initialized".into())
                 }
                 // Recurse and checks for some compound types. (but not unions)
                 Adt(adt_def, substs) if !adt_def.is_union() => {

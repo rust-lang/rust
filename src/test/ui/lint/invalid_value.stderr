@@ -99,7 +99,7 @@ LL |         let _val: (i32, !) = mem::uninitialized();
    |                              this code causes undefined behavior when executed
    |                              help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: integers must not be uninitialized
+   = note: integers must be initialized
 
 error: the type `Void` does not permit zero-initialization
   --> $DIR/invalid_value.rs:71:26
@@ -332,7 +332,7 @@ LL |         let _val: NonNull<i32> = mem::uninitialized();
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
-   = note: raw pointers must not be uninitialized
+   = note: raw pointers must be initialized
 
 error: the type `(NonZeroU32, i32)` does not permit zero-initialization
   --> $DIR/invalid_value.rs:95:39
@@ -355,7 +355,7 @@ LL |         let _val: (NonZeroU32, i32) = mem::uninitialized();
    |                                       help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::num::NonZeroU32` must be non-null
-   = note: integers must not be uninitialized
+   = note: integers must be initialized
 
 error: the type `*const dyn Send` does not permit zero-initialization
   --> $DIR/invalid_value.rs:98:37
@@ -462,7 +462,7 @@ note: because `std::num::NonZeroU32` must be non-null (in this field of the only
    |
 LL |     Banana(NonZeroU32),
    |            ^^^^^^^^^^
-   = note: integers must not be uninitialized
+   = note: integers must be initialized
 
 error: the type `bool` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:112:26
@@ -501,7 +501,7 @@ LL |         let _val: NonBig = mem::uninitialized();
    |                            help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `NonBig` must be initialized inside its custom valid range
-note: integers must not be uninitialized (in this struct field)
+note: integers must be initialized (in this struct field)
   --> $DIR/invalid_value.rs:23:26
    |
 LL | pub(crate) struct NonBig(u64);
@@ -542,7 +542,7 @@ LL |         let _val: i32 = mem::uninitialized();
    |                         this code causes undefined behavior when executed
    |                         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: integers must not be uninitialized
+   = note: integers must be initialized
 
 error: the type `f32` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:130:25
@@ -553,7 +553,7 @@ LL |         let _val: f32 = mem::uninitialized();
    |                         this code causes undefined behavior when executed
    |                         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: floats must not be uninitialized
+   = note: floats must be initialized
 
 error: the type `*const ()` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:133:31
@@ -564,7 +564,7 @@ LL |         let _val: *const () = mem::uninitialized();
    |                               this code causes undefined behavior when executed
    |                               help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: raw pointers must not be uninitialized
+   = note: raw pointers must be initialized
 
 error: the type `*const [()]` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:136:33
@@ -575,7 +575,7 @@ LL |         let _val: *const [()] = mem::uninitialized();
    |                                 this code causes undefined behavior when executed
    |                                 help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: raw pointers must not be uninitialized
+   = note: raw pointers must be initialized
 
 error: the type `WrapAroundRange` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:139:37
@@ -587,7 +587,7 @@ LL |         let _val: WrapAroundRange = mem::uninitialized();
    |                                     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `WrapAroundRange` must be initialized inside its custom valid range
-note: integers must not be uninitialized (in this struct field)
+note: integers must be initialized (in this struct field)
   --> $DIR/invalid_value.rs:49:35
    |
 LL | pub(crate) struct WrapAroundRange(u8);
@@ -662,7 +662,7 @@ LL |         let _val: NonNull<i32> = MaybeUninit::uninit().assume_init();
    |                                  help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
-   = note: raw pointers must not be uninitialized
+   = note: raw pointers must be initialized
 
 error: the type `bool` does not permit being left uninitialized
   --> $DIR/invalid_value.rs:159:26
