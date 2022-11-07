@@ -1910,8 +1910,7 @@ pub trait Iterator {
     fn try_collect<B>(&mut self) -> ChangeOutputType<Self::Item, B>
     where
         Self: Sized,
-        <Self as Iterator>::Item: Try,
-        <<Self as Iterator>::Item as Try>::Residual: Residual<B>,
+        Self::Item: Try<Residual: Residual>,
         B: FromIterator<<Self::Item as Try>::Output>,
     {
         try_process(ByRefSized(self), |i| i.collect())
@@ -2512,12 +2511,11 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iterator_try_reduce", reason = "new API", issue = "87053")]
-    fn try_reduce<F, R>(&mut self, f: F) -> ChangeOutputType<R, Option<R::Output>>
+    fn try_reduce<R, F>(&mut self, f: F) -> ChangeOutputType<R, Option<R::Output>>
     where
         Self: Sized,
         F: FnMut(Self::Item, Self::Item) -> R,
-        R: Try<Output = Self::Item>,
-        R::Residual: Residual<Option<Self::Item>>,
+        R: Try<Output = Self::Item, Residual: Residual>,
     {
         let first = match self.next() {
             Some(i) => i,
@@ -2769,20 +2767,18 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
-    fn try_find<F, R>(&mut self, f: F) -> ChangeOutputType<R, Option<Self::Item>>
+    fn try_find<R, F>(&mut self, f: F) -> ChangeOutputType<R, Option<Self::Item>>
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
-        R: Try<Output = bool>,
-        R::Residual: Residual<Option<Self::Item>>,
+        R: Try<Output = bool, Residual: Residual>,
     {
         #[inline]
-        fn check<I, V, R>(
-            mut f: impl FnMut(&I) -> V,
-        ) -> impl FnMut((), I) -> ControlFlow<R::TryType>
+        fn check<I, R>(
+            mut f: impl FnMut(&I) -> R,
+        ) -> impl FnMut((), I) -> ControlFlow<ChangeOutputType<R, Option<I>>>
         where
-            V: Try<Output = bool, Residual = R>,
-            R: Residual<Option<I>>,
+            R: Try<Output = bool, Residual: Residual>,
         {
             move |(), x| match f(&x).branch() {
                 ControlFlow::Continue(false) => ControlFlow::CONTINUE,

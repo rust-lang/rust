@@ -87,8 +87,7 @@ where
 pub fn try_from_fn<R, const N: usize, F>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
 where
     F: FnMut(usize) -> R,
-    R: Try,
-    R::Residual: Residual<[R::Output; N]>,
+    R: Try<Residual: Residual>,
 {
     // SAFETY: we know for certain that this iterator will yield exactly `N`
     // items.
@@ -535,11 +534,10 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(c, Some(a));
     /// ```
     #[unstable(feature = "array_try_map", issue = "79711")]
-    pub fn try_map<F, R>(self, f: F) -> ChangeOutputType<R, [R::Output; N]>
+    pub fn try_map<R, F>(self, f: F) -> ChangeOutputType<R, [R::Output; N]>
     where
         F: FnMut(T) -> R,
-        R: Try,
-        R::Residual: Residual<[R::Output; N]>,
+        R: Try<Residual: Residual>,
     {
         // SAFETY: we know for certain that this iterator will yield exactly `N`
         // items.
@@ -809,15 +807,15 @@ impl<T, const N: usize> [T; N] {
 ///
 /// It is up to the caller to guarantee that `iter` yields at least `N` items.
 /// Violating this condition causes undefined behavior.
-unsafe fn try_collect_into_array_unchecked<I, T, R, const N: usize>(iter: &mut I) -> R::TryType
+unsafe fn try_collect_into_array_unchecked<I, T, const N: usize>(
+    iter: &mut I,
+) -> ChangeOutputType<I::Item, [T; N]>
 where
     // Note: `TrustedLen` here is somewhat of an experiment. This is just an
     // internal function, so feel free to remove if this bound turns out to be a
     // bad idea. In that case, remember to also remove the lower bound
     // `debug_assert!` below!
-    I: Iterator + TrustedLen,
-    I::Item: Try<Output = T, Residual = R>,
-    R: Residual<[T; N]>,
+    I: Iterator<Item: Try<Output = T, Residual: Residual>> + TrustedLen,
 {
     debug_assert!(N <= iter.size_hint().1.unwrap_or(usize::MAX));
     debug_assert!(N <= iter.size_hint().0);
@@ -852,13 +850,11 @@ where
 /// If `iter.next()` panicks, all items already yielded by the iterator are
 /// dropped.
 #[inline]
-fn try_collect_into_array<I, T, R, const N: usize>(
+fn try_collect_into_array<I, T, const N: usize>(
     iter: &mut I,
-) -> Result<R::TryType, IntoIter<T, N>>
+) -> Result<ChangeOutputType<I::Item, [T; N]>, IntoIter<T, N>>
 where
-    I: Iterator,
-    I::Item: Try<Output = T, Residual = R>,
-    R: Residual<[T; N]>,
+    I: Iterator<Item: Try<Output = T, Residual: Residual>>,
 {
     if N == 0 {
         // SAFETY: An empty array is always inhabited and has no validity invariants.

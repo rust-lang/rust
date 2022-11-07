@@ -359,14 +359,15 @@ where
 /// `<Result<Infallible, E> as Residual<T>>::TryType = Result<T, E>`.
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 #[const_trait]
-pub trait Residual<O> {
+pub trait Residual {
     /// The "return" type of this meta-function.
     #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-    type TryType: ~const Try<Output = O, Residual = Self>;
+    type TryType<O>: ~const Try<Output = O, Residual = Self>;
 }
 
+// This type alias is used in the return types of public functions, so rustc wants a stability attr
 #[unstable(feature = "pub_crate_should_not_need_unstable_attr", issue = "none")]
-pub(crate) type ChangeOutputType<T, V> = <<T as Try>::Residual as Residual<V>>::TryType;
+pub(crate) type ChangeOutputType<T, O> = <<T as Try>::Residual as Residual>::TryType<O>;
 
 /// An adapter for implementing non-try methods via the `Try` implementation.
 ///
@@ -413,8 +414,8 @@ impl<T> const FromResidual for NeverShortCircuit<T> {
     }
 }
 
-impl<T> const Residual<T> for NeverShortCircuitResidual {
-    type TryType = NeverShortCircuit<T>;
+impl const Residual for NeverShortCircuitResidual {
+    type TryType<T> = NeverShortCircuit<T>;
 }
 
 /// Implement `FromResidual<Yeet<T>>` on your type to enable

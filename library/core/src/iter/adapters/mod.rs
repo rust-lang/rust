@@ -153,11 +153,10 @@ pub(crate) struct GenericShunt<'a, I, R> {
 /// Process the given iterator as if it yielded a the item's `Try::Output`
 /// type instead. Any `Try::Residual`s encountered will stop the inner iterator
 /// and be propagated back to the overall result.
-pub(crate) fn try_process<I, T, R, F, U>(iter: I, mut f: F) -> ChangeOutputType<I::Item, U>
+pub(crate) fn try_process<I, U, F>(iter: I, mut f: F) -> ChangeOutputType<I::Item, U>
 where
-    I: Iterator<Item: Try<Output = T, Residual = R>>,
-    for<'a> F: FnMut(GenericShunt<'a, I, R>) -> U,
-    R: Residual<U>,
+    I: Iterator<Item: Try<Residual: Residual>>,
+    for<'a> F: FnMut(GenericShunt<'a, I, <I::Item as Try>::Residual>) -> U,
 {
     let mut residual = None;
     let shunt = GenericShunt { iter, residual: &mut residual };
