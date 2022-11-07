@@ -42,8 +42,10 @@ pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> R
 pub(crate) fn text_range(line_index: &LineIndex, range: lsp_types::Range) -> Result<TextRange> {
     let start = offset(line_index, range.start)?;
     let end = offset(line_index, range.end)?;
-    let text_range = TextRange::new(start, end);
-    Ok(text_range)
+    match end < start {
+        true => Err(format_err!("Invalid Range").into()),
+        false => Ok(TextRange::new(start, end)),
+    }
 }
 
 pub(crate) fn file_id(snap: &GlobalStateSnapshot, url: &lsp_types::Url) -> Result<FileId> {
