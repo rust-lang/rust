@@ -7,7 +7,7 @@
     arithmetic_overflow,
     unconditional_panic
 )]
-#![feature(const_mut_refs, inline_const, saturating_int_impl)]
+#![feature(const_mut_refs, saturating_int_impl)]
 #![warn(clippy::arithmetic_side_effects)]
 
 use core::num::{Saturating, Wrapping};
