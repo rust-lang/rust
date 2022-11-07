@@ -19,6 +19,7 @@
 #![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_write)]
+#![feature(const_slice_eq_ignore_ascii_case)]
 #![feature(const_trait_impl)]
 #![feature(const_likely)]
 #![feature(const_location_fields)]

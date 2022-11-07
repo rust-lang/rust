@@ -17,6 +17,19 @@ fn test_is_ascii() {
 }
 
 #[test]
+fn test_is_ascii_const() {
+    const _: () = {
+        assert!(b"".is_ascii());
+        assert!(b"banana\0\x7F".is_ascii());
+        assert!(!b"Vi\xe1\xbb\x87t Nam".is_ascii());
+
+        assert!("".is_ascii());
+        assert!("banana\0\u{7F}".is_ascii());
+        assert!(!"ประเทศไทย中华Việt Nam".is_ascii());
+    };
+}
+
+#[test]
 fn test_to_ascii_uppercase() {
     assert_eq!("url()URL()uRl()ürl".to_ascii_uppercase(), "URL()URL()URL()üRL");
     assert_eq!("hıKß".to_ascii_uppercase(), "HıKß");
@@ -110,6 +123,19 @@ fn test_eq_ignore_ascii_case() {
                 .eq_ignore_ascii_case(&from_u32(lower).unwrap().to_string())
         );
     }
+}
+
+#[test]
+fn test_eq_ignore_ascii_case_const() {
+    const _: () = {
+        assert!("url()URL()uRl()Ürl".eq_ignore_ascii_case("url()url()url()Ürl"));
+        assert!(!"Ürl".eq_ignore_ascii_case("ürl"));
+        // Dotted capital I, Kelvin sign, Sharp S.
+        assert!("HİKß".eq_ignore_ascii_case("hİKß"));
+        assert!(!"İ".eq_ignore_ascii_case("i"));
+        assert!(!"K".eq_ignore_ascii_case("k"));
+        assert!(!"ß".eq_ignore_ascii_case("s"));
+    };
 }
 
 #[test]

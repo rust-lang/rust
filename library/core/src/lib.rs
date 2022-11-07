@@ -146,6 +146,7 @@
 #![feature(const_replace)]
 #![feature(const_size_of_val)]
 #![feature(const_size_of_val_raw)]
+#![feature(const_slice_eq_ignore_ascii_case)]
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_from_ref)]
 #![feature(const_slice_index)]

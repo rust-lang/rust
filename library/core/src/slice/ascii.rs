@@ -2,6 +2,7 @@
 
 use crate::ascii;
 use crate::fmt::{self, Write};
+use crate::intrinsics;
 use crate::iter;
 use crate::mem;
 use crate::ops;
@@ -52,10 +53,33 @@ impl [u8] {
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporaries.
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_unstable(feature = "const_slice_eq_ignore_ascii_case", issue = "none")]
     #[must_use]
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
-        self.len() == other.len() && iter::zip(self, other).all(|(a, b)| a.eq_ignore_ascii_case(b))
+    pub const fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
+        const fn eq_ignore_ascii_case_ct(a: &[u8], b: &[u8]) -> bool {
+            a.len() == b.len() && {
+                let mut i = 0;
+                while i < a.len() {
+                    if !u8::eq_ignore_ascii_case(&a[i], &b[i]) {
+                        return false;
+                    }
+                    i += 1;
+                }
+                true
+            }
+        }
+        fn eq_ignore_ascii_case_rt(a: &[u8], b: &[u8]) -> bool {
+            a.len() == b.len() && iter::zip(a, b).all(|(a, b)| u8::eq_ignore_ascii_case(a, b))
+        }
+        // SAFETY: both branches compute the same result, the runtime one is just more optimized
+        unsafe {
+            intrinsics::const_eval_select(
+                (self, other),
+                eq_ignore_ascii_case_ct,
+                eq_ignore_ascii_case_rt,
+            )
+        }
     }
 
     /// Converts this slice to its ASCII upper case equivalent in-place.
