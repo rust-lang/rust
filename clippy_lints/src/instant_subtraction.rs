@@ -1,6 +1,8 @@
 use clippy_utils::{
     diagnostics::{self, span_lint_and_sugg},
-    meets_msrv, msrvs, source, ty,
+    meets_msrv, msrvs, source,
+    sugg::Sugg,
+    ty,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -78,45 +80,41 @@ impl_lint_pass!(InstantSubtraction => [MANUAL_INSTANT_ELAPSED, UNCHECKED_DURATIO
 
 impl LateLintPass<'_> for InstantSubtraction {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
-        if let ExprKind::Binary(Spanned {node: BinOpKind::Sub, ..}, lhs, rhs) = expr.kind
-            && check_instant_now_call(cx, lhs)
-            && let ty_resolved = cx.typeck_results().expr_ty(rhs)
-            && let rustc_middle::ty::Adt(def, _) = ty_resolved.kind()
-            && clippy_utils::match_def_path(cx, def.did(), &clippy_utils::paths::INSTANT)
-            && let Some(sugg) = clippy_utils::sugg::Sugg::hir_opt(cx, rhs)
+        if let ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Sub, ..
+            },
+            lhs,
+            rhs,
+        ) = expr.kind
         {
-            span_lint_and_sugg(
-                cx,
-                MANUAL_INSTANT_ELAPSED,
-                expr.span,
-                "manual implementation of `Instant::elapsed`",
-                "try",
-                format!("{}.elapsed()", sugg.maybe_par()),
-                Applicability::MachineApplicable,
-            );
-        }
+            if_chain! {
+                if is_instant_now_call(cx, lhs);
 
-        if expr.span.from_expansion() || !meets_msrv(self.msrv, msrvs::TRY_FROM) {
-            return;
-        }
+                if is_an_instant(cx, rhs);
+                if let Some(sugg) = Sugg::hir_opt(cx, rhs);
 
-        if_chain! {
-            if let ExprKind::Binary(op, lhs, rhs) = expr.kind;
+                then {
+                    print_manual_instant_elapsed_sugg(cx, expr, sugg)
+                } else {
+                    if_chain! {
+                        if !expr.span.from_expansion();
+                        if meets_msrv(self.msrv, msrvs::TRY_FROM);
 
-            if let BinOpKind::Sub = op.node;
+                        if is_an_instant(cx, lhs);
+                        if is_a_duration(cx, rhs);
 
-            // get types of left and right side
-            if is_an_instant(cx, lhs);
-            if is_a_duration(cx, rhs);
-
-            then {
-                print_lint_and_sugg(cx, lhs, rhs, expr)
+                        then {
+                            print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr)
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-fn check_instant_now_call(cx: &LateContext<'_>, expr_block: &'_ Expr<'_>) -> bool {
+fn is_instant_now_call(cx: &LateContext<'_>, expr_block: &'_ Expr<'_>) -> bool {
     if let ExprKind::Call(fn_expr, []) = expr_block.kind
         && let Some(fn_id) = clippy_utils::path_def_id(cx, fn_expr)
         && clippy_utils::match_def_path(cx, fn_id, &clippy_utils::paths::INSTANT_NOW)
@@ -141,7 +139,24 @@ fn is_a_duration(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     ty::is_type_diagnostic_item(cx, expr_ty, sym::Duration)
 }
 
-fn print_lint_and_sugg(cx: &LateContext<'_>, left_expr: &Expr<'_>, right_expr: &Expr<'_>, expr: &Expr<'_>) {
+fn print_manual_instant_elapsed_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, sugg: Sugg<'_>) {
+    span_lint_and_sugg(
+        cx,
+        MANUAL_INSTANT_ELAPSED,
+        expr.span,
+        "manual implementation of `Instant::elapsed`",
+        "try",
+        format!("{}.elapsed()", sugg.maybe_par()),
+        Applicability::MachineApplicable,
+    );
+}
+
+fn print_unchecked_duration_subtraction_sugg(
+    cx: &LateContext<'_>,
+    left_expr: &Expr<'_>,
+    right_expr: &Expr<'_>,
+    expr: &Expr<'_>,
+) {
     let mut applicability = Applicability::MachineApplicable;
 
     let left_expr =
