@@ -209,19 +209,19 @@ impl ast::String {
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
         let mut buf = String::new();
-        let mut prev = 0;
+        let mut prev_end = 0;
         let mut has_error = false;
         unescape_literal(text, Mode::Str, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
             (Ok(c), false) => buf.push(c),
-            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev => {
-                prev = char_range.end
+            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+                prev_end = char_range.end
             }
             (Ok(c), true) => {
                 buf.reserve_exact(text.len());
-                buf.push_str(&text[..prev]);
+                buf.push_str(&text[..prev_end]);
                 buf.push(c);
             }
             (Err(_), _) => has_error = true,
@@ -254,19 +254,19 @@ impl ast::ByteString {
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
         let mut buf: Vec<u8> = Vec::new();
-        let mut prev = 0;
+        let mut prev_end = 0;
         let mut has_error = false;
         unescape_literal(text, Mode::ByteStr, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
             (Ok(c), false) => buf.push(c as u8),
-            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev => {
-                prev = char_range.end
+            (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
+                prev_end = char_range.end
             }
             (Ok(c), true) => {
                 buf.reserve_exact(text.len());
-                buf.extend_from_slice(text[..prev].as_bytes());
+                buf.extend_from_slice(text[..prev_end].as_bytes());
                 buf.push(c as u8);
             }
             (Err(_), _) => has_error = true,
@@ -449,11 +449,10 @@ mod tests {
         check_string_value(r"\foobar", None);
         check_string_value(r"\nfoobar", "\nfoobar");
         check_string_value(r"C:\\Windows\\System32\\", "C:\\Windows\\System32\\");
-        check_string_value(r"\x61bcde", "a\x62cde");
+        check_string_value(r"\x61bcde", "abcde");
         check_string_value(
             r"a\
-bcde", "a\
-bcde",
+bcde", "abcde",
         );
     }
 
