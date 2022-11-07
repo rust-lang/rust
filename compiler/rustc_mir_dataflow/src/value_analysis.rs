@@ -53,7 +53,6 @@ use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::VariantIdx;
 
 use crate::lattice::{HasBottom, HasTop};
@@ -694,7 +693,7 @@ impl Map {
         if max_derefs > 0 {
             if let Some(ty::TypeAndMut { ty: deref_ty, .. }) = ty.builtin_deref(false) {
                 // Values behind references can only be tracked if the target is `Freeze`.
-                if deref_ty.is_freeze(tcx.at(DUMMY_SP), param_env) {
+                if deref_ty.is_freeze(tcx, param_env) {
                     projection.push(PlaceElem::Deref);
                     self.register_with_filter_rec(
                         tcx,
