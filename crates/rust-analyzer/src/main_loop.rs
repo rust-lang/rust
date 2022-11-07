@@ -759,8 +759,10 @@ impl GlobalState {
 
                     let vfs = &mut this.vfs.write().0;
                     let file_id = vfs.file_id(&path).unwrap();
-                    let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
-                    apply_document_changes(&mut text, params.content_changes);
+                    let text = apply_document_changes(
+                        || std::str::from_utf8(vfs.file_contents(file_id)).unwrap().into(),
+                        params.content_changes,
+                    );
 
                     vfs.set_file_contents(path, Some(text.into_bytes()));
                 }
