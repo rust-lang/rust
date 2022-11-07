@@ -731,6 +731,17 @@ fn print_crate_info(
             // Any output here interferes with Cargo's parsing of other printed output
             NativeStaticLibs => {}
             LinkArgs => {}
+            SplitDebuginfo => {
+                use rustc_target::spec::SplitDebuginfo::{Off, Packed, Unpacked};
+
+                for split in &[Off, Packed, Unpacked] {
+                    let stable = true; // sess.target.options.supported_split_debuginfo.contains(split);
+                    let unstable_ok = sess.unstable_options();
+                    if stable || unstable_ok {
+                        println!("{}", split);
+                    }
+                }
+            }
         }
     }
     Compilation::Stop

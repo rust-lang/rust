@@ -583,6 +583,7 @@ pub enum PrintRequest {
     NativeStaticLibs,
     StackProtectorStrategies,
     LinkArgs,
+    SplitDebuginfo,
 }
 
 #[derive(Copy, Clone)]
@@ -1830,6 +1831,7 @@ fn collect_print_requests(
             }
         }
         "link-args" => PrintRequest::LinkArgs,
+        "split-debuginfo" => PrintRequest::SplitDebuginfo,
         req => early_error(error_format, &format!("unknown print request `{req}`")),
     }));
 
