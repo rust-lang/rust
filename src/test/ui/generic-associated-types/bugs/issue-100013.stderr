@@ -18,6 +18,7 @@ note: ...must outlive the lifetime defined here
    |
 LL |         let x = None::<I::Future<'_, '_>>; // a type referencing GAT
    |                                  ^^
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
 
 error: lifetime bound not satisfied
   --> $DIR/issue-100013.rs:23:5
@@ -40,6 +41,7 @@ note: ...must outlive the lifetime defined here
    |
 LL | fn call2<'a, 'b, I: FutureIterator>() -> impl Send {
    |          ^^
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
 
 error: lifetime may not live long enough
   --> $DIR/issue-100013.rs:25:17
@@ -74,6 +76,7 @@ note: ...must outlive the lifetime defined here
    |
 LL | fn call3<'a: 'b, 'b, I: FutureIterator>() -> impl Send {
    |          ^^
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
 
 error: aborting due to 4 previous errors
 
