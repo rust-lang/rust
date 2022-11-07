@@ -37,8 +37,9 @@ impl ProvenanceMap {
     /// indeed that is how codegen treats them).
     ///
     /// Only exposed with `AllocId` provenance, since it panics if there is bytewise provenance.
+    #[inline]
     pub fn ptrs(&self) -> &SortedMap<Size, AllocId> {
-        assert!(self.bytes.is_empty());
+        debug_assert!(self.bytes.is_empty());
         &self.ptrs
     }
 }
@@ -106,7 +107,11 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         let start = range.start;
         let end = range.end();
         // Clear the bytewise part -- this is easy.
-        self.bytes.remove_range(start..end);
+        if Prov::OFFSET_IS_ADDR {
+            self.bytes.remove_range(start..end);
+        } else {
+            debug_assert!(self.bytes.is_empty());
+        }
 
         // For the ptr-sized part, find the first (inclusive) and last (exclusive) byte of
         // provenance that overlaps with the given range.
@@ -167,7 +172,6 @@ pub struct ProvenanceCopy<Prov> {
 }
 
 impl<Prov: Provenance> ProvenanceMap<Prov> {
-    #[instrument(skip(self, cx), level = "debug")]
     pub fn prepare_copy(
         &self,
         src: AllocRange,
@@ -225,7 +229,11 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             trace!("no start overlapping entry");
         }
         // Then the main part, bytewise provenance from `self.bytes`.
-        bytes.extend(self.bytes.range(src.start..src.end()));
+        if Prov::OFFSET_IS_ADDR {
+            bytes.extend(self.bytes.range(src.start..src.end()));
+        } else {
+            debug_assert!(self.bytes.is_empty());
+        }
         // And finally possibly parts of a pointer at the end.
         if let Some(entry) = self.range_get_ptrs(alloc_range(src.end(), Size::ZERO), cx).first() {
             if !Prov::OFFSET_IS_ADDR {
@@ -266,6 +274,10 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
     /// to be clear of provenance.
     pub fn apply_copy(&mut self, copy: ProvenanceCopy<Prov>) {
         self.ptrs.insert_presorted(copy.dest_ptrs);
-        self.bytes.insert_presorted(copy.dest_bytes);
+        if Prov::OFFSET_IS_ADDR {
+            self.bytes.insert_presorted(copy.dest_bytes);
+        } else {
+            debug_assert!(copy.dest_bytes.is_empty());
+        }
     }
 }
