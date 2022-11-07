@@ -32,11 +32,11 @@ error: byte constant must be escaped: `'`
 LL |     b''';
    |       ^ help: escape the character: `\'`
 
-error: non-ASCII character in byte constant
+error: non-ASCII character in byte literal
   --> $DIR/byte-literals.rs:10:7
    |
 LL |     b'é';
-   |       ^ byte constant must be ASCII
+   |       ^ must be ASCII
    |
 help: if you meant to use the unicode code point for 'é', use a \xHH escape
    |
