@@ -513,22 +513,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             // Rust allocation
-            "__rust_alloc" => {
+            "__rust_alloc" | "miri_alloc" => {
                 let [size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
 
-                return this.emulate_allocator(Symbol::intern("__rg_alloc"), |this| {
+                let default = |this: &mut MiriInterpCx<'mir, 'tcx>| {
                     Self::check_alloc_request(size, align)?;
+
+                    let memory_kind = match link_name.as_str() {
+                        "__rust_alloc" => MiriMemoryKind::Rust,
+                        "miri_alloc" => MiriMemoryKind::Miri,
+                        _ => unreachable!(),
+                    };
 
                     let ptr = this.allocate_ptr(
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::Rust.into(),
+                        memory_kind.into(),
                     )?;
 
                     this.write_pointer(ptr, dest)
-                });
+                };
+
+                match link_name.as_str() {
+                    "__rust_alloc" => return this.emulate_allocator(Symbol::intern("__rg_alloc"), default),
+                    "miri_alloc" => {
+                        default(this)?;
+                        return Ok(EmulateByNameResult::NeedsJumping);
+                    },
+                    _ => unreachable!(),
+                }
             }
             "__rust_alloc_zeroed" => {
                 let [size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -549,20 +564,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.write_pointer(ptr, dest)
                 });
             }
-            "__rust_dealloc" => {
+            "__rust_dealloc" | "miri_dealloc" => {
                 let [ptr, old_size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let old_size = this.read_scalar(old_size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
 
-                return this.emulate_allocator(Symbol::intern("__rg_dealloc"), |this| {
+                let default = |this: &mut MiriInterpCx<'mir, 'tcx>| {
+                    let memory_kind = match link_name.as_str() {
+                        "__rust_dealloc" => MiriMemoryKind::Rust,
+                        "miri_dealloc" => MiriMemoryKind::Miri,
+                        _ => unreachable!(),
+                    };
+
                     // No need to check old_size/align; we anyway check that they match the allocation.
                     this.deallocate_ptr(
                         ptr,
                         Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
-                        MiriMemoryKind::Rust.into(),
+                        memory_kind.into(),
                     )
-                });
+                };
+
+                match link_name.as_str() {
+                    "__rust_dealloc" => return this.emulate_allocator(Symbol::intern("__rg_dealloc"), default),
+                    "miri_dealloc" => {
+                        default(this)?;
+                        return Ok(EmulateByNameResult::NeedsJumping);
+                    }
+                    _ => unreachable!(),
+                }
             }
             "__rust_realloc" => {
                 let [ptr, old_size, align, new_size] = this.check_shim(abi, Abi::Rust, link_name, args)?;
