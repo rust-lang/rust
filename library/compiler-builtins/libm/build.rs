@@ -39,9 +39,6 @@ mod musl_reference_tests {
         "jnf.rs",
         "j1.rs",
         "j1f.rs",
-        // musl doens't have these
-        "roundeven.rs",
-        "roundevenf.rs",
     ];
 
     struct Function {

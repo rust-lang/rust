@@ -1,9 +1,5 @@
-// Source: musl libm rint
-// (equivalent to roundeven when rounding mode is default,
-// which Rust assumes)
-
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
-pub fn roundeven(x: f64) -> f64 {
+pub fn rint(x: f64) -> f64 {
     let one_over_e = 1.0 / f64::EPSILON;
     let as_u64: u64 = x.to_bits();
     let exponent: u64 = as_u64 >> 52 & 0x7ff;
@@ -31,20 +27,20 @@ pub fn roundeven(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::roundeven;
+    use super::rint;
 
     #[test]
     fn negative_zero() {
-        assert_eq!(roundeven(-0.0_f64).to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(rint(-0.0_f64).to_bits(), (-0.0_f64).to_bits());
     }
 
     #[test]
     fn sanity_check() {
-        assert_eq!(roundeven(-1.0), -1.0);
-        assert_eq!(roundeven(2.8), 3.0);
-        assert_eq!(roundeven(-0.5), -0.0);
-        assert_eq!(roundeven(0.5), 0.0);
-        assert_eq!(roundeven(-1.5), -2.0);
-        assert_eq!(roundeven(1.5), 2.0);
+        assert_eq!(rint(-1.0), -1.0);
+        assert_eq!(rint(2.8), 3.0);
+        assert_eq!(rint(-0.5), -0.0);
+        assert_eq!(rint(0.5), 0.0);
+        assert_eq!(rint(-1.5), -2.0);
+        assert_eq!(rint(1.5), 2.0);
     }
 }
