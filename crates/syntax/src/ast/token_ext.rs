@@ -456,6 +456,31 @@ bcde", "abcde",
         );
     }
 
+    fn check_byte_string_value<'a, const N: usize>(
+        lit: &str,
+        expected: impl Into<Option<&'a [u8; N]>>,
+    ) {
+        assert_eq!(
+            ast::ByteString { syntax: make::tokens::literal(&format!("b\"{}\"", lit)) }
+                .value()
+                .as_deref(),
+            expected.into().map(|value| &value[..])
+        );
+    }
+
+    #[test]
+    fn test_byte_string_escape() {
+        check_byte_string_value(r"foobar", b"foobar");
+        check_byte_string_value(r"\foobar", None::<&[u8; 0]>);
+        check_byte_string_value(r"\nfoobar", b"\nfoobar");
+        check_byte_string_value(r"C:\\Windows\\System32\\", b"C:\\Windows\\System32\\");
+        check_byte_string_value(r"\x61bcde", b"abcde");
+        check_byte_string_value(
+            r"a\
+bcde", b"abcde",
+        );
+    }
+
     #[test]
     fn test_value_underscores() {
         check_float_value("3.141592653589793_f64", 3.141592653589793_f64);
