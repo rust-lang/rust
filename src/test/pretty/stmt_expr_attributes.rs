@@ -1,7 +1,6 @@
 // pp-exact
 
 #![feature(box_syntax)]
-#![feature(inline_const)]
 #![feature(inline_const_pat)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]

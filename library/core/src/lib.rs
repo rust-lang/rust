@@ -192,7 +192,7 @@
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(if_let_guard)]
-#![feature(inline_const)]
+#![cfg_attr(bootstrap, feature(inline_const))]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]

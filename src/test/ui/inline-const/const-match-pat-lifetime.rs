@@ -2,7 +2,6 @@
 
 #![allow(incomplete_features)]
 #![feature(const_mut_refs)]
-#![feature(inline_const)]
 #![feature(inline_const_pat)]
 
 use std::marker::PhantomData;

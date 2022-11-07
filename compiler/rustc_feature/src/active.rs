@@ -421,8 +421,6 @@ declare_features! (
     (active, imported_main, "1.53.0", Some(28937), None),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995), None),
-    /// Allow anonymous constants from an inline `const` block
-    (active, inline_const, "1.49.0", Some(76001), None),
     /// Allow anonymous constants from an inline `const` block in pattern position
     (incomplete, inline_const_pat, "1.58.0", Some(76001), None),
     /// Allows using `pointer` and `reference` in intra-doc links
