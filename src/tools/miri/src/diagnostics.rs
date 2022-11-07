@@ -229,13 +229,13 @@ pub fn report_error<'tcx, 'mir>(
                 Unsupported(
                     UnsupportedOpInfo::ThreadLocalStatic(_) |
                     UnsupportedOpInfo::ReadExternStatic(_) |
-                    UnsupportedOpInfo::PartialPointerOverwrite(_) | // we make memory uninit instead
+                    UnsupportedOpInfo::PartialPointerOverwrite(_) |
+                    UnsupportedOpInfo::PartialPointerCopy(_) |
                     UnsupportedOpInfo::ReadPointerAsBytes
                 ) =>
                     panic!("Error should never be raised by Miri: {kind:?}", kind = e.kind()),
                 Unsupported(
-                    UnsupportedOpInfo::Unsupported(_) |
-                    UnsupportedOpInfo::PartialPointerCopy(_)
+                    UnsupportedOpInfo::Unsupported(_)
                 ) =>
                     vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],
                 UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. })

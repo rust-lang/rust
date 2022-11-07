@@ -16,7 +16,8 @@ pub struct ProvenanceMap<Prov = AllocId> {
     /// bytes. Two entires in this map are always at least a pointer size apart.
     ptrs: SortedMap<Size, Prov>,
     /// Provenance in this map only applies to the given single byte.
-    /// This map is disjoint from the previous.
+    /// This map is disjoint from the previous. It will always be empty when
+    /// `Prov::OFFSET_IS_ADDR` is false.
     bytes: SortedMap<Size, Prov>,
 }
 
@@ -39,7 +40,7 @@ impl ProvenanceMap {
     /// Only exposed with `AllocId` provenance, since it panics if there is bytewise provenance.
     #[inline]
     pub fn ptrs(&self) -> &SortedMap<Size, AllocId> {
-        debug_assert!(self.bytes.is_empty());
+        debug_assert!(self.bytes.is_empty()); // `AllocId::OFFSET_IS_ADDR` is false so this cannot fail
         &self.ptrs
     }
 }
