@@ -23,10 +23,12 @@ fn t(_: S, _: S, _: Box<S>, _: Vec<u32>, _: bool, _: bool, _: bool, _: bool) {}
 
 struct S;
 trait Trait {
+    // should warn for trait functions with and without body
     fn f(_: bool, _: bool, _: bool, _: bool);
     fn g(_: bool, _: bool, _: bool, _: Vec<u32>);
     #[allow(clippy::fn_params_excessive_bools)]
     fn h(_: bool, _: bool, _: bool, _: bool, _: bool, _: bool);
+    fn i(_: bool, _: bool, _: bool, _: bool) {}
 }
 
 impl S {

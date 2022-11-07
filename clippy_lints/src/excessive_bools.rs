@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{get_parent_as_impl, has_repr_attr, is_bool};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl, HirId, Item, ItemKind, Ty};
+use rustc_hir::{Body, FnDecl, HirId, Item, ItemKind, TraitFn, TraitItem, TraitItemKind, Ty};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -114,7 +114,7 @@ impl ExcessiveBools {
     }
 
     fn check_fn_sig(&self, cx: &LateContext<'_>, fn_decl: &FnDecl<'_>, span: Span) {
-        if self.too_many_bools(fn_decl.inputs.iter(), Kind::Fn) {
+        if !span.from_expansion() && self.too_many_bools(fn_decl.inputs.iter(), Kind::Fn) {
             span_lint_and_help(
                 cx,
                 FN_PARAMS_EXCESSIVE_BOOLS,
@@ -152,6 +152,15 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
         }
     }
 
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx TraitItem<'tcx>) {
+        // functions with a body are already checked by `check_fn`
+        if let TraitItemKind::Fn(fn_sig, TraitFn::Required(_)) = &trait_item.kind
+            && fn_sig.header.abi == Abi::Rust
+            {
+            self.check_fn_sig(cx, fn_sig.decl, fn_sig.span);
+        }
+    }
+
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -163,7 +172,6 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
     ) {
         if let Some(fn_header) = fn_kind.header()
             && fn_header.abi == Abi::Rust
-            && !span.from_expansion()
             && get_parent_as_impl(cx.tcx, hir_id)
                 .map_or(true,
                     |impl_item| impl_item.of_trait.is_none()
