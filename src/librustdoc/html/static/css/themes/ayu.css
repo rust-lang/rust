@@ -67,6 +67,12 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
 		drop-shadow(0 -1px 0 #fff);
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	--crate-search-div-filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg)
+		brightness(94%) contrast(94%);
+	--crate-search-div-hover-filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg)
+		brightness(113%) contrast(76%);
+	--crate-search-hover-border: #e0e0e0;
 }
 
 .slider {
@@ -151,17 +157,6 @@ body.source .example-wrap pre.rust a {
 
 details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
-}
-
-#crate-search-div::after {
-	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
-	filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg) brightness(94%) contrast(94%);
-}
-#crate-search:hover, #crate-search:focus {
-	border-color: #e0e0e0 !important;
-}
-#crate-search-div:hover::after, #crate-search-div:focus-within::after {
-	filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg) brightness(113%) contrast(76%);
 }
 
 .module-item .stab,
