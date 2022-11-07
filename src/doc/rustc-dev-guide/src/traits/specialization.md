@@ -36,7 +36,7 @@ as long as they are part of the same specialization family. In that
 case, it returns a *single* impl on success – this is the most
 specialized impl *known* to apply. However, if there are any inference
 variables in play, the returned impl may not be the actual impl we
-will use at trans time. Thus, we take special care to avoid projecting
+will use at codegen time. Thus, we take special care to avoid projecting
 associated types unless either (1) the associated type does not use
 `default` and thus cannot be overridden or (2) all input types are
 known concretely.
