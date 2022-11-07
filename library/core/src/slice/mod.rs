@@ -3667,7 +3667,8 @@ impl<T> [T] {
         unsafe { self.align_to() }
     }
 
-    /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
+    /// Split a mutable slice into a mutable prefix, a middle of aligned SIMD types,
+    /// and a mutable suffix.
     ///
     /// This is a safe wrapper around [`slice::align_to_mut`], so has the same weak
     /// postconditions as that method.  You're only assured that
