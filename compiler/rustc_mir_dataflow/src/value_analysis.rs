@@ -560,12 +560,12 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
         }
     }
 
-    /// Retrieve the value stored for a place, or ⊥ if it is not tracked.
+    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     pub fn get(&self, place: PlaceRef<'_>, map: &Map) -> V {
         map.find(place).map(|place| self.get_idx(place, map)).unwrap_or(V::top())
     }
 
-    /// Retrieve the value stored for a place index, or ⊥ if it is not tracked.
+    /// Retrieve the value stored for a place index, or ⊤ if it is not tracked.
     pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V {
         match &self.0 {
             StateData::Reachable(values) => {
@@ -652,7 +652,7 @@ impl Map {
         mut filter: impl FnMut(Ty<'tcx>) -> bool,
         exclude: &FxHashSet<Place<'tcx>>,
     ) {
-        // This is used to tell whether a type is `!Freeze`.
+        // This is used to tell whether a type is `Freeze`.
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
 
         let mut projection = Vec::new();
