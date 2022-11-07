@@ -223,7 +223,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.30.0"]
     pub NEEDLESS_COLLECT,
-    perf,
+    nursery,
     "collecting an iterator when collect is not needed"
 }
 
