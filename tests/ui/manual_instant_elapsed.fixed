@@ -1,6 +1,7 @@
 // run-rustfix
 #![warn(clippy::manual_instant_elapsed)]
 #![allow(clippy::unnecessary_operation)]
+#![allow(clippy::unchecked_duration_subtraction)]
 #![allow(unused_variables)]
 #![allow(unused_must_use)]
 

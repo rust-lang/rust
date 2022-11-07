@@ -1,5 +1,5 @@
 error: manual implementation of `Instant::elapsed`
-  --> $DIR/manual_instant_elapsed.rs:17:20
+  --> $DIR/manual_instant_elapsed.rs:18:20
    |
 LL |     let duration = Instant::now() - prev_instant;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `prev_instant.elapsed()`
@@ -7,7 +7,7 @@ LL |     let duration = Instant::now() - prev_instant;
    = note: `-D clippy::manual-instant-elapsed` implied by `-D warnings`
 
 error: manual implementation of `Instant::elapsed`
-  --> $DIR/manual_instant_elapsed.rs:26:5
+  --> $DIR/manual_instant_elapsed.rs:27:5
    |
 LL |     Instant::now() - *ref_to_instant; // to ensure parens are added correctly
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(*ref_to_instant).elapsed()`
