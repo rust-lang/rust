@@ -25,7 +25,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::ChunkedBitSet;
 use rustc_index::vec::IndexVec;
-use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, InferCtxt, NllRegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, NonDivergingIntrinsic, Operand,
     Place, PlaceElem, PlaceRef, VarDebugInfoContents,
@@ -43,6 +43,7 @@ use smallvec::SmallVec;
 use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::ops::Deref;
 use std::rc::Rc;
 
 use rustc_mir_dataflow::impls::{
@@ -479,6 +480,33 @@ pub struct BodyWithBorrowckFacts<'tcx> {
     pub output_facts: Rc<self::nll::PoloniusOutput>,
     /// The table that maps Polonius points to locations in the table.
     pub location_table: LocationTable,
+}
+
+struct BorrowckInferCtxt<'cx, 'tcx> {
+    pub(crate) infcx: &'cx InferCtxt<'tcx>,
+
+    #[cfg(debug_assertions)]
+    pub(crate) _reg_var_to_origin: RefCell<FxHashMap<ty::Region<'tcx>, NllRegionVariableOrigin>>,
+}
+
+impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
+    #[cfg(not(debug_assertions))]
+    pub(crate) fn _new(infcx: &'cx InferCtxt<'tcx>) -> Self {
+        BorrowckInferCtxt { infcx }
+    }
+
+    #[cfg(debug_assertions)]
+    pub(crate) fn _new(infcx: &'cx InferCtxt<'tcx>) -> Self {
+        BorrowckInferCtxt { infcx, _reg_var_to_origin: RefCell::new(Default::default()) }
+    }
+}
+
+impl<'cx, 'tcx> Deref for BorrowckInferCtxt<'cx, 'tcx> {
+    type Target = InferCtxt<'tcx>;
+
+    fn deref(&self) -> &'cx Self::Target {
+        self.infcx
+    }
 }
 
 struct MirBorrowckCtxt<'cx, 'tcx> {
