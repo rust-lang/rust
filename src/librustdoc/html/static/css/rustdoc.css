@@ -183,6 +183,8 @@ h4.code-header {
 	font-weight: 600;
 	margin: 0;
 	padding: 0;
+	/* position notable traits in mobile mode within the header */
+	position: relative;
 }
 
 #crate-search,
@@ -1278,13 +1280,12 @@ h3.variant {
 	cursor: pointer;
 }
 
-.notable-traits:hover .notable-traits-tooltiptext,
-.notable-traits .notable-traits-tooltiptext.force-tooltip {
+.notable-traits .notable-traits-tooltiptext {
 	display: inline-block;
+	visibility: hidden;
 }
 
-.notable-traits .notable-traits-tooltiptext {
-	display: none;
+.notable-traits-tooltiptext {
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
 	margin-left: 5px;
@@ -1302,22 +1303,26 @@ h3.variant {
 	content: "\00a0\00a0\00a0";
 }
 
-.notable-traits .docblock {
+.notable-traits-tooltiptext .docblock {
 	margin: 0;
 }
 
-.notable-traits .notable {
-	margin: 0;
-	margin-bottom: 13px;
+.notable-traits-tooltiptext .notable {
 	font-size: 1.1875rem;
 	font-weight: 600;
 	display: block;
 }
 
-.notable-traits .docblock code.content {
+.notable-traits-tooltiptext pre, .notable-traits-tooltiptext code {
+	background: transparent;
+}
+
+.notable-traits-tooltiptext .docblock pre.content {
 	margin: 0;
 	padding: 0;
 	font-size: 1.25rem;
+	white-space: pre-wrap;
+	overflow: hidden;
 }
 
 .search-failed {

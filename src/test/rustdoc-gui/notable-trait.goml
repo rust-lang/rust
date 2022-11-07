@@ -25,22 +25,28 @@ assert-position: (
     {"x": 951},
 )
 // The tooltip should be beside the `i`
+// Also, clicking the tooltip should bring its text into the DOM
+assert-count: ("//*[@class='notable-traits-tooltiptext']", 0)
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+assert-count: ("//*[@class='notable-traits-tooltiptext']", 1)
 compare-elements-position-near: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']",
+    "//*[@class='notable-traits-tooltiptext']",
     {"y": 2}
 )
 compare-elements-position-false: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']",
+    "//*[@class='notable-traits-tooltiptext']",
     ("x")
 )
 // The docblock should be flush with the border.
 assert-css: (
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']/*[@class='docblock']",
+    "//*[@class='notable-traits-tooltiptext']/*[@class='docblock']",
     {"margin-left": "0px"}
 )
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+move-cursor-to: "//h1"
+assert-count: ("//*[@class='notable-traits-tooltiptext']", 0)
 
 // Now only the `i` should be on the next line.
 size: (1055, 600)
@@ -98,26 +104,31 @@ assert-position: (
     {"x": 289},
 )
 // The tooltip should be below `i`
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+assert-count: ("//*[@class='notable-traits-tooltiptext']", 1)
 compare-elements-position-near-false: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']",
+    "//*[@class='notable-traits-tooltiptext']",
     {"y": 2}
 )
 compare-elements-position-false: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']",
+    "//*[@class='notable-traits-tooltiptext']",
     ("x")
 )
 compare-elements-position-near: (
-    "//*[@id='method.create_an_iterator_from_read']/parent::*",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']",
-    {"x": 5}
+    "//*[@id='method.create_an_iterator_from_read']",
+    "//*[@class='notable-traits-tooltiptext']",
+    {"x": 10}
 )
 // The docblock should be flush with the border.
 assert-css: (
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']/*[@class='docblock']",
+    "//*[@class='notable-traits-tooltiptext']/*[@class='docblock']",
     {"margin-left": "0px"}
 )
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+move-cursor-to: "//h1"
+assert-count: ("//*[@class='notable-traits-tooltiptext']", 0)
 
 // Checking on very small mobile. The `i` should be on its own line.
 size: (365, 600)
