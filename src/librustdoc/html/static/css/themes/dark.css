@@ -58,6 +58,10 @@
 	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
 	--test-arrow-hover-color: #dedede;
 	--test-arrow-hover-background-color: #4e8bca;
+	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
+		drop-shadow(0 1px 0 #fff)
+		drop-shadow(-1px 0 0 #fff)
+		drop-shadow(0 -1px 0 #fff);
 }
 
 .slider {
@@ -68,13 +72,6 @@
 }
 input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
-}
-
-.rust-logo {
-	filter: drop-shadow(1px 0 0px #fff)
-		drop-shadow(0 1px 0 #fff)
-		drop-shadow(-1px 0 0 #fff)
-		drop-shadow(0 -1px 0 #fff)
 }
 
 .content .item-info::before { color: #ccc; }
