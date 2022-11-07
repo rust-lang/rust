@@ -29,10 +29,10 @@ fn bench_push_front_100(b: &mut test::Bencher) {
 #[bench]
 fn bench_pop_back_100(b: &mut test::Bencher) {
     let size = 100;
-    let mut deq = VecDeque::<i32>::with_capacity(size+1);
+    let mut deq = VecDeque::<i32>::with_capacity(size + 1);
     // We'll mess with private state to pretend like `deq` is filled.
     // Make sure the buffer is initialized so that we don't read uninit memory.
-    unsafe { deq.ptr().write_bytes(0u8, size+1) };
+    unsafe { deq.ptr().write_bytes(0u8, size + 1) };
 
     b.iter(|| {
         deq.head = size;
@@ -72,17 +72,17 @@ fn bench_retain_half_10000(b: &mut test::Bencher) {
 
     b.iter(|| {
         let mut v = v.clone();
-        v.retain(|x| *x > size/2)
+        v.retain(|x| *x > size / 2)
     })
 }
 
 #[bench]
 fn bench_pop_front_100(b: &mut test::Bencher) {
     let size = 100;
-    let mut deq = VecDeque::<i32>::with_capacity(size+1);
+    let mut deq = VecDeque::<i32>::with_capacity(size + 1);
     // We'll mess with private state to pretend like `deq` is filled.
     // Make sure the buffer is initialized so that we don't read uninit memory.
-    unsafe { deq.ptr().write_bytes(0u8, size+1) };
+    unsafe { deq.ptr().write_bytes(0u8, size + 1) };
 
     b.iter(|| {
         deq.head = size;
