@@ -190,7 +190,7 @@ impl fmt::Debug for InlayHintLabelPart {
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
-    range_limit: Option<FileRange>,
+    range_limit: Option<TextRange>,
     config: &InlayHintsConfig,
 ) -> Vec<InlayHint> {
     let _p = profile::span("inlay_hints");
@@ -205,7 +205,7 @@ pub(crate) fn inlay_hints(
 
         let hints = |node| hints(&mut acc, &famous_defs, config, file_id, node);
         match range_limit {
-            Some(FileRange { range, .. }) => match file.covering_element(range) {
+            Some(range) => match file.covering_element(range) {
                 NodeOrToken::Token(_) => return acc,
                 NodeOrToken::Node(n) => n
                     .descendants()
@@ -1289,7 +1289,6 @@ fn get_callable(
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_db::base_db::FileRange;
     use itertools::Itertools;
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
@@ -1913,10 +1912,7 @@ fn main() {
             .inlay_hints(
                 &InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
                 file_id,
-                Some(FileRange {
-                    file_id,
-                    range: TextRange::new(TextSize::from(500), TextSize::from(600)),
-                }),
+                Some(TextRange::new(TextSize::from(500), TextSize::from(600))),
             )
             .unwrap();
         let actual =
