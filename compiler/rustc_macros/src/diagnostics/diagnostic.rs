@@ -165,40 +165,48 @@ impl<'a> LintDiagnosticDerive<'a> {
 fn make_check(slug: &syn::Path) -> TokenStream {
     quote! {
         const _: () = {
-            let krate = env!("CARGO_MANIFEST_DIR").as_bytes();
+            const krate_str: &str = match option_env!("CARGO_CRATE_NAME") {
+                Some(c) => c,
+                None => "",
+            };
+            const krate: &[u8] = krate_str.as_bytes();
 
-            let mut start = 0;
-            while !(krate[start] == b'r'
-                && krate[start + 1] == b'u'
-                && krate[start + 2] == b's'
-                && krate[start + 3] == b't'
-                && krate[start + 4] == b'c'
-                && krate[start + 5] == b'_')
+            if krate.len() > 6
+                && krate[0] == b'r'
+                && krate[1] == b'u'
+                && krate[2] == b's'
+                && krate[3] == b't'
+                && krate[4] == b'c'
+                && krate[5] == b'_'
             {
-                if krate.len() == start + 5 {
-                    panic!(concat!("crate does not contain \"rustc_\": ", env!("CARGO_MANIFEST_DIR")));
-                }
-                start += 1;
-            }
-            start += 6;
+                let slug = stringify!(#slug).as_bytes();
 
-            let slug = stringify!(#slug).as_bytes();
-
-            let mut pos = 0;
-            loop {
-                let b = slug[pos];
-                if krate.len() == start + pos {
-                    if b != b'_' {
-                        panic!(concat!("slug \"", stringify!(#slug), "\" does not match the crate (", env!("CARGO_MANIFEST_DIR") ,") it is in"));
+                let mut pos = 0;
+                loop {
+                    let b = slug[pos];
+                    if krate.len() == pos + 6 {
+                        if b != b'_' {
+                            panic!(concat!(
+                                "slug \"",
+                                stringify!(#slug),
+                                "\" does not match the crate it is in"
+                            ));
+                        }
+                        break;
                     }
-                    break
-                }
-                let a = krate[start+pos];
+                    let a = krate[pos + 6];
 
-                if a != b {
-                    panic!(concat!("slug \"", stringify!(#slug), "\" does not match the crate (", env!("CARGO_MANIFEST_DIR") ,") it is in"));
+                    if a != b {
+                        panic!(concat!(
+                            "slug \"",
+                            stringify!(#slug),
+                            "\" does not match the crate it is in"
+                        ));
+                    }
+                    pos += 1;
                 }
-                pos += 1;
+            } else {
+                // Crate does not start with "rustc_"
             }
         };
     }
