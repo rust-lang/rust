@@ -861,23 +861,23 @@ fn binding_mode_hints(
             tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
         });
     });
-    // match pat {
-    //     ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
-    //         let bm = sema.binding_mode_of_pat(pat)?;
-    //         let bm = match bm {
-    //             hir::BindingMode::Move => return None,
-    //             hir::BindingMode::Ref(Mutability::Mut) => "ref mut",
-    //             hir::BindingMode::Ref(Mutability::Shared) => "ref",
-    //         };
-    //         acc.push(InlayHint {
-    //             range,
-    //             kind: InlayKind::BindingModeHint,
-    //             label: bm.to_string().into(),
-    //             tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
-    //         });
-    //     }
-    //     _ => (),
-    // }
+    match pat {
+        ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
+            let bm = sema.binding_mode_of_pat(pat)?;
+            let bm = match bm {
+                hir::BindingMode::Move => return None,
+                hir::BindingMode::Ref(Mutability::Mut) => "ref mut",
+                hir::BindingMode::Ref(Mutability::Shared) => "ref",
+            };
+            acc.push(InlayHint {
+                range,
+                kind: InlayKind::BindingModeHint,
+                label: bm.to_string().into(),
+                tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
+            });
+        }
+        _ => (),
+    }
 
     Some(())
 }
@@ -1306,7 +1306,7 @@ mod tests {
         chaining_hints: false,
         lifetime_elision_hints: LifetimeElisionHints::Never,
         closure_return_type_hints: ClosureReturnTypeHints::Never,
-        adjustment_hints: AdjustmentHints::Always,
+        adjustment_hints: AdjustmentHints::Never,
         binding_mode_hints: false,
         hide_named_constructor_hints: false,
         hide_closure_initialization_hints: false,
@@ -1318,7 +1318,6 @@ mod tests {
         type_hints: true,
         parameter_hints: true,
         chaining_hints: true,
-        adjustment_hints: AdjustmentHints::Always,
         closure_return_type_hints: ClosureReturnTypeHints::WithBlock,
         binding_mode_hints: true,
         lifetime_elision_hints: LifetimeElisionHints::Always,
