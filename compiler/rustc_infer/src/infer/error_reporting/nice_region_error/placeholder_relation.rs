@@ -69,6 +69,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                     }
                     _ => {}
                 }
+                err.note("this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)");
                 Some(err)
             }
 
