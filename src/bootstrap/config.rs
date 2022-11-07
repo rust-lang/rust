@@ -926,8 +926,10 @@ impl Config {
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
         // but not if `config.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
+            config.config = Some(toml_path.clone());
             get_toml(&toml_path)
         } else {
+            config.config = None;
             TomlConfig::default()
         };
 
@@ -942,7 +944,6 @@ impl Config {
         }
 
         config.changelog_seen = toml.changelog_seen;
-        config.config = if toml_path.exists() { Some(toml_path) } else { None };
 
         let build = toml.build.unwrap_or_default();
 
