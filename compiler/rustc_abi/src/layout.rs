@@ -382,28 +382,26 @@ pub trait LayoutCalculator {
             let (start, end) = scalar_valid_range;
             match st.abi {
                 Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
-                    // the asserts ensure that we are not using the
-                    // `#[rustc_layout_scalar_valid_range(n)]`
-                    // attribute to widen the range of anything as that would probably
-                    // result in UB somewhere
-                    // FIXME(eddyb) the asserts are probably not needed,
-                    // as larger validity ranges would result in missed
+                    // Enlarging validity ranges would result in missed
                     // optimizations, *not* wrongly assuming the inner
-                    // value is valid. e.g. unions enlarge validity ranges,
+                    // value is valid. e.g. unions already enlarge validity ranges,
                     // because the values may be uninitialized.
+                    //
+                    // Because of that we only check that the start and end
+                    // of the range is representable with this scalar type.
+
+                    let max_value = scalar.size(dl).unsigned_int_max();
                     if let Bound::Included(start) = start {
                         // FIXME(eddyb) this might be incorrect - it doesn't
                         // account for wrap-around (end < start) ranges.
-                        let valid_range = scalar.valid_range_mut();
-                        assert!(valid_range.start <= start);
-                        valid_range.start = start;
+                        assert!(start <= max_value, "{start} > {max_value}");
+                        scalar.valid_range_mut().start = start;
                     }
                     if let Bound::Included(end) = end {
                         // FIXME(eddyb) this might be incorrect - it doesn't
                         // account for wrap-around (end < start) ranges.
-                        let valid_range = scalar.valid_range_mut();
-                        assert!(valid_range.end >= end);
-                        valid_range.end = end;
+                        assert!(end <= max_value, "{end} > {max_value}");
+                        scalar.valid_range_mut().end = end;
                     }
 
                     // Update `largest_niche` if we have introduced a larger niche.
