@@ -402,6 +402,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })
             .and_then(|self_id| match tcx.def_kind(self_id) {
                 DefKind::Impl => self.def_id_to_res(self_id),
+                DefKind::Use => None,
                 def_kind => Some(Res::Def(def_kind, self_id)),
             })
     }
@@ -1772,7 +1773,6 @@ fn resolution_failure(
 
                     // Otherwise, it must be an associated item or variant
                     let res = partial_res.expect("None case was handled by `last_found_module`");
-                    let name = res.name(tcx);
                     let kind = match res {
                         Res::Def(kind, _) => Some(kind),
                         Res::Primitive(_) => None,
@@ -1814,6 +1814,7 @@ fn resolution_failure(
                     } else {
                         "associated item"
                     };
+                    let name = res.name(tcx);
                     let note = format!(
                         "the {} `{}` has no {} named `{}`",
                         res.descr(),
