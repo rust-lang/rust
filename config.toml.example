@@ -88,7 +88,7 @@ changelog-seen = 2
 #version-check = true
 
 # If true, link libstdc++ statically into the rustc_llvm instead of
-# relying on a dynamic version to be available.
+# relying on a dynamic version of this library being available.
 #static-libstdcpp = false
 
 # Whether to use Ninja to build LLVM. This runs much faster than make.
