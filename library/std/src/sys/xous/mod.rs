@@ -11,7 +11,6 @@ pub mod env;
 pub mod fs;
 #[path = "../unsupported/io.rs"]
 pub mod io;
-#[path = "../unsupported/locks/mod.rs"]
 pub mod locks;
 #[path = "../unsupported/net.rs"]
 pub mod net;

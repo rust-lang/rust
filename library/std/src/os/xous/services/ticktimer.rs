@@ -8,6 +8,8 @@ pub(crate) enum TicktimerScalar {
     UnlockMutex(usize /* cookie */),
     WaitForCondition(usize /* cookie */, usize /* timeout (ms) */),
     NotifyCondition(usize /* cookie */, usize /* count */),
+    FreeMutex(usize /* cookie */),
+    FreeCondition(usize /* cookie */),
 }
 
 impl Into<[usize; 5]> for TicktimerScalar {
@@ -19,6 +21,8 @@ impl Into<[usize; 5]> for TicktimerScalar {
             TicktimerScalar::UnlockMutex(cookie) => [7, cookie, 0, 0, 0],
             TicktimerScalar::WaitForCondition(cookie, timeout_ms) => [8, cookie, timeout_ms, 0, 0],
             TicktimerScalar::NotifyCondition(cookie, count) => [9, cookie, count, 0, 0],
+            TicktimerScalar::FreeMutex(cookie) => [10, cookie, 0, 0, 0],
+            TicktimerScalar::FreeCondition(cookie) => [11, cookie, 0, 0, 0],
         }
     }
 }
