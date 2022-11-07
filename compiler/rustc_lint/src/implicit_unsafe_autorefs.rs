@@ -1,7 +1,7 @@
 use crate::{LateContext, LateLintPass, LintContext};
 
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Mutability, UnOp};
+use rustc_hir::{self as hir, Expr, ExprKind, Mutability, UnOp};
 use rustc_middle::ty::{
     adjustment::{Adjust, Adjustment, AutoBorrow, OverloadedDeref},
     TyCtxt, TypeckResults,
@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitUnsafeAutorefs {
         if let Some(adjustments) = adjustments_table.get(expr.hir_id)
         && let [adjustment] = &**adjustments
         // An auto-borrow
-        && let Some(mutbl) = has_implicit_borrow(adjustment)
+        && let Some((mutbl, implicit_borrow)) = has_implicit_borrow(adjustment)
         // ... of a place derived from a deref
         && let ExprKind::Unary(UnOp::Deref, dereferenced) = peel_place_mappers(cx.tcx, typeck, &expr).kind
         // ... of a raw pointer
@@ -74,7 +74,13 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitUnsafeAutorefs {
             let msg = "implicit auto-ref creates a reference to a dereference of a raw pointer";
             cx.struct_span_lint(IMPLICIT_UNSAFE_AUTOREFS, expr.span, msg, |lint| {
                 lint
-                    .note("creating a reference requires the pointer to be valid and imposes aliasing requirements")
+                    .note("creating a reference requires the pointer to be valid and imposes aliasing requirements");
+
+                if let Some(reason) = reason(cx.tcx, implicit_borrow, expr) {
+                    lint.note(format!("a reference is implicitly created {reason}"));
+                }
+
+                lint
                     .multipart_suggestion(
                         "try using a raw pointer method instead; or if this reference is intentional, make it explicit",
                         vec![
@@ -111,10 +117,43 @@ fn peel_place_mappers<'tcx>(
 }
 
 /// Returns `Some(mutability)` if the argument adjustment has implicit borrow in it.
-fn has_implicit_borrow(Adjustment { kind, .. }: &Adjustment<'_>) -> Option<Mutability> {
+fn has_implicit_borrow(
+    Adjustment { kind, .. }: &Adjustment<'_>,
+) -> Option<(Mutability, ImplicitBorrow)> {
     match kind {
-        &Adjust::Deref(Some(OverloadedDeref { mutbl, .. })) => Some(mutbl),
-        &Adjust::Borrow(AutoBorrow::Ref(_, mutbl)) => Some(mutbl.into()),
+        &Adjust::Deref(Some(OverloadedDeref { mutbl, .. })) => Some((mutbl, ImplicitBorrow::Deref)),
+        &Adjust::Borrow(AutoBorrow::Ref(_, mutbl)) => Some((mutbl.into(), ImplicitBorrow::Borrow)),
         _ => None,
+    }
+}
+
+enum ImplicitBorrow {
+    Deref,
+    Borrow,
+}
+
+fn reason(tcx: TyCtxt<'_>, borrow_kind: ImplicitBorrow, expr: &Expr<'_>) -> Option<&'static str> {
+    match borrow_kind {
+        ImplicitBorrow::Deref => Some("because a deref coercion is being applied"),
+        ImplicitBorrow::Borrow => {
+            let parent = tcx.hir().get(tcx.hir().find_parent_node(expr.hir_id)?);
+
+            let hir::Node::Expr(expr) = parent else {
+                return None
+            };
+
+            let reason = match expr.kind {
+                ExprKind::MethodCall(_, _, _, _) => "to match the method receiver type",
+                ExprKind::AssignOp(_, _, _) => {
+                    "because a user-defined assignment with an operator is being used"
+                }
+                ExprKind::Index(_, _) => {
+                    "because a user-defined indexing operation is being called"
+                }
+                _ => return None,
+            };
+
+            Some(reason)
+        }
     }
 }

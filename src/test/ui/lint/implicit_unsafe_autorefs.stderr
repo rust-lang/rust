@@ -5,6 +5,7 @@ LL |     addr_of_mut!((*ptr)[..16])
    |                  ^^^^^^
    |
    = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+   = note: a reference is implicitly created because a user-defined indexing operation is being called
    = note: `#[warn(implicit_unsafe_autorefs)]` on by default
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
@@ -18,6 +19,7 @@ LL |     addr_of!((*ptr)[..16])
    |              ^^^^^^
    |
    = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+   = note: a reference is implicitly created because a user-defined indexing operation is being called
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     addr_of!((&(*ptr))[..16])
@@ -30,6 +32,7 @@ LL |     let l = (*ptr).field.len();
    |             ^^^^^^^^^^^^
    |
    = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+   = note: a reference is implicitly created to match the method receiver type
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     let l = (&(*ptr).field).len();
@@ -42,6 +45,7 @@ LL |     addr_of!((*ptr).field[..l - 1])
    |              ^^^^^^^^^^^^
    |
    = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+   = note: a reference is implicitly created because a user-defined indexing operation is being called
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     addr_of!((&(*ptr).field)[..l - 1])
@@ -54,6 +58,7 @@ LL |     _ = (*a)[0].len();
    |         ^^^^^^^
    |
    = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+   = note: a reference is implicitly created to match the method receiver type
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     _ = (&(*a)[0]).len();
@@ -66,6 +71,7 @@ LL |     _ = (*a)[..1][0].len();
    |         ^^^^
    |
    = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+   = note: a reference is implicitly created because a user-defined indexing operation is being called
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     _ = (&(*a))[..1][0].len();
@@ -78,6 +84,7 @@ LL |     _ = addr_of!((*ptr).field);
    |                  ^^^^^^
    |
    = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+   = note: a reference is implicitly created because a deref coercion is being applied
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     _ = addr_of!((&(*ptr)).field);
@@ -90,6 +97,7 @@ LL |     _ = addr_of_mut!((*ptr).field);
    |                      ^^^^^^
    |
    = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+   = note: a reference is implicitly created because a deref coercion is being applied
 help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
    |
 LL |     _ = addr_of_mut!((&mut (*ptr)).field);
