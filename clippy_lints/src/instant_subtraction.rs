@@ -174,7 +174,7 @@ fn print_unchecked_duration_subtraction_sugg(
         expr.span,
         "unchecked subtraction of a 'Duration' from an 'Instant'",
         "try",
-        format!("{}.checked_sub({}).unwrap();", left_expr, right_expr),
+        format!("{left_expr}.checked_sub({right_expr}).unwrap();"),
         applicability,
     );
 }
