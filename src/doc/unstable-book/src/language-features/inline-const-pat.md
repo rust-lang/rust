@@ -2,8 +2,6 @@
 
 The tracking issue for this feature is: [#76001]
 
-See also [`inline_const`](inline-const.md)
-
 ------
 
 This feature allows you to use inline constant expressions in pattern position:
