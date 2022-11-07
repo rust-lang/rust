@@ -53,7 +53,7 @@ off:
 	[ ! -f $(TMPDIR)/*.dwp ]
 	[ ! -f $(TMPDIR)/*.dwo ]
 
-packed: packed-split packed-single packed-remapped packed-crosscrate
+packed: packed-split packed-single packed-lto packed-remapped packed-crosscrate
 
 # - Debuginfo in `.dwo` files
 # - `.o` deleted
@@ -76,6 +76,32 @@ packed-single:
 	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 	rm $(TMPDIR)/foo.dwp
 	rm $(TMPDIR)/$(call BIN,foo)
+
+packed-lto: packed-lto-split packed-lto-single
+
+# - rmeta file added to rlib, no object files are generated and thus no debuginfo is generated
+# - `.o` never created
+# - `.dwo` never created
+# - `.dwp` never created
+packed-lto-split:
+	$(RUSTC) baz.rs -g $(UNSTABLEOPTS) -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split \
+		--crate-type=rlib -Clinker-plugin-lto
+	ls $(TMPDIR)/*.o && exit 1 || exit 0
+	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
+	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
+	rm $(TMPDIR)/libbaz.rlib
+
+# - rmeta file added to rlib, no object files are generated and thus no debuginfo is generated
+# - `.o` never created
+# - `.dwo` never created
+# - `.dwp` never created
+packed-lto-single:
+	$(RUSTC) baz.rs -g $(UNSTABLEOPTS) -Csplit-debuginfo=packed -Zsplit-dwarf-kind=single \
+		--crate-type=rlib -Clinker-plugin-lto
+	ls $(TMPDIR)/*.o && exit 1 || exit 0
+	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
+	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
+	rm $(TMPDIR)/libbaz.rlib
 
 packed-remapped: packed-remapped-split packed-remapped-single
 
@@ -153,7 +179,7 @@ packed-crosscrate-single:
 	rm $(TMPDIR)/main.dwp
 	rm $(TMPDIR)/$(call BIN,main)
 
-unpacked: unpacked-split unpacked-single unpacked-remapped unpacked-crosscrate
+unpacked: unpacked-split unpacked-single unpacked-lto unpacked-remapped unpacked-crosscrate
 
 # - Debuginfo in `.dwo` files
 # - `.o` deleted
@@ -176,6 +202,32 @@ unpacked-single:
 	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
 	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
 	rm $(TMPDIR)/$(call BIN,foo)
+
+unpacked-lto: packed-lto-split packed-lto-single
+
+# - rmeta file added to rlib, no object files are generated and thus no debuginfo is generated
+# - `.o` never created
+# - `.dwo` never created
+# - `.dwp` never created
+unpacked-lto-split:
+	$(RUSTC) baz.rs -g $(UNSTABLEOPTS) -Csplit-debuginfo=unpacked -Zsplit-dwarf-kind=split \
+		--crate-type=rlib -Clinker-plugin-lto
+	ls $(TMPDIR)/*.o && exit 1 || exit 0
+	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
+	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
+	rm $(TMPDIR)/libbaz.rlib
+
+# - rmeta file added to rlib, no object files are generated and thus no debuginfo is generated
+# - `.o` never created
+# - `.dwo` never created
+# - `.dwp` never created
+unpacked-lto-single:
+	$(RUSTC) baz.rs -g $(UNSTABLEOPTS) -Csplit-debuginfo=unpacked -Zsplit-dwarf-kind=single \
+		--crate-type=rlib -Clinker-plugin-lto
+	ls $(TMPDIR)/*.o && exit 1 || exit 0
+	ls $(TMPDIR)/*.dwo && exit 1 || exit 0
+	ls $(TMPDIR)/*.dwp && exit 1 || exit 0
+	rm $(TMPDIR)/libbaz.rlib
 
 unpacked-remapped: unpacked-remapped-split unpacked-remapped-single
 
