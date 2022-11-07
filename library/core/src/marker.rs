@@ -621,6 +621,12 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// (ideally) or `PhantomData<*const T>` (if no lifetime applies), so
 /// as not to indicate ownership.
 ///
+/// ## Layout
+///
+/// For all `T`, the following are guaranteed:
+/// * `size_of::<PhantomData<T>>() == 0`
+/// * `align_of::<PhantomData<T>>() == 1`
+///
 /// [drop check]: ../../nomicon/dropck.html
 #[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
