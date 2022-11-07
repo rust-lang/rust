@@ -9,8 +9,8 @@ use std::path::Path;
 
 const ENTRY_LIMIT: usize = 1000;
 // FIXME: The following limits should be reduced eventually.
-const ROOT_ENTRY_LIMIT: usize = 941;
-const ISSUES_ENTRY_LIMIT: usize = 2117;
+const ROOT_ENTRY_LIMIT: usize = 939;
+const ISSUES_ENTRY_LIMIT: usize = 2105;
 
 fn check_entries(path: &Path, bad: &mut bool) {
     for dir in Walk::new(&path.join("test/ui")) {
