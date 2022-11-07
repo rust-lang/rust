@@ -823,6 +823,28 @@ fn derive() {}
 }
 
 #[test]
+fn resolves_derive_helper_rustc_builtin_macro() {
+    cov_mark::check!(resolved_derive_helper);
+    // This is NOT the correct usage of `default` helper attribute, but we don't resolve helper
+    // attributes on non mod items in hir nameres.
+    check(
+        r#"
+//- minicore: derive, default
+#[derive(Default)]
+#[default]
+enum E {
+    A,
+    B,
+}
+"#,
+        expect![[r#"
+            crate
+            E: t
+        "#]],
+    );
+}
+
+#[test]
 fn unresolved_attr_with_cfg_attr_hang() {
     // Another regression test for https://github.com/rust-lang/rust-analyzer/issues/8905
     check(
