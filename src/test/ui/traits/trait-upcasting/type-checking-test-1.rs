@@ -1,5 +1,4 @@
 #![feature(trait_upcasting)]
-#![allow(incomplete_features)]
 
 trait Foo: Bar<i32> + Bar<u32> {}
 trait Bar<T> {
