@@ -1,4 +1,4 @@
-// check-fail
+// check-pass
 // edition:2021
 
 #![allow(unreachable_code)]
@@ -15,5 +15,5 @@ async fn g() {
 fn require_send(_: impl Send) {}
 
 fn main() {
-    require_send(g()); //~ future cannot be sent between threads safely
+    require_send(g());
 }

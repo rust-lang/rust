@@ -35,9 +35,11 @@ pub macro panic_2015 {
     ("{}", $arg:expr $(,)?) => (
         $crate::panicking::panic_display(&$arg)
     ),
-    ($fmt:expr, $($arg:tt)+) => (
-        $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
-    ),
+    ($fmt:expr, $($arg:tt)+) => ({
+        // Semicolon to prevent temporaries inside the formatting machinery from
+        // being considered alive in the caller after the panic_fmt call.
+        $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+));
+    }),
 }
 
 #[doc(hidden)]
@@ -53,9 +55,11 @@ pub macro panic_2021 {
     ("{}", $arg:expr $(,)?) => (
         $crate::panicking::panic_display(&$arg)
     ),
-    ($($t:tt)+) => (
-        $crate::panicking::panic_fmt($crate::const_format_args!($($t)+))
-    ),
+    ($($t:tt)+) => ({
+        // Semicolon to prevent temporaries inside the formatting machinery from
+        // being considered alive in the caller after the panic_fmt call.
+        $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
+    }),
 }
 
 #[doc(hidden)]
