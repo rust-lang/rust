@@ -216,11 +216,13 @@ where
         while inner_len - i >= N {
             let mut chunk = MaybeUninit::uninit_array();
             let mut guard = array::Guard { array_mut: &mut chunk, initialized: 0 };
-            for j in 0..N {
+            while guard.initialized < N {
                 // SAFETY: The method consumes the iterator and the loop condition ensures that
                 // all accesses are in bounds and only happen once.
-                guard.array_mut[j].write(unsafe { self.iter.__iterator_get_unchecked(i + j) });
-                guard.initialized = j + 1;
+                unsafe {
+                    let idx = i + guard.initialized;
+                    guard.push_unchecked(self.iter.__iterator_get_unchecked(idx));
+                }
             }
             mem::forget(guard);
             // SAFETY: The loop above initialized all elements
