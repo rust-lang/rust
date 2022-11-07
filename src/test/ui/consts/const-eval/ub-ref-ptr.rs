@@ -1,5 +1,6 @@
 // ignore-tidy-linelength
 // stderr-per-bitwidth
+// stderr-per-endianness
 #![allow(invalid_value)]
 
 use std::mem;

@@ -1,4 +1,5 @@
 // stderr-per-bitwidth
+// stderr-per-endianness
 // ignore-debug (the debug assertions change the error)
 use std::alloc::Layout;
 

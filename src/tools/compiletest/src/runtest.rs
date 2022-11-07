@@ -3118,14 +3118,16 @@ impl<'test> TestCx<'test> {
         output_kind: TestOutput,
         explicit_format: bool,
     ) -> usize {
-        let stderr_bits = format!("{}bit.stderr", self.config.get_pointer_width());
+        let bits = format!("{}bit.", self.config.get_pointer_width());
+        let endianness = if self.config.is_big_endian() { "be." } else { "le." };
+        let stderr_suffix = format!(
+            "{}{}{}",
+            if self.props.stderr_per_bitwidth { bits.as_str() } else { "" },
+            if self.props.stderr_per_endianness { endianness } else { "" },
+            UI_STDERR
+        );
         let (stderr_kind, stdout_kind) = match output_kind {
-            TestOutput::Compile => (
-                {
-                    if self.props.stderr_per_bitwidth { &stderr_bits } else { UI_STDERR }
-                },
-                UI_STDOUT,
-            ),
+            TestOutput::Compile => (stderr_suffix.as_str(), UI_STDOUT),
             TestOutput::Run => (UI_RUN_STDERR, UI_RUN_STDOUT),
         };
 

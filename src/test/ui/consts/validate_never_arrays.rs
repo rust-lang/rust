@@ -1,4 +1,5 @@
 // stderr-per-bitwidth
+// stderr-per-endianness
 #![feature(never_type)]
 
 const _: &[!; 1] = unsafe { &*(1_usize as *const [!; 1]) }; //~ ERROR undefined behavior

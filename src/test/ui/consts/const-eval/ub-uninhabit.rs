@@ -1,4 +1,5 @@
 // stderr-per-bitwidth
+// stderr-per-endianness
 
 use std::mem;
 

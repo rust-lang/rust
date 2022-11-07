@@ -1,4 +1,5 @@
 // stderr-per-bitwidth
+// stderr-per-endianness
 #![feature(never_type)]
 #![allow(invalid_value)]
 

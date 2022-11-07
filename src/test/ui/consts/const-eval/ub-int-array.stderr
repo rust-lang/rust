@@ -1,17 +1,17 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-int-array.rs:15:9
+  --> $DIR/ub-int-array.rs:14:9
    |
 LL |         MaybeUninit { uninit: () }.init,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-int-array.rs:30:13
+  --> $DIR/ub-int-array.rs:29:13
    |
 LL |             MaybeUninit { uninit: () }.init,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-int-array.rs:56:13
+  --> $DIR/ub-int-array.rs:55:13
    |
 LL |             MaybeUninit { uninit: () }.init,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory

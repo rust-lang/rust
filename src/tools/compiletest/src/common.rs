@@ -568,6 +568,14 @@ pub const UI_EXTENSIONS: &[&str] = &[
     UI_STDERR_64,
     UI_STDERR_32,
     UI_STDERR_16,
+    UI_BIG_ENDIAN,
+    UI_LITTLE_ENDIAN,
+    UI_STDERR_64_BIG_ENDIAN,
+    UI_STDERR_32_BIG_ENDIAN,
+    UI_STDERR_16_BIG_ENDIAN,
+    UI_STDERR_64_LITTLE_ENDIAN,
+    UI_STDERR_32_LITTLE_ENDIAN,
+    UI_STDERR_16_LITTLE_ENDIAN,
 ];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
@@ -577,6 +585,14 @@ pub const UI_RUN_STDOUT: &str = "run.stdout";
 pub const UI_STDERR_64: &str = "64bit.stderr";
 pub const UI_STDERR_32: &str = "32bit.stderr";
 pub const UI_STDERR_16: &str = "16bit.stderr";
+pub const UI_BIG_ENDIAN: &str = "be.stderr";
+pub const UI_LITTLE_ENDIAN: &str = "le.stderr";
+pub const UI_STDERR_64_BIG_ENDIAN: &str = "64bit.be.stderr";
+pub const UI_STDERR_32_BIG_ENDIAN: &str = "32bit.be.stderr";
+pub const UI_STDERR_16_BIG_ENDIAN: &str = "16bit.be.stderr";
+pub const UI_STDERR_64_LITTLE_ENDIAN: &str = "64bit.le.stderr";
+pub const UI_STDERR_32_LITTLE_ENDIAN: &str = "32bit.le.stderr";
+pub const UI_STDERR_16_LITTLE_ENDIAN: &str = "16bit.le.stderr";
 
 /// Absolute path to the directory where all output for all tests in the given
 /// `relative_dir` group should reside. Example:
