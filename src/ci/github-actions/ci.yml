@@ -312,9 +312,6 @@ jobs:
           #   Linux/Docker builders   #
           #############################
 
-          - name: aarch64-gnu
-            <<: *job-aarch64-linux
-
           - name: arm-android
             <<: *job-linux-xl
 
@@ -736,9 +733,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - &dist-x86_64-linux
-            name: dist-x86_64-linux
-            <<: *job-linux-xl
+          - name: aarch64-gnu
+            os: [self-hosted, arm-2-1]
 
   master:
     name: master
