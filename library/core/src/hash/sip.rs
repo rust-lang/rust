@@ -244,10 +244,7 @@ impl const super::Hasher for SipHasher {
 
 #[unstable(feature = "hashmap_internals", issue = "none")]
 #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
-impl const super::Hasher for SipHasher13
-where
-    Hasher<Sip13Rounds>: ~const super::Hasher,
-{
+impl const super::Hasher for SipHasher13 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.hasher.write(msg)
