@@ -1,7 +1,8 @@
+use crate::error::ConstNotUsedTraitAlias;
+use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
+use crate::ty::subst::{GenericArg, GenericArgKind};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
 /// Converts generic params of a TypeFoldable from one
@@ -201,7 +202,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
                     None => {
                         if !self.ignore_errors {
-                            self.tcx.sess.emit_err(ty::ConstNotUsedTraitAlias {
+                            self.tcx.sess.emit_err(ConstNotUsedTraitAlias {
                                 ct: ct.to_string(),
                                 span: self.span,
                             });

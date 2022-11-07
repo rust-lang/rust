@@ -46,7 +46,9 @@ impl<'a> DiagnosticDerive<'a> {
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
                 }
                 Some(slug) => {
+                    let check = make_check(slug);
                     quote! {
+                        #check
                         let mut #diag = #handler.struct_diagnostic(rustc_errors::fluent::#slug);
                     }
                 }
@@ -128,7 +130,14 @@ impl<'a> LintDiagnosticDerive<'a> {
                         .emit();
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
                 }
-                Some(slug) => quote! { rustc_errors::fluent::#slug.into() },
+                Some(slug) => {
+                    let check = make_check(slug);
+
+                    quote! {
+                        #check
+                        rustc_errors::fluent::#slug.into()
+                    }
+                }
             }
         });
 
@@ -149,5 +158,48 @@ impl<'a> LintDiagnosticDerive<'a> {
                 }
             }
         })
+    }
+}
+
+/// Checks whether the slug starts with the crate name it's in.
+fn make_check(slug: &syn::Path) -> TokenStream {
+    quote! {
+        const _: () = {
+            let krate = env!("CARGO_MANIFEST_DIR").as_bytes();
+
+            let mut start = 0;
+            while !(krate[start] == b'r'
+                && krate[start + 1] == b'u'
+                && krate[start + 2] == b's'
+                && krate[start + 3] == b't'
+                && krate[start + 4] == b'c'
+                && krate[start + 5] == b'_')
+            {
+                if krate.len() == start + 5 {
+                    panic!(concat!("crate does not contain \"rustc_\": ", env!("CARGO_MANIFEST_DIR")));
+                }
+                start += 1;
+            }
+            start += 6;
+
+            let slug = stringify!(#slug).as_bytes();
+
+            let mut pos = 0;
+            loop {
+                let b = slug[pos];
+                if krate.len() == start + pos {
+                    if b != b'_' {
+                        panic!(concat!("slug \"", stringify!(#slug), "\" does not match the crate (", env!("CARGO_MANIFEST_DIR") ,") it is in"));
+                    }
+                    break
+                }
+                let a = krate[start+pos];
+
+                if a != b {
+                    panic!(concat!("slug \"", stringify!(#slug), "\" does not match the crate (", env!("CARGO_MANIFEST_DIR") ,") it is in"));
+                }
+                pos += 1;
+            }
+        };
     }
 }
