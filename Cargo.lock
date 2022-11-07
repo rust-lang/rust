@@ -4,23 +4,14 @@ version = 3
 
 [[package]]
 name = "addr2line"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e61f2b7f93d2c7d2b08263acaa4a363b3e276806c68af6134c44f523bf1aacd"
-dependencies = [
- "compiler_builtins",
- "gimli 0.25.0",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
-]
-
-[[package]]
-name = "addr2line"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9ecd88a8c8378ca913a680cd98f0f13ac67383d35993f86c90a70e3f137816b"
 dependencies = [
- "gimli 0.26.1",
+ "compiler_builtins",
+ "gimli",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]
@@ -28,16 +19,16 @@ name = "adler"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2a4ec343196209d6594e19543ae87a39f96d5534d7174822a3ad825dd6ed7e"
-dependencies = [
- "compiler_builtins",
- "rustc-std-workspace-core",
-]
 
 [[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-core",
+]
 
 [[package]]
 name = "ahash"
@@ -185,12 +176,12 @@ version = "0.3.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cab84319d616cfb654d03394f38ab7e6f0919e181b1b57e1fd15e7fb4077d9a7"
 dependencies = [
- "addr2line 0.17.0",
+ "addr2line",
  "cc",
  "cfg-if 1.0.0",
  "libc",
  "miniz_oxide 0.5.3",
- "object 0.29.0",
+ "object",
  "rustc-demangle",
 ]
 
@@ -1547,23 +1538,15 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0a01e0497841a3b2db4f8afa483cce65f7e96a3498bd6c541734792aeac8fe7"
-dependencies = [
- "compiler_builtins",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
-]
-
-[[package]]
-name = "gimli"
 version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78cc372d058dcf6d5ecd98510e7fbc9e5aec4d21de70f65fea8fecebcd881bd4"
 dependencies = [
+ "compiler_builtins",
  "fallible-iterator",
  "indexmap",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
  "stable_deref_trait",
 ]
 
@@ -2233,9 +2216,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be0f75932c1f6cfae3c04000e40114adf955636e19040f9c0a2c380702aa1c7f"
 dependencies = [
  "adler 0.2.3",
- "compiler_builtins",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
 ]
 
 [[package]]
@@ -2245,6 +2225,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f5c75688da582b8ffc1f1799e9db273f32133c49e048f614d22ec3256773ccc"
 dependencies = [
  "adler 1.0.2",
+ "compiler_builtins",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]
@@ -2348,27 +2331,18 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.26.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39f37e50073ccad23b6d09bcb5b263f4e76d3bb6038e4a3c08e52162ffa8abc2"
-dependencies = [
- "compiler_builtins",
- "memchr",
- "rustc-std-workspace-alloc",
- "rustc-std-workspace-core",
-]
-
-[[package]]
-name = "object"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
 dependencies = [
+ "compiler_builtins",
  "crc32fast",
  "flate2",
  "hashbrown",
  "indexmap",
  "memchr",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]
@@ -3305,7 +3279,7 @@ dependencies = [
  "cstr",
  "libc",
  "measureme",
- "object 0.29.0",
+ "object",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3339,7 +3313,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object 0.29.0",
+ "object",
  "pathdiff",
  "regex",
  "rustc_arena",
@@ -4698,7 +4672,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "std"
 version = "0.0.0"
 dependencies = [
- "addr2line 0.16.0",
+ "addr2line",
  "alloc",
  "cfg-if 1.0.0",
  "compiler_builtins",
@@ -4708,8 +4682,8 @@ dependencies = [
  "hashbrown",
  "hermit-abi 0.2.6",
  "libc",
- "miniz_oxide 0.4.0",
- "object 0.26.2",
+ "miniz_oxide 0.5.3",
+ "object",
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
@@ -4926,9 +4900,9 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6cb0c7868d7f90407531108ab03263d9452a8811b7cdd87675343a40d4aa254"
 dependencies = [
- "gimli 0.26.1",
+ "gimli",
  "hashbrown",
- "object 0.29.0",
+ "object",
  "tracing",
 ]
 
