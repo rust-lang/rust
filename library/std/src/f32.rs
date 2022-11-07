@@ -119,7 +119,7 @@ impl f32 {
     #[unstable(feature = "round_ties_even", issue = "96710")]
     #[inline]
     pub fn round_ties_even(self) -> f32 {
-        unsafe { intrinsics::roundevenf32(self) }
+        unsafe { intrinsics::rintf32(self) }
     }
 
     /// Returns the integer part of `self`.

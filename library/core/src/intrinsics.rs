@@ -1588,9 +1588,15 @@ extern "rust-intrinsic" {
 
     /// Returns the nearest integer to an `f32`. May raise an inexact floating-point exception
     /// if the argument is not an integer.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
     pub fn rintf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`. May raise an inexact floating-point exception
     /// if the argument is not an integer.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
     pub fn rintf64(x: f64) -> f64;
 
     /// Returns the nearest integer to an `f32`.
@@ -1616,16 +1622,13 @@ extern "rust-intrinsic" {
     /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number
     /// with an even least significant digit.
     ///
-    /// The stabilized version of this intrinsic is
-    /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
+    /// This intrinsic does not have a stable counterpart.
     #[cfg(not(bootstrap))]
     pub fn roundevenf32(x: f32) -> f32;
-
     /// Returns the nearest integer to an `f64`. Rounds half-way cases to the number
     /// with an even least significant digit.
     ///
-    /// The stabilized version of this intrinsic is
-    /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
+    /// This intrinsic does not have a stable counterpart.
     #[cfg(not(bootstrap))]
     pub fn roundevenf64(x: f64) -> f64;
 
