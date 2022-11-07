@@ -42,7 +42,7 @@ impl LineEndings {
         loop {
             let idx = match find_crlf(&tail[gap_len..]) {
                 None if crlf_seen => tail.len(),
-                // SAFETY: buf is unchanged and therefor still contains utf8 data
+                // SAFETY: buf is unchanged and therefore still contains utf8 data
                 None => return (unsafe { String::from_utf8_unchecked(buf) }, LineEndings::Unix),
                 Some(idx) => {
                     crlf_seen = true;

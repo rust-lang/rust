@@ -814,7 +814,7 @@ impl<'a> InFile<&'a SyntaxNode> {
 
     pub fn original_syntax_node(self, db: &dyn db::AstDatabase) -> Option<InFile<SyntaxNode>> {
         // This kind of upmapping can only be achieved in attribute expanded files,
-        // as we don't have node inputs otherwise and  therefor can't find an `N` node in the input
+        // as we don't have node inputs otherwise and therefore can't find an `N` node in the input
         if !self.file_id.is_macro() {
             return Some(self.map(Clone::clone));
         } else if !self.file_id.is_attr_macro(db) {
@@ -926,7 +926,7 @@ impl<N: AstNode> InFile<N> {
 
     pub fn original_ast_node(self, db: &dyn db::AstDatabase) -> Option<InFile<N>> {
         // This kind of upmapping can only be achieved in attribute expanded files,
-        // as we don't have node inputs otherwise and  therefor can't find an `N` node in the input
+        // as we don't have node inputs otherwise and therefore can't find an `N` node in the input
         if !self.file_id.is_macro() {
             return Some(self);
         } else if !self.file_id.is_attr_macro(db) {
