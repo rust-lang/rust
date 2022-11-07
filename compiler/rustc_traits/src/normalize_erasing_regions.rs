@@ -1,7 +1,9 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, FallibleTypeFolder, ParamEnvAnd, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable,
+};
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 use std::sync::atomic::Ordering;
@@ -16,7 +18,23 @@ pub(crate) fn provide(p: &mut Providers) {
                 .normalize_generic_arg_after_erasing_regions
                 .fetch_add(1, Ordering::Relaxed);
 
-            try_normalize_after_erasing_regions(tcx, goal)
+            let ParamEnvAnd { param_env, value } = goal;
+
+            match value.unpack() {
+                ty::GenericArgKind::Type(ty) => {
+                    let ty =
+                        ty.try_super_fold_with(&mut NormalizeDeeperFolder { tcx, param_env })?;
+                    if let ty::Projection(..) | ty::Opaque(..) = ty.kind() {
+                        Ok(try_normalize_after_erasing_regions(tcx, param_env, ty)?.into())
+                    } else {
+                        Ok(ty.into())
+                    }
+                }
+                ty::GenericArgKind::Const(_) => {
+                    try_normalize_after_erasing_regions(tcx, param_env, value)
+                }
+                ty::GenericArgKind::Lifetime(_) => unreachable!(),
+            }
         },
         ..*p
     };
@@ -24,9 +42,9 @@ pub(crate) fn provide(p: &mut Providers) {
 
 fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq + Copy>(
     tcx: TyCtxt<'tcx>,
-    goal: ParamEnvAnd<'tcx, T>,
+    param_env: ty::ParamEnv<'tcx>,
+    value: T,
 ) -> Result<T, NoSolution> {
-    let ParamEnvAnd { param_env, value } = goal;
     let infcx = tcx.infer_ctxt().ignoring_regions().build();
     let cause = ObligationCause::dummy();
     match infcx.at(&cause, param_env).normalize(value) {
@@ -49,6 +67,39 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq +
             Ok(erased)
         }
         Err(NoSolution) => Err(NoSolution),
+    }
+}
+
+struct NormalizeDeeperFolder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+}
+
+impl<'tcx> FallibleTypeFolder<'tcx> for NormalizeDeeperFolder<'tcx> {
+    type Error = NoSolution;
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        if !ty.needs_normalization(self.param_env.reveal()) {
+            return Ok(ty);
+        }
+
+        let ty = ty.try_super_fold_with(self)?;
+        if let ty::Projection(..) | ty::Opaque(..) = ty.kind() {
+            Ok(self
+                .tcx
+                .try_normalize_generic_arg_after_erasing_regions(self.param_env.and(ty.into()))?
+                .expect_ty())
+        } else {
+            Ok(ty)
+        }
+    }
+
+    fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+        try_normalize_after_erasing_regions(self.tcx, self.param_env, c)
     }
 }
 
