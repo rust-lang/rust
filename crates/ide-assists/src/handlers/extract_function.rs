@@ -127,10 +127,8 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
             builder.replace(target_range, make_call(ctx, &fun, old_indent));
 
-            let has_impl_wrapper = insert_after
-                .ancestors()
-                .find(|a| a.kind() == SyntaxKind::IMPL && a != &insert_after)
-                .is_some();
+            let has_impl_wrapper =
+                insert_after.ancestors().any(|a| a.kind() == SyntaxKind::IMPL && a != insert_after);
 
             let fn_def = match fun.self_param_adt(ctx) {
                 Some(adt) if anchor == Anchor::Method && !has_impl_wrapper => {
@@ -1250,8 +1248,7 @@ fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNod
             SyntaxKind::IMPL => {
                 if body.extracted_from_trait_impl() && matches!(anchor, Anchor::Method) {
                     let impl_node = find_non_trait_impl(&next_ancestor);
-                    let target_node = impl_node.as_ref().and_then(last_impl_member);
-                    if target_node.is_some() {
+                    if let target_node @ Some(_) = impl_node.as_ref().and_then(last_impl_member) {
                         return target_node;
                     }
                 }
@@ -1281,7 +1278,8 @@ fn find_non_trait_impl(trait_impl: &SyntaxNode) -> Option<ast::Impl> {
     let impl_type = Some(impl_type_name(&as_impl)?);
 
     let sibblings = trait_impl.parent()?.children();
-    sibblings.filter_map(ast::Impl::cast)
+    sibblings
+        .filter_map(ast::Impl::cast)
         .find(|s| impl_type_name(s) == impl_type && !is_trait_impl(s))
 }
 
