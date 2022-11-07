@@ -175,19 +175,9 @@ impl<'a> StringReader<'a> {
                         if string == "_" {
                             self.sess
                                 .span_diagnostic
-                                .struct_span_warn(
+                                .struct_span_err(
                                     self.mk_sp(suffix_start, self.pos),
                                     "underscore literal suffix is not allowed",
-                                )
-                                .warn(
-                                    "this was previously accepted by the compiler but is \
-                                       being phased out; it will become a hard error in \
-                                       a future release!",
-                                )
-                                .note(
-                                    "see issue #42326 \
-                                     <https://github.com/rust-lang/rust/issues/42326> \
-                                     for more information",
                                 )
                                 .emit();
                             None

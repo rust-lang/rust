@@ -378,6 +378,10 @@ img {
 	object-fit: contain;
 }
 
+.rust-logo {
+	filter: var(--rust-logo-filter);
+}
+
 .sidebar, .mobile-topbar, .sidebar-menu-toggle {
 	background-color: var(--sidebar-background-color);
 }
@@ -1802,21 +1806,6 @@ in storage.js
 
 	#titles > button > div.count {
 		display: block;
-	}
-
-	/* Because of ios, we need to actually have a full height sidebar title so the
-	 * actual sidebar can show up. But then we need to make it transparent so we don't
-	 * hide content. The filler just allows to create the background for the sidebar
-	 * title. But because of the absolute position, I had to lower the z-index.
-	 */
-	#sidebar-filler {
-		position: fixed;
-		left: 45px;
-		width: calc(100% - 45px);
-		top: 0;
-		height: 45px;
-		z-index: -1;
-		border-bottom: 1px solid;
 	}
 
 	#main-content > details.rustdoc-toggle > summary::before,

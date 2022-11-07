@@ -63,6 +63,10 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--test-arrow-background-color: rgba(57, 175, 215, 0.09);
 	--test-arrow-hover-color: #c5c5c5;
 	--test-arrow-hover-background-color: rgba(57, 175, 215, 0.368);
+	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
+		drop-shadow(0 1px 0 #fff)
+		drop-shadow(-1px 0 0 #fff)
+		drop-shadow(0 -1px 0 #fff);
 }
 
 .slider {
@@ -102,13 +106,6 @@ h4 {
 }
 pre, .rustdoc.source .example-wrap {
 	color: #e6e1cf;
-}
-
-.rust-logo {
-	filter: drop-shadow(1px 0 0px #fff)
-		drop-shadow(0 1px 0 #fff)
-		drop-shadow(-1px 0 0 #fff)
-		drop-shadow(0 -1px 0 #fff);
 }
 
 .sidebar .current,
