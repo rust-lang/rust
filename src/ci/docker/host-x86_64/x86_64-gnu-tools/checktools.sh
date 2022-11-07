@@ -27,10 +27,7 @@ python3 "$X_PY" test --stage 2 src/tools/rustfmt
 python3 "$X_PY" test --stage 2 src/tools/miri
 # We natively run this script on x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc.
 # Also cover some other targets (on both of these hosts) via cross-testing.
-#
-# Currently disabled -- we end up pulling in a cross-compile of LLVM (maybe
-# just overly eager sanity checks), but in any case this won't work when
-# building LLVM as of this comment.
-#python3 "$X_PY" test --stage 2 src/tools/miri --target i686-pc-windows-msvc
-#FIXME(https://github.com/rust-lang/rust/issues/103519): macOS testing is currently disabled
-# python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin
+export BOOTSTRAP_SKIP_TARGET_SANITY=1 # we don't need `cc` for these targets
+python3 "$X_PY" test --stage 2 src/tools/miri --target i686-pc-windows-msvc
+python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin
+unset BOOTSTRAP_SKIP_TARGET_SANITY
