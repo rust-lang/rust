@@ -2410,7 +2410,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         /// Information about why a type cannot be initialized this way.
         struct InitError {
             message: String,
-            /// Spans from struct fields and similar can be obtained from just the type.
+            /// Spans from struct fields and similar that can be obtained from just the type.
             span: Option<Span>,
             /// Used to report a trace through adts.
             nested: Option<Box<InitError>>,
@@ -2497,7 +2497,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             descr: &str,
             init: InitKind,
         ) -> Option<InitError> {
-            let field_err = variant.fields.iter().find_map(|field| {
+            let mut field_err = variant.fields.iter().find_map(|field| {
                 ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|mut err| {
                     if !field.did.is_local() {
                         err
@@ -2515,28 +2515,27 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
             // Check if this ADT has a constrained layout (like `NonNull` and friends).
             if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty)) {
-                match &layout.abi {
-                    Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) => {
-                        let range = scalar.valid_range(cx);
-                        if !range.contains(0) {
-                            return Some(
-                                InitError::from(format!("`{}` must be non-null", ty))
-                                    .nested(field_err),
-                            );
-                        } else if init == InitKind::Uninit && !scalar.is_always_valid(cx) {
-                            // Prefer reporting on the fields over the entire struct for uninit,
-                            // as the information bubbles out and it may be unclear why the type can't
-                            // be null from just its outside signature.
-                            return Some(
-                                InitError::from(format!(
-                                    "`{}` must be initialized inside its custom valid range",
-                                    ty,
-                                ))
-                                .nested(field_err),
-                            );
+                if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &layout.abi {
+                    let range = scalar.valid_range(cx);
+                    let msg = if !range.contains(0) {
+                        "must be non-null"
+                    } else if init == InitKind::Uninit && !scalar.is_always_valid(cx) {
+                        // Prefer reporting on the fields over the entire struct for uninit,
+                        // as the information bubbles out and it may be unclear why the type can't
+                        // be null from just its outside signature.
+
+                        "must be initialized inside its custom valid range"
+                    } else {
+                        return field_err;
+                    };
+                    if let Some(field_err) = &mut field_err {
+                        // Most of the time, if the field error is the same as the struct error,
+                        // the struct error only happens because of the field error.
+                        if field_err.message.contains(msg) {
+                            field_err.message = format!("because {}", field_err.message);
                         }
                     }
-                    _ => {}
+                    return Some(InitError::from(format!("`{ty}` {msg}")).nested(field_err));
                 }
             }
             field_err

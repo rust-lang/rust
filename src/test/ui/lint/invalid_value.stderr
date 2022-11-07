@@ -35,7 +35,7 @@ LL |         let _val: Wrap<&'static T> = mem::zeroed();
    |                                      help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `Wrap<&T>` must be non-null
-note: references must be non-null (in this struct field)
+note: because references must be non-null (in this struct field)
   --> $DIR/invalid_value.rs:17:18
    |
 LL | struct Wrap<T> { wrapped: T }
@@ -51,7 +51,7 @@ LL |         let _val: Wrap<&'static T> = mem::uninitialized();
    |                                      help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `Wrap<&T>` must be non-null
-note: references must be non-null (in this struct field)
+note: because references must be non-null (in this struct field)
   --> $DIR/invalid_value.rs:17:18
    |
 LL | struct Wrap<T> { wrapped: T }
@@ -163,7 +163,7 @@ LL |         let _val: Ref = mem::zeroed();
    |                         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `Ref` must be non-null
-note: references must be non-null (in this struct field)
+note: because references must be non-null (in this struct field)
   --> $DIR/invalid_value.rs:14:12
    |
 LL | struct Ref(&'static i32);
@@ -179,7 +179,7 @@ LL |         let _val: Ref = mem::uninitialized();
    |                         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `Ref` must be non-null
-note: references must be non-null (in this struct field)
+note: because references must be non-null (in this struct field)
   --> $DIR/invalid_value.rs:14:12
    |
 LL | struct Ref(&'static i32);
@@ -217,7 +217,7 @@ LL |         let _val: Wrap<fn()> = mem::zeroed();
    |                                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `Wrap<fn()>` must be non-null
-note: function pointers must be non-null (in this struct field)
+note: because function pointers must be non-null (in this struct field)
   --> $DIR/invalid_value.rs:17:18
    |
 LL | struct Wrap<T> { wrapped: T }
@@ -233,7 +233,7 @@ LL |         let _val: Wrap<fn()> = mem::uninitialized();
    |                                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `Wrap<fn()>` must be non-null
-note: function pointers must be non-null (in this struct field)
+note: because function pointers must be non-null (in this struct field)
   --> $DIR/invalid_value.rs:17:18
    |
 LL | struct Wrap<T> { wrapped: T }
@@ -249,7 +249,7 @@ LL |         let _val: WrapEnum<fn()> = mem::zeroed();
    |                                    help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `WrapEnum<fn()>` must be non-null
-note: function pointers must be non-null (in this field of the only potentially inhabited enum variant)
+note: because function pointers must be non-null (in this field of the only potentially inhabited enum variant)
   --> $DIR/invalid_value.rs:18:28
    |
 LL | enum WrapEnum<T> { Wrapped(T) }
@@ -265,7 +265,7 @@ LL |         let _val: WrapEnum<fn()> = mem::uninitialized();
    |                                    help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `WrapEnum<fn()>` must be non-null
-note: function pointers must be non-null (in this field of the only potentially inhabited enum variant)
+note: because function pointers must be non-null (in this field of the only potentially inhabited enum variant)
   --> $DIR/invalid_value.rs:18:28
    |
 LL | enum WrapEnum<T> { Wrapped(T) }
@@ -285,7 +285,7 @@ note: `RefPair` must be non-null (in this struct field)
    |
 LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
-note: references must be non-null (in this struct field)
+note: because references must be non-null (in this struct field)
   --> $DIR/invalid_value.rs:15:16
    |
 LL | struct RefPair((&'static i32, i32));
@@ -305,7 +305,7 @@ note: `RefPair` must be non-null (in this struct field)
    |
 LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
-note: references must be non-null (in this struct field)
+note: because references must be non-null (in this struct field)
   --> $DIR/invalid_value.rs:15:16
    |
 LL | struct RefPair((&'static i32, i32));
@@ -441,7 +441,7 @@ LL |         let _val: OneFruitNonZero = mem::zeroed();
    |                                     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `OneFruitNonZero` must be non-null
-note: `std::num::NonZeroU32` must be non-null (in this field of the only potentially inhabited enum variant)
+note: because `std::num::NonZeroU32` must be non-null (in this field of the only potentially inhabited enum variant)
   --> $DIR/invalid_value.rs:39:12
    |
 LL |     Banana(NonZeroU32),
@@ -457,7 +457,7 @@ LL |         let _val: OneFruitNonZero = mem::uninitialized();
    |                                     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
    = note: `OneFruitNonZero` must be non-null
-note: `std::num::NonZeroU32` must be non-null (in this field of the only potentially inhabited enum variant)
+note: because `std::num::NonZeroU32` must be non-null (in this field of the only potentially inhabited enum variant)
   --> $DIR/invalid_value.rs:39:12
    |
 LL |     Banana(NonZeroU32),
