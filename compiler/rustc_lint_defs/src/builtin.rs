@@ -708,7 +708,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// pub enum Enum {
     ///     Foo,
     ///     Bar,
