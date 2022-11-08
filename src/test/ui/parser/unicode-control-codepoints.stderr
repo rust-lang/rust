@@ -14,69 +14,69 @@ LL |     println!("{:?}", b"us\u{202B}e\u{202A}r");
    |
    = help: unicode escape sequences cannot be used as a byte or in a byte string
 
-error: non-ASCII character in byte constant
+error: non-ASCII character in byte string literal
   --> $DIR/unicode-control-codepoints.rs:16:26
    |
 LL |     println!("{:?}", b"/* } if isAdmin  begin admins only ");
-   |                          ^ byte constant must be ASCII but is '\u{202e}'
+   |                          ^ must be ASCII but is '\u{202e}'
    |
 help: if you meant to use the UTF-8 encoding of '\u{202e}', use \xHH escapes
    |
 LL |     println!("{:?}", b"/*\xE2\x80\xAE } if isAdmin  begin admins only ");
    |                          ~~~~~~~~~~~~
 
-error: non-ASCII character in byte constant
+error: non-ASCII character in byte string literal
   --> $DIR/unicode-control-codepoints.rs:16:30
    |
 LL |     println!("{:?}", b"/* } if isAdmin  begin admins only ");
-   |                             ^ byte constant must be ASCII but is '\u{2066}'
+   |                             ^ must be ASCII but is '\u{2066}'
    |
 help: if you meant to use the UTF-8 encoding of '\u{2066}', use \xHH escapes
    |
 LL |     println!("{:?}", b"/* } \xE2\x81\xA6if isAdmin  begin admins only ");
    |                             ~~~~~~~~~~~~
 
-error: non-ASCII character in byte constant
+error: non-ASCII character in byte string literal
   --> $DIR/unicode-control-codepoints.rs:16:41
    |
 LL |     println!("{:?}", b"/* } if isAdmin  begin admins only ");
-   |                                       ^ byte constant must be ASCII but is '\u{2069}'
+   |                                       ^ must be ASCII but is '\u{2069}'
    |
 help: if you meant to use the UTF-8 encoding of '\u{2069}', use \xHH escapes
    |
 LL |     println!("{:?}", b"/* } if isAdmin\xE2\x81\xA9  begin admins only ");
    |                                       ~~~~~~~~~~~~
 
-error: non-ASCII character in byte constant
+error: non-ASCII character in byte string literal
   --> $DIR/unicode-control-codepoints.rs:16:43
    |
 LL |     println!("{:?}", b"/* } if isAdmin  begin admins only ");
-   |                                        ^ byte constant must be ASCII but is '\u{2066}'
+   |                                        ^ must be ASCII but is '\u{2066}'
    |
 help: if you meant to use the UTF-8 encoding of '\u{2066}', use \xHH escapes
    |
 LL |     println!("{:?}", b"/* } if isAdmin \xE2\x81\xA6 begin admins only ");
    |                                        ~~~~~~~~~~~~
 
-error: raw byte string must be ASCII
+error: non-ASCII character in raw byte string literal
   --> $DIR/unicode-control-codepoints.rs:21:29
    |
 LL |     println!("{:?}", br##"/* } if isAdmin  begin admins only "##);
    |                             ^ must be ASCII but is '\u{202e}'
 
-error: raw byte string must be ASCII
+error: non-ASCII character in raw byte string literal
   --> $DIR/unicode-control-codepoints.rs:21:33
    |
 LL |     println!("{:?}", br##"/* } if isAdmin  begin admins only "##);
    |                                ^ must be ASCII but is '\u{2066}'
 
-error: raw byte string must be ASCII
+error: non-ASCII character in raw byte string literal
   --> $DIR/unicode-control-codepoints.rs:21:44
    |
 LL |     println!("{:?}", br##"/* } if isAdmin  begin admins only "##);
    |                                          ^ must be ASCII but is '\u{2069}'
 
-error: raw byte string must be ASCII
+error: non-ASCII character in raw byte string literal
   --> $DIR/unicode-control-codepoints.rs:21:46
    |
 LL |     println!("{:?}", br##"/* } if isAdmin  begin admins only "##);
