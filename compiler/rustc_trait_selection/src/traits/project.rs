@@ -647,7 +647,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn fold_const(&mut self, constant: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let tcx = self.selcx.tcx();
-        if tcx.lazy_normalization() {
+        if tcx.lazy_normalization() || !needs_normalization(&constant, self.param_env.reveal()) {
             constant
         } else {
             let constant = constant.super_fold_with(self);
