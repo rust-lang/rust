@@ -1,5 +1,5 @@
 use super::diagnostics::SnapshotParser;
-use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
+use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
@@ -2175,7 +2175,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
-            let pat = this.parse_pat_no_top_alt(PARAM_EXPECTED)?;
+            let pat = this.parse_pat_no_top_alt(Some(Expected::ParameterName))?;
             let ty = if this.eat(&token::Colon) {
                 this.parse_ty()?
             } else {
