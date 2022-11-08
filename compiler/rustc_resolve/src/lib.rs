@@ -1106,14 +1106,27 @@ impl<'a> AsMut<Resolver<'a>> for Resolver<'a> {
     }
 }
 
+/// A minimal subset of resolver that can implemenent `DefIdTree`, sometimes
+/// required to satisfy borrow checker by avoiding borrowing the whole resolver.
+#[derive(Clone, Copy)]
+struct ResolverTree<'a, 'b>(&'a Definitions, &'a CrateLoader<'b>);
+
+impl DefIdTree for ResolverTree<'_, '_> {
+    #[inline]
+    fn opt_parent(self, id: DefId) -> Option<DefId> {
+        let ResolverTree(definitions, crate_loader) = self;
+        match id.as_local() {
+            Some(id) => definitions.def_key(id).parent,
+            None => crate_loader.cstore().def_key(id).parent,
+        }
+        .map(|index| DefId { index, ..id })
+    }
+}
+
 impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     #[inline]
     fn opt_parent(self, id: DefId) -> Option<DefId> {
-        match id.as_local() {
-            Some(id) => self.definitions.def_key(id).parent,
-            None => self.cstore().def_key(id).parent,
-        }
-        .map(|index| DefId { index, ..id })
+        ResolverTree(&self.definitions, &self.crate_loader).opt_parent(id)
     }
 }
 
