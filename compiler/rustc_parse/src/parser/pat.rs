@@ -24,10 +24,26 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 
-pub(super) type Expected = Option<&'static str>;
+#[derive(PartialEq, Copy, Clone)]
+pub enum Expected {
+    ParameterName,
+    ArgumentName,
+    Identifier,
+    BindingPattern,
+}
 
-/// `Expected` for function and lambda parameter patterns.
-pub(super) const PARAM_EXPECTED: Expected = Some("parameter name");
+impl Expected {
+    // FIXME(#100717): migrate users of this to proper localization
+    fn to_string_or_fallback(expected: Option<Expected>) -> &'static str {
+        match expected {
+            Some(Expected::ParameterName) => "parameter name",
+            Some(Expected::ArgumentName) => "argument name",
+            Some(Expected::Identifier) => "identifier",
+            Some(Expected::BindingPattern) => "binding pattern",
+            None => "pattern",
+        }
+    }
+}
 
 const WHILE_PARSING_OR_MSG: &str = "while parsing this or-pattern starting here";
 
@@ -76,7 +92,7 @@ impl<'a> Parser<'a> {
     /// Corresponds to `pat<no_top_alt>` in RFC 2535 and does not admit or-patterns
     /// at the top level. Used when parsing the parameters of lambda expressions,
     /// functions, function pointers, and `pat` macro fragments.
-    pub fn parse_pat_no_top_alt(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
+    pub fn parse_pat_no_top_alt(&mut self, expected: Option<Expected>) -> PResult<'a, P<Pat>> {
         self.parse_pat_with_range_pat(true, expected)
     }
 
@@ -90,7 +106,7 @@ impl<'a> Parser<'a> {
     /// simplify the grammar somewhat.
     pub fn parse_pat_allow_top_alt(
         &mut self,
-        expected: Expected,
+        expected: Option<Expected>,
         rc: RecoverComma,
         ra: RecoverColon,
         rt: CommaRecoveryMode,
@@ -102,7 +118,7 @@ impl<'a> Parser<'a> {
     /// recovered).
     fn parse_pat_allow_top_alt_inner(
         &mut self,
-        expected: Expected,
+        expected: Option<Expected>,
         rc: RecoverComma,
         ra: RecoverColon,
         rt: CommaRecoveryMode,
@@ -182,7 +198,7 @@ impl<'a> Parser<'a> {
     /// otherwise).
     pub(super) fn parse_pat_before_ty(
         &mut self,
-        expected: Expected,
+        expected: Option<Expected>,
         rc: RecoverComma,
         syntax_loc: PatternLocation,
     ) -> PResult<'a, (P<Pat>, bool)> {
@@ -254,7 +270,7 @@ impl<'a> Parser<'a> {
         }
 
         self.parse_pat_before_ty(
-            PARAM_EXPECTED,
+            Some(Expected::ParameterName),
             RecoverComma::No,
             PatternLocation::FunctionParameter,
         )
@@ -320,7 +336,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_with_range_pat(
         &mut self,
         allow_range_pat: bool,
-        expected: Expected,
+        expected: Option<Expected>,
     ) -> PResult<'a, P<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
         maybe_whole!(self, NtPat, |x| x);
@@ -416,7 +432,7 @@ impl<'a> Parser<'a> {
             let lt = self.expect_lifetime();
             let (lit, _) =
                 self.recover_unclosed_char(lt.ident, Parser::mk_token_lit_char, |self_| {
-                    let expected = expected.unwrap_or("pattern");
+                    let expected = Expected::to_string_or_fallback(expected);
                     let msg = format!(
                         "expected {}, found {}",
                         expected,
@@ -527,7 +543,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `&pat` / `&mut pat`.
-    fn parse_pat_deref(&mut self, expected: Expected) -> PResult<'a, PatKind> {
+    fn parse_pat_deref(&mut self, expected: Option<Expected>) -> PResult<'a, PatKind> {
         self.expect_and()?;
         if let token::Lifetime(name) = self.token.kind {
             self.bump(); // `'a`
@@ -580,7 +596,7 @@ impl<'a> Parser<'a> {
         }
 
         // Parse the pattern we hope to be an identifier.
-        let mut pat = self.parse_pat_no_top_alt(Some("identifier"))?;
+        let mut pat = self.parse_pat_no_top_alt(Some(Expected::Identifier))?;
 
         // If we don't have `mut $ident (@ pat)?`, error.
         if let PatKind::Ident(BindingAnnotation(ByRef::No, m @ Mutability::Not), ..) = &mut pat.kind
@@ -652,11 +668,11 @@ impl<'a> Parser<'a> {
     fn fatal_unexpected_non_pat(
         &mut self,
         err: DiagnosticBuilder<'a, ErrorGuaranteed>,
-        expected: Expected,
+        expected: Option<Expected>,
     ) -> PResult<'a, P<Pat>> {
         err.cancel();
 
-        let expected = expected.unwrap_or("pattern");
+        let expected = Expected::to_string_or_fallback(expected);
         let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
 
         let mut err = self.struct_span_err(self.token.span, &msg);
@@ -809,7 +825,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_ident(&mut self, binding_annotation: BindingAnnotation) -> PResult<'a, PatKind> {
         let ident = self.parse_ident()?;
         let sub = if self.eat(&token::At) {
-            Some(self.parse_pat_no_top_alt(Some("binding pattern"))?)
+            Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern))?)
         } else {
             None
         };
@@ -903,7 +919,7 @@ impl<'a> Parser<'a> {
             // We cannot use `parse_pat_ident()` since it will complain `box`
             // is not an identifier.
             let sub = if self.eat(&token::At) {
-                Some(self.parse_pat_no_top_alt(Some("binding pattern"))?)
+                Some(self.parse_pat_no_top_alt(Some(Expected::BindingPattern))?)
             } else {
                 None
             };
