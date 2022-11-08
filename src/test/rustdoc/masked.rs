@@ -10,6 +10,7 @@ extern crate masked;
 // @!hasraw 'search-index.js' 'masked_method'
 
 // @!hasraw 'foo/struct.String.html' 'MaskedTrait'
+// @!hasraw 'foo/struct.String.html' 'MaskedBlanketTrait'
 // @!hasraw 'foo/struct.String.html' 'masked_method'
 pub use std::string::String;
 

@@ -1,0 +1,8 @@
+error: non-defining opaque type use in defining scope
+  --> $DIR/missing_lifetime_bound.rs:4:47
+   |
+LL | fn defining<'a, T>(x: &'a i32) -> Opaque<T> { x }
+   |                                               ^ lifetime `'a` is part of concrete type but not used in parameter list of the `impl Trait` type alias
+
+error: aborting due to previous error
+

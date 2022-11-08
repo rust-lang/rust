@@ -148,13 +148,8 @@ pub fn predicate_obligations<'tcx>(
             wf.compute(a.into());
             wf.compute(b.into());
         }
-        ty::PredicateKind::ConstEvaluatable(uv) => {
-            let obligations = wf.nominal_obligations(uv.def.did, uv.substs);
-            wf.out.extend(obligations);
-
-            for arg in uv.substs.iter() {
-                wf.compute(arg);
-            }
+        ty::PredicateKind::ConstEvaluatable(ct) => {
+            wf.compute(ct.into());
         }
         ty::PredicateKind::ConstEquate(c1, c2) => {
             wf.compute(c1.into());
@@ -219,7 +214,9 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
         trait_ref, item, cause, pred
     );
     let (items, impl_def_id) = match item {
-        Some(hir::Item { kind: hir::ItemKind::Impl(impl_), def_id, .. }) => (impl_.items, *def_id),
+        Some(hir::Item { kind: hir::ItemKind::Impl(impl_), owner_id, .. }) => {
+            (impl_.items, *owner_id)
+        }
         _ => return,
     };
     let fix_span =
@@ -241,7 +238,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                     tcx.impl_item_implementor_ids(impl_def_id).get(&projection_ty.item_def_id)
                 && let Some(impl_item_span) = items
                     .iter()
-                    .find(|item| item.id.def_id.to_def_id() == impl_item_id)
+                    .find(|item| item.id.owner_id.to_def_id() == impl_item_id)
                     .map(fix_span)
             {
                 cause.span = impl_item_span;
@@ -256,7 +253,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                     tcx.impl_item_implementor_ids(impl_def_id).get(&item_def_id)
                 && let Some(impl_item_span) = items
                     .iter()
-                    .find(|item| item.id.def_id.to_def_id() == impl_item_id)
+                    .find(|item| item.id.owner_id.to_def_id() == impl_item_id)
                     .map(fix_span)
             {
                 cause.span = impl_item_span;
@@ -308,32 +305,6 @@ impl<'tcx> WfPredicates<'tcx> {
         let obligations = if trait_pred.constness == ty::BoundConstness::NotConst {
             self.nominal_obligations_without_const(trait_ref.def_id, trait_ref.substs)
         } else {
-            if !tcx.has_attr(trait_ref.def_id, rustc_span::sym::const_trait) {
-                if let Some(item) = self.item &&
-                   let hir::ItemKind::Impl(impl_) = item.kind &&
-                   let Some(trait_) = &impl_.of_trait &&
-                   let Some(def_id) = trait_.trait_def_id() &&
-                   def_id == trait_ref.def_id
-                {
-                    let trait_name = tcx.item_name(def_id);
-                    let mut err = tcx.sess.struct_span_err(
-                        self.span,
-                        &format!("const `impl` for trait `{trait_name}` which is not marked with `#[const_trait]`"),
-                    );
-                    if def_id.is_local() {
-                        let sp = tcx.def_span(def_id).shrink_to_lo();
-                        err.span_suggestion(sp, &format!("mark `{trait_name}` as const"), "#[const_trait]", rustc_errors::Applicability::MachineApplicable);
-                    }
-                    err.note("marking a trait with `#[const_trait]` ensures all default method bodies are `const`");
-                    err.note("adding a non-const method body in the future would be a breaking change");
-                    err.emit();
-                } else {
-                    tcx.sess.span_err(
-                        self.span,
-                        "~const can only be applied to `#[const_trait]` traits",
-                    );
-                }
-            }
             self.nominal_obligations(trait_ref.def_id, trait_ref.substs)
         };
 
@@ -476,14 +447,14 @@ impl<'tcx> WfPredicates<'tcx> {
                 // obligations are handled by the parent (e.g. `ty::Ref`).
                 GenericArgKind::Lifetime(_) => continue,
 
-                GenericArgKind::Const(constant) => {
-                    match constant.kind() {
+                GenericArgKind::Const(ct) => {
+                    match ct.kind() {
                         ty::ConstKind::Unevaluated(uv) => {
                             let obligations = self.nominal_obligations(uv.def.did, uv.substs);
                             self.out.extend(obligations);
 
                             let predicate =
-                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv))
+                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct))
                                     .to_predicate(self.tcx());
                             let cause = self.cause(traits::WellFormed(None));
                             self.out.push(traits::Obligation::with_depth(
@@ -500,7 +471,7 @@ impl<'tcx> WfPredicates<'tcx> {
                                 cause,
                                 self.recursion_depth,
                                 self.param_env,
-                                ty::Binder::dummy(ty::PredicateKind::WellFormed(constant.into()))
+                                ty::Binder::dummy(ty::PredicateKind::WellFormed(ct.into()))
                                     .to_predicate(self.tcx()),
                             ));
                         }

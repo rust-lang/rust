@@ -26,7 +26,12 @@ error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:36:9
    |
 LL |         bah;
-   |         ^^^ help: you might have meant to call the associated function: `Self::bah`
+   |         ^^^
+   |
+help: you might have meant to refer to the associated function
+   |
+LL |         Self::bah;
+   |         ~~~~~~~~~
 
 error[E0425]: cannot find value `b` in this scope
   --> $DIR/issue-14254.rs:38:9
@@ -56,7 +61,12 @@ error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:53:9
    |
 LL |         bah;
-   |         ^^^ help: you might have meant to call the associated function: `Self::bah`
+   |         ^^^
+   |
+help: you might have meant to refer to the associated function
+   |
+LL |         Self::bah;
+   |         ~~~~~~~~~
 
 error[E0425]: cannot find value `b` in this scope
   --> $DIR/issue-14254.rs:55:9
@@ -68,31 +78,56 @@ error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:64:9
    |
 LL |         bah;
-   |         ^^^ help: you might have meant to call the associated function: `Self::bah`
+   |         ^^^
+   |
+help: you might have meant to refer to the associated function
+   |
+LL |         Self::bah;
+   |         ~~~~~~~~~
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:73:9
    |
 LL |         bah;
-   |         ^^^ help: you might have meant to call the associated function: `Self::bah`
+   |         ^^^
+   |
+help: you might have meant to refer to the associated function
+   |
+LL |         Self::bah;
+   |         ~~~~~~~~~
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:82:9
    |
 LL |         bah;
-   |         ^^^ help: you might have meant to call the associated function: `Self::bah`
+   |         ^^^
+   |
+help: you might have meant to refer to the associated function
+   |
+LL |         Self::bah;
+   |         ~~~~~~~~~
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:91:9
    |
 LL |         bah;
-   |         ^^^ help: you might have meant to call the associated function: `Self::bah`
+   |         ^^^
+   |
+help: you might have meant to refer to the associated function
+   |
+LL |         Self::bah;
+   |         ~~~~~~~~~
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/issue-14254.rs:100:9
    |
 LL |         bah;
-   |         ^^^ help: you might have meant to call the associated function: `Self::bah`
+   |         ^^^
+   |
+help: you might have meant to refer to the associated function
+   |
+LL |         Self::bah;
+   |         ~~~~~~~~~
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/issue-14254.rs:19:9

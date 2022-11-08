@@ -33,6 +33,7 @@
 	--sidebar-link-color: #fdbf35;
 	--sidebar-current-link-background-color: #444;
 	--search-result-link-focus-background-color: #616161;
+	--search-result-border-color: #aaa3;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--search-color: #111;
@@ -50,6 +51,17 @@
 	--code-highlight-question-mark-color: #ff9011;
 	--code-highlight-comment-color: #8d8d8b;
 	--code-highlight-doc-comment-color: #8ca375;
+	--example-line-numbers-border-color: #4a4949;
+	--src-line-numbers-span-color: #3b91e2;
+	--src-line-number-highlighted-background-color: #0a042f;
+	--test-arrow-color: #dedede;
+	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
+	--test-arrow-hover-color: #dedede;
+	--test-arrow-hover-background-color: #4e8bca;
+	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
+		drop-shadow(0 1px 0 #fff)
+		drop-shadow(-1px 0 0 #fff)
+		drop-shadow(0 -1px 0 #fff);
 }
 
 .slider {
@@ -60,18 +72,6 @@
 }
 input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
-}
-
-.rust-logo {
-	filter: drop-shadow(1px 0 0px #fff)
-		drop-shadow(0 1px 0 #fff)
-		drop-shadow(-1px 0 0 #fff)
-		drop-shadow(0 -1px 0 #fff)
-}
-
-.src-line-numbers span { color: #3B91E2; }
-.src-line-numbers .line-highlighted {
-	background-color: #0a042f !important;
 }
 
 .content .item-info::before { color: #ccc; }
@@ -93,21 +93,6 @@ details.rustdoc-toggle > summary::before {
 }
 #crate-search-div:hover::after, #crate-search-div:focus-within::after {
 	filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg) brightness(100%) contrast(91%);
-}
-
-.src-line-numbers :target { background-color: transparent; }
-
-pre.example-line-numbers {
-	border-color: #4a4949;
-}
-
-a.test-arrow {
-	color: #dedede;
-	background-color: rgba(78, 139, 202, 0.2);
-}
-
-a.test-arrow:hover{
-	background-color: #4e8bca;
 }
 
 :target {

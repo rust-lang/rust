@@ -126,13 +126,6 @@ pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
         c.super_fold_with(self)
     }
 
-    fn fold_ty_unevaluated(
-        &mut self,
-        uv: ty::UnevaluatedConst<'tcx>,
-    ) -> ty::UnevaluatedConst<'tcx> {
-        uv.super_fold_with(self)
-    }
-
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         p.super_fold_with(self)
     }
@@ -166,13 +159,6 @@ pub trait FallibleTypeFolder<'tcx>: Sized {
     }
 
     fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
-        c.try_super_fold_with(self)
-    }
-
-    fn try_fold_ty_unevaluated(
-        &mut self,
-        c: ty::UnevaluatedConst<'tcx>,
-    ) -> Result<ty::UnevaluatedConst<'tcx>, Self::Error> {
         c.try_super_fold_with(self)
     }
 
@@ -213,13 +199,6 @@ where
 
     fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, !> {
         Ok(self.fold_const(c))
-    }
-
-    fn try_fold_ty_unevaluated(
-        &mut self,
-        c: ty::UnevaluatedConst<'tcx>,
-    ) -> Result<ty::UnevaluatedConst<'tcx>, !> {
-        Ok(self.fold_ty_unevaluated(c))
     }
 
     fn try_fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> Result<ty::Predicate<'tcx>, !> {
@@ -587,10 +566,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     ))
                 },
                 consts: &mut |c, ty: Ty<'tcx>| {
-                    self.mk_const(ty::ConstS {
-                        kind: ty::ConstKind::Bound(ty::INNERMOST, shift_bv(c)),
-                        ty,
-                    })
+                    self.mk_const(ty::ConstKind::Bound(ty::INNERMOST, shift_bv(c)), ty)
                 },
             },
         )
@@ -669,7 +645,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let () = entry.or_insert_with(|| ty::BoundVariableKind::Const).expect_const();
-                self.tcx.mk_const(ty::ConstS { ty, kind: ty::ConstKind::Bound(ty::INNERMOST, var) })
+                self.tcx.mk_const(ty::ConstKind::Bound(ty::INNERMOST, var), ty)
             }
         }
 
@@ -753,10 +729,7 @@ impl<'tcx> TypeFolder<'tcx> for Shifter<'tcx> {
                 ct
             } else {
                 let debruijn = debruijn.shifted_in(self.amount);
-                self.tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Bound(debruijn, bound_ct),
-                    ty: ct.ty(),
-                })
+                self.tcx.mk_const(ty::ConstKind::Bound(debruijn, bound_ct), ct.ty())
             }
         } else {
             ct.super_fold_with(self)

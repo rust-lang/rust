@@ -191,12 +191,12 @@ impl interpret::Provenance for Provenance {
             Provenance::Concrete { alloc_id, sb } => {
                 // Forward `alternate` flag to `alloc_id` printing.
                 if f.alternate() {
-                    write!(f, "[{:#?}]", alloc_id)?;
+                    write!(f, "[{alloc_id:#?}]")?;
                 } else {
-                    write!(f, "[{:?}]", alloc_id)?;
+                    write!(f, "[{alloc_id:?}]")?;
                 }
                 // Print Stacked Borrows tag.
-                write!(f, "{:?}", sb)?;
+                write!(f, "{sb:?}")?;
             }
             Provenance::Wildcard => {
                 write!(f, "[wildcard]")?;
@@ -276,10 +276,14 @@ pub struct PrimitiveLayouts<'tcx> {
     pub i8: TyAndLayout<'tcx>,
     pub i16: TyAndLayout<'tcx>,
     pub i32: TyAndLayout<'tcx>,
+    pub i64: TyAndLayout<'tcx>,
+    pub i128: TyAndLayout<'tcx>,
     pub isize: TyAndLayout<'tcx>,
     pub u8: TyAndLayout<'tcx>,
     pub u16: TyAndLayout<'tcx>,
     pub u32: TyAndLayout<'tcx>,
+    pub u64: TyAndLayout<'tcx>,
+    pub u128: TyAndLayout<'tcx>,
     pub usize: TyAndLayout<'tcx>,
     pub bool: TyAndLayout<'tcx>,
     pub mut_raw_ptr: TyAndLayout<'tcx>,   // *mut ()
@@ -296,15 +300,41 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
             i8: layout_cx.layout_of(tcx.types.i8)?,
             i16: layout_cx.layout_of(tcx.types.i16)?,
             i32: layout_cx.layout_of(tcx.types.i32)?,
+            i64: layout_cx.layout_of(tcx.types.i64)?,
+            i128: layout_cx.layout_of(tcx.types.i128)?,
             isize: layout_cx.layout_of(tcx.types.isize)?,
             u8: layout_cx.layout_of(tcx.types.u8)?,
             u16: layout_cx.layout_of(tcx.types.u16)?,
             u32: layout_cx.layout_of(tcx.types.u32)?,
+            u64: layout_cx.layout_of(tcx.types.u64)?,
+            u128: layout_cx.layout_of(tcx.types.u128)?,
             usize: layout_cx.layout_of(tcx.types.usize)?,
             bool: layout_cx.layout_of(tcx.types.bool)?,
             mut_raw_ptr: layout_cx.layout_of(mut_raw_ptr)?,
             const_raw_ptr: layout_cx.layout_of(const_raw_ptr)?,
         })
+    }
+
+    pub fn uint(&self, size: Size) -> Option<TyAndLayout<'tcx>> {
+        match size.bits() {
+            8 => Some(self.u8),
+            16 => Some(self.u16),
+            32 => Some(self.u32),
+            64 => Some(self.u64),
+            128 => Some(self.u128),
+            _ => None,
+        }
+    }
+
+    pub fn int(&self, size: Size) -> Option<TyAndLayout<'tcx>> {
+        match size.bits() {
+            8 => Some(self.i8),
+            16 => Some(self.i16),
+            32 => Some(self.i32),
+            64 => Some(self.i64),
+            128 => Some(self.i128),
+            _ => None,
+        }
     }
 }
 
@@ -421,8 +451,10 @@ pub struct MiriMachine<'mir, 'tcx> {
     pub(crate) basic_block_count: u64,
 
     /// Handle of the optional shared object file for external functions.
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     pub external_so_lib: Option<(libloading::Library, std::path::PathBuf)>,
+    #[cfg(not(target_os = "linux"))]
+    pub external_so_lib: Option<!>,
 
     /// Run a garbage collector for SbTags every N basic blocks.
     pub(crate) gc_interval: u32,
@@ -485,7 +517,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             report_progress: config.report_progress,
             basic_block_count: 0,
             clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
-            #[cfg(unix)]
+            #[cfg(target_os = "linux")]
             external_so_lib: config.external_so_file.as_ref().map(|lib_file_path| {
                 let target_triple = layout_cx.tcx.sess.opts.target_triple.triple();
                 // Check if host target == the session target.
@@ -506,6 +538,10 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                     },
                     lib_file_path.clone(),
                 )
+            }),
+            #[cfg(not(target_os = "linux"))]
+            external_so_lib: config.external_so_file.as_ref().map(|_| {
+                panic!("loading external .so files is only supported on Linux")
             }),
             gc_interval: config.gc_interval,
             since_gc: 0,
@@ -648,7 +684,6 @@ impl VisitTags for MiriMachine<'_, '_> {
             preemption_rate: _,
             report_progress: _,
             basic_block_count: _,
-            #[cfg(unix)]
             external_so_lib: _,
             gc_interval: _,
             since_gc: _,

@@ -30,19 +30,31 @@ error: expected a message field for "missing_message"
   |
 
 error: overrides existing message: `a_b_key`
-  --> $DIR/test.rs:53:16
+  --> $DIR/test.rs:54:16
    |
 LL |         a_b => "./duplicate-a-b.ftl",
    |                ^^^^^^^^^^^^^^^^^^^^^
    |
 help: previously defined in this resource
-  --> $DIR/test.rs:52:14
+  --> $DIR/test.rs:53:14
    |
 LL |         a => "./duplicate-a.ftl",
    |              ^^^^^^^^^^^^^^^^^^^
 
+error[E0428]: the name `a_b_key` is defined multiple times
+  --> $DIR/test.rs:51:5
+   |
+LL |     fluent_messages! {
+   |     ^^^^^^^^^^^^^^^^
+   |     |
+   |     `a_b_key` redefined here
+   |     previous definition of the value `a_b_key` here
+   |
+   = note: os-specific message
+   = note: os-specific message
+
 error: name `slug_with_hyphens_this-slug-has-hyphens` contains a '-' character
-  --> $DIR/test.rs:62:30
+  --> $DIR/test.rs:63:30
    |
 LL |         slug_with_hyphens => "./slug-with-hyphens.ftl",
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,7 +62,7 @@ LL |         slug_with_hyphens => "./slug-with-hyphens.ftl",
    = help: replace any '-'s with '_'s
 
 error: attribute `label-has-hyphens` contains a '-' character
-  --> $DIR/test.rs:71:31
+  --> $DIR/test.rs:72:31
    |
 LL |         label_with_hyphens => "./label-with-hyphens.ftl",
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -58,7 +70,7 @@ LL |         label_with_hyphens => "./label-with-hyphens.ftl",
    = help: replace any '-'s with '_'s
 
 error: name `with-hyphens` contains a '-' character
-  --> $DIR/test.rs:90:23
+  --> $DIR/test.rs:91:23
    |
 LL |         test_crate => "./missing-crate-name.ftl",
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +78,7 @@ LL |         test_crate => "./missing-crate-name.ftl",
    = help: replace any '-'s with '_'s
 
 error: name `with-hyphens` does not start with the crate name
-  --> $DIR/test.rs:90:23
+  --> $DIR/test.rs:91:23
    |
 LL |         test_crate => "./missing-crate-name.ftl",
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -74,12 +86,13 @@ LL |         test_crate => "./missing-crate-name.ftl",
    = help: prepend `test_crate_` to the slug name: `test_crate_with_hyphens`
 
 error: name `test-crate_foo` contains a '-' character
-  --> $DIR/test.rs:90:23
+  --> $DIR/test.rs:91:23
    |
 LL |         test_crate => "./missing-crate-name.ftl",
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: replace any '-'s with '_'s
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
+For more information about this error, try `rustc --explain E0428`.

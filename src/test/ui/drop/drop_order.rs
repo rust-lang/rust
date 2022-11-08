@@ -129,10 +129,10 @@ impl DropOrderCollector {
         // take the "else" branch
         if self.option_loud_drop(6).is_some() // 2
             && self.option_loud_drop(5).is_some() // 1
-            && let None = self.option_loud_drop(7) { // 3
+            && let None = self.option_loud_drop(8) { // 4
             unreachable!();
         } else {
-            self.print(8); // 4
+            self.print(7); // 3
         }
 
         // let exprs interspersed

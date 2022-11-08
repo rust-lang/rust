@@ -180,10 +180,13 @@ fn assignment_suggestions<'tcx>(
     let suggestions = assignments
         .iter()
         .flat_map(|assignment| {
-            [
-                assignment.span.until(assignment.rhs_span),
-                assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()),
-            ]
+            let mut spans = vec![assignment.span.until(assignment.rhs_span)];
+
+            if assignment.rhs_span.hi() != assignment.span.hi() {
+                spans.push(assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()));
+            }
+
+            spans
         })
         .map(|span| (span, String::new()))
         .collect::<Vec<(Span, String)>>();

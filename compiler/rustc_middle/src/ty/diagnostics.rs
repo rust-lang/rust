@@ -513,7 +513,7 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(borrowck::const_not_used_in_type_alias)]
+#[diag(borrowck_const_not_used_in_type_alias)]
 pub(super) struct ConstNotUsedTraitAlias {
     pub ct: String,
     #[primary_span]

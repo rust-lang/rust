@@ -18,9 +18,11 @@ use thin_vec::thin_vec;
 
 use std::{iter, mem};
 
+#[derive(Clone)]
 struct Test {
     span: Span,
     ident: Ident,
+    name: Symbol,
 }
 
 struct TestCtxt<'a> {
@@ -120,10 +122,10 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         let mut item = i.into_inner();
-        if is_test_case(&self.cx.ext_cx.sess, &item) {
+        if let Some(name) = get_test_name(&self.cx.ext_cx.sess, &item) {
             debug!("this is a test item");
 
-            let test = Test { span: item.span, ident: item.ident };
+            let test = Test { span: item.span, ident: item.ident, name };
             self.tests.push(test);
         }
 
@@ -357,9 +359,12 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ecx = &cx.ext_cx;
 
+    let mut tests = cx.test_cases.clone();
+    tests.sort_by(|a, b| a.name.as_str().cmp(&b.name.as_str()));
+
     ecx.expr_array_ref(
         sp,
-        cx.test_cases
+        tests
             .iter()
             .map(|test| {
                 ecx.expr_addr_of(test.span, ecx.expr_path(ecx.path(test.span, vec![test.ident])))
@@ -368,8 +373,8 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     )
 }
 
-fn is_test_case(sess: &Session, i: &ast::Item) -> bool {
-    sess.contains_name(&i.attrs, sym::rustc_test_marker)
+fn get_test_name(sess: &Session, i: &ast::Item) -> Option<Symbol> {
+    sess.first_attr_value_str_by_name(&i.attrs, sym::rustc_test_marker)
 }
 
 fn get_test_runner(

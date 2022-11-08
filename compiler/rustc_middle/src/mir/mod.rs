@@ -116,11 +116,6 @@ pub trait MirPass<'tcx> {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
 
-    /// If this pass causes the MIR to enter a new phase, return that phase.
-    fn phase_change(&self) -> Option<MirPhase> {
-        None
-    }
-
     fn is_mir_dump_enabled(&self) -> bool {
         true
     }
@@ -141,6 +136,35 @@ impl MirPhase {
             MirPhase::Runtime(runtime_phase) => {
                 1 + BUILT_PHASE_COUNT + ANALYSIS_PHASE_COUNT + (*runtime_phase as usize)
             }
+        }
+    }
+}
+
+impl Display for MirPhase {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            MirPhase::Built => write!(f, "built"),
+            MirPhase::Analysis(p) => write!(f, "analysis-{}", p),
+            MirPhase::Runtime(p) => write!(f, "runtime-{}", p),
+        }
+    }
+}
+
+impl Display for AnalysisPhase {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            AnalysisPhase::Initial => write!(f, "initial"),
+            AnalysisPhase::PostCleanup => write!(f, "post_cleanup"),
+        }
+    }
+}
+
+impl Display for RuntimePhase {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            RuntimePhase::Initial => write!(f, "initial"),
+            RuntimePhase::PostCleanup => write!(f, "post_cleanup"),
+            RuntimePhase::Optimized => write!(f, "optimized"),
         }
     }
 }
@@ -206,6 +230,9 @@ pub struct Body<'tcx> {
     /// promoted items have already been optimized, whereas ours have not. This field allows
     /// us to see the difference and forego optimization on the inlined promoted items.
     pub phase: MirPhase,
+
+    /// How many passses we have executed since starting the current phase. Used for debug output.
+    pub pass_count: usize,
 
     pub source: MirSource<'tcx>,
 
@@ -292,6 +319,7 @@ impl<'tcx> Body<'tcx> {
 
         let mut body = Body {
             phase: MirPhase::Built,
+            pass_count: 1,
             source,
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
@@ -325,6 +353,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         let mut body = Body {
             phase: MirPhase::Built,
+            pass_count: 1,
             source: MirSource::item(CRATE_DEF_ID.to_def_id()),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),
@@ -1156,6 +1185,11 @@ impl<'tcx> BasicBlockData<'tcx> {
 
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
         if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
+    }
+
+    /// Does the block have no statements and an unreachable terminator?
+    pub fn is_empty_unreachable(&self) -> bool {
+        self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
     }
 }
 
@@ -2380,10 +2414,8 @@ impl<'tcx> ConstantKind<'tcx> {
                 let generics = tcx.generics_of(item_def_id.to_def_id());
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.hir().name(hir_id);
-                let ty_const = tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
-                    ty,
-                });
+                let ty_const =
+                    tcx.mk_const(ty::ConstKind::Param(ty::ParamConst::new(index, name)), ty);
                 debug!(?ty_const);
 
                 return Self::Ty(ty_const);

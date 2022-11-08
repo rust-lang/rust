@@ -201,7 +201,7 @@ use std::iter;
 use std::ops::Range;
 use std::path::PathBuf;
 
-use crate::errors::{LargeAssignmentsLint, RecursionLimit, RequiresLangItem, TypeLengthLimit};
+use crate::errors::{LargeAssignmentsLint, RecursionLimit, TypeLengthLimit};
 
 #[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
@@ -1067,7 +1067,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         let param_env = ty::ParamEnv::reveal_all();
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
-            if ty.is_sized(tcx.at(DUMMY_SP), param_env) {
+            if ty.is_sized(tcx, param_env) {
                 return false;
             }
             let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
@@ -1192,7 +1192,7 @@ struct RootCollector<'a, 'tcx> {
 
 impl<'v> RootCollector<'_, 'v> {
     fn process_item(&mut self, id: hir::ItemId) {
-        match self.tcx.def_kind(id.def_id) {
+        match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
                 let item = self.tcx.hir().item(id);
                 match item.kind {
@@ -1203,12 +1203,14 @@ impl<'v> RootCollector<'_, 'v> {
                             if self.mode == MonoItemCollectionMode::Eager {
                                 debug!(
                                     "RootCollector: ADT drop-glue for {}",
-                                    self.tcx.def_path_str(item.def_id.to_def_id())
+                                    self.tcx.def_path_str(item.owner_id.to_def_id())
                                 );
 
-                                let ty =
-                                    Instance::new(item.def_id.to_def_id(), InternalSubsts::empty())
-                                        .ty(self.tcx, ty::ParamEnv::reveal_all());
+                                let ty = Instance::new(
+                                    item.owner_id.to_def_id(),
+                                    InternalSubsts::empty(),
+                                )
+                                .ty(self.tcx, ty::ParamEnv::reveal_all());
                                 visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                             }
                         }
@@ -1219,23 +1221,23 @@ impl<'v> RootCollector<'_, 'v> {
             DefKind::GlobalAsm => {
                 debug!(
                     "RootCollector: ItemKind::GlobalAsm({})",
-                    self.tcx.def_path_str(id.def_id.to_def_id())
+                    self.tcx.def_path_str(id.owner_id.to_def_id())
                 );
                 self.output.push(dummy_spanned(MonoItem::GlobalAsm(id)));
             }
             DefKind::Static(..) => {
                 debug!(
                     "RootCollector: ItemKind::Static({})",
-                    self.tcx.def_path_str(id.def_id.to_def_id())
+                    self.tcx.def_path_str(id.owner_id.to_def_id())
                 );
-                self.output.push(dummy_spanned(MonoItem::Static(id.def_id.to_def_id())));
+                self.output.push(dummy_spanned(MonoItem::Static(id.owner_id.to_def_id())));
             }
             DefKind::Const => {
                 // const items only generate mono items if they are
                 // actually used somewhere. Just declaring them is insufficient.
 
                 // but even just declaring them must collect the items they refer to
-                if let Ok(val) = self.tcx.const_eval_poly(id.def_id.to_def_id()) {
+                if let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id()) {
                     collect_const_value(self.tcx, val, &mut self.output);
                 }
             }
@@ -1246,15 +1248,15 @@ impl<'v> RootCollector<'_, 'v> {
                 }
             }
             DefKind::Fn => {
-                self.push_if_root(id.def_id.def_id);
+                self.push_if_root(id.owner_id.def_id);
             }
             _ => {}
         }
     }
 
     fn process_impl_item(&mut self, id: hir::ImplItemId) {
-        if matches!(self.tcx.def_kind(id.def_id), DefKind::AssocFn) {
-            self.push_if_root(id.def_id.def_id);
+        if matches!(self.tcx.def_kind(id.owner_id), DefKind::AssocFn) {
+            self.push_if_root(id.owner_id.def_id);
         }
     }
 
@@ -1296,14 +1298,7 @@ impl<'v> RootCollector<'_, 'v> {
             return;
         };
 
-        let start_def_id = match self.tcx.lang_items().require(LangItem::Start) {
-            Ok(s) => s,
-            Err(lang_item_err) => {
-                self.tcx
-                    .sess
-                    .emit_fatal(RequiresLangItem { lang_item: lang_item_err.0.name().to_string() });
-            }
-        };
+        let start_def_id = self.tcx.require_lang_item(LangItem::Start, None);
         let main_ret_ty = self.tcx.fn_sig(main_def_id).output();
 
         // Given that `main()` has no arguments,
@@ -1341,6 +1336,10 @@ fn create_mono_items_for_default_impls<'tcx>(
 ) {
     match item.kind {
         hir::ItemKind::Impl(ref impl_) => {
+            if matches!(impl_.polarity, hir::ImplPolarity::Negative(_)) {
+                return;
+            }
+
             for param in impl_.generics.params {
                 match param.kind {
                     hir::GenericParamKind::Lifetime { .. } => {}
@@ -1352,13 +1351,13 @@ fn create_mono_items_for_default_impls<'tcx>(
 
             debug!(
                 "create_mono_items_for_default_impls(item={})",
-                tcx.def_path_str(item.def_id.to_def_id())
+                tcx.def_path_str(item.owner_id.to_def_id())
             );
 
-            if let Some(trait_ref) = tcx.impl_trait_ref(item.def_id) {
+            if let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) {
                 let param_env = ty::ParamEnv::reveal_all();
                 let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
-                let overridden_methods = tcx.impl_item_implementor_ids(item.def_id);
+                let overridden_methods = tcx.impl_item_implementor_ids(item.owner_id);
                 for method in tcx.provided_trait_methods(trait_ref.def_id) {
                     if overridden_methods.contains_key(&method.def_id) {
                         continue;

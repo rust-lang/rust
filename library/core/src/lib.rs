@@ -174,6 +174,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
+#![feature(c_unwind)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
@@ -191,6 +192,7 @@
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(if_let_guard)]
+#![feature(inline_const)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
@@ -217,6 +219,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(asm_const)]
+#![feature(const_transmute_copy)]
 //
 // Target features:
 #![feature(arm_target_feature)]

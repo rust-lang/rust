@@ -24,7 +24,23 @@ assert-position: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
     {"x": 951},
 )
-
+// The tooltip should be beside the `i`
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+compare-elements-position-near: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']",
+    {"y": 2}
+)
+compare-elements-position-false: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']",
+    ("x")
+)
+// The docblock should be flush with the border.
+assert-css: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']/*[@class='docblock']",
+    {"margin-left": "0px"}
+)
 
 // Now only the `i` should be on the next line.
 size: (1055, 600)
@@ -80,6 +96,27 @@ assert-position: (
 assert-position: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
     {"x": 289},
+)
+// The tooltip should be below `i`
+compare-elements-position-near-false: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']",
+    {"y": 2}
+)
+compare-elements-position-false: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']",
+    ("x")
+)
+compare-elements-position-near: (
+    "//*[@id='method.create_an_iterator_from_read']/parent::*",
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']",
+    {"x": 5}
+)
+// The docblock should be flush with the border.
+assert-css: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits-tooltiptext force-tooltip']/*[@class='docblock']",
+    {"margin-left": "0px"}
 )
 
 // Checking on very small mobile. The `i` should be on its own line.

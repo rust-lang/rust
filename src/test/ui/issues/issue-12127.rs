@@ -1,6 +1,6 @@
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, tuple_trait)]
 
-fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
+fn to_fn_once<A:std::marker::Tuple,F:FnOnce<A>>(f: F) -> F { f }
 fn do_it(x: &isize) { }
 
 fn main() {

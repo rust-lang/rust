@@ -73,8 +73,6 @@ pub struct Config {
     pub color: Color,
     pub patch_binaries_for_nix: bool,
     pub stage0_metadata: Stage0Metadata,
-    /// Whether to use the `c` feature of the `compiler_builtins` crate.
-    pub optimized_compiler_builtins: bool,
 
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -158,6 +156,7 @@ pub struct Config {
     pub rust_new_symbol_mangling: Option<bool>,
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
+    pub rust_lto: RustcLto,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
@@ -315,6 +314,28 @@ impl SplitDebuginfo {
             SplitDebuginfo::Packed
         } else {
             SplitDebuginfo::Off
+        }
+    }
+}
+
+/// LTO mode used for compiling rustc itself.
+#[derive(Default, Clone)]
+pub enum RustcLto {
+    #[default]
+    ThinLocal,
+    Thin,
+    Fat,
+}
+
+impl std::str::FromStr for RustcLto {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "thin-local" => Ok(RustcLto::ThinLocal),
+            "thin" => Ok(RustcLto::Thin),
+            "fat" => Ok(RustcLto::Fat),
+            _ => Err(format!("Invalid value for rustc LTO: {}", s)),
         }
     }
 }
@@ -601,7 +622,6 @@ define_config! {
         bench_stage: Option<u32> = "bench-stage",
         patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
         metrics: Option<bool> = "metrics",
-        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
     }
 }
 
@@ -726,6 +746,7 @@ define_config! {
         profile_use: Option<String> = "profile-use",
         // ignored; this is set from an env var set by bootstrap.py
         download_rustc: Option<StringOrBool> = "download-rustc",
+        lto: Option<String> = "lto",
     }
 }
 
@@ -989,7 +1010,6 @@ impl Config {
         set(&mut config.print_step_timings, build.print_step_timings);
         set(&mut config.print_step_rusage, build.print_step_rusage);
         set(&mut config.patch_binaries_for_nix, build.patch_binaries_for_nix);
-        set(&mut config.optimized_compiler_builtins, build.optimized_compiler_builtins);
 
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
@@ -1173,6 +1193,12 @@ impl Config {
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
             config.download_rustc_commit = download_ci_rustc_commit(&config, rust.download_rustc);
+
+            config.rust_lto = rust
+                .lto
+                .as_deref()
+                .map(|value| RustcLto::from_str(value).unwrap())
+                .unwrap_or_default();
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
@@ -1354,21 +1380,46 @@ impl Config {
         git
     }
 
-    pub(crate) fn artifact_channel(&self, builder: &Builder<'_>, commit: &str) -> String {
-        if builder.rust_info.is_managed_git_subrepository() {
+    /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
+    /// Return the version it would have used for the given commit.
+    pub(crate) fn artifact_version_part(&self, builder: &Builder<'_>, commit: &str) -> String {
+        let (channel, version) = if builder.rust_info.is_managed_git_subrepository() {
             let mut channel = self.git();
             channel.arg("show").arg(format!("{}:src/ci/channel", commit));
             let channel = output(&mut channel);
-            channel.trim().to_owned()
-        } else if let Ok(channel) = fs::read_to_string(builder.src.join("src/ci/channel")) {
-            channel.trim().to_owned()
+            let mut version = self.git();
+            version.arg("show").arg(format!("{}:src/version", commit));
+            let version = output(&mut version);
+            (channel.trim().to_owned(), version.trim().to_owned())
         } else {
-            let src = builder.src.display();
-            eprintln!("error: failed to determine artifact channel");
-            eprintln!(
-                "help: either use git or ensure that {src}/src/ci/channel contains the name of the channel to use"
-            );
-            panic!();
+            let channel = fs::read_to_string(builder.src.join("src/ci/channel"));
+            let version = fs::read_to_string(builder.src.join("src/version"));
+            match (channel, version) {
+                (Ok(channel), Ok(version)) => {
+                    (channel.trim().to_owned(), version.trim().to_owned())
+                }
+                (channel, version) => {
+                    let src = builder.src.display();
+                    eprintln!("error: failed to determine artifact channel and/or version");
+                    eprintln!(
+                        "help: consider using a git checkout or ensure these files are readable"
+                    );
+                    if let Err(channel) = channel {
+                        eprintln!("reading {}/src/ci/channel failed: {:?}", src, channel);
+                    }
+                    if let Err(version) = version {
+                        eprintln!("reading {}/src/version failed: {:?}", src, version);
+                    }
+                    panic!();
+                }
+            }
+        };
+
+        match channel.as_str() {
+            "stable" => version,
+            "beta" => channel,
+            "nightly" => channel,
+            other => unreachable!("{:?} is not recognized as a valid channel", other),
         }
     }
 
@@ -1611,7 +1662,7 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
 
 fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     builder.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
-    let channel = builder.config.artifact_channel(builder, commit);
+    let version = builder.config.artifact_version_part(builder, commit);
     let host = builder.config.build.triple;
     let bin_root = builder.out.join(host).join("ci-rustc");
     let rustc_stamp = bin_root.join(".rustc-stamp");
@@ -1620,13 +1671,13 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
         if bin_root.exists() {
             t!(fs::remove_dir_all(&bin_root));
         }
-        let filename = format!("rust-std-{channel}-{host}.tar.xz");
+        let filename = format!("rust-std-{version}-{host}.tar.xz");
         let pattern = format!("rust-std-{host}");
         download_ci_component(builder, filename, &pattern, commit);
-        let filename = format!("rustc-{channel}-{host}.tar.xz");
+        let filename = format!("rustc-{version}-{host}.tar.xz");
         download_ci_component(builder, filename, "rustc", commit);
         // download-rustc doesn't need its own cargo, it can just use beta's.
-        let filename = format!("rustc-dev-{channel}-{host}.tar.xz");
+        let filename = format!("rustc-dev-{version}-{host}.tar.xz");
         download_ci_component(builder, filename, "rustc-dev", commit);
 
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));

@@ -7,9 +7,9 @@
 // @has '-' '//*[@class="impl-items"]//*[@id="method.as_path"]' 'pub fn as_path(&self)'
 // @has '-' '//*[@id="deref-methods-Path"]' 'Methods from Deref<Target = Path>'
 // @has '-' '//*[@class="impl-items"]//*[@id="method.exists"]' 'pub fn exists(&self)'
-// @has '-' '//*[@class="sidebar-title"]/a[@href="#deref-methods-PathBuf"]' 'Methods from Deref<Target=PathBuf>'
+// @has '-' '//div[@class="sidebar-elems"]//h3/a[@href="#deref-methods-PathBuf"]' 'Methods from Deref<Target=PathBuf>'
 // @has '-' '//*[@class="sidebar-elems"]//*[@class="block"]//a[@href="#method.as_path"]' 'as_path'
-// @has '-' '//*[@class="sidebar-title"]/a[@href="#deref-methods-Path"]' 'Methods from Deref<Target=Path>'
+// @has '-' '//div[@class="sidebar-elems"]//h3/a[@href="#deref-methods-Path"]' 'Methods from Deref<Target=Path>'
 // @has '-' '//*[@class="sidebar-elems"]//*[@class="block"]//a[@href="#method.exists"]' 'exists'
 
 #![crate_name = "foo"]

@@ -759,7 +759,7 @@ where
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the `HashMap`. The collection may reserve more space to speculatively
-    /// avoid frequent reallocations. After calling `reserve`,
+    /// avoid frequent reallocations. After calling `try_reserve`,
     /// capacity will be greater than or equal to `self.len() + additional` if
     /// it returns `Ok(())`.
     /// Does nothing if capacity is already sufficient.

@@ -5,26 +5,20 @@
 goto: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 // If the text isn't displayed, the browser doesn't compute color style correctly...
 show-text: true
-// Set the theme to dark.
-local-storage: {"rustdoc-theme": "dark", "rustdoc-preferred-dark-theme": "dark", "rustdoc-use-system-theme": "false"}
-// We reload the page so the local storage settings are being used.
-reload:
 
-assert-css: (".docblock pre > code", {"color": "rgb(221, 221, 221)"}, ALL)
-assert-css: (".docblock > p > code", {"color": "rgb(221, 221, 221)"}, ALL)
+define-function: (
+    "check-colors",
+    (theme, doc_code_color, doc_inline_code_color),
+    [
+        // Set the theme.
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        // We reload the page so the local storage settings are being used.
+        ("reload"),
+        ("assert-css", (".docblock pre > code", {"color": |doc_code_color|}, ALL)),
+        ("assert-css", (".docblock > p > code", {"color": |doc_inline_code_color|}, ALL)),
+    ],
+)
 
-// Set the theme to ayu.
-local-storage: {"rustdoc-theme": "ayu", "rustdoc-preferred-dark-theme": "ayu", "rustdoc-use-system-theme": "false"}
-// We reload the page so the local storage settings are being used.
-reload:
-
-assert-css: (".docblock pre > code", {"color": "rgb(230, 225, 207)"}, ALL)
-assert-css: (".docblock > p > code", {"color": "rgb(255, 180, 84)"}, ALL)
-
-// Set the theme to light.
-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
-// We reload the page so the local storage settings are being used.
-reload:
-
-assert-css: (".docblock pre > code", {"color": "rgb(0, 0, 0)"}, ALL)
-assert-css: (".docblock > p > code", {"color": "rgb(0, 0, 0)"}, ALL)
+call-function: ("check-colors", ("ayu", "rgb(230, 225, 207)", "rgb(255, 180, 84)"))
+call-function: ("check-colors", ("dark", "rgb(221, 221, 221)", "rgb(221, 221, 221)"))
+call-function: ("check-colors", ("light", "rgb(0, 0, 0)", "rgb(0, 0, 0)"))

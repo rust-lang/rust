@@ -67,12 +67,18 @@ reload:
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-css: (
-    "//*[@class='desc']//*[text()='Just a normal struct.']",
+    "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(197, 197, 197)"},
 )
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']",
     {"color": "rgb(0, 150, 207)"},
+)
+
+// Checking the color of the bottom border.
+assert-css: (
+    ".search-results > a",
+    {"border-bottom-color": "rgba(170, 170, 170, 0.2)"}
 )
 
 // Checking the color of "keyword" text.
@@ -153,7 +159,7 @@ assert-css: (
 )
 
 // Checking color and background on hover.
-move-cursor-to: "//*[@class='desc']//*[text()='Just a normal struct.']"
+move-cursor-to: "//*[@class='desc'][text()='Just a normal struct.']"
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']",
     {"color": "rgb(255, 255, 255)"},
@@ -173,12 +179,18 @@ reload:
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-css: (
-    "//*[@class='desc']//*[text()='Just a normal struct.']",
+    "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(221, 221, 221)"},
 )
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']",
     {"color": "rgb(221, 221, 221)"},
+)
+
+// Checking the color of the bottom border.
+assert-css: (
+    ".search-results > a",
+    {"border-bottom-color": "rgba(170, 170, 170, 0.2)"}
 )
 
 // Checking the color for "keyword" text.
@@ -264,12 +276,18 @@ reload:
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-css: (
-    "//*[@class='desc']//*[text()='Just a normal struct.']",
+    "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(0, 0, 0)"},
 )
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']",
     {"color": "rgb(0, 0, 0)"},
+)
+
+// Checking the color of the bottom border.
+assert-css: (
+    ".search-results > a",
+    {"border-bottom-color": "rgba(170, 170, 170, 0.2)"}
 )
 
 // Checking the color for "keyword" text.

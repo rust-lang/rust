@@ -769,6 +769,10 @@ impl<'a> Parser<'a> {
         segment: &PathSegment,
         end: &[&TokenKind],
     ) -> bool {
+        if !self.may_recover() {
+            return false;
+        }
+
         // This function is intended to be invoked after parsing a path segment where there are two
         // cases:
         //
@@ -863,6 +867,10 @@ impl<'a> Parser<'a> {
     /// Check if a method call with an intended turbofish has been written without surrounding
     /// angle brackets.
     pub(super) fn check_turbofish_missing_angle_brackets(&mut self, segment: &mut PathSegment) {
+        if !self.may_recover() {
+            return;
+        }
+
         if token::ModSep == self.token.kind && segment.args.is_none() {
             let snapshot = self.create_snapshot_for_diagnostic();
             self.bump();
@@ -926,7 +934,7 @@ impl<'a> Parser<'a> {
                     if self.eat(&token::Gt) {
                         e.span_suggestion_verbose(
                             binop.span.shrink_to_lo(),
-                            fluent::parser::sugg_turbofish_syntax,
+                            fluent::parser_sugg_turbofish_syntax,
                             "::",
                             Applicability::MaybeIncorrect,
                         )
@@ -1374,9 +1382,17 @@ impl<'a> Parser<'a> {
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
     ) -> MultiSugg {
+        let mut patches = Vec::new();
+
+        if !pre_span.is_empty() {
+            patches.push((pre_span, String::new()));
+        }
+
+        patches.push((post_span, format!(" {}= 1", kind.op.chr())));
+
         MultiSugg {
             msg: format!("use `{}= 1` instead", kind.op.chr()),
-            patches: vec![(pre_span, String::new()), (post_span, format!(" {}= 1", kind.op.chr()))],
+            patches,
             applicability: Applicability::MachineApplicable,
         }
     }
@@ -1388,6 +1404,10 @@ impl<'a> Parser<'a> {
         &mut self,
         base: P<T>,
     ) -> PResult<'a, P<T>> {
+        if !self.may_recover() {
+            return Ok(base);
+        }
+
         // Do not add `::` to expected tokens.
         if self.token == token::ModSep {
             if let Some(ty) = base.to_ty() {
@@ -1461,7 +1481,7 @@ impl<'a> Parser<'a> {
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
             // Point at the end of the macro call when reaching end of macro arguments.
             (token::Eof, Some(_)) => {
-                let sp = self.sess.source_map().next_point(self.prev_token.span);
+                let sp = self.prev_token.span.shrink_to_hi();
                 (sp, sp)
             }
             // We don't want to point at the following span after DUMMY_SP.
@@ -2039,7 +2059,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
-                let sp = self.sess.source_map().next_point(self.prev_token.span);
+                let sp = self.prev_token.span.shrink_to_hi();
                 (sp, format!("expected expression, found end of {origin}"))
             }
             _ => (
@@ -2448,11 +2468,15 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn maybe_recover_unexpected_block_label(&mut self) -> bool {
-        let Some(label) = self.eat_label().filter(|_| {
-            self.eat(&token::Colon) && self.token.kind == token::OpenDelim(Delimiter::Brace)
-        }) else {
+        // Check for `'a : {`
+        if !(self.check_lifetime()
+            && self.look_ahead(1, |tok| tok.kind == token::Colon)
+            && self.look_ahead(2, |tok| tok.kind == token::OpenDelim(Delimiter::Brace)))
+        {
             return false;
-        };
+        }
+        let label = self.eat_label().expect("just checked if a label exists");
+        self.bump(); // eat `:`
         let span = label.ident.span.to(self.prev_token.span);
         let mut err = self.struct_span_err(span, "block label not supported here");
         err.span_label(span, "not supported here");

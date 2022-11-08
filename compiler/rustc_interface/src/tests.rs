@@ -17,7 +17,7 @@ use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, Switc
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::{build_session, getopts, DiagnosticOutput, Session};
+use rustc_session::{build_session, getopts, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::SourceFileHashAlgorithm;
@@ -40,16 +40,7 @@ fn build_session_options_and_crate_config(matches: getopts::Matches) -> (Options
 fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
     let registry = registry::Registry::new(&[]);
     let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-    let sess = build_session(
-        sessopts,
-        None,
-        None,
-        registry,
-        DiagnosticOutput::Default,
-        Default::default(),
-        None,
-        None,
-    );
+    let sess = build_session(sessopts, None, None, registry, Default::default(), None, None);
     (sess, cfg)
 }
 
@@ -657,6 +648,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(dump_mir_dir, String::from("abc"));
     untracked!(dump_mir_exclude_pass_number, true);
     untracked!(dump_mir_graphviz, true);
+    untracked!(dylib_lto, true);
     untracked!(emit_stack_sizes, true);
     untracked!(future_incompat_test, true);
     untracked!(hir_stats, true);
@@ -698,6 +690,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(time_llvm_passes, true);
     untracked!(time_passes, true);
     untracked!(trace_macros, true);
+    untracked!(track_diagnostics, true);
     untracked!(trim_diagnostic_paths, false);
     untracked!(ui_testing, true);
     untracked!(unpretty, Some("expanded".to_string()));

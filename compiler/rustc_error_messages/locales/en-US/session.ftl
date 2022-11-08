@@ -54,3 +54,7 @@ session_crate_name_empty = crate name must not be empty
 session_invalid_character_in_create_name = invalid character `{$character}` in crate name: `{$crate_name}`
 
 session_expr_parentheses_needed = parentheses are required to parse this as an expression
+
+session_skipping_const_checks = skipping const checks
+session_unleashed_feature_help_named = skipping check for `{$gate}` feature
+session_unleashed_feature_help_unnamed = skipping check that does not even have a feature gate

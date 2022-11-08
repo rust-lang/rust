@@ -58,7 +58,7 @@ use crate::traits::{
     StatementAsExpression,
 };
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
 use rustc_hir as hir;
@@ -91,6 +91,7 @@ pub mod nice_region_error;
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
+    pub fallback_has_occurred: bool,
 }
 
 impl TypeErrCtxt<'_, '_> {
@@ -338,8 +339,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
             let bounds = self.tcx.bound_explicit_item_bounds(*def_id);
 
-            for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
-                let predicate = predicate.subst(self.tcx, substs);
+            for (predicate, _) in bounds.subst_iter_copied(self.tcx, substs) {
                 let output = predicate
                     .kind()
                     .map_bound(|kind| match kind {
@@ -1499,9 +1499,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             values = None;
         }
         struct OpaqueTypesVisitor<'tcx> {
-            types: FxHashMap<TyCategory, FxHashSet<Span>>,
-            expected: FxHashMap<TyCategory, FxHashSet<Span>>,
-            found: FxHashMap<TyCategory, FxHashSet<Span>>,
+            types: FxIndexMap<TyCategory, FxIndexSet<Span>>,
+            expected: FxIndexMap<TyCategory, FxIndexSet<Span>>,
+            found: FxIndexMap<TyCategory, FxIndexSet<Span>>,
             ignore_span: Span,
             tcx: TyCtxt<'tcx>,
         }
@@ -1539,7 +1539,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 &self,
                 err: &mut Diagnostic,
                 target: &str,
-                types: &FxHashMap<TyCategory, FxHashSet<Span>>,
+                types: &FxIndexMap<TyCategory, FxIndexSet<Span>>,
             ) {
                 for (key, values) in types.iter() {
                     let count = values.len();
@@ -2272,6 +2272,25 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 struct_span_err!(self.tcx.sess, span, E0580, "{}", failure_str)
             }
             FailureCode::Error0308(failure_str) => {
+                fn escape_literal(s: &str) -> String {
+                    let mut escaped = String::with_capacity(s.len());
+                    let mut chrs = s.chars().peekable();
+                    while let Some(first) = chrs.next() {
+                        match (first, chrs.peek()) {
+                            ('\\', Some(&delim @ '"') | Some(&delim @ '\'')) => {
+                                escaped.push('\\');
+                                escaped.push(delim);
+                                chrs.next();
+                            }
+                            ('"' | '\'', _) => {
+                                escaped.push('\\');
+                                escaped.push(first)
+                            }
+                            (c, _) => escaped.push(c),
+                        };
+                    }
+                    escaped
+                }
                 let mut err = struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str);
                 if let Some((expected, found)) = trace.values.ty() {
                     match (expected.kind(), found.kind()) {
@@ -2293,7 +2312,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 err.span_suggestion(
                                     span,
                                     "if you meant to write a `char` literal, use single quotes",
-                                    format!("'{}'", code),
+                                    format!("'{}'", escape_literal(code)),
                                     Applicability::MachineApplicable,
                                 );
                             }
@@ -2308,7 +2327,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     err.span_suggestion(
                                         span,
                                         "if you meant to write a `str` literal, use double quotes",
-                                        format!("\"{}\"", code),
+                                        format!("\"{}\"", escape_literal(code)),
                                         Applicability::MachineApplicable,
                                     );
                                 }
@@ -3236,7 +3255,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if blk.expr.is_some() {
             return false;
         }
-        let mut shadowed = FxHashSet::default();
+        let mut shadowed = FxIndexSet::default();
         let mut candidate_idents = vec![];
         let mut find_compatible_candidates = |pat: &hir::Pat<'_>| {
             if let hir::PatKind::Binding(_, hir_id, ident, _) = &pat.kind

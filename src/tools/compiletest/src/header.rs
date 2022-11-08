@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use tracing::*;
 
@@ -841,6 +842,20 @@ pub fn extract_llvm_version(version: &str) -> Option<u32> {
         _ => panic!("Malformed version"),
     };
     Some(version)
+}
+
+pub fn extract_llvm_version_from_binary(binary_path: &str) -> Option<u32> {
+    let output = Command::new(binary_path).arg("--version").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let version = String::from_utf8(output.stdout).ok()?;
+    for line in version.lines() {
+        if let Some(version) = line.split("LLVM version ").skip(1).next() {
+            return extract_llvm_version(version);
+        }
+    }
+    None
 }
 
 /// Takes a directive of the form "<version1> [- <version2>]",

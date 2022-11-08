@@ -257,17 +257,17 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, attrs);
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
-                if !(is_entrypoint_fn(cx, item.def_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
+                if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
                     let body = cx.tcx.hir().body(body_id);
                     let mut fpu = FindPanicUnwrap {
                         cx,
-                        typeck_results: cx.tcx.typeck(item.def_id.def_id),
+                        typeck_results: cx.tcx.typeck(item.owner_id.def_id),
                         panic_span: None,
                     };
                     fpu.visit_expr(body.value);
                     lint_for_missing_headers(
                         cx,
-                        item.def_id.def_id,
+                        item.owner_id.def_id,
                         item.span,
                         sig,
                         headers,
@@ -304,7 +304,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, attrs);
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.def_id.def_id, item.span, sig, headers, None, None);
+                lint_for_missing_headers(cx, item.owner_id.def_id, item.span, sig, headers, None, None);
             }
         }
     }
@@ -319,13 +319,13 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
             let body = cx.tcx.hir().body(body_id);
             let mut fpu = FindPanicUnwrap {
                 cx,
-                typeck_results: cx.tcx.typeck(item.def_id.def_id),
+                typeck_results: cx.tcx.typeck(item.owner_id.def_id),
                 panic_span: None,
             };
             fpu.visit_expr(body.value);
             lint_for_missing_headers(
                 cx,
-                item.def_id.def_id,
+                item.owner_id.def_id,
                 item.span,
                 sig,
                 headers,
@@ -345,7 +345,7 @@ fn lint_for_missing_headers<'tcx>(
     body_id: Option<hir::BodyId>,
     panic_span: Option<Span>,
 ) {
-    if !cx.access_levels.is_exported(def_id) {
+    if !cx.effective_visibilities.is_exported(def_id) {
         return; // Private functions do not require doc comments
     }
 
@@ -690,6 +690,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                     false,
                     false,
                     None,
+                    false,
                     false,
                 );
                 let handler = Handler::with_emitter(false, None, Box::new(emitter));

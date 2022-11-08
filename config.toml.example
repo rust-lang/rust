@@ -291,10 +291,6 @@ changelog-seen = 2
 # on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 #profiler = false
 
-# Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics.
-# Requires the LLVM submodule to be managed by bootstrap (i.e. not external).
-#optimized-compiler-builtins = false
-
 # Indicates whether the native libraries linked into Cargo will be statically
 # linked or not.
 #cargo-native-static = false
@@ -637,6 +633,11 @@ changelog-seen = 2
 # standard library.
 # If an explicit setting is given, it will be used for all parts of the codebase.
 #new-symbol-mangling = true|false (see comment)
+
+# Select LTO mode that will be used for compiling rustc. By default, thin local LTO
+# (LTO within a single crate) is used (like for any Rust crate). You can also select
+# "thin" or "fat" to apply Thin/Fat LTO to the `rustc_driver` dylib.
+#lto = "thin-local"
 
 # =============================================================================
 # Options for specific targets

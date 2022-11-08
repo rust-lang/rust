@@ -20,6 +20,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
@@ -1281,6 +1282,12 @@ impl<'tcx> ParamTy {
     #[inline]
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_param(self.index, self.name)
+    }
+
+    pub fn span_from_generics(&self, tcx: TyCtxt<'tcx>, item_with_generics: DefId) -> Span {
+        let generics = tcx.generics_of(item_with_generics);
+        let type_param = generics.type_param(self, tcx);
+        tcx.def_span(type_param.def_id)
     }
 }
 

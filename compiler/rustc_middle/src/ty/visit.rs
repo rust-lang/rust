@@ -95,11 +95,11 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
-    fn error_reported(&self) -> Option<ErrorGuaranteed> {
+    fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
         if self.references_error() {
-            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         } else {
-            None
+            Ok(())
         }
     }
     fn has_non_region_param(&self) -> bool {
@@ -195,13 +195,6 @@ pub trait TypeVisitor<'tcx>: Sized {
 
     fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         c.super_visit_with(self)
-    }
-
-    fn visit_ty_unevaluated(
-        &mut self,
-        uv: ty::UnevaluatedConst<'tcx>,
-    ) -> ControlFlow<Self::BreakTy> {
-        uv.super_visit_with(self)
     }
 
     fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -584,21 +577,6 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     #[instrument(level = "trace", ret)]
     fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_const(c);
-        trace!(r.flags=?flags);
-        if flags.intersects(self.flags) {
-            ControlFlow::Break(FoundFlags)
-        } else {
-            ControlFlow::CONTINUE
-        }
-    }
-
-    #[inline]
-    #[instrument(level = "trace", ret)]
-    fn visit_ty_unevaluated(
-        &mut self,
-        uv: ty::UnevaluatedConst<'tcx>,
-    ) -> ControlFlow<Self::BreakTy> {
-        let flags = FlagComputation::for_unevaluated_const(uv);
         trace!(r.flags=?flags);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)

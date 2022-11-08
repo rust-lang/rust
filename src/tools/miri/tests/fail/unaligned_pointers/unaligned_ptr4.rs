@@ -6,7 +6,7 @@ fn main() {
     // (This would be missed if u8 allocations are *always* at odd addresses.)
     //
     // Try many times as this might work by chance.
-    for _ in 0..10 {
+    for _ in 0..20 {
         let x = [0u8; 4];
         let ptr = x.as_ptr().wrapping_offset(1).cast::<u16>();
         let _val = unsafe { *ptr }; //~ERROR: but alignment

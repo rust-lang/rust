@@ -46,7 +46,7 @@ These functions are equivalent, they either return the inner value if the
 `Result` is `Ok` or panic if the `Result` is `Err` printing the inner error
 as the source. The only difference between them is that with `expect` you
 provide a panic error message to be printed alongside the source, whereas
-`unwrap` has a default message indicating only that you unwraped an `Err`.
+`unwrap` has a default message indicating only that you unwrapped an `Err`.
 
 Of the two, `expect` is generally preferred since its `msg` field allows you
 to convey your intent and assumptions which makes tracking down the source

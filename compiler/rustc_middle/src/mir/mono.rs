@@ -81,7 +81,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(item_id) => {
-                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.def_id))
+                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.owner_id))
             }
         }
     }
@@ -182,7 +182,7 @@ impl<'tcx> MonoItem<'tcx> {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => def.def_id().as_local(),
             MonoItem::Static(def_id) => def_id.as_local(),
-            MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.def_id),
+            MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id),
         }
         .map(|def_id| tcx.def_span(def_id))
     }
@@ -373,7 +373,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                         }
                     }
                     MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.def_id.index()),
+                    MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.index()),
                 },
                 item.symbol_name(tcx),
             )

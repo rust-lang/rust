@@ -55,6 +55,8 @@
 #![allow(missing_docs)]
 
 use crate::marker::DiscriminantKind;
+#[cfg(not(bootstrap))]
+use crate::marker::Tuple;
 use crate::mem;
 
 // These imports are used for simplifying intra-doc links
@@ -994,14 +996,14 @@ extern "rust-intrinsic" {
     /// `transmute` is semantically equivalent to a bitwise move of one type
     /// into another. It copies the bits from the source value into the
     /// destination value, then forgets the original. Note that source and destination
-    /// are passed by-value, which means if `T` or `U` contain padding, that padding
+    /// are passed by-value, which means if `Src` or `Dst` contain padding, that padding
     /// is *not* guaranteed to be preserved by `transmute`.
     ///
     /// Both the argument and the result must be [valid](../../nomicon/what-unsafe-does.html) at
     /// their given type. Violating this condition leads to [undefined behavior][ub]. The compiler
     /// will generate code *assuming that you, the programmer, ensure that there will never be
     /// undefined behavior*. It is therefore your responsibility to guarantee that every value
-    /// passed to `transmute` is valid at both types `T` and `U`. Failing to uphold this condition
+    /// passed to `transmute` is valid at both types `Src` and `Dst`. Failing to uphold this condition
     /// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
     /// unsafe**. `transmute` should be the absolute last resort.
     ///
@@ -1012,7 +1014,7 @@ extern "rust-intrinsic" {
     ///
     /// Because `transmute` is a by-value operation, alignment of the *transmuted values
     /// themselves* is not a concern. As with any other function, the compiler already ensures
-    /// both `T` and `U` are properly aligned. However, when transmuting values that *point
+    /// both `Src` and `Dst` are properly aligned. However, when transmuting values that *point
     /// elsewhere* (such as pointers, references, boxes…), the caller has to ensure proper
     /// alignment of the pointed-to values.
     ///
@@ -1248,7 +1250,7 @@ extern "rust-intrinsic" {
     #[rustc_allowed_through_unstable_modules]
     #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
     #[rustc_diagnostic_item = "transmute"]
-    pub fn transmute<T, U>(e: T) -> U;
+    pub fn transmute<Src, Dst>(src: Src) -> Dst;
 
     /// Returns `true` if the actual type given as `T` requires drop
     /// glue; returns `false` if the actual type provided for `T`
@@ -2169,8 +2171,72 @@ extern "rust-intrinsic" {
     /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
     /// which violates the principle that a `const fn` must behave the same at
     /// compile-time and at run-time. The unsafe code in crate B is fine.
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
     pub fn const_eval_select<ARG, F, G, RET>(arg: ARG, called_in_const: F, called_at_rt: G) -> RET
+    where
+        G: FnOnce<ARG, Output = RET>,
+        F: FnOnce<ARG, Output = RET>;
+
+    /// Selects which function to call depending on the context.
+    ///
+    /// If this function is evaluated at compile-time, then a call to this
+    /// intrinsic will be replaced with a call to `called_in_const`. It gets
+    /// replaced with a call to `called_at_rt` otherwise.
+    ///
+    /// # Type Requirements
+    ///
+    /// The two functions must be both function items. They cannot be function
+    /// pointers or closures. The first function must be a `const fn`.
+    ///
+    /// `arg` will be the tupled arguments that will be passed to either one of
+    /// the two functions, therefore, both functions must accept the same type of
+    /// arguments. Both functions must return RET.
+    ///
+    /// # Safety
+    ///
+    /// The two functions must behave observably equivalent. Safe code in other
+    /// crates may assume that calling a `const fn` at compile-time and at run-time
+    /// produces the same result. A function that produces a different result when
+    /// evaluated at run-time, or has any other observable side-effects, is
+    /// *unsound*.
+    ///
+    /// Here is an example of how this could cause a problem:
+    /// ```no_run
+    /// #![feature(const_eval_select)]
+    /// #![feature(core_intrinsics)]
+    /// use std::hint::unreachable_unchecked;
+    /// use std::intrinsics::const_eval_select;
+    ///
+    /// // Crate A
+    /// pub const fn inconsistent() -> i32 {
+    ///     fn runtime() -> i32 { 1 }
+    ///     const fn compiletime() -> i32 { 2 }
+    ///
+    ///     unsafe {
+    //          // ⚠ This code violates the required equivalence of `compiletime`
+    ///         // and `runtime`.
+    ///         const_eval_select((), compiletime, runtime)
+    ///     }
+    /// }
+    ///
+    /// // Crate B
+    /// const X: i32 = inconsistent();
+    /// let x = inconsistent();
+    /// if x != X { unsafe { unreachable_unchecked(); }}
+    /// ```
+    ///
+    /// This code causes Undefined Behavior when being run, since the
+    /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
+    /// which violates the principle that a `const fn` must behave the same at
+    /// compile-time and at run-time. The unsafe code in crate B is fine.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
+    pub fn const_eval_select<ARG: Tuple, F, G, RET>(
+        arg: ARG,
+        called_in_const: F,
+        called_at_rt: G,
+    ) -> RET
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
@@ -2203,7 +2269,7 @@ extern "rust-intrinsic" {
 /// the occasional mistake, and this check should help them figure things out.
 #[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
+    ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
         if cfg!(debug_assertions) {
             // allow non_snake_case to allow capturing const generics
             #[allow(non_snake_case)]
@@ -2211,7 +2277,9 @@ macro_rules! assert_unsafe_precondition {
             fn runtime$(<$($tt)*>)?($($i:$ty),*) {
                 if !$e {
                     // don't unwind to reduce impact on code size
-                    ::core::panicking::panic_str_nounwind("unsafe precondition violated");
+                    ::core::panicking::panic_str_nounwind(
+                        concat!("unsafe precondition(s) violated: ", $name)
+                    );
                 }
             }
             #[allow(non_snake_case)]
@@ -2227,6 +2295,16 @@ pub(crate) use assert_unsafe_precondition;
 /// `align_of::<T>()`.
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
     !ptr.is_null() && ptr.is_aligned()
+}
+
+/// Checks whether an allocation of `len` instances of `T` exceeds
+/// the maximum allowed allocation size.
+pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
+    let max_len = const {
+        let size = crate::mem::size_of::<T>();
+        if size == 0 { usize::MAX } else { isize::MAX as usize / size }
+    };
+    len <= max_len
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
@@ -2340,7 +2418,10 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     // SAFETY: the safety contract for `copy_nonoverlapping` must be
     // upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!([T](src: *const T, dst: *mut T, count: usize) =>
+        assert_unsafe_precondition!(
+            "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
+            and the specified memory ranges do not overlap",
+            [T](src: *const T, dst: *mut T, count: usize) =>
             is_aligned_and_not_null(src)
                 && is_aligned_and_not_null(dst)
                 && is_nonoverlapping(src, dst, count)
@@ -2426,8 +2507,11 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!([T](src: *const T, dst: *mut T) =>
-            is_aligned_and_not_null(src) && is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::copy requires that both pointer arguments are aligned aligned and non-null",
+            [T](src: *const T, dst: *mut T) =>
+            is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)
+        );
         copy(src, dst, count)
     }
 }
@@ -2495,7 +2579,10 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::write_bytes requires that the destination pointer is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         write_bytes(dst, val, count)
     }
 }

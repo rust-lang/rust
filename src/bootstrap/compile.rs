@@ -21,7 +21,7 @@ use serde::Deserialize;
 use crate::builder::Cargo;
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
-use crate::config::{LlvmLibunwind, TargetSelection};
+use crate::config::{LlvmLibunwind, RustcLto, TargetSelection};
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
@@ -299,7 +299,9 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
     // Determine if we're going to compile in optimized C intrinsics to
     // the `compiler-builtins` crate. These intrinsics live in LLVM's
-    // `compiler-rt` repository.
+    // `compiler-rt` repository, but our `src/llvm-project` submodule isn't
+    // always checked out, so we need to conditionally look for this. (e.g. if
+    // an external LLVM is used we skip the LLVM submodule checkout).
     //
     // Note that this shouldn't affect the correctness of `compiler-builtins`,
     // but only its speed. Some intrinsics in C haven't been translated to Rust
@@ -310,15 +312,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     // If `compiler-rt` is available ensure that the `c` feature of the
     // `compiler-builtins` crate is enabled and it's configured to learn where
     // `compiler-rt` is located.
-    let compiler_builtins_c_feature = if builder.config.optimized_compiler_builtins {
-        if !builder.is_rust_llvm(target) {
-            panic!(
-                "need a managed LLVM submodule for optimized intrinsics support; unset `llvm-config` or `optimized-compiler-builtins`"
-            );
-        }
-
-        builder.update_submodule(&Path::new("src").join("llvm-project"));
-        let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
+    let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
+    let compiler_builtins_c_feature = if compiler_builtins_root.exists() {
         // Note that `libprofiler_builtins/build.rs` also computes this so if
         // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
@@ -699,6 +694,28 @@ impl Step for Rustc {
                 "-Cllvm-args=-static-func-strip-dirname-prefix={}",
                 builder.config.src.components().count()
             ));
+        }
+
+        // cfg(bootstrap): remove if condition once the bootstrap compiler supports dylib LTO
+        if compiler.stage != 0 {
+            match builder.config.rust_lto {
+                RustcLto::Thin | RustcLto::Fat => {
+                    // Since using LTO for optimizing dylibs is currently experimental,
+                    // we need to pass -Zdylib-lto.
+                    cargo.rustflag("-Zdylib-lto");
+                    // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
+                    // compiling dylibs (and their dependencies), even when LTO is enabled for the
+                    // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
+                    let lto_type = match builder.config.rust_lto {
+                        RustcLto::Thin => "thin",
+                        RustcLto::Fat => "fat",
+                        _ => unreachable!(),
+                    };
+                    cargo.rustflag(&format!("-Clto={}", lto_type));
+                    cargo.rustflag("-Cembed-bitcode=yes");
+                }
+                RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
+            }
         }
 
         builder.info(&format!(
@@ -1154,6 +1171,20 @@ impl Step for Sysroot {
                     sysroot_lib_rustlib_src_rust.display(),
                 );
             }
+        }
+        // Same for the rustc-src component.
+        let sysroot_lib_rustlib_rustcsrc = sysroot.join("lib/rustlib/rustc-src");
+        t!(fs::create_dir_all(&sysroot_lib_rustlib_rustcsrc));
+        let sysroot_lib_rustlib_rustcsrc_rust = sysroot_lib_rustlib_rustcsrc.join("rust");
+        if let Err(e) =
+            symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
+        {
+            eprintln!(
+                "warning: creating symbolic link `{}` to `{}` failed with {}",
+                sysroot_lib_rustlib_rustcsrc_rust.display(),
+                builder.src.display(),
+                e,
+            );
         }
 
         INTERNER.intern_path(sysroot)

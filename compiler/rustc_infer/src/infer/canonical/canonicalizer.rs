@@ -495,7 +495,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             }
             ty::ConstKind::Bound(debruijn, _) => {
                 if debruijn >= self.binder_index {
-                    bug!("escaping bound type during canonicalization")
+                    bug!("escaping bound const during canonicalization")
                 } else {
                     return ct;
                 }
@@ -773,10 +773,10 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.fold_const(bound_to)
         } else {
             let var = self.canonical_var(info, const_var.into());
-            self.tcx().mk_const(ty::ConstS {
-                kind: ty::ConstKind::Bound(self.binder_index, var),
-                ty: self.fold_ty(const_var.ty()),
-            })
+            self.tcx().mk_const(
+                ty::ConstKind::Bound(self.binder_index, var),
+                self.fold_ty(const_var.ty()),
+            )
         }
     }
 }

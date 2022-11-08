@@ -12,9 +12,9 @@ use std::ops::Deref;
 
 use clippy_utils::{
     diagnostics::{span_lint_and_then, span_lint_hir_and_then},
-    eq_expr_value, get_trait_def_id,
+    eq_expr_value,
     higher::If,
-    is_diag_trait_item, is_trait_method, meets_msrv, msrvs, path_res, path_to_local_id, paths, peel_blocks,
+    is_diag_trait_item, is_trait_method, meets_msrv, msrvs, path_res, path_to_local_id, peel_blocks,
     peel_blocks_with_stmt,
     sugg::Sugg,
     ty::implements_trait,
@@ -190,7 +190,11 @@ impl TypeClampability {
     fn is_clampable<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<TypeClampability> {
         if ty.is_floating_point() {
             Some(TypeClampability::Float)
-        } else if get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[])) {
+        } else if cx
+            .tcx
+            .get_diagnostic_item(sym::Ord)
+            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+        {
             Some(TypeClampability::Ord)
         } else {
             None

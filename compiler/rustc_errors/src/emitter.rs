@@ -16,10 +16,10 @@ use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Styl
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, FluentBundle, Handler,
-    LazyFallbackBundle, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight, SuggestionStyle,
+    diagnostic::DiagnosticLocation, CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage,
+    FluentBundle, Handler, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
+    SubstitutionHighlight, SuggestionStyle,
 };
-
 use rustc_lint_defs::pluralize;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -64,6 +64,7 @@ impl HumanReadableErrorType {
         teach: bool,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
@@ -77,6 +78,7 @@ impl HumanReadableErrorType {
             color,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         )
     }
 }
@@ -557,6 +559,7 @@ impl Emitter for EmitterWriter {
             &primary_span,
             &children,
             &suggestions,
+            self.track_diagnostics.then_some(&diag.emitted_at),
         );
     }
 
@@ -650,6 +653,7 @@ pub struct EmitterWriter {
     diagnostic_width: Option<usize>,
 
     macro_backtrace: bool,
+    track_diagnostics: bool,
 }
 
 #[derive(Debug)]
@@ -669,6 +673,7 @@ impl EmitterWriter {
         teach: bool,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
@@ -681,6 +686,7 @@ impl EmitterWriter {
             ui_testing: false,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         }
     }
 
@@ -694,6 +700,7 @@ impl EmitterWriter {
         colored: bool,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst, colored),
@@ -705,6 +712,7 @@ impl EmitterWriter {
             ui_testing: false,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         }
     }
 
@@ -1327,6 +1335,7 @@ impl EmitterWriter {
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
+        emitted_at: Option<&DiagnosticLocation>,
     ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
 
@@ -1377,7 +1386,6 @@ impl EmitterWriter {
                 }
             }
         }
-
         let mut annotated_files = FileWithAnnotatedLines::collect_annotations(self, args, msp);
 
         // Make sure our primary file comes first
@@ -1651,6 +1659,12 @@ impl EmitterWriter {
                     multilines.extend(&to_add);
                 }
             }
+        }
+
+        if let Some(tracked) = emitted_at {
+            let track = format!("-Ztrack-diagnostics: created at {tracked}");
+            let len = buffer.num_lines();
+            buffer.append(len, &track, Style::NoStyle);
         }
 
         // final step: take our styled buffer, render it, then output it
@@ -1977,6 +1991,7 @@ impl EmitterWriter {
         span: &MultiSpan,
         children: &[SubDiagnostic],
         suggestions: &[CodeSuggestion],
+        emitted_at: Option<&DiagnosticLocation>,
     ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
@@ -1985,7 +2000,16 @@ impl EmitterWriter {
             num_decimal_digits(n)
         };
 
-        match self.emit_message_default(span, message, args, code, level, max_line_num_len, false) {
+        match self.emit_message_default(
+            span,
+            message,
+            args,
+            code,
+            level,
+            max_line_num_len,
+            false,
+            emitted_at,
+        ) {
             Ok(()) => {
                 if !children.is_empty()
                     || suggestions.iter().any(|s| s.style != SuggestionStyle::CompletelyHidden)
@@ -2014,6 +2038,7 @@ impl EmitterWriter {
                             &child.level,
                             max_line_num_len,
                             true,
+                            None,
                         ) {
                             panic!("failed to emit error: {}", err);
                         }
@@ -2030,6 +2055,7 @@ impl EmitterWriter {
                                 &Level::Help,
                                 max_line_num_len,
                                 true,
+                                None,
                             ) {
                                 panic!("failed to emit error: {}", e);
                             }

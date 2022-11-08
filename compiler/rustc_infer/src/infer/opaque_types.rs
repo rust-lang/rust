@@ -1,6 +1,7 @@
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
+use hir::def::DefKind;
 use hir::def_id::{DefId, LocalDefId};
 use hir::{HirId, OpaqueTyOrigin};
 use rustc_data_structures::sync::Lrc;
@@ -102,7 +103,7 @@ impl<'tcx> InferCtxt<'tcx> {
             return Ok(InferOk { value: (), obligations: vec![] });
         }
         let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
-        let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
+        let process = |a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected| match *a.kind() {
             ty::Opaque(def_id, substs) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
                 let origin = match self.defining_use_anchor {
@@ -168,13 +169,14 @@ impl<'tcx> InferCtxt<'tcx> {
                     param_env,
                     b,
                     origin,
+                    a_is_expected,
                 ))
             }
             _ => None,
         };
-        if let Some(res) = process(a, b) {
+        if let Some(res) = process(a, b, true) {
             res
-        } else if let Some(res) = process(b, a) {
+        } else if let Some(res) = process(b, a, false) {
             res
         } else {
             let (a, b) = self.resolve_vars_if_possible((a, b));
@@ -513,13 +515,14 @@ impl UseKind {
 
 impl<'tcx> InferCtxt<'tcx> {
     #[instrument(skip(self), level = "debug")]
-    pub fn register_hidden_type(
+    fn register_hidden_type(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
         origin: hir::OpaqueTyOrigin,
+        a_is_expected: bool,
     ) -> InferResult<'tcx, ()> {
         let tcx = self.tcx;
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
@@ -538,21 +541,24 @@ impl<'tcx> InferCtxt<'tcx> {
             origin,
         );
         if let Some(prev) = prev {
-            obligations = self.at(&cause, param_env).eq(prev, hidden_ty)?.obligations;
+            obligations =
+                self.at(&cause, param_env).eq_exp(a_is_expected, prev, hidden_ty)?.obligations;
         }
 
         let item_bounds = tcx.bound_explicit_item_bounds(def_id.to_def_id());
 
-        for predicate in item_bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
-            debug!(?predicate);
-            let predicate = predicate.subst(tcx, substs);
-
+        for (predicate, _) in item_bounds.subst_iter_copied(tcx, substs) {
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match *ty.kind() {
                     // We can't normalize associated types from `rustc_infer`,
                     // but we can eagerly register inference variables for them.
-                    ty::Projection(projection_ty) if !projection_ty.has_escaping_bound_vars() => {
+                    // FIXME(RPITIT): Don't replace RPITITs with inference vars.
+                    ty::Projection(projection_ty)
+                        if !projection_ty.has_escaping_bound_vars()
+                            && tcx.def_kind(projection_ty.item_def_id)
+                                != DefKind::ImplTraitPlaceholder =>
+                    {
                         self.infer_projection(
                             param_env,
                             projection_ty,
@@ -565,6 +571,12 @@ impl<'tcx> InferCtxt<'tcx> {
                     // as the bounds must hold on the hidden type after all.
                     ty::Opaque(def_id2, substs2)
                         if def_id.to_def_id() == def_id2 && substs == substs2 =>
+                    {
+                        hidden_ty
+                    }
+                    // FIXME(RPITIT): This can go away when we move to associated types
+                    ty::Projection(proj)
+                        if def_id.to_def_id() == proj.item_def_id && substs == proj.substs =>
                     {
                         hidden_ty
                     }

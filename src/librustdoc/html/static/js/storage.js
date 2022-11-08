@@ -10,9 +10,9 @@ window.currentTheme = document.getElementById("themeStyle");
 window.mainTheme = document.getElementById("mainThemeStyle");
 
 // WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
-// If you update this line, then you also need to update the two media queries with the same
+// If you update this line, then you also need to update the media query with the same
 // warning in rustdoc.css
-window.RUSTDOC_MOBILE_BREAKPOINT = 701;
+window.RUSTDOC_MOBILE_BREAKPOINT = 700;
 
 const settingsDataset = (function() {
     const settingsElement = document.getElementById("default-settings");
@@ -126,33 +126,29 @@ function getCurrentValue(name) {
     }
 }
 
-function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
-    const newHref = mainStyleElem.href.replace(
-        /\/rustdoc([^/]*)\.css/, "/" + newTheme + "$1" + ".css");
-
+function switchTheme(styleElem, mainStyleElem, newThemeName, saveTheme) {
     // If this new value comes from a system setting or from the previously
     // saved theme, no need to save it.
     if (saveTheme) {
-        updateLocalStorage("theme", newTheme);
+        updateLocalStorage("theme", newThemeName);
     }
 
-    if (styleElem.href === newHref) {
-        return;
-    }
-
-    let found = false;
     if (savedHref.length === 0) {
         onEachLazy(document.getElementsByTagName("link"), el => {
             savedHref.push(el.href);
         });
     }
-    onEach(savedHref, el => {
-        if (el === newHref) {
-            found = true;
+    const newHref = savedHref.find(url => {
+        const m = url.match(/static\.files\/(.*)-[a-f0-9]{16}\.css$/);
+        if (m && m[1] === newThemeName) {
+            return true;
+        }
+        const m2 = url.match(/\/([^/]*)\.css$/);
+        if (m2 && m2[1].startsWith(newThemeName)) {
             return true;
         }
     });
-    if (found) {
+    if (newHref && newHref !== styleElem.href) {
         styleElem.href = newHref;
     }
 }

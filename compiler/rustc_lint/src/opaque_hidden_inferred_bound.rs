@@ -61,7 +61,7 @@ declare_lint_pass!(OpaqueHiddenInferredBound => [OPAQUE_HIDDEN_INFERRED_BOUND]);
 impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         let hir::ItemKind::OpaqueTy(_) = &item.kind else { return; };
-        let def_id = item.def_id.def_id.to_def_id();
+        let def_id = item.owner_id.def_id.to_def_id();
         let infcx = &cx.tcx.infer_ctxt().build();
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
@@ -91,14 +91,12 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             // For example, in `impl Trait<Assoc = impl Send>`, for all of the bounds on `Assoc`,
             // e.g. `type Assoc: OtherTrait`, replace `<impl Trait as Trait>::Assoc: OtherTrait`
             // with `impl Send: OtherTrait`.
-            for assoc_pred_and_span in
-                cx.tcx.bound_explicit_item_bounds(proj.projection_ty.item_def_id).transpose_iter()
+            for (assoc_pred, assoc_pred_span) in cx
+                .tcx
+                .bound_explicit_item_bounds(proj.projection_ty.item_def_id)
+                .subst_iter_copied(cx.tcx, &proj.projection_ty.substs)
             {
-                let assoc_pred_span = assoc_pred_and_span.0.1;
-                let assoc_pred = assoc_pred_and_span
-                    .map_bound(|(pred, _)| *pred)
-                    .subst(cx.tcx, &proj.projection_ty.substs)
-                    .fold_with(proj_replacer);
+                let assoc_pred = assoc_pred.fold_with(proj_replacer);
                 let Ok(assoc_pred) = traits::fully_normalize(infcx, traits::ObligationCause::dummy(), cx.param_env, assoc_pred) else {
                     continue;
                 };
@@ -141,19 +139,20 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint::opaque_hidden_inferred_bound)]
+#[diag(lint_opaque_hidden_inferred_bound)]
 struct OpaqueHiddenInferredBoundLint<'tcx> {
     ty: Ty<'tcx>,
     proj_ty: Ty<'tcx>,
-    #[label(lint::specifically)]
+    #[label(specifically)]
     assoc_pred_span: Span,
     #[subdiagnostic]
     add_bound: Option<AddBound<'tcx>>,
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion_verbose(
-    lint::opaque_hidden_inferred_bound_sugg,
+#[suggestion(
+    lint_opaque_hidden_inferred_bound_sugg,
+    style = "verbose",
     applicability = "machine-applicable",
     code = " + {trait_ref}"
 )]

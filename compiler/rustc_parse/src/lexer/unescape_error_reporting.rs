@@ -113,11 +113,26 @@ pub(crate) fn emit_unescape_error(
                 } else {
                     ("", "if you meant to write a `str` literal, use double quotes")
                 };
-
+                let mut escaped = String::with_capacity(lit.len());
+                let mut chrs = lit.chars().peekable();
+                while let Some(first) = chrs.next() {
+                    match (first, chrs.peek()) {
+                        ('\\', Some('"')) => {
+                            escaped.push('\\');
+                            escaped.push('"');
+                            chrs.next();
+                        }
+                        ('"', _) => {
+                            escaped.push('\\');
+                            escaped.push('"')
+                        }
+                        (c, _) => escaped.push(c),
+                    };
+                }
                 handler.span_suggestion(
                     span_with_quotes,
                     msg,
-                    format!("{}\"{}\"", prefix, lit),
+                    format!("{prefix}\"{escaped}\""),
                     Applicability::MachineApplicable,
                 );
             }

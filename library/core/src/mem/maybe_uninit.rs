@@ -146,7 +146,6 @@ use crate::slice;
 ///
 /// ```
 /// use std::mem::MaybeUninit;
-/// use std::ptr;
 ///
 /// // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
 /// // safe because the type we are claiming to have initialized here is a
@@ -162,7 +161,7 @@ use crate::slice;
 ///
 /// // For each item in the array, drop if we allocated it.
 /// for elem in &mut data[0..data_len] {
-///     unsafe { ptr::drop_in_place(elem.as_mut_ptr()); }
+///     unsafe { elem.assume_init_drop(); }
 /// }
 /// ```
 ///
@@ -1297,7 +1296,8 @@ impl<T, const N: usize> MaybeUninit<[T; N]> {
     /// let data: [MaybeUninit<u8>; 1000] = MaybeUninit::uninit().transpose();
     /// ```
     #[unstable(feature = "maybe_uninit_uninit_array_transpose", issue = "96097")]
-    pub fn transpose(self) -> [MaybeUninit<T>; N] {
+    #[inline]
+    pub const fn transpose(self) -> [MaybeUninit<T>; N] {
         // SAFETY: T and MaybeUninit<T> have the same layout
         unsafe { super::transmute_copy(&ManuallyDrop::new(self)) }
     }
@@ -1316,7 +1316,8 @@ impl<T, const N: usize> [MaybeUninit<T>; N] {
     /// let data: MaybeUninit<[u8; 1000]> = data.transpose();
     /// ```
     #[unstable(feature = "maybe_uninit_uninit_array_transpose", issue = "96097")]
-    pub fn transpose(self) -> MaybeUninit<[T; N]> {
+    #[inline]
+    pub const fn transpose(self) -> MaybeUninit<[T; N]> {
         // SAFETY: T and MaybeUninit<T> have the same layout
         unsafe { super::transmute_copy(&ManuallyDrop::new(self)) }
     }

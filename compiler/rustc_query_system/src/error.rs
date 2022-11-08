@@ -3,7 +3,7 @@ use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
 
 #[derive(Subdiagnostic)]
-#[note(query_system::cycle_stack_middle)]
+#[note(query_system_cycle_stack_middle)]
 pub struct CycleStack {
     #[primary_span]
     pub span: Span,
@@ -19,24 +19,24 @@ pub enum HandleCycleError {
 
 #[derive(Subdiagnostic)]
 pub enum StackCount {
-    #[note(query_system::cycle_stack_single)]
+    #[note(query_system_cycle_stack_single)]
     Single,
-    #[note(query_system::cycle_stack_multiple)]
+    #[note(query_system_cycle_stack_multiple)]
     Multiple,
 }
 
 #[derive(Subdiagnostic)]
 pub enum Alias {
-    #[note(query_system::cycle_recursive_ty_alias)]
-    #[help(query_system::cycle_recursive_ty_alias_help1)]
-    #[help(query_system::cycle_recursive_ty_alias_help2)]
+    #[note(query_system_cycle_recursive_ty_alias)]
+    #[help(query_system_cycle_recursive_ty_alias_help1)]
+    #[help(query_system_cycle_recursive_ty_alias_help2)]
     Ty,
-    #[note(query_system::cycle_recursive_trait_alias)]
+    #[note(query_system_cycle_recursive_trait_alias)]
     Trait,
 }
 
 #[derive(Subdiagnostic)]
-#[note(query_system::cycle_usage)]
+#[note(query_system_cycle_usage)]
 pub struct CycleUsage {
     #[primary_span]
     pub span: Span,
@@ -44,7 +44,7 @@ pub struct CycleUsage {
 }
 
 #[derive(Diagnostic)]
-#[diag(query_system::cycle, code = "E0391")]
+#[diag(query_system_cycle, code = "E0391")]
 pub struct Cycle {
     #[primary_span]
     pub span: Span,
@@ -60,14 +60,14 @@ pub struct Cycle {
 }
 
 #[derive(Diagnostic)]
-#[diag(query_system::reentrant)]
+#[diag(query_system_reentrant)]
 pub struct Reentrant;
 
 #[derive(Diagnostic)]
-#[diag(query_system::increment_compilation)]
+#[diag(query_system_increment_compilation)]
 #[help]
-#[note(query_system::increment_compilation_note1)]
-#[note(query_system::increment_compilation_note2)]
+#[note(query_system_increment_compilation_note1)]
+#[note(query_system_increment_compilation_note2)]
 pub struct IncrementCompilation {
     pub run_cmd: String,
     pub dep_node: String,
@@ -75,7 +75,7 @@ pub struct IncrementCompilation {
 
 #[derive(Diagnostic)]
 #[help]
-#[diag(query_system::query_overflow)]
+#[diag(query_system_query_overflow)]
 pub struct QueryOverflow {
     #[primary_span]
     pub span: Option<Span>,
@@ -86,7 +86,7 @@ pub struct QueryOverflow {
 }
 
 #[derive(Subdiagnostic)]
-#[note(query_system::layout_of_depth)]
+#[note(query_system_layout_of_depth)]
 pub struct LayoutOfDepth {
     pub desc: String,
     pub depth: usize,

@@ -13,7 +13,7 @@ use smallvec::SmallVec;
 
 use crate::attributes;
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace};
+use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
 use crate::llvm_util;
 pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 
@@ -303,10 +303,10 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         to_add.push(AttributeKind::ReturnsTwice.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_PURE) {
-        to_add.push(AttributeKind::ReadOnly.create_attr(cx.llcx));
+        to_add.push(MemoryEffects::ReadOnly.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_CONST) {
-        to_add.push(AttributeKind::ReadNone.create_attr(cx.llcx));
+        to_add.push(MemoryEffects::None.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         to_add.push(AttributeKind::Naked.create_attr(cx.llcx));

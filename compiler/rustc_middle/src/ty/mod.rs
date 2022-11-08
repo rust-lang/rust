@@ -17,7 +17,7 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
-use crate::middle::privacy::AccessLevels;
+use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, GeneratorLayout};
 use crate::traits::{self, Reveal};
 use crate::ty;
@@ -26,6 +26,7 @@ use crate::ty::util::Discr;
 pub use adt::*;
 pub use assoc::*;
 pub use generics::*;
+use hir::OpaqueTyOrigin;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
@@ -37,11 +38,13 @@ use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::definitions::Definitions;
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
+use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, Span};
@@ -77,7 +80,7 @@ pub use self::consts::{
 };
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorDiagnosticData,
+    CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GeneratorDiagnosticData,
     GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TypeckResults, UserType,
     UserTypeAnnotationIndex,
 };
@@ -141,8 +144,15 @@ mod sty;
 
 pub type RegisteredTools = FxHashSet<Ident>;
 
-#[derive(Debug)]
 pub struct ResolverOutputs {
+    pub definitions: Definitions,
+    pub global_ctxt: ResolverGlobalCtxt,
+    pub ast_lowering: ResolverAstLowering,
+}
+
+#[derive(Debug)]
+pub struct ResolverGlobalCtxt {
+    pub cstore: Box<CrateStoreDyn>,
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
     /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
     pub has_pub_restricted: bool,
@@ -150,7 +160,7 @@ pub struct ResolverOutputs {
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
     /// Reference span for definitions.
     pub source_span: IndexVec<LocalDefId, Span>,
-    pub access_levels: AccessLevels,
+    pub effective_visibilities: EffectiveVisibilities,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
@@ -682,7 +692,7 @@ pub enum PredicateKind<'tcx> {
     Coerce(CoercePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(ty::UnevaluatedConst<'tcx>),
+    ConstEvaluatable(ty::Const<'tcx>),
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(Const<'tcx>, Const<'tcx>),
@@ -1309,6 +1319,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         tcx: TyCtxt<'tcx>,
         // typeck errors have subpar spans for opaque types, so delay error reporting until borrowck.
         ignore_errors: bool,
+        origin: OpaqueTyOrigin,
     ) -> Self {
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
@@ -1320,8 +1331,79 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         // shifting.
         let id_substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
         debug!(?id_substs);
-        let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> =
-            substs.iter().enumerate().map(|(index, subst)| (subst, id_substs[index])).collect();
+
+        let map = substs.iter().zip(id_substs);
+
+        let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> = match origin {
+            // HACK: The HIR lowering for async fn does not generate
+            // any `+ Captures<'x>` bounds for the `impl Future<...>`, so all async fns with lifetimes
+            // would now fail to compile. We should probably just make hir lowering fill this in properly.
+            OpaqueTyOrigin::AsyncFn(_) => map.collect(),
+            OpaqueTyOrigin::FnReturn(_) | OpaqueTyOrigin::TyAlias => {
+                // Opaque types may only use regions that are bound. So for
+                // ```rust
+                // type Foo<'a, 'b, 'c> = impl Trait<'a> + 'b;
+                // ```
+                // we may not use `'c` in the hidden type.
+                struct OpaqueTypeLifetimeCollector<'tcx> {
+                    lifetimes: FxHashSet<ty::Region<'tcx>>,
+                }
+
+                impl<'tcx> ty::TypeVisitor<'tcx> for OpaqueTypeLifetimeCollector<'tcx> {
+                    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+                        self.lifetimes.insert(r);
+                        r.super_visit_with(self)
+                    }
+                }
+
+                let mut collector = OpaqueTypeLifetimeCollector { lifetimes: Default::default() };
+
+                for pred in tcx.bound_explicit_item_bounds(def_id.to_def_id()).transpose_iter() {
+                    let pred = pred.map_bound(|(pred, _)| *pred).subst(tcx, id_substs);
+
+                    trace!(pred=?pred.kind());
+
+                    // We only ignore opaque type substs if the opaque type is the outermost type.
+                    // The opaque type may be nested within itself via recursion in e.g.
+                    // type Foo<'a> = impl PartialEq<Foo<'a>>;
+                    // which thus mentions `'a` and should thus accept hidden types that borrow 'a
+                    // instead of requiring an additional `+ 'a`.
+                    match pred.kind().skip_binder() {
+                        ty::PredicateKind::Trait(TraitPredicate {
+                            trait_ref: ty::TraitRef { def_id: _, substs },
+                            constness: _,
+                            polarity: _,
+                        }) => {
+                            trace!(?substs);
+                            for subst in &substs[1..] {
+                                subst.visit_with(&mut collector);
+                            }
+                        }
+                        ty::PredicateKind::Projection(ty::ProjectionPredicate {
+                            projection_ty: ty::ProjectionTy { substs, item_def_id: _ },
+                            term,
+                        }) => {
+                            for subst in &substs[1..] {
+                                subst.visit_with(&mut collector);
+                            }
+                            term.visit_with(&mut collector);
+                        }
+                        _ => {
+                            pred.visit_with(&mut collector);
+                        }
+                    }
+                }
+                let lifetimes = collector.lifetimes;
+                trace!(?lifetimes);
+                map.filter(|(_, v)| {
+                    let ty::GenericArgKind::Lifetime(lt) = v.unpack() else {
+                        return true;
+                    };
+                    lifetimes.contains(&lt)
+                })
+                .collect()
+            }
+        };
         debug!("map = {:#?}", map);
 
         // Convert the type from the function into a type valid outside
@@ -2522,7 +2604,9 @@ impl<'tcx> TyCtxt<'tcx> {
             && if self.features().collapse_debuginfo {
                 span.in_macro_expansion_with_collapse_debuginfo()
             } else {
-                span.from_expansion()
+                // Inlined spans should not be collapsed as that leads to all of the
+                // inlined code being attributed to the inline callsite.
+                span.from_expansion() && !span.is_inlined()
             }
     }
 
@@ -2621,6 +2705,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     closure::provide(providers);
     context::provide(providers);
     erase_regions::provide(providers);
+    inhabitedness::provide(providers);
     util::provide(providers);
     print::provide(providers);
     super::util::bug::provide(providers);
@@ -2628,7 +2713,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,
-        type_uninhabited_from: inhabitedness::type_uninhabited_from,
         const_param_default: consts::const_param_default,
         vtable_allocation: vtable::vtable_allocation_provider,
         ..*providers

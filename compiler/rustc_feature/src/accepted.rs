@@ -53,6 +53,10 @@ declare_features! (
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),
     /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, adx_target_feature, "1.61.0", Some(44839), None),
+    /// Allows explicit discriminants on non-unit enum variants.
+    (accepted, arbitrary_enum_discriminant, "CURRENT_RUSTC_VERSION", Some(60553), None),
+    /// Allows using `sym` operands in inline assembly.
+    (accepted, asm_sym, "CURRENT_RUSTC_VERSION", Some(93333), None),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
     (accepted, associated_consts, "1.20.0", Some(29646), None),
     /// Allows using associated `type`s in `trait`s.
@@ -187,6 +191,8 @@ declare_features! (
     (accepted, infer_outlives_requirements, "1.30.0", Some(44493), None),
     /// Allows irrefutable patterns in `if let` and `while let` statements (RFC 2086).
     (accepted, irrefutable_let_patterns, "1.33.0", Some(44495), None),
+    /// Allows `#[instruction_set(_)]` attribute.
+    (accepted, isa_attribute, "CURRENT_RUSTC_VERSION", Some(74727), None),
     /// Allows some increased flexibility in the name resolution rules,
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120), None),

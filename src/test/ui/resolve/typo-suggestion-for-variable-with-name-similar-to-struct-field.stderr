@@ -40,7 +40,7 @@ LL |         bah;
 LL | fn ba() {}
    | ------- similarly named function `ba` defined here
    |
-help: you might have meant to call the associated function
+help: you might have meant to refer to the associated function
    |
 LL |         Self::bah;
    |         ~~~~~~~~~

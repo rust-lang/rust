@@ -290,10 +290,7 @@ fn compare_predicate_entailment<'tcx>(
     // type would be more appropriate. In other places we have a `Vec<Span>`
     // corresponding to their `Vec<Predicate>`, but we don't have that here.
     // Fixing this would improve the output of test `issue-83765.rs`.
-    let mut result = infcx
-        .at(&cause, param_env)
-        .sup(trait_fty, impl_fty)
-        .map(|infer_ok| ocx.register_infer_ok_obligations(infer_ok));
+    let mut result = ocx.sup(&cause, param_env, trait_fty, impl_fty);
 
     // HACK(RPITIT): #101614. When we are trying to infer the hidden types for
     // RPITITs, we need to equate the output tys instead of just subtyping. If
@@ -301,12 +298,8 @@ fn compare_predicate_entailment<'tcx>(
     // us to infer `_#1t = #'_#2r str`, where `'_#2r` is unconstrained, which gets
     // fixed up to `ReEmpty`, and which is certainly not what we want.
     if trait_fty.has_infer_types() {
-        result = result.and_then(|()| {
-            infcx
-                .at(&cause, param_env)
-                .eq(trait_sig.output(), impl_sig.output())
-                .map(|infer_ok| ocx.register_infer_ok_obligations(infer_ok))
-        });
+        result =
+            result.and_then(|()| ocx.eq(&cause, param_env, trait_sig.output(), impl_sig.output()));
     }
 
     if let Err(terr) = result {
@@ -412,7 +405,7 @@ fn compare_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 
@@ -545,7 +538,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     // RPITs.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 
@@ -597,9 +590,17 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                 let num_trait_substs = trait_to_impl_substs.len();
                 let num_impl_substs = tcx.generics_of(impl_m.container_id(tcx)).params.len();
                 let ty = tcx.fold_regions(ty, |region, _| {
-                    let ty::ReFree(_) = region.kind() else { return region; };
-                    let ty::ReEarlyBound(e) = map[&region.into()].expect_region().kind()
-                        else { bug!("expected ReFree to map to ReEarlyBound"); };
+                    let (ty::ReFree(_) | ty::ReEarlyBound(_)) = region.kind() else { return region; };
+                    let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
+                    else {
+                        tcx
+                            .sess
+                            .delay_span_bug(
+                                return_span,
+                                "expected ReFree to map to ReEarlyBound"
+                            );
+                        return tcx.lifetimes.re_static;
+                    };
                     tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                         def_id: e.def_id,
                         name: e.name,
@@ -664,10 +665,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
             });
             self.types.insert(proj.item_def_id, (infer_ty, proj.substs));
             // Recurse into bounds
-            for pred in self.tcx().bound_explicit_item_bounds(proj.item_def_id).transpose_iter() {
-                let pred_span = pred.0.1;
-
-                let pred = pred.map_bound(|(pred, _)| *pred).subst(self.tcx(), proj.substs);
+            for (pred, pred_span) in self.tcx().bound_explicit_item_bounds(proj.item_def_id).subst_iter_copied(self.tcx(), proj.substs) {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     ObligationCause::misc(self.span, self.body_id),
@@ -1384,10 +1382,7 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
 
     debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
-    let err = infcx
-        .at(&cause, param_env)
-        .sup(trait_ty, impl_ty)
-        .map(|ok| ocx.register_infer_ok_obligations(ok));
+    let err = ocx.sup(&cause, param_env, trait_ty, impl_ty);
 
     if let Err(terr) = err {
         debug!(
@@ -1436,7 +1431,7 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None, false));
+        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None));
     }
 
     // FIXME return `ErrorReported` if region obligations error?
@@ -1554,7 +1549,7 @@ fn compare_type_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 
@@ -1660,13 +1655,10 @@ pub fn check_type_bounds<'tcx>(
         GenericParamDefKind::Const { .. } => {
             let bound_var = ty::BoundVariableKind::Const;
             bound_vars.push(bound_var);
-            tcx.mk_const(ty::ConstS {
-                ty: tcx.type_of(param.def_id),
-                kind: ty::ConstKind::Bound(
-                    ty::INNERMOST,
-                    ty::BoundVar::from_usize(bound_vars.len() - 1),
-                ),
-            })
+            tcx.mk_const(
+                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_usize(bound_vars.len() - 1)),
+                tcx.type_of(param.def_id),
+            )
             .into()
         }
     });
@@ -1752,15 +1744,10 @@ pub fn check_type_bounds<'tcx>(
 
     let obligations = tcx
         .bound_explicit_item_bounds(trait_ty.def_id)
-        .transpose_iter()
-        .map(|e| e.map_bound(|e| *e).transpose_tuple2())
-        .map(|(bound, span)| {
-            debug!(?bound);
-            // this is where opaque type is found
-            let concrete_ty_bound = bound.subst(tcx, rebased_substs);
+        .subst_iter_copied(tcx, rebased_substs)
+        .map(|(concrete_ty_bound, span)| {
             debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
-
-            traits::Obligation::new(mk_cause(span.0), param_env, concrete_ty_bound)
+            traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)
         })
         .collect();
     debug!("check_type_bounds: item_bounds={:?}", obligations);
@@ -1782,7 +1769,7 @@ pub fn check_type_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 

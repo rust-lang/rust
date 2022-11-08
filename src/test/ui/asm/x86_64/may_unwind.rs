@@ -3,7 +3,7 @@
 // needs-asm-support
 // needs-unwind
 
-#![feature(asm_sym, asm_unwind)]
+#![feature(asm_unwind)]
 
 use std::arch::asm;
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};

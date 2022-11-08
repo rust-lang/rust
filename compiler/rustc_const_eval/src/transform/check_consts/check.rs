@@ -13,11 +13,8 @@ use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty,
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeVisitable};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
-use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{
-    self, ObligationCauseCode, SelectionContext, TraitEngine, TraitEngineExt,
-};
+use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
 
 use std::mem;
 use std::ops::Deref;
@@ -747,37 +744,28 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // "non-const" check. This is required for correctness here.
                     {
                         let infcx = tcx.infer_ctxt().build();
-                        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
+                        let ocx = ObligationCtxt::new(&infcx);
+
                         let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
                         let hir_id = tcx
                             .hir()
                             .local_def_id_to_hir_id(self.body.source.def_id().expect_local());
-                        let cause = || {
-                            ObligationCause::new(
-                                terminator.source_info.span,
-                                hir_id,
-                                ObligationCauseCode::ItemObligation(callee),
-                            )
-                        };
-                        let normalized = infcx.partially_normalize_associated_types_in(
-                            cause(),
-                            param_env,
-                            predicates,
+                        let cause = ObligationCause::new(
+                            terminator.source_info.span,
+                            hir_id,
+                            ObligationCauseCode::ItemObligation(callee),
                         );
-
-                        for p in normalized.obligations {
-                            fulfill_cx.register_predicate_obligation(&infcx, p);
-                        }
-                        for obligation in traits::predicates_for_generics(
-                            |_, _| cause(),
+                        let normalized_predicates =
+                            ocx.normalize(cause.clone(), param_env, predicates);
+                        ocx.register_obligations(traits::predicates_for_generics(
+                            |_, _| cause.clone(),
                             self.param_env,
-                            normalized.value,
-                        ) {
-                            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-                        }
-                        let errors = fulfill_cx.select_all_or_error(&infcx);
+                            normalized_predicates,
+                        ));
+
+                        let errors = ocx.select_all_or_error();
                         if !errors.is_empty() {
-                            infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+                            infcx.err_ctxt().report_fulfillment_errors(&errors, None);
                         }
                     }
 
@@ -843,7 +831,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                         obligation.clone(),
                                         &obligation,
                                         &e,
-                                        false,
                                     );
                                 }
 

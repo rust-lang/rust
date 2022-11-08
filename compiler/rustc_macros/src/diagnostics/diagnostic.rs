@@ -40,7 +40,7 @@ impl<'a> DiagnosticDerive<'a> {
                     span_err(builder.span, "diagnostic slug not specified")
                         .help(&format!(
                             "specify the slug as the first argument to the `#[diag(...)]` \
-                            attribute, such as `#[diag(hir_analysis::example_error)]`",
+                            attribute, such as `#[diag(hir_analysis_example_error)]`",
                         ))
                         .emit();
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
@@ -69,6 +69,8 @@ impl<'a> DiagnosticDerive<'a> {
                     for @Self
                 where G: rustc_errors::EmissionGuarantee
             {
+
+                #[track_caller]
                 fn into_diagnostic(
                     self,
                     #handler: &'__diagnostic_handler_sess rustc_errors::Handler
@@ -121,7 +123,7 @@ impl<'a> LintDiagnosticDerive<'a> {
                     span_err(builder.span, "diagnostic slug not specified")
                         .help(&format!(
                             "specify the slug as the first argument to the attribute, such as \
-                            `#[diag(compiletest::example)]`",
+                            `#[diag(compiletest_example)]`",
                         ))
                         .emit();
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
@@ -133,6 +135,7 @@ impl<'a> LintDiagnosticDerive<'a> {
         let diag = &builder.diag;
         structure.gen_impl(quote! {
             gen impl<'__a> rustc_errors::DecorateLint<'__a, ()> for @Self {
+                #[track_caller]
                 fn decorate_lint<'__b>(
                     self,
                     #diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>

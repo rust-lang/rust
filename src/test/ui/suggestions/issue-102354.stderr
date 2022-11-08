@@ -1,0 +1,24 @@
+error[E0599]: no method named `func` found for type `i32` in the current scope
+  --> $DIR/issue-102354.rs:9:7
+   |
+LL |     x.func();
+   |       ^^^^ this is an associated function, not a method
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in the trait `Trait`
+  --> $DIR/issue-102354.rs:2:5
+   |
+LL |     fn func() {}
+   |     ^^^^^^^^^
+help: use associated function syntax instead
+   |
+LL |     i32::func();
+   |     ~~~~~~~~~
+help: disambiguate the associated function for the candidate
+   |
+LL |     <i32 as Trait>::func(x);
+   |     ~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

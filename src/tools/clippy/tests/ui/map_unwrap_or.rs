@@ -1,6 +1,8 @@
 // aux-build:option_helpers.rs
+
+#![feature(custom_inner_attributes)]
 #![warn(clippy::map_unwrap_or)]
-#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::uninlined_format_args, clippy::unnecessary_lazy_evaluations)]
 
 #[macro_use]
 extern crate option_helpers;
@@ -78,4 +80,20 @@ fn result_methods() {
 fn main() {
     option_methods();
     result_methods();
+}
+
+fn msrv_1_40() {
+    #![clippy::msrv = "1.40"]
+
+    let res: Result<i32, ()> = Ok(1);
+
+    let _ = res.map(|x| x + 1).unwrap_or_else(|_e| 0);
+}
+
+fn msrv_1_41() {
+    #![clippy::msrv = "1.41"]
+
+    let res: Result<i32, ()> = Ok(1);
+
+    let _ = res.map(|x| x + 1).unwrap_or_else(|_e| 0);
 }

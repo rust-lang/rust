@@ -48,10 +48,14 @@ pub(crate) fn goto_definition(
             _ => 1,
         })?;
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
-        return doc_comment.get_definition_with_descend_at(sema, position.offset, |def, _, _| {
-            let nav = def.try_to_nav(db)?;
-            Some(RangeInfo::new(original_token.text_range(), vec![nav]))
-        });
+        return doc_comment.get_definition_with_descend_at(
+            sema,
+            position.offset,
+            |def, _, link_range| {
+                let nav = def.try_to_nav(db)?;
+                Some(RangeInfo::new(link_range, vec![nav]))
+            },
+        );
     }
     let navs = sema
         .descend_into_macros(original_token.clone())
@@ -1829,5 +1833,87 @@ fn f() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn goto_bin_op_multiple_impl() {
+        check(
+            r#"
+//- minicore: add
+struct S;
+impl core::ops::Add for S {
+    fn add(
+     //^^^
+    ) {}
+}
+impl core::ops::Add<usize> for S {
+    fn add(
+    ) {}
+}
+
+fn f() {
+    S +$0 S
+}
+"#,
+        );
+
+        check(
+            r#"
+//- minicore: add
+struct S;
+impl core::ops::Add for S {
+    fn add(
+    ) {}
+}
+impl core::ops::Add<usize> for S {
+    fn add(
+     //^^^
+    ) {}
+}
+
+fn f() {
+    S +$0 0usize
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn path_call_multiple_trait_impl() {
+        check(
+            r#"
+trait Trait<T> {
+    fn f(_: T);
+}
+impl Trait<i32> for usize {
+    fn f(_: i32) {}
+     //^
+}
+impl Trait<i64> for usize {
+    fn f(_: i64) {}
+}
+fn main() {
+    usize::f$0(0i32);
+}
+"#,
+        );
+
+        check(
+            r#"
+trait Trait<T> {
+    fn f(_: T);
+}
+impl Trait<i32> for usize {
+    fn f(_: i32) {}
+}
+impl Trait<i64> for usize {
+    fn f(_: i64) {}
+     //^
+}
+fn main() {
+    usize::f$0(0i64);
+}
+"#,
+        )
     }
 }

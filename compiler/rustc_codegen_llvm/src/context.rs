@@ -158,6 +158,10 @@ pub unsafe fn create_module<'ll>(
         if sess.target.arch == "s390x" {
             target_data_layout = target_data_layout.replace("-v128:64", "");
         }
+
+        if sess.target.arch == "riscv64" {
+            target_data_layout = target_data_layout.replace("-n32:64-", "-n64-");
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.

@@ -181,7 +181,7 @@ top_level_options!(
         #[rustc_lint_opt_deny_field_access("use `Session::codegen_units` instead of this field")]
         cli_forced_codegen_units: Option<usize> [UNTRACKED],
         #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
-        cli_forced_thinlto_off: bool [UNTRACKED],
+        cli_forced_local_thinlto_off: bool [UNTRACKED],
 
         /// Remap source path prefixes in all output (messages, object files, debug, etc.).
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [TRACKED_NO_CRATE_HASH],
@@ -1295,6 +1295,8 @@ options! {
         an additional `.html` file showing the computed coverage spans."),
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
+    dylib_lto: bool = (false, parse_bool, [UNTRACKED],
+        "enables LTO for dylib crate type"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
     emit_thin_lto: bool = (true, parse_bool, [TRACKED],
@@ -1585,6 +1587,8 @@ options! {
         "choose the TLS model to use (`rustc --print tls-models` for details)"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
         "for every macro invocation, print its name and arguments (default: no)"),
+    track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
+        "tracks where in rustc a diagnostic was emitted"),
     // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
     // alongside query results and changes to translation options can affect diagnostics - so
     // translation options should be tracked.

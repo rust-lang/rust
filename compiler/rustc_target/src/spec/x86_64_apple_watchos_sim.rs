@@ -2,7 +2,7 @@ use super::apple_sdk_base::{opts, Arch};
 use crate::spec::{StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts("watchos", Arch::X86_64);
+    let base = opts("watchos", Arch::X86_64_sim);
 
     let arch = "x86_64";
     let llvm_target = super::apple_base::watchos_sim_llvm_target(arch);

@@ -210,8 +210,8 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             ..
         }) = item.kind
         {
-            let ty = cx.tcx.type_of(item.def_id);
-            let is_automatically_derived = cx.tcx.has_attr(item.def_id.to_def_id(), sym::automatically_derived);
+            let ty = cx.tcx.type_of(item.owner_id);
+            let is_automatically_derived = cx.tcx.has_attr(item.owner_id.to_def_id(), sym::automatically_derived);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -339,10 +339,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
         Some(id) if trait_ref.trait_def_id() == Some(id) => id,
         _ => return,
     };
-    let copy_id = match cx.tcx.lang_items().copy_trait() {
-        Some(id) => id,
-        None => return,
-    };
+    let Some(copy_id) = cx.tcx.lang_items().copy_trait() else { return };
     let (ty_adt, ty_subs) = match *ty.kind() {
         // Unions can't derive clone.
         ty::Adt(adt, subs) if !adt.is_union() => (adt, subs),

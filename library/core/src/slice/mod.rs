@@ -123,18 +123,11 @@ impl<T> [T] {
     #[lang = "slice_len_fn"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     #[inline]
     #[must_use]
-    // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     pub const fn len(&self) -> usize {
-        // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
-        // As of this writing this causes a "Const-stable functions can only call other
-        // const-stable functions" error.
-
-        // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-        // and PtrComponents<T> have the same memory layouts. Only std can make this
-        // guarantee.
-        unsafe { crate::ptr::PtrRepr { const_ptr: self }.components.metadata }
+        ptr::metadata(self)
     }
 
     /// Returns `true` if the slice has a length of 0.
@@ -660,7 +653,10 @@ impl<T> [T] {
         let ptr = this.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
-            assert_unsafe_precondition!([T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len());
+            assert_unsafe_precondition!(
+                "slice::swap_unchecked requires that the indices are within the slice",
+                [T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len()
+            );
             ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
@@ -976,7 +972,10 @@ impl<T> [T] {
         let this = self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!([T](this: &[T], N: usize) => N != 0 && this.len() % N == 0);
+            assert_unsafe_precondition!(
+                "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
+            );
             exact_div(self.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
@@ -1116,7 +1115,10 @@ impl<T> [T] {
         let this = &*self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!([T](this: &[T], N: usize) => N != 0 && this.len() % N == 0);
+            assert_unsafe_precondition!(
+                "slice::as_chunks_unchecked_mut requires `N != 0` and the slice to split exactly into `N`-element chunks",
+                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
+            );
             exact_div(this.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
@@ -1692,7 +1694,10 @@ impl<T> [T] {
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
         unsafe {
-            assert_unsafe_precondition!((mid: usize, len: usize) => mid <= len);
+            assert_unsafe_precondition!(
+                "slice::split_at_mut_unchecked requires the index to be within the slice",
+                (mid: usize, len: usize) => mid <= len
+            );
             (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
         }
     }
@@ -2357,6 +2362,28 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search(&100), Err(13));
     /// let r = s.binary_search(&1);
     /// assert!(match r { Ok(1..=4) => true, _ => false, });
+    /// ```
+    ///
+    /// If you want to find that whole *range* of matching items, rather than
+    /// an arbitrary matching one, that can be done using [`partition_point`]:
+    /// ```
+    /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    ///
+    /// let low = s.partition_point(|x| x < &1);
+    /// assert_eq!(low, 1);
+    /// let high = s.partition_point(|x| x <= &1);
+    /// assert_eq!(high, 5);
+    /// let r = s.binary_search(&1);
+    /// assert!((low..high).contains(&r.unwrap()));
+    ///
+    /// assert!(s[..low].iter().all(|&x| x < 1));
+    /// assert!(s[low..high].iter().all(|&x| x == 1));
+    /// assert!(s[high..].iter().all(|&x| x > 1));
+    ///
+    /// // For something not found, the "range" of equal items is empty
+    /// assert_eq!(s.partition_point(|x| x < &11), 9);
+    /// assert_eq!(s.partition_point(|x| x <= &11), 9);
+    /// assert_eq!(s.binary_search(&11), Err(9));
     /// ```
     ///
     /// If you want to insert an item to a sorted vector, while maintaining
@@ -3785,6 +3812,16 @@ impl<T> [T] {
     /// assert_eq!(i, 4);
     /// assert!(v[..i].iter().all(|&x| x < 5));
     /// assert!(v[i..].iter().all(|&x| !(x < 5)));
+    /// ```
+    ///
+    /// If all elements of the slice match the predicate, including if the slice
+    /// is empty, then the length of the slice will be returned:
+    ///
+    /// ```
+    /// let a = [2, 4, 8];
+    /// assert_eq!(a.partition_point(|x| x < &100), a.len());
+    /// let a: [i32; 0] = [];
+    /// assert_eq!(a.partition_point(|x| x < &100), 0);
     /// ```
     ///
     /// If you want to insert an item to a sorted vector, while maintaining

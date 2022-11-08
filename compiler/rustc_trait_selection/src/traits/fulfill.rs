@@ -355,7 +355,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::RegionOutlives(data) => {
-                    if infcx.considering_regions || data.has_placeholders() {
+                    if infcx.considering_regions {
                         infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data));
                     }
 
@@ -476,9 +476,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         Err(NotConstEvaluatable::MentionsInfer) => {
                             pending_obligation.stalled_on.clear();
                             pending_obligation.stalled_on.extend(
-                                uv.substs
-                                    .iter()
-                                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
+                                uv.walk().filter_map(TyOrConstInferVar::maybe_from_generic_arg),
                             );
                             ProcessResult::Unchanged
                         }
@@ -492,19 +490,20 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::ConstEquate(c1, c2) => {
+                    assert!(
+                        self.selcx.tcx().features().generic_const_exprs,
+                        "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
+                    );
                     debug!(?c1, ?c2, "equating consts");
-                    let tcx = self.selcx.tcx();
-                    if tcx.features().generic_const_exprs {
-                        // FIXME: we probably should only try to unify abstract constants
-                        // if the constants depend on generic parameters.
-                        //
-                        // Let's just see where this breaks :shrug:
-                        if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
-                            (c1.kind(), c2.kind())
-                        {
-                            if infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
-                                return ProcessResult::Changed(vec![]);
-                            }
+                    // FIXME: we probably should only try to unify abstract constants
+                    // if the constants depend on generic parameters.
+                    //
+                    // Let's just see where this breaks :shrug:
+                    if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
+                        (c1.kind(), c2.kind())
+                    {
+                        if infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
+                            return ProcessResult::Changed(vec![]);
                         }
                     }
 

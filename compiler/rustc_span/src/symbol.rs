@@ -451,6 +451,7 @@ symbols! {
         call_once,
         caller_location,
         capture_disjoint_fields,
+        cause,
         cdylib,
         ceilf32,
         ceilf64,
@@ -693,6 +694,7 @@ symbols! {
         export_name,
         expr,
         extended_key_value_attributes,
+        extended_varargs_abi_support,
         extern_absolute_paths,
         extern_crate_item_prelude,
         extern_crate_self,
@@ -812,6 +814,7 @@ symbols! {
         impl_lint_pass,
         impl_macros,
         impl_trait_in_bindings,
+        impl_trait_in_fn_trait_return,
         implied_by,
         import,
         import_name_type,
@@ -1897,6 +1900,13 @@ impl fmt::Debug for Symbol {
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_str(), f)
+    }
+}
+
+// takes advantage of `str::to_string` specialization
+impl ToString for Symbol {
+    fn to_string(&self) -> String {
+        self.as_str().to_string()
     }
 }
 

@@ -610,7 +610,13 @@ impl<'a> Linker for GccLinker<'a> {
         match strip {
             Strip::None => {}
             Strip::Debuginfo => {
-                self.linker_arg("--strip-debug");
+                // The illumos linker does not support --strip-debug although
+                // it does support --strip-all as a compatibility alias for -s.
+                // The --strip-debug case is handled by running an external
+                // `strip` utility as a separate step after linking.
+                if self.sess.target.os != "illumos" {
+                    self.linker_arg("--strip-debug");
+                }
             }
             Strip::Symbols => {
                 self.linker_arg("--strip-all");

@@ -1,3 +1,109 @@
+Version 1.65.0 (2022-11-03)
+==========================
+
+Language
+--------
+- [Error on `as` casts of enums with `#[non_exhaustive]` variants](https://github.com/rust-lang/rust/pull/92744/)
+- [Stabilize `let else`](https://github.com/rust-lang/rust/pull/93628/)
+- [Stabilize generic associated types (GATs)](https://github.com/rust-lang/rust/pull/96709/)
+- [Add lints `let_underscore_drop` and `let_underscore_lock` from Clippy](https://github.com/rust-lang/rust/pull/97739/)
+- [Stabilize `break`ing from arbitrary labeled blocks ("label-break-value")](https://github.com/rust-lang/rust/pull/99332/)
+- [Uninitialized integers, floats, and raw pointers are now considered immediate UB](https://github.com/rust-lang/rust/pull/98919/).
+  Usage of `MaybeUninit` is the correct way to work with uninitialized memory.
+- [Stabilize raw-dylib for Windows x86_64, aarch64, and thumbv7a](https://github.com/rust-lang/rust/pull/99916/)
+- [Do not allow `Drop` impl on foreign ADTs](https://github.com/rust-lang/rust/pull/99576/)
+
+Compiler
+--------
+- [Stabilize -Csplit-debuginfo on Linux](https://github.com/rust-lang/rust/pull/98051/)
+- [Use niche-filling optimization even when multiple variants have data](https://github.com/rust-lang/rust/pull/94075/)
+- [Associated type projections are now verified to be well-formed prior to resolving the underlying type](https://github.com/rust-lang/rust/pull/99217/#issuecomment-1209365630)
+- [Stringify non-shorthand visibility correctly](https://github.com/rust-lang/rust/pull/100350/)
+- [Normalize struct field types when unsizing](https://github.com/rust-lang/rust/pull/101831/)
+- [Update to LLVM 15](https://github.com/rust-lang/rust/pull/99464/)
+- [Fix aarch64 call abi to correctly zeroext when needed](https://github.com/rust-lang/rust/pull/97800/)
+- [debuginfo: Generalize C++-like encoding for enums](https://github.com/rust-lang/rust/pull/98393/)
+- [Add `special_module_name` lint](https://github.com/rust-lang/rust/pull/94467/)
+- [Add support for generating unique profraw files by default when using `-C instrument-coverage`](https://github.com/rust-lang/rust/pull/100384/)
+- [Allow dynamic linking for iOS/tvOS targets](https://github.com/rust-lang/rust/pull/100636/)
+
+New targets:
+
+- [Add armv4t-none-eabi as a tier 3 target](https://github.com/rust-lang/rust/pull/100244/)
+- [Add powerpc64-unknown-openbsd and riscv64-unknown-openbsd as tier 3 targets](https://github.com/rust-lang/rust/pull/101025/)
+  - Refer to Rust's [platform support page][platform-support-doc] for more
+    information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [Don't generate `PartialEq::ne` in derive(PartialEq)](https://github.com/rust-lang/rust/pull/98655/)
+- [Windows RNG: Use `BCRYPT_RNG_ALG_HANDLE` by default](https://github.com/rust-lang/rust/pull/101325/)
+- [Forbid mixing `System` with direct system allocator calls](https://github.com/rust-lang/rust/pull/101394/)
+- [Document no support for writing to non-blocking stdio/stderr](https://github.com/rust-lang/rust/pull/101416/)
+- [`std::layout::Layout` size must not overflow `isize::MAX` when rounded up to `align`](https://github.com/rust-lang/rust/pull/95295)
+  This also changes the safety conditions on `Layout::from_size_align_unchecked`.
+
+Stabilized APIs
+---------------
+
+- [`std::backtrace::Backtrace`](https://doc.rust-lang.org/stable/std/backtrace/struct.Backtrace.html)
+- [`Bound::as_ref`](https://doc.rust-lang.org/stable/std/ops/enum.Bound.html#method.as_ref)
+- [`std::io::read_to_string`](https://doc.rust-lang.org/stable/std/io/fn.read_to_string.html)
+- [`<*const T>::cast_mut`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.cast_mut)
+- [`<*mut T>::cast_const`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.cast_const)
+
+These APIs are now stable in const contexts:
+
+- [`<*const T>::offset_from`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.offset_from)
+- [`<*mut T>::offset_from`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.offset_from)
+
+Cargo
+-----
+
+- [Apply GitHub fast path even for partial hashes](https://github.com/rust-lang/cargo/pull/10807/)
+- [Do not add home bin path to PATH if it's already there](https://github.com/rust-lang/cargo/pull/11023/)
+- [Take priority into account within the pending queue](https://github.com/rust-lang/cargo/pull/11032/).
+  This slightly optimizes job scheduling by Cargo, with typically small improvements on larger crate graph builds.
+
+Compatibility Notes
+-------------------
+
+- [`std::layout::Layout` size must not overflow `isize::MAX` when rounded up to `align`](https://github.com/rust-lang/rust/pull/95295).
+  This also changes the safety conditions on `Layout::from_size_align_unchecked`.
+- [`PollFn` now only implements `Unpin` if the closure is `Unpin`](https://github.com/rust-lang/rust/pull/102737).
+  This is a possible breaking change if users were relying on the blanket unpin implementation.
+  See discussion on the PR for details of why this change was made.
+- [Drop ExactSizeIterator impl from std::char::EscapeAscii](https://github.com/rust-lang/rust/pull/99880)
+  This is a backwards-incompatible change to the standard library's surface
+  area, but is unlikely to affect real world usage.
+- [Do not consider a single repeated lifetime eligible for elision in the return type](https://github.com/rust-lang/rust/pull/103450)
+  This behavior was unintentionally changed in 1.64.0, and this release reverts that change by making this an error again.
+- [Reenable disabled early syntax gates as future-incompatibility lints](https://github.com/rust-lang/rust/pull/99935/)
+- [Update the minimum external LLVM to 13](https://github.com/rust-lang/rust/pull/100460/)
+- [Don't duplicate file descriptors into stdio fds](https://github.com/rust-lang/rust/pull/101426/)
+- [Sunset RLS](https://github.com/rust-lang/rust/pull/100863/)
+- [Deny usage of `#![cfg_attr(..., crate_type = ...)]` to set the crate type](https://github.com/rust-lang/rust/pull/99784/)
+  This strengthens the forward compatibility lint deprecated_cfg_attr_crate_type_name to deny.
+- [`llvm-has-rust-patches` allows setting the build system to treat the LLVM as having Rust-specific patches](https://github.com/rust-lang/rust/pull/101072)
+  This option may need to be set for distributions that are building Rust with a patched LLVM via `llvm-config`, not the built-in LLVM.
+- Combining three or more languages (e.g. Objective C, C++ and Rust) into one binary may hit linker limitations when using `lld`. For more information, see [issue 102754][102754].
+
+[102754]: https://github.com/rust-lang/rust/issues/102754
+
+Internal Changes
+----------------
+
+These changes do not affect any public interfaces of Rust, but they represent
+significant improvements to the performance or internals of rustc and related
+tools.
+
+- [Add `x.sh` and `x.ps1` shell scripts](https://github.com/rust-lang/rust/pull/99992/)
+- [compiletest: use target cfg instead of hard-coded tables](https://github.com/rust-lang/rust/pull/100260/)
+- [Use object instead of LLVM for reading bitcode from rlibs](https://github.com/rust-lang/rust/pull/98100/)
+- [Enable MIR inlining for optimized compilations](https://github.com/rust-lang/rust/pull/91743)
+  This provides a 3-10% improvement in compiletimes for real world crates. See [perf results](https://perf.rust-lang.org/compare.html?start=aedf78e56b2279cc869962feac5153b6ba7001ed&end=0075bb4fad68e64b6d1be06bf2db366c30bc75e1&stat=instructions:u).
+
 Version 1.64.0 (2022-09-22)
 ===========================
 

@@ -2,7 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, fmt, fs, process::Command};
+use std::{collections::VecDeque, fmt, fs, process::Command, sync::Arc};
 
 use anyhow::{format_err, Context, Result};
 use base_db::{
@@ -21,8 +21,8 @@ use crate::{
     cfg_flag::CfgFlag,
     rustc_cfg,
     sysroot::SysrootCrate,
-    utf8_stdout, CargoConfig, CargoWorkspace, ManifestPath, Package, ProjectJson, ProjectManifest,
-    Sysroot, TargetKind, WorkspaceBuildScripts,
+    utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath, Package,
+    ProjectJson, ProjectManifest, Sysroot, TargetKind, WorkspaceBuildScripts,
 };
 
 /// A set of cfg-overrides per crate.
@@ -209,6 +209,9 @@ impl ProjectWorkspace {
                     ),
                     None => None,
                 };
+                if let Some(sysroot) = &sysroot {
+                    tracing::info!(src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
+                }
 
                 let rustc_dir = match &config.rustc_source {
                     Some(RustcSource::Path(path)) => ManifestPath::try_from(path.clone()).ok(),
@@ -217,6 +220,9 @@ impl ProjectWorkspace {
                     }
                     None => None,
                 };
+                if let Some(rustc_dir) = &rustc_dir {
+                    tracing::info!(rustc_dir = %rustc_dir.display(), "Using rustc source");
+                }
 
                 let rustc = match rustc_dir {
                     Some(rustc_dir) => Some({
@@ -277,6 +283,9 @@ impl ProjectWorkspace {
             }
             (None, None) => None,
         };
+        if let Some(sysroot) = &sysroot {
+            tracing::info!(src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
+        }
 
         let rustc_cfg = rustc_cfg::get(None, target, extra_env);
         Ok(ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg })
@@ -294,6 +303,7 @@ impl ProjectWorkspace {
         Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
     }
 
+    /// Runs the build scripts for this [`ProjectWorkspace`].
     pub fn run_build_scripts(
         &self,
         config: &CargoConfig,
@@ -301,14 +311,61 @@ impl ProjectWorkspace {
     ) -> Result<WorkspaceBuildScripts> {
         match self {
             ProjectWorkspace::Cargo { cargo, toolchain, .. } => {
-                WorkspaceBuildScripts::run(config, cargo, progress, toolchain).with_context(|| {
-                    format!("Failed to run build scripts for {}", &cargo.workspace_root().display())
-                })
+                WorkspaceBuildScripts::run_for_workspace(config, cargo, progress, toolchain)
+                    .with_context(|| {
+                        format!(
+                            "Failed to run build scripts for {}",
+                            &cargo.workspace_root().display()
+                        )
+                    })
             }
             ProjectWorkspace::Json { .. } | ProjectWorkspace::DetachedFiles { .. } => {
                 Ok(WorkspaceBuildScripts::default())
             }
         }
+    }
+
+    /// Runs the build scripts for the given [`ProjectWorkspace`]s. Depending on the invocation
+    /// strategy this may run a single build process for all project workspaces.
+    pub fn run_all_build_scripts(
+        workspaces: &[ProjectWorkspace],
+        config: &CargoConfig,
+        progress: &dyn Fn(String),
+    ) -> Vec<Result<WorkspaceBuildScripts>> {
+        if matches!(config.invocation_strategy, InvocationStrategy::PerWorkspace)
+            || config.run_build_script_command.is_none()
+        {
+            return workspaces.iter().map(|it| it.run_build_scripts(config, progress)).collect();
+        }
+
+        let cargo_ws: Vec<_> = workspaces
+            .iter()
+            .filter_map(|it| match it {
+                ProjectWorkspace::Cargo { cargo, .. } => Some(cargo),
+                _ => None,
+            })
+            .collect();
+        let ref mut outputs = match WorkspaceBuildScripts::run_once(config, &cargo_ws, progress) {
+            Ok(it) => Ok(it.into_iter()),
+            // io::Error is not Clone?
+            Err(e) => Err(Arc::new(e)),
+        };
+
+        workspaces
+            .iter()
+            .map(|it| match it {
+                ProjectWorkspace::Cargo { cargo, .. } => match outputs {
+                    Ok(outputs) => Ok(outputs.next().unwrap()),
+                    Err(e) => Err(e.clone()).with_context(|| {
+                        format!(
+                            "Failed to run build scripts for {}",
+                            &cargo.workspace_root().display()
+                        )
+                    }),
+                },
+                _ => Ok(WorkspaceBuildScripts::default()),
+            })
+            .collect()
     }
 
     pub fn set_build_scripts(&mut self, bs: WorkspaceBuildScripts) {

@@ -5,6 +5,7 @@
 #![crate_name = "test_docs"]
 #![feature(rustdoc_internals)]
 #![feature(doc_cfg)]
+#![feature(associated_type_defaults)]
 
 /*!
 Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
@@ -316,6 +317,18 @@ pub mod details {
     /// <div>I'm the content of the details!</div>
     /// </details>
     pub struct Details;
+
+    impl Details {
+        /// We check the appearance of the `<details>`/`<summary>` in here.
+        ///
+        /// ## Hello
+        ///
+        /// <details>
+        /// <summary><h4>I'm a summary</h4></summary>
+        /// <div>I'm the content of the details!</div>
+        /// </details>
+        pub fn method() {}
+    }
 }
 
 pub mod doc_block_table {
@@ -386,3 +399,37 @@ impl TypeWithNoDocblocks {
 pub unsafe fn unsafe_fn() {}
 
 pub fn safe_fn() {}
+
+#[repr(C)]
+pub struct WithGenerics<T: TraitWithNoDocblocks, S = String, E = WhoLetTheDogOut, P = i8> {
+    s: S,
+    t: T,
+    e: E,
+    p: P,
+}
+
+pub const CONST: u8 = 0;
+
+pub trait TraitWithoutGenerics {
+    const C: u8 = CONST;
+    type T = SomeType;
+
+    fn foo();
+}
+
+pub mod trait_members {
+    pub trait TraitMembers {
+        /// Some type
+        type Type;
+        /// Some function
+        fn function();
+        /// Some other function
+        fn function2();
+    }
+    pub struct HasTrait;
+    impl TraitMembers for HasTrait {
+        type Type = u8;
+        fn function() {}
+        fn function2() {}
+    }
+}

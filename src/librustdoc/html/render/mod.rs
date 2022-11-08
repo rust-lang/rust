@@ -70,8 +70,8 @@ use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
     href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
-    print_default_space, print_generic_bounds, print_where_clause, Buffer, Ending, HrefError,
-    PrintWithSpace,
+    print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
+    Buffer, Ending, HrefError, PrintWithSpace,
 };
 use crate::html::highlight;
 use crate::html::markdown::{
@@ -747,11 +747,12 @@ fn assoc_const(
     extra: &str,
     cx: &Context<'_>,
 ) {
+    let tcx = cx.tcx();
     write!(
         w,
         "{extra}{vis}const <a{href} class=\"constant\">{name}</a>: {ty}",
         extra = extra,
-        vis = it.visibility.print_with_space(it.item_id, cx),
+        vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
         ty = ty.print(cx),
@@ -764,7 +765,7 @@ fn assoc_const(
         //        This hurts readability in this context especially when more complex expressions
         //        are involved and it doesn't add much of value.
         //        Find a way to print constants here without all that jazz.
-        write!(w, "{}", Escape(&default.value(cx.tcx()).unwrap_or_else(|| default.expr(cx.tcx()))));
+        write!(w, "{}", Escape(&default.value(tcx).unwrap_or_else(|| default.expr(tcx))));
     }
 }
 
@@ -805,14 +806,15 @@ fn assoc_method(
     cx: &Context<'_>,
     render_mode: RenderMode,
 ) {
-    let header = meth.fn_header(cx.tcx()).expect("Trying to get header from a non-function item");
+    let tcx = cx.tcx();
+    let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
     let name = meth.name.as_ref().unwrap();
-    let vis = meth.visibility.print_with_space(meth.item_id, cx).to_string();
+    let vis = visibility_print_with_space(meth.visibility(tcx), meth.item_id, cx).to_string();
     // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
         RenderMode::Normal => {
-            print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()))
+            print_constness_with_space(&header.constness, meth.const_stability(tcx))
         }
         RenderMode::ForDeref { .. } => "",
     };
@@ -1276,6 +1278,15 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
 
     if let Some((did, ty)) = decl.output.as_return().and_then(|t| Some((t.def_id(cx.cache())?, t)))
     {
+        // Box has pass-through impls for Read, Write, Iterator, and Future when the
+        // boxed type implements one of those. We don't want to treat every Box return
+        // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
+        // issue, with a pass-through impl for Future.
+        if Some(did) == cx.tcx().lang_items().owned_box()
+            || Some(did) == cx.tcx().lang_items().pin_type()
+        {
+            return "".to_string();
+        }
         if let Some(impls) = cx.cache().impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
@@ -1884,7 +1895,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     if !it.is_mod() {
         let path: String = cx.current.iter().map(|s| s.as_str()).intersperse("::").collect();
 
-        write!(buffer, "<h2 class=\"location\"><a href=\"index.html\">In {}</a></h2>", path);
+        write!(buffer, "<h2><a href=\"index.html\">In {}</a></h2>", path);
     }
 
     // Closes sidebar-elems div.
@@ -2259,13 +2270,7 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
 }
 
 fn print_sidebar_title(buf: &mut Buffer, id: &str, title: &str) {
-    write!(
-        buf,
-        "<h3 class=\"sidebar-title\">\
-             <a href=\"#{}\">{}</a>\
-         </h3>",
-        id, title
-    );
+    write!(buf, "<h3><a href=\"#{}\">{}</a></h3>", id, title);
 }
 
 fn print_sidebar_block(
@@ -2866,10 +2871,6 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
         }
 
-        if needs_expansion {
-            write!(w, r#"<span class="expand">&varr;</span>"#);
-        }
-
         // Look for the example file in the source map if it exists, otherwise return a dummy span
         let file_span = (|| {
             let source_map = tcx.sess.source_map();
@@ -2903,7 +2904,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             cx,
             &root_path,
             highlight::DecorationInfo(decoration_info),
-            sources::SourceContext::Embedded { offset: line_min },
+            sources::SourceContext::Embedded { offset: line_min, needs_expansion },
         );
         write!(w, "</div></div>");
 

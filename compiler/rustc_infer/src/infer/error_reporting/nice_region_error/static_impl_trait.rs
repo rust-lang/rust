@@ -4,7 +4,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
@@ -236,7 +236,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
             // lifetime as above, but called using a fully-qualified path to the method:
             // `Foo::qux(bar)`.
-            let mut v = TraitObjectVisitor(FxHashSet::default());
+            let mut v = TraitObjectVisitor(FxIndexSet::default());
             v.visit_ty(param.param_ty);
             if let Some((ident, self_ty)) =
                 self.get_impl_ident_and_self_ty_from_trait(item_def_id, &v.0)
@@ -286,8 +286,8 @@ pub fn suggest_new_region_bound(
 ) {
     debug!("try_report_static_impl_trait: fn_return={:?}", fn_returns);
     // FIXME: account for the need of parens in `&(dyn Trait + '_)`
-    let consider = "consider changing the";
-    let declare = "to declare that the";
+    let consider = "consider changing";
+    let declare = "to declare that";
     let explicit = format!("you can add an explicit `{}` lifetime bound", lifetime_name);
     let explicit_static =
         arg.map(|arg| format!("explicit `'static` bound to the lifetime of {}", arg));
@@ -305,6 +305,10 @@ pub fn suggest_new_region_bound(
                     return;
                 };
 
+                // Get the identity type for this RPIT
+                let did = item_id.owner_id.to_def_id();
+                let ty = tcx.mk_opaque(did, ty::InternalSubsts::identity_for_item(tcx, did));
+
                 if let Some(span) = opaque
                     .bounds
                     .iter()
@@ -321,7 +325,7 @@ pub fn suggest_new_region_bound(
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
                             span,
-                            &format!("{} `impl Trait`'s {}", consider, explicit_static),
+                            &format!("{consider} `{ty}`'s {explicit_static}"),
                             &lifetime_name,
                             Applicability::MaybeIncorrect,
                         );
@@ -351,12 +355,7 @@ pub fn suggest_new_region_bound(
                 } else {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
-                        &format!(
-                            "{declare} `impl Trait` {captures}, {explicit}",
-                            declare = declare,
-                            captures = captures,
-                            explicit = explicit,
-                        ),
+                        &format!("{declare} `{ty}` {captures}, {explicit}",),
                         &plus_lt,
                         Applicability::MaybeIncorrect,
                     );
@@ -367,7 +366,7 @@ pub fn suggest_new_region_bound(
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
                         &format!(
-                            "{declare} trait object {captures}, {explicit}",
+                            "{declare} the trait object {captures}, {explicit}",
                             declare = declare,
                             captures = captures,
                             explicit = explicit,
@@ -384,7 +383,7 @@ pub fn suggest_new_region_bound(
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
                             lt.span,
-                            &format!("{} trait object's {}", consider, explicit_static),
+                            &format!("{} the trait object's {}", consider, explicit_static),
                             &lifetime_name,
                             Applicability::MaybeIncorrect,
                         );
@@ -409,7 +408,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     fn get_impl_ident_and_self_ty_from_trait(
         &self,
         def_id: DefId,
-        trait_objects: &FxHashSet<DefId>,
+        trait_objects: &FxIndexSet<DefId>,
     ) -> Option<(Ident, &'tcx hir::Ty<'tcx>)> {
         let tcx = self.tcx();
         match tcx.hir().get_if_local(def_id) {
@@ -491,7 +490,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             return false;
         };
 
-        let mut v = TraitObjectVisitor(FxHashSet::default());
+        let mut v = TraitObjectVisitor(FxIndexSet::default());
         v.visit_ty(ty);
 
         // Get the `Ident` of the method being called and the corresponding `impl` (to point at
@@ -507,7 +506,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
         err: &mut Diagnostic,
-        found_dids: &FxHashSet<DefId>,
+        found_dids: &FxIndexSet<DefId>,
         ident: Ident,
         self_ty: &hir::Ty<'_>,
     ) -> bool {
@@ -539,7 +538,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 }
 
 /// Collect all the trait objects in a type that could have received an implicit `'static` lifetime.
-pub struct TraitObjectVisitor(pub FxHashSet<DefId>);
+pub struct TraitObjectVisitor(pub FxIndexSet<DefId>);
 
 impl<'tcx> TypeVisitor<'tcx> for TraitObjectVisitor {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

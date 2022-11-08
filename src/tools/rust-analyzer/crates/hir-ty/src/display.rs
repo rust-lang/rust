@@ -289,16 +289,18 @@ impl HirDisplay for ProjectionTy {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
-        let trait_ = f.db.trait_data(self.trait_(f.db));
+        let trait_ref = self.trait_ref(f.db);
         write!(f, "<")?;
-        self.self_type_parameter(Interner).hir_fmt(f)?;
-        write!(f, " as {}", trait_.name)?;
-        if self.substitution.len(Interner) > 1 {
+        fmt_trait_ref(&trait_ref, f, true)?;
+        write!(f, ">::{}", f.db.type_alias_data(from_assoc_type_id(self.associated_ty_id)).name)?;
+        let proj_params_count =
+            self.substitution.len(Interner) - trait_ref.substitution.len(Interner);
+        let proj_params = &self.substitution.as_slice(Interner)[..proj_params_count];
+        if !proj_params.is_empty() {
             write!(f, "<")?;
-            f.write_joined(&self.substitution.as_slice(Interner)[1..], ", ")?;
+            f.write_joined(proj_params, ", ")?;
             write!(f, ">")?;
         }
-        write!(f, ">::{}", f.db.type_alias_data(from_assoc_type_id(self.associated_ty_id)).name)?;
         Ok(())
     }
 }
@@ -641,9 +643,12 @@ impl HirDisplay for Ty {
                 // Use placeholder associated types when the target is test (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
                 if f.display_target.is_test() {
                     write!(f, "{}::{}", trait_.name, type_alias_data.name)?;
+                    // Note that the generic args for the associated type come before those for the
+                    // trait (including the self type).
+                    // FIXME: reconsider the generic args order upon formatting?
                     if parameters.len(Interner) > 0 {
                         write!(f, "<")?;
-                        f.write_joined(&*parameters.as_slice(Interner), ", ")?;
+                        f.write_joined(parameters.as_slice(Interner), ", ")?;
                         write!(f, ">")?;
                     }
                 } else {
@@ -731,7 +736,7 @@ impl HirDisplay for Ty {
                                         WhereClause::AliasEq(AliasEq {
                                             alias: AliasTy::Projection(proj),
                                             ty: _,
-                                        }) => &proj.self_type_parameter(Interner) == self,
+                                        }) => &proj.self_type_parameter(f.db) == self,
                                         _ => false,
                                     })
                                     .collect::<Vec<_>>();
@@ -751,9 +756,19 @@ impl HirDisplay for Ty {
             }
             TyKind::BoundVar(idx) => idx.hir_fmt(f)?,
             TyKind::Dyn(dyn_ty) => {
+                // Reorder bounds to satisfy `write_bounds_like_dyn_trait()`'s expectation.
+                // FIXME: `Iterator::partition_in_place()` or `Vec::drain_filter()` may make it
+                // more efficient when either of them hits stable.
+                let mut bounds: SmallVec<[_; 4]> =
+                    dyn_ty.bounds.skip_binders().iter(Interner).cloned().collect();
+                let (auto_traits, others): (SmallVec<[_; 4]>, _) =
+                    bounds.drain(1..).partition(|b| b.skip_binders().trait_id().is_some());
+                bounds.extend(others);
+                bounds.extend(auto_traits);
+
                 write_bounds_like_dyn_trait_with_prefix(
                     "dyn",
-                    dyn_ty.bounds.skip_binders().interned(),
+                    &bounds,
                     SizedByDefault::NotSized,
                     f,
                 )?;
@@ -962,9 +977,20 @@ fn write_bounds_like_dyn_trait(
                     angle_open = true;
                 }
                 if let AliasTy::Projection(proj) = alias {
-                    let type_alias =
-                        f.db.type_alias_data(from_assoc_type_id(proj.associated_ty_id));
-                    write!(f, "{} = ", type_alias.name)?;
+                    let assoc_ty_id = from_assoc_type_id(proj.associated_ty_id);
+                    let type_alias = f.db.type_alias_data(assoc_ty_id);
+                    write!(f, "{}", type_alias.name)?;
+
+                    let proj_arg_count = generics(f.db.upcast(), assoc_ty_id.into()).len_self();
+                    if proj_arg_count > 0 {
+                        write!(f, "<")?;
+                        f.write_joined(
+                            &proj.substitution.as_slice(Interner)[..proj_arg_count],
+                            ", ",
+                        )?;
+                        write!(f, ">")?;
+                    }
+                    write!(f, " = ")?;
                 }
                 ty.hir_fmt(f)?;
             }

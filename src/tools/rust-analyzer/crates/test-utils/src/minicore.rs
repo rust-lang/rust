@@ -8,36 +8,36 @@
 //! We then strip all the code marked with other flags.
 //!
 //! Available flags:
-//!     sized:
-//!     unsize: sized
-//!     coerce_unsized: unsize
-//!     slice:
-//!     range:
-//!     deref: sized
-//!     deref_mut: deref
-//!     index: sized
-//!     fn:
-//!     try:
-//!     pin:
-//!     future: pin
-//!     option:
-//!     result:
-//!     iterator: option
-//!     iterators: iterator, fn
-//!     default: sized
-//!     hash:
-//!     clone: sized
-//!     copy: clone
-//!     from: sized
-//!     eq: sized
-//!     ord: eq, option
-//!     derive:
-//!     fmt: result
-//!     bool_impl: option, fn
 //!     add:
 //!     as_ref: sized
+//!     bool_impl: option, fn
+//!     clone: sized
+//!     coerce_unsized: unsize
+//!     copy: clone
+//!     default: sized
+//!     deref_mut: deref
+//!     deref: sized
+//!     derive:
 //!     drop:
+//!     eq: sized
+//!     fmt: result
+//!     fn:
+//!     from: sized
+//!     future: pin
 //!     generator: pin
+//!     hash:
+//!     index: sized
+//!     iterator: option
+//!     iterators: iterator, fn
+//!     option:
+//!     ord: eq, option
+//!     pin:
+//!     range:
+//!     result:
+//!     sized:
+//!     slice:
+//!     try:
+//!     unsize: sized
 
 pub mod marker {
     // region:sized
@@ -584,7 +584,7 @@ pub mod iter {
             }
         }
     }
-    pub use self::adapters::{Take, FilterMap};
+    pub use self::adapters::{FilterMap, Take};
 
     mod sources {
         mod repeat {

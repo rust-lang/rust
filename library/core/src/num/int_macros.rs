@@ -869,7 +869,7 @@ macro_rules! int_impl {
             // Deal with the final bit of the exponent separately, since
             // squaring the base afterwards is not necessary and may cause a
             // needless overflow.
-            Some(try_opt!(acc.checked_mul(base)))
+            acc.checked_mul(base)
         }
 
         /// Saturating integer addition. Computes `self + rhs`, saturating at the numeric

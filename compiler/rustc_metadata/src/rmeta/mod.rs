@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
-use rustc_hir::lang_items;
+use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::{BitSet, FiniteBitSet};
 use rustc_index::vec::IndexVec;
 use rustc_middle::metadata::ModChild;
@@ -23,7 +23,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ReprOptions, Ty};
-use rustc_middle::ty::{GeneratorDiagnosticData, ParameterizedOverTcx, TyCtxt};
+use rustc_middle::ty::{DeducedParamAttrs, GeneratorDiagnosticData, ParameterizedOverTcx, TyCtxt};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
@@ -223,6 +223,7 @@ pub(crate) struct CrateRoot {
     panic_in_drop_strategy: PanicStrategy,
     edition: Edition,
     has_global_allocator: bool,
+    has_alloc_error_handler: bool,
     has_panic_handler: bool,
     has_default_lib_allocator: bool,
 
@@ -230,8 +231,8 @@ pub(crate) struct CrateRoot {
     dylib_dependency_formats: LazyArray<Option<LinkagePreference>>,
     lib_features: LazyArray<(Symbol, Option<Symbol>)>,
     stability_implications: LazyArray<(Symbol, Symbol)>,
-    lang_items: LazyArray<(DefIndex, usize)>,
-    lang_items_missing: LazyArray<lang_items::LangItem>,
+    lang_items: LazyArray<(DefIndex, LangItem)>,
+    lang_items_missing: LazyArray<LangItem>,
     diagnostic_items: LazyArray<(Symbol, DefIndex)>,
     native_libraries: LazyArray<NativeLib>,
     foreign_modules: LazyArray<ForeignModule>,
@@ -402,6 +403,7 @@ define_tables! {
     macro_definition: Table<DefIndex, LazyValue<ast::MacArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
+    deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,
 
     trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, Ty<'static>>>>,
 }

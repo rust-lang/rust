@@ -11,10 +11,6 @@ note: the trait `ConstDefaultFn` is implemented for `NonConstImpl`, but that imp
    |
 LL |     NonConstImpl.a();
    |     ^^^^^^^^^^^^
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | const fn test() where NonConstImpl: ~const ConstDefaultFn {
-   |                 +++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

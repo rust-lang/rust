@@ -17,6 +17,7 @@ use rustc_middle::mir::{self, AssertKind, SwitchTargets};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitable};
+use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_symbol_mangling::typeid::typeid_for_fnabi;
@@ -63,7 +64,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
     }
 
-    fn lltarget<Bx: BuilderMethods<'a, 'tcx>>(
+    /// Get a basic block (creating it if necessary), possibly with a landing
+    /// pad next to it.
+    fn llbb_with_landing_pad<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
@@ -73,32 +76,36 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         let target_funclet = fx.cleanup_kinds[target].funclet_bb(target);
         match (self.funclet_bb, target_funclet) {
             (None, None) => (lltarget, false),
-            (Some(f), Some(t_f)) if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) => {
-                (lltarget, false)
-            }
             // jump *into* cleanup - need a landing pad if GNU, cleanup pad if MSVC
             (None, Some(_)) => (fx.landing_pad_for(target), false),
             (Some(_), None) => span_bug!(span, "{:?} - jump out of cleanup?", self.terminator),
-            (Some(_), Some(_)) => (fx.landing_pad_for(target), true),
+            (Some(f), Some(t_f)) => {
+                if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) {
+                    (lltarget, false)
+                } else {
+                    (fx.landing_pad_for(target), true)
+                }
+            }
         }
     }
 
-    /// Create a basic block.
-    fn llblock<Bx: BuilderMethods<'a, 'tcx>>(
+    /// Get a basic block (creating it if necessary), possibly with cleanup
+    /// stuff in it or next to it.
+    fn llbb_with_cleanup<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> Bx::BasicBlock {
-        let (lltarget, is_cleanupret) = self.lltarget(fx, target);
+        let (lltarget, is_cleanupret) = self.llbb_with_landing_pad(fx, target);
         if is_cleanupret {
             // MSVC cross-funclet jump - need a trampoline
-
-            debug!("llblock: creating cleanup trampoline for {:?}", target);
+            debug_assert!(base::wants_msvc_seh(fx.cx.tcx().sess));
+            debug!("llbb_with_cleanup: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
-            let trampoline = Bx::append_block(fx.cx, fx.llfn, name);
-            let mut trampoline_bx = Bx::build(fx.cx, trampoline);
+            let trampoline_llbb = Bx::append_block(fx.cx, fx.llfn, name);
+            let mut trampoline_bx = Bx::build(fx.cx, trampoline_llbb);
             trampoline_bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
-            trampoline
+            trampoline_llbb
         } else {
             lltarget
         }
@@ -110,10 +117,11 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         bx: &mut Bx,
         target: mir::BasicBlock,
     ) {
-        let (lltarget, is_cleanupret) = self.lltarget(fx, target);
+        let (lltarget, is_cleanupret) = self.llbb_with_landing_pad(fx, target);
         if is_cleanupret {
-            // micro-optimization: generate a `ret` rather than a jump
+            // MSVC micro-optimization: generate a `ret` rather than a jump
             // to a trampoline.
+            debug_assert!(base::wants_msvc_seh(fx.cx.tcx().sess));
             bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
         } else {
             bx.br(lltarget);
@@ -138,7 +146,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
         let unwind_block = if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
-            Some(self.llblock(fx, cleanup))
+            Some(self.llbb_with_cleanup(fx, cleanup))
         } else if fx.mir[self.bb].is_cleanup
             && fn_abi.can_unwind
             && !base::wants_msvc_seh(fx.cx.tcx().sess)
@@ -231,7 +239,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 options,
                 line_spans,
                 instance,
-                Some((ret_llbb, self.llblock(fx, cleanup), self.funclet(fx))),
+                Some((ret_llbb, self.llbb_with_cleanup(fx, cleanup), self.funclet(fx))),
             );
         } else {
             bx.codegen_inline_asm(template, &operands, options, line_spans, instance, None);
@@ -279,12 +287,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         assert_eq!(discr.layout.ty, switch_ty);
         let mut target_iter = targets.iter();
         if target_iter.len() == 1 {
-            // If there are two targets (one conditional, one fallback), emit br instead of switch
+            // If there are two targets (one conditional, one fallback), emit `br` instead of
+            // `switch`.
             let (test_value, target) = target_iter.next().unwrap();
-            let lltrue = helper.llblock(self, target);
-            let llfalse = helper.llblock(self, targets.otherwise());
+            let lltrue = helper.llbb_with_cleanup(self, target);
+            let llfalse = helper.llbb_with_cleanup(self, targets.otherwise());
             if switch_ty == bx.tcx().types.bool {
-                // Don't generate trivial icmps when switching on bool
+                // Don't generate trivial icmps when switching on bool.
                 match test_value {
                     0 => bx.cond_br(discr.immediate(), llfalse, lltrue),
                     1 => bx.cond_br(discr.immediate(), lltrue, llfalse),
@@ -296,11 +305,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
                 bx.cond_br(cmp, lltrue, llfalse);
             }
+        } else if self.cx.sess().opts.optimize == OptLevel::No
+            && target_iter.len() == 2
+            && self.mir[targets.otherwise()].is_empty_unreachable()
+        {
+            // In unoptimized builds, if there are two normal targets and the `otherwise` target is
+            // an unreachable BB, emit `br` instead of `switch`. This leaves behind the unreachable
+            // BB, which will usually (but not always) be dead code.
+            //
+            // Why only in unoptimized builds?
+            // - In unoptimized builds LLVM uses FastISel which does not support switches, so it
+            //   must fall back to the to the slower SelectionDAG isel. Therefore, using `br` gives
+            //   significant compile time speedups for unoptimized builds.
+            // - In optimized builds the above doesn't hold, and using `br` sometimes results in
+            //   worse generated code because LLVM can no longer tell that the value being switched
+            //   on can only have two values, e.g. 0 and 1.
+            //
+            let (test_value1, target1) = target_iter.next().unwrap();
+            let (_test_value2, target2) = target_iter.next().unwrap();
+            let ll1 = helper.llbb_with_cleanup(self, target1);
+            let ll2 = helper.llbb_with_cleanup(self, target2);
+            let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
+            let llval = bx.const_uint_big(switch_llty, test_value1);
+            let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
+            bx.cond_br(cmp, ll1, ll2);
         } else {
             bx.switch(
                 discr.immediate(),
-                helper.llblock(self, targets.otherwise()),
-                target_iter.map(|(value, target)| (value, helper.llblock(self, target))),
+                helper.llbb_with_cleanup(self, targets.otherwise()),
+                target_iter.map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
             );
         }
     }
@@ -530,7 +563,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cond = bx.expect(cond, expected);
 
         // Create the failure block and the conditional branch to it.
-        let lltarget = helper.llblock(self, target);
+        let lltarget = helper.llbb_with_cleanup(self, target);
         let panic_block = bx.append_sibling_block("panic");
         if expected {
             bx.cond_br(cond, lltarget, panic_block);
@@ -1459,20 +1492,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //          bar();
                 //      }
                 Some(&mir::TerminatorKind::Abort) => {
-                    let cs_bb =
+                    let cs_llbb =
                         Bx::append_block(self.cx, self.llfn, &format!("cs_funclet{:?}", bb));
-                    let cp_bb =
+                    let cp_llbb =
                         Bx::append_block(self.cx, self.llfn, &format!("cp_funclet{:?}", bb));
-                    ret_llbb = cs_bb;
+                    ret_llbb = cs_llbb;
 
-                    let mut cs_bx = Bx::build(self.cx, cs_bb);
-                    let cs = cs_bx.catch_switch(None, None, &[cp_bb]);
+                    let mut cs_bx = Bx::build(self.cx, cs_llbb);
+                    let cs = cs_bx.catch_switch(None, None, &[cp_llbb]);
 
                     // The "null" here is actually a RTTI type descriptor for the
                     // C++ personality function, but `catch (...)` has no type so
                     // it's null. The 64 here is actually a bitfield which
                     // represents that this is a catch-all block.
-                    let mut cp_bx = Bx::build(self.cx, cp_bb);
+                    let mut cp_bx = Bx::build(self.cx, cp_llbb);
                     let null = cp_bx.const_null(
                         cp_bx.type_i8p_ext(cp_bx.cx().data_layout().instruction_address_space),
                     );
@@ -1481,10 +1514,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     cp_bx.br(llbb);
                 }
                 _ => {
-                    let cleanup_bb =
+                    let cleanup_llbb =
                         Bx::append_block(self.cx, self.llfn, &format!("funclet_{:?}", bb));
-                    ret_llbb = cleanup_bb;
-                    let mut cleanup_bx = Bx::build(self.cx, cleanup_bb);
+                    ret_llbb = cleanup_llbb;
+                    let mut cleanup_bx = Bx::build(self.cx, cleanup_llbb);
                     funclet = cleanup_bx.cleanup_pad(None, &[]);
                     cleanup_bx.br(llbb);
                 }
@@ -1492,19 +1525,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.funclets[bb] = Some(funclet);
             ret_llbb
         } else {
-            let bb = Bx::append_block(self.cx, self.llfn, "cleanup");
-            let mut bx = Bx::build(self.cx, bb);
+            let cleanup_llbb = Bx::append_block(self.cx, self.llfn, "cleanup");
+            let mut cleanup_bx = Bx::build(self.cx, cleanup_llbb);
 
             let llpersonality = self.cx.eh_personality();
             let llretty = self.landing_pad_type();
-            let lp = bx.cleanup_landing_pad(llretty, llpersonality);
+            let lp = cleanup_bx.cleanup_landing_pad(llretty, llpersonality);
 
-            let slot = self.get_personality_slot(&mut bx);
-            slot.storage_live(&mut bx);
-            Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
+            let slot = self.get_personality_slot(&mut cleanup_bx);
+            slot.storage_live(&mut cleanup_bx);
+            Pair(cleanup_bx.extract_value(lp, 0), cleanup_bx.extract_value(lp, 1))
+                .store(&mut cleanup_bx, slot);
 
-            bx.br(llbb);
-            bx.llbb()
+            cleanup_bx.br(llbb);
+            cleanup_llbb
         }
     }
 

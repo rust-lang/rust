@@ -596,8 +596,8 @@ pub(crate) fn report_cycle<'a>(
     cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
 }
 
-pub fn print_query_stack<CTX: QueryContext>(
-    tcx: CTX,
+pub fn print_query_stack<Qcx: QueryContext>(
+    qcx: Qcx,
     mut current_query: Option<QueryJobId>,
     handler: &Handler,
     num_frames: Option<usize>,
@@ -606,7 +606,7 @@ pub fn print_query_stack<CTX: QueryContext>(
     // a panic hook, which means that the global `Handler` may be in a weird
     // state if it was responsible for triggering the panic.
     let mut i = 0;
-    let query_map = tcx.try_collect_active_jobs();
+    let query_map = qcx.try_collect_active_jobs();
 
     while let Some(query) = current_query {
         if Some(i) == num_frames {

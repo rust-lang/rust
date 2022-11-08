@@ -837,24 +837,14 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
             }
         }
 
-        fn visit_ty_unevaluated(
-            &mut self,
-            uv: ty::UnevaluatedConst<'tcx>,
-        ) -> ControlFlow<Self::BreakTy> {
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             // Constants can only influence object safety if they reference `Self`.
             // This is only possible for unevaluated constants, so we walk these here.
             //
-            // If `AbstractConst::new` returned an error we already failed compilation
+            // If `AbstractConst::from_const` returned an error we already failed compilation
             // so we don't have to emit an additional error here.
-            //
-            // We currently recurse into abstract consts here but do not recurse in
-            // `is_const_evaluatable`. This means that the object safety check is more
-            // liberal than the const eval check.
-            //
-            // This shouldn't really matter though as we can't really use any
-            // constants which are not considered const evaluatable.
             use rustc_middle::ty::abstract_const::Node;
-            if let Ok(Some(ct)) = AbstractConst::new(self.tcx, uv) {
+            if let Ok(Some(ct)) = AbstractConst::from_const(self.tcx, ct) {
                 walk_abstract_const(self.tcx, ct, |node| match node.root(self.tcx) {
                     Node::Leaf(leaf) => self.visit_const(leaf),
                     Node::Cast(_, _, ty) => self.visit_ty(ty),
@@ -863,7 +853,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
                     }
                 })
             } else {
-                ControlFlow::CONTINUE
+                ct.super_visit_with(self)
             }
         }
     }

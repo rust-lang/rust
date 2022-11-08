@@ -33,6 +33,7 @@
 	--sidebar-link-color: #356da4;
 	--sidebar-current-link-background-color: #fff;
 	--search-result-link-focus-background-color: #ccc;
+	--search-result-border-color: #aaa3;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--search-color: #000;
@@ -50,6 +51,14 @@
 	--code-highlight-question-mark-color: #ff9011;
 	--code-highlight-comment-color: #8e908c;
 	--code-highlight-doc-comment-color: #4d4d4c;
+	--example-line-numbers-border-color: #c7c7c7;
+	--src-line-numbers-span-color: #c67e2d;
+	--src-line-number-highlighted-background-color: #fdffd3;
+	--test-arrow-color: #f5f5f5;
+	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
+	--test-arrow-hover-color: #f5f5f5;
+	--test-arrow-hover-background-color: #4e8bca;
+	--rust-logo-filter: initial;
 }
 
 .slider {
@@ -60,17 +69,6 @@
 }
 input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
-}
-
-.rust-logo {
-	/* This rule exists to force other themes to explicitly style the logo.
-	 * Rustdoc has a custom linter for this purpose.
-	 */
-}
-
-.src-line-numbers span { color: #c67e2d; }
-.src-line-numbers .line-highlighted {
-	background-color: #FDFFD3 !important;
 }
 
 .content .item-info::before { color: #ccc; }
@@ -88,21 +86,6 @@ body.source .example-wrap pre.rust a {
 }
 #crate-search-div:hover::after, #crate-search-div:focus-within::after {
 	filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg) brightness(96%) contrast(93%);
-}
-
-.src-line-numbers :target { background-color: transparent; }
-
-pre.example-line-numbers {
-	border-color: #c7c7c7;
-}
-
-a.test-arrow {
-	color: #f5f5f5;
-	background-color: rgba(78, 139, 202, 0.2);
-}
-
-a.test-arrow:hover{
-	background-color: #4e8bca;
 }
 
 :target {

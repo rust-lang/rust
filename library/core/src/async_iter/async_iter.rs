@@ -2,7 +2,7 @@ use crate::ops::DerefMut;
 use crate::pin::Pin;
 use crate::task::{Context, Poll};
 
-/// An interface for dealing with asynchronous iterators.
+/// A trait for dealing with asynchronous iterators.
 ///
 /// This is the main async iterator trait. For more about the concept of async iterators
 /// generally, please see the [module-level documentation]. In particular, you

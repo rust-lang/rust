@@ -452,7 +452,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "isatty" => {
                 let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.isatty(fd)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pthread_atfork" => {
                 let [prepare, parent, child] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;

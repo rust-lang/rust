@@ -45,7 +45,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
 
     if let Some(file_id) = file_id {
         format_to!(buf, "\nFile info:\n");
-        let crates = crate::parent_module::crate_for(db, file_id);
+        let crates = crate::parent_module::crates_for(db, file_id);
         if crates.is_empty() {
             format_to!(buf, "Does not belong to any crate");
         }

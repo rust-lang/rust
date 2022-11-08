@@ -479,7 +479,9 @@ It is not cheap enough to enable in prod, and this is a bug which should be fixe
 ### Configurability
 
 rust-analyzer strives to be as configurable as possible while offering reasonable defaults where no configuration exists yet.
+The rule of thumb is to enable most features by default unless they are buggy or degrade performance too much.
 There will always be features that some people find more annoying than helpful, so giving the users the ability to tweak or disable these is a big part of offering a good user experience.
+Enabling them by default is a matter of discoverability, as many users end up don't know about some features even though they are presented in the manual.
 Mind the code--architecture gap: at the moment, we are using fewer feature flags than we really should.
 
 ### Serialization

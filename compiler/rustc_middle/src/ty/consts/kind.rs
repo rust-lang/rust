@@ -5,6 +5,7 @@ use crate::mir::interpret::{AllocId, ConstValue, Scalar};
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
 use crate::ty::{self, TyCtxt, TypeVisitable};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
@@ -14,7 +15,7 @@ use super::ScalarInt;
 
 /// An unevaluated (potentially generic) constant used in the type-system.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
-#[derive(Hash, HashStable)]
+#[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: ty::WithOptConstParam<DefId>,
     pub substs: SubstsRef<'tcx>,
@@ -68,7 +69,7 @@ pub enum ConstKind<'tcx> {
 
     /// A placeholder for a const which could not be computed; this is
     /// propagated to avoid useless error messages.
-    Error(ty::DelaySpanBugEmitted),
+    Error(ErrorGuaranteed),
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -108,12 +109,20 @@ impl<'tcx> ConstKind<'tcx> {
 
 /// An inference variable for a const, for use in const generics.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable)]
 pub enum InferConst<'tcx> {
     /// Infer the value of the const.
     Var(ty::ConstVid<'tcx>),
     /// A fresh const variable. See `infer::freshen` for more details.
     Fresh(u32),
+}
+
+impl<CTX> HashStable<CTX> for InferConst<'_> {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        match self {
+            InferConst::Var(_) => panic!("const variables should not be hashed: {self:?}"),
+            InferConst::Fresh(i) => i.hash_stable(hcx, hasher),
+        }
+    }
 }
 
 enum EvalMode {

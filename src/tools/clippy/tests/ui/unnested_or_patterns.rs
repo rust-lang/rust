@@ -1,9 +1,9 @@
 // run-rustfix
 
-#![feature(box_patterns)]
+#![feature(box_patterns, custom_inner_attributes)]
 #![warn(clippy::unnested_or_patterns)]
 #![allow(clippy::cognitive_complexity, clippy::match_ref_pats, clippy::upper_case_acronyms)]
-#![allow(unreachable_patterns, irrefutable_let_patterns, unused_variables)]
+#![allow(unreachable_patterns, irrefutable_let_patterns, unused)]
 
 fn main() {
     // Should be ignored by this lint, as nesting requires more characters.
@@ -32,4 +32,16 @@ fn main() {
     }
     if let S { x: 0, y } | S { y, x: 1 } = (S { x: 0, y: 1 }) {}
     if let S { x: 0, y, .. } | S { y, x: 1 } = (S { x: 0, y: 1 }) {}
+}
+
+fn msrv_1_52() {
+    #![clippy::msrv = "1.52"]
+
+    if let [1] | [52] = [0] {}
+}
+
+fn msrv_1_53() {
+    #![clippy::msrv = "1.53"]
+
+    if let [1] | [53] = [0] {}
 }

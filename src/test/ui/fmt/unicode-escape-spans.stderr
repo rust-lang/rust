@@ -1,0 +1,63 @@
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/unicode-escape-spans.rs:3:25
+   |
+LL |     format!("\u{000041}{a}");
+   |                         ^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/unicode-escape-spans.rs:4:23
+   |
+LL |     format!("\u{0041}{a}");
+   |                       ^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/unicode-escape-spans.rs:5:21
+   |
+LL |     format!("\u{41}{a}");
+   |                     ^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/unicode-escape-spans.rs:6:20
+   |
+LL |     format!("\u{0}{a}");
+   |                    ^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/unicode-escape-spans.rs:9:22
+   |
+LL |     format!("\u{0df}{a}");
+   |                      ^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/unicode-escape-spans.rs:10:21
+   |
+LL |     format!("\u{df}{a}");
+   |                     ^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/unicode-escape-spans.rs:13:25
+   |
+LL |     format!("\u{00211d}{a}");
+   |                         ^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/unicode-escape-spans.rs:14:23
+   |
+LL |     format!("\u{211d}{a}");
+   |                       ^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/unicode-escape-spans.rs:17:24
+   |
+LL |     format!("\u{1f4a3}{a}");
+   |                        ^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/unicode-escape-spans.rs:18:25
+   |
+LL |     format!("\u{10ffff}{a}");
+   |                         ^ not found in this scope
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

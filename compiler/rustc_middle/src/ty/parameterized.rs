@@ -61,6 +61,7 @@ trivially_parameterized_over_tcx! {
     crate::middle::resolve_lifetime::ObjectLifetimeDefault,
     crate::mir::ConstQualifs,
     ty::AssocItemContainer,
+    ty::DeducedParamAttrs,
     ty::Generics,
     ty::ImplPolarity,
     ty::ReprOptions,

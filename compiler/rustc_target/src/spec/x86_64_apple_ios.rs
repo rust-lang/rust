@@ -2,7 +2,7 @@ use super::apple_sdk_base::{opts, Arch};
 use crate::spec::{StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts("ios", Arch::X86_64);
+    let base = opts("ios", Arch::X86_64_sim);
     let llvm_target = super::apple_base::ios_sim_llvm_target("x86_64");
 
     Target {

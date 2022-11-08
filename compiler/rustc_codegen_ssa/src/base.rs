@@ -1,3 +1,4 @@
+use crate::back::link::are_upstream_rust_objects_already_included;
 use crate::back::metadata::create_compressed_metadata_file;
 use crate::back::write::{
     compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
@@ -21,7 +22,6 @@ use rustc_data_structures::sync::ParallelIterator;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::weak_lang_items::WEAK_ITEMS_SYMBOLS;
 use rustc_index::vec::Idx;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -336,40 +336,26 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    op: hir::BinOpKind,
-    lhs: Bx::Value,
-    rhs: Bx::Value,
-) -> Bx::Value {
-    cast_shift_rhs(bx, op, lhs, rhs)
-}
-
-fn cast_shift_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    op: hir::BinOpKind,
     lhs: Bx::Value,
     rhs: Bx::Value,
 ) -> Bx::Value {
     // Shifts may have any size int on the rhs
-    if op.is_shift() {
-        let mut rhs_llty = bx.cx().val_ty(rhs);
-        let mut lhs_llty = bx.cx().val_ty(lhs);
-        if bx.cx().type_kind(rhs_llty) == TypeKind::Vector {
-            rhs_llty = bx.cx().element_type(rhs_llty)
-        }
-        if bx.cx().type_kind(lhs_llty) == TypeKind::Vector {
-            lhs_llty = bx.cx().element_type(lhs_llty)
-        }
-        let rhs_sz = bx.cx().int_width(rhs_llty);
-        let lhs_sz = bx.cx().int_width(lhs_llty);
-        if lhs_sz < rhs_sz {
-            bx.trunc(rhs, lhs_llty)
-        } else if lhs_sz > rhs_sz {
-            // FIXME (#1877: If in the future shifting by negative
-            // values is no longer undefined then this is wrong.
-            bx.zext(rhs, lhs_llty)
-        } else {
-            rhs
-        }
+    let mut rhs_llty = bx.cx().val_ty(rhs);
+    let mut lhs_llty = bx.cx().val_ty(lhs);
+    if bx.cx().type_kind(rhs_llty) == TypeKind::Vector {
+        rhs_llty = bx.cx().element_type(rhs_llty)
+    }
+    if bx.cx().type_kind(lhs_llty) == TypeKind::Vector {
+        lhs_llty = bx.cx().element_type(lhs_llty)
+    }
+    let rhs_sz = bx.cx().int_width(rhs_llty);
+    let lhs_sz = bx.cx().int_width(lhs_llty);
+    if lhs_sz < rhs_sz {
+        bx.trunc(rhs, lhs_llty)
+    } else if lhs_sz > rhs_sz {
+        // FIXME (#1877: If in the future shifting by negative
+        // values is no longer undefined then this is wrong.
+        bx.zext(rhs, lhs_llty)
     } else {
         rhs
     }
@@ -652,7 +638,14 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
         let module_llvm = tcx.sess.time("write_allocator_module", || {
-            backend.codegen_allocator(tcx, &llmod_id, kind, tcx.lang_items().oom().is_some())
+            backend.codegen_allocator(
+                tcx,
+                &llmod_id,
+                kind,
+                // If allocator_kind is Some then alloc_error_handler_kind must
+                // also be Some.
+                tcx.alloc_error_handler_kind(()).unwrap(),
+            )
         });
 
         Some(ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator })
@@ -892,18 +885,22 @@ impl CrateInfo {
 
         // Handle circular dependencies in the standard library.
         // See comment before `add_linked_symbol_object` function for the details.
-        // With msvc-like linkers it's both unnecessary (they support circular dependencies),
-        // and causes linking issues (when weak lang item symbols are "privatized" by LTO).
+        // If global LTO is enabled then almost everything (*) is glued into a single object file,
+        // so this logic is not necessary and can cause issues on some targets (due to weak lang
+        // item symbols being "privatized" to that object file), so we disable it.
+        // (*) Native libs, and `#[compiler_builtins]` and `#[no_builtins]` crates are not glued,
+        // and we assume that they cannot define weak lang items. This is not currently enforced
+        // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
-        if !target.is_like_msvc {
-            let missing_weak_lang_items: FxHashSet<&Symbol> = info
+        if !are_upstream_rust_objects_already_included(tcx.sess) {
+            let missing_weak_lang_items: FxHashSet<Symbol> = info
                 .used_crates
                 .iter()
-                .flat_map(|cnum| {
-                    tcx.missing_lang_items(*cnum)
-                        .iter()
-                        .filter(|l| lang_items::required(tcx, **l))
-                        .filter_map(|item| WEAK_ITEMS_SYMBOLS.get(item))
+                .flat_map(|&cnum| tcx.missing_lang_items(cnum))
+                .filter(|l| l.is_weak())
+                .filter_map(|&l| {
+                    let name = l.link_name()?;
+                    lang_items::required(tcx, l).then_some(name)
                 })
                 .collect();
             let prefix = if target.is_like_windows && target.arch == "x86" { "_" } else { "" };

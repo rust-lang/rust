@@ -15,7 +15,6 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::cstore::{CrateSource, CrateStore};
-use rustc_session::utils::NativeLibKind;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::source_map::{Span, Spanned};
@@ -224,6 +223,7 @@ provide! { tcx, def_id, other, cdata,
     fn_arg_names => { table }
     generator_kind => { table }
     trait_def => { table }
+    deduced_param_attrs => { table }
     collect_trait_impl_trait_tys => {
         Ok(cdata
             .root
@@ -255,6 +255,7 @@ provide! { tcx, def_id, other, cdata,
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
+    has_alloc_error_handler => { cdata.root.has_alloc_error_handler }
     has_panic_handler => { cdata.root.has_panic_handler }
     is_profiler_runtime => { cdata.root.profiler_runtime }
     required_panic_strategy => { cdata.root.required_panic_strategy }
@@ -339,20 +340,11 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
-        is_dllimport_foreign_item: |tcx, id| match tcx.native_library_kind(id) {
-            Some(
-                NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified,
-            ) => true,
-            _ => false,
-        },
-        is_statically_included_foreign_item: |tcx, id| {
-            matches!(tcx.native_library_kind(id), Some(NativeLibKind::Static { .. }))
-        },
+        alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
         is_private_dep: |_tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             false
         },
-        native_library_kind: |tcx, id| tcx.native_library(id).map(|l| l.kind),
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
@@ -473,6 +465,10 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         has_global_allocator: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             CStore::from_tcx(tcx).has_global_allocator()
+        },
+        has_alloc_error_handler: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            CStore::from_tcx(tcx).has_alloc_error_handler()
         },
         postorder_cnums: |tcx, ()| {
             tcx.arena
@@ -595,11 +591,6 @@ impl CStore {
         sess: &Session,
     ) -> Span {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
-    }
-
-    /// Decodes all traits in the crate (for rustdoc).
-    pub fn traits_in_crate_untracked(&self, cnum: CrateNum) -> impl Iterator<Item = DefId> + '_ {
-        self.get_crate_data(cnum).get_traits()
     }
 
     /// Decodes all trait impls in the crate (for rustdoc).

@@ -177,6 +177,7 @@ fn check_licenses() {
     let sh = &Shell::new().unwrap();
 
     let expected = "
+(MIT OR Apache-2.0) AND Unicode-DFS-2016
 0BSD OR MIT OR Apache-2.0
 Apache-2.0
 Apache-2.0 OR BSL-1.0

@@ -761,7 +761,10 @@ impl<T: ?Sized> *const T {
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
         unsafe {
-            assert_unsafe_precondition!([T](this: *const T, origin: *const T) => this >= origin)
+            assert_unsafe_precondition!(
+                "ptr::sub_ptr requires `this >= origin`",
+                [T](this: *const T, origin: *const T) => this >= origin
+            )
         };
 
         let pointee_size = mem::size_of::<T>();
@@ -802,7 +805,7 @@ impl<T: ?Sized> *const T {
 
     /// Returns whether two pointers are guaranteed to be inequal.
     ///
-    /// At runtime this function behaves like `Some(self == other)`.
+    /// At runtime this function behaves like `Some(self != other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine inequality of two pointers, so this function may
     /// spuriously return `None` for pointers that later actually turn out to have its inequality known.

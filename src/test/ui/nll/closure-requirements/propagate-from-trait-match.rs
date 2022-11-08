@@ -30,8 +30,6 @@ where
     T: Trait<'a>,
 {
     establish_relationships(value, |value| {
-        //~^ ERROR the parameter type `T` may not live long enough
-
         // This function call requires that
         //
         // (a) T: Trait<'a>
@@ -43,6 +41,7 @@ where
         // The latter does not hold.
 
         require(value);
+        //~^ ERROR the parameter type `T` may not live long enough
     });
 }
 
