@@ -70,6 +70,6 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
 }
 
 fn main() {
-    assert_eq!(panicked_at(|| block_on(foo())), 39);
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 52);
+    assert_eq!(panicked_at(|| block_on(foo())), 40);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 53);
 }
