@@ -1204,6 +1204,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, err))]
+    pub(crate) fn suggest_floating_point_literal(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        if let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [start, _], _) = expr.kind
+            && expected_ty.is_floating_point()
+        {
+            err.span_suggestion_verbose(
+                self.tcx.sess.source_map().next_point(start.span),
+                "remove the unnecessary `.` operator to to use a floating point literal",
+                "",
+                Applicability::MachineApplicable,
+            );
+            return true;
+        }
+        false
+    }
+
     fn is_loop(&self, id: hir::HirId) -> bool {
         let node = self.tcx.hir().get(id);
         matches!(node, Node::Expr(Expr { kind: ExprKind::Loop(..), .. }))
