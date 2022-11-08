@@ -569,17 +569,13 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
 /// Builds a "call" shim for `instance`. The shim calls the function specified by `call_kind`,
 /// first adjusting its first argument according to `rcvr_adjustment`.
+#[instrument(level = "debug", skip(tcx), ret)]
 fn build_call_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
     rcvr_adjustment: Option<Adjustment>,
     call_kind: CallKind<'tcx>,
 ) -> Body<'tcx> {
-    debug!(
-        "build_call_shim(instance={:?}, rcvr_adjustment={:?}, call_kind={:?})",
-        instance, rcvr_adjustment, call_kind
-    );
-
     // `FnPtrShim` contains the fn pointer type that a call shim is being built for - this is used
     // to substitute into the signature of the shim. It is not necessary for users of this
     // MIR body to perform further substitutions (see `InstanceDef::has_polymorphic_mir_body`).
@@ -641,7 +637,7 @@ fn build_call_shim<'tcx>(
 
     let span = tcx.def_span(def_id);
 
-    debug!("build_call_shim: sig={:?}", sig);
+    debug!(?sig);
 
     let mut local_decls = local_decls_for_sig(&sig, span);
     let source_info = SourceInfo::outermost(span);

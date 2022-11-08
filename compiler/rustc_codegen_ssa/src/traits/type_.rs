@@ -22,6 +22,7 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn type_f32(&self) -> Self::Type;
     fn type_f64(&self) -> Self::Type;
 
+    fn type_array(&self, ty: Self::Type, len: u64) -> Self::Type;
     fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::Type;
     fn type_struct(&self, els: &[Self::Type], packed: bool) -> Self::Type;
     fn type_kind(&self, ty: Self::Type) -> TypeKind;

@@ -2588,7 +2588,7 @@ impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
         let (this, spare, len) = unsafe { self.split_at_spare_mut_with_len() };
 
         // SAFETY:
-        // - caller guaratees that src is a valid index
+        // - caller guarantees that src is a valid index
         let to_clone = unsafe { this.get_unchecked(src) };
 
         iter::zip(to_clone, spare)
@@ -2607,7 +2607,7 @@ impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
             let (init, spare) = self.split_at_spare_mut();
 
             // SAFETY:
-            // - caller guaratees that `src` is a valid index
+            // - caller guarantees that `src` is a valid index
             let source = unsafe { init.get_unchecked(src) };
 
             // SAFETY:
@@ -2780,7 +2780,7 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     /// assert_eq!(v_iter.next(), None);
     /// ```
     #[inline]
-    fn into_iter(self) -> IntoIter<T, A> {
+    fn into_iter(self) -> Self::IntoIter {
         unsafe {
             let mut me = ManuallyDrop::new(self);
             let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
@@ -2808,7 +2808,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a Vec<T, A> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
-    fn into_iter(self) -> slice::Iter<'a, T> {
+    fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
@@ -2818,7 +2818,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
-    fn into_iter(self) -> slice::IterMut<'a, T> {
+    fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
     }
 }

@@ -154,7 +154,9 @@
      * @return {HTMLElement}
      */
     function buildSettingsPage() {
-        const themes = getVar("themes").split(",");
+        const theme_names = getVar("themes").split(",").filter(t => t);
+        theme_names.push("light", "dark", "ayu");
+
         const settings = [
             {
                 "name": "Use system theme",
@@ -165,19 +167,19 @@
                 "name": "Theme",
                 "js_name": "theme",
                 "default": "light",
-                "options": themes,
+                "options": theme_names,
             },
             {
                 "name": "Preferred light theme",
                 "js_name": "preferred-light-theme",
                 "default": "light",
-                "options": themes,
+                "options": theme_names,
             },
             {
                 "name": "Preferred dark theme",
                 "js_name": "preferred-dark-theme",
                 "default": "dark",
-                "options": themes,
+                "options": theme_names,
             },
             {
                 "name": "Auto-hide item contents for large items",

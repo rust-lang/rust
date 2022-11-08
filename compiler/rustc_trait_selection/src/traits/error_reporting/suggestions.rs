@@ -2407,7 +2407,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
             | ObligationCauseCode::BinOp { .. }
-            | ObligationCauseCode::AscribeUserTypeProvePredicate(..) => {}
+            | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
+            | ObligationCauseCode::RustCall => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }

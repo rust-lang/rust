@@ -491,11 +491,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 } = self.type_var_origin(expected)? else { return None; };
 
-                let sig = *self
-                    .typeck_results
-                    .borrow()
-                    .liberated_fn_sigs()
-                    .get(hir::HirId::make_owner(self.body_id.owner.def_id))?;
+                let sig = self.body_fn_sig()?;
 
                 let substs = sig.output().walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()

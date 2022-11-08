@@ -116,13 +116,13 @@
 // cdb-check: niche_w_fields_3_niche5,d : F [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields3>]
 
 // cdb-command: dx -r3 niche_w_fields_std_result_ok,d
-// cdb-check: niche_w_fields_std_result_ok,d : Ok [Type: enum2$<core::result::Result<alloc::boxed::Box<slice$<u8>,alloc::alloc::Global>,u64> >]
-// cdb-check:    [+0x[...]] __0              [Type: alloc::boxed::Box<slice$<u8>,alloc::alloc::Global>]
+// cdb-check: niche_w_fields_std_result_ok,d : Ok [Type: enum2$<core::result::Result<alloc::boxed::Box<slice2$<u8>,alloc::alloc::Global>,u64> >]
+// cdb-check:    [+0x[...]] __0              [Type: alloc::boxed::Box<slice2$<u8>,alloc::alloc::Global>]
 // cdb-check:        [+0x[...]] data_ptr         : [...]
 // cdb-check:        [+0x[...]] length           : 3 [...]
 
 // cdb-command: dx -r3 niche_w_fields_std_result_err,d
-// cdb-check: niche_w_fields_std_result_err,d : Err [Type: enum2$<core::result::Result<alloc::boxed::Box<slice$<u8>,alloc::alloc::Global>,u64> >]
+// cdb-check: niche_w_fields_std_result_err,d : Err [Type: enum2$<core::result::Result<alloc::boxed::Box<slice2$<u8>,alloc::alloc::Global>,u64> >]
 // cdb-check:    [+0x[...]] __0              : 789 [Type: unsigned __int64]
 
 // cdb-command: dx -r2 arbitrary_discr1,d

@@ -136,6 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tuple_arguments,
             Some(method.def_id),
         );
+
         method.sig.output()
     }
 
@@ -214,7 +215,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "cannot use call notation; the first type parameter \
                          for the function trait is neither a tuple nor unit"
                     )
-                    .emit();
+                    .delay_as_bug();
                     (self.err_args(provided_args.len()), None)
                 }
             }
@@ -1334,7 +1335,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Hide the outer diverging and `has_errors` flags.
         let old_diverges = self.diverges.replace(Diverges::Maybe);
-        let old_has_errors = self.has_errors.replace(false);
 
         match stmt.kind {
             hir::StmtKind::Local(l) => {
@@ -1364,7 +1364,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Combine the diverging and `has_error` flags.
         self.diverges.set(self.diverges.get() | old_diverges);
-        self.has_errors.set(self.has_errors.get() | old_has_errors);
     }
 
     pub fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
@@ -1544,11 +1543,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.diverges.set(prev_diverges);
         }
 
-        let mut ty = ctxt.coerce.unwrap().complete(self);
-
-        if self.has_errors.get() || ty.references_error() {
-            ty = self.tcx.ty_error()
-        }
+        let ty = ctxt.coerce.unwrap().complete(self);
 
         self.write_ty(blk.hir_id, ty);
 

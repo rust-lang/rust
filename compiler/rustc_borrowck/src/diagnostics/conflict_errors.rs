@@ -23,7 +23,6 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::TraitEngineExt as _;
 
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
@@ -613,24 +612,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         else { return; };
         // Try to find predicates on *generic params* that would allow copying `ty`
         let infcx = tcx.infer_ctxt().build();
-        let mut fulfill_cx = <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
-
         let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
         let cause = ObligationCause::new(
             span,
             self.mir_hir_id(),
             rustc_infer::traits::ObligationCauseCode::MiscObligation,
         );
-        fulfill_cx.register_bound(
+        let errors = rustc_trait_selection::traits::fully_solve_bound(
             &infcx,
+            cause,
             self.param_env,
             // Erase any region vids from the type, which may not be resolved
             infcx.tcx.erase_regions(ty),
             copy_did,
-            cause,
         );
-        // Select all, including ambiguous predicates
-        let errors = fulfill_cx.select_all_or_error(&infcx);
 
         // Only emit suggestion if all required predicates are on generic
         let predicates: Result<Vec<_>, _> = errors

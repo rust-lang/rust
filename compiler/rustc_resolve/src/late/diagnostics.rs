@@ -322,7 +322,12 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
 
         self.suggest_bare_struct_literal(&mut err);
-        self.suggest_pattern_match_with_let(&mut err, source, span);
+
+        if self.suggest_pattern_match_with_let(&mut err, source, span) {
+            // Fallback label.
+            err.span_label(base_error.span, &base_error.fallback_label);
+            return (err, Vec::new());
+        }
 
         self.suggest_self_or_self_ref(&mut err, path, span);
         self.detect_assoct_type_constraint_meant_as_path(&mut err, &base_error);
@@ -341,7 +346,11 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if !self.type_ascription_suggestion(&mut err, base_error.span) {
             let mut fallback =
                 self.suggest_trait_and_bounds(&mut err, source, res, span, &base_error);
+
+            // if we have suggested using pattern matching, then don't add needless suggestions
+            // for typos.
             fallback |= self.suggest_typo(&mut err, source, path, span, &base_error);
+
             if fallback {
                 // Fallback label.
                 err.span_label(base_error.span, &base_error.fallback_label);
@@ -937,7 +946,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         err: &mut Diagnostic,
         source: PathSource<'_>,
         span: Span,
-    ) {
+    ) -> bool {
         if let PathSource::Expr(_) = source &&
         let Some(Expr {
                     span: expr_span,
@@ -954,8 +963,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     "let ",
                     Applicability::MaybeIncorrect,
                 );
+                return true;
             }
         }
+        false
     }
 
     fn get_single_associated_item(

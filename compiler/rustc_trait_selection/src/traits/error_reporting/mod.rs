@@ -700,6 +700,25 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             }
                         }
 
+                        if Some(trait_ref.def_id()) == tcx.lang_items().tuple_trait() {
+                            match obligation.cause.code().peel_derives() {
+                                ObligationCauseCode::RustCall => {
+                                    err.set_primary_message("functions with the \"rust-call\" ABI must take a single non-self tuple argument");
+                                }
+                                ObligationCauseCode::BindingObligation(def_id, _)
+                                | ObligationCauseCode::ItemObligation(def_id)
+                                    if ty::ClosureKind::from_def_id(tcx, *def_id).is_some() =>
+                                {
+                                    err.code(rustc_errors::error_code!(E0059));
+                                    err.set_primary_message(format!(
+                                        "type parameter to bare `{}` trait must be a tuple",
+                                        tcx.def_path_str(*def_id)
+                                    ));
+                                }
+                                _ => {}
+                            }
+                        }
+
                         if Some(trait_ref.def_id()) == tcx.lang_items().drop_trait()
                             && predicate_is_const
                         {
@@ -848,12 +867,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
-                        let is_fn_trait = [
-                            self.tcx.lang_items().fn_trait(),
-                            self.tcx.lang_items().fn_mut_trait(),
-                            self.tcx.lang_items().fn_once_trait(),
-                        ]
-                        .contains(&Some(trait_ref.def_id()));
+                        let is_fn_trait =
+                            ty::ClosureKind::from_def_id(tcx, trait_ref.def_id()).is_some();
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
                             *trait_ref.skip_binder().self_ty().kind()
                         {

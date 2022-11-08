@@ -307,10 +307,13 @@ function runChecks(testFile, doSearch, parseQuery) {
  *   `parseQuery` function exported from the search module.
  */
 function loadSearchJS(doc_folder, resource_suffix) {
-    const searchJs = path.join(doc_folder, "search" + resource_suffix + ".js");
     const searchIndexJs = path.join(doc_folder, "search-index" + resource_suffix + ".js");
     const searchIndex = require(searchIndexJs);
-    const searchModule = require(searchJs);
+
+    const staticFiles = path.join(doc_folder, "static.files");
+    const searchJs = fs.readdirSync(staticFiles).find(
+        f => f.match(/search.*\.js$/));
+    const searchModule = require(path.join(staticFiles, searchJs));
     const searchWords = searchModule.initSearch(searchIndex.searchIndex);
 
     return {

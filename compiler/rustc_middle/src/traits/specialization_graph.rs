@@ -262,7 +262,7 @@ pub fn ancestors<'tcx>(
 
     if let Some(reported) = specialization_graph.has_errored {
         Err(reported)
-    } else if let Some(reported) = tcx.type_of(start_from_impl).error_reported() {
+    } else if let Err(reported) = tcx.type_of(start_from_impl).error_reported() {
         Err(reported)
     } else {
         Ok(Ancestors {

@@ -117,7 +117,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type BoundTy = ty::BoundTy;
     type PlaceholderType = ty::PlaceholderType;
     type InferTy = InferTy;
-    type DelaySpanBugEmitted = DelaySpanBugEmitted;
+    type ErrorGuaranteed = ErrorGuaranteed;
     type PredicateKind = ty::PredicateKind<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
 
@@ -126,15 +126,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type FreeRegion = ty::FreeRegion;
     type RegionVid = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
-}
-
-/// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
-/// except through the error-reporting functions on a [`tcx`][TyCtxt].
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
-pub struct DelaySpanBugEmitted {
-    pub reported: ErrorGuaranteed,
-    _priv: (),
 }
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
@@ -1303,7 +1294,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[track_caller]
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_ty(Error(DelaySpanBugEmitted { reported, _priv: () }))
+        self.mk_ty(Error(reported))
     }
 
     /// Like [TyCtxt::ty_error] but for constants.
@@ -1325,10 +1316,7 @@ impl<'tcx> TyCtxt<'tcx> {
         msg: &str,
     ) -> Const<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_const(ty::ConstS {
-            kind: ty::ConstKind::Error(DelaySpanBugEmitted { reported, _priv: () }),
-            ty,
-        })
+        self.mk_const(ty::ConstKind::Error(reported), ty)
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
@@ -2243,7 +2231,7 @@ macro_rules! direct_interners {
 
 direct_interners! {
     region: mk_region(RegionKind<'tcx>): Region -> Region<'tcx>,
-    const_: mk_const(ConstS<'tcx>): Const -> Const<'tcx>,
+    const_: mk_const_internal(ConstS<'tcx>): Const -> Const<'tcx>,
     const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: intern_layout(LayoutS<'tcx>): Layout -> Layout<'tcx>,
     adt_def: intern_adt_def(AdtDefData): AdtDef -> AdtDef<'tcx>,
@@ -2582,8 +2570,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    pub fn mk_const(self, kind: ty::ConstKind<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+        self.mk_const_internal(ty::ConstS { kind, ty })
+    }
+
+    #[inline]
     pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.mk_const(ty::ConstS { kind: ty::ConstKind::Infer(InferConst::Var(v)), ty })
+        self.mk_const(ty::ConstKind::Infer(InferConst::Var(v)), ty)
     }
 
     #[inline]
@@ -2603,7 +2596,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_infer(self, ic: InferConst<'tcx>, ty: Ty<'tcx>) -> ty::Const<'tcx> {
-        self.mk_const(ty::ConstS { kind: ty::ConstKind::Infer(ic), ty })
+        self.mk_const(ty::ConstKind::Infer(ic), ty)
     }
 
     #[inline]
@@ -2613,7 +2606,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const_param(self, index: u32, name: Symbol, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.mk_const(ty::ConstS { kind: ty::ConstKind::Param(ParamConst { index, name }), ty })
+        self.mk_const(ty::ConstKind::Param(ParamConst { index, name }), ty)
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
@@ -2820,7 +2813,9 @@ impl<'tcx> TyCtxt<'tcx> {
         span: impl Into<MultiSpan>,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.struct_span_lint_hir(lint, hir_id, span, decorator.msg(), |diag| {
+        let msg = decorator.msg();
+        let (level, src) = self.lint_level_at_node(lint, hir_id);
+        struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, |diag| {
             decorator.decorate_lint(diag)
         })
     }
@@ -2830,6 +2825,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     pub fn struct_span_lint_hir(
         self,
         lint: &'static Lint,

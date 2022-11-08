@@ -112,6 +112,9 @@ parser_missing_semicolon_before_array = expected `;`, found `[`
 parser_invalid_block_macro_segment = cannot use a `block` macro fragment here
     .label = the `block` fragment is within this context
 
+parser_expect_dotdot_not_dotdotdot = expected `..`, found `...`
+    .suggestion = use `..` to fill in the rest of the fields
+
 parser_if_expression_missing_then_block = this `if` expression is missing a block after the condition
     .add_then_block = add a block here
     .condition_possibly_unfinished = this binary operation is possibly unfinished
