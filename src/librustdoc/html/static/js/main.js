@@ -790,6 +790,19 @@ function loadCss(cssUrl) {
             // we need to switch away from mobile mode and make the main content area scrollable.
             hideSidebar();
         }
+        if (window.CURRENT_NOTABLE_ELEMENT) {
+            // As a workaround to the behavior of `contains: layout` used in doc togglers, the
+            // notable traits popup is positioned using javascript.
+            //
+            // This means when the window is resized, we need to redo the layout.
+            const base = window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE;
+            const force_visible = base.NOTABLE_FORCE_VISIBLE;
+            hideNotable();
+            if (force_visible) {
+                showNotable(base);
+                base.NOTABLE_FORCE_VISIBLE = true;
+            }
+        }
     });
 
     function handleClick(id, f) {
@@ -822,10 +835,80 @@ function loadCss(cssUrl) {
         });
     });
 
+    function showNotable(e) {
+        if (!window.NOTABLE_TRAITS) {
+            const data = document.getElementById("notable-traits-data");
+            if (data) {
+                window.NOTABLE_TRAITS = JSON.parse(data.innerText);
+            } else {
+                throw new Error("showNotable() called on page without any notable traits!");
+            }
+        }
+        if (window.CURRENT_NOTABLE_ELEMENT && window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE === e) {
+            // Make this function idempotent.
+            return;
+        }
+        hideNotable();
+        const ty = e.getAttribute("data-ty");
+        const tooltip = e.getElementsByClassName("notable-traits-tooltip")[0];
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = "<div class=\"docblock\">" + window.NOTABLE_TRAITS[ty] + "</div>";
+        wrapper.className = "notable-traits-tooltiptext";
+        tooltip.appendChild(wrapper);
+        const pos = wrapper.getBoundingClientRect();
+        tooltip.removeChild(wrapper);
+        wrapper.style.top = (pos.top + window.scrollY) + "px";
+        wrapper.style.left = (pos.left + window.scrollX) + "px";
+        wrapper.style.width = pos.width + "px";
+        const body = document.getElementsByTagName("body")[0];
+        body.appendChild(wrapper);
+        window.CURRENT_NOTABLE_ELEMENT = wrapper;
+        window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE = e;
+        wrapper.onpointerleave = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            if (!e.NOTABLE_FORCE_VISIBLE && !elemIsInParent(event.relatedTarget, e)) {
+                hideNotable();
+            }
+        };
+    }
+
+    function hideNotable() {
+        if (window.CURRENT_NOTABLE_ELEMENT) {
+            window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE = false;
+            const body = document.getElementsByTagName("body")[0];
+            body.removeChild(window.CURRENT_NOTABLE_ELEMENT);
+            window.CURRENT_NOTABLE_ELEMENT = null;
+        }
+    }
+
     onEachLazy(document.getElementsByClassName("notable-traits"), e => {
         e.onclick = function() {
-            this.getElementsByClassName("notable-traits-tooltiptext")[0]
-                .classList.toggle("force-tooltip");
+            this.NOTABLE_FORCE_VISIBLE = this.NOTABLE_FORCE_VISIBLE ? false : true;
+            if (window.CURRENT_NOTABLE_ELEMENT && !this.NOTABLE_FORCE_VISIBLE) {
+                hideNotable();
+            } else {
+                showNotable(this);
+            }
+        };
+        e.onpointerenter = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            showNotable(this);
+        };
+        e.onpointerleave = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            if (!this.NOTABLE_FORCE_VISIBLE &&
+                !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT)) {
+                hideNotable();
+            }
         };
     });
 
