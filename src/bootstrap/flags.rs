@@ -142,7 +142,7 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Setup {
-        paths: Vec<PathBuf>,
+        path: PathBuf,
     },
 }
 
@@ -633,7 +633,7 @@ Arguments:
                 } else {
                     t!(crate::setup::interactive_path())
                 };
-                Subcommand::Setup { paths: vec![PathBuf::from(profile.as_str())] }
+                Subcommand::Setup { path: PathBuf::from(profile.as_str()) }
             }
         };
 
