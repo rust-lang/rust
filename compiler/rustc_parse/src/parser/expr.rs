@@ -836,7 +836,7 @@ impl<'a> Parser<'a> {
         let with_postfix = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
 
         // Check if an illegal postfix operator has been added after the cast.
-        // If the resulting expression is not a cast, or has a different memory location, it is an illegal postfix operator.
+        // If the resulting expression is not a cast, it is an illegal postfix operator.
         if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) {
             let msg = format!(
                 "{cast_kind} cannot be followed by {}",
