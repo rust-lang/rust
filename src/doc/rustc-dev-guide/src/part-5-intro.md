@@ -21,16 +21,16 @@ Now, we will finally take the MIR and produce some executable machine code.
 
 So what do we need to do?
 
-0. First, we need to collect the set of things to generate code for.
+1. First, we need to collect the set of things to generate code for.
    In particular,
    we need to find out which concrete types to substitute for generic ones,
    since we need to generate code for the concrete types.
    Generating code for the concrete types
    (i.e. emitting a copy of the code for each concrete type) is called _monomorphization_,
    so the process of collecting all the concrete types is called _monomorphization collection_.
-1. Next, we need to actually lower the MIR to a codegen IR
+2. Next, we need to actually lower the MIR to a codegen IR
    (usually LLVM IR) for each concrete type we collected.
-2. Finally, we need to invoke the codegen backend,
+3. Finally, we need to invoke the codegen backend,
    which runs a bunch of optimization passes,
    generates executable code,
    and links together an executable binary.

@@ -72,14 +72,14 @@ Furthermore this attribute is needed to mark an intrinsic as callable from
 
 To stabilize a feature, follow these steps:
 
-0. Ask a **@T-libs-api** member to start an FCP on the tracking issue and wait for
+1. Ask a **@T-libs-api** member to start an FCP on the tracking issue and wait for
    the FCP to complete (with `disposition-merge`).
-1. Change `#[unstable(...)]` to `#[stable(since = "CURRENT_RUSTC_VERSION")]`.
-2. Remove `#![feature(...)]` from any test or doc-test for this API. If the feature is used in the
+2. Change `#[unstable(...)]` to `#[stable(since = "CURRENT_RUSTC_VERSION")]`.
+3. Remove `#![feature(...)]` from any test or doc-test for this API. If the feature is used in the
    compiler or tools, remove it from there as well.
-3. If applicable, change `#[rustc_const_unstable(...)]` to
+4. If applicable, change `#[rustc_const_unstable(...)]` to
    `#[rustc_const_stable(since = "CURRENT_RUSTC_VERSION")]`.
-4. Open a PR against `rust-lang/rust`.
+5. Open a PR against `rust-lang/rust`.
    - Add the appropriate labels: `@rustbot modify labels: +T-libs-api`.
    - Link to the tracking issue and say "Closes #XXXXX".
 

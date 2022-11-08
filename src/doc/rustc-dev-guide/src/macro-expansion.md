@@ -48,45 +48,45 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
 [fef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.MacroExpander.html#method.fully_expand_fragment
 [original]: https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
 
-0. Initialize an `queue` of unresolved macros.
-1. Repeat until `queue` is empty (or we make no progress, which is an error):
-    0. [Resolve](./name-resolution.md) imports in our partially built crate as
-       much as possible.
-    1. Collect as many macro [`Invocation`s][inv] as possible from our
-       partially built crate (fn-like, attributes, derives) and add them to the
-       queue.
-    2. Dequeue the first element, and attempt to resolve it.
-    3. If it's resolved:
-        0. Run the macro's expander function that consumes a [`TokenStream`] or
-           AST and produces a [`TokenStream`] or [`AstFragment`] (depending on
-           the macro kind). (A `TokenStream` is a collection of [`TokenTree`s][tt],
-           each of which are a token (punctuation, identifier, or literal) or a
-           delimited group (anything inside `()`/`[]`/`{}`)).
-            - At this point, we know everything about the macro itself and can
-              call `set_expn_data` to fill in its properties in the global data;
-              that is the hygiene data associated with `ExpnId`. (See [the
-              "Hygiene" section below][hybelow]).
-        1. Integrate that piece of AST into the big existing partially built
-           AST. This is essentially where the "token-like mass" becomes a
-           proper set-in-stone AST with side-tables. It happens as follows:
-            - If the macro produces tokens (e.g. a proc macro), we parse into
-              an AST, which may produce parse errors.
-            - During expansion, we create `SyntaxContext`s (hierarchy 2). (See
-              [the "Hygiene" section below][hybelow])
-            - These three passes happen one after another on every AST fragment
-              freshly expanded from a macro:
-                - [`NodeId`]s are assigned by [`InvocationCollector`]. This
-                  also collects new macro calls from this new AST piece and
-                  adds them to the queue.
-                - ["Def paths"][defpath] are created and [`DefId`]s are
-                  assigned to them by [`DefCollector`].
-                - Names are put into modules (from the resolver's point of
-                  view) by [`BuildReducedGraphVisitor`].
-        2. After expanding a single macro and integrating its output, continue
-           to the next iteration of [`fully_expand_fragment`][fef].
-    4. If it's not resolved:
-        0. Put the macro back in the queue
-        1. Continue to next iteration...
+1. Initialize an `queue` of unresolved macros.
+2. Repeat until `queue` is empty (or we make no progress, which is an error):
+   1. [Resolve](./name-resolution.md) imports in our partially built crate as
+      much as possible.
+   2. Collect as many macro [`Invocation`s][inv] as possible from our
+      partially built crate (fn-like, attributes, derives) and add them to the
+      queue.
+   3. Dequeue the first element, and attempt to resolve it.
+   4. If it's resolved:
+      1. Run the macro's expander function that consumes a [`TokenStream`] or
+         AST and produces a [`TokenStream`] or [`AstFragment`] (depending on
+         the macro kind). (A `TokenStream` is a collection of [`TokenTree`s][tt],
+         each of which are a token (punctuation, identifier, or literal) or a
+         delimited group (anything inside `()`/`[]`/`{}`)).
+         - At this point, we know everything about the macro itself and can
+           call `set_expn_data` to fill in its properties in the global data;
+           that is the hygiene data associated with `ExpnId`. (See [the
+           "Hygiene" section below][hybelow]).
+      2. Integrate that piece of AST into the big existing partially built
+         AST. This is essentially where the "token-like mass" becomes a
+         proper set-in-stone AST with side-tables. It happens as follows:
+         - If the macro produces tokens (e.g. a proc macro), we parse into
+           an AST, which may produce parse errors.
+         - During expansion, we create `SyntaxContext`s (hierarchy 2). (See
+           [the "Hygiene" section below][hybelow])
+         - These three passes happen one after another on every AST fragment
+           freshly expanded from a macro:
+           - [`NodeId`]s are assigned by [`InvocationCollector`]. This
+             also collects new macro calls from this new AST piece and
+             adds them to the queue.
+           - ["Def paths"][defpath] are created and [`DefId`]s are
+             assigned to them by [`DefCollector`].
+           - Names are put into modules (from the resolver's point of
+             view) by [`BuildReducedGraphVisitor`].
+      3. After expanding a single macro and integrating its output, continue
+         to the next iteration of [`fully_expand_fragment`][fef].
+   5. If it's not resolved:
+      1. Put the macro back in the queue
+      2. Continue to next iteration...
 
 [defpath]: hir.md#identifiers-in-the-hir
 [`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html

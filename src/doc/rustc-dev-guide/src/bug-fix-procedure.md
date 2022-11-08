@@ -53,9 +53,9 @@ Please see [the RFC][rfc 1122] for full details!
 The procedure for making a breaking change is as follows (each of these steps is
 described in more detail below):
 
-0. Do a **crater run** to assess the impact of the change.
-1. Make a **special tracking issue** dedicated to the change.
-1. Do not report an error right away. Instead, **issue forwards-compatibility
+1. Do a **crater run** to assess the impact of the change.
+2. Make a **special tracking issue** dedicated to the change.
+3. Do not report an error right away. Instead, **issue forwards-compatibility
    lint warnings**.
    - Sometimes this is not straightforward. See the text below for suggestions
      on different techniques we have employed in the past.
@@ -65,7 +65,7 @@ described in more detail below):
      - Submit PRs to all known affected crates that fix the issue
        - or, at minimum, alert the owners of those crates to the problem and
          direct them to the tracking issue
-1. Once the change has been in the wild for at least one cycle, we can
+4. Once the change has been in the wild for at least one cycle, we can
    **stabilize the change**, converting those warnings into errors.
 
 Finally, for changes to `rustc_ast` that will affect plugins, the general policy
