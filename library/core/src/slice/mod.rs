@@ -1764,9 +1764,7 @@ impl<T> [T] {
     /// the index `N` itself) and the slice will contain all
     /// indices from `[N, len)` (excluding the index `len` itself).
     ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
+    /// Returns `None` if the slice has less than `N` elements.
     ///
     /// # Examples
     ///
@@ -1776,31 +1774,38 @@ impl<T> [T] {
     /// let v = &[1, 2, 3, 4, 5, 6][..];
     ///
     /// {
-    ///    let (left, right) = v.split_array_ref::<0>();
+    ///    let (left, right) = v.split_array_ref::<0>().unwrap();
     ///    assert_eq!(left, &[]);
     ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
-    ///     let (left, right) = v.split_array_ref::<2>();
+    ///     let (left, right) = v.split_array_ref::<2>().unwrap();
     ///     assert_eq!(left, &[1, 2]);
     ///     assert_eq!(right, [3, 4, 5, 6]);
     /// }
     ///
     /// {
-    ///     let (left, right) = v.split_array_ref::<6>();
+    ///     let (left, right) = v.split_array_ref::<6>().unwrap();
     ///     assert_eq!(left, &[1, 2, 3, 4, 5, 6]);
     ///     assert_eq!(right, []);
     /// }
+    ///
+    /// assert!(v.split_array_ref::<7>().is_none());
     /// ```
     #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_array_ref<const N: usize>(&self) -> (&[T; N], &[T]) {
-        let (a, b) = self.split_at(N);
-        // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at)
-        unsafe { (&*(a.as_ptr() as *const [T; N]), b) }
+    pub fn split_array_ref<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
+        if N > self.len() {
+            None
+        } else {
+            // SAFETY: 0 <= N <= len
+            let (a, b) = unsafe { self.split_at_unchecked(N) };
+            // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at)
+            Some(unsafe { (&*(a.as_ptr() as *const [T; N]), b) })
+        }
     }
 
     /// Divides one mutable slice into an array and a remainder slice at an index.
@@ -1809,9 +1814,7 @@ impl<T> [T] {
     /// the index `N` itself) and the slice will contain all
     /// indices from `[N, len)` (excluding the index `len` itself).
     ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
+    /// Returns `None` if the slice has less than `N` elements.
     ///
     /// # Examples
     ///
@@ -1819,21 +1822,28 @@ impl<T> [T] {
     /// #![feature(split_array)]
     ///
     /// let mut v = &mut [1, 0, 3, 0, 5, 6][..];
-    /// let (left, right) = v.split_array_mut::<2>();
+    /// let (left, right) = v.split_array_mut::<2>().unwrap();
     /// assert_eq!(left, &mut [1, 0]);
     /// assert_eq!(right, [3, 0, 5, 6]);
     /// left[1] = 2;
     /// right[1] = 4;
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
+    ///
+    /// assert!(v.split_array_mut::<7>().is_none());
     /// ```
     #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_array_mut<const N: usize>(&mut self) -> (&mut [T; N], &mut [T]) {
-        let (a, b) = self.split_at_mut(N);
-        // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)
-        unsafe { (&mut *(a.as_mut_ptr() as *mut [T; N]), b) }
+    pub fn split_array_mut<const N: usize>(&mut self) -> Option<(&mut [T; N], &mut [T])> {
+        if N > self.len() {
+            None
+        } else {
+            // SAFETY: 0 <= N <= len
+            let (a, b) = unsafe { self.split_at_mut_unchecked(N) };
+            // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at)
+            Some(unsafe { (&mut *(a.as_mut_ptr() as *mut [T; N]), b) })
+        }
     }
 
     /// Divides one slice into an array and a remainder slice at an index from
@@ -1843,9 +1853,7 @@ impl<T> [T] {
     /// the index `len - N` itself) and the array will contain all
     /// indices from `[len - N, len)` (excluding the index `len` itself).
     ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
+    /// Returns `None` if the slice has less than `N` elements.
     ///
     /// # Examples
     ///
@@ -1855,31 +1863,37 @@ impl<T> [T] {
     /// let v = &[1, 2, 3, 4, 5, 6][..];
     ///
     /// {
-    ///    let (left, right) = v.rsplit_array_ref::<0>();
+    ///    let (left, right) = v.rsplit_array_ref::<0>().unwrap();
     ///    assert_eq!(left, [1, 2, 3, 4, 5, 6]);
     ///    assert_eq!(right, &[]);
     /// }
     ///
     /// {
-    ///     let (left, right) = v.rsplit_array_ref::<2>();
+    ///     let (left, right) = v.rsplit_array_ref::<2>().unwrap();
     ///     assert_eq!(left, [1, 2, 3, 4]);
     ///     assert_eq!(right, &[5, 6]);
     /// }
     ///
     /// {
-    ///     let (left, right) = v.rsplit_array_ref::<6>();
+    ///     let (left, right) = v.rsplit_array_ref::<6>().unwrap();
     ///     assert_eq!(left, []);
     ///     assert_eq!(right, &[1, 2, 3, 4, 5, 6]);
     /// }
+    ///
+    /// assert!(v.rsplit_array_ref::<7>().is_none());
     /// ```
     #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
     #[must_use]
-    pub fn rsplit_array_ref<const N: usize>(&self) -> (&[T], &[T; N]) {
-        assert!(N <= self.len());
-        let (a, b) = self.split_at(self.len() - N);
-        // SAFETY: b points to [T; N]? Yes it's [T] of length N (checked by split_at)
-        unsafe { (a, &*(b.as_ptr() as *const [T; N])) }
+    pub fn rsplit_array_ref<const N: usize>(&self) -> Option<(&[T], &[T; N])> {
+        if N > self.len() {
+            None
+        } else {
+            // SAFETY: N <= len; thus 0 <= len - N <= len
+            let (a, b) = unsafe { self.split_at_unchecked(self.len() - N) };
+            // SAFETY: b points to [T; N]? Yes it's [T] of length N (checked by split_at)
+            Some(unsafe { (a, &*(b.as_ptr() as *const [T; N])) })
+        }
     }
 
     /// Divides one mutable slice into an array and a remainder slice at an
@@ -1889,9 +1903,7 @@ impl<T> [T] {
     /// the index `N` itself) and the array will contain all
     /// indices from `[len - N, len)` (excluding the index `len` itself).
     ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
+    /// Returns `None` if the slice has less than `N` elements.
     ///
     /// # Examples
     ///
@@ -1899,21 +1911,27 @@ impl<T> [T] {
     /// #![feature(split_array)]
     ///
     /// let mut v = &mut [1, 0, 3, 0, 5, 6][..];
-    /// let (left, right) = v.rsplit_array_mut::<4>();
+    /// let (left, right) = v.rsplit_array_mut::<4>().unwrap();
     /// assert_eq!(left, [1, 0]);
     /// assert_eq!(right, &mut [3, 0, 5, 6]);
     /// left[1] = 2;
     /// right[1] = 4;
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
+    ///
+    /// assert!(v.rsplit_array_mut::<7>().is_none());
     /// ```
     #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
     #[must_use]
-    pub fn rsplit_array_mut<const N: usize>(&mut self) -> (&mut [T], &mut [T; N]) {
-        assert!(N <= self.len());
-        let (a, b) = self.split_at_mut(self.len() - N);
-        // SAFETY: b points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)
-        unsafe { (a, &mut *(b.as_mut_ptr() as *mut [T; N])) }
+    pub fn rsplit_array_mut<const N: usize>(&mut self) -> Option<(&mut [T], &mut [T; N])> {
+        if N > self.len() {
+            None
+        } else {
+            // SAFETY: N <= len; thus 0 <= len - N <= len
+            let (a, b) = unsafe { self.split_at_mut_unchecked(self.len() - N) };
+            // SAFETY: b points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)
+            Some(unsafe { (a, &mut *(b.as_mut_ptr() as *mut [T; N])) })
+        }
     }
 
     /// Returns an iterator over subslices separated by elements that match

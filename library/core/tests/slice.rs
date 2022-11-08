@@ -2375,13 +2375,13 @@ fn slice_split_array_mut() {
     let v = &mut [1, 2, 3, 4, 5, 6][..];
 
     {
-        let (left, right) = v.split_array_mut::<0>();
+        let (left, right) = v.split_array_mut::<0>().unwrap();
         assert_eq!(left, &mut []);
         assert_eq!(right, [1, 2, 3, 4, 5, 6]);
     }
 
     {
-        let (left, right) = v.split_array_mut::<6>();
+        let (left, right) = v.split_array_mut::<6>().unwrap();
         assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
         assert_eq!(right, []);
     }
@@ -2392,13 +2392,13 @@ fn slice_rsplit_array_mut() {
     let v = &mut [1, 2, 3, 4, 5, 6][..];
 
     {
-        let (left, right) = v.rsplit_array_mut::<0>();
+        let (left, right) = v.rsplit_array_mut::<0>().unwrap();
         assert_eq!(left, [1, 2, 3, 4, 5, 6]);
         assert_eq!(right, &mut []);
     }
 
     {
-        let (left, right) = v.rsplit_array_mut::<6>();
+        let (left, right) = v.rsplit_array_mut::<6>().unwrap();
         assert_eq!(left, []);
         assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
     }
@@ -2416,36 +2416,32 @@ fn split_as_slice() {
     assert_eq!(split.as_slice(), &[]);
 }
 
-#[should_panic]
 #[test]
 fn slice_split_array_ref_out_of_bounds() {
     let v = &[1, 2, 3, 4, 5, 6][..];
 
-    let _ = v.split_array_ref::<7>();
+    assert!(v.split_array_ref::<7>().is_none());
 }
 
-#[should_panic]
 #[test]
 fn slice_split_array_mut_out_of_bounds() {
     let v = &mut [1, 2, 3, 4, 5, 6][..];
 
-    let _ = v.split_array_mut::<7>();
+    assert!(v.split_array_mut::<7>().is_none());
 }
 
-#[should_panic]
 #[test]
 fn slice_rsplit_array_ref_out_of_bounds() {
     let v = &[1, 2, 3, 4, 5, 6][..];
 
-    let _ = v.rsplit_array_ref::<7>();
+    assert!(v.rsplit_array_ref::<7>().is_none());
 }
 
-#[should_panic]
 #[test]
 fn slice_rsplit_array_mut_out_of_bounds() {
     let v = &mut [1, 2, 3, 4, 5, 6][..];
 
-    let _ = v.rsplit_array_mut::<7>();
+    assert!(v.rsplit_array_mut::<7>().is_none());
 }
 
 macro_rules! take_tests {
