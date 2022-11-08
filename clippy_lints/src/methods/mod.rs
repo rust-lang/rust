@@ -1731,7 +1731,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.as_ref().map(Deref::deref)` or it's aliases (such as String::as_str).
+    /// Checks for usage of `_.as_ref().map(Deref::deref)` or its aliases (such as String::as_str).
     ///
     /// ### Why is this bad?
     /// Readability, this can be written more concisely as
