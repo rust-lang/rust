@@ -1276,6 +1276,11 @@
                 "$generated-end": {}
             }
         },
+        "configurationDefaults": {
+            "explorer.fileNesting.patterns": {
+                "Cargo.toml": "Cargo.lock"
+            }
+        },
         "problemPatterns": [
             {
                 "name": "rustc",
