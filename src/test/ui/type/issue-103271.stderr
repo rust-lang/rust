@@ -1,0 +1,22 @@
+error[E0599]: the function or associated item `len` exists for reference `&[_]`, but its trait bounds were not satisfied
+  --> $DIR/issue-103271.rs:3:26
+   |
+LL |     let length = <&[_]>::len;
+   |                          ^^^ function or associated item cannot be called on `&[_]` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `&[_]: ExactSizeIterator`
+           which is required by `&mut &[_]: ExactSizeIterator`
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+   |
+LL | use object::read::read_ref::ReadRef;
+   |
+help: the function `len` is implemented on `[_]`
+   |
+LL |     let length = <[_]>::len;
+   |                   ~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.
