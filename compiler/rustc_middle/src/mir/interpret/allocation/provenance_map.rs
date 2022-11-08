@@ -191,26 +191,23 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         // # Pointer-sized provenances
         // Get the provenances that are entirely within this range.
         // (Different from `range_get_ptrs` which asks if they overlap the range.)
-        let ptrs = if src.size < ptr_size {
-            // This isn't even large enough to contain a pointer.
-            &[]
-        } else {
-            let adjusted_end =
-                Size::from_bytes(src.end().bytes().saturating_sub(ptr_size.bytes() - 1));
-            self.ptrs.range(src.start..adjusted_end)
+        // Only makes sense if we are copying at least one pointer worth of bytes.
+        let mut dest_ptrs = Vec::new();
+        if src.size >= ptr_size {
+            let adjusted_end = Size::from_bytes(src.end().bytes() - (ptr_size.bytes() - 1));
+            let ptrs = self.ptrs.range(src.start..adjusted_end);
+            dest_ptrs.reserve_exact(ptrs.len() * (count as usize));
+            // If `count` is large, this is rather wasteful -- we are allocating a big array here, which
+            // is mostly filled with redundant information since it's just N copies of the same `Prov`s
+            // at slightly adjusted offsets. The reason we do this is so that in `mark_provenance_range`
+            // we can use `insert_presorted`. That wouldn't work with an `Iterator` that just produces
+            // the right sequence of provenance for all N copies.
+            // Basically, this large array would have to be created anyway in the target allocation.
+            for i in 0..count {
+                dest_ptrs
+                    .extend(ptrs.iter().map(|&(offset, reloc)| (shift_offset(i, offset), reloc)));
+            }
         };
-
-        // Buffer for the new list.
-        let mut dest_ptrs = Vec::with_capacity(ptrs.len() * (count as usize));
-        // If `count` is large, this is rather wasteful -- we are allocating a big array here, which
-        // is mostly filled with redundant information since it's just N copies of the same `Prov`s
-        // at slightly adjusted offsets. The reason we do this is so that in `mark_provenance_range`
-        // we can use `insert_presorted`. That wouldn't work with an `Iterator` that just produces
-        // the right sequence of provenance for all N copies.
-        // Basically, this large array would have to be created anyway in the target allocation.
-        for i in 0..count {
-            dest_ptrs.extend(ptrs.iter().map(|&(offset, reloc)| (shift_offset(i, offset), reloc)));
-        }
 
         // # Byte-sized provenances
         let mut bytes = Vec::new();
@@ -261,10 +258,16 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         trace!("byte provenances: {bytes:?}");
 
         // And again a buffer for the new list on the target side.
-        let mut dest_bytes = Vec::with_capacity(bytes.len() * (count as usize));
-        for i in 0..count {
-            dest_bytes
-                .extend(bytes.iter().map(|&(offset, reloc)| (shift_offset(i, offset), reloc)));
+        let mut dest_bytes = Vec::new();
+        if Prov::OFFSET_IS_ADDR {
+            dest_bytes.reserve_exact(bytes.len() * (count as usize));
+            for i in 0..count {
+                dest_bytes
+                    .extend(bytes.iter().map(|&(offset, reloc)| (shift_offset(i, offset), reloc)));
+            }
+        } else {
+            // There can't be any bytewise provenance when OFFSET_IS_ADDR is false.
+            debug_assert!(bytes.is_empty());
         }
 
         Ok(ProvenanceCopy { dest_ptrs, dest_bytes })
