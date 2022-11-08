@@ -94,19 +94,15 @@ where
 }
 
 /// Takes a contents of a char literal (without quotes), and returns an
-/// unescaped char or an error
-pub fn unescape_char(src: &str) -> Result<char, (usize, EscapeError)> {
-    let mut chars = src.chars();
-    unescape_char_or_byte(&mut chars, false).map_err(|err| (src.len() - chars.as_str().len(), err))
+/// unescaped char or an error.
+pub fn unescape_char(src: &str) -> Result<char, EscapeError> {
+    unescape_char_or_byte(&mut src.chars(), false)
 }
 
 /// Takes a contents of a byte literal (without quotes), and returns an
 /// unescaped byte or an error.
-pub fn unescape_byte(src: &str) -> Result<u8, (usize, EscapeError)> {
-    let mut chars = src.chars();
-    unescape_char_or_byte(&mut chars, true)
-        .map(byte_from_char)
-        .map_err(|err| (src.len() - chars.as_str().len(), err))
+pub fn unescape_byte(src: &str) -> Result<u8, EscapeError> {
+    unescape_char_or_byte(&mut src.chars(), true).map(byte_from_char)
 }
 
 /// What kind of literal do we parse.
