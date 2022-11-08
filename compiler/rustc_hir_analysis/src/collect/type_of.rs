@@ -7,7 +7,9 @@ use rustc_hir::{HirId, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
+use rustc_middle::ty::{
+    self, DefIdTree, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -534,6 +536,35 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         x => {
             bug!("unexpected sort of node in type_of(): {:?}", x);
+        }
+    }
+}
+
+pub fn fully_revealed_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Ty<'tcx> {
+    let ty = tcx.type_of(def_id);
+    if ty.has_opaque_types() { ty.fold_with(&mut DeeperTypeFolder { tcx }) } else { ty }
+}
+
+struct DeeperTypeFolder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<'tcx> for DeeperTypeFolder<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty.has_opaque_types() {
+            return ty;
+        }
+
+        let ty = ty.super_fold_with(self);
+
+        if let ty::Opaque(def_id, substs) = *ty.kind() {
+            self.tcx.bound_fully_revealed_type_of(def_id).subst(self.tcx, substs)
+        } else {
+            ty
         }
     }
 }

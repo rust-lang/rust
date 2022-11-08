@@ -164,6 +164,21 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query fully_revealed_type_of(key: DefId) -> Ty<'tcx> {
+        desc { |tcx|
+            "fully {action} `{path}`",
+            action = {
+                use rustc_hir::def::DefKind;
+                match tcx.def_kind(key) {
+                    DefKind::TyAlias => "expanding type alias",
+                    DefKind::TraitAlias => "expanding trait alias",
+                    _ => "computing type of",
+                }
+            },
+            path = tcx.def_path_str(key),
+        }
+    }
+
     query collect_trait_impl_trait_tys(key: DefId)
         -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>
     {

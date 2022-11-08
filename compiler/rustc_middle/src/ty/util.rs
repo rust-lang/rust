@@ -650,6 +650,10 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::EarlyBinder(self.type_of(def_id))
     }
 
+    pub fn bound_fully_revealed_type_of(self, def_id: DefId) -> ty::EarlyBinder<Ty<'tcx>> {
+        ty::EarlyBinder(self.fully_revealed_type_of(def_id))
+    }
+
     pub fn bound_trait_impl_trait_tys(
         self,
         def_id: DefId,
