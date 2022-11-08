@@ -530,3 +530,7 @@ pub enum AppleSdkRootError<'a> {
 pub struct ReadFileError {
     pub message: std::io::Error,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unsupported_link_self_contained)]
+pub struct UnsupportedLinkSelfContained;
