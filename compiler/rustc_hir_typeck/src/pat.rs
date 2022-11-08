@@ -19,7 +19,6 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, DUMMY_SP};
-use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 use ty::VariantDef;
 
@@ -2132,7 +2131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let ty::Array(..) | ty::Slice(..) = ty.kind()
         {
             err.help("the semantics of slice patterns changed recently; see issue #62254");
-        } else if Autoderef::new(&self.infcx, self.param_env, self.body_id, span, expected_ty, span)
+        } else if self.autoderef(span, expected_ty)
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
             && let (Some(span), true) = (ti.span, ti.origin_expr)
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
