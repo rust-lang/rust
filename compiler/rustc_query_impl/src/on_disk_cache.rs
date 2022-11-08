@@ -119,12 +119,11 @@ pub type EncodedDepNodeIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 struct SourceFileIndex(u32);
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Encodable, Decodable)]
-pub struct AbsoluteBytePos(u32);
+pub struct AbsoluteBytePos(u64);
 
 impl AbsoluteBytePos {
     fn new(pos: usize) -> AbsoluteBytePos {
-        debug_assert!(pos <= u32::MAX as usize);
-        AbsoluteBytePos(pos as u32)
+        AbsoluteBytePos(pos.try_into().expect("Incremental cache file size overflowed u64."))
     }
 
     fn to_usize(self) -> usize {
