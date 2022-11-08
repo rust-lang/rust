@@ -1335,11 +1335,35 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 };
                 let (sig, map) = tcx.replace_late_bound_regions(sig, |br| {
-                    self.infcx.next_region_var(LateBoundRegion(
-                        term.source_info.span,
-                        br.kind,
-                        LateBoundRegionConversionTime::FnCall,
-                    ))
+                    #[cfg(not(debug_assertions))]
+                    {
+                        self.infcx.next_region_var(LateBoundRegion(
+                            term.source_info.span,
+                            br.kind,
+                            LateBoundRegionConversionTime::FnCall,
+                        ))
+                    }
+
+                    #[cfg(debug_assertions)]
+                    {
+                        use crate::renumber::RegionCtxt;
+                        use rustc_span::Symbol;
+
+                        let name = match br.kind {
+                            ty::BoundRegionKind::BrAnon(_) => Symbol::intern("anon"),
+                            ty::BoundRegionKind::BrNamed(_, name) => name,
+                            ty::BoundRegionKind::BrEnv => Symbol::intern("env"),
+                        };
+
+                        self.infcx.next_region_var(
+                            LateBoundRegion(
+                                term.source_info.span,
+                                br.kind,
+                                LateBoundRegionConversionTime::FnCall,
+                            ),
+                            RegionCtxt::LateBound(name),
+                        )
+                    }
                 });
                 debug!(?sig);
                 // IMPORTANT: We have to prove well formed for the function signature before

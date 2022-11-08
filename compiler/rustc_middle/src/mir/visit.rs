@@ -1214,7 +1214,7 @@ impl<'tcx> MirVisitable<'tcx> for Option<Terminator<'tcx>> {
 
 /// Extra information passed to `visit_ty` and friends to give context
 /// about where the type etc appears.
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum TyContext {
     LocalDecl {
         /// The index of the local variable we are visiting.
