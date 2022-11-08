@@ -576,9 +576,10 @@ mod impls {
     use crate::marker::Tuple;
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: Tuple, F: ?Sized> Fn<A> for &F
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    impl<A: Tuple, F: ?Sized> const Fn<A> for &F
     where
-        F: Fn<A>,
+        F: ~const Fn<A>,
     {
         extern "rust-call" fn call(&self, args: A) -> F::Output {
             (**self).call(args)
@@ -586,9 +587,10 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: Tuple, F: ?Sized> FnMut<A> for &F
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    impl<A: Tuple, F: ?Sized> const FnMut<A> for &F
     where
-        F: Fn<A>,
+        F: ~const Fn<A>,
     {
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
             (**self).call(args)
@@ -596,9 +598,10 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: Tuple, F: ?Sized> FnOnce<A> for &F
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    impl<A: Tuple, F: ?Sized> const FnOnce<A> for &F
     where
-        F: Fn<A>,
+        F: ~const Fn<A>,
     {
         type Output = F::Output;
 
@@ -608,9 +611,10 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: Tuple, F: ?Sized> FnMut<A> for &mut F
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    impl<A: Tuple, F: ?Sized> const FnMut<A> for &mut F
     where
-        F: FnMut<A>,
+        F: ~const FnMut<A>,
     {
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
             (*self).call_mut(args)
@@ -618,9 +622,10 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: Tuple, F: ?Sized> FnOnce<A> for &mut F
+    #[rustc_const_unstable(feature = "const_fn_trait_ref_impls", issue = "101803")]
+    impl<A: Tuple, F: ?Sized> const FnOnce<A> for &mut F
     where
-        F: FnMut<A>,
+        F: ~const FnMut<A>,
     {
         type Output = F::Output;
         extern "rust-call" fn call_once(self, args: A) -> F::Output {
