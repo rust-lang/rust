@@ -2872,6 +2872,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     pub fn struct_lint_node(
         self,
         lint: &'static Lint,
