@@ -115,6 +115,8 @@ pub struct FnCtxt<'a, 'tcx> {
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
     pub(super) inh: &'a Inherited<'tcx>,
+
+    pub(super) fallback_has_occurred: Cell<bool>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -138,6 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 by_id: Default::default(),
             }),
             inh,
+            fallback_has_occurred: Cell::new(false),
         }
     }
 
@@ -159,7 +162,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// [`InferCtxt::err_ctxt`]: infer::InferCtxt::err_ctxt
     pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
-        TypeErrCtxt { infcx: &self.infcx, typeck_results: Some(self.typeck_results.borrow()) }
+        TypeErrCtxt {
+            infcx: &self.infcx,
+            typeck_results: Some(self.typeck_results.borrow()),
+            fallback_has_occurred: self.fallback_has_occurred.get(),
+        }
     }
 
     pub fn errors_reported_since_creation(&self) -> bool {

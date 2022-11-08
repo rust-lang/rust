@@ -345,7 +345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // an "opportunistic" trait resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
-                self.select_obligations_where_possible(false, |_| {})
+                self.select_obligations_where_possible(|_| {})
             }
 
             // Check each argument, to satisfy the input it was provided for

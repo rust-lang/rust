@@ -70,7 +70,7 @@ pub fn can_type_implement_copy<'tcx>(
                     }
                 }
                 Err(errors) => {
-                    infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+                    infcx.err_ctxt().report_fulfillment_errors(&errors, None);
                 }
             };
         }

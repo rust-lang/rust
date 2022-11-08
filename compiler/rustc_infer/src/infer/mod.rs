@@ -677,9 +677,9 @@ pub struct CombinedSnapshot<'tcx> {
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Creates a `TypeErrCtxt` for emitting various inference errors.
-    /// During typeck, use `FnCtxt::infer_err` instead.
+    /// During typeck, use `FnCtxt::err_ctxt` instead.
     pub fn err_ctxt(&self) -> TypeErrCtxt<'_, 'tcx> {
-        TypeErrCtxt { infcx: self, typeck_results: None }
+        TypeErrCtxt { infcx: self, typeck_results: None, fallback_has_occurred: false }
     }
 
     /// calls `tcx.try_unify_abstract_consts` after

@@ -405,7 +405,7 @@ fn compare_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 
@@ -538,7 +538,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     // RPITs.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 
@@ -1431,7 +1431,7 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None, false));
+        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None));
     }
 
     // FIXME return `ErrorReported` if region obligations error?
@@ -1549,7 +1549,7 @@ fn compare_type_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 
@@ -1769,7 +1769,7 @@ pub fn check_type_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 
