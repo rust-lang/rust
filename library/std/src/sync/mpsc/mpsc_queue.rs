@@ -8,8 +8,15 @@
 //! method, and see the method for more information about it. Due to this
 //! caveat, this queue might not be appropriate for all use-cases.
 
-// https://www.1024cores.net/home/lock-free-algorithms
-//                          /queues/non-intrusive-mpsc-node-based-queue
+// The original implementation is based off:
+// https://www.1024cores.net/home/lock-free-algorithms/queues/non-intrusive-mpsc-node-based-queue
+//
+// Note that back when the code was imported, it was licensed under the BSD-2-Clause license:
+// http://web.archive.org/web/20110411011612/https://www.1024cores.net/home/lock-free-algorithms/queues/unbounded-spsc-queue
+//
+// The original author of the code agreed to relicense it under `MIT OR Apache-2.0` in 2017, so as
+// of today the license of this file is the same as the rest of the codebase:
+// https://github.com/rust-lang/rust/pull/42149
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;

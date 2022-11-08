@@ -482,9 +482,9 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
     #[track_caller]
-    pub fn delay_as_bug(&mut self) {
+    pub fn delay_as_bug(&mut self) -> G {
         self.downgrade_to_delayed_bug();
-        self.emit();
+        self.emit()
     }
 
     forward!(

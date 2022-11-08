@@ -233,11 +233,11 @@ pub(crate) fn type_check<'mir, 'tcx>(
             let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
             trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
             if hidden_type.has_non_region_infer() {
-                infcx.tcx.sess.delay_span_bug(
+                let reported = infcx.tcx.sess.delay_span_bug(
                     decl.hidden_type.span,
                     &format!("could not resolve {:#?}", hidden_type.ty.kind()),
                 );
-                hidden_type.ty = infcx.tcx.ty_error();
+                hidden_type.ty = infcx.tcx.ty_error_with_guaranteed(reported);
             }
 
             (opaque_type_key, (hidden_type, decl.origin))
