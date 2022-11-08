@@ -485,6 +485,13 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// Unlike `Pin::new_unchecked`, this method is safe because the pointer
     /// `P` dereferences to an [`Unpin`] type, which cancels the pinning guarantees.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// let val: u8 = 5;
+    /// let pinned: Pin<&u8> = Pin::new(&val);
+    /// ```
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
