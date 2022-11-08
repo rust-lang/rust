@@ -26,6 +26,7 @@ use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVE
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -655,7 +656,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
 
 pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     // an error would be reported if this fails.
-    let _ = traits::OnUnimplementedDirective::of_item(tcx, item.owner_id.to_def_id());
+    let _ = OnUnimplementedDirective::of_item(tcx, item.owner_id.to_def_id());
 }
 
 pub(super) fn check_specialization_validity<'tcx>(
