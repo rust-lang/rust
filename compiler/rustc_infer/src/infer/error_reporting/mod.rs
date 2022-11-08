@@ -91,6 +91,7 @@ pub mod nice_region_error;
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
+    pub fallback_has_occurred: bool,
 }
 
 impl TypeErrCtxt<'_, '_> {

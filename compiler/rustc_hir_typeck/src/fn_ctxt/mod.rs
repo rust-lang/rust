@@ -68,10 +68,6 @@ pub struct FnCtxt<'a, 'tcx> {
     /// any).
     pub(super) ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
 
-    /// Used exclusively to reduce cost of advanced evaluation used for
-    /// more helpful diagnostics.
-    pub(super) in_tail_expr: bool,
-
     /// First span of a return site that we find. Used in error messages.
     pub(super) ret_coercion_span: Cell<Option<Span>>,
 
@@ -115,6 +111,8 @@ pub struct FnCtxt<'a, 'tcx> {
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
     pub(super) inh: &'a Inherited<'tcx>,
+
+    pub(super) fallback_has_occurred: Cell<bool>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -128,7 +126,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
-            in_tail_expr: false,
             ret_coercion_span: Cell::new(None),
             resume_yield_tys: None,
             ps: Cell::new(UnsafetyState::function(hir::Unsafety::Normal, hir::CRATE_HIR_ID)),
@@ -138,6 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 by_id: Default::default(),
             }),
             inh,
+            fallback_has_occurred: Cell::new(false),
         }
     }
 
@@ -159,7 +157,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// [`InferCtxt::err_ctxt`]: infer::InferCtxt::err_ctxt
     pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
-        TypeErrCtxt { infcx: &self.infcx, typeck_results: Some(self.typeck_results.borrow()) }
+        TypeErrCtxt {
+            infcx: &self.infcx,
+            typeck_results: Some(self.typeck_results.borrow()),
+            fallback_has_occurred: self.fallback_has_occurred.get(),
+        }
     }
 
     pub fn errors_reported_since_creation(&self) -> bool {

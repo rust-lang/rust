@@ -3,14 +3,17 @@ pub mod suggestions;
 
 use super::{
     FulfillmentContext, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
-    Obligation, ObligationCause, ObligationCauseCode, OnUnimplementedDirective,
-    OnUnimplementedNote, OutputTypeParameterMismatch, Overflow, PredicateObligation,
-    SelectionContext, SelectionError, TraitNotObjectSafe,
+    Obligation, ObligationCause, ObligationCauseCode, OutputTypeParameterMismatch, Overflow,
+    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
 };
-
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::query::normalize::AtExt as _;
+use crate::traits::specialize::to_pretty_impl_header;
+use on_unimplemented::OnUnimplementedNote;
+use on_unimplemented::TypeErrCtxtExt as _;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
@@ -40,11 +43,6 @@ use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
 use std::iter;
 use std::ops::ControlFlow;
-
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::query::normalize::AtExt as _;
-use crate::traits::specialize::to_pretty_impl_header;
-use on_unimplemented::TypeErrCtxtExt as _;
 use suggestions::TypeErrCtxtExt as _;
 
 pub use rustc_infer::traits::error_reporting::*;
@@ -101,7 +99,6 @@ pub trait TypeErrCtxtExt<'tcx> {
         &self,
         errors: &[FulfillmentError<'tcx>],
         body_id: Option<hir::BodyId>,
-        fallback_has_occurred: bool,
     ) -> ErrorGuaranteed;
 
     fn report_overflow_error<T>(
@@ -124,7 +121,6 @@ pub trait TypeErrCtxtExt<'tcx> {
         obligation: PredicateObligation<'tcx>,
         root_obligation: &PredicateObligation<'tcx>,
         error: &SelectionError<'tcx>,
-        fallback_has_occurred: bool,
     );
 }
 
@@ -375,7 +371,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         &self,
         errors: &[FulfillmentError<'tcx>],
         body_id: Option<hir::BodyId>,
-        fallback_has_occurred: bool,
     ) -> ErrorGuaranteed {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
@@ -452,7 +447,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         for (error, suppressed) in iter::zip(errors, is_suppressed) {
             if !suppressed {
-                self.report_fulfillment_error(error, body_id, fallback_has_occurred);
+                self.report_fulfillment_error(error, body_id);
             }
         }
 
@@ -534,7 +529,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         mut obligation: PredicateObligation<'tcx>,
         root_obligation: &PredicateObligation<'tcx>,
         error: &SelectionError<'tcx>,
-        fallback_has_occurred: bool,
     ) {
         self.set_tainted_by_errors();
         let tcx = self.tcx;
@@ -1015,7 +1009,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // variable that used to fallback to `()` now falling back to `!`. Issue a
                         // note informing about the change in behaviour.
                         if trait_predicate.skip_binder().self_ty().is_never()
-                            && fallback_has_occurred
+                            && self.fallback_has_occurred
                         {
                             let predicate = trait_predicate.map_bound(|mut trait_pred| {
                                 trait_pred.trait_ref.substs = self.tcx.mk_substs_trait(
@@ -1381,7 +1375,6 @@ trait InferCtxtPrivExt<'tcx> {
         &self,
         error: &FulfillmentError<'tcx>,
         body_id: Option<hir::BodyId>,
-        fallback_has_occurred: bool,
     );
 
     fn report_projection_error(
@@ -1531,7 +1524,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         &self,
         error: &FulfillmentError<'tcx>,
         body_id: Option<hir::BodyId>,
-        fallback_has_occurred: bool,
     ) {
         match error.code {
             FulfillmentErrorCode::CodeSelectionError(ref selection_error) => {
@@ -1539,7 +1531,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     error.obligation.clone(),
                     &error.root_obligation,
                     selection_error,
-                    fallback_has_occurred,
                 );
             }
             FulfillmentErrorCode::CodeProjectionError(ref e) => {

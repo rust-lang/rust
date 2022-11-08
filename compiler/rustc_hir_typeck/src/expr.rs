@@ -843,7 +843,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // Point any obligations that were registered due to opaque type
             // inference at the return expression.
-            self.select_obligations_where_possible(false, |errors| {
+            self.select_obligations_where_possible(|errors| {
                 self.point_at_return_for_opaque_ty_error(errors, span, return_expr_ty);
             });
         }
@@ -2738,7 +2738,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some((index_ty, element_ty)) => {
                     // two-phase not needed because index_ty is never mutable
                     self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);
-                    self.select_obligations_where_possible(false, |errors| {
+                    self.select_obligations_where_possible(|errors| {
                         self.point_at_index_if_possible(errors, idx.span)
                     });
                     element_ty
