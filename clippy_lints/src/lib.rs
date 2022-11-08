@@ -173,6 +173,7 @@ mod manual_async_fn;
 mod manual_bits;
 mod manual_clamp;
 mod manual_instant_elapsed;
+mod manual_is_ascii_check;
 mod manual_let_else;
 mod manual_non_exhaustive;
 mod manual_rem_euclid;
@@ -919,6 +920,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(missing_trait_methods::MissingTraitMethods));
     store.register_late_pass(|_| Box::new(from_raw_with_void_ptr::FromRawWithVoidPtr));
     store.register_late_pass(|_| Box::new(suspicious_xor_used_as_pow::ConfusingXorAndPow));
+    store.register_late_pass(move |_| Box::new(manual_is_ascii_check::ManualIsAsciiCheck::new(msrv)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
