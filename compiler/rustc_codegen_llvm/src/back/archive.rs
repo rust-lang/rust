@@ -315,7 +315,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
         let kind = kind
             .parse::<ArchiveKind>()
             .map_err(|_| kind)
-            .unwrap_or_else(|kind| self.sess.emit_fatal(UnknownArchiveKind { kind: kind }));
+            .unwrap_or_else(|kind| self.sess.emit_fatal(UnknownArchiveKind { kind }));
 
         let mut additions = mem::take(&mut self.additions);
         let mut strings = Vec::new();
