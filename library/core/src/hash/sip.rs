@@ -138,6 +138,7 @@ const unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
         out |= (unsafe { *buf.get_unchecked(start + i) } as u64) << (i * 8);
         i += 1;
     }
+    //FIXME(fee1-dead): use debug_assert_eq
     debug_assert!(i == len);
     out
 }
