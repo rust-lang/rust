@@ -3,7 +3,7 @@
 use std::iter::once;
 use std::sync::Arc;
 
-use thin_vec::ThinVec;
+use thin_vec::{thin_vec, ThinVec};
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
@@ -605,7 +605,7 @@ fn build_module_items(
                         clean::ImportSource {
                             path: clean::Path {
                                 res,
-                                segments: vec![clean::PathSegment {
+                                segments: thin_vec![clean::PathSegment {
                                     name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
                                         args: Default::default(),

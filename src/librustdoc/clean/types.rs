@@ -1625,7 +1625,7 @@ pub(crate) enum Type {
     /// An array type.
     ///
     /// The `String` field is a stringified version of the array's length parameter.
-    Array(Box<Type>, String),
+    Array(Box<Type>, Box<str>),
     /// A raw pointer type: `*const i32`, `*mut i32`
     RawPointer(Mutability, Box<Type>),
     /// A reference type: `&i32`, `&'a mut Foo`
@@ -2210,7 +2210,7 @@ impl Span {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct Path {
     pub(crate) res: Res,
-    pub(crate) segments: Vec<PathSegment>,
+    pub(crate) segments: ThinVec<PathSegment>,
 }
 
 impl Path {
@@ -2360,7 +2360,7 @@ pub(crate) enum ConstantKind {
     ///
     /// Note that `ty::Const` includes generic parameters, and may not always be uniquely identified
     /// by a DefId. So this field must be different from `Extern`.
-    TyConst { expr: String },
+    TyConst { expr: Box<str> },
     /// A constant (expression) that's not an item or associated item. These are usually found
     /// nested inside types (e.g., array lengths) or expressions (e.g., repeat counts), and also
     /// used to define explicit discriminant values for enum variants.
@@ -2388,7 +2388,7 @@ impl Constant {
 impl ConstantKind {
     pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
-            ConstantKind::TyConst { ref expr } => expr.clone(),
+            ConstantKind::TyConst { ref expr } => expr.to_string(),
             ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 print_const_expr(tcx, body)
@@ -2574,13 +2574,13 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(Crate, 72); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
-    static_assert_size!(GenericArg, 48);
+    static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 32);
     static_assert_size!(GenericParamDef, 56);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 56);
-    static_assert_size!(ItemKind, 88);
+    static_assert_size!(ItemKind, 64);
     static_assert_size!(PathSegment, 40);
-    static_assert_size!(Type, 48);
+    static_assert_size!(Type, 32);
     // tidy-alphabetical-end
 }
