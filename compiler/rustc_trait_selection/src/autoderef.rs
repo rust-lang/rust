@@ -27,7 +27,6 @@ pub struct Autoderef<'a, 'tcx> {
     // Meta infos:
     infcx: &'a InferCtxt<'tcx>,
     span: Span,
-    overloaded_span: Span,
     body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
 
@@ -103,7 +102,6 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         Autoderef {
             infcx,
             span,
-            overloaded_span: span,
             body_id,
             param_env,
             state: AutoderefSnapshot {
@@ -116,10 +114,6 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             include_raw_pointers: false,
             silence_errors: false,
         }
-    }
-
-    pub fn with_overloaded_span(self, overloaded_span: Span) -> Self {
-        Self { overloaded_span, ..self }
     }
 
     fn overloaded_deref_ty(&mut self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
@@ -194,10 +188,6 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
     pub fn span(&self) -> Span {
         self.span
-    }
-
-    pub fn overloaded_span(&self) -> Span {
-        self.overloaded_span
     }
 
     pub fn reached_recursion_limit(&self) -> bool {
