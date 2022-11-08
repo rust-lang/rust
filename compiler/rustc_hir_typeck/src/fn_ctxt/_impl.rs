@@ -1212,9 +1212,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    err.emit();
-
-                    return (tcx.ty_error(), res);
+                    let reported = err.emit();
+                    return (tcx.ty_error_with_guaranteed(reported), res);
                 }
             }
         } else {

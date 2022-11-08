@@ -1278,12 +1278,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let element_tys = tcx.mk_type_list(element_tys_iter);
         let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
-            err.emit();
+            let reported = err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
-            let element_tys_iter = (0..max_len).map(|_| tcx.ty_error());
+            let element_tys_iter = (0..max_len).map(|_| tcx.ty_error_with_guaranteed(reported));
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, tcx.ty_error(), def_bm, ti);
+                self.check_pat(elem, tcx.ty_error_with_guaranteed(reported), def_bm, ti);
             }
             tcx.mk_tup(element_tys_iter)
         } else {

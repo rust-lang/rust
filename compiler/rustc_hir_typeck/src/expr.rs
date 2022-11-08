@@ -80,14 +80,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // coercions from ! to `expected`.
         if ty.is_never() {
             if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
-                self.tcx().sess.delay_span_bug(
+                let reported = self.tcx().sess.delay_span_bug(
                     expr.span,
                     "expression with never type wound up being adjusted",
                 );
                 return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &adjustments[..] {
                     target.to_owned()
                 } else {
-                    self.tcx().ty_error()
+                    self.tcx().ty_error_with_guaranteed(reported)
                 };
             }
 
@@ -396,8 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         {
                             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                         }
-                        err.emit();
-                        oprnd_t = tcx.ty_error();
+                        oprnd_t = tcx.ty_error_with_guaranteed(err.emit());
                     }
                 }
                 hir::UnOp::Not => {
@@ -1097,12 +1096,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If the assignment expression itself is ill-formed, don't
             // bother emitting another error
-            if lhs_ty.references_error() || rhs_ty.references_error() {
-                err.delay_as_bug()
-            } else {
-                err.emit();
-            }
-            return self.tcx.ty_error();
+            let reported = err.emit_unless(lhs_ty.references_error() || rhs_ty.references_error());
+            return self.tcx.ty_error_with_guaranteed(reported);
         }
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
@@ -2777,8 +2772,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         }
                     }
-                    err.emit();
-                    self.tcx.ty_error()
+                    let reported = err.emit();
+                    self.tcx.ty_error_with_guaranteed(reported)
                 }
             }
         }
