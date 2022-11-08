@@ -3524,8 +3524,8 @@ impl<T> [T] {
         }
     }
 
-    /// Transmute the slice to a slice of another type, ensuring alignment of the types is
-    /// maintained.
+    /// Transmute the mutable slice to a mutable slice of another type, ensuring alignment of the
+    /// types is maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
     /// slice of a new type, and the suffix slice. The method may make the middle slice the greatest
