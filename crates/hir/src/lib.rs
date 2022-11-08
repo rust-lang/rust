@@ -2997,8 +2997,7 @@ impl Type {
             TyKind::Function(_) => Callee::FnPtr,
             TyKind::FnDef(..) => Callee::Def(self.ty.callable_def(db)?),
             _ => {
-                let ty = hir_ty::replace_errors_with_variables(&self.ty);
-                let sig = hir_ty::callable_sig_from_fnonce(&ty, self.env.clone(), db)?;
+                let sig = hir_ty::callable_sig_from_fnonce(&self.ty, self.env.clone(), db)?;
                 return Some(Callable {
                     ty: self.clone(),
                     sig,
