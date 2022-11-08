@@ -374,7 +374,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let annotation_span = ty.span;
                                 err.span_suggestion(
                                     annotation_span.with_hi(annotation_span.lo()),
-                                    format!("alternatively, consider changing the type annotation"),
+                                    "alternatively, consider changing the type annotation",
                                     suggest_annotation,
                                     Applicability::MaybeIncorrect,
                                 );
