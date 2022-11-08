@@ -855,7 +855,8 @@ impl SourceMap {
     /// Returns a new span representing the next character after the end-point of this span.
     /// Special cases:
     /// - if span is a dummy one, returns the same span
-    /// - if next_point reached the end of source, return span with lo = hi
+    /// - if next_point reached the end of source, return a span exceeding the end of source,
+    ///   which means sm.span_to_snippet(next_point) will get `Err`
     /// - respect multi-byte characters
     pub fn next_point(&self, sp: Span) -> Span {
         if sp.is_dummy() {
@@ -864,9 +865,6 @@ impl SourceMap {
         let start_of_next_point = sp.hi().0;
 
         let width = self.find_width_of_character_at_span(sp, true);
-        if width == 0 {
-            return Span::new(sp.hi(), sp.hi(), sp.ctxt(), None);
-        }
         // If the width is 1, then the next span should only contain the next char besides current ending.
         // However, in the case of a multibyte character, where the width != 1, the next span should
         // span multiple bytes to include the whole character.
@@ -938,7 +936,7 @@ impl SourceMap {
         // Ensure indexes are also not malformed.
         if start_index > end_index || end_index > source_len - 1 {
             debug!("find_width_of_character_at_span: source indexes are malformed");
-            return 0;
+            return 1;
         }
 
         let src = local_begin.sf.external_src.borrow();
