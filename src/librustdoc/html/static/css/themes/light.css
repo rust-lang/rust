@@ -59,6 +59,12 @@
 	--test-arrow-hover-color: #f5f5f5;
 	--test-arrow-hover-background-color: #4e8bca;
 	--rust-logo-filter: initial;
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	--crate-search-div-filter: invert(100%) sepia(0%) saturate(4223%) hue-rotate(289deg)
+		brightness(114%) contrast(76%);
+	--crate-search-div-hover-filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg)
+		brightness(96%) contrast(93%);
+	--crate-search-hover-border: #717171;
 }
 
 .slider {
@@ -75,17 +81,6 @@ input:focus + .slider {
 
 body.source .example-wrap pre.rust a {
 	background: #eee;
-}
-
-#crate-search-div::after {
-	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
-	filter: invert(100%) sepia(0%) saturate(4223%) hue-rotate(289deg) brightness(114%) contrast(76%);
-}
-#crate-search:hover, #crate-search:focus {
-	border-color: #717171 !important;
-}
-#crate-search-div:hover::after, #crate-search-div:focus-within::after {
-	filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg) brightness(96%) contrast(93%);
 }
 
 :target {
