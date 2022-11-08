@@ -681,9 +681,13 @@ fn classify_name_ref(
                     ast::Item::ExternBlock(it) => it.extern_item_list().is_none(),
                     ast::Item::Fn(it) => it.body().is_none(),
                     ast::Item::Impl(it) => it.assoc_item_list().is_none(),
-                    ast::Item::Module(it) => it.item_list().is_none(),
+                    ast::Item::Module(it) => {
+                        it.item_list().is_none() && it.semicolon_token().is_none()
+                    }
                     ast::Item::Static(it) => it.body().is_none(),
-                    ast::Item::Struct(it) => it.field_list().is_none(),
+                    ast::Item::Struct(it) => {
+                        it.field_list().is_none() && it.semicolon_token().is_none()
+                    }
                     ast::Item::Trait(it) => it.assoc_item_list().is_none(),
                     ast::Item::TypeAlias(it) => it.ty().is_none(),
                     ast::Item::Union(it) => it.record_field_list().is_none(),
