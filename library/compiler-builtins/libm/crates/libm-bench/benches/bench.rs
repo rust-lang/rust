@@ -107,7 +107,8 @@ macro_rules! bessel {
 
 unary!(
     acos, acosh, asin, atan, cbrt, ceil, cos, cosh, erf, exp, exp2, exp10, expm1, fabs, floor, j0,
-    j1, lgamma, log, log1p, log2, log10, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc, y0, y1
+    j1, lgamma, log, log1p, log2, log10, rint, round, sin, sinh, sqrt, tan, tanh, tgamma, trunc,
+    y0, y1
 );
 binary!(atan2, copysign, fdim, fmax, fmin, fmod, hypot, pow);
 trinary!(fma);
