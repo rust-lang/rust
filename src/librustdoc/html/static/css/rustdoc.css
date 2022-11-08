@@ -854,7 +854,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	background-size: 20px;
 	background-position: calc(100% - 2px) 56%;
 	/* image is black color, themes should apply a "filter" property to change the color */
-	background-image: url("down-arrow-2d685a4bae708e15.svg");
+	background-image: url("down-arrow-927217e04c7463ac.svg");
 }
 #crate-search > option {
 	font-size: 1rem;
