@@ -579,6 +579,7 @@ pub trait LintContext: Sized {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     fn lookup_with_diagnostics(
         &self,
         lint: &'static Lint,
@@ -882,6 +883,7 @@ pub trait LintContext: Sized {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     fn lookup<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
@@ -908,6 +910,7 @@ pub trait LintContext: Sized {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     fn struct_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
@@ -933,6 +936,7 @@ pub trait LintContext: Sized {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     fn lint(
         &self,
         lint: &'static Lint,
