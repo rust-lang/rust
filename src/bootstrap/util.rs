@@ -44,7 +44,13 @@ pub use t;
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    if target.contains("windows") { format!("{}.exe", name) } else { name.to_string() }
+    if target.contains("windows") {
+        format!("{}.exe", name)
+    } else if target.contains("uefi") {
+        format!("{}.efi", name)
+    } else {
+        name.to_string()
+    }
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
