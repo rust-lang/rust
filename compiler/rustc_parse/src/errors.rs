@@ -425,7 +425,7 @@ pub(crate) struct ExpectedExpressionFoundLet {
 pub(crate) struct ExpectedEqForLetExpr {
     #[primary_span]
     pub span: Span,
-    #[suggestion_verbose(applicability = "maybe-incorrect", code = "=")]
+    #[suggestion(applicability = "maybe-incorrect", code = "=", style = "verbose")]
     pub sugg_span: Span,
 }
 

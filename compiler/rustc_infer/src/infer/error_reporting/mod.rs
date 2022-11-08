@@ -59,6 +59,7 @@ use crate::traits::{
     StatementAsExpression,
 };
 
+use crate::errors::SuggAddLetForLetChains;
 use hir::intravisit::{walk_expr, walk_stmt};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
@@ -2424,12 +2425,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
         visitor.visit_body(&body);
         if visitor.result {
-                err.span_suggestion_verbose(
-                    span.shrink_to_lo(),
-                    "consider adding `let`",
-                    "let ".to_string(),
-                    Applicability::MachineApplicable,
-                );
+                err.subdiagnostic(SuggAddLetForLetChains{span: span.shrink_to_lo()});
             }
         }
     }
