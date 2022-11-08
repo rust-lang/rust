@@ -255,6 +255,13 @@ changelog-seen = 2
 # Defaults to the Python interpreter used to execute x.py
 #python = "python"
 
+# The path to the REUSE executable to use. REUSE will be used to gather
+# the licensing information of the codebase.
+#
+# If this is omitted, the cached licensing information present in the source
+# tarball will have to be present.
+#reuse = "reuse"
+
 # Force Cargo to check that Cargo.lock describes the precise dependency
 # set that all the Cargo.toml files create, instead of updating it.
 #locked-deps = false
