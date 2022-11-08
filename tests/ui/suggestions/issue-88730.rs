@@ -1,9 +1,8 @@
 #![allow(unused, nonstandard_style)]
-#![deny(bindings_with_variant_name)]
 
 // If an enum has two different variants,
 // then it cannot be matched upon in a function argument.
-// It still gets a warning, but no suggestions.
+// It still gets an error, but no suggestions.
 enum Foo {
     C,
     D,

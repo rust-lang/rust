@@ -743,7 +743,7 @@ declare_lint! {
     /// [identifier pattern]: https://doc.rust-lang.org/reference/patterns.html#identifier-patterns
     /// [path pattern]: https://doc.rust-lang.org/reference/patterns.html#path-patterns
     pub BINDINGS_WITH_VARIANT_NAME,
-    Warn,
+    Deny,
     "detects pattern bindings with the same name as one of the matched variants"
 }
 
