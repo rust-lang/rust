@@ -314,7 +314,6 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_waker)]
-#![feature(const_hash)]
 //
 // Library features (alloc):
 #![feature(alloc_layout_extra)]
@@ -353,6 +352,7 @@
 //
 // Only for const-ness:
 #![feature(const_collections_with_hasher)]
+#![feature(const_hash)]
 #![feature(const_io_structs)]
 #![feature(const_ip)]
 #![feature(const_ipv4)]

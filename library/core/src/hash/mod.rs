@@ -86,6 +86,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
+use crate::intrinsics::const_eval_select;
 use crate::marker::{self, Destruct};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -239,16 +240,21 @@ pub trait Hash {
     where
         Self: Sized,
     {
-        //FIXME(const_iter_slice): Revert to for loop
-        //for piece in data {
-        //    piece.hash(state);
-        //}
-
-        let mut i = 0;
-        while i < data.len() {
-            data[i].hash(state);
-            i += 1;
+        //FIXME(const_trait_impl): revert to only a for loop
+        fn rt<T: Hash, H: Hasher>(data: &[T], state: &mut H) {
+            for piece in data {
+                piece.hash(state)
+            }
         }
+        const fn ct<T: ~const Hash, H: ~const Hasher>(data: &[T], state: &mut H) {
+            let mut i = 0;
+            while i < data.len() {
+                data[i].hash(state);
+                i += 1;
+            }
+        }
+        // SAFETY: same behavior, CT just uses while instead of for
+        unsafe { const_eval_select((data, state), ct, rt) };
     }
 }
 
