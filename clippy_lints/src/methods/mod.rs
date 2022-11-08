@@ -159,7 +159,7 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust
-    /// let hello = "hesuo worpd".replace(&['s', 'u', 'p'], "l");
+    /// let hello = "hesuo worpd".replace(['s', 'u', 'p'], "l");
     /// ```
     #[clippy::version = "1.65.0"]
     pub COLLAPSIBLE_STR_REPLACE,
