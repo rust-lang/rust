@@ -3,8 +3,7 @@ use super::*;
 #[test]
 fn test_unescape_char_bad() {
     fn check(literal_text: &str, expected_error: EscapeError) {
-        let actual_result = unescape_char(literal_text).map_err(|(_offset, err)| err);
-        assert_eq!(actual_result, Err(expected_error));
+        assert_eq!(unescape_char(literal_text), Err(expected_error));
     }
 
     check("", EscapeError::ZeroChars);
@@ -68,8 +67,7 @@ fn test_unescape_char_bad() {
 #[test]
 fn test_unescape_char_good() {
     fn check(literal_text: &str, expected_char: char) {
-        let actual_result = unescape_char(literal_text);
-        assert_eq!(actual_result, Ok(expected_char));
+        assert_eq!(unescape_char(literal_text), Ok(expected_char));
     }
 
     check("a", 'a');
@@ -149,8 +147,7 @@ fn test_unescape_str_good() {
 #[test]
 fn test_unescape_byte_bad() {
     fn check(literal_text: &str, expected_error: EscapeError) {
-        let actual_result = unescape_byte(literal_text).map_err(|(_offset, err)| err);
-        assert_eq!(actual_result, Err(expected_error));
+        assert_eq!(unescape_byte(literal_text), Err(expected_error));
     }
 
     check("", EscapeError::ZeroChars);
@@ -219,8 +216,7 @@ fn test_unescape_byte_bad() {
 #[test]
 fn test_unescape_byte_good() {
     fn check(literal_text: &str, expected_byte: u8) {
-        let actual_result = unescape_byte(literal_text);
-        assert_eq!(actual_result, Ok(expected_byte));
+        assert_eq!(unescape_byte(literal_text), Ok(expected_byte));
     }
 
     check("a", b'a');
