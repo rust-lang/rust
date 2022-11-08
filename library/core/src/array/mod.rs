@@ -656,16 +656,16 @@ impl<T, const N: usize> [T; N] {
     ///     assert_eq!(right, &[]);
     /// }
     /// ```
-    #[unstable(
-        feature = "split_array",
-        reason = "return type should have array as 2nd element",
-        issue = "90091"
-    )]
+    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
-    pub const fn split_array_ref<const M: usize>(&self) -> (&[T; M], &[T]) {
-        // FIXME: remove once constraint is encoded in return type
-        const { assert!(M <= N) }
-        self.as_slice().split_array_ref::<M>().unwrap()
+    pub const fn split_array_ref<const M: usize>(&self) -> (&[T; M], &[T; N - M]) {
+        // SAFETY: 0 <= M <= len (N)
+        let (left, right) = unsafe { self.split_at_unchecked(M) };
+
+        // SAFETY: `split_at_unchecked()` guarantees that:
+        // - `left` is a slice of `M` elements,
+        // - `right` is a slice of `N - M` elements.
+        unsafe { (from_slice_unchecked(left), from_slice_unchecked(right)) }
     }
 
     /// Divides one mutable array reference into two at an index.
@@ -687,16 +687,16 @@ impl<T, const N: usize> [T; N] {
     /// right[1] = 4;
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
-    #[unstable(
-        feature = "split_array",
-        reason = "return type should have array as 2nd element",
-        issue = "90091"
-    )]
+    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
-    pub const fn split_array_mut<const M: usize>(&mut self) -> (&mut [T; M], &mut [T]) {
-        // FIXME: remove once constraint is encoded in return type
-        const { assert!(M <= N) }
-        (self as &mut [T]).split_array_mut::<M>().unwrap()
+    pub const fn split_array_mut<const M: usize>(&mut self) -> (&mut [T; M], &mut [T; N - M]) {
+        // SAFETY: 0 <= M <= len (N)
+        let (left, right) = unsafe { self.split_at_mut_unchecked(M) };
+
+        // SAFETY: `split_at_mut_unchecked()` guarantees that:
+        // - `left` is a slice of `M` elements,
+        // - `right` is a slice of `N - M` elements.
+        unsafe { (from_mut_slice_unchecked(left), from_mut_slice_unchecked(right)) }
     }
 
     /// Divides one array reference into two at an index from the end.
@@ -730,16 +730,16 @@ impl<T, const N: usize> [T; N] {
     ///     assert_eq!(right, &[1, 2, 3, 4, 5, 6]);
     /// }
     /// ```
-    #[unstable(
-        feature = "split_array",
-        reason = "return type should have array as 2nd element",
-        issue = "90091"
-    )]
+    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
-    pub const fn rsplit_array_ref<const M: usize>(&self) -> (&[T], &[T; M]) {
-        // FIXME: remove once constraint is encoded in return type
-        const { assert!(M <= N) }
-        self.as_slice().rsplit_array_ref::<M>().unwrap()
+    pub const fn rsplit_array_ref<const M: usize>(&self) -> (&[T; N - M], &[T; M]) {
+        // SAFETY: 0 <= (N-M) <= len (N)
+        let (left, right) = unsafe { self.split_at_unchecked(N - M) };
+
+        // SAFETY: `split_at_unchecked()` guarantees that:
+        // - `left` is a slice of `N-M` elements,
+        // - `right` is a slice of `N - (N-M) == M` elements.
+        unsafe { (from_slice_unchecked(left), from_slice_unchecked(right)) }
     }
 
     /// Divides one mutable array reference into two at an index from the end.
@@ -761,16 +761,16 @@ impl<T, const N: usize> [T; N] {
     /// right[1] = 4;
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
-    #[unstable(
-        feature = "split_array",
-        reason = "return type should have array as 2nd element",
-        issue = "90091"
-    )]
+    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
-    pub const fn rsplit_array_mut<const M: usize>(&mut self) -> (&mut [T], &mut [T; M]) {
-        // FIXME: remove once constraint is encoded in return type
-        const { assert!(M <= N) }
-        (self as &mut [T]).rsplit_array_mut::<M>().unwrap()
+    pub const fn rsplit_array_mut<const M: usize>(&mut self) -> (&mut [T; N - M], &mut [T; M]) {
+        // SAFETY: 0 <= (N-M) <= len (N)
+        let (left, right) = unsafe { self.split_at_mut_unchecked(N - M) };
+
+        // SAFETY: `split_at_mut_unchecked()` guarantees that:
+        // - `left` is a slice of `N-M` elements,
+        // - `right` is a slice of `N - (N-M) == M` elements.
+        unsafe { (from_mut_slice_unchecked(left), from_mut_slice_unchecked(right)) }
     }
 }
 
