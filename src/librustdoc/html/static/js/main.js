@@ -860,7 +860,8 @@ function loadCss(cssUrl) {
         wrapper.style.top = (pos.top + window.scrollY) + "px";
         wrapper.style.left = (pos.left + window.scrollX) + "px";
         wrapper.style.width = pos.width + "px";
-        document.documentElement.appendChild(wrapper);
+        const body = document.getElementsByTagName("body")[0];
+        body.appendChild(wrapper);
         window.CURRENT_NOTABLE_ELEMENT = wrapper;
         window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE = e;
         wrapper.onpointerleave = function(ev) {
@@ -877,7 +878,8 @@ function loadCss(cssUrl) {
     function hideNotable() {
         if (window.CURRENT_NOTABLE_ELEMENT) {
             window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE = false;
-            document.documentElement.removeChild(window.CURRENT_NOTABLE_ELEMENT);
+            const body = document.getElementsByTagName("body")[0];
+            body.removeChild(window.CURRENT_NOTABLE_ELEMENT);
             window.CURRENT_NOTABLE_ELEMENT = null;
         }
     }
