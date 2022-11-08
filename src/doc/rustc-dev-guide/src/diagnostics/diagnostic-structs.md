@@ -200,9 +200,9 @@ following attributes:
     - See [translation documentation](./translation.md).
     - Defaults to `rustc_errors::fluent::_subdiag::suggestion` (or
     - `.suggestion` in Fluent).
-  - `code = "..."` (_Mandatory_)
-    - Value is a format string indicating the code to be suggested as a
-      replacement.
+  - `code = "..."`/`code("...", ...)` (_Mandatory_)
+    - One or multiple format strings indicating the code to be suggested as a
+      replacement. Multiple values signify multiple possible replacements.
   - `applicability = "..."` (_Optional_)
     - String which must be one of `machine-applicable`, `maybe-incorrect`,
       `has-placeholders` or `unspecified`.
@@ -359,9 +359,9 @@ diagnostic struct.
     - See [translation documentation](./translation.md).
     - Defaults to `rustc_errors::fluent::_subdiag::suggestion` (or
     - `.suggestion` in Fluent).
-  - `code = "..."` (_Mandatory_)
-    - Value is a format string indicating the code to be suggested as a
-      replacement.
+  - `code = "..."`/`code("...", ...)` (_Mandatory_)
+    - One or multiple format strings indicating the code to be suggested as a
+      replacement. Multiple values signify multiple possible replacements.
   - `applicability = "..."` (_Optional_)
     - _Mutually exclusive with `#[applicability]` on a field._
     - Value is the applicability of the suggestion.
