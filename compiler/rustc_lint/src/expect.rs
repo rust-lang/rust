@@ -1,8 +1,9 @@
-use crate::builtin;
-use rustc_errors::fluent;
-use rustc_hir::HirId;
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+use crate::lints::Expectation;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::{lint::LintExpectation, ty::TyCtxt};
+use rustc_middle::ty::TyCtxt;
+use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
 use rustc_session::lint::LintExpectationId;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
@@ -28,34 +29,15 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
             if !fulfilled_expectations.contains(&id)
                 && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
             {
-                emit_unfulfilled_expectation_lint(tcx, *hir_id, expectation);
+                tcx.emit_spanned_lint(
+                    UNFULFILLED_LINT_EXPECTATIONS,
+                    *hir_id,
+                    expectation.emission_span,
+                    Expectation { expectation },
+                );
             }
         } else {
             unreachable!("at this stage all `LintExpectationId`s are stable");
         }
     }
-}
-
-fn emit_unfulfilled_expectation_lint(
-    tcx: TyCtxt<'_>,
-    hir_id: HirId,
-    expectation: &LintExpectation,
-) {
-    tcx.struct_span_lint_hir(
-        builtin::UNFULFILLED_LINT_EXPECTATIONS,
-        hir_id,
-        expectation.emission_span,
-        fluent::lint_expectation,
-        |lint| {
-            if let Some(rationale) = expectation.reason {
-                lint.note(rationale.as_str());
-            }
-
-            if expectation.is_unfulfilled_lint_expectations {
-                lint.note(fluent::note);
-            }
-
-            lint
-        },
-    );
 }

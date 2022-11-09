@@ -3,7 +3,10 @@ use std::num::NonZeroU32;
 use rustc_errors::{fluent, AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::{Predicate, Ty, TyCtxt};
+use rustc_middle::{
+    lint::LintExpectation,
+    ty::{Predicate, Ty, TyCtxt},
+};
 use rustc_span::{edition::Edition, symbol::Ident, Span, Symbol};
 
 use crate::{errors::OverruledAttributeSub, LateContext};
@@ -302,6 +305,32 @@ pub struct EnumIntrinsicsMemDiscriminate<'a> {
 #[note]
 pub struct EnumIntrinsicsMemVariant<'a> {
     pub ty_param: Ty<'a>,
+}
+
+// expect.rs
+pub struct Expectation<'a> {
+    pub expectation: &'a LintExpectation,
+}
+
+impl<'a> DecorateLint<'a, ()> for Expectation<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        if let Some(rationale) = self.expectation.reason {
+            diag.note(rationale.as_str());
+        }
+
+        if self.expectation.is_unfulfilled_lint_expectations {
+            diag.note(fluent::note);
+        }
+
+        diag
+    }
+
+    fn msg(&self) -> DiagnosticMessage {
+        fluent::lint_expectation
+    }
 }
 
 // internal.rs
