@@ -119,14 +119,6 @@ click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits
 move-cursor-to: "//h1"
 assert-count: ("//*[@class='notable popover']", 0)
 
-// Checking on very small mobile. The `i` should be on its own line.
-size: (365, 600)
-compare-elements-position-false: (
-    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    ("y", "x"),
-)
-
 // Now check the colors.
 define-function: (
     "check-colors",
