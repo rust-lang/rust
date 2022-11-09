@@ -1197,6 +1197,9 @@ impl Ipv6Addr {
 
     /// An IPv6 address representing localhost: `::1`.
     ///
+    /// This corresponds to constant `IN6ADDR_LOOPBACK_INIT` or `in6addr_loopback` in other
+    /// languages.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1205,10 +1208,14 @@ impl Ipv6Addr {
     /// let addr = Ipv6Addr::LOCALHOST;
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     /// ```
+    #[doc(alias = "IN6ADDR_LOOPBACK_INIT")]
+    #[doc(alias = "in6addr_loopback")]
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const LOCALHOST: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
 
     /// An IPv6 address representing the unspecified address: `::`
+    ///
+    /// This corresponds to constant `IN6ADDR_ANY_INIT` or `in6addr_any` in other languages.
     ///
     /// # Examples
     ///
@@ -1218,6 +1225,8 @@ impl Ipv6Addr {
     /// let addr = Ipv6Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
     /// ```
+    #[doc(alias = "IN6ADDR_ANY_INIT")]
+    #[doc(alias = "in6addr_any")]
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const UNSPECIFIED: Self = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
 
