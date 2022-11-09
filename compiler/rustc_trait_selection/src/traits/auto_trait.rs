@@ -12,7 +12,7 @@ use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{PolyTraitRef, Region, RegionVid};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
@@ -27,8 +27,8 @@ pub enum RegionTarget<'tcx> {
 
 #[derive(Default, Debug, Clone)]
 pub struct RegionDeps<'tcx> {
-    larger: FxHashSet<RegionTarget<'tcx>>,
-    smaller: FxHashSet<RegionTarget<'tcx>>,
+    larger: FxIndexSet<RegionTarget<'tcx>>,
+    smaller: FxIndexSet<RegionTarget<'tcx>>,
 }
 
 pub enum AutoTraitResult<A> {
@@ -266,7 +266,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }));
 
         let computed_preds = param_env.caller_bounds().iter();
-        let mut user_computed_preds: FxHashSet<_> = user_env.caller_bounds().iter().collect();
+        let mut user_computed_preds: FxIndexSet<_> = user_env.caller_bounds().iter().collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -389,7 +389,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// not just one specific lifetime (e.g., `'static`).
     fn add_user_pred(
         &self,
-        user_computed_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        user_computed_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
         new_pred: ty::Predicate<'tcx>,
     ) {
         let mut should_add_new = true;
@@ -585,7 +585,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         &self,
         ty: Ty<'_>,
         nested: impl Iterator<Item = Obligation<'tcx, ty::Predicate<'tcx>>>,
-        computed_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        computed_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
         fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
         predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,
         select: &mut SelectionContext<'_, 'tcx>,

@@ -15,7 +15,7 @@ use crate::traits::query::normalize::AtExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
 use on_unimplemented::OnUnimplementedNote;
 use on_unimplemented::TypeErrCtxtExt as _;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     MultiSpan, Style,
@@ -379,7 +379,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             index: Option<usize>, // None if this is an old error
         }
 
-        let mut error_map: FxHashMap<_, Vec<_>> = self
+        let mut error_map: FxIndexMap<_, Vec<_>> = self
             .reported_trait_errors
             .borrow()
             .iter()

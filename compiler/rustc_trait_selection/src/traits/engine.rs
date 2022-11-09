@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use super::TraitEngine;
 use super::{ChalkFulfillmentContext, FulfillmentContext};
 use crate::infer::InferCtxtExt;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{
@@ -154,10 +154,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         span: Span,
         def_id: LocalDefId,
-    ) -> FxHashSet<Ty<'tcx>> {
+    ) -> FxIndexSet<Ty<'tcx>> {
         let tcx = self.infcx.tcx;
         let assumed_wf_types = tcx.assumed_wf_types(def_id);
-        let mut implied_bounds = FxHashSet::default();
+        let mut implied_bounds = FxIndexSet::default();
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let cause = ObligationCause::misc(span, hir_id);
         for ty in assumed_wf_types {
