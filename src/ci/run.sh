@@ -123,6 +123,10 @@ else
   # (And PGO is its own can of worms).
   if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-available"
+  else
+    # When building for CI we want to use the static C++ Standard library
+    # included with LLVM, since a dynamic libstdcpp may not be available.
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
   fi
 fi
 
