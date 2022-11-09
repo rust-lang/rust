@@ -18,7 +18,7 @@ use rustc_middle::bug;
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -1781,7 +1781,7 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
 
     let mut late_bound = FxIndexSet::default();
 
-    let mut constrained_by_input = ConstrainedCollector::default();
+    let mut constrained_by_input = ConstrainedCollector { regions: Default::default(), tcx };
     for arg_ty in decl.inputs {
         constrained_by_input.visit_ty(arg_ty);
     }
@@ -1834,12 +1834,65 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
     debug!(?late_bound);
     return Some(tcx.arena.alloc(late_bound));
 
-    #[derive(Default)]
-    struct ConstrainedCollector {
+    /// Visits a `ty::Ty` collecting information about what generic parameters are constrained.
+    ///
+    /// The visitor does not operate on `hir::Ty` so that it can be called on the rhs of a `type Alias<...> = ...;`
+    /// which may live in a separate crate so there would not be any hir available. Instead we use the `type_of`
+    /// query to obtain a `ty::Ty` which will be present even in cross crate scenarios. It also naturally
+    /// handles cycle detection as we go through the query system.
+    ///
+    /// This is necessary in the first place for the following case:
+    /// ```
+    /// type Alias<'a, T> = <T as Trait<'a>>::Assoc;
+    /// fn foo<'a>(_: Alias<'a, ()>) -> Alias<'a, ()> { ... }
+    /// ```
+    ///
+    /// If we conservatively considered `'a` unconstrained then we could break users who had written code before
+    /// we started correctly handling aliases. If we considered `'a` constrained then it would become late bound
+    /// causing an error during astconv as the `'a` is not constrained by the input type `<() as Trait<'a>>::Assoc`
+    /// but appears in the output type `<() as Trait<'a>>::Assoc`.
+    ///
+    /// We must therefore "look into" the `Alias` to see whether we should consider `'a` constrained or not.
+    ///
+    /// See #100508 #85533 #47511 for additional context
+    struct ConstrainedCollectorPostAstConv {
+        arg_is_constrained: Box<[bool]>,
+    }
+
+    use std::ops::ControlFlow;
+    use ty::Ty;
+    impl<'tcx> TypeVisitor<'tcx> for ConstrainedCollectorPostAstConv {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
+            match t.kind() {
+                ty::Param(param_ty) => {
+                    self.arg_is_constrained[param_ty.index as usize] = true;
+                }
+                ty::Projection(_) => return ControlFlow::Continue(()),
+                _ => (),
+            }
+            t.super_visit_with(self)
+        }
+
+        fn visit_const(&mut self, _: ty::Const<'tcx>) -> ControlFlow<!> {
+            ControlFlow::Continue(())
+        }
+
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<!> {
+            debug!("r={:?}", r.kind());
+            if let ty::RegionKind::ReEarlyBound(region) = r.kind() {
+                self.arg_is_constrained[region.index as usize] = true;
+            }
+
+            ControlFlow::Continue(())
+        }
+    }
+
+    struct ConstrainedCollector<'tcx> {
+        tcx: TyCtxt<'tcx>,
         regions: FxHashSet<LocalDefId>,
     }
 
-    impl<'v> Visitor<'v> for ConstrainedCollector {
+    impl<'v> Visitor<'v> for ConstrainedCollector<'_> {
         fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
             match ty.kind {
                 hir::TyKind::Path(
@@ -1848,6 +1901,47 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
                     // ignore lifetimes appearing in associated type
                     // projections, as they are not *constrained*
                     // (defined above)
+                }
+
+                hir::TyKind::Path(hir::QPath::Resolved(
+                    None,
+                    hir::Path { res: Res::Def(DefKind::TyAlias, alias_def), segments, span },
+                )) => {
+                    // See comments on `ConstrainedCollectorPostAstConv` for why this arm does not just consider
+                    // substs to be unconstrained.
+                    let generics = self.tcx.generics_of(alias_def);
+                    let mut walker = ConstrainedCollectorPostAstConv {
+                        arg_is_constrained: vec![false; generics.params.len()].into_boxed_slice(),
+                    };
+                    walker.visit_ty(self.tcx.type_of(alias_def));
+
+                    match segments.last() {
+                        Some(hir::PathSegment { args: Some(args), .. }) => {
+                            let tcx = self.tcx;
+                            for constrained_arg in
+                                args.args.iter().enumerate().flat_map(|(n, arg)| {
+                                    match walker.arg_is_constrained.get(n) {
+                                        Some(true) => Some(arg),
+                                        Some(false) => None,
+                                        None => {
+                                            tcx.sess.delay_span_bug(
+                                                *span,
+                                                format!(
+                                                    "Incorrect generic arg count for alias {:?}",
+                                                    alias_def
+                                                ),
+                                            );
+                                            None
+                                        }
+                                    }
+                                })
+                            {
+                                self.visit_generic_arg(constrained_arg);
+                            }
+                        }
+                        Some(_) => (),
+                        None => bug!("Path with no segments or self type"),
+                    }
                 }
 
                 hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
