@@ -1787,8 +1787,7 @@ impl SharedEmitterMain {
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
                     let handler = sess.diagnostic();
-                    let mut d = rustc_errors::Diagnostic::new(diag.lvl, String::new());
-                    d.message = diag.msg;
+                    let mut d = rustc_errors::Diagnostic::new_with_messages(diag.lvl, diag.msg);
                     if let Some(code) = diag.code {
                         d.code(code);
                     }
