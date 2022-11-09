@@ -567,8 +567,10 @@ pub(crate) unsafe fn codegen(
         let llcx = &*module.module_llvm.llcx;
         let tm = &*module.module_llvm.tm;
         let module_name = module.name.clone();
-        let count = unsafe { llvm::LLVMRustModuleInstructionStats(&llmod) };
-        println!("llvm-module: {module_name} = {count}");
+        let stats =
+            llvm::build_string(|s| unsafe { llvm::LLVMRustModuleInstructionStats(&llmod, s) })
+                .expect("cannot get module instruction stats");
+        println!("llvm-module: {stats}");
         let module_name = Some(&module_name[..]);
         let handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
 

@@ -1696,18 +1696,26 @@ LLVMRustModuleCost(LLVMModuleRef M) {
   return std::distance(std::begin(f), std::end(f));
 }
 
-extern "C" uint64_t
-LLVMRustModuleInstructionStats(LLVMModuleRef M) {
-  auto f = unwrap(M)->functions();
-  raw_fd_ostream OS(2, false); // stderr.
-  for (auto &func : f)
-  {
-    auto name = func.getName();
+extern "C" void
+LLVMRustModuleInstructionStats(LLVMModuleRef M, RustStringRef Str)
+{
+  RawRustStringOstream OS(Str);
+  llvm::json::OStream JOS(OS);
+  auto Module = unwrap(M);
 
-    auto count = func.getInstructionCount();
-    OS << name << "\t" << count << "\n";
-  }
-  return unwrap(M)->getInstructionCount();
+  JOS.object([&]
+             {
+    JOS.attribute("module", Module->getName());
+    JOS.attribute("total", Module->getInstructionCount());
+    JOS.attributeArray("functions", [&] {
+        auto functions = Module->functions();
+        for (auto &f: functions) {
+            JOS.object([&] {
+                  JOS.attribute(f.getName(),f.getInstructionCount());
+            });
+        }
+
+    }); });
 }
 
 // Vector reductions:
