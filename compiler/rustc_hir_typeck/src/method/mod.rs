@@ -93,10 +93,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr_id: hir::HirId,
         allow_private: bool,
     ) -> bool {
-        let mode = probe::Mode::MethodCall;
         match self.probe_for_name(
             method_name.span,
-            mode,
+            probe::Mode::MethodCall,
             method_name,
             IsSuggestion(false),
             self_ty,
@@ -253,11 +252,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         scope: ProbeScope,
     ) -> probe::PickResult<'tcx> {
-        let mode = probe::Mode::MethodCall;
-        let self_ty = self.resolve_vars_if_possible(self_ty);
         self.probe_for_name(
             span,
-            mode,
+            probe::Mode::MethodCall,
             method_name,
             IsSuggestion(false),
             self_ty,
