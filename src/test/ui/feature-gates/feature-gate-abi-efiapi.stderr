@@ -1,0 +1,66 @@
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-efiapi.rs:9:8
+   |
+LL | extern "efiapi" fn f1() {}
+   |        ^^^^^^^^
+   |
+   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-efiapi.rs:13:12
+   |
+LL |     extern "efiapi" fn f2();
+   |            ^^^^^^^^
+   |
+   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-efiapi.rs:14:12
+   |
+LL |     extern "efiapi" fn f3() {}
+   |            ^^^^^^^^
+   |
+   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-efiapi.rs:21:12
+   |
+LL |     extern "efiapi" fn f2() {}
+   |            ^^^^^^^^
+   |
+   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-efiapi.rs:26:12
+   |
+LL |     extern "efiapi" fn f4() {}
+   |            ^^^^^^^^
+   |
+   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-efiapi.rs:30:17
+   |
+LL | type A = extern "efiapi" fn();
+   |                 ^^^^^^^^
+   |
+   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
+error[E0658]: efiapi ABI is experimental and subject to change
+  --> $DIR/feature-gate-abi-efiapi.rs:33:8
+   |
+LL | extern "efiapi" {}
+   |        ^^^^^^^^
+   |
+   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
+   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
