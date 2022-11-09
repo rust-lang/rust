@@ -1371,6 +1371,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             fn_decl,
             body,
             fn_decl_span,
+            fn_arg_span: _,
         }) => {
             vis.visit_closure_binder(binder);
             vis.visit_asyncness(asyncness);

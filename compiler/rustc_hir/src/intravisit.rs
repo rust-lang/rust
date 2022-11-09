@@ -740,6 +740,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             body,
             capture_clause: _,
             fn_decl_span: _,
+            fn_arg_span: _,
             movability: _,
         }) => {
             walk_list!(visitor, visit_generic_param, bound_generic_params);

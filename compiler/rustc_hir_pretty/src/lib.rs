@@ -1480,6 +1480,7 @@ impl<'a> State<'a> {
                 fn_decl,
                 body,
                 fn_decl_span: _,
+                fn_arg_span: _,
                 movability: _,
                 def_id: _,
             }) => {

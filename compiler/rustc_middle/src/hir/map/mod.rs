@@ -1022,7 +1022,7 @@ impl<'hir> Map<'hir> {
                 ..
             }) => {
                 // Ensure that the returned span has the item's SyntaxContext.
-                fn_decl_span.find_ancestor_in_same_ctxt(*span).unwrap_or(*span)
+                fn_decl_span.find_ancestor_inside(*span).unwrap_or(*span)
             }
             _ => self.span_with_body(hir_id),
         };
