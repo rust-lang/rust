@@ -714,7 +714,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     obligation.cause.body_id,
                     span,
                     base_ty,
-                    span,
                 );
                 if let Some(steps) = autoderef.find_map(|(ty, steps)| {
                     // Re-add the `&`
