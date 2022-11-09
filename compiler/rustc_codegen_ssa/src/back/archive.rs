@@ -72,6 +72,10 @@ pub trait ArchiveBuilderBuilder {
 pub trait ArchiveBuilder<'a> {
     fn add_file(&mut self, path: &Path);
 
+    fn add_buffer(&mut self, _buffer: Vec<u8>, _name: &str) {
+        unimplemented!();
+    }
+
     fn add_archive(
         &mut self,
         archive: &Path,

@@ -28,6 +28,8 @@ use rustc_session::Session;
 pub struct LlvmArchiveBuilder<'a> {
     sess: &'a Session,
     additions: Vec<Addition>,
+
+    buffers: Vec<(String, Vec<u8>)>,
 }
 
 enum Addition {
@@ -139,6 +141,10 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         Ok(())
     }
 
+    fn add_buffer(&mut self, buffer: Vec<u8>, name: &str) {
+        self.buffers.push((name.to_string(), buffer))
+    }
+
     /// Adds an arbitrary file to this archive
     fn add_file(&mut self, file: &Path) {
         let name = file.file_name().unwrap().to_str().unwrap();
@@ -160,7 +166,7 @@ pub struct LlvmArchiveBuilderBuilder;
 
 impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
-        Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
+        Box::new(LlvmArchiveBuilder { sess, additions: Vec::new(), buffers: Vec::new() })
     }
 
     fn create_dll_import_lib(
@@ -320,6 +326,10 @@ impl<'a> LlvmArchiveBuilder<'a> {
         let mut additions = mem::take(&mut self.additions);
         let mut strings = Vec::new();
         let mut members = Vec::new();
+        let addition_buffers = mem::take(&mut self.buffers);
+        let mut member_buffers = Vec::new();
+        let mut string_buffers = Vec::new();
+        let mut buffer_buffers = Vec::new();
 
         let dst = CString::new(output.to_str().unwrap())?;
 
@@ -329,7 +339,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
                     Addition::File { path, name_in_archive } => {
                         let path = CString::new(path.to_str().unwrap())?;
                         let name = CString::new(name_in_archive.clone())?;
-                        members.push(llvm::LLVMRustArchiveMemberNew(
+                        members.push(llvm::LLVMRustArchiveMemberNewFile(
                             path.as_ptr(),
                             name.as_ptr(),
                             None,
@@ -357,7 +367,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
                             let child_name =
                                 Path::new(child_name).file_name().unwrap().to_str().unwrap();
                             let name = CString::new(child_name)?;
-                            let m = llvm::LLVMRustArchiveMemberNew(
+                            let m = llvm::LLVMRustArchiveMemberNewFile(
                                 ptr::null(),
                                 name.as_ptr(),
                                 Some(child.raw),
@@ -368,11 +378,24 @@ impl<'a> LlvmArchiveBuilder<'a> {
                     }
                 }
             }
+            for addition in addition_buffers {
+                let name = CString::new(addition.0)?;
+                let buffer = addition.1;
+                member_buffers.push(llvm::LLVMRustArchiveMemberNewBuffer(
+                    name.as_ptr(),
+                    buffer.as_ptr() as *const i8,
+                    buffer.len(),
+                ));
+                string_buffers.push(name);
+                buffer_buffers.push(buffer);
+            }
 
             let r = llvm::LLVMRustWriteArchive(
                 dst.as_ptr(),
                 members.len() as libc::size_t,
                 members.as_ptr() as *const &_,
+                member_buffers.len() as libc::size_t,
+                member_buffers.as_ptr() as *const &_,
                 true,
                 kind,
             );

@@ -301,7 +301,8 @@ fn link_rlib<'a>(
                     // normal linkers for the platform. Sometimes this is not possible however.
                     // If it is possible however, placing the metadata object first improves
                     // performance of getting metadata from rlibs.
-                    ab.add_file(&metadata);
+                    ab.add_buffer(metadata, METADATA_FILENAME);
+                    // ab.add_file(&metadata);
                     None
                 }
                 MetadataPosition::Last => Some(metadata),
@@ -438,7 +439,8 @@ fn link_rlib<'a>(
         //
         // Basically, all this means is that this code should not move above the
         // code above.
-        ab.add_file(&trailing_metadata);
+        ab.add_buffer(trailing_metadata, METADATA_FILENAME);
+        // ab.add_file(&trailing_metadata);
     }
 
     // Add all bundled static native library dependencies.

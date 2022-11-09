@@ -20,6 +20,13 @@ struct RustArchiveMember {
   ~RustArchiveMember() {}
 };
 
+struct RustArchiveMemberBuffer {
+  MemoryBufferRef Buffer;
+
+  RustArchiveMemberBuffer() {}
+  ~RustArchiveMemberBuffer() {}
+};
+
 struct RustArchiveIterator {
   bool First;
   Archive::child_iterator Cur;
@@ -58,6 +65,7 @@ static Archive::Kind fromRust(LLVMRustArchiveKind Kind) {
 
 typedef OwningBinary<Archive> *LLVMRustArchiveRef;
 typedef RustArchiveMember *LLVMRustArchiveMemberRef;
+typedef RustArchiveMemberBuffer *LLVMRustArchiveMemberBufferRef;
 typedef Archive::Child *LLVMRustArchiveChildRef;
 typedef Archive::Child const *LLVMRustArchiveChildConstRef;
 typedef RustArchiveIterator *LLVMRustArchiveIteratorRef;
@@ -155,7 +163,7 @@ LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
 }
 
 extern "C" LLVMRustArchiveMemberRef
-LLVMRustArchiveMemberNew(char *Filename, char *Name,
+LLVMRustArchiveMemberNewFile(char *Filename, char *Name,
                          LLVMRustArchiveChildRef Child) {
   RustArchiveMember *Member = new RustArchiveMember;
   Member->Filename = Filename;
@@ -165,13 +173,26 @@ LLVMRustArchiveMemberNew(char *Filename, char *Name,
   return Member;
 }
 
+extern "C" LLVMRustArchiveMemberBufferRef
+LLVMRustArchiveMemberNewBuffer(const char* Name, const char* BufferStart, size_t BufferSize) {
+  RustArchiveMemberBuffer *Member = new RustArchiveMemberBuffer;
+  Member->Buffer = MemoryBufferRef(StringRef(BufferStart, BufferSize), StringRef(Name));
+  return Member;
+}
+
 extern "C" void LLVMRustArchiveMemberFree(LLVMRustArchiveMemberRef Member) {
+  delete Member;
+}
+
+extern "C" void LLVMRustArchiveMemberBufferFree(LLVMRustArchiveMemberBufferRef Member) {
   delete Member;
 }
 
 extern "C" LLVMRustResult
 LLVMRustWriteArchive(char *Dst, size_t NumMembers,
                      const LLVMRustArchiveMemberRef *NewMembers,
+                     size_t NumMemberBuffers,
+                     const LLVMRustArchiveMemberBufferRef *NewMemberBuffers,
                      bool WriteSymbtab, LLVMRustArchiveKind RustKind) {
 
   std::vector<NewArchiveMember> Members;
@@ -181,6 +202,7 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
     auto Member = NewMembers[I];
     assert(Member->Name);
     if (Member->Filename) {
+      // file
       Expected<NewArchiveMember> MOrErr =
           NewArchiveMember::getFile(Member->Filename, true);
       if (!MOrErr) {
@@ -190,6 +212,7 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
       MOrErr->MemberName = sys::path::filename(MOrErr->MemberName);
       Members.push_back(std::move(*MOrErr));
     } else {
+      // archive
       Expected<NewArchiveMember> MOrErr =
           NewArchiveMember::getOldMember(Member->Child, true);
       if (!MOrErr) {
@@ -198,6 +221,11 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
       }
       Members.push_back(std::move(*MOrErr));
     }
+  }
+  for (size_t I = 0; I < NumMemberBuffers; I++) {
+    auto Member = NewMemberBuffers[I];
+    auto M = NewArchiveMember(Member->Buffer);
+    Members.push_back(std::move(M));
   }
 
   auto Result = writeArchive(Dst, Members, WriteSymbtab, Kind, true, false);

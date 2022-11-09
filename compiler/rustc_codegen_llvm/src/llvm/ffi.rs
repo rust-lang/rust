@@ -664,6 +664,8 @@ extern "C" {
 #[repr(C)]
 pub struct RustArchiveMember<'a>(InvariantOpaque<'a>);
 #[repr(C)]
+pub struct RustArchiveMemberBuffer<'a>(InvariantOpaque<'a>);
+#[repr(C)]
 pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct Linker<'a>(InvariantOpaque<'a>);
@@ -2360,15 +2362,23 @@ extern "C" {
         Dst: *const c_char,
         NumMembers: size_t,
         Members: *const &RustArchiveMember<'_>,
+        NumMemberBuffers: size_t,
+        Members: *const &RustArchiveMemberBuffer<'_>,
         WriteSymbtab: bool,
         Kind: ArchiveKind,
     ) -> LLVMRustResult;
-    pub fn LLVMRustArchiveMemberNew<'a>(
+    pub fn LLVMRustArchiveMemberNewFile<'a>(
         Filename: *const c_char,
         Name: *const c_char,
         Child: Option<&ArchiveChild<'a>>,
     ) -> &'a mut RustArchiveMember<'a>;
+    pub fn LLVMRustArchiveMemberNewBuffer<'a>(
+        Name: *const c_char,
+        BufferStart: *const c_char,
+        BufferSize: size_t,
+    ) -> &'a mut RustArchiveMember<'a>;
     pub fn LLVMRustArchiveMemberFree<'a>(Member: &'a mut RustArchiveMember<'a>);
+    pub fn LLVMRustArchiveMemberBufferFree<'a>(Member: &'a mut RustArchiveMemberBuffer<'a>);
 
     pub fn LLVMRustWriteImportLibrary(
         ImportName: *const c_char,
