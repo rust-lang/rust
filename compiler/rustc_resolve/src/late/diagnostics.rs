@@ -1816,11 +1816,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if let Some(Expr { kind: ExprKind::Assign(lhs, rhs, _), .. }) =
             self.diagnostic_metadata.in_assignment
         {
-            let is_rhs_assign = match rhs.kind {
-                ExprKind::Assign(..) => true,
-                _ => false,
-            };
-
+            let is_rhs_assign = matches!(rhs.kind, ExprKind::Assign(..));
             if let ast::ExprKind::Path(None, _) = lhs.kind && !is_rhs_assign {
                 let sm = self.r.session.source_map();
                 let line_span = sm.span_extend_to_line(ident_span);
