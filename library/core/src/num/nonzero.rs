@@ -460,14 +460,14 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(int_log)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(7).unwrap().ilog2(), 2);")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(8).unwrap().ilog2(), 3);")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(9).unwrap().ilog2(), 3);")]
                 /// ```
-                #[unstable(feature = "int_log", issue = "70887")]
+                #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -485,14 +485,14 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(int_log)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(99).unwrap().ilog10(), 1);")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(100).unwrap().ilog10(), 2);")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(101).unwrap().ilog10(), 2);")]
                 /// ```
-                #[unstable(feature = "int_log", issue = "70887")]
+                #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]

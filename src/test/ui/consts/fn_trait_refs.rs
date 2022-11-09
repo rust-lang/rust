@@ -1,4 +1,4 @@
-// build-pass
+// check-pass
 
 #![feature(const_fn_trait_ref_impls)]
 #![feature(fn_traits)]
@@ -60,21 +60,18 @@ const fn test(i: i32) -> i32 {
     i + 1
 }
 
-const fn main() {
+fn main() {
     const fn one() -> i32 {
         1
     };
     const fn two() -> i32 {
         2
     };
+    const _: () = {
+        let test_one = test_fn(one);
+        assert!(test_one == (1, 1, 1));
 
-    // FIXME(const_cmp_tuple)
-    let test_one = test_fn(one);
-    assert!(test_one.0 == 1);
-    assert!(test_one.1 == 1);
-    assert!(test_one.2 == 1);
-
-    let test_two = test_fn_mut(two);
-    assert!(test_two.0 == 1);
-    assert!(test_two.1 == 1);
+        let test_two = test_fn_mut(two);
+        assert!(test_two == (2, 2));
+    };
 }

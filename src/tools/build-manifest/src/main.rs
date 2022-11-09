@@ -60,6 +60,7 @@ static TARGETS: &[&str] = &[
     "aarch64-unknown-none",
     "aarch64-unknown-none-softfloat",
     "aarch64-unknown-redox",
+    "aarch64-unknown-uefi",
     "arm-linux-androideabi",
     "arm-unknown-linux-gnueabi",
     "arm-unknown-linux-gnueabihf",
@@ -95,6 +96,7 @@ static TARGETS: &[&str] = &[
     "i686-unknown-freebsd",
     "i686-unknown-linux-gnu",
     "i686-unknown-linux-musl",
+    "i686-unknown-uefi",
     "m68k-unknown-linux-gnu",
     "mips-unknown-linux-gnu",
     "mips-unknown-linux-musl",
@@ -151,6 +153,7 @@ static TARGETS: &[&str] = &[
     "x86_64-unknown-none",
     "x86_64-unknown-redox",
     "x86_64-unknown-hermit",
+    "x86_64-unknown-uefi",
 ];
 
 /// This allows the manifest to contain rust-docs for hosts that don't build
