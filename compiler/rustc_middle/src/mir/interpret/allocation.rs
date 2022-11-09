@@ -6,7 +6,7 @@ use std::fmt;
 use std::hash;
 use std::hash::Hash;
 use std::iter;
-use std::ops::{Deref, Range};
+use std::ops::{Deref, DerefMut, Range};
 use std::ptr;
 
 use rustc_ast::Mutability;
@@ -24,27 +24,18 @@ use crate::ty;
 
 /// Functionality required for the bytes of an `Allocation`.
 pub trait AllocBytes:
-    Clone + core::fmt::Debug + Eq + PartialEq + PartialOrd + Ord + core::hash::Hash
+    Clone
+    + core::fmt::Debug
+    + Eq
+    + PartialEq
+    + PartialOrd
+    + Ord
+    + core::hash::Hash
+    + Deref<Target = [u8]>
+    + DerefMut<Target = [u8]>
 {
-    /// The length of the bytes.
-    fn get_len(&self) -> usize;
     /// The address of the bytes.
     fn expose_addr(&self) -> u64;
-    /// Get a slice of the bytes corresponding to a specified range.
-    fn get_slice_from_range(&self, range: Range<usize>) -> &[u8];
-    /// Mutable slice of the bytes corresponding to a specified range.
-    fn get_slice_from_range_mut<'a>(&'a mut self, range: Range<usize>) -> &'a mut [u8];
-    /// Add to the pointer of the head of the bytes, and return a mutable pointer to this location.
-    fn add_ptr(&mut self, to_add: usize) -> *mut u8;
-    /// Hash the head and tail of the bytes.
-    /// This is required to statisfy the `Hash` trait.
-    fn hash_head_tail<H: hash::Hasher>(
-        &self,
-        _byte_count: usize,
-        _state: &mut H,
-        _max_bytes_to_hash: usize,
-    ) {
-    }
     /// Adjust the bytes to the specified alignment -- by default, this is a no-op.
     fn adjust_to_align(self, _align: Align) -> Self {
         self
@@ -78,39 +69,9 @@ impl AllocBytes for Box<[u8]> {
         Box::<[u8]>::from(slice.into())
     }
 
-    /// The length of the bytes.
-    fn get_len(&self) -> usize {
-        self.len()
-    }
-
     /// The real address of the bytes.
     fn expose_addr(&self) -> u64 {
         self.as_ptr() as u64
-    }
-
-    /// Slice of the bytes, for a specified range.
-    fn get_slice_from_range(&self, range: Range<usize>) -> &[u8] {
-        &self[range]
-    }
-
-    /// Mutable slice of the bytes, for a specified range.
-    fn get_slice_from_range_mut<'a>(&'a mut self, range: Range<usize>) -> &'a mut [u8] {
-        &mut self[range]
-    }
-
-    /// Pointer addition to the base address of the bytes.
-    fn add_ptr(&mut self, to_add: usize) -> *mut u8 {
-        self.as_mut_ptr().wrapping_add(to_add)
-    }
-
-    fn hash_head_tail<H: hash::Hasher>(
-        &self,
-        _byte_count: usize,
-        _state: &mut H,
-        _max_bytes_to_hash: usize,
-    ) {
-        self[.._max_bytes_to_hash].hash(_state);
-        self[_byte_count - _max_bytes_to_hash..].hash(_state);
     }
 }
 
@@ -164,13 +125,14 @@ impl hash::Hash for Allocation {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         // Partially hash the `bytes` buffer when it is large. To limit collisions with common
         // prefixes and suffixes, we hash the length and some slices of the buffer.
-        let byte_count = self.bytes.get_len();
+        let byte_count = self.bytes.len();
         if byte_count > MAX_HASHED_BUFFER_LEN {
             // Hash the buffer's length.
             byte_count.hash(state);
 
-            // And its head and tail, if it is a Box<[u8]>.
-            self.bytes.hash_head_tail(byte_count, state, MAX_BYTES_TO_HASH);
+            // And its head and tail.
+            self.bytes[..MAX_BYTES_TO_HASH].hash(state);
+            self.bytes[byte_count - MAX_BYTES_TO_HASH..].hash(state);
         } else {
             self.bytes.hash(state);
         }
@@ -306,7 +268,7 @@ impl<Prov, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         mutability: Mutability,
     ) -> Self {
         let bytes = Bytes::from_bytes(slice, align);
-        let size = Size::from_bytes(bytes.get_len());
+        let size = Size::from_bytes(bytes.len());
 
         Self {
             bytes,
@@ -317,6 +279,10 @@ impl<Prov, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
             extra: (),
         }
     }
+
+    // REEEEEEE TODO ELLEN
+    // make a new constructor that just takes a Bytes
+    // then, make the allocation this way in ffi_support, and add it to the memory with allocate_raw_ptr
 
     pub fn from_bytes_byte_aligned_immutable<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
         Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
@@ -374,7 +340,7 @@ impl<Bytes: AllocBytes> Allocation<AllocId, (), Bytes> {
         let endian = cx.data_layout().endian;
         for &(offset, alloc_id) in self.provenance.iter() {
             let idx = offset.bytes_usize();
-            let ptr_bytes = bytes.get_slice_from_range_mut(idx..idx + ptr_size); //&mut bytes[idx..idx + ptr_size];
+            let ptr_bytes = &mut bytes[idx..idx + ptr_size];
             let bits = read_target_uint(endian, ptr_bytes).unwrap();
             let (ptr_prov, ptr_offset) =
                 adjust_ptr(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_parts();
@@ -397,7 +363,7 @@ impl<Bytes: AllocBytes> Allocation<AllocId, (), Bytes> {
 /// Raw accessors. Provide access to otherwise private bytes.
 impl<Prov, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> {
     pub fn len(&self) -> usize {
-        self.bytes.get_len()
+        self.bytes.len()
     }
 
     pub fn size(&self) -> Size {
@@ -409,7 +375,7 @@ impl<Prov, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> {
     /// edges) at all.
     /// This must not be used for reads affecting the interpreter execution.
     pub fn inspect_with_uninit_and_ptr_outside_interpreter(&self, range: Range<usize>) -> &[u8] {
-        self.bytes.get_slice_from_range(range)
+        &self.bytes[range]
     }
 
     /// Returns the mask indicating which bytes are initialized.
@@ -442,7 +408,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     /// on that.
     #[inline]
     pub fn get_bytes_unchecked(&self, range: AllocRange) -> &[u8] {
-        &self.bytes.get_slice_from_range(range.start.bytes_usize()..range.end().bytes_usize())
+        &self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
     }
 
     /// Checks that these bytes are initialized, and then strip provenance (if possible) and return
@@ -480,9 +446,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         self.mark_init(range, true);
         self.clear_provenance(cx, range)?;
 
-        Ok(self
-            .bytes
-            .get_slice_from_range_mut(range.start.bytes_usize()..range.end().bytes_usize()))
+        Ok(&mut self.bytes[range.start.bytes_usize()..range.end().bytes_usize()])
     }
 
     /// A raw pointer variant of `get_bytes_mut` that avoids invalidating existing aliases into this memory.
@@ -494,8 +458,8 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         self.mark_init(range, true);
         self.clear_provenance(cx, range)?;
 
-        assert!(range.end().bytes_usize() <= self.bytes.get_len()); // need to do our own bounds-check
-        let begin_ptr = self.bytes.add_ptr(range.start.bytes_usize());
+        assert!(range.end().bytes_usize() <= self.bytes.len()); // need to do our own bounds-check
+        let begin_ptr = self.bytes.as_mut_ptr().wrapping_add(range.start.bytes_usize());
         let len = range.end().bytes_usize() - range.start.bytes_usize();
         Ok(ptr::slice_from_raw_parts_mut(begin_ptr, len))
     }

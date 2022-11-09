@@ -19,8 +19,9 @@ use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    alloc_range, AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg, GlobalAlloc, InterpCx,
-    InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance, Scalar,
+    alloc_range, AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg,
+    GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance,
+    Scalar,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -518,8 +519,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Get the base address for the bytes in an `Allocation` specified by the
-    /// `AllocID` passed in; error if no such allocation exists.
-    pub fn get_alloc_base_addr(&self, id: AllocId) -> InterpResult<'tcx, usize> {
+    /// `AllocID` passed in; error if no such allocation exists. The address will
+    /// be exposed (on the host system!).
+    ///
+    /// It is up to the caller to take sufficient care when using this address:
+    /// there could be provenance or uninit memory in there, and other memory
+    /// accesses could invalidate the exposed pointer.
+    pub fn expose_alloc_base_addr(&self, id: AllocId) -> InterpResult<'tcx, usize> {
         let alloc = self.get_alloc_raw(id)?;
         Ok(alloc.expose_base_addr())
     }
@@ -567,7 +573,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
         align: Align,
-    ) -> InterpResult<'tcx, Option<AllocRef<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>> {
+    ) -> InterpResult<'tcx, Option<AllocRef<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
+    {
         let align = M::enforce_alignment(self).then_some(align);
         let ptr_and_alloc = self.check_and_deref_ptr(
             ptr,
@@ -639,7 +646,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
         align: Align,
-    ) -> InterpResult<'tcx, Option<AllocRefMut<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>> {
+    ) -> InterpResult<'tcx, Option<AllocRefMut<'a, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
+    {
         let parts = self.get_ptr_access(ptr, size, align)?;
         if let Some((alloc_id, offset, prov)) = parts {
             let tcx = *self.tcx;
@@ -905,7 +913,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
 }
 
 /// Reading and writing.
-impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRefMut<'a, 'tcx, Prov, Extra, Bytes> {
+impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes>
+    AllocRefMut<'a, 'tcx, Prov, Extra, Bytes>
+{
     /// `range` is relative to this allocation reference, not the base of the allocation.
     pub fn write_scalar(&mut self, range: AllocRange, val: Scalar<Prov>) -> InterpResult<'tcx> {
         let range = self.range.subrange(range);
