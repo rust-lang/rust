@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowed-temporary-error.rs:8:10
    |
 LL |         &(v,)
-   |          ^^^^ creates a temporary which is freed while still in use
+   |          ^^^^ creates a temporary value which is freed while still in use
 LL |
 LL |     });
    |       - temporary value is freed at the end of this statement
