@@ -113,8 +113,7 @@ impl f32 {
     /// assert_eq!(h.round_ties_even(), 4.0);
     /// assert_eq!(i.round_ties_even(), 4.0);
     /// ```
-    #[cfg(not(bootstrap))]
-    #[cfg_attr(not(bootstrap), rustc_allow_incoherent_impl)]
+    #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "round_ties_even", issue = "96710")]
     #[inline]

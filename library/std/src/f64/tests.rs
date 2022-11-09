@@ -212,7 +212,6 @@ fn test_round() {
     assert_approx_eq!((-1.7f64).round(), -2.0f64);
 }
 
-#[cfg(not(bootstrap))]
 #[test]
 fn test_round_ties_even() {
     assert_approx_eq!(2.5f64.round_ties_even(), 2.0f64);
