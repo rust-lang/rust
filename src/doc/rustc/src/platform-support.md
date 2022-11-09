@@ -128,6 +128,7 @@ target | std | notes
 [`aarch64-linux-android`](platform-support/android.md) | ✓ | ARM64 Android
 `aarch64-unknown-none-softfloat` | * | Bare ARM64, softfloat
 `aarch64-unknown-none` | * | Bare ARM64, hardfloat
+[`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | * | ARM64 UEFI
 [`arm-linux-androideabi`](platform-support/android.md) | ✓ | ARMv7 Android
 `arm-unknown-linux-musleabi` | ✓ | ARMv6 Linux with MUSL
 `arm-unknown-linux-musleabihf` | ✓ | ARMv6 Linux with MUSL, hardfloat
@@ -149,6 +150,7 @@ target | std | notes
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android
 `i686-unknown-freebsd` | ✓ | 32-bit FreeBSD
 `i686-unknown-linux-musl` | ✓ | 32-bit Linux with MUSL
+[`i686-unknown-uefi`](platform-support/unknown-uefi.md) | * | 32-bit UEFI
 `mips-unknown-linux-musl` | ✓ | MIPS Linux with MUSL
 `mips64-unknown-linux-muslabi64` | ✓ | MIPS64 Linux, n64 ABI, MUSL
 `mips64el-unknown-linux-muslabi64` | ✓ | MIPS64 (LE) Linux, n64 ABI, MUSL
@@ -181,6 +183,7 @@ target | std | notes
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
 `x86_64-unknown-redox` | ✓ | Redox OS
+[`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | * | 64-bit UEFI
 
 [Fortanix ABI]: https://edp.fortanix.com/
 
@@ -213,7 +216,6 @@ target | std | host | notes
 [`aarch64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ✓ |  | ARM64 HermitCore
-[`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | * |  | ARM64 UEFI
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 `aarch64-unknown-netbsd` | ✓ | ✓ |
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
@@ -252,7 +254,6 @@ target | std | host | notes
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
 `i686-unknown-netbsd` | ✓ | ✓ | NetBSD/i386 with SSE2
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD
-[`i686-unknown-uefi`](platform-support/unknown-uefi.md) | * |  | 32-bit UEFI
 `i686-uwp-windows-gnu` | ? |  |
 `i686-uwp-windows-msvc` | ? |  |
 `i686-wrs-vxworks` | ? |  |
@@ -311,7 +312,6 @@ target | std | host | notes
 `x86_64-unknown-l4re-uclibc` | ? |  |
 `x86_64-unknown-none-linuxkernel` | * |  | Linux kernel modules
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
-[`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | * |  | 64-bit UEFI
 `x86_64-uwp-windows-gnu` | ✓ |  |
 `x86_64-uwp-windows-msvc` | ✓ |  |
 `x86_64-wrs-vxworks` | ? |  |
