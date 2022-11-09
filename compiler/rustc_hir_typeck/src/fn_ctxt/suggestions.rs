@@ -1211,18 +1211,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        if let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [start, _], _) = expr.kind
-            && expected_ty.is_floating_point()
-        {
-            err.span_suggestion_verbose(
-                self.tcx.sess.source_map().next_point(start.span),
-                "remove the unnecessary `.` operator to to use a floating point literal",
-                "",
-                Applicability::MachineApplicable,
-            );
-            return true;
+        if !expected_ty.is_floating_point() {
+            return false;
         }
-        false
+        match expr.kind {
+            ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [start, end], _) => {
+                err.span_suggestion_verbose(
+                    start.span.shrink_to_hi().with_hi(end.span.lo()),
+                    "remove the unnecessary `.` operator for a floating point literal",
+                    '.',
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, ..), [start], _) => {
+                err.span_suggestion_verbose(
+                    expr.span.with_lo(start.span.hi()),
+                    "remove the unnecessary `.` operator for a floating point literal",
+                    '.',
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, ..), [end], _) => {
+                err.span_suggestion_verbose(
+                    expr.span.until(end.span),
+                    "remove the unnecessary `.` operator and add an integer part for a floating point literal",
+                    "0.",
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            _ => false,
+        }
     }
 
     fn is_loop(&self, id: hir::HirId) -> bool {
