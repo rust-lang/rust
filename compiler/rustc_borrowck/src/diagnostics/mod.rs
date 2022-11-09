@@ -650,19 +650,28 @@ impl UseSpans<'_> {
     pub(super) fn var_subdiag(
         self,
         err: &mut Diagnostic,
-        f: impl Fn(Span) -> crate::session_diagnostics::CaptureVarCause,
-        kind_desc: impl Into<String>,
+        kind: Option<rustc_middle::mir::BorrowKind>,
+        f: impl Fn(Option<GeneratorKind>, Span) -> crate::session_diagnostics::CaptureVarCause,
     ) {
-        if let UseSpans::ClosureUse { capture_kind_span, path_span, .. } = self {
-            if capture_kind_span == path_span {
-                err.subdiagnostic(f(capture_kind_span));
-            } else {
-                err.subdiagnostic(crate::session_diagnostics::CaptureVarKind {
-                    kind_desc: kind_desc.into(),
-                    kind_span: capture_kind_span,
+        use crate::session_diagnostics::CaptureVarKind::*;
+        if let UseSpans::ClosureUse { generator_kind, capture_kind_span, path_span, .. } = self {
+            if capture_kind_span != path_span {
+                err.subdiagnostic(match kind {
+                    Some(kd) => match kd {
+                        rustc_middle::mir::BorrowKind::Shared
+                        | rustc_middle::mir::BorrowKind::Shallow
+                        | rustc_middle::mir::BorrowKind::Unique => {
+                            Immute { kind_span: capture_kind_span }
+                        }
+
+                        rustc_middle::mir::BorrowKind::Mut { .. } => {
+                            Mut { kind_span: capture_kind_span }
+                        }
+                    },
+                    None => Move { kind_span: capture_kind_span },
                 });
-                err.subdiagnostic(f(path_span));
-            }
+            };
+            err.subdiagnostic(f(generator_kind, path_span));
         }
     }
 

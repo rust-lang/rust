@@ -1898,6 +1898,7 @@ impl BorrowKind {
         }
     }
 
+    // FIXME: won't be used after diagnostic migration
     pub fn describe_mutability(&self) -> &str {
         match *self {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => "immutable",

@@ -150,36 +150,6 @@ pub(crate) enum RequireStaticErr {
 }
 
 #[derive(Subdiagnostic)]
-#[label(borrowck_capture_kind_label)]
-pub(crate) struct CaptureVarKind {
-    pub kind_desc: String,
-    #[primary_span]
-    pub kind_span: Span,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum CaptureVarCause {
-    #[label(borrowck_var_borrow_by_use_place)]
-    BorrowUsePlace {
-        place: String,
-        #[primary_span]
-        var_span: Span,
-    },
-    #[label(borrowck_var_borrow_by_use_place_in_generator)]
-    BorrowUsePlaceGenerator {
-        place: String,
-        #[primary_span]
-        var_span: Span,
-    },
-    #[label(borrowck_var_borrow_by_use_place_in_closure)]
-    BorrowUsePlaceClosure {
-        place: String,
-        #[primary_span]
-        var_span: Span,
-    },
-}
-
-#[derive(Subdiagnostic)]
 pub(crate) enum CaptureVarPathUseCause {
     #[label(borrowck_borrow_due_to_use_generator)]
     BorrowInGenerator {
@@ -220,5 +190,40 @@ pub(crate) enum CaptureVarPathUseCause {
     AssignPartInClosure {
         #[primary_span]
         path_span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CaptureVarKind {
+    #[label(borrowck_capture_immute)]
+    Immute {
+        #[primary_span]
+        kind_span: Span,
+    },
+    #[label(borrowck_capture_mut)]
+    Mut {
+        #[primary_span]
+        kind_span: Span,
+    },
+    #[label(borrowck_capture_move)]
+    Move {
+        #[primary_span]
+        kind_span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CaptureVarCause {
+    #[label(borrowck_var_borrow_by_use_place_in_generator)]
+    BorrowUsePlaceGenerator {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_borrow_by_use_place_in_closure)]
+    BorrowUsePlaceClosure {
+        place: String,
+        #[primary_span]
+        var_span: Span,
     },
 }
