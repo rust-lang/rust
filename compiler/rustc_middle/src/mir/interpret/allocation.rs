@@ -37,9 +37,7 @@ pub trait AllocBytes:
     /// The address of the bytes.
     fn expose_addr(&self) -> u64;
     /// Adjust the bytes to the specified alignment -- by default, this is a no-op.
-    fn adjust_to_align(self, _align: Align) -> Self {
-        self
-    }
+    fn adjust_to_align(self, _align: Align) -> Self;
     /// Create an `AllocBytes` from a slice of `u8`.
     fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self;
     /// Create an uninitialized `AllocBytes` of the specified size and alignment;
@@ -63,6 +61,10 @@ impl AllocBytes for Box<[u8]> {
         // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
         let bytes = unsafe { bytes.assume_init() };
         Ok(bytes)
+    }
+
+    fn adjust_to_align(self, _align: Align) -> Self {
+        self
     }
 
     fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self {
