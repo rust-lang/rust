@@ -225,6 +225,7 @@ impl Diagnostic {
             args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: false,
+            emitted_at: DiagnosticLocation::caller(),
         }
     }
 
