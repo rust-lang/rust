@@ -109,3 +109,17 @@ borrowck_var_move_by_use_place_in_generator =
 
 borrowck_var_move_by_use_place_in_closure =
     move occurs due to use of {$place} in closure
+
+borrowck_cannot_move_when_borrowed =
+    cannot move out of {$place ->
+        [value] value
+        *[other] {$place}
+    } because it is borrowed
+    .label = borrow of {$borrow_place ->
+        [value] value
+        *[other] {$borrow_place}
+    } occurs here
+    .move_label = move out of {$value_place ->
+        [value] value
+        *[other] {$value_place}
+    } occurs here
