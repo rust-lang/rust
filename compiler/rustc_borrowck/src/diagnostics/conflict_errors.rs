@@ -667,10 +667,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let move_spans = self.move_spans(place.as_ref(), location);
         let span = move_spans.args_or_use();
 
-        let mut err =
-            self.cannot_move_when_borrowed(span, &self.describe_any_place(place.as_ref()));
-        err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_msg));
-        err.span_label(span, format!("move out of {} occurs here", value_msg));
+        let mut err = self.cannot_move_when_borrowed(
+            span,
+            borrow_span,
+            &self.describe_any_place(place.as_ref()),
+            &borrow_msg,
+            &value_msg,
+        );
 
         borrow_spans.var_path_only_subdiag(&mut err, crate::InitializationRequiringAction::Borrow);
 
