@@ -298,7 +298,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn probe_for_name(
         &self,
-        span: Span,
         mode: Mode,
         item_name: Ident,
         is_suggestion: IsSuggestion,
@@ -307,7 +306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         scope: ProbeScope,
     ) -> PickResult<'tcx> {
         self.probe_op(
-            span,
+            item_name.span,
             mode,
             Some(item_name),
             None,

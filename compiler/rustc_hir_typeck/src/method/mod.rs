@@ -94,7 +94,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         allow_private: bool,
     ) -> bool {
         match self.probe_for_name(
-            method_name.span,
             probe::Mode::MethodCall,
             method_name,
             IsSuggestion(false),
@@ -124,7 +123,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let params = self
             .probe_for_name(
-                method_name.span,
                 probe::Mode::MethodCall,
                 method_name,
                 IsSuggestion(true),
@@ -174,7 +172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         args: &'tcx [hir::Expr<'tcx>],
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         let pick =
-            self.lookup_probe(span, segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
+            self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
 
         self.lint_dot_call_from_2018(self_ty, segment, span, call_expr, self_expr, &pick, args);
 
@@ -199,7 +197,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .mk_ref(*region, ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() });
                 // We probe again to see if there might be a borrow mutability discrepancy.
                 match self.lookup_probe(
-                    span,
                     segment.ident,
                     trait_type,
                     call_expr,
@@ -213,28 +210,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // We probe again, taking all traits into account (not only those in scope).
-            let mut candidates = match self.lookup_probe(
-                span,
-                segment.ident,
-                self_ty,
-                call_expr,
-                ProbeScope::AllTraits,
-            ) {
-                // If we find a different result the caller probably forgot to import a trait.
-                Ok(ref new_pick) if *new_pick != pick => vec![new_pick.item.container_id(self.tcx)],
-                Err(Ambiguity(ref sources)) => sources
-                    .iter()
-                    .filter_map(|source| {
-                        match *source {
-                            // Note: this cannot come from an inherent impl,
-                            // because the first probing succeeded.
-                            CandidateSource::Impl(def) => self.tcx.trait_id_of_impl(def),
-                            CandidateSource::Trait(_) => None,
-                        }
-                    })
-                    .collect(),
-                _ => Vec::new(),
-            };
+            let mut candidates =
+                match self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::AllTraits) {
+                    // If we find a different result the caller probably forgot to import a trait.
+                    Ok(ref new_pick) if *new_pick != pick => {
+                        vec![new_pick.item.container_id(self.tcx)]
+                    }
+                    Err(Ambiguity(ref sources)) => sources
+                        .iter()
+                        .filter_map(|source| {
+                            match *source {
+                                // Note: this cannot come from an inherent impl,
+                                // because the first probing succeeded.
+                                CandidateSource::Impl(def) => self.tcx.trait_id_of_impl(def),
+                                CandidateSource::Trait(_) => None,
+                            }
+                        })
+                        .collect(),
+                    _ => Vec::new(),
+                };
             candidates.retain(|candidate| *candidate != self.tcx.parent(result.callee.def_id));
 
             return Err(IllegalSizedBound(candidates, needs_mut, span));
@@ -246,14 +240,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, call_expr))]
     pub fn lookup_probe(
         &self,
-        span: Span,
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &'tcx hir::Expr<'tcx>,
         scope: ProbeScope,
     ) -> probe::PickResult<'tcx> {
         self.probe_for_name(
-            span,
             probe::Mode::MethodCall,
             method_name,
             IsSuggestion(false),
@@ -584,9 +576,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let pick = self.probe_for_name(
-            span,
             probe::Mode::Path,
-            method_name,
+            method_name.with_span_pos(span),
             IsSuggestion(false),
             self_ty,
             expr_id,
