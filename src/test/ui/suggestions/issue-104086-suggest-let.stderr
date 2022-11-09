@@ -1,0 +1,81 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:4:5
+   |
+LL |     x = x = x;
+   |     ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:4:9
+   |
+LL |     x = x = x;
+   |         ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:4:13
+   |
+LL |     x = x = x;
+   |             ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:5:5
+   |
+LL |     x = y = y = y;
+   |     ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:5:9
+   |
+LL |     x = y = y = y;
+   |         ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:5:13
+   |
+LL |     x = y = y = y;
+   |             ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:5:17
+   |
+LL |     x = y = y = y;
+   |                 ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:6:5
+   |
+LL |     x = y = y;
+   |     ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:6:9
+   |
+LL |     x = y = y;
+   |         ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:6:13
+   |
+LL |     x = y = y;
+   |             ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:7:5
+   |
+LL |     x = x = y;
+   |     ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:7:9
+   |
+LL |     x = x = y;
+   |         ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/issue-104086-suggest-let.rs:7:13
+   |
+LL |     x = x = y;
+   |             ^ not found in this scope
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
