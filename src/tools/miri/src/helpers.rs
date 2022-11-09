@@ -2,12 +2,12 @@ pub mod convert;
 
 use std::cmp;
 use std::iter;
-use std::mem;
 use std::num::NonZeroUsize;
 use std::time::Duration;
 
 use log::trace;
 
+use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_middle::mir;
 use rustc_middle::ty::{
@@ -74,40 +74,43 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
 };
 
 /// Gets an instance for a path.
-fn try_resolve_did<'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
+fn try_resolve_did<'tcx>(tcx: TyCtxt<'tcx>, path: &[&str], namespace: Namespace) -> Option<DefId> {
     tcx.crates(()).iter().find(|&&krate| tcx.crate_name(krate).as_str() == path[0]).and_then(
         |krate| {
             let krate = DefId { krate: *krate, index: CRATE_DEF_INDEX };
             let mut items = tcx.module_children(krate);
-            let mut path_it = path.iter().skip(1).peekable();
 
-            while let Some(segment) = path_it.next() {
-                for item in mem::take(&mut items).iter() {
-                    if item.ident.name.as_str() == *segment {
-                        if path_it.peek().is_none() {
-                            return Some(item.res.def_id());
-                        }
+            for &segment in &path[1..path.len() - 1] {
+                let next_mod = items.iter().find(|item| {
+                    item.ident.name.as_str() == segment
+                        && tcx.def_kind(item.res.def_id()) == DefKind::Mod
+                })?;
 
-                        items = tcx.module_children(item.res.def_id());
-                        break;
-                    }
-                }
+                items = tcx.module_children(next_mod.res.def_id());
             }
-            None
+
+            let item_name = *path.last().unwrap();
+
+            let item = items.iter().find(|item| {
+                item.ident.name.as_str() == item_name
+                    && tcx.def_kind(item.res.def_id()).ns() == Some(namespace)
+            })?;
+
+            Some(item.res.def_id())
         },
     )
 }
 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Gets an instance for a path; fails gracefully if the path does not exist.
-    fn try_resolve_path(&self, path: &[&str]) -> Option<ty::Instance<'tcx>> {
-        let did = try_resolve_did(self.eval_context_ref().tcx.tcx, path)?;
+    fn try_resolve_path(&self, path: &[&str], namespace: Namespace) -> Option<ty::Instance<'tcx>> {
+        let did = try_resolve_did(self.eval_context_ref().tcx.tcx, path, namespace)?;
         Some(ty::Instance::mono(self.eval_context_ref().tcx.tcx, did))
     }
 
     /// Gets an instance for a path.
-    fn resolve_path(&self, path: &[&str]) -> ty::Instance<'tcx> {
-        self.try_resolve_path(path)
+    fn resolve_path(&self, path: &[&str], namespace: Namespace) -> ty::Instance<'tcx> {
+        self.try_resolve_path(path, namespace)
             .unwrap_or_else(|| panic!("failed to find required Rust item: {path:?}"))
     }
 
@@ -115,7 +118,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// if the path could be resolved, and None otherwise
     fn eval_path_scalar(&self, path: &[&str]) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
-        let instance = this.resolve_path(path);
+        let instance = this.resolve_path(path, Namespace::ValueNS);
         let cid = GlobalId { instance, promoted: None };
         // We don't give a span -- this isn't actually used directly by the program anyway.
         let const_val = this.eval_global(cid, None)?;
@@ -147,7 +150,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Helper function to get the `TyAndLayout` of a `libc` type
     fn libc_ty_layout(&self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let this = self.eval_context_ref();
-        let ty = this.resolve_path(&["libc", name]).ty(*this.tcx, ty::ParamEnv::reveal_all());
+        let ty = this
+            .resolve_path(&["libc", name], Namespace::TypeNS)
+            .ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty)
     }
 
@@ -155,7 +160,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn windows_ty_layout(&self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let this = self.eval_context_ref();
         let ty = this
-            .resolve_path(&["std", "sys", "windows", "c", name])
+            .resolve_path(&["std", "sys", "windows", "c", name], Namespace::TypeNS)
             .ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty)
     }
