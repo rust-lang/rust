@@ -18,18 +18,18 @@ pub struct ProvenanceMap<Prov = AllocId> {
     /// Provenance in this map only applies to the given single byte.
     /// This map is disjoint from the previous. It will always be empty when
     /// `Prov::OFFSET_IS_ADDR` is false.
-    bytes: SortedMap<Size, Prov>,
+    bytes: Option<Box<SortedMap<Size, Prov>>>,
 }
 
 impl<Prov> ProvenanceMap<Prov> {
     pub fn new() -> Self {
-        ProvenanceMap { ptrs: SortedMap::new(), bytes: SortedMap::new() }
+        ProvenanceMap { ptrs: SortedMap::new(), bytes: None }
     }
 
     /// The caller must guarantee that the given provenance list is already sorted
     /// by address and contain no duplicates.
     pub fn from_presorted_ptrs(r: Vec<(Size, Prov)>) -> Self {
-        ProvenanceMap { ptrs: SortedMap::from_presorted_elements(r), bytes: SortedMap::new() }
+        ProvenanceMap { ptrs: SortedMap::from_presorted_elements(r), bytes: None }
     }
 }
 
@@ -40,7 +40,7 @@ impl ProvenanceMap {
     /// Only exposed with `AllocId` provenance, since it panics if there is bytewise provenance.
     #[inline]
     pub fn ptrs(&self) -> &SortedMap<Size, AllocId> {
-        debug_assert!(self.bytes.is_empty()); // `AllocId::OFFSET_IS_ADDR` is false so this cannot fail
+        debug_assert!(self.bytes.is_none()); // `AllocId::OFFSET_IS_ADDR` is false so this cannot fail
         &self.ptrs
     }
 }
@@ -60,7 +60,11 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
 
     /// Returns all byte-wise provenance in the given range.
     fn range_get_bytes(&self, range: AllocRange) -> &[(Size, Prov)] {
-        self.bytes.range(range.start..range.end())
+        if let Some(bytes) = self.bytes.as_ref() {
+            bytes.range(range.start..range.end())
+        } else {
+            &[]
+        }
     }
 
     /// Get the provenance of a single byte.
@@ -69,11 +73,11 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         debug_assert!(prov.len() <= 1);
         if let Some(entry) = prov.first() {
             // If it overlaps with this byte, it is on this byte.
-            debug_assert!(self.bytes.get(&offset).is_none());
+            debug_assert!(self.bytes.as_ref().map_or(true, |b| b.get(&offset).is_none()));
             Some(entry.1)
         } else {
             // Look up per-byte provenance.
-            self.bytes.get(&offset).copied()
+            self.bytes.as_ref().and_then(|b| b.get(&offset).copied())
         }
     }
 
@@ -94,7 +98,8 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
 
     /// Yields all the provenances stored in this map.
     pub fn provenances(&self) -> impl Iterator<Item = Prov> + '_ {
-        self.ptrs.values().chain(self.bytes.values()).copied()
+        let bytes = self.bytes.iter().flat_map(|b| b.values());
+        self.ptrs.values().chain(bytes).copied()
     }
 
     pub fn insert_ptr(&mut self, offset: Size, prov: Prov, cx: &impl HasDataLayout) {
@@ -109,9 +114,11 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         let end = range.end();
         // Clear the bytewise part -- this is easy.
         if Prov::OFFSET_IS_ADDR {
-            self.bytes.remove_range(start..end);
+            if let Some(bytes) = self.bytes.as_mut() {
+                bytes.remove_range(start..end);
+            }
         } else {
-            debug_assert!(self.bytes.is_empty());
+            debug_assert!(self.bytes.is_none());
         }
 
         // For the ptr-sized part, find the first (inclusive) and last (exclusive) byte of
@@ -138,8 +145,9 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             }
             // Insert the remaining part in the bytewise provenance.
             let prov = self.ptrs[&first];
+            let bytes = self.bytes.get_or_insert_with(Box::default);
             for offset in first..start {
-                self.bytes.insert(offset, prov);
+                bytes.insert(offset, prov);
             }
         }
         if last > end {
@@ -150,8 +158,9 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             }
             // Insert the remaining part in the bytewise provenance.
             let prov = self.ptrs[&begin_of_last];
+            let bytes = self.bytes.get_or_insert_with(Box::default);
             for offset in end..last {
-                self.bytes.insert(offset, prov);
+                bytes.insert(offset, prov);
             }
         }
 
@@ -168,8 +177,8 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
 ///
 /// Offsets are already adjusted to the destination allocation.
 pub struct ProvenanceCopy<Prov> {
-    dest_ptrs: Vec<(Size, Prov)>,
-    dest_bytes: Vec<(Size, Prov)>,
+    dest_ptrs: Option<Box<[(Size, Prov)]>>,
+    dest_bytes: Option<Box<[(Size, Prov)]>>,
 }
 
 impl<Prov: Provenance> ProvenanceMap<Prov> {
@@ -192,96 +201,104 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         // Get the provenances that are entirely within this range.
         // (Different from `range_get_ptrs` which asks if they overlap the range.)
         // Only makes sense if we are copying at least one pointer worth of bytes.
-        let mut dest_ptrs = Vec::new();
+        let mut dest_ptrs_box = None;
         if src.size >= ptr_size {
             let adjusted_end = Size::from_bytes(src.end().bytes() - (ptr_size.bytes() - 1));
             let ptrs = self.ptrs.range(src.start..adjusted_end);
-            dest_ptrs.reserve_exact(ptrs.len() * (count as usize));
             // If `count` is large, this is rather wasteful -- we are allocating a big array here, which
             // is mostly filled with redundant information since it's just N copies of the same `Prov`s
             // at slightly adjusted offsets. The reason we do this is so that in `mark_provenance_range`
             // we can use `insert_presorted`. That wouldn't work with an `Iterator` that just produces
             // the right sequence of provenance for all N copies.
             // Basically, this large array would have to be created anyway in the target allocation.
+            let mut dest_ptrs = Vec::with_capacity(ptrs.len() * (count as usize));
             for i in 0..count {
                 dest_ptrs
                     .extend(ptrs.iter().map(|&(offset, reloc)| (shift_offset(i, offset), reloc)));
             }
+            debug_assert_eq!(dest_ptrs.len(), dest_ptrs.capacity());
+            dest_ptrs_box = Some(dest_ptrs.into_boxed_slice());
         };
 
         // # Byte-sized provenances
-        let mut bytes = Vec::new();
-        // First, if there is a part of a pointer at the start, add that.
-        if let Some(entry) = self.range_get_ptrs(alloc_range(src.start, Size::ZERO), cx).first() {
-            if !Prov::OFFSET_IS_ADDR {
-                // We can't split up the provenance into less than a pointer.
+        // This includes the existing bytewise provenance in the range, and ptr provenance
+        // that overlaps with the begin/end of the range.
+        let mut dest_bytes_box = None;
+        let begin_overlap = self.range_get_ptrs(alloc_range(src.start, Size::ZERO), cx).first();
+        let end_overlap = self.range_get_ptrs(alloc_range(src.end(), Size::ZERO), cx).first();
+        if !Prov::OFFSET_IS_ADDR {
+            // There can't be any bytewise provenance, and we cannot split up the begin/end overlap.
+            if let Some(entry) = begin_overlap {
                 return Err(AllocError::PartialPointerCopy(entry.0));
             }
-            trace!("start overlapping entry: {entry:?}");
-            // For really small copies, make sure we don't run off the end of the `src` range.
-            let entry_end = cmp::min(entry.0 + ptr_size, src.end());
-            for offset in src.start..entry_end {
-                bytes.push((offset, entry.1));
-            }
-        } else {
-            trace!("no start overlapping entry");
-        }
-        // Then the main part, bytewise provenance from `self.bytes`.
-        if Prov::OFFSET_IS_ADDR {
-            bytes.extend(self.bytes.range(src.start..src.end()));
-        } else {
-            debug_assert!(self.bytes.is_empty());
-        }
-        // And finally possibly parts of a pointer at the end.
-        if let Some(entry) = self.range_get_ptrs(alloc_range(src.end(), Size::ZERO), cx).first() {
-            if !Prov::OFFSET_IS_ADDR {
-                // We can't split up the provenance into less than a pointer.
+            if let Some(entry) = end_overlap {
                 return Err(AllocError::PartialPointerCopy(entry.0));
             }
-            trace!("end overlapping entry: {entry:?}");
-            // For really small copies, make sure we don't start before `src` does.
-            let entry_start = cmp::max(entry.0, src.start);
-            for offset in entry_start..src.end() {
-                if bytes.last().map_or(true, |bytes_entry| bytes_entry.0 < offset) {
-                    // The last entry, if it exists, has a lower offset than us.
+            debug_assert!(self.bytes.is_none());
+        } else {
+            let mut bytes = Vec::new();
+            // First, if there is a part of a pointer at the start, add that.
+            if let Some(entry) = begin_overlap {
+                trace!("start overlapping entry: {entry:?}");
+                // For really small copies, make sure we don't run off the end of the `src` range.
+                let entry_end = cmp::min(entry.0 + ptr_size, src.end());
+                for offset in src.start..entry_end {
                     bytes.push((offset, entry.1));
-                } else {
-                    // There already is an entry for this offset in there! This can happen when the
-                    // start and end range checks actually end up hitting the same pointer, so we
-                    // already added this in the "pointer at the start" part above.
-                    assert!(entry.0 <= src.start);
                 }
+            } else {
+                trace!("no start overlapping entry");
             }
-        } else {
-            trace!("no end overlapping entry");
-        }
-        trace!("byte provenances: {bytes:?}");
+            // Then the main part, bytewise provenance from `self.bytes`.
+            if let Some(all_bytes) = self.bytes.as_ref() {
+                bytes.extend(all_bytes.range(src.start..src.end()));
+            }
+            // And finally possibly parts of a pointer at the end.
+            if let Some(entry) = end_overlap {
+                trace!("end overlapping entry: {entry:?}");
+                // For really small copies, make sure we don't start before `src` does.
+                let entry_start = cmp::max(entry.0, src.start);
+                for offset in entry_start..src.end() {
+                    if bytes.last().map_or(true, |bytes_entry| bytes_entry.0 < offset) {
+                        // The last entry, if it exists, has a lower offset than us.
+                        bytes.push((offset, entry.1));
+                    } else {
+                        // There already is an entry for this offset in there! This can happen when the
+                        // start and end range checks actually end up hitting the same pointer, so we
+                        // already added this in the "pointer at the start" part above.
+                        assert!(entry.0 <= src.start);
+                    }
+                }
+            } else {
+                trace!("no end overlapping entry");
+            }
+            trace!("byte provenances: {bytes:?}");
 
-        // And again a buffer for the new list on the target side.
-        let mut dest_bytes = Vec::new();
-        if Prov::OFFSET_IS_ADDR {
-            dest_bytes.reserve_exact(bytes.len() * (count as usize));
+            // And again a buffer for the new list on the target side.
+            let mut dest_bytes = Vec::with_capacity(bytes.len() * (count as usize));
             for i in 0..count {
                 dest_bytes
                     .extend(bytes.iter().map(|&(offset, reloc)| (shift_offset(i, offset), reloc)));
             }
-        } else {
-            // There can't be any bytewise provenance when OFFSET_IS_ADDR is false.
-            debug_assert!(bytes.is_empty());
+            debug_assert_eq!(dest_bytes.len(), dest_bytes.capacity());
+            dest_bytes_box = Some(dest_bytes.into_boxed_slice());
         }
 
-        Ok(ProvenanceCopy { dest_ptrs, dest_bytes })
+        Ok(ProvenanceCopy { dest_ptrs: dest_ptrs_box, dest_bytes: dest_bytes_box })
     }
 
     /// Applies a provenance copy.
     /// The affected range, as defined in the parameters to `prepare_copy` is expected
     /// to be clear of provenance.
     pub fn apply_copy(&mut self, copy: ProvenanceCopy<Prov>) {
-        self.ptrs.insert_presorted(copy.dest_ptrs);
+        if let Some(dest_ptrs) = copy.dest_ptrs {
+            self.ptrs.insert_presorted(dest_ptrs.into());
+        }
         if Prov::OFFSET_IS_ADDR {
-            self.bytes.insert_presorted(copy.dest_bytes);
+            if let Some(dest_bytes) = copy.dest_bytes && !dest_bytes.is_empty() {
+                self.bytes.get_or_insert_with(Box::default).insert_presorted(dest_bytes.into());
+            }
         } else {
-            debug_assert!(copy.dest_bytes.is_empty());
+            debug_assert!(copy.dest_bytes.is_none());
         }
     }
 }
