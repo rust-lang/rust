@@ -238,7 +238,7 @@ constraint process and invokes the [`lexical_region_resolve`] code. Once
 this is done, any further attempt to equate or create a subtyping
 relationship will yield an ICE.
 
-The NLL solver (actually, the MIR type-checker) invokes does things slightly
+The NLL solver (actually, the MIR type-checker) does things slightly
 differently. It uses canonical queries for trait solving which use
 [`take_and_reset_region_constraints`] at the end. This extracts all of the
 outlives constraints added during the canonical query. This is required
