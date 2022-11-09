@@ -521,6 +521,19 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         self.data_end().as_ptr().wrapping_sub(self.buckets())
     }
 
+    /// Return the information about memory allocated by the table.
+    ///
+    /// `RawTable` allocates single memory block to store both data and metadata.
+    /// This function returns allocation size and alignment and the beginning of the area.
+    /// These are the arguments which will be passed to `dealloc` when the table is dropped.
+    ///
+    /// This function might be useful for memory profiling.
+    #[inline]
+    #[cfg(feature = "raw")]
+    pub fn allocation_info(&self) -> (NonNull<u8>, Layout) {
+        self.table.allocation_info(Self::TABLE_LAYOUT)
+    }
+
     /// Returns the index of a bucket from a `Bucket`.
     #[inline]
     pub unsafe fn bucket_index(&self, bucket: &Bucket<T>) -> usize {
@@ -1573,15 +1586,21 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
     #[inline]
     unsafe fn free_buckets(&mut self, table_layout: TableLayout) {
+        let (ptr, layout) = self.allocation_info(table_layout);
+        self.alloc.deallocate(ptr, layout);
+    }
+
+    #[inline]
+    fn allocation_info(&self, table_layout: TableLayout) -> (NonNull<u8>, Layout) {
         // Avoid `Option::unwrap_or_else` because it bloats LLVM IR.
         let (layout, ctrl_offset) = match table_layout.calculate_layout_for(self.buckets()) {
             Some(lco) => lco,
-            None => hint::unreachable_unchecked(),
+            None => unsafe { hint::unreachable_unchecked() },
         };
-        self.alloc.deallocate(
-            NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)),
+        (
+            unsafe { NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)) },
             layout,
-        );
+        )
     }
 
     /// Marks all table buckets as empty without dropping their contents.
