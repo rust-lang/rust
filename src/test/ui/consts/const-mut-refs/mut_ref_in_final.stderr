@@ -11,7 +11,7 @@ LL | const B3: Option<&mut i32> = Some(&mut 42);
    |                              ----------^^-
    |                              |         | |
    |                              |         | temporary value is freed at the end of this statement
-   |                              |         creates a temporary which is freed while still in use
+   |                              |         creates a temporary value which is freed while still in use
    |                              using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
@@ -21,7 +21,7 @@ LL | const B4: Option<&mut i32> = helper(&mut 42);
    |                              ------------^^-
    |                              |           | |
    |                              |           | temporary value is freed at the end of this statement
-   |                              |           creates a temporary which is freed while still in use
+   |                              |           creates a temporary value which is freed while still in use
    |                              using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
@@ -31,7 +31,7 @@ LL | const FOO: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                  -------------------------------^^--
    |                                  |                              |  |
    |                                  |                              |  temporary value is freed at the end of this statement
-   |                                  |                              creates a temporary which is freed while still in use
+   |                                  |                              creates a temporary value which is freed while still in use
    |                                  using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
@@ -41,7 +41,7 @@ LL | static FOO2: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                    -------------------------------^^--
    |                                    |                              |  |
    |                                    |                              |  temporary value is freed at the end of this statement
-   |                                    |                              creates a temporary which is freed while still in use
+   |                                    |                              creates a temporary value which is freed while still in use
    |                                    using this value as a static requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
@@ -51,7 +51,7 @@ LL | static mut FOO3: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                        -------------------------------^^--
    |                                        |                              |  |
    |                                        |                              |  temporary value is freed at the end of this statement
-   |                                        |                              creates a temporary which is freed while still in use
+   |                                        |                              creates a temporary value which is freed while still in use
    |                                        using this value as a static requires that borrow lasts for `'static`
 
 error: aborting due to 6 previous errors
