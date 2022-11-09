@@ -94,3 +94,18 @@ borrowck_assign_due_to_use_closure =
 
 borrowck_assign_part_due_to_use_closure =
     assign to part occurs due to use in closure
+
+borrowck_capture_immute =
+    capture is immutable because of use here
+
+borrowck_capture_mut =
+    capture is mutable because of use here
+
+borrowck_capture_move =
+    capture is moved because of use here
+
+borrowck_var_move_by_use_place_in_generator =
+    move occurs due to use of {$place} in generator
+
+borrowck_var_move_by_use_place_in_closure =
+    move occurs due to use of {$place} in closure

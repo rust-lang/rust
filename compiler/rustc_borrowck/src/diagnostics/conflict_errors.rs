@@ -715,22 +715,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             borrow_span,
             &self.describe_any_place(borrow.borrowed_place.as_ref()),
         );
-        borrow_spans.var_subdiag(
-            &mut err,
-            |var_span| {
-                use crate::session_diagnostics::CaptureVarCause::*;
-                let place = &borrow.borrowed_place;
-                let desc_place = self.describe_any_place(place.as_ref());
-                match borrow_spans {
-                    UseSpans::ClosureUse { generator_kind, .. } => match generator_kind {
-                        Some(_) => BorrowUsePlaceGenerator { place: desc_place, var_span },
-                        None => BorrowUsePlaceClosure { place: desc_place, var_span },
-                    },
-                    _ => BorrowUsePlace { place: desc_place, var_span },
-                }
-            },
-            "mutable",
-        );
+        borrow_spans.var_subdiag(&mut err, Some(borrow.kind), |kind, var_span| {
+            use crate::session_diagnostics::CaptureVarCause::*;
+            let place = &borrow.borrowed_place;
+            let desc_place = self.describe_any_place(place.as_ref());
+            match kind {
+                Some(_) => BorrowUsePlaceGenerator { place: desc_place, var_span },
+                None => BorrowUsePlaceClosure { place: desc_place, var_span },
+            }
+        });
 
         self.explain_why_borrow_contains_point(location, borrow, None)
             .add_explanation_to_diagnostic(
