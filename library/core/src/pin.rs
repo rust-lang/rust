@@ -492,7 +492,7 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     /// use std::pin::Pin;
     ///
     /// let val: u8 = 5;
-    /// // We can pin the value, since it doesn't care about being moved 
+    /// // We can pin the value, since it doesn't care about being moved
     /// let pinned: Pin<&u8> = Pin::new(&val);
     /// ```
     #[inline(always)]
