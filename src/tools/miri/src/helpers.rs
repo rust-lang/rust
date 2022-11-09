@@ -730,20 +730,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
+    /// Dereference a pointer operand to a place using `layout` instead of the pointer's declared type
+    fn deref_operand_as(
+        &self,
+        op: &OpTy<'tcx, Provenance>,
+        layout: TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
+        let this = self.eval_context_ref();
+        let ptr = this.read_pointer(op)?;
+
+        let mplace = MPlaceTy::from_aligned_ptr(ptr, layout);
+
+        this.check_mplace(mplace)?;
+
+        Ok(mplace)
+    }
+
     /// Calculates the MPlaceTy given the offset and layout of an access on an operand
     fn deref_operand_and_offset(
         &self,
         op: &OpTy<'tcx, Provenance>,
         offset: u64,
-        layout: TyAndLayout<'tcx>,
+        base_layout: TyAndLayout<'tcx>,
+        value_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_ref();
-        let op_place = this.deref_operand(op)?; // FIXME: we still deref with the original type!
+        let op_place = this.deref_operand_as(op, base_layout)?;
         let offset = Size::from_bytes(offset);
 
         // Ensure that the access is within bounds.
-        assert!(op_place.layout.size >= offset + layout.size);
-        let value_place = op_place.offset(offset, layout, this)?;
+        assert!(base_layout.size >= offset + value_layout.size);
+        let value_place = op_place.offset(offset, value_layout, this)?;
         Ok(value_place)
     }
 
@@ -751,10 +768,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &self,
         op: &OpTy<'tcx, Provenance>,
         offset: u64,
-        layout: TyAndLayout<'tcx>,
+        base_layout: TyAndLayout<'tcx>,
+        value_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
-        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
+        let value_place = this.deref_operand_and_offset(op, offset, base_layout, value_layout)?;
         this.read_scalar(&value_place.into())
     }
 
@@ -763,10 +781,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         op: &OpTy<'tcx, Provenance>,
         offset: u64,
         value: impl Into<Scalar<Provenance>>,
-        layout: TyAndLayout<'tcx>,
+        base_layout: TyAndLayout<'tcx>,
+        value_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
-        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
+        let value_place = this.deref_operand_and_offset(op, offset, base_layout, value_layout)?;
         this.write_scalar(value, &value_place.into())
     }
 

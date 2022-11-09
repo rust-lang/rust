@@ -85,9 +85,8 @@ pub fn futex<'tcx>(
                 return Ok(());
             }
 
-            // `deref_operand` but not actually dereferencing the ptr yet (it might be NULL!).
-            let timeout = this.ref_to_mplace(&this.read_immediate(&args[3])?)?;
-            let timeout_time = if this.ptr_is_null(timeout.ptr)? {
+            let timeout_op = &args[3];
+            let timeout_time = if this.ptr_is_null(this.read_pointer(timeout_op)?)? {
                 None
             } else {
                 let realtime = op & futex_realtime == futex_realtime;
@@ -96,6 +95,7 @@ pub fn futex<'tcx>(
                         "`futex` syscall with `op=FUTEX_WAIT` and non-null timeout with `FUTEX_CLOCK_REALTIME`",
                     )?;
                 }
+                let timeout = this.deref_operand_as(timeout_op, this.libc_ty_layout("timespec"))?;
                 let duration = match this.read_timespec(&timeout)? {
                     Some(duration) => duration,
                     None => {
