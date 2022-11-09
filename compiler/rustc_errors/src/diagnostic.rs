@@ -214,6 +214,21 @@ impl Diagnostic {
     }
 
     #[track_caller]
+    pub fn new_with_messages(level: Level, messages: Vec<(DiagnosticMessage, Style)>) -> Self {
+        Diagnostic {
+            level,
+            message: messages,
+            code: None,
+            span: MultiSpan::new(),
+            children: vec![],
+            suggestions: Ok(vec![]),
+            args: Default::default(),
+            sort_span: DUMMY_SP,
+            is_lint: false,
+        }
+    }
+
+    #[track_caller]
     pub fn new_with_code<M: Into<DiagnosticMessage>>(
         level: Level,
         code: Option<DiagnosticId>,
