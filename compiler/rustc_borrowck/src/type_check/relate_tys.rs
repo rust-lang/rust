@@ -9,6 +9,7 @@ use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
+#[cfg(debug_assertions)]
 use crate::renumber::RegionCtxt;
 use crate::type_check::{InstantiateOpaqueType, Locations, TypeChecker};
 

@@ -97,6 +97,7 @@ use nll::{PoloniusOutput, ToRegionVid};
 use place_ext::PlaceExt;
 use places_conflict::{places_conflict, PlaceConflictBias};
 use region_infer::RegionInferenceContext;
+#[cfg(debug_assertions)]
 use renumber::RegionCtxt;
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.

@@ -8,6 +8,7 @@ use rustc_middle::mir::Constant;
 use rustc_middle::mir::{Body, Location, Promoted};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+#[cfg(debug_assertions)]
 use rustc_span::Symbol;
 
 /// Replaces all free regions appearing in the MIR with fresh

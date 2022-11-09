@@ -26,10 +26,12 @@ use rustc_middle::ty::{
     self, DefIdTree, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt,
 };
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
+#[cfg(debug_assertions)]
 use rustc_span::Symbol;
 use std::iter;
 
 use crate::nll::ToRegionVid;
+#[cfg(debug_assertions)]
 use crate::renumber::RegionCtxt;
 use crate::BorrowckInferCtxt;
 

@@ -257,11 +257,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         borrow_set,
     );
 
-    if cfg!(debug_assertions) {
-        let var_to_origin = infcx.reg_var_to_origin.borrow();
-        debug!("var_to_origin: {:#?}", var_to_origin);
-    }
-
     let mut regioncx = RegionInferenceContext::new(
         infcx,
         var_origins,
