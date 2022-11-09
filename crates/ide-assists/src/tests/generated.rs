@@ -1342,6 +1342,27 @@ impl Person {
 }
 
 #[test]
+fn doctest_generate_trait_impl() {
+    check_doc_test(
+        "generate_trait_impl",
+        r#####"
+struct $0Ctx<T: Clone> {
+    data: T,
+}
+"#####,
+        r#####"
+struct Ctx<T: Clone> {
+    data: T,
+}
+
+impl<T: Clone> $0 for Ctx<T> {
+
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_inline_call() {
     check_doc_test(
         "inline_call",
