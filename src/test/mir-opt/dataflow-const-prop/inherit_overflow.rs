@@ -1,4 +1,4 @@
-// compile-flags: -Coverflow-checks=off -Zunsound-mir-opts
+// compile-flags: -Zunsound-mir-opts
 
 // EMIT_MIR inherit_overflow.main.DataflowConstProp.diff
 fn main() {

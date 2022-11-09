@@ -12,7 +12,6 @@ fn main() {
     escape(&a);
     a = 1;
     some_function();
-    // Without `-Zunsound-mir-opt`, this should not be propagated
-    // (because we do not assume Stacked Borrows).
+    // This should currently not be propagated.
     let b = a;
 }

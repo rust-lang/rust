@@ -13,11 +13,10 @@
 //! can be registered. The [`State`] can be queried to retrieve the abstract value stored for a
 //! certain place by passing the map.
 //!
-//! This framework is currently experimental. In particular, the features related to references are
-//! currently guarded behind `-Zunsound-mir-opts`, because their correctness relies on Stacked
-//! Borrows. Also, only places with scalar types can be tracked currently. This is because scalar
-//! types are indivisible, which simplifies the current implementation. But this limitation could be
-//! lifted in the future.
+//! This framework is currently experimental. Originally, it supported shared references and enum
+//! variants. However, it was discovered that both of these were unsound, and especially references
+//! had subtle but serious issues. In the future, they could be added back in, but we should clarify
+//! the rules for optimizations that rely on the aliasing model first.
 //!
 //!
 //! # Notes
@@ -28,29 +27,17 @@
 //! - The assignment logic in `State::assign_place_idx` assumes that the places are non-overlapping,
 //! or identical. Note that this refers to place expressions, not memory locations.
 //!
-//! - Since pointers (and mutable references) are not tracked, but can be used to change the
-//! underlying values, we are conservative and immediately flood the referenced place upon creation
-//! of the pointer. Also, we have to uphold the invariant that the place must stay that way as long
-//! as this mutable access could exist. However...
-//!
-//! - Without an aliasing model like Stacked Borrows (i.e., `-Zunsound-mir-opts` is not given),
-//! such mutable access is never revoked. And even shared references could be used to obtain the
-//! address of a value an modify it. When not assuming Stacked Borrows, we prevent such places from
-//! being tracked at all. This means that the analysis itself can assume that writes to a *tracked*
-//! place always invalidate all other means of mutable access, regardless of the aliasing model.
-//!
-//! - Likewise, the analysis itself assumes that if the value of a *tracked* place behind a shared
-//! reference is changed, the reference may not be used to access that value anymore. This is true
-//! for all places if the referenced type is `Freeze` and we assume Stacked Borrows. If we are not
-//! assuming Stacking Borrows (or if the referenced type could be `!Freeze`), we again prevent such
-//! places from being tracked at all, making this assertion trivially true.
+//! - Currently, places that have their reference taken cannot be tracked. Although this would be
+//! possible, it has to rely on some aliasing model, which we are not ready to commit to yet.
+//! Because of that, we can assume that the only way to change the value behind a tracked place is
+//! by direct assignment.
 
 use std::fmt::{Debug, Formatter};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::tcx::PlaceTy;
-use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
@@ -96,10 +83,7 @@ pub trait ValueAnalysis<'tcx> {
                 state.flood_with(place.as_ref(), self.map(), Self::Value::bottom());
             }
             StatementKind::Retag(..) => {
-                // A retag modifies the provenance of references. Currently references are only
-                // tracked if `-Zunsound-mir-opts` is given, but this might change in the future.
-                // However, it is still unclear how retags should be handled:
-                // https://github.com/rust-lang/rust/pull/101168#discussion_r985304895
+                // We don't track references.
             }
             StatementKind::Nop
             | StatementKind::FakeRead(..)
@@ -156,7 +140,7 @@ pub trait ValueAnalysis<'tcx> {
         &self,
         rvalue: &Rvalue<'tcx>,
         state: &mut State<Self::Value>,
-    ) -> ValueOrPlaceOrRef<Self::Value> {
+    ) -> ValueOrPlace<Self::Value> {
         self.super_rvalue(rvalue, state)
     }
 
@@ -164,21 +148,15 @@ pub trait ValueAnalysis<'tcx> {
         &self,
         rvalue: &Rvalue<'tcx>,
         state: &mut State<Self::Value>,
-    ) -> ValueOrPlaceOrRef<Self::Value> {
+    ) -> ValueOrPlace<Self::Value> {
         match rvalue {
-            Rvalue::Use(operand) => self.handle_operand(operand, state).into(),
-            Rvalue::Ref(_, BorrowKind::Shared, place) => self
-                .map()
-                .find(place.as_ref())
-                .map(ValueOrPlaceOrRef::Ref)
-                .unwrap_or(ValueOrPlaceOrRef::top()),
-            Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
-                // This is not a `&x` reference and could be used for modification.
-                state.flood(place.as_ref(), self.map());
-                ValueOrPlaceOrRef::top()
-            }
+            Rvalue::Use(operand) => self.handle_operand(operand, state),
             Rvalue::CopyForDeref(place) => {
-                self.handle_operand(&Operand::Copy(*place), state).into()
+                self.handle_operand(&Operand::Copy(*place), state)
+            }
+            Rvalue::Ref(..) | Rvalue::AddressOf(..) => {
+                // We don't track such places.
+                ValueOrPlace::top()
             }
             Rvalue::Repeat(..)
             | Rvalue::ThreadLocalRef(..)
@@ -192,7 +170,7 @@ pub trait ValueAnalysis<'tcx> {
             | Rvalue::Aggregate(..)
             | Rvalue::ShallowInitBox(..) => {
                 // No modification is possible through these r-values.
-                ValueOrPlaceOrRef::top()
+                ValueOrPlace::top()
             }
         }
     }
@@ -247,14 +225,13 @@ pub trait ValueAnalysis<'tcx> {
         self.super_terminator(terminator, state)
     }
 
-    fn super_terminator(&self, terminator: &Terminator<'tcx>, state: &mut State<Self::Value>) {
+    fn super_terminator(&self, terminator: &Terminator<'tcx>, _state: &mut State<Self::Value>) {
         match &terminator.kind {
             TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
                 // Effect is applied by `handle_call_return`.
             }
-            TerminatorKind::Drop { place, .. } => {
-                // Place can still be accessed after drop, and drop has mutable access to it.
-                state.flood(place.as_ref(), self.map());
+            TerminatorKind::Drop { .. } => {
+                // We don't track dropped places.
             }
             TerminatorKind::DropAndReplace { .. } | TerminatorKind::Yield { .. } => {
                 // They would have an effect, but are not allowed in this phase.
@@ -522,7 +499,7 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
         }
     }
 
-    pub fn assign(&mut self, target: PlaceRef<'_>, result: ValueOrPlaceOrRef<V>, map: &Map) {
+    pub fn assign(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map) {
         if let Some(target) = map.find(target) {
             self.assign_idx(target, result, map);
         } else {
@@ -530,9 +507,9 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
         }
     }
 
-    pub fn assign_idx(&mut self, target: PlaceIndex, result: ValueOrPlaceOrRef<V>, map: &Map) {
+    pub fn assign_idx(&mut self, target: PlaceIndex, result: ValueOrPlace<V>, map: &Map) {
         match result {
-            ValueOrPlaceOrRef::Value(value) => {
+            ValueOrPlace::Value(value) => {
                 // First flood the target place in case we also track any projections (although
                 // this scenario is currently not well-supported by the API).
                 self.flood_idx(target, map);
@@ -541,21 +518,7 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
                     values[value_index] = value;
                 }
             }
-            ValueOrPlaceOrRef::Place(source) => self.assign_place_idx(target, source, map),
-            ValueOrPlaceOrRef::Ref(source) => {
-                let StateData::Reachable(values) = &mut self.0 else { return };
-                if let Some(value_index) = map.places[target].value_index {
-                    values[value_index] = V::top();
-                }
-                // Instead of tracking of *where* a reference points to (as in, which memory
-                // location), we track *what* it points to (as in, what do we know about the
-                // target). For an assignment `x = &y`, we thus copy the info of `y` to `*x`.
-                if let Some(target_deref) = map.apply(target, TrackElem::Deref) {
-                    // We know here that `*x` is `Freeze`, because we only track through
-                    // dereferences if the target type is `Freeze`.
-                    self.assign_place_idx(target_deref, source, map);
-                }
-            }
+            ValueOrPlace::Place(source) => self.assign_place_idx(target, source, map),
         }
     }
 
@@ -625,45 +588,27 @@ impl Map {
         filter: impl FnMut(Ty<'tcx>) -> bool,
     ) -> Self {
         let mut map = Self::new();
-
-        // If `-Zunsound-mir-opts` is given, tracking through references, and tracking of places
-        // that have their reference taken is allowed. This would be "unsound" in the sense that
-        // the correctness relies on an aliasing model similar to Stacked Borrows (which is
-        // not yet guaranteed).
-        if tcx.sess.opts.unstable_opts.unsound_mir_opts {
-            // We might want to add additional limitations. If a struct has 10 boxed fields of
-            // itself, there will currently be `10.pow(max_derefs)` tracked places.
-            map.register_with_filter(tcx, body, 2, filter, &FxHashSet::default());
-        } else {
-            map.register_with_filter(tcx, body, 0, filter, &escaped_places(body));
-        }
-
+        map.register_with_filter(tcx, body, filter, &escaped_places(body));
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
         map
     }
 
-    /// Register all non-excluded places that pass the filter, up to a certain dereference depth.
+    /// Register all non-excluded places that pass the filter.
     fn register_with_filter<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        max_derefs: u32,
         mut filter: impl FnMut(Ty<'tcx>) -> bool,
         exclude: &FxHashSet<Place<'tcx>>,
     ) {
-        // This is used to tell whether a type is `Freeze`.
-        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-
         let mut projection = Vec::new();
         for (local, decl) in body.local_decls.iter_enumerated() {
             self.register_with_filter_rec(
                 tcx,
-                max_derefs,
                 local,
                 &mut projection,
                 decl.ty,
                 &mut filter,
-                param_env,
                 exclude,
             );
         }
@@ -672,12 +617,10 @@ impl Map {
     fn register_with_filter_rec<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        max_derefs: u32,
         local: Local,
         projection: &mut Vec<PlaceElem<'tcx>>,
         ty: Ty<'tcx>,
         filter: &mut impl FnMut(Ty<'tcx>) -> bool,
-        param_env: ty::ParamEnv<'tcx>,
         exclude: &FxHashSet<Place<'tcx>>,
     ) {
         if exclude.contains(&Place { local, projection: tcx.intern_place_elems(projection) }) {
@@ -689,26 +632,6 @@ impl Map {
             // This might fail if `ty` is not scalar.
             let _ = self.register_with_ty(local, projection, ty);
         }
-
-        if max_derefs > 0 {
-            if let Some(ty::TypeAndMut { ty: deref_ty, .. }) = ty.builtin_deref(false) {
-                // Values behind references can only be tracked if the target is `Freeze`.
-                if deref_ty.is_freeze(tcx, param_env) {
-                    projection.push(PlaceElem::Deref);
-                    self.register_with_filter_rec(
-                        tcx,
-                        max_derefs - 1,
-                        local,
-                        projection,
-                        deref_ty,
-                        filter,
-                        param_env,
-                        exclude,
-                    );
-                    projection.pop();
-                }
-            }
-        }
         iter_fields(ty, tcx, |variant, field, ty| {
             if variant.is_some() {
                 // Downcasts are currently not supported.
@@ -716,7 +639,7 @@ impl Map {
             }
             projection.push(PlaceElem::Field(field, ty));
             self.register_with_filter_rec(
-                tcx, max_derefs, local, projection, ty, filter, param_env, exclude,
+                tcx, local, projection, ty, filter, exclude,
             );
             projection.pop();
         });
@@ -875,7 +798,7 @@ impl<'a> Iterator for Children<'a> {
     }
 }
 
-/// Used as the result of an operand.
+/// Used as the result of an operand or r-value.
 pub enum ValueOrPlace<V> {
     Value(V),
     Place(PlaceIndex),
@@ -887,34 +810,11 @@ impl<V: HasTop> ValueOrPlace<V> {
     }
 }
 
-/// Used as the result of an r-value.
-pub enum ValueOrPlaceOrRef<V> {
-    Value(V),
-    Place(PlaceIndex),
-    Ref(PlaceIndex),
-}
-
-impl<V: HasTop> ValueOrPlaceOrRef<V> {
-    pub fn top() -> Self {
-        ValueOrPlaceOrRef::Value(V::top())
-    }
-}
-
-impl<V> From<ValueOrPlace<V>> for ValueOrPlaceOrRef<V> {
-    fn from(x: ValueOrPlace<V>) -> Self {
-        match x {
-            ValueOrPlace::Value(value) => ValueOrPlaceOrRef::Value(value),
-            ValueOrPlace::Place(place) => ValueOrPlaceOrRef::Place(place),
-        }
-    }
-}
-
 /// The set of projection elements that can be used by a tracked place.
 ///
-/// For now, downcast is not allowed due to aliasing between variants (see #101168).
+/// Although only field projections are currently allowed, this could change in the future.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TrackElem {
-    Deref,
     Field(Field),
 }
 
@@ -923,7 +823,6 @@ impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
 
     fn try_from(value: ProjectionElem<V, T>) -> Result<Self, Self::Error> {
         match value {
-            ProjectionElem::Deref => Ok(TrackElem::Deref),
             ProjectionElem::Field(field, _) => Ok(TrackElem::Field(field)),
             _ => Err(()),
         }
@@ -962,7 +861,7 @@ fn iter_fields<'tcx>(
 
 /// Returns all places, that have their reference or address taken.
 ///
-/// This includes shared references.
+/// This includes shared references, and also drops and `InlineAsm` out parameters.
 fn escaped_places<'tcx>(body: &Body<'tcx>) -> FxHashSet<Place<'tcx>> {
     struct Collector<'tcx> {
         result: FxHashSet<Place<'tcx>>,
@@ -970,7 +869,11 @@ fn escaped_places<'tcx>(body: &Body<'tcx>) -> FxHashSet<Place<'tcx>> {
 
     impl<'tcx> Visitor<'tcx> for Collector<'tcx> {
         fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-            if context.is_borrow() || context.is_address_of() {
+            if context.is_borrow()
+                || context.is_address_of()
+                || context.is_drop()
+                || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
+            {
                 self.result.insert(*place);
             }
         }
@@ -1032,7 +935,6 @@ fn debug_with_context_rec<V: Debug + Eq>(
     for child in map.children(place) {
         let info_elem = map.places[child].proj_elem.unwrap();
         let child_place_str = match info_elem {
-            TrackElem::Deref => format!("*{}", place_str),
             TrackElem::Field(field) => {
                 if place_str.starts_with("*") {
                     format!("({}).{}", place_str, field.index())

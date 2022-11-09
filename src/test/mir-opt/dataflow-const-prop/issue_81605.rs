@@ -1,5 +1,4 @@
 // unit-test: DataflowConstProp
-// compile-flags: -Zunsound-mir-opts
 
 // EMIT_MIR issue_81605.f.DataflowConstProp.diff
 fn f() -> usize {

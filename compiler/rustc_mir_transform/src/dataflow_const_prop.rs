@@ -8,7 +8,7 @@ use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
-    Map, State, TrackElem, ValueAnalysis, ValueOrPlace, ValueOrPlaceOrRef,
+    Map, State, TrackElem, ValueAnalysis, ValueOrPlace,
 };
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, ResultsVisitor, SwitchIntEdgeEffects};
 use rustc_span::DUMMY_SP;
@@ -100,7 +100,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                     let (val, overflow) = self.binary_op(state, *op, left, right);
 
                     if let Some(value_target) = value_target {
-                        state.assign_idx(value_target, ValueOrPlaceOrRef::Value(val), self.map());
+                        state.assign_idx(value_target, ValueOrPlace::Value(val), self.map());
                     }
                     if let Some(overflow_target) = overflow_target {
                         let overflow = match overflow {
@@ -117,7 +117,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                         };
                         state.assign_idx(
                             overflow_target,
-                            ValueOrPlaceOrRef::Value(overflow),
+                            ValueOrPlace::Value(overflow),
                             self.map(),
                         );
                     }
@@ -131,7 +131,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
         &self,
         rvalue: &Rvalue<'tcx>,
         state: &mut State<Self::Value>,
-    ) -> ValueOrPlaceOrRef<Self::Value> {
+    ) -> ValueOrPlace<Self::Value> {
         match rvalue {
             Rvalue::Cast(
                 kind @ (CastKind::IntToInt
@@ -150,23 +150,23 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                     }
                     _ => unreachable!(),
                 }
-                .map(|result| ValueOrPlaceOrRef::Value(self.wrap_immediate(result, *ty)))
-                .unwrap_or(ValueOrPlaceOrRef::top()),
-                _ => ValueOrPlaceOrRef::top(),
+                .map(|result| ValueOrPlace::Value(self.wrap_immediate(result, *ty)))
+                .unwrap_or(ValueOrPlace::top()),
+                _ => ValueOrPlace::top(),
             },
             Rvalue::BinaryOp(op, box (left, right)) => {
                 // Overflows must be ignored here.
                 let (val, _overflow) = self.binary_op(state, *op, left, right);
-                ValueOrPlaceOrRef::Value(val)
+                ValueOrPlace::Value(val)
             }
             Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
                 FlatSet::Elem(value) => self
                     .ecx
                     .unary_op(*op, &value)
-                    .map(|val| ValueOrPlaceOrRef::Value(self.wrap_immty(val)))
-                    .unwrap_or(ValueOrPlaceOrRef::Value(FlatSet::Top)),
-                FlatSet::Bottom => ValueOrPlaceOrRef::Value(FlatSet::Bottom),
-                FlatSet::Top => ValueOrPlaceOrRef::Value(FlatSet::Top),
+                    .map(|val| ValueOrPlace::Value(self.wrap_immty(val)))
+                    .unwrap_or(ValueOrPlace::Value(FlatSet::Top)),
+                FlatSet::Bottom => ValueOrPlace::Value(FlatSet::Bottom),
+                FlatSet::Top => ValueOrPlace::Value(FlatSet::Top),
             },
             _ => self.super_rvalue(rvalue, state),
         }

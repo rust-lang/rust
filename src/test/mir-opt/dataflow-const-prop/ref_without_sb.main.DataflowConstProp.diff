@@ -10,9 +10,9 @@
       let _5: ();                          // in scope 0 at $DIR/ref_without_sb.rs:+4:5: +4:20
       scope 1 {
           debug a => _1;                   // in scope 1 at $DIR/ref_without_sb.rs:+1:9: +1:14
-          let _6: i32;                     // in scope 1 at $DIR/ref_without_sb.rs:+7:9: +7:10
+          let _6: i32;                     // in scope 1 at $DIR/ref_without_sb.rs:+6:9: +6:10
           scope 2 {
-              debug b => _6;               // in scope 2 at $DIR/ref_without_sb.rs:+7:9: +7:10
+              debug b => _6;               // in scope 2 at $DIR/ref_without_sb.rs:+6:9: +6:10
           }
       }
   
@@ -44,12 +44,12 @@
   
       bb2: {
           StorageDead(_5);                 // scope 1 at $DIR/ref_without_sb.rs:+4:20: +4:21
-          StorageLive(_6);                 // scope 1 at $DIR/ref_without_sb.rs:+7:9: +7:10
-          _6 = _1;                         // scope 1 at $DIR/ref_without_sb.rs:+7:13: +7:14
-          _0 = const ();                   // scope 0 at $DIR/ref_without_sb.rs:+0:11: +8:2
-          StorageDead(_6);                 // scope 1 at $DIR/ref_without_sb.rs:+8:1: +8:2
-          StorageDead(_1);                 // scope 0 at $DIR/ref_without_sb.rs:+8:1: +8:2
-          return;                          // scope 0 at $DIR/ref_without_sb.rs:+8:2: +8:2
+          StorageLive(_6);                 // scope 1 at $DIR/ref_without_sb.rs:+6:9: +6:10
+          _6 = _1;                         // scope 1 at $DIR/ref_without_sb.rs:+6:13: +6:14
+          _0 = const ();                   // scope 0 at $DIR/ref_without_sb.rs:+0:11: +7:2
+          StorageDead(_6);                 // scope 1 at $DIR/ref_without_sb.rs:+7:1: +7:2
+          StorageDead(_1);                 // scope 0 at $DIR/ref_without_sb.rs:+7:1: +7:2
+          return;                          // scope 0 at $DIR/ref_without_sb.rs:+7:2: +7:2
       }
   }
   
