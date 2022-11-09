@@ -3710,7 +3710,8 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
   } else if (auto arg = dyn_cast<ConstantExpr>(oval)) {
     auto C = GetOrCreateShadowConstant(Logic, TLI, TA, arg->getOperand(0), mode,
                                        width, AtomicAdd);
-    if (arg->isCast() || arg->getOpcode() == Instruction::GetElementPtr) {
+    if (arg->isCast() || arg->getOpcode() == Instruction::GetElementPtr ||
+        arg->getOpcode() == Instruction::Add) {
       SmallVector<Constant *, 8> NewOps;
       for (unsigned i = 0, e = arg->getNumOperands(); i != e; ++i)
         NewOps.push_back(i == 0 ? C : arg->getOperand(i));
