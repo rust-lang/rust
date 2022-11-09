@@ -19,6 +19,7 @@ use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::Lto;
 use rustc_target::abi::{
     AddressSpace, Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
 };
@@ -303,7 +304,8 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
                 // dynamic linking when linker plugin based LTO is enabled.
-                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled();
+                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled() &&
+                self.tcx.sess.lto() != Lto::Thin;
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
