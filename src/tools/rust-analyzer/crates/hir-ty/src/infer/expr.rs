@@ -85,6 +85,7 @@ impl<'a> InferenceContext<'a> {
         let ty = match &self.body[tgt_expr] {
             Expr::Missing => self.err_ty(),
             &Expr::If { condition, then_branch, else_branch } => {
+                let expected = &expected.adjust_for_branches(&mut self.table);
                 self.infer_expr(
                     condition,
                     &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(Interner)),

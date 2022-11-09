@@ -93,12 +93,13 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             builder.trigger_signature_help();
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    let snip = format!("::<{}>", get_snippet_fish_head(number_of_arguments));
+                    let fish_head = get_snippet_fish_head(number_of_arguments);
+                    let snip = format!("::<{fish_head}>");
                     builder.insert_snippet(cap, ident.text_range().end(), snip)
                 }
                 None => {
                     let fish_head = std::iter::repeat("_").take(number_of_arguments).format(", ");
-                    let snip = format!("::<{}>", fish_head);
+                    let snip = format!("::<{fish_head}>");
                     builder.insert(ident.text_range().end(), snip);
                 }
             }
@@ -109,7 +110,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 /// This will create a snippet string with tabstops marked
 fn get_snippet_fish_head(number_of_arguments: usize) -> String {
     let mut fish_head = (1..number_of_arguments)
-        .format_with("", |i, f| f(&format_args!("${{{}:_}}, ", i)))
+        .format_with("", |i, f| f(&format_args!("${{{i}:_}}, ")))
         .to_string();
 
     // tabstop 0 is a special case and always the last one

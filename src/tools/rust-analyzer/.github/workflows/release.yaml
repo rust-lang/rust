@@ -257,8 +257,7 @@ jobs:
       - name: Publish Extension (OpenVSX, release)
         if: github.ref == 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
         working-directory: ./editors/code
-        # token from https://dev.azure.com/rust-analyzer/
-        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix || true
+        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
         timeout-minutes: 2
 
       - name: Publish Extension (Code Marketplace, nightly)
@@ -269,5 +268,5 @@ jobs:
       - name: Publish Extension (OpenVSX, nightly)
         if: github.ref != 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
         working-directory: ./editors/code
-        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix || true
+        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
         timeout-minutes: 2
