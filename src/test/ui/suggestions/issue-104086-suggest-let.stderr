@@ -2,7 +2,12 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-104086-suggest-let.rs:2:5
    |
 LL |     x = x = x;
-   |     ^ not found in this scope
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = x = x;
+   |     +++
 
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-104086-suggest-let.rs:2:9
@@ -20,7 +25,12 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-104086-suggest-let.rs:7:5
    |
 LL |     x = y = y = y;
-   |     ^ not found in this scope
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = y = y = y;
+   |     +++
 
 error[E0425]: cannot find value `y` in this scope
   --> $DIR/issue-104086-suggest-let.rs:7:9
@@ -44,7 +54,12 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-104086-suggest-let.rs:13:5
    |
 LL |     x = y = y;
-   |     ^ not found in this scope
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = y = y;
+   |     +++
 
 error[E0425]: cannot find value `y` in this scope
   --> $DIR/issue-104086-suggest-let.rs:13:9
@@ -62,7 +77,12 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-104086-suggest-let.rs:18:5
    |
 LL |     x = x = y;
-   |     ^ not found in this scope
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = x = y;
+   |     +++
 
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-104086-suggest-let.rs:18:9
