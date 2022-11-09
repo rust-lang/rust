@@ -263,6 +263,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     }
 
     let mut regioncx = RegionInferenceContext::new(
+        infcx,
         var_origins,
         universal_regions,
         placeholder_indices,

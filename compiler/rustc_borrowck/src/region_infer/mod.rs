@@ -34,6 +34,7 @@ use crate::{
     },
     type_check::{free_region_relations::UniversalRegionRelations, Locations},
     universal_regions::UniversalRegions,
+    BorrowckInferCtxt,
 };
 
 mod dump_mir;
@@ -243,6 +244,59 @@ pub enum ExtraConstraintInfo {
     PlaceholderFromPredicate(Span),
 }
 
+#[cfg(debug_assertions)]
+#[instrument(skip(infcx, sccs), level = "debug")]
+fn sccs_info<'cx, 'tcx>(
+    infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
+    sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
+) {
+    use crate::renumber::RegionCtxt;
+
+    let var_to_origin = infcx.reg_var_to_origin.borrow();
+    let num_components = sccs.scc_data.ranges.len();
+    let mut components = vec![FxHashSet::default(); num_components];
+
+    for (reg_var_idx, scc_idx) in sccs.scc_indices.iter().enumerate() {
+        let reg_var = ty::RegionVid::from_usize(reg_var_idx);
+        let origin = var_to_origin.get(&reg_var).unwrap_or_else(|| &RegionCtxt::Unknown);
+        components[scc_idx.as_usize()].insert(*origin);
+    }
+
+    debug!(
+        "strongly connected components: {:#?}",
+        components
+            .iter()
+            .enumerate()
+            .map(|(idx, origin)| { (ConstraintSccIndex::from_usize(idx), origin) })
+            .collect::<Vec<_>>()
+    );
+
+    // Now let's calculate the best representative for each component
+    let components_representatives = components
+        .into_iter()
+        .enumerate()
+        .map(|(scc_idx, region_ctxts)| {
+            let repr = region_ctxts
+                .into_iter()
+                .max_by(|x, y| x._preference_value().cmp(&y._preference_value()))
+                .unwrap();
+
+            (ConstraintSccIndex::from_usize(scc_idx), repr)
+        })
+        .collect::<FxHashMap<_, _>>();
+
+    let mut scc_node_to_edges = FxHashMap::default();
+    for (scc_idx, repr) in components_representatives.iter() {
+        let edges_range = sccs.scc_data.ranges[*scc_idx].clone();
+        let edges = &sccs.scc_data.all_successors[edges_range];
+        let edge_representatives =
+            edges.iter().map(|scc_idx| components_representatives[scc_idx]).collect::<Vec<_>>();
+        scc_node_to_edges.insert((scc_idx, repr), edge_representatives);
+    }
+
+    debug!("SCC edges {:#?}", scc_node_to_edges);
+}
+
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Creates a new region inference context with a total of
     /// `num_region_variables` valid inference variables; the first N
@@ -251,7 +305,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// The `outlives_constraints` and `type_tests` are an initial set
     /// of constraints produced by the MIR type check.
-    pub(crate) fn new(
+    pub(crate) fn new<'cx>(
+        _infcx: &BorrowckInferCtxt<'cx, 'tcx>,
         var_infos: VarInfos,
         universal_regions: Rc<UniversalRegions<'tcx>>,
         placeholder_indices: Rc<PlaceholderIndices>,
@@ -263,6 +318,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         liveness_constraints: LivenessValues<RegionVid>,
         elements: &Rc<RegionValueElements>,
     ) -> Self {
+        debug!("universal_regions: {:#?}", universal_regions);
+        debug!("outlives constraints: {:#?}", outlives_constraints);
+        debug!("placeholder_indices: {:#?}", placeholder_indices);
+        debug!("type tests: {:#?}", type_tests);
+
         // Create a RegionDefinition for each inference variable.
         let definitions: IndexVec<_, _> = var_infos
             .iter()
@@ -273,6 +333,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let constraint_graph = Frozen::freeze(constraints.graph(definitions.len()));
         let fr_static = universal_regions.fr_static;
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
+
+        #[cfg(debug_assertions)]
+        {
+            sccs_info(_infcx, constraint_sccs.clone());
+        }
 
         let mut scc_values =
             RegionValues::new(elements, universal_regions.len(), &placeholder_indices);

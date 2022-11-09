@@ -21,21 +21,21 @@ mod tests;
 pub struct Sccs<N: Idx, S: Idx> {
     /// For each node, what is the SCC index of the SCC to which it
     /// belongs.
-    scc_indices: IndexVec<N, S>,
+    pub scc_indices: IndexVec<N, S>,
 
     /// Data about each SCC.
-    scc_data: SccData<S>,
+    pub scc_data: SccData<S>,
 }
 
-struct SccData<S: Idx> {
+pub struct SccData<S: Idx> {
     /// For each SCC, the range of `all_successors` where its
     /// successors can be found.
-    ranges: IndexVec<S, Range<usize>>,
+    pub ranges: IndexVec<S, Range<usize>>,
 
     /// Contains the successors for all the Sccs, concatenated. The
     /// range of indices corresponding to a given SCC is found in its
     /// SccData.
-    all_successors: Vec<S>,
+    pub all_successors: Vec<S>,
 }
 
 impl<N: Idx, S: Idx + Ord> Sccs<N, S> {

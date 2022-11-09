@@ -181,7 +181,7 @@ impl<N: Idx> LivenessValues<N> {
 /// Maps from `ty::PlaceholderRegion` values that are used in the rest of
 /// rustc to the internal `PlaceholderIndex` values that are used in
 /// NLL.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct PlaceholderIndices {
     indices: FxIndexSet<ty::PlaceholderRegion>,
 }
