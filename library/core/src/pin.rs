@@ -489,7 +489,10 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     /// # Examples
     /// 
     /// ```
+    /// use std::pin::Pin;
+    /// 
     /// let val: u8 = 5;
+    /// // Wrap the value in a pin to make sure it doesn't move
     /// let pinned: Pin<&u8> = Pin::new(&val);
     /// ```
     #[inline(always)]
@@ -505,6 +508,17 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// This requires that the data inside this `Pin` is [`Unpin`] so that we
     /// can ignore the pinning invariants when unwrapping it.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use std::pin::Pin;
+    ///
+    /// let pinned: Pin<&u8> = Pin::new(&5);
+    /// // Unwrap the pin to get a reference to the value
+    /// let r = Pin::into_inner(pinned);
+    /// assert_eq!(*r, 5);
+    /// ```
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
