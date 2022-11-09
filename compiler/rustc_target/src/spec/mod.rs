@@ -59,7 +59,6 @@ pub mod crt_objects;
 
 mod android_base;
 mod apple_base;
-mod apple_sdk_base;
 mod avr_gnu_base;
 mod bpf_base;
 mod dragonfly_base;
