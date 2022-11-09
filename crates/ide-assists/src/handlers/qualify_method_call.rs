@@ -54,7 +54,7 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 
     acc.add(
         AssistId("qualify_method_call", AssistKind::RefactorInline),
-        format!("Qualify `{}` method call", ident.text()),
+        format!("Qualify `{ident}` method call"),
         range,
         |builder| {
             qualify_candidate.qualify(

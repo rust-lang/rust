@@ -119,19 +119,19 @@ pub(crate) fn convert_for_loop_with_for_each(
             {
                 // We have either "for x in &col" and col implements a method called iter
                 //             or "for x in &mut col" and col implements a method called iter_mut
-                format_to!(buf, "{}.{}()", expr_behind_ref, method);
+                format_to!(buf, "{expr_behind_ref}.{method}()");
             } else if let ast::Expr::RangeExpr(..) = iterable {
                 // range expressions need to be parenthesized for the syntax to be correct
-                format_to!(buf, "({})", iterable);
+                format_to!(buf, "({iterable})");
             } else if impls_core_iter(&ctx.sema, &iterable) {
-                format_to!(buf, "{}", iterable);
+                format_to!(buf, "{iterable}");
             } else if let ast::Expr::RefExpr(_) = iterable {
-                format_to!(buf, "({}).into_iter()", iterable);
+                format_to!(buf, "({iterable}).into_iter()");
             } else {
-                format_to!(buf, "{}.into_iter()", iterable);
+                format_to!(buf, "{iterable}.into_iter()");
             }
 
-            format_to!(buf, ".for_each(|{}| {});", pat, body);
+            format_to!(buf, ".for_each(|{pat}| {body});");
 
             builder.replace(for_loop.syntax().text_range(), buf)
         },

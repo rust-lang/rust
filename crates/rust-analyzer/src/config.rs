@@ -56,6 +56,9 @@ mod patch_old_style;
 // parsing the old name.
 config_data! {
     struct ConfigData {
+        /// Whether to insert #[must_use] when generating `as_` methods
+        /// for enum variants.
+        assist_emitMustUse: bool               = "false",
         /// Placeholder expression to use for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = "\"todo\"",
 
@@ -1276,6 +1279,7 @@ impl Config {
             allowed: None,
             insert_use: self.insert_use_config(),
             prefer_no_std: self.data.imports_prefer_no_std,
+            assist_emit_must_use: self.data.assist_emitMustUse,
         }
     }
 
