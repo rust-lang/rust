@@ -1,5 +1,5 @@
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:16:8
+  --> $DIR/feature-gate-abi.rs:15:8
    |
 LL | extern "rust-intrinsic" fn f1() {}
    |        ^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | extern "rust-intrinsic" fn f1() {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:18:8
+  --> $DIR/feature-gate-abi.rs:17:8
    |
 LL | extern "platform-intrinsic" fn f2() {}
    |        ^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL | extern "platform-intrinsic" fn f2() {}
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:20:8
+  --> $DIR/feature-gate-abi.rs:19:8
    |
 LL | extern "rust-call" fn f4(_: ()) {}
    |        ^^^^^^^^^^^
@@ -24,17 +24,8 @@ LL | extern "rust-call" fn f4(_: ()) {}
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0658]: efiapi ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:21:8
-   |
-LL | extern "efiapi" fn f10() {}
-   |        ^^^^^^^^
-   |
-   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
-   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
-
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:25:12
+  --> $DIR/feature-gate-abi.rs:23:12
    |
 LL |     extern "rust-intrinsic" fn m1();
    |            ^^^^^^^^^^^^^^^^
@@ -42,7 +33,7 @@ LL |     extern "rust-intrinsic" fn m1();
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:27:12
+  --> $DIR/feature-gate-abi.rs:25:12
    |
 LL |     extern "platform-intrinsic" fn m2();
    |            ^^^^^^^^^^^^^^^^^^^^
@@ -51,7 +42,7 @@ LL |     extern "platform-intrinsic" fn m2();
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:29:12
+  --> $DIR/feature-gate-abi.rs:27:12
    |
 LL |     extern "rust-call" fn m4(_: ());
    |            ^^^^^^^^^^^
@@ -59,17 +50,8 @@ LL |     extern "rust-call" fn m4(_: ());
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0658]: efiapi ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:30:12
-   |
-LL |     extern "efiapi" fn m10();
-   |            ^^^^^^^^
-   |
-   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
-   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
-
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:32:12
+  --> $DIR/feature-gate-abi.rs:29:12
    |
 LL |     extern "rust-call" fn dm4(_: ()) {}
    |            ^^^^^^^^^^^
@@ -77,17 +59,8 @@ LL |     extern "rust-call" fn dm4(_: ()) {}
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0658]: efiapi ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:33:12
-   |
-LL |     extern "efiapi" fn dm10() {}
-   |            ^^^^^^^^
-   |
-   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
-   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
-
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:40:12
+  --> $DIR/feature-gate-abi.rs:36:12
    |
 LL |     extern "rust-intrinsic" fn m1() {}
    |            ^^^^^^^^^^^^^^^^
@@ -95,7 +68,7 @@ LL |     extern "rust-intrinsic" fn m1() {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:42:12
+  --> $DIR/feature-gate-abi.rs:38:12
    |
 LL |     extern "platform-intrinsic" fn m2() {}
    |            ^^^^^^^^^^^^^^^^^^^^
@@ -104,7 +77,7 @@ LL |     extern "platform-intrinsic" fn m2() {}
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:44:12
+  --> $DIR/feature-gate-abi.rs:40:12
    |
 LL |     extern "rust-call" fn m4(_: ()) {}
    |            ^^^^^^^^^^^
@@ -112,17 +85,8 @@ LL |     extern "rust-call" fn m4(_: ()) {}
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0658]: efiapi ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:45:12
-   |
-LL |     extern "efiapi" fn m10() {}
-   |            ^^^^^^^^
-   |
-   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
-   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
-
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:50:12
+  --> $DIR/feature-gate-abi.rs:45:12
    |
 LL |     extern "rust-intrinsic" fn im1() {}
    |            ^^^^^^^^^^^^^^^^
@@ -130,7 +94,7 @@ LL |     extern "rust-intrinsic" fn im1() {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:52:12
+  --> $DIR/feature-gate-abi.rs:47:12
    |
 LL |     extern "platform-intrinsic" fn im2() {}
    |            ^^^^^^^^^^^^^^^^^^^^
@@ -139,7 +103,7 @@ LL |     extern "platform-intrinsic" fn im2() {}
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:54:12
+  --> $DIR/feature-gate-abi.rs:49:12
    |
 LL |     extern "rust-call" fn im4(_: ()) {}
    |            ^^^^^^^^^^^
@@ -147,17 +111,8 @@ LL |     extern "rust-call" fn im4(_: ()) {}
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0658]: efiapi ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:55:12
-   |
-LL |     extern "efiapi" fn im10() {}
-   |            ^^^^^^^^
-   |
-   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
-   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
-
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:59:18
+  --> $DIR/feature-gate-abi.rs:53:18
    |
 LL | type A1 = extern "rust-intrinsic" fn();
    |                  ^^^^^^^^^^^^^^^^
@@ -165,7 +120,7 @@ LL | type A1 = extern "rust-intrinsic" fn();
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:60:18
+  --> $DIR/feature-gate-abi.rs:54:18
    |
 LL | type A2 = extern "platform-intrinsic" fn();
    |                  ^^^^^^^^^^^^^^^^^^^^
@@ -174,7 +129,7 @@ LL | type A2 = extern "platform-intrinsic" fn();
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:61:18
+  --> $DIR/feature-gate-abi.rs:55:18
    |
 LL | type A4 = extern "rust-call" fn(_: ());
    |                  ^^^^^^^^^^^
@@ -182,17 +137,8 @@ LL | type A4 = extern "rust-call" fn(_: ());
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0658]: efiapi ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:62:19
-   |
-LL | type A10 = extern "efiapi" fn();
-   |                   ^^^^^^^^
-   |
-   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
-   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
-
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:65:8
+  --> $DIR/feature-gate-abi.rs:58:8
    |
 LL | extern "rust-intrinsic" {}
    |        ^^^^^^^^^^^^^^^^
@@ -200,7 +146,7 @@ LL | extern "rust-intrinsic" {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:66:8
+  --> $DIR/feature-gate-abi.rs:59:8
    |
 LL | extern "platform-intrinsic" {}
    |        ^^^^^^^^^^^^^^^^^^^^
@@ -209,7 +155,7 @@ LL | extern "platform-intrinsic" {}
    = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:67:8
+  --> $DIR/feature-gate-abi.rs:60:8
    |
 LL | extern "rust-call" {}
    |        ^^^^^^^^^^^
@@ -217,63 +163,54 @@ LL | extern "rust-call" {}
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error[E0658]: efiapi ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi.rs:68:8
-   |
-LL | extern "efiapi" {}
-   |        ^^^^^^^^
-   |
-   = note: see issue #65815 <https://github.com/rust-lang/rust/issues/65815> for more information
-   = help: add `#![feature(abi_efiapi)]` to the crate attributes to enable
-
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:25:32
+  --> $DIR/feature-gate-abi.rs:23:32
    |
 LL |     extern "rust-intrinsic" fn m1();
    |                                ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:27:36
+  --> $DIR/feature-gate-abi.rs:25:36
    |
 LL |     extern "platform-intrinsic" fn m2();
    |                                    ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:16:33
+  --> $DIR/feature-gate-abi.rs:15:33
    |
 LL | extern "rust-intrinsic" fn f1() {}
    |                                 ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:18:37
+  --> $DIR/feature-gate-abi.rs:17:37
    |
 LL | extern "platform-intrinsic" fn f2() {}
    |                                     ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:40:37
+  --> $DIR/feature-gate-abi.rs:36:37
    |
 LL |     extern "rust-intrinsic" fn m1() {}
    |                                     ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:42:41
+  --> $DIR/feature-gate-abi.rs:38:41
    |
 LL |     extern "platform-intrinsic" fn m2() {}
    |                                         ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:50:38
+  --> $DIR/feature-gate-abi.rs:45:38
    |
 LL |     extern "rust-intrinsic" fn im1() {}
    |                                      ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:52:42
+  --> $DIR/feature-gate-abi.rs:47:42
    |
 LL |     extern "platform-intrinsic" fn im2() {}
    |                                          ^^
 
-error: aborting due to 34 previous errors
+error: aborting due to 27 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

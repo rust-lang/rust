@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/interior-mutability.rs:40:26
    |
 LL |     let x: &'static _ = &X;
-   |            ----------    ^ creates a temporary which is freed while still in use
+   |            ----------    ^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 ...
@@ -13,7 +13,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/interior-mutability.rs:41:26
    |
 LL |     let y: &'static _ = &Y;
-   |            ----------    ^ creates a temporary which is freed while still in use
+   |            ----------    ^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL |     let z: &'static _ = &Z;
@@ -24,7 +24,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/interior-mutability.rs:42:26
    |
 LL |     let z: &'static _ = &Z;
-   |            ----------    ^ creates a temporary which is freed while still in use
+   |            ----------    ^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL | }

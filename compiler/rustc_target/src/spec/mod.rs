@@ -59,7 +59,6 @@ pub mod crt_objects;
 
 mod android_base;
 mod apple_base;
-mod apple_sdk_base;
 mod avr_gnu_base;
 mod bpf_base;
 mod dragonfly_base;
@@ -71,7 +70,6 @@ mod illumos_base;
 mod l4re_base;
 mod linux_base;
 mod linux_gnu_base;
-mod linux_kernel_base;
 mod linux_musl_base;
 mod linux_uclibc_base;
 mod msvc_base;
@@ -1003,7 +1001,7 @@ macro_rules! supported_targets {
             $(
                 #[test] // `#[test]`
                 fn $module() {
-                    tests_impl::test_target(super::$module::target(), $triple);
+                    tests_impl::test_target(super::$module::target());
                 }
             )+
         }
@@ -1070,8 +1068,6 @@ supported_targets! {
     ("armv7-linux-androideabi", armv7_linux_androideabi),
     ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
-
-    ("x86_64-unknown-none-linuxkernel", x86_64_unknown_none_linuxkernel),
 
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("armv6-unknown-freebsd", armv6_unknown_freebsd),
@@ -1941,8 +1937,10 @@ impl Target {
             | PlatformIntrinsic
             | Unadjusted
             | Cdecl { .. }
-            | EfiApi
             | RustCold => true,
+            EfiApi => {
+                ["arm", "aarch64", "riscv32", "riscv64", "x86", "x86_64"].contains(&&self.arch[..])
+            }
             X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]),
             Aapcs { .. } => "arm" == self.arch,
             CCmseNonSecureCall => ["arm", "aarch64"].contains(&&self.arch[..]),
