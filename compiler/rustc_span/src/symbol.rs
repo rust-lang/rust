@@ -584,6 +584,7 @@ symbols! {
         custom_attribute,
         custom_derive,
         custom_inner_attributes,
+        custom_mir,
         custom_test_frameworks,
         d,
         d32,
