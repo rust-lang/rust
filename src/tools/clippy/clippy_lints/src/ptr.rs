@@ -695,6 +695,7 @@ fn matches_preds<'tcx>(
             .type_implements_trait(p.def_id, ty, p.substs, cx.param_env)
             .must_apply_modulo_regions(),
         ExistentialPredicate::Projection(p) => infcx.predicate_must_hold_modulo_regions(&Obligation::new(
+            cx.tcx,
             ObligationCause::dummy(),
             cx.param_env,
             cx.tcx.mk_predicate(Binder::bind_with_vars(

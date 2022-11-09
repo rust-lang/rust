@@ -18,7 +18,8 @@ use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKin
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::ToPredicate;
+use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
@@ -1415,7 +1416,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
         let predicate = ty::Binder::dummy(trait_ref).to_poly_trait_predicate();
-        let obligation = traits::Obligation::new(cause, self.param_env, predicate);
+        let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, predicate);
         traits::SelectionContext::new(self).select(&obligation)
     }
 
@@ -1546,7 +1547,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let predicate =
                         ty::Binder::dummy(trait_ref).without_const().to_predicate(self.tcx);
                     parent_pred = Some(predicate);
-                    let obligation = traits::Obligation::new(cause, self.param_env, predicate);
+                    let obligation =
+                        traits::Obligation::new(self.tcx, cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
                         result = ProbeResult::NoMatch;
                         if self.probe(|_| {

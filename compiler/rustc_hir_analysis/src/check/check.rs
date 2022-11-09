@@ -19,9 +19,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{
-    self, ParamEnv, ToPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -464,9 +462,8 @@ fn check_opaque_meets_bounds<'tcx>(
     // Additionally require the hidden type to be well-formed with only the generics of the opaque type.
     // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
     // hidden type is well formed even without those bounds.
-    let predicate =
-        ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_ty.into())).to_predicate(tcx);
-    ocx.register_obligation(Obligation::new(misc_cause, param_env, predicate));
+    let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_ty.into()));
+    ocx.register_obligation(Obligation::new(tcx, misc_cause, param_env, predicate));
 
     // Check that all obligations are satisfied by the implementation's
     // version.

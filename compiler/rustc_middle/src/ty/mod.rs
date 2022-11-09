@@ -1129,8 +1129,8 @@ pub trait ToPredicate<'tcx, Predicate> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate;
 }
 
-impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for Predicate<'tcx> {
-    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+impl<'tcx, T> ToPredicate<'tcx, T> for T {
+    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> T {
         self
     }
 }

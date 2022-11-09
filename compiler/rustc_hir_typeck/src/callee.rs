@@ -380,6 +380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         predicates.predicates.iter().zip(&predicates.spans)
                     {
                         let obligation = Obligation::new(
+                            self.tcx,
                             ObligationCause::dummy_with_span(callee_expr.span),
                             self.param_env,
                             *predicate,

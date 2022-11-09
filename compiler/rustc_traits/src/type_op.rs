@@ -91,7 +91,12 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
     }
 
     fn prove_predicate(&self, predicate: Predicate<'tcx>, cause: ObligationCause<'tcx>) {
-        self.ocx.register_obligation(Obligation::new(cause, self.param_env, predicate));
+        self.ocx.register_obligation(Obligation::new(
+            self.ocx.infcx.tcx,
+            cause,
+            self.param_env,
+            predicate,
+        ));
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -256,5 +261,5 @@ pub fn type_op_prove_predicate_with_cause<'tcx>(
     cause: ObligationCause<'tcx>,
 ) {
     let (param_env, ProvePredicate { predicate }) = key.into_parts();
-    ocx.register_obligation(Obligation::new(cause, param_env, predicate));
+    ocx.register_obligation(Obligation::new(ocx.infcx.tcx, cause, param_env, predicate));
 }

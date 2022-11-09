@@ -22,8 +22,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, ToPredicate, Ty,
-    UserType,
+    self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, Ty, UserType,
 };
 use rustc_middle::ty::{GenericArgKind, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts};
 use rustc_session::lint;
@@ -562,9 +561,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // WF obligations never themselves fail, so no real need to give a detailed cause:
         let cause = traits::ObligationCause::new(span, self.body_id, code);
         self.register_predicate(traits::Obligation::new(
+            self.tcx,
             cause,
             self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)).to_predicate(self.tcx),
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)),
         ));
     }
 

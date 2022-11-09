@@ -156,6 +156,7 @@ impl Qualif for NeedsNonConstDrop {
         let destruct = cx.tcx.require_lang_item(LangItem::Destruct, None);
 
         let obligation = Obligation::new(
+            cx.tcx,
             ObligationCause::dummy(),
             cx.param_env,
             ty::Binder::dummy(ty::TraitPredicate {

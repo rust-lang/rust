@@ -20,7 +20,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, ToPredicate, Ty, TypeVisitable};
+use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, Ty, TypeVisitable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -295,10 +295,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let poly_trait_ref = ty::Binder::dummy(trait_ref);
         (
             traits::Obligation::misc(
+                self.tcx,
                 span,
                 self.body_id,
                 self.param_env,
-                poly_trait_ref.without_const().to_predicate(self.tcx),
+                poly_trait_ref.without_const(),
             ),
             substs,
         )
@@ -337,6 +338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         (
             traits::Obligation::new(
+                self.tcx,
                 traits::ObligationCause::new(
                     span,
                     self.body_id,
@@ -348,7 +350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     },
                 ),
                 self.param_env,
-                poly_trait_ref.without_const().to_predicate(self.tcx),
+                poly_trait_ref.without_const(),
             ),
             substs,
         )
@@ -525,9 +527,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             method_ty, obligation
         );
         obligations.push(traits::Obligation::new(
+            tcx,
             cause,
             self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(method_ty.into())).to_predicate(tcx),
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(method_ty.into())),
         ));
 
         let callee = MethodCallee { def_id, substs, sig: fn_sig };
