@@ -256,16 +256,16 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 /// Codegen implementations for some terminator variants.
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Generates code for a `Resume` terminator.
-    fn codegen_resume_terminator(&mut self, helper: TerminatorCodegenHelper<'tcx>, mut bx: Bx) {
+    fn codegen_resume_terminator(&mut self, helper: TerminatorCodegenHelper<'tcx>, bx: &mut Bx) {
         if let Some(funclet) = helper.funclet(self) {
             bx.cleanup_ret(funclet, None);
         } else {
-            let slot = self.get_personality_slot(&mut bx);
-            let lp0 = slot.project_field(&mut bx, 0);
+            let slot = self.get_personality_slot(bx);
+            let lp0 = slot.project_field(bx, 0);
             let lp0 = bx.load_operand(lp0).immediate();
-            let lp1 = slot.project_field(&mut bx, 1);
+            let lp1 = slot.project_field(bx, 1);
             let lp1 = bx.load_operand(lp1).immediate();
-            slot.storage_dead(&mut bx);
+            slot.storage_dead(bx);
 
             let mut lp = bx.const_undef(self.landing_pad_type());
             lp = bx.insert_value(lp, lp0, 0);
@@ -277,12 +277,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn codegen_switchint_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         discr: &mir::Operand<'tcx>,
         switch_ty: Ty<'tcx>,
         targets: &SwitchTargets,
     ) {
-        let discr = self.codegen_operand(&mut bx, &discr);
+        let discr = self.codegen_operand(bx, &discr);
         // `switch_ty` is redundant, sanity-check that.
         assert_eq!(discr.layout.ty, switch_ty);
         let mut target_iter = targets.iter();
@@ -338,7 +338,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_return_terminator(&mut self, mut bx: Bx) {
+    fn codegen_return_terminator(&mut self, bx: &mut Bx) {
         // Call `va_end` if this is the definition of a C-variadic function.
         if self.fn_abi.c_variadic {
             // The `VaList` "spoofed" argument is just after all the real arguments.
@@ -368,11 +368,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
-                let op = self.codegen_consume(&mut bx, mir::Place::return_place().as_ref());
+                let op = self.codegen_consume(bx, mir::Place::return_place().as_ref());
                 if let Ref(llval, _, align) = op.val {
                     bx.load(bx.backend_type(op.layout), llval, align)
                 } else {
-                    op.immediate_or_packed_pair(&mut bx)
+                    op.immediate_or_packed_pair(bx)
                 }
             }
 
@@ -388,8 +388,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 let llslot = match op.val {
                     Immediate(_) | Pair(..) => {
-                        let scratch = PlaceRef::alloca(&mut bx, self.fn_abi.ret.layout);
-                        op.val.store(&mut bx, scratch);
+                        let scratch = PlaceRef::alloca(bx, self.fn_abi.ret.layout);
+                        op.val.store(bx, scratch);
                         scratch.llval
                     }
                     Ref(llval, _, align) => {
@@ -409,7 +409,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn codegen_drop_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         location: mir::Place<'tcx>,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
@@ -420,11 +420,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.
-            helper.funclet_br(self, &mut bx, target);
+            helper.funclet_br(self, bx, target);
             return;
         }
 
-        let place = self.codegen_place(&mut bx, location.as_ref());
+        let place = self.codegen_place(bx, location.as_ref());
         let (args1, args2);
         let mut args = if let Some(llextra) = place.llextra {
             args2 = [place.llval, llextra];
@@ -462,7 +462,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args = &args[..1];
                 (
                     meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_fn(&mut bx, vtable, ty, &fn_abi),
+                        .get_fn(bx, vtable, ty, &fn_abi),
                     fn_abi,
                 )
             }
@@ -507,7 +507,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 debug!("args' = {:?}", args);
                 (
                     meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_fn(&mut bx, vtable, ty, &fn_abi),
+                        .get_fn(bx, vtable, ty, &fn_abi),
                     fn_abi,
                 )
             }
@@ -515,7 +515,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
         helper.do_call(
             self,
-            &mut bx,
+            bx,
             fn_abi,
             drop_fn,
             args,
@@ -528,7 +528,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn codegen_assert_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         cond: &mir::Operand<'tcx>,
         expected: bool,
@@ -537,7 +537,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         cleanup: Option<mir::BasicBlock>,
     ) {
         let span = terminator.source_info.span;
-        let cond = self.codegen_operand(&mut bx, cond).immediate();
+        let cond = self.codegen_operand(bx, cond).immediate();
         let mut const_cond = bx.const_to_opt_u128(cond, false).map(|c| c == 1);
 
         // This case can currently arise only from functions marked
@@ -555,7 +555,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Don't codegen the panic block if success if known.
         if const_cond == Some(expected) {
-            helper.funclet_br(self, &mut bx, target);
+            helper.funclet_br(self, bx, target);
             return;
         }
 
@@ -573,16 +573,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // After this point, bx is the block for the call to panic.
         bx.switch_to_block(panic_block);
-        self.set_debug_loc(&mut bx, terminator.source_info);
+        self.set_debug_loc(bx, terminator.source_info);
 
         // Get the location information.
-        let location = self.get_caller_location(&mut bx, terminator.source_info).immediate();
+        let location = self.get_caller_location(bx, terminator.source_info).immediate();
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
             AssertKind::BoundsCheck { ref len, ref index } => {
-                let len = self.codegen_operand(&mut bx, len).immediate();
-                let index = self.codegen_operand(&mut bx, index).immediate();
+                let len = self.codegen_operand(bx, len).immediate();
+                let index = self.codegen_operand(bx, index).immediate();
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
                 (LangItem::PanicBoundsCheck, vec![index, len, location])
@@ -595,26 +595,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
 
-        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), lang_item);
+        let (fn_abi, llfn) = common::build_langcall(bx, Some(span), lang_item);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup, &[]);
+        helper.do_call(self, bx, fn_abi, llfn, &args, None, cleanup, &[]);
     }
 
     fn codegen_abort_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
     ) {
         let span = terminator.source_info.span;
-        self.set_debug_loc(&mut bx, terminator.source_info);
+        self.set_debug_loc(bx, terminator.source_info);
 
         // Obtain the panic entry point.
-        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), LangItem::PanicNoUnwind);
+        let (fn_abi, llfn) = common::build_langcall(bx, Some(span), LangItem::PanicNoUnwind);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, &mut bx, fn_abi, llfn, &[], None, None, &[]);
+        helper.do_call(self, bx, fn_abi, llfn, &[], None, None, &[]);
     }
 
     /// Returns `true` if this is indeed a panic intrinsic and codegen is done.
@@ -701,7 +701,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn codegen_call_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
@@ -714,7 +714,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let span = source_info.span;
 
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
-        let callee = self.codegen_operand(&mut bx, func);
+        let callee = self.codegen_operand(bx, func);
 
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, substs) => (
@@ -734,7 +734,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(ty::InstanceDef::DropGlue(_, None)) = def {
             // Empty drop glue; a no-op.
             let target = target.unwrap();
-            helper.funclet_br(self, &mut bx, target);
+            helper.funclet_br(self, bx, target);
             return;
         }
 
@@ -763,8 +763,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if intrinsic == Some(sym::transmute) {
             if let Some(target) = target {
-                self.codegen_transmute(&mut bx, &args[0], destination);
-                helper.funclet_br(self, &mut bx, target);
+                self.codegen_transmute(bx, &args[0], destination);
+                helper.funclet_br(self, bx, target);
             } else {
                 // If we are trying to transmute to an uninhabited type,
                 // it is likely there is no allotted destination. In fact,
@@ -780,7 +780,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if self.codegen_panic_intrinsic(
             &helper,
-            &mut bx,
+            bx,
             intrinsic,
             instance,
             source_info,
@@ -797,21 +797,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Prepare the return value destination
         let ret_dest = if target.is_some() {
             let is_intrinsic = intrinsic.is_some();
-            self.make_return_dest(&mut bx, destination, &fn_abi.ret, &mut llargs, is_intrinsic)
+            self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, is_intrinsic)
         } else {
             ReturnDest::Nothing
         };
 
         if intrinsic == Some(sym::caller_location) {
             if let Some(target) = target {
-                let location = self
-                    .get_caller_location(&mut bx, mir::SourceInfo { span: fn_span, ..source_info });
+                let location =
+                    self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
 
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
-                    location.val.store(&mut bx, tmp);
+                    location.val.store(bx, tmp);
                 }
-                self.store_return(&mut bx, ret_dest, &fn_abi.ret, location.immediate());
-                helper.funclet_br(self, &mut bx, target);
+                self.store_return(bx, ret_dest, &fn_abi.ret, location.immediate());
+                helper.funclet_br(self, bx, target);
             }
             return;
         }
@@ -857,12 +857,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
 
-                        self.codegen_operand(&mut bx, arg)
+                        self.codegen_operand(bx, arg)
                     })
                     .collect();
 
                 Self::codegen_intrinsic_call(
-                    &mut bx,
+                    bx,
                     *instance.as_ref().unwrap(),
                     &fn_abi,
                     &args,
@@ -871,11 +871,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
 
                 if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                    self.store_return(&mut bx, ret_dest, &fn_abi.ret, dst.llval);
+                    self.store_return(bx, ret_dest, &fn_abi.ret, dst.llval);
                 }
 
                 if let Some(target) = target {
-                    helper.funclet_br(self, &mut bx, target);
+                    helper.funclet_br(self, bx, target);
                 } else {
                     bx.unreachable();
                 }
@@ -894,7 +894,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let mut copied_constant_arguments = vec![];
         'make_args: for (i, arg) in first_args.iter().enumerate() {
-            let mut op = self.codegen_operand(&mut bx, arg);
+            let mut op = self.codegen_operand(bx, arg);
 
             if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
                 match op.val {
@@ -909,7 +909,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             && !op.layout.ty.is_region_ptr()
                         {
                             for i in 0..op.layout.fields.count() {
-                                let field = op.extract_field(&mut bx, i);
+                                let field = op.extract_field(bx, i);
                                 if !field.layout.is_zst() {
                                     // we found the one non-zero-sized field that is allowed
                                     // now find *its* non-zero-sized field, or stop if it's a
@@ -926,7 +926,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // data pointer and vtable. Look up the method in the vtable, and pass
                         // the data pointer as the first argument
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
-                            &mut bx,
+                            bx,
                             meta,
                             op.layout.ty,
                             &fn_abi,
@@ -937,7 +937,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     Ref(data_ptr, Some(meta), _) => {
                         // by-value dynamic dispatch
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
-                            &mut bx,
+                            bx,
                             meta,
                             op.layout.ty,
                             &fn_abi,
@@ -954,11 +954,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                         // FIXME(dyn-star): Make sure this is done on a &dyn* receiver
                         let place = op.deref(bx.cx());
-                        let data_ptr = place.project_field(&mut bx, 0);
-                        let meta_ptr = place.project_field(&mut bx, 1);
+                        let data_ptr = place.project_field(bx, 0);
+                        let meta_ptr = place.project_field(bx, 1);
                         let meta = bx.load_operand(meta_ptr);
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
-                            &mut bx,
+                            bx,
                             meta.immediate(),
                             op.layout.ty,
                             &fn_abi,
@@ -977,24 +977,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             match (arg, op.val) {
                 (&mir::Operand::Copy(_), Ref(_, None, _))
                 | (&mir::Operand::Constant(_), Ref(_, None, _)) => {
-                    let tmp = PlaceRef::alloca(&mut bx, op.layout);
+                    let tmp = PlaceRef::alloca(bx, op.layout);
                     bx.lifetime_start(tmp.llval, tmp.layout.size);
-                    op.val.store(&mut bx, tmp);
+                    op.val.store(bx, tmp);
                     op.val = Ref(tmp.llval, None, tmp.align);
                     copied_constant_arguments.push(tmp);
                 }
                 _ => {}
             }
 
-            self.codegen_argument(&mut bx, op, &mut llargs, &fn_abi.args[i]);
+            self.codegen_argument(bx, op, &mut llargs, &fn_abi.args[i]);
         }
         let num_untupled = untuple.map(|tup| {
-            self.codegen_arguments_untupled(
-                &mut bx,
-                tup,
-                &mut llargs,
-                &fn_abi.args[first_args.len()..],
-            )
+            self.codegen_arguments_untupled(bx, tup, &mut llargs, &fn_abi.args[first_args.len()..])
         });
 
         let needs_location =
@@ -1014,14 +1009,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 fn_abi,
             );
             let location =
-                self.get_caller_location(&mut bx, mir::SourceInfo { span: fn_span, ..source_info });
+                self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
             debug!(
                 "codegen_call_terminator({:?}): location={:?} (fn_span {:?})",
                 terminator, location, fn_span
             );
 
             let last_arg = fn_abi.args.last().unwrap();
-            self.codegen_argument(&mut bx, location, &mut llargs, last_arg);
+            self.codegen_argument(bx, location, &mut llargs, last_arg);
         }
 
         let (is_indirect_call, fn_ptr) = match (llfn, instance) {
@@ -1048,7 +1043,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.switch_to_block(bb_pass);
             helper.do_call(
                 self,
-                &mut bx,
+                bx,
                 fn_abi,
                 fn_ptr,
                 &llargs,
@@ -1066,7 +1061,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         helper.do_call(
             self,
-            &mut bx,
+            bx,
             fn_abi,
             fn_ptr,
             &llargs,
@@ -1079,7 +1074,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn codegen_asm_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         template: &[ast::InlineAsmTemplatePiece],
         operands: &[mir::InlineAsmOperand<'tcx>],
@@ -1095,17 +1090,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .iter()
             .map(|op| match *op {
                 mir::InlineAsmOperand::In { reg, ref value } => {
-                    let value = self.codegen_operand(&mut bx, value);
+                    let value = self.codegen_operand(bx, value);
                     InlineAsmOperandRef::In { reg, value }
                 }
                 mir::InlineAsmOperand::Out { reg, late, ref place } => {
-                    let place = place.map(|place| self.codegen_place(&mut bx, place.as_ref()));
+                    let place = place.map(|place| self.codegen_place(bx, place.as_ref()));
                     InlineAsmOperandRef::Out { reg, late, place }
                 }
                 mir::InlineAsmOperand::InOut { reg, late, ref in_value, ref out_place } => {
-                    let in_value = self.codegen_operand(&mut bx, in_value);
+                    let in_value = self.codegen_operand(bx, in_value);
                     let out_place =
-                        out_place.map(|out_place| self.codegen_place(&mut bx, out_place.as_ref()));
+                        out_place.map(|out_place| self.codegen_place(bx, out_place.as_ref()));
                     InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
                 }
                 mir::InlineAsmOperand::Const { ref value } => {
@@ -1143,7 +1138,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         helper.do_inlineasm(
             self,
-            &mut bx,
+            bx,
             template,
             &operands,
             options,
@@ -1158,14 +1153,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
         let llbb = self.llbb(bb);
-        let mut bx = Bx::build(self.cx, llbb);
+        let bx = &mut Bx::build(self.cx, llbb);
         let mir = self.mir;
         let data = &mir[bb];
 
         debug!("codegen_block({:?}={:?})", bb, data);
 
         for statement in &data.statements {
-            bx = self.codegen_statement(bx, statement);
+            self.codegen_statement(bx, statement);
         }
 
         self.codegen_terminator(bx, bb, data.terminator());
@@ -1173,7 +1168,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn codegen_terminator(
         &mut self,
-        mut bx: Bx,
+        bx: &mut Bx,
         bb: mir::BasicBlock,
         terminator: &'tcx mir::Terminator<'tcx>,
     ) {
@@ -1183,7 +1178,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let funclet_bb = self.cleanup_kinds[bb].funclet_bb(bb);
         let helper = TerminatorCodegenHelper { bb, terminator, funclet_bb };
 
-        self.set_debug_loc(&mut bx, terminator.source_info);
+        self.set_debug_loc(bx, terminator.source_info);
         match terminator.kind {
             mir::TerminatorKind::Resume => self.codegen_resume_terminator(helper, bx),
 
@@ -1192,7 +1187,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Goto { target } => {
-                helper.funclet_br(self, &mut bx, target);
+                helper.funclet_br(self, bx, target);
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref targets } => {
