@@ -4,7 +4,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let phantom_pinned = identity(pin!(PhantomPinned));
    |                                   ^^^^^^^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
    |                                   |
-   |                                   creates a temporary which is freed while still in use
+   |                                   creates a temporary value which is freed while still in use
 LL |
 LL |     stuff(phantom_pinned)
    |           -------------- borrow later used here
@@ -18,7 +18,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let phantom_pinned = {
    |         -------------- borrow later stored here
 LL |         let phantom_pinned = pin!(PhantomPinned);
-   |                              ^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |                              ^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
 ...
 LL |     };
    |     - temporary value is freed at the end of this statement

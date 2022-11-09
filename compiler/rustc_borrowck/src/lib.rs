@@ -18,6 +18,7 @@ extern crate tracing;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -129,6 +130,19 @@ fn mir_borrowck<'tcx>(
 ) -> &'tcx BorrowCheckResult<'tcx> {
     let (input_body, promoted) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));
+
+    if input_body.borrow().should_skip() {
+        debug!("Skipping borrowck because of injected body");
+        // Let's make up a borrowck result! Fun times!
+        let result = BorrowCheckResult {
+            concrete_opaque_types: VecMap::new(),
+            closure_requirements: None,
+            used_mut_upvars: SmallVec::new(),
+            tainted_by_errors: None,
+        };
+        return tcx.arena.alloc(result);
+    }
+
     let hir_owner = tcx.hir().local_def_id_to_hir_id(def.did).owner;
 
     let infcx =
