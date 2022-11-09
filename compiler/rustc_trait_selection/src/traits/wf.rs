@@ -547,7 +547,7 @@ impl<'tcx> WfPredicates<'tcx> {
                 }
 
                 ty::FnDef(did, substs) => {
-                    let obligations = self.nominal_obligations(did, substs);
+                    let obligations = self.nominal_obligations_without_const(did, substs);
                     self.out.extend(obligations);
                 }
 
