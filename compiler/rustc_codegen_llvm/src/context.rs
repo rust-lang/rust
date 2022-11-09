@@ -3,6 +3,7 @@ use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::coverageinfo;
 use crate::debuginfo;
+use crate::errors::BranchProtectionRequiresAArch64;
 use crate::llvm;
 use crate::llvm_util;
 use crate::type_::Type;
@@ -26,6 +27,7 @@ use rustc_session::config::{BranchProtection, CFGuard, CFProtection};
 use rustc_session::config::{CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
 use rustc_span::source_map::Span;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::{
     call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
 };
@@ -275,7 +277,7 @@ pub unsafe fn create_module<'ll>(
 
     if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
         if sess.target.arch != "aarch64" {
-            sess.err("-Zbranch-protection is only supported on aarch64");
+            sess.emit_err(BranchProtectionRequiresAArch64);
         } else {
             llvm::LLVMRustAddModuleFlag(
                 llmod,
@@ -951,7 +953,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) = err {
-            self.sess().span_fatal(span, &err.to_string())
+            self.sess().emit_fatal(Spanned { span, node: err })
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
         }
@@ -969,7 +971,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.sess().span_fatal(span, &err.to_string())
+            self.sess().emit_fatal(Spanned { span, node: err })
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {

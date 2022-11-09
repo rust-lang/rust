@@ -44,6 +44,15 @@ pub trait IntoDiagnosticArg {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
 }
 
+impl<'source> IntoDiagnosticArg for DiagnosticArgValue<'source> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        match self {
+            DiagnosticArgValue::Str(s) => DiagnosticArgValue::Str(Cow::Owned(s.into_owned())),
+            DiagnosticArgValue::Number(n) => DiagnosticArgValue::Number(n),
+        }
+    }
+}
+
 impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
     fn into(self) -> FluentValue<'source> {
         match self {
@@ -202,6 +211,22 @@ impl Diagnostic {
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
         Diagnostic::new_with_code(level, None, message)
+    }
+
+    #[track_caller]
+    pub fn new_with_messages(level: Level, messages: Vec<(DiagnosticMessage, Style)>) -> Self {
+        Diagnostic {
+            level,
+            message: messages,
+            code: None,
+            span: MultiSpan::new(),
+            children: vec![],
+            suggestions: Ok(vec![]),
+            args: Default::default(),
+            sort_span: DUMMY_SP,
+            is_lint: false,
+            emitted_at: DiagnosticLocation::caller(),
+        }
     }
 
     #[track_caller]
@@ -929,6 +954,13 @@ impl Diagnostic {
     ) -> &mut Self {
         self.args.insert(name.into(), arg.into_diagnostic_arg());
         self
+    }
+
+    pub fn replace_args(
+        &mut self,
+        args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue<'static>>,
+    ) {
+        self.args = args;
     }
 
     pub fn styled_message(&self) -> &[(DiagnosticMessage, Style)] {
