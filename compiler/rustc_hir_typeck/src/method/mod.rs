@@ -202,7 +202,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     call_expr,
                     ProbeScope::TraitsInScope,
                 ) {
-                    Ok(ref new_pick) if *new_pick != pick => {
+                    Ok(ref new_pick) if new_pick.self_ty != pick.self_ty => {
                         needs_mut = true;
                     }
                     _ => {}
@@ -213,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut candidates =
                 match self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::AllTraits) {
                     // If we find a different result the caller probably forgot to import a trait.
-                    Ok(ref new_pick) if *new_pick != pick => {
+                    Ok(ref new_pick) if new_pick.self_ty != pick.self_ty => {
                         vec![new_pick.item.container_id(self.tcx)]
                     }
                     Err(Ambiguity(ref sources)) => sources
