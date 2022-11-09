@@ -405,6 +405,17 @@ fn test_retain() {
     assert!(a.is_empty());
 }
 
+#[test]
+fn test_drain_filter() {
+    let mut a = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15]);
+    let mut evens = a.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+    evens.sort();
+    let odds = a.into_sorted_vec();
+
+    assert_eq!(evens, vec![2, 4, 6, 8, 14]);
+    assert_eq!(odds, vec![1, 3, 5, 9, 11, 13, 15]);
+}
+
 // old binaryheap failed this test
 //
 // Integrity means that all elements are present after a comparison panics,

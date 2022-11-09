@@ -1220,6 +1220,30 @@ impl<T> BinaryHeap<T> {
     pub fn clear(&mut self) {
         self.drain();
     }
+
+    /// Creates an iterator which uses a closure to determine if an element should be removed from the underlying vec.
+    /// If the closure returns true, then the element is removed and yielded. If the closure returns false, the element will remain in the binary heap and will not be yielded by the iterator.
+    /// # Examples
+    /// Splitting the binary heap into evens and odds, reusing the original allocation:
+    ///
+    /// ```
+    /// #![feature(binary_heap_drain_filter)]
+    /// use std::collections::BinaryHeap;
+    /// let mut a = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15]);
+    /// let mut evens = a.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+    /// evens.sort();
+    /// let odds = a.into_sorted_vec();
+    ///
+    /// assert_eq!(evens, vec![2, 4, 6, 8, 14]);
+    /// assert_eq!(odds, vec![1, 3, 5, 9, 11, 13, 15]);
+    /// ```
+    #[unstable(feature = "binary_heap_drain_filter", reason = "recently added", issue = "42849")]
+    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F>
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        DrainFilter { inner: self.data.drain_filter(filter) }
+    }
 }
 
 /// Hole represents a hole in a slice i.e., an index without valid value
@@ -1569,6 +1593,36 @@ impl<T: Ord> FusedIterator for DrainSorted<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T: Ord> TrustedLen for DrainSorted<'_, T> {}
+
+/// An iterator which uses a closure to determine if an element should be removed from the underlying vec.
+///
+/// This `struct` is created by [`BinaryHeap::drain_filter()`]. See its
+/// documentation for more.
+///
+/// [`drain_filter`]: BinaryHeap::drain_filter
+#[unstable(feature = "binary_heap_drain_filter", reason = "recently added", issue = "42849")]
+#[derive(Debug)]
+pub struct DrainFilter<'a, T, F>
+where
+    F: FnMut(&mut T) -> bool,
+{
+    inner: crate::vec::DrainFilter<'a, T, F>,
+}
+
+#[unstable(feature = "binary_heap_drain_filter", reason = "recently added", issue = "42849")]
+impl<T, F> Iterator for DrainFilter<'_, T, F>
+where
+    F: FnMut(&mut T) -> bool,
+{
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
