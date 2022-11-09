@@ -151,9 +151,7 @@ pub trait ValueAnalysis<'tcx> {
     ) -> ValueOrPlace<Self::Value> {
         match rvalue {
             Rvalue::Use(operand) => self.handle_operand(operand, state),
-            Rvalue::CopyForDeref(place) => {
-                self.handle_operand(&Operand::Copy(*place), state)
-            }
+            Rvalue::CopyForDeref(place) => self.handle_operand(&Operand::Copy(*place), state),
             Rvalue::Ref(..) | Rvalue::AddressOf(..) => {
                 // We don't track such places.
                 ValueOrPlace::top()
@@ -638,9 +636,7 @@ impl Map {
                 return;
             }
             projection.push(PlaceElem::Field(field, ty));
-            self.register_with_filter_rec(
-                tcx, local, projection, ty, filter, exclude,
-            );
+            self.register_with_filter_rec(tcx, local, projection, ty, filter, exclude);
             projection.pop();
         });
     }
@@ -842,13 +838,17 @@ fn iter_fields<'tcx>(
             }
         }
         ty::Adt(def, substs) => {
+            if def.is_union() {
+                return;
+            }
             for (v_index, v_def) in def.variants().iter_enumerated() {
+                let variant = if def.is_struct() { None } else { Some(v_index) };
                 for (f_index, f_def) in v_def.fields.iter().enumerate() {
                     let field_ty = f_def.ty(tcx, substs);
                     let field_ty = tcx
                         .try_normalize_erasing_regions(ty::ParamEnv::reveal_all(), field_ty)
                         .unwrap_or(field_ty);
-                    f(Some(v_index), f_index.into(), field_ty);
+                    f(variant, f_index.into(), field_ty);
                 }
             }
         }
