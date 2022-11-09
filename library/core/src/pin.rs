@@ -485,12 +485,12 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// Unlike `Pin::new_unchecked`, this method is safe because the pointer
     /// `P` dereferences to an [`Unpin`] type, which cancels the pinning guarantees.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use std::pin::Pin;
-    /// 
+    ///
     /// let val: u8 = 5;
     /// // Wrap the value in a pin to make sure it doesn't move
     /// let pinned: Pin<&u8> = Pin::new(&val);
@@ -508,9 +508,9 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     ///
     /// This requires that the data inside this `Pin` is [`Unpin`] so that we
     /// can ignore the pinning invariants when unwrapping it.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use std::pin::Pin;
     ///
