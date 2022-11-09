@@ -71,7 +71,7 @@ pub(crate) fn render<T: Print, S: Print>(
     let mut themes: Vec<String> = style_files.iter().map(|s| s.basename().unwrap()).collect();
     themes.sort();
 
-    let rustdoc_version = rustc_interface::util::version_str().unwrap_or("unknown version");
+    let rustdoc_version = rustc_interface::util::version_str!().unwrap_or("unknown version");
     let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
     let sidebar = Buffer::html().to_display(sidebar);
     PageLayout {

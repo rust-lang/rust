@@ -327,7 +327,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
     let mut file: Option<PathBuf> = None;
 
     let expected_names = &[
-        format!("rustc_codegen_{}-{}", backend_name, release_str().expect("CFG_RELEASE")),
+        format!("rustc_codegen_{}-{}", backend_name, env!("CFG_RELEASE")),
         format!("rustc_codegen_{}", backend_name),
     ];
     for entry in d.filter_map(|e| e.ok()) {
@@ -554,22 +554,12 @@ pub fn build_output_filenames(
     }
 }
 
-/// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)"
-pub fn version_str() -> Option<&'static str> {
+/// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)" when invoked by an in-tree tool.
+pub macro version_str() {
     option_env!("CFG_VERSION")
 }
 
-/// Returns a version string such as "0.12.0-dev".
-pub fn release_str() -> Option<&'static str> {
-    option_env!("CFG_RELEASE")
-}
-
-/// Returns the full SHA1 hash of HEAD of the Git repo from which rustc was built.
-pub fn commit_hash_str() -> Option<&'static str> {
-    option_env!("CFG_VER_HASH")
-}
-
-/// Returns the "commit date" of HEAD of the Git repo from which rustc was built as a static string.
-pub fn commit_date_str() -> Option<&'static str> {
-    option_env!("CFG_VER_DATE")
+/// Returns the version string for `rustc` itself (which may be different from a tool version).
+pub fn rustc_version_str() -> Option<&'static str> {
+    version_str!()
 }

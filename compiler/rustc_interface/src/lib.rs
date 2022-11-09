@@ -1,4 +1,5 @@
 #![feature(box_patterns)]
+#![feature(decl_macro)]
 #![feature(internal_output_capture)]
 #![feature(thread_spawn_unchecked)]
 #![feature(once_cell)]
