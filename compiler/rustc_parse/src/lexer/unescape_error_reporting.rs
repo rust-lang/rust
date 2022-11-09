@@ -108,7 +108,7 @@ pub(crate) fn emit_unescape_error(
             }
 
             if !has_help {
-                let (prefix, msg) = if mode.is_bytes() {
+                let (prefix, msg) = if mode.is_byte() {
                     ("b", "if you meant to write a byte string literal, use double quotes")
                 } else {
                     ("", "if you meant to write a `str` literal, use double quotes")
@@ -142,7 +142,7 @@ pub(crate) fn emit_unescape_error(
         EscapeError::EscapeOnlyChar => {
             let (c, char_span) = last_char();
 
-            let msg = if mode.is_bytes() {
+            let msg = if mode.is_byte() {
                 "byte constant must be escaped"
             } else {
                 "character constant must be escaped"
@@ -182,11 +182,11 @@ pub(crate) fn emit_unescape_error(
             let (c, span) = last_char();
 
             let label =
-                if mode.is_bytes() { "unknown byte escape" } else { "unknown character escape" };
+                if mode.is_byte() { "unknown byte escape" } else { "unknown character escape" };
             let ec = escaped_char(c);
             let mut diag = handler.struct_span_err(span, &format!("{}: `{}`", label, ec));
             diag.span_label(span, label);
-            if c == '{' || c == '}' && !mode.is_bytes() {
+            if c == '{' || c == '}' && !mode.is_byte() {
                 diag.help(
                     "if used in a formatting string, curly braces are escaped with `{{` and `}}`",
                 );
@@ -196,7 +196,7 @@ pub(crate) fn emit_unescape_error(
                      version control settings",
                 );
             } else {
-                if !mode.is_bytes() {
+                if !mode.is_byte() {
                     diag.span_suggestion(
                         span_with_quotes,
                         "if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal",
@@ -231,16 +231,23 @@ pub(crate) fn emit_unescape_error(
                 .emit();
         }
         EscapeError::NonAsciiCharInByte => {
-            assert!(mode.is_bytes());
             let (c, span) = last_char();
-            let mut err = handler.struct_span_err(span, "non-ASCII character in byte constant");
+            let desc = match mode {
+                Mode::Byte => "byte literal",
+                Mode::ByteStr => "byte string literal",
+                Mode::RawByteStr => "raw byte string literal",
+                _ => panic!("non-is_byte literal paired with NonAsciiCharInByte"),
+            };
+            let mut err = handler.struct_span_err(span, format!("non-ASCII character in {}", desc));
             let postfix = if unicode_width::UnicodeWidthChar::width(c).unwrap_or(1) == 0 {
                 format!(" but is {:?}", c)
             } else {
                 String::new()
             };
-            err.span_label(span, &format!("byte constant must be ASCII{}", postfix));
-            if (c as u32) <= 0xFF {
+            err.span_label(span, &format!("must be ASCII{}", postfix));
+            // Note: the \\xHH suggestions are not given for raw byte string
+            // literals, because they are araw and so cannot use any escapes.
+            if (c as u32) <= 0xFF && mode != Mode::RawByteStr {
                 err.span_suggestion(
                     span,
                     &format!(
@@ -250,9 +257,9 @@ pub(crate) fn emit_unescape_error(
                     format!("\\x{:X}", c as u32),
                     Applicability::MaybeIncorrect,
                 );
-            } else if matches!(mode, Mode::Byte) {
+            } else if mode == Mode::Byte {
                 err.span_label(span, "this multibyte character does not fit into a single byte");
-            } else if matches!(mode, Mode::ByteStr) {
+            } else if mode != Mode::RawByteStr {
                 let mut utf8 = String::new();
                 utf8.push(c);
                 err.span_suggestion(
@@ -269,19 +276,6 @@ pub(crate) fn emit_unescape_error(
                 );
             }
             err.emit();
-        }
-        EscapeError::NonAsciiCharInByteString => {
-            assert!(mode.is_bytes());
-            let (c, span) = last_char();
-            let postfix = if unicode_width::UnicodeWidthChar::width(c).unwrap_or(1) == 0 {
-                format!(" but is {:?}", c)
-            } else {
-                String::new()
-            };
-            handler
-                .struct_span_err(span, "raw byte string must be ASCII")
-                .span_label(span, &format!("must be ASCII{}", postfix))
-                .emit();
         }
         EscapeError::OutOfRangeHexEscape => {
             handler
