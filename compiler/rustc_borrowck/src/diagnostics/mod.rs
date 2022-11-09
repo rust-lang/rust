@@ -623,6 +623,26 @@ impl UseSpans<'_> {
         }
     }
 
+    /// Add a subdiagnostic to the use of the captured variable, if it exists.
+    pub(super) fn var_subdiag(
+        self,
+        err: &mut Diagnostic,
+        f: impl Fn(Span) -> crate::session_diagnostics::CaptureVarCause,
+        kind_desc: impl Into<String>,
+    ) {
+        if let UseSpans::ClosureUse { capture_kind_span, path_span, .. } = self {
+            if capture_kind_span == path_span {
+                err.subdiagnostic(f(capture_kind_span));
+            } else {
+                err.subdiagnostic(crate::session_diagnostics::CaptureVarKind {
+                    kind_desc: kind_desc.into(),
+                    kind_span: capture_kind_span,
+                });
+                err.subdiagnostic(f(path_span));
+            }
+        }
+    }
+
     /// Returns `false` if this place is not used in a closure.
     pub(super) fn for_closure(&self) -> bool {
         match *self {

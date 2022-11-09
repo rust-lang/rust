@@ -3,7 +3,7 @@
 use std::iter::once;
 use std::sync::Arc;
 
-use thin_vec::ThinVec;
+use thin_vec::{thin_vec, ThinVec};
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
@@ -243,10 +243,19 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
 fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<clean::Function> {
     let sig = cx.tcx.fn_sig(did);
 
-    let predicates = cx.tcx.predicates_of(did);
+    let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
+        ty::BoundVariableKind::Region(ty::BrNamed(_, name)) if name != kw::UnderscoreLifetime => {
+            Some(clean::GenericParamDef::lifetime(name))
+        }
+        _ => None,
+    });
+
+    let predicates = cx.tcx.explicit_predicates_of(did);
     let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
         // NOTE: generics need to be cleaned before the decl!
-        let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
+        let mut generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
+        // FIXME: This does not place parameters in source order (late-bound ones come last)
+        generics.params.extend(late_bound_regions);
         let decl = clean_fn_decl_from_did_and_sig(cx, Some(did), sig);
         (generics, decl)
     });
@@ -596,7 +605,7 @@ fn build_module_items(
                         clean::ImportSource {
                             path: clean::Path {
                                 res,
-                                segments: vec![clean::PathSegment {
+                                segments: thin_vec![clean::PathSegment {
                                     name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
                                         args: Default::default(),

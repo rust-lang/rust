@@ -1201,7 +1201,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (_, _) => {
                         let got = if let Some(_) = term.ty() { "type" } else { "constant" };
                         let expected = def_kind.descr(assoc_item_def_id);
-                        tcx.sess
+                        let reported = tcx
+                            .sess
                             .struct_span_err(
                                 binding.span,
                                 &format!("expected {expected} bound, found {got}"),
@@ -1212,11 +1213,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             )
                             .emit();
                         term = match def_kind {
-                            hir::def::DefKind::AssocTy => tcx.ty_error().into(),
+                            hir::def::DefKind::AssocTy => {
+                                tcx.ty_error_with_guaranteed(reported).into()
+                            }
                             hir::def::DefKind::AssocConst => tcx
-                                .const_error(
+                                .const_error_with_guaranteed(
                                     tcx.bound_type_of(assoc_item_def_id)
                                         .subst(tcx, projection_ty.skip_binder().substs),
+                                    reported,
                                 )
                                 .into(),
                             _ => unreachable!(),
@@ -1334,8 +1338,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .map(|&(trait_ref, _, _)| trait_ref.def_id())
                 .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
                 .map(|trait_ref| tcx.def_span(trait_ref));
-            tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
-            return tcx.ty_error();
+            let reported =
+                tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
+            return tcx.ty_error_with_guaranteed(reported);
         }
 
         // Check that there are no gross object safety violations;
@@ -1345,14 +1350,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let object_safety_violations =
                 astconv_object_safety_violations(tcx, item.trait_ref().def_id());
             if !object_safety_violations.is_empty() {
-                report_object_safety_error(
+                let reported = report_object_safety_error(
                     tcx,
                     span,
                     item.trait_ref().def_id(),
                     &object_safety_violations,
                 )
                 .emit();
-                return tcx.ty_error();
+                return tcx.ty_error_with_guaranteed(reported);
             }
         }
 
@@ -2112,13 +2117,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "Type"
             };
 
-            self.report_ambiguous_associated_type(
+            let reported = self.report_ambiguous_associated_type(
                 span,
                 type_name,
                 &path_str,
                 item_segment.ident.name,
             );
-            return tcx.ty_error();
+            return tcx.ty_error_with_guaranteed(reported)
         };
 
         debug!("qpath_to_ty: self_type={:?}", self_ty);
@@ -2560,8 +2565,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     {
                         err.span_note(impl_.self_ty.span, "not a concrete type");
                     }
-                    err.emit();
-                    tcx.ty_error()
+                    tcx.ty_error_with_guaranteed(err.emit())
                 } else {
                     self.normalize_ty(span, ty)
                 }
@@ -2976,7 +2980,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {
-                ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(_) | ty::BrEnv => {
+                ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(..) | ty::BrEnv => {
                     "an anonymous lifetime".to_string()
                 }
                 ty::BrNamed(_, name) => format!("lifetime `{}`", name),
@@ -2984,7 +2988,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let mut err = generate_err(&br_name);
 
-            if let ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(_) = *br {
+            if let ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(..) = *br {
                 // The only way for an anonymous lifetime to wind up
                 // in the return type but **also** be unconstrained is
                 // if it only appears in "associated types" in the

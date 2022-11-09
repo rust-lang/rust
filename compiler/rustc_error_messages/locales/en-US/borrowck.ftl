@@ -58,3 +58,15 @@ borrowck_returned_lifetime_short =
 
 borrowck_used_impl_require_static =
     the used `impl` has a `'static` requirement
+
+borrowck_capture_kind_label =
+    capture is {$kind_desc} because of use here
+
+borrowck_var_borrow_by_use_place_in_generator =
+    borrow occurs due to use of {$place} in closure in generator
+
+borrowck_var_borrow_by_use_place_in_closure =
+    borrow occurs due to use of {$place} in closure
+
+borrowck_var_borrow_by_use_place =
+    borrow occurs due to use of {$place}
