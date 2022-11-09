@@ -1249,8 +1249,8 @@ fn doctest_generate_impl() {
     check_doc_test(
         "generate_impl",
         r#####"
-struct Ctx<T: Clone> {
-    data: T,$0
+struct Ctx$0<T: Clone> {
+    data: T,
 }
 "#####,
         r#####"
