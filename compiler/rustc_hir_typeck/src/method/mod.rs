@@ -128,7 +128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 method_name.span,
                 probe::Mode::MethodCall,
                 method_name,
-                IsSuggestion(false),
+                IsSuggestion(true),
                 self_ty,
                 call_expr.hir_id,
                 ProbeScope::TraitsInScope,
