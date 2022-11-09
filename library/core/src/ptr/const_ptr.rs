@@ -1367,8 +1367,12 @@ impl<T: ?Sized> *const T {
     /// #![feature(pointer_is_aligned)]
     /// #![feature(pointer_byte_offsets)]
     ///
-    /// let data: i32 = 42;
-    /// let ptr: *const i32 = &data;
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
+    /// let data = AlignedI32(42);
+    /// let ptr = &data as *const AlignedI32;
     ///
     /// assert!(ptr.is_aligned());
     /// assert!(!ptr.wrapping_byte_add(1).is_aligned());
@@ -1389,15 +1393,20 @@ impl<T: ?Sized> *const T {
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
+    /// // On some platforms, the alignment of primitives is less than their size.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    /// #[repr(align(8))]
+    /// struct AlignedI64(i64);
+    ///
     /// const _: () = {
-    ///     let data: i32 = 42;
-    ///     let ptr: *const i32 = &data;
+    ///     let data = AlignedI32(42);
+    ///     let ptr = &data as *const AlignedI32;
     ///     assert!(ptr.is_aligned());
     ///
-    ///     // At runtime either `ptr1` or `ptr2` would be aligned,
-    ///     // but at compiletime neither is aligned.
-    ///     let ptr1: *const i64 = ptr.cast();
-    ///     let ptr2: *const i64 = ptr.wrapping_add(1).cast();
+    ///     // At runtime either `ptr1` or `ptr2` would be aligned, but at compiletime neither is aligned.
+    ///     let ptr1 = ptr.cast::<AlignedI64>();
+    ///     let ptr2 = ptr.wrapping_add(1).cast::<AlignedI64>();
     ///     assert!(!ptr1.is_aligned());
     ///     assert!(!ptr2.is_aligned());
     /// };
@@ -1411,16 +1420,22 @@ impl<T: ?Sized> *const T {
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
-    /// // At compiletime, neither `CONST_PTR` nor `CONST_PTR + 1` is aligned.
-    /// const CONST_PTR: *const i32 = &42;
-    /// const _: () = assert!(!CONST_PTR.cast::<i64>().is_aligned());
-    /// const _: () = assert!(!CONST_PTR.wrapping_add(1).cast::<i64>().is_aligned());
+    /// // On some platforms, the alignment of primitives is less than their size.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    /// #[repr(align(8))]
+    /// struct AlignedI64(i64);
+    ///
+    /// // At compiletime, neither `COMPTIME_PTR` nor `COMPTIME_PTR + 1` is aligned.
+    /// const COMPTIME_PTR: *const AlignedI32 = &AlignedI32(42);
+    /// const _: () = assert!(!COMPTIME_PTR.cast::<AlignedI64>().is_aligned());
+    /// const _: () = assert!(!COMPTIME_PTR.wrapping_add(1).cast::<AlignedI64>().is_aligned());
     ///
     /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
-    /// let runtime_ptr = CONST_PTR;
+    /// let runtime_ptr = COMPTIME_PTR;
     /// assert_ne!(
-    ///     runtime_ptr.cast::<i64>().is_aligned(),
-    ///     runtime_ptr.wrapping_add(1).cast::<i64>().is_aligned(),
+    ///     runtime_ptr.cast::<AlignedI64>().is_aligned(),
+    ///     runtime_ptr.wrapping_add(1).cast::<AlignedI64>().is_aligned(),
     /// );
     /// ```
     ///
@@ -1432,29 +1447,34 @@ impl<T: ?Sized> *const T {
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
+    /// // On some platforms, the alignment of primitives is less than their size.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    /// #[repr(align(8))]
+    /// struct AlignedI64(i64);
+    ///
     /// const _: () = {
-    ///     let ptr = 40 as *const i32;
+    ///     let ptr = 40 as *const AlignedI32;
     ///     assert!(ptr.is_aligned());
     ///
-    ///     // For pointers with a known address, runtime and
-    ///     // compiletime behavior are identical.
-    ///     let ptr1: *const i64 = ptr.cast();
-    ///     let ptr2: *const i64 = ptr.wrapping_add(1).cast();
+    ///     // For pointers with a known address, runtime and compiletime behavior are identical.
+    ///     let ptr1 = ptr.cast::<AlignedI64>();
+    ///     let ptr2 = ptr.wrapping_add(1).cast::<AlignedI64>();
     ///     assert!(ptr1.is_aligned());
     ///     assert!(!ptr2.is_aligned());
     /// };
     /// ```
     ///
-    /// [tracking issue]: https://github.com/rust-lang/rust/issues/comming-soon
+    /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
     #[unstable(feature = "pointer_is_aligned", issue = "96284")]
-    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "none")]
+    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     pub const fn is_aligned(self) -> bool
     where
         T: Sized,
     {
-        self.is_aligned_to(core::mem::align_of::<T>())
+        self.is_aligned_to(mem::align_of::<T>())
     }
 
     /// Returns whether the pointer is aligned to `align`.
@@ -1473,8 +1493,12 @@ impl<T: ?Sized> *const T {
     /// #![feature(pointer_is_aligned)]
     /// #![feature(pointer_byte_offsets)]
     ///
-    /// let data: i32 = 42;
-    /// let ptr: *const i32 = &data;
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
+    /// let data = AlignedI32(42);
+    /// let ptr = &data as *const AlignedI32;
     ///
     /// assert!(ptr.is_aligned_to(1));
     /// assert!(ptr.is_aligned_to(2));
@@ -1500,9 +1524,13 @@ impl<T: ?Sized> *const T {
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
     /// const _: () = {
-    ///     let data: i32 = 42;
-    ///     let ptr: *const i32 = &data;
+    ///     let data = AlignedI32(42);
+    ///     let ptr = &data as *const AlignedI32;
     ///
     ///     assert!(ptr.is_aligned_to(1));
     ///     assert!(ptr.is_aligned_to(2));
@@ -1522,13 +1550,17 @@ impl<T: ?Sized> *const T {
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
-    /// // At compiletime, neither `CONST_PTR` nor `CONST_PTR + 1` is aligned.
-    /// const CONST_PTR: *const i32 = &42;
-    /// const _: () = assert!(!CONST_PTR.is_aligned_to(8));
-    /// const _: () = assert!(!CONST_PTR.wrapping_add(1).is_aligned_to(8));
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
+    /// // At compiletime, neither `COMPTIME_PTR` nor `COMPTIME_PTR + 1` is aligned.
+    /// const COMPTIME_PTR: *const AlignedI32 = &AlignedI32(42);
+    /// const _: () = assert!(!COMPTIME_PTR.is_aligned_to(8));
+    /// const _: () = assert!(!COMPTIME_PTR.wrapping_add(1).is_aligned_to(8));
     ///
     /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
-    /// let runtime_ptr = CONST_PTR;
+    /// let runtime_ptr = COMPTIME_PTR;
     /// assert_ne!(
     ///     runtime_ptr.is_aligned_to(8),
     ///     runtime_ptr.wrapping_add(1).is_aligned_to(8),
@@ -1544,7 +1576,7 @@ impl<T: ?Sized> *const T {
     /// #![feature(const_pointer_is_aligned)]
     ///
     /// const _: () = {
-    ///     let ptr = 40 as *const i32;
+    ///     let ptr = 40 as *const u8;
     ///     assert!(ptr.is_aligned_to(1));
     ///     assert!(ptr.is_aligned_to(2));
     ///     assert!(ptr.is_aligned_to(4));
@@ -1553,14 +1585,14 @@ impl<T: ?Sized> *const T {
     /// };
     /// ```
     ///
-    /// [tracking issue]: https://github.com/rust-lang/rust/issues/comming-soon
+    /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
     #[unstable(feature = "pointer_is_aligned", issue = "96284")]
-    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "none")]
+    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
     pub const fn is_aligned_to(self, align: usize) -> bool {
         if !align.is_power_of_two() {
-            panic!("is_aligned_to: align is not a power-of-two")
+            panic!("is_aligned_to: align is not a power-of-two");
         }
 
         // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
