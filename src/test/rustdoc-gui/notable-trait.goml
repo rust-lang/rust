@@ -199,3 +199,31 @@ call-function: (
         "trait_color": "rgb(110, 79, 201)",
     },
 )
+
+reload:
+
+// Check that pressing escape works
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+move-cursor-to: "//*[@class='notable popover']"
+assert-count: ("//*[@class='notable popover']", 1)
+press-key: "Escape"
+assert-count: ("//*[@class='notable popover']", 0)
+
+// Check that clicking outside works.
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+assert-count: ("//*[@class='notable popover']", 1)
+click: ".search-input"
+assert-count: ("//*[@class='notable popover']", 0)
+
+// Check that pressing tab over and over works.
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+move-cursor-to: "//*[@class='notable popover']"
+assert-count: ("//*[@class='notable popover']", 1)
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+assert-count: ("//*[@class='notable popover']", 0)

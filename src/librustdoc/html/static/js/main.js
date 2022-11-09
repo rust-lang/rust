@@ -897,7 +897,15 @@ function loadCss(cssUrl) {
             !elemIsInParent(document.activeElement, window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE) &&
             !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE)
         ) {
-            hideNotable();
+            // Work around a difference in the focus behaviour between Firefox, Chrome, and Safari.
+            // When I click the button on an already-opened notable trait popover, Safari
+            // hides the popover and then immediately shows it again, while everyone else hides it
+            // and it stays hidden.
+            //
+            // To work around this, make sure the click finishes being dispatched before
+            // hiding the popover. Since `hideNotable()` is idempotent, this makes Safari behave
+            // consistently with the other two.
+            setTimeout(hideNotable, 0);
         }
     }
 
