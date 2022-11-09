@@ -1,9 +1,6 @@
-<<<<<<< HEAD
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-=======
 use crate::BorrowckInferCtxt;
->>>>>>> 2464f768a17 (collect region contexts during mir renumbering)
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::visit::{MutVisitor, TyContext};

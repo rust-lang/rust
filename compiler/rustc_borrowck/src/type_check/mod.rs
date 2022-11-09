@@ -64,7 +64,7 @@ use crate::{
     region_infer::TypeTest,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
-    Upvar,
+    BorrowckInferCtxt, Upvar,
 };
 
 macro_rules! span_mirbug {
@@ -123,7 +123,7 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `elements` -- MIR region map
 pub(crate) fn type_check<'mir, 'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    infcx: &BorrowckInferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexVec<Promoted, Body<'tcx>>,
@@ -845,7 +845,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
+    infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
@@ -998,7 +998,7 @@ impl Locations {
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn new(
-        infcx: &'a InferCtxt<'tcx>,
+        infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
         body: &'a Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
