@@ -506,7 +506,7 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
 
     /// Unwraps this `Pin<P>` returning the underlying pointer.
     ///
-    /// This requires that the data inside this `Pin` is [`Unpin`] so that we
+    /// This requires that the data inside this `Pin` implements [`Unpin`] so that we
     /// can ignore the pinning invariants when unwrapping it.
     ///
     /// # Examples
