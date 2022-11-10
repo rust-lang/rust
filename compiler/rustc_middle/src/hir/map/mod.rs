@@ -408,7 +408,7 @@ impl<'hir> Map<'hir> {
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
         let parent = self.get_parent_node(hir_id);
-        assert!(self.find(parent).map_or(false, |n| is_body_owner(n, hir_id)));
+        assert!(self.find(parent).map_or(false, |n| is_body_owner(n, hir_id)), "{hir_id:?}");
         parent
     }
 
@@ -419,7 +419,7 @@ impl<'hir> Map<'hir> {
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
-        self.get_if_local(id.to_def_id()).map(associated_body).flatten()
+        self.find_by_def_id(id).and_then(associated_body)
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
