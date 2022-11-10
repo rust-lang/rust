@@ -127,7 +127,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             for item in items_to_be_processed {
                 let item = item.indent(IndentLevel(1));
                 let mut indented_item = String::new();
-                format_to!(indented_item, "{}{}", new_item_indent, item.to_string());
+                format_to!(indented_item, "{new_item_indent}{item}");
                 body_items.push(indented_item);
             }
 
@@ -137,30 +137,28 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 let mut impl_body_def = String::new();
 
                 if let Some(self_ty) = impl_.self_ty() {
-                    format_to!(
-                        impl_body_def,
-                        "{}impl {} {{\n{}\n{}}}",
-                        old_item_indent + 1,
-                        self_ty.to_string(),
-                        body,
-                        old_item_indent + 1
-                    );
-
+                    {
+                        let impl_indent = old_item_indent + 1;
+                        format_to!(
+                            impl_body_def,
+                            "{impl_indent}impl {self_ty} {{\n{body}\n{impl_indent}}}",
+                        );
+                    }
                     body = impl_body_def;
 
                     // Add the import for enum/struct corresponding to given impl block
                     module.make_use_stmt_of_node_with_super(self_ty.syntax());
                     for item in module.use_items {
-                        let mut indented_item = String::new();
-                        format_to!(indented_item, "{}{}", old_item_indent + 1, item.to_string());
-                        body = format!("{}\n\n{}", indented_item, body);
+                        let item_indent = old_item_indent + 1;
+                        body = format!("{item_indent}{item}\n\n{body}");
                     }
                 }
             }
 
             let mut module_def = String::new();
 
-            format_to!(module_def, "mod {} {{\n{}\n{}}}", module.name, body, old_item_indent);
+            let module_name = module.name;
+            format_to!(module_def, "mod {module_name} {{\n{body}\n{old_item_indent}}}");
 
             let mut usages_to_be_updated_for_curr_file = vec![];
             for usages_to_be_updated_for_file in usages_to_be_processed {
@@ -199,7 +197,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                     builder.delete(range);
                 }
 
-                builder.insert(impl_.syntax().text_range().end(), format!("\n\n{}", module_def));
+                builder.insert(impl_.syntax().text_range().end(), format!("\n\n{module_def}"));
             } else {
                 builder.replace(module.text_range, module_def)
             }
@@ -343,9 +341,10 @@ impl Module {
                 && !self.text_range.contains_range(desc.text_range())
             {
                 if let Some(name_ref) = ast::NameRef::cast(desc) {
+                    let mod_name = self.name;
                     return Some((
                         name_ref.syntax().text_range(),
-                        format!("{}::{}", self.name, name_ref),
+                        format!("{mod_name}::{name_ref}"),
                     ));
                 }
             }

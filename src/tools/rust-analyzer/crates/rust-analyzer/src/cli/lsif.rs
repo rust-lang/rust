@@ -106,12 +106,12 @@ impl LsifManager<'_> {
                 manager: "cargo".to_string(),
                 uri: None,
                 content: None,
-                repository: Some(lsif::Repository {
-                    url: pi.repo,
+                repository: pi.repo.map(|url| lsif::Repository {
+                    url,
                     r#type: "git".to_string(),
                     commit_id: None,
                 }),
-                version: Some(pi.version),
+                version: pi.version,
             }));
         self.package_map.insert(package_information, result_set_id);
         result_set_id

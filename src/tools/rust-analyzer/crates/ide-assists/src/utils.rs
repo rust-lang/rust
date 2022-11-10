@@ -189,8 +189,8 @@ pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor
     let mut placeholder = cursor.node().to_string();
     escape(&mut placeholder);
     let tab_stop = match cursor {
-        Cursor::Replace(placeholder) => format!("${{0:{}}}", placeholder),
-        Cursor::Before(placeholder) => format!("$0{}", placeholder),
+        Cursor::Replace(placeholder) => format!("${{0:{placeholder}}}"),
+        Cursor::Before(placeholder) => format!("$0{placeholder}"),
     };
 
     let mut buf = node.to_string();
@@ -539,17 +539,17 @@ impl ReferenceConversion {
             ReferenceConversionType::AsRefSlice => {
                 let type_argument_name =
                     self.ty.type_arguments().next().unwrap().display(db).to_string();
-                format!("&[{}]", type_argument_name)
+                format!("&[{type_argument_name}]")
             }
             ReferenceConversionType::Dereferenced => {
                 let type_argument_name =
                     self.ty.type_arguments().next().unwrap().display(db).to_string();
-                format!("&{}", type_argument_name)
+                format!("&{type_argument_name}")
             }
             ReferenceConversionType::Option => {
                 let type_argument_name =
                     self.ty.type_arguments().next().unwrap().display(db).to_string();
-                format!("Option<&{}>", type_argument_name)
+                format!("Option<&{type_argument_name}>")
             }
             ReferenceConversionType::Result => {
                 let mut type_arguments = self.ty.type_arguments();
@@ -557,19 +557,19 @@ impl ReferenceConversion {
                     type_arguments.next().unwrap().display(db).to_string();
                 let second_type_argument_name =
                     type_arguments.next().unwrap().display(db).to_string();
-                format!("Result<&{}, &{}>", first_type_argument_name, second_type_argument_name)
+                format!("Result<&{first_type_argument_name}, &{second_type_argument_name}>")
             }
         }
     }
 
     pub(crate) fn getter(&self, field_name: String) -> String {
         match self.conversion {
-            ReferenceConversionType::Copy => format!("self.{}", field_name),
+            ReferenceConversionType::Copy => format!("self.{field_name}"),
             ReferenceConversionType::AsRefStr
             | ReferenceConversionType::AsRefSlice
             | ReferenceConversionType::Dereferenced
             | ReferenceConversionType::Option
-            | ReferenceConversionType::Result => format!("self.{}.as_ref()", field_name),
+            | ReferenceConversionType::Result => format!("self.{field_name}.as_ref()"),
         }
     }
 }
