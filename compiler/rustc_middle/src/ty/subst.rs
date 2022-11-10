@@ -506,7 +506,7 @@ impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &'tcx ty::List<T> {
     }
 }
 
-/// Similar to [`Binder`] except that it tracks early bound generics, i.e. `struct Foo<T>(T)`
+/// Similar to [`super::Binder`] except that it tracks early bound generics, i.e. `struct Foo<T>(T)`
 /// needs `T` substituted immediately. This type primarily exists to avoid forgetting to call
 /// `subst`.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
