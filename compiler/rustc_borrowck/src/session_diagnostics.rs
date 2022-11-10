@@ -148,3 +148,33 @@ pub(crate) enum RequireStaticErr {
         multi_span: MultiSpan,
     },
 }
+
+#[derive(Subdiagnostic)]
+#[label(borrowck_capture_kind_label)]
+pub(crate) struct CaptureVarKind {
+    pub kind_desc: String,
+    #[primary_span]
+    pub kind_span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CaptureVarCause {
+    #[label(borrowck_var_borrow_by_use_place)]
+    BorrowUsePlace {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_borrow_by_use_place_in_generator)]
+    BorrowUsePlaceGenerator {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
+    #[label(borrowck_var_borrow_by_use_place_in_closure)]
+    BorrowUsePlaceClosure {
+        place: String,
+        #[primary_span]
+        var_span: Span,
+    },
+}

@@ -1,7 +1,7 @@
 use super::potentially_plural_count;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use hir::def_id::{DefId, LocalDefId};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -256,7 +256,7 @@ fn compare_predicate_entailment<'tcx>(
     // Compute placeholder form of impl and trait method tys.
     let tcx = infcx.tcx;
 
-    let mut wf_tys = FxHashSet::default();
+    let mut wf_tys = FxIndexSet::default();
 
     let impl_sig = infcx.replace_bound_vars_with_fresh_vars(
         impl_m_span,
@@ -405,7 +405,7 @@ fn compare_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 
@@ -479,7 +479,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     let trait_sig = ocx.normalize(norm_cause.clone(), param_env, unnormalized_trait_sig);
     let trait_return_ty = trait_sig.output();
 
-    let wf_tys = FxHashSet::from_iter(
+    let wf_tys = FxIndexSet::from_iter(
         unnormalized_trait_sig.inputs_and_output.iter().chain(trait_sig.inputs_and_output.iter()),
     );
 
@@ -538,7 +538,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     // RPITs.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 
@@ -611,11 +611,11 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                 collected_tys.insert(def_id, ty);
             }
             Err(err) => {
-                tcx.sess.delay_span_bug(
+                let reported = tcx.sess.delay_span_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, tcx.ty_error());
+                collected_tys.insert(def_id, tcx.ty_error_with_guaranteed(reported));
             }
         }
     }
@@ -1431,7 +1431,7 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None, false));
+        return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None));
     }
 
     // FIXME return `ErrorReported` if region obligations error?
@@ -1549,7 +1549,7 @@ fn compare_type_predicate_entailment<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 
@@ -1769,7 +1769,7 @@ pub fn check_type_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return Err(reported);
     }
 

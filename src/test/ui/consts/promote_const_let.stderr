@@ -19,7 +19,7 @@ LL |       let x: &'static u32 = &{
 LL | |         let y = 42;
 LL | |         y
 LL | |     };
-   | |_____^ creates a temporary which is freed while still in use
+   | |_____^ creates a temporary value which is freed while still in use
 LL |   }
    |   - temporary value is freed at the end of this statement
 

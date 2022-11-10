@@ -1,5 +1,5 @@
 error[E0277]: an array of type `[u32; 10]` cannot be built directly from an iterator
-  --> $DIR/collect-into-array.rs:3:31
+  --> $DIR/collect-into-array.rs:2:31
    |
 LL |     let whatever: [u32; 10] = (0..10).collect();
    |                               ^^^^^^^ ------- required by a bound introduced by this call

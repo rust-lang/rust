@@ -1,12 +1,14 @@
 //! A pass that checks to make sure private fields and methods aren't used
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
-use crate::ty::{DefIdTree, Visibility};
+use crate::ty::{DefIdTree, TyCtxt, Visibility};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hir::def::DefKind;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::LocalDefId;
+use std::hash::Hash;
 
 /// Represents the levels of effective visibility an item can have.
 ///
@@ -74,9 +76,9 @@ impl EffectiveVisibility {
 }
 
 /// Holds a map of effective visibilities for reachable HIR nodes.
-#[derive(Default, Clone, Debug)]
-pub struct EffectiveVisibilities {
-    map: FxHashMap<LocalDefId, EffectiveVisibility>,
+#[derive(Clone, Debug)]
+pub struct EffectiveVisibilities<Id = LocalDefId> {
+    map: FxHashMap<Id, EffectiveVisibility>,
 }
 
 impl EffectiveVisibilities {
@@ -111,12 +113,30 @@ impl EffectiveVisibilities {
         })
     }
 
-    pub fn effective_vis(&self, id: LocalDefId) -> Option<&EffectiveVisibility> {
-        self.map.get(&id)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (&LocalDefId, &EffectiveVisibility)> {
-        self.map.iter()
+    // FIXME: Share code with `fn update`.
+    pub fn update_eff_vis(
+        &mut self,
+        def_id: LocalDefId,
+        eff_vis: &EffectiveVisibility,
+        tree: impl DefIdTree,
+    ) {
+        use std::collections::hash_map::Entry;
+        match self.map.entry(def_id) {
+            Entry::Occupied(mut occupied) => {
+                let old_eff_vis = occupied.get_mut();
+                for l in Level::all_levels() {
+                    let vis_at_level = eff_vis.at_level(l);
+                    let old_vis_at_level = old_eff_vis.at_level_mut(l);
+                    if vis_at_level != old_vis_at_level
+                        && vis_at_level.is_at_least(*old_vis_at_level, tree)
+                    {
+                        *old_vis_at_level = *vis_at_level
+                    }
+                }
+                old_eff_vis
+            }
+            Entry::Vacant(vacant) => vacant.insert(*eff_vis),
+        };
     }
 
     pub fn set_public_at_level(
@@ -137,26 +157,82 @@ impl EffectiveVisibilities {
         self.map.insert(id, effective_vis);
     }
 
+    pub fn check_invariants(&self, tcx: TyCtxt<'_>, early: bool) {
+        if !cfg!(debug_assertions) {
+            return;
+        }
+        for (&def_id, ev) in &self.map {
+            // More direct visibility levels can never go farther than less direct ones,
+            // neither of effective visibilities can go farther than nominal visibility,
+            // and all effective visibilities are larger or equal than private visibility.
+            let private_vis = Visibility::Restricted(tcx.parent_module_from_def_id(def_id));
+            let span = tcx.def_span(def_id.to_def_id());
+            if !ev.direct.is_at_least(private_vis, tcx) {
+                span_bug!(span, "private {:?} > direct {:?}", private_vis, ev.direct);
+            }
+            if !ev.reexported.is_at_least(ev.direct, tcx) {
+                span_bug!(span, "direct {:?} > reexported {:?}", ev.direct, ev.reexported);
+            }
+            if !ev.reachable.is_at_least(ev.reexported, tcx) {
+                span_bug!(span, "reexported {:?} > reachable {:?}", ev.reexported, ev.reachable);
+            }
+            if !ev.reachable_through_impl_trait.is_at_least(ev.reachable, tcx) {
+                span_bug!(
+                    span,
+                    "reachable {:?} > reachable_through_impl_trait {:?}",
+                    ev.reachable,
+                    ev.reachable_through_impl_trait
+                );
+            }
+            let nominal_vis = tcx.visibility(def_id);
+            let def_kind = tcx.opt_def_kind(def_id);
+            // FIXME: `rustc_privacy` is not yet updated for the new logic and can set
+            // effective visibilities that are larger than the nominal one.
+            if !nominal_vis.is_at_least(ev.reachable_through_impl_trait, tcx) && early {
+                span_bug!(
+                    span,
+                    "{:?}: reachable_through_impl_trait {:?} > nominal {:?}",
+                    def_id,
+                    ev.reachable_through_impl_trait,
+                    nominal_vis
+                );
+            }
+            // Fully private items are never put into the table, this is important for performance.
+            // FIXME: Fully private `mod` items are currently put into the table.
+            if ev.reachable_through_impl_trait == private_vis && def_kind != Some(DefKind::Mod) {
+                span_bug!(span, "fully private item in the table {:?}: {:?}", def_id, ev.direct);
+            }
+        }
+    }
+}
+
+impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
+    pub fn iter(&self) -> impl Iterator<Item = (&Id, &EffectiveVisibility)> {
+        self.map.iter()
+    }
+
+    pub fn effective_vis(&self, id: Id) -> Option<&EffectiveVisibility> {
+        self.map.get(&id)
+    }
+
     // `parent_id` is not necessarily a parent in source code tree,
     // it is the node from which the maximum effective visibility is inherited.
     pub fn update(
         &mut self,
-        id: LocalDefId,
+        id: Id,
         nominal_vis: Visibility,
-        default_vis: impl FnOnce() -> Visibility,
-        parent_id: LocalDefId,
+        default_vis: Visibility,
+        inherited_eff_vis: Option<EffectiveVisibility>,
         level: Level,
         tree: impl DefIdTree,
     ) -> bool {
         let mut changed = false;
-        let mut current_effective_vis = self.effective_vis(id).copied().unwrap_or_else(|| {
-            if id.is_top_level_module() {
-                EffectiveVisibility::from_vis(Visibility::Public)
-            } else {
-                EffectiveVisibility::from_vis(default_vis())
-            }
-        });
-        if let Some(inherited_effective_vis) = self.effective_vis(parent_id) {
+        let mut current_effective_vis = self
+            .map
+            .get(&id)
+            .copied()
+            .unwrap_or_else(|| EffectiveVisibility::from_vis(default_vis));
+        if let Some(inherited_effective_vis) = inherited_eff_vis {
             let mut inherited_effective_vis_at_prev_level =
                 *inherited_effective_vis.at_level(level);
             let mut calculated_effective_vis = inherited_effective_vis_at_prev_level;
@@ -191,6 +267,12 @@ impl EffectiveVisibilities {
         }
         self.map.insert(id, current_effective_vis);
         changed
+    }
+}
+
+impl<Id> Default for EffectiveVisibilities<Id> {
+    fn default() -> Self {
+        EffectiveVisibilities { map: Default::default() }
     }
 }
 

@@ -724,13 +724,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             borrow_span,
             &self.describe_any_place(borrow.borrowed_place.as_ref()),
         );
-
-        borrow_spans.var_span_label(
+        borrow_spans.var_subdiag(
             &mut err,
-            {
+            |var_span| {
+                use crate::session_diagnostics::CaptureVarCause::*;
                 let place = &borrow.borrowed_place;
                 let desc_place = self.describe_any_place(place.as_ref());
-                format!("borrow occurs due to use of {}{}", desc_place, borrow_spans.describe())
+                match borrow_spans {
+                    UseSpans::ClosureUse { generator_kind, .. } => match generator_kind {
+                        Some(_) => BorrowUsePlaceGenerator { place: desc_place, var_span },
+                        None => BorrowUsePlaceClosure { place: desc_place, var_span },
+                    },
+                    _ => BorrowUsePlace { place: desc_place, var_span },
+                }
             },
             "mutable",
         );
@@ -1551,7 +1557,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         let mut err = self.temporary_value_borrowed_for_too_long(proper_span);
-        err.span_label(proper_span, "creates a temporary which is freed while still in use");
+        err.span_label(proper_span, "creates a temporary value which is freed while still in use");
         err.span_label(drop_span, "temporary value is freed at the end of this statement");
 
         match explanation {

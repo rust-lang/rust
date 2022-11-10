@@ -469,9 +469,6 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("json", |o| {
             o.optopt("", "json", "Configure the structure of JSON diagnostics", "CONFIG")
         }),
-        unstable("disable-minification", |o| {
-            o.optflagmulti("", "disable-minification", "Disable minification applied on JS files")
-        }),
         stable("allow", |o| o.optmulti("A", "allow", "Set lint allowed", "LINT")),
         stable("warn", |o| o.optmulti("W", "warn", "Set lint warnings", "LINT")),
         stable("force-warn", |o| o.optmulti("", "force-warn", "Set lint force-warn", "LINT")),
@@ -610,6 +607,7 @@ fn opts() -> Vec<RustcOptGroup> {
             )
         }),
         // deprecated / removed options
+        unstable("disable-minification", |o| o.optflagmulti("", "disable-minification", "removed")),
         stable("plugin-path", |o| {
             o.optmulti(
                 "",

@@ -183,9 +183,9 @@ function browserSupportsHistoryApi() {
 }
 
 // eslint-disable-next-line no-unused-vars
-function loadCss(cssFileName) {
+function loadCss(cssUrl) {
     const link = document.createElement("link");
-    link.href = resourcePath(cssFileName, ".css");
+    link.href = cssUrl;
     link.type = "text/css";
     link.rel = "stylesheet";
     document.getElementsByTagName("head")[0].appendChild(link);
@@ -208,8 +208,8 @@ function loadCss(cssFileName) {
         event.preventDefault();
         // Sending request for the CSS and the JS files at the same time so it will
         // hopefully be loaded when the JS will generate the settings content.
-        loadCss("settings");
-        loadScript(resourcePath("settings", ".js"));
+        loadCss(getVar("static-root-path") + getVar("settings-css"));
+        loadScript(getVar("static-root-path") + getVar("settings-js"));
     };
 
     window.searchState = {
@@ -286,7 +286,7 @@ function loadCss(cssFileName) {
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
-                    loadScript(resourcePath("search", ".js"));
+                    loadScript(getVar("static-root-path") + getVar("search-js"));
                     loadScript(resourcePath("search-index", ".js"));
                 }
             }

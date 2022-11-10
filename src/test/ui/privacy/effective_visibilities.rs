@@ -6,7 +6,7 @@ mod outer { //~ ERROR Direct: pub(crate), Reexported: pub(crate), Reachable: pub
     pub mod inner1 { //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
 
         #[rustc_effective_visibility]
-        extern "C" {} //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+        extern "C" {} //~ ERROR not in the table
 
         #[rustc_effective_visibility]
         pub trait PubTrait { //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
@@ -18,6 +18,7 @@ mod outer { //~ ERROR Direct: pub(crate), Reexported: pub(crate), Reachable: pub
 
         #[rustc_effective_visibility]
         struct PrivStruct; //~ ERROR not in the table
+                           //~| ERROR not in the table
 
         #[rustc_effective_visibility]
         pub union PubUnion { //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
@@ -31,6 +32,7 @@ mod outer { //~ ERROR Direct: pub(crate), Reexported: pub(crate), Reachable: pub
         pub enum Enum { //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
             #[rustc_effective_visibility]
             A( //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
+               //~| ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
                 #[rustc_effective_visibility]
                 PubUnion,  //~ ERROR Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
             ),

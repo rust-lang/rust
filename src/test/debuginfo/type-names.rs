@@ -95,7 +95,7 @@
 // gdb-check:type = &[usize]
 
 // gdb-command:whatis slice2
-// gdb-check:type = &[type_names::mod1::Enum2]
+// gdb-check:type = &mut [type_names::mod1::Enum2]
 
 // TRAITS
 // gdb-command:whatis box_trait
@@ -218,8 +218,8 @@
 // cdb-check:struct alloc::vec::Vec<usize,alloc::alloc::Global> vec1 = [...]
 // cdb-check:struct alloc::vec::Vec<enum2$<type_names::mod1::Enum2>,alloc::alloc::Global> vec2 = [...]
 // cdb-command:dv /t slice*
-// cdb-check:struct slice$<usize> slice1 = [...]
-// cdb-check:struct slice$<enum2$<type_names::mod1::Enum2> > slice2 = [...]
+// cdb-check:struct ref$<slice2$<usize> > slice1 = [...]
+// cdb-check:struct ref_mut$<slice2$<enum2$<type_names::mod1::Enum2> > > slice2 = [...]
 
 // TRAITS
 // cdb-command:dv /t *_trait
@@ -417,8 +417,8 @@ fn main() {
 
     let vec1 = vec![0_usize, 2, 3];
     let slice1 = &*vec1;
-    let vec2 = vec![mod1::Enum2::Variant2(Struct1)];
-    let slice2 = &*vec2;
+    let mut vec2 = vec![mod1::Enum2::Variant2(Struct1)];
+    let slice2 = &mut *vec2;
 
     // Trait Objects
     let box_trait = Box::new(0_isize) as Box<dyn Trait1>;

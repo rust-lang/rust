@@ -136,6 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tuple_arguments,
             Some(method.def_id),
         );
+
         method.sig.output()
     }
 
@@ -214,7 +215,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "cannot use call notation; the first type parameter \
                          for the function trait is neither a tuple nor unit"
                     )
-                    .emit();
+                    .delay_as_bug();
                     (self.err_args(provided_args.len()), None)
                 }
             }
@@ -344,7 +345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // an "opportunistic" trait resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
-                self.select_obligations_where_possible(false, |_| {})
+                self.select_obligations_where_possible(|_| {})
             }
 
             // Check each argument, to satisfy the input it was provided for
