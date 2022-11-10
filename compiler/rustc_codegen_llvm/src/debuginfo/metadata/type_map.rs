@@ -11,7 +11,7 @@ use rustc_middle::ty::{ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 use super::{SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_metadata};
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::utils::{DIB, create_DIArray, debug_context};
-use crate::llvm::debuginfo::{DIFlags, DIScope, DIType};
+use crate::llvm::debuginfo::{DIFile, DIFlags, DIScope, DIType};
 use crate::llvm::{self};
 
 mod private {
@@ -174,6 +174,8 @@ pub(super) fn stub<'ll, 'tcx>(
     kind: Stub<'ll>,
     unique_type_id: UniqueTypeId<'tcx>,
     name: &str,
+    file_metadata: &'ll DIFile,
+    line_number: u32,
     (size, align): (Size, Align),
     containing_scope: Option<&'ll DIScope>,
     flags: DIFlags,
@@ -193,8 +195,8 @@ pub(super) fn stub<'ll, 'tcx>(
                     containing_scope,
                     name.as_c_char_ptr(),
                     name.len(),
-                    unknown_file_metadata(cx),
-                    UNKNOWN_LINE_NUMBER,
+                    file_metadata,
+                    line_number,
                     size.bits(),
                     align.bits() as u32,
                     flags,
@@ -213,8 +215,8 @@ pub(super) fn stub<'ll, 'tcx>(
                 containing_scope,
                 name.as_c_char_ptr(),
                 name.len(),
-                unknown_file_metadata(cx),
-                UNKNOWN_LINE_NUMBER,
+                file_metadata,
+                line_number,
                 size.bits(),
                 align.bits() as u32,
                 flags,

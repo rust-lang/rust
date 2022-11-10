@@ -204,6 +204,8 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                 variant_index,
             ),
             variant_def.name.as_str(),
+            unknown_file_metadata(cx),
+            UNKNOWN_LINE_NUMBER,
             // NOTE: We use size and align of enum_type, not from variant_layout:
             size_and_align_of(enum_type_and_layout),
             Some(enum_type_di_node),
@@ -286,6 +288,8 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &variant_name,
+            unknown_file_metadata(cx),
+            UNKNOWN_LINE_NUMBER,
             size_and_align_of(coroutine_type_and_layout),
             Some(coroutine_type_di_node),
             DIFlags::FlagZero,
@@ -351,7 +355,11 @@ enum DiscrResult {
 
 impl DiscrResult {
     fn opt_single_val(&self) -> Option<u128> {
-        if let Self::Value(d) = *self { Some(d) } else { None }
+        if let Self::Value(d) = *self {
+            Some(d)
+        } else {
+            None
+        }
     }
 }
 
