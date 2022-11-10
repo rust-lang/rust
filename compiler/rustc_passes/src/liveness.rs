@@ -87,6 +87,7 @@ use self::VarKind::*;
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -1690,7 +1691,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         &self,
         name: &str,
         opt_body: Option<&hir::Body<'_>>,
-        err: &mut rustc_errors::DiagnosticBuilder<'_, ()>,
+        err: &mut Diagnostic,
     ) -> bool {
         let mut has_litstring = false;
         let Some(opt_body) = opt_body else {return false;};
