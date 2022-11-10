@@ -13,7 +13,7 @@ declare_clippy_lint! {
     /// this lint suggests using a `from()` function or an `as` coercion.
     ///
     /// ### Why is this bad?
-    /// Coercion or `from()` is idiomatic way to convert bool to a number.
+    /// Coercion or `from()` is another way to convert bool to a number.
     /// Both methods are guaranteed to return 1 for true, and 0 for false.
     ///
     /// See https://doc.rust-lang.org/std/primitive.bool.html#impl-From%3Cbool%3E
@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.65.0"]
     pub BOOL_TO_INT_WITH_IF,
-    style,
+    pedantic,
     "using if to convert bool to int"
 }
 declare_lint_pass!(BoolToIntWithIf => [BOOL_TO_INT_WITH_IF]);
