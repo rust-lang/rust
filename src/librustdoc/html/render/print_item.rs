@@ -17,9 +17,10 @@ use std::rc::Rc;
 
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
-    item_ty_to_section, notable_traits_decl, render_all_impls, render_assoc_item,
-    render_assoc_items, render_attributes_in_code, render_attributes_in_pre, render_impl,
-    render_rightside, render_stability_since_raw, AssocItemLink, Context, ImplRenderingParameters,
+    item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
+    render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
+    render_impl, render_rightside, render_stability_since_raw, AssocItemLink, Context,
+    ImplRenderingParameters,
 };
 use crate::clean;
 use crate::config::ModuleSorting;
@@ -182,6 +183,16 @@ pub(super) fn print_item(
             // We don't generate pages for any other type.
             unreachable!();
         }
+    }
+
+    // Render notable-traits.js used for all methods in this module.
+    if !cx.types_with_notable_traits.is_empty() {
+        write!(
+            buf,
+            r#"<script type="text/json" id="notable-traits-data">{}</script>"#,
+            notable_traits_json(cx.types_with_notable_traits.iter(), cx)
+        );
+        cx.types_with_notable_traits.clear();
     }
 }
 
@@ -516,6 +527,9 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         + name.as_str().len()
         + generics_len;
 
+    let notable_traits =
+        f.decl.output.as_return().and_then(|output| notable_traits_button(output, cx));
+
     wrap_into_item_decl(w, |w| {
         wrap_item(w, "fn", |w| {
             render_attributes_in_pre(w, it, "");
@@ -533,11 +547,11 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
                 generics = f.generics.print(cx),
                 where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
                 decl = f.decl.full_print(header_len, 0, cx),
-                notable_traits = notable_traits_decl(&f.decl, cx),
+                notable_traits = notable_traits.unwrap_or_default(),
             );
         });
     });
-    document(w, cx, it, None, HeadingOffset::H2)
+    document(w, cx, it, None, HeadingOffset::H2);
 }
 
 fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Trait) {

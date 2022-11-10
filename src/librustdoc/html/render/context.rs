@@ -69,11 +69,13 @@ pub(crate) struct Context<'tcx> {
     /// the source files are present in the html rendering, then this will be
     /// `true`.
     pub(crate) include_sources: bool,
+    /// Collection of all types with notable traits referenced in the current module.
+    pub(crate) types_with_notable_traits: FxHashSet<clean::Type>,
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(all(not(windows), target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 128);
+rustc_data_structures::static_assert_size!(Context<'_>, 160);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 pub(crate) struct SharedContext<'tcx> {
@@ -532,6 +534,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             deref_id_map: FxHashMap::default(),
             shared: Rc::new(scx),
             include_sources,
+            types_with_notable_traits: FxHashSet::default(),
         };
 
         if emit_crate {
@@ -560,6 +563,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             id_map: IdMap::new(),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
+            types_with_notable_traits: FxHashSet::default(),
         }
     }
 
@@ -803,6 +807,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 }
             }
         }
+
         Ok(())
     }
 
