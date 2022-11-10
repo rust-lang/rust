@@ -714,7 +714,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     obligation.cause.body_id,
                     span,
                     base_ty,
-                    span,
                 );
                 if let Some(steps) = autoderef.find_map(|(ty, steps)| {
                     // Re-add the `&`
@@ -2407,7 +2406,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
             | ObligationCauseCode::BinOp { .. }
-            | ObligationCauseCode::AscribeUserTypeProvePredicate(..) => {}
+            | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
+            | ObligationCauseCode::RustCall => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
@@ -2445,12 +2445,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             (Ok(l), Ok(r)) => l.line == r.line,
                             _ => true,
                         };
-                    if !ident.span.overlaps(span) && !same_line {
+                    if !ident.span.is_dummy() && !ident.span.overlaps(span) && !same_line {
                         multispan.push_span_label(ident.span, "required by a bound in this");
                     }
                 }
                 let descr = format!("required by a bound in `{}`", item_name);
-                if span != DUMMY_SP {
+                if !span.is_dummy() {
                     let msg = format!("required by this bound in `{}`", item_name);
                     multispan.push_span_label(span, msg);
                     err.span_note(multispan, &descr);

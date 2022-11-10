@@ -9,9 +9,9 @@ use crate::errors::{
     ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncMoveOrderIncorrect,
     BinaryFloatLiteralNotSupported, BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct,
     ComparisonInterpretedAsGeneric, ComparisonOrShiftInterpretedAsGenericSugg,
-    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedExpressionFoundLet,
-    FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt,
-    HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
+    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedEqForLetExpr,
+    ExpectedExpressionFoundLet, FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart,
+    FoundExprWouldBeStmt, HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
     IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub, IntLiteralTooLarge,
     InvalidBlockMacroSegment, InvalidComparisonOperator, InvalidComparisonOperatorSub,
     InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth, InvalidIntLiteralWidth,
@@ -20,9 +20,9 @@ use crate::errors::{
     InvalidNumLiteralSuffix, LabeledLoopInBreak, LeadingPlusNotSupported, LeftArrowOperator,
     LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
     MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm,
-    MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall,
-    NotAsNegationOperator, NotAsNegationOperatorSub, OctalFloatLiteralNotSupported,
-    OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
+    MissingDotDot, MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
+    NoFieldsForFnCall, NotAsNegationOperator, NotAsNegationOperatorSub,
+    OctalFloatLiteralNotSupported, OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
     RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, StructLiteralNotAllowedHere,
     StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
     UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
@@ -833,16 +833,11 @@ impl<'a> Parser<'a> {
                 ("cast", None)
             };
 
-        // Save the memory location of expr before parsing any following postfix operators.
-        // This will be compared with the memory location of the output expression.
-        // If they different we can assume we parsed another expression because the existing expression is not reallocated.
-        let addr_before = &*cast_expr as *const _ as usize;
         let with_postfix = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
-        let changed = addr_before != &*with_postfix as *const _ as usize;
 
         // Check if an illegal postfix operator has been added after the cast.
-        // If the resulting expression is not a cast, or has a different memory location, it is an illegal postfix operator.
-        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) || changed {
+        // If the resulting expression is not a cast, it is an illegal postfix operator.
+        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) {
             let msg = format!(
                 "{cast_kind} cannot be followed by {}",
                 match with_postfix.kind {
@@ -2334,7 +2329,15 @@ impl<'a> Parser<'a> {
             RecoverColon::Yes,
             CommaRecoveryMode::LikelyTuple,
         )?;
-        self.expect(&token::Eq)?;
+        if self.token == token::EqEq {
+            self.sess.emit_err(ExpectedEqForLetExpr {
+                span: self.token.span,
+                sugg_span: self.token.span,
+            });
+            self.bump();
+        } else {
+            self.expect(&token::Eq)?;
+        }
         let expr = self.with_res(self.restrictions | Restrictions::NO_STRUCT_LITERAL, |this| {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         })?;
@@ -2880,7 +2883,7 @@ impl<'a> Parser<'a> {
         };
 
         while self.token != token::CloseDelim(close_delim) {
-            if self.eat(&token::DotDot) {
+            if self.eat(&token::DotDot) || self.recover_struct_field_dots(close_delim) {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(&token::CloseDelim(close_delim)) {
@@ -3025,6 +3028,18 @@ impl<'a> Parser<'a> {
             comma: self.token.span,
         });
         self.recover_stmt();
+    }
+
+    fn recover_struct_field_dots(&mut self, close_delim: Delimiter) -> bool {
+        if !self.look_ahead(1, |t| *t == token::CloseDelim(close_delim))
+            && self.eat(&token::DotDotDot)
+        {
+            // recover from typo of `...`, suggest `..`
+            let span = self.prev_token.span;
+            self.sess.emit_err(MissingDotDot { token_span: span, sugg_span: span });
+            return true;
+        }
+        false
     }
 
     /// Parses `ident (COLON expr)?`.

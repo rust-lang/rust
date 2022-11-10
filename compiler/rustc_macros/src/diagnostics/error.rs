@@ -84,7 +84,7 @@ pub(crate) fn invalid_attr(attr: &Attribute, meta: &Meta) -> Diagnostic {
     }
 }
 
-/// Emit a error diagnostic for an invalid attribute (optionally performing additional decoration
+/// Emit an error diagnostic for an invalid attribute (optionally performing additional decoration
 /// using the `FnOnce` passed in `diag`) and return `Err(ErrorHandled)`.
 ///
 /// For methods that return a `Result<_, DiagnosticDeriveError>`:
@@ -126,7 +126,7 @@ pub(crate) fn invalid_nested_attr(attr: &Attribute, nested: &NestedMeta) -> Diag
     }
 }
 
-/// Emit a error diagnostic for an invalid nested attribute (optionally performing additional
+/// Emit an error diagnostic for an invalid nested attribute (optionally performing additional
 /// decoration using the `FnOnce` passed in `diag`) and return `Err(ErrorHandled)`.
 ///
 /// For methods that return a `Result<_, DiagnosticDeriveError>`:

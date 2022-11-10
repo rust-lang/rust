@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use super::TraitEngine;
 use super::{ChalkFulfillmentContext, FulfillmentContext};
 use crate::infer::InferCtxtExt;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{
@@ -38,7 +38,7 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
 
     fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self> {
         if tcx.sess.opts.unstable_opts.chalk {
-            Box::new(ChalkFulfillmentContext::new())
+            Box::new(ChalkFulfillmentContext::new_in_snapshot())
         } else {
             Box::new(FulfillmentContext::new_in_snapshot())
         }
@@ -119,13 +119,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         expected: T,
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
-        match self.infcx.at(cause, param_env).eq(expected, actual) {
-            Ok(InferOk { obligations, value: () }) => {
-                self.register_obligations(obligations);
-                Ok(())
-            }
-            Err(e) => Err(e),
-        }
+        self.infcx
+            .at(cause, param_env)
+            .eq(expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
     pub fn sup<T: ToTrace<'tcx>>(
@@ -144,6 +141,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         }
     }
 
+    pub fn select_where_possible(&self) -> Vec<FulfillmentError<'tcx>> {
+        self.engine.borrow_mut().select_where_possible(self.infcx)
+    }
+
     pub fn select_all_or_error(&self) -> Vec<FulfillmentError<'tcx>> {
         self.engine.borrow_mut().select_all_or_error(self.infcx)
     }
@@ -153,10 +154,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         span: Span,
         def_id: LocalDefId,
-    ) -> FxHashSet<Ty<'tcx>> {
+    ) -> FxIndexSet<Ty<'tcx>> {
         let tcx = self.infcx.tcx;
         let assumed_wf_types = tcx.assumed_wf_types(def_id);
-        let mut implied_bounds = FxHashSet::default();
+        let mut implied_bounds = FxIndexSet::default();
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let cause = ObligationCause::misc(span, hir_id);
         for ty in assumed_wf_types {

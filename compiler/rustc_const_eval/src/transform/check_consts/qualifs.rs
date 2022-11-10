@@ -146,6 +146,7 @@ impl Qualif for NeedsNonConstDrop {
         qualifs.needs_non_const_drop
     }
 
+    #[instrument(level = "trace", skip(cx), ret)]
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         // Avoid selecting for simple cases, such as builtin types.
         if ty::util::is_trivially_const_drop(ty) {
@@ -173,6 +174,8 @@ impl Qualif for NeedsNonConstDrop {
             // If we couldn't select a const destruct candidate, then it's bad
             return true;
         };
+
+        trace!(?impl_src);
 
         if !matches!(
             impl_src,

@@ -1,7 +1,7 @@
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 use hir::def::DefKind;
 use rustc_ast as ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -21,6 +21,7 @@ use rustc_middle::ty::{GenericArgKind, InternalSubsts};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
@@ -104,7 +105,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     f(&mut wfcx);
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return;
     }
 
@@ -411,7 +412,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                                 .iter()
                                 .copied()
                                 .collect::<Vec<_>>(),
-                            &FxHashSet::default(),
+                            &FxIndexSet::default(),
                             gat_def_id.def_id,
                             gat_generics,
                         )
@@ -461,10 +462,10 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
             .into_iter()
             .filter(|clause| match clause.kind().skip_binder() {
                 ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
-                    !region_known_to_outlive(tcx, gat_hir, param_env, &FxHashSet::default(), a, b)
+                    !region_known_to_outlive(tcx, gat_hir, param_env, &FxIndexSet::default(), a, b)
                 }
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
-                    !ty_known_to_outlive(tcx, gat_hir, param_env, &FxHashSet::default(), a, b)
+                    !ty_known_to_outlive(tcx, gat_hir, param_env, &FxIndexSet::default(), a, b)
                 }
                 _ => bug!("Unexpected PredicateKind"),
             })
@@ -546,7 +547,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
     param_env: ty::ParamEnv<'tcx>,
     item_hir: hir::HirId,
     to_check: T,
-    wf_tys: &FxHashSet<Ty<'tcx>>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
     gat_def_id: LocalDefId,
     gat_generics: &'tcx ty::Generics,
 ) -> Option<FxHashSet<ty::Predicate<'tcx>>> {
@@ -653,7 +654,7 @@ fn ty_known_to_outlive<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxHashSet<Ty<'tcx>>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
     ty: Ty<'tcx>,
     region: ty::Region<'tcx>,
 ) -> bool {
@@ -670,7 +671,7 @@ fn region_known_to_outlive<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxHashSet<Ty<'tcx>>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
     region_a: ty::Region<'tcx>,
     region_b: ty::Region<'tcx>,
 ) -> bool {
@@ -694,7 +695,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxHashSet<Ty<'tcx>>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
     add_constraints: impl for<'a> FnOnce(&'a InferCtxt<'tcx>, &'a RegionBoundPairs<'tcx>),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
@@ -1542,6 +1543,33 @@ fn check_fn_or_method<'tcx>(
         sig.output(),
         hir_decl.output.span(),
     );
+
+    if sig.abi == Abi::RustCall {
+        let span = tcx.def_span(def_id);
+        let has_implicit_self = hir_decl.implicit_self != hir::ImplicitSelfKind::None;
+        let mut inputs = sig.inputs().iter().skip(if has_implicit_self { 1 } else { 0 });
+        // Check that the argument is a tuple
+        if let Some(ty) = inputs.next() {
+            wfcx.register_bound(
+                ObligationCause::new(span, wfcx.body_id, ObligationCauseCode::RustCall),
+                wfcx.param_env,
+                *ty,
+                tcx.require_lang_item(hir::LangItem::Tuple, Some(span)),
+            );
+        } else {
+            tcx.sess.span_err(
+                hir_decl.inputs.last().map_or(span, |input| input.span),
+                "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
+            );
+        }
+        // No more inputs other than the `self` type and the tuple type
+        if inputs.next().is_some() {
+            tcx.sess.span_err(
+                hir_decl.inputs.last().map_or(span, |input| input.span),
+                "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
+            );
+        }
+    }
 }
 
 /// Basically `check_associated_type_bounds`, but separated for now and should be
@@ -1680,8 +1708,7 @@ fn receiver_is_valid<'tcx>(
         return true;
     }
 
-    let mut autoderef =
-        Autoderef::new(infcx, wfcx.param_env, wfcx.body_id, span, receiver_ty, span);
+    let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_id, span, receiver_ty);
 
     // The `arbitrary_self_types` feature allows raw pointer receivers like `self: *const Self`.
     if arbitrary_self_types_enabled {

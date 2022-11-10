@@ -353,6 +353,10 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         &mut self,
         constant: ty::Const<'tcx>,
     ) -> Result<ty::Const<'tcx>, Self::Error> {
+        if !needs_normalization(&constant, self.param_env.reveal()) {
+            return Ok(constant);
+        }
+
         let constant = constant.try_super_fold_with(self)?;
         debug!(?constant, ?self.param_env);
         Ok(crate::traits::project::with_replaced_escaping_bound_vars(

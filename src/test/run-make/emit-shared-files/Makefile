@@ -23,24 +23,24 @@ invocation-only:
 
 toolchain-only:
 	$(RUSTDOC) -Z unstable-options --emit=toolchain-shared-resources --output $(TOOLCHAIN_ONLY) --resource-suffix=-xxx --extend-css z.css x.rs
-	[ -e $(TOOLCHAIN_ONLY)/storage-xxx.js ]
-	! [ -e $(TOOLCHAIN_ONLY)/SourceSerif4-It.ttf.woff2 ]
+	[ -e $(TOOLCHAIN_ONLY)/static.files/storage-*.js ]
+	[ -e $(TOOLCHAIN_ONLY)/static.files/SourceSerif4-It-*.ttf.woff2 ]
 	! [ -e $(TOOLCHAIN_ONLY)/search-index-xxx.js ]
 	! [ -e $(TOOLCHAIN_ONLY)/x/index.html ]
 	! [ -e $(TOOLCHAIN_ONLY)/theme.css ]
 
-	[ -e $(TOOLCHAIN_ONLY)/main-xxx.js ]
+	[ -e $(TOOLCHAIN_ONLY)/static.files/main-*.js ]
 	! [ -e $(TOOLCHAIN_ONLY)/y-xxx.css ]
 
 all-shared:
 	$(RUSTDOC) -Z unstable-options --emit=toolchain-shared-resources,unversioned-shared-resources --output $(ALL_SHARED) --resource-suffix=-xxx --extend-css z.css x.rs
-	[ -e $(ALL_SHARED)/storage-xxx.js ]
-	[ -e $(ALL_SHARED)/SourceSerif4-It.ttf.woff2 ]
+	[ -e $(ALL_SHARED)/static.files/storage-*.js ]
+	[ -e $(ALL_SHARED)/static.files/SourceSerif4-It-*.ttf.woff2 ]
 	! [ -e $(ALL_SHARED)/search-index-xxx.js ]
 	! [ -e $(ALL_SHARED)/settings.html ]
 	! [ -e $(ALL_SHARED)/x ]
 	! [ -e $(ALL_SHARED)/src ]
 	! [ -e $(ALL_SHARED)/theme.css ]
 
-	[ -e $(ALL_SHARED)/main-xxx.js ]
+	[ -e $(ALL_SHARED)/static.files/main-*.js ]
 	! [ -e $(ALL_SHARED)/y-xxx.css ]

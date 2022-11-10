@@ -6,13 +6,11 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ImplicitSelfKind, ItemKind, Node};
 use rustc_hir_analysis::check::fn_maybe_err;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use std::cell::RefCell;
 
@@ -55,41 +53,6 @@ pub(super) fn check_fn<'a, 'tcx>(
     let span = body.value.span;
 
     fn_maybe_err(tcx, span, fn_sig.abi);
-
-    if fn_sig.abi == Abi::RustCall {
-        let expected_args = if let ImplicitSelfKind::None = decl.implicit_self { 1 } else { 2 };
-
-        let err = || {
-            let item = match tcx.hir().get(fn_id) {
-                Node::Item(hir::Item { kind: ItemKind::Fn(header, ..), .. }) => Some(header),
-                Node::ImplItem(hir::ImplItem {
-                    kind: hir::ImplItemKind::Fn(header, ..), ..
-                }) => Some(header),
-                Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Fn(header, ..),
-                    ..
-                }) => Some(header),
-                // Closures are RustCall, but they tuple their arguments, so shouldn't be checked
-                Node::Expr(hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => None,
-                node => bug!("Item being checked wasn't a function/closure: {:?}", node),
-            };
-
-            if let Some(header) = item {
-                tcx.sess.span_err(header.span, "functions with the \"rust-call\" ABI must take a single non-self argument that is a tuple");
-            }
-        };
-
-        if fn_sig.inputs().len() != expected_args {
-            err()
-        } else {
-            // FIXME(CraftSpider) Add a check on parameter expansion, so we don't just make the ICE happen later on
-            //   This will probably require wide-scale changes to support a TupleKind obligation
-            //   We can't resolve this without knowing the type of the param
-            if !matches!(fn_sig.inputs()[expected_args - 1].kind(), ty::Tuple(_) | ty::Param(_)) {
-                err()
-            }
-        }
-    }
 
     if body.generator_kind.is_some() && can_be_generator.is_some() {
         let yield_ty = fcx
@@ -137,7 +100,6 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     inherited.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
-    fcx.in_tail_expr = true;
     if let ty::Dynamic(..) = declared_ret_ty.kind() {
         // FIXME: We need to verify that the return type is `Sized` after the return expression has
         // been evaluated so that we have types available for all the nodes being returned, but that
@@ -156,7 +118,6 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
         fcx.check_return_expr(&body.value, false);
     }
-    fcx.in_tail_expr = false;
 
     // We insert the deferred_generator_interiors entry after visiting the body.
     // This ensures that all nested generators appear before the entry of this generator.

@@ -38,14 +38,14 @@
 // cdb-command: g
 
 // cdb-command: dx s
-// cdb-check:s                : "this is a static str" [Type: str]
+// cdb-check:s                : "this is a static str" [Type: ref$<str$>]
 // cdb-check:    [len]            : 0x14 [Type: unsigned [...]]
 // cdb-check:    [chars]
 
 // cdb-command: g
 
 // cdb-command: dx s
-// cdb-check:s                : { len=0x5 } [Type: slice$<u8>]
+// cdb-check:s                : { len=0x5 } [Type: ref$<slice2$<u8> >]
 // cdb-check:    [len]            : 0x5 [Type: unsigned [...]]
 // cdb-check:    [0]              : 0x1 [Type: unsigned char]
 // cdb-check:    [1]              : 0x2 [Type: unsigned char]

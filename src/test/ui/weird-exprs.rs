@@ -8,6 +8,7 @@
 #![allow(unreachable_code)]
 #![allow(unused_braces, unused_must_use, unused_parens)]
 #![allow(uncommon_codepoints, confusable_idents)]
+#![allow(unreachable_patterns)]
 
 #![recursion_limit = "256"]
 
@@ -194,6 +195,15 @@ fn bathroom_stall() {
     assert_eq!(i, 13);
 }
 
+fn closure_matching() {
+    let x = |_| Some(1);
+    let (|x| x) = match x(..) {
+        |_| Some(2) => |_| Some(3),
+        |_| _ => unreachable!(),
+    };
+    assert!(matches!(x(..), |_| Some(4)));
+}
+
 pub fn main() {
     strange();
     funny();
@@ -216,4 +226,5 @@ pub fn main() {
     𝚌𝚘𝚗𝚝𝚒𝚗𝚞𝚎();
     function();
     bathroom_stall();
+    closure_matching();
 }

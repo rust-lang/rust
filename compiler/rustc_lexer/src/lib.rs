@@ -88,7 +88,9 @@ pub enum TokenKind {
     /// tokens.
     UnknownPrefix,
 
-    /// Examples: `"12_u8"`, `"1.0e-40"`, `b"123`.
+    /// Examples: `12u8`, `1.0e-40`, `b"123"`. Note that `_` is an invalid
+    /// suffix, but may be present here on string and float literals. Users of
+    /// this type will need to check for and reject that case.
     ///
     /// See [LiteralKind] for more details.
     Literal { kind: LiteralKind, suffix_start: u32 },
@@ -203,13 +205,13 @@ pub enum RawStrError {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Base {
     /// Literal starts with "0b".
-    Binary,
+    Binary = 2,
     /// Literal starts with "0o".
-    Octal,
-    /// Literal starts with "0x".
-    Hexadecimal,
+    Octal = 8,
     /// Literal doesn't contain a prefix.
-    Decimal,
+    Decimal = 10,
+    /// Literal starts with "0x".
+    Hexadecimal = 16,
 }
 
 /// `rustc` allows files to have a shebang, e.g. "#!/usr/bin/rustrun",
@@ -840,12 +842,13 @@ impl Cursor<'_> {
         self.eat_decimal_digits()
     }
 
-    // Eats the suffix of the literal, e.g. "_u8".
+    // Eats the suffix of the literal, e.g. "u8".
     fn eat_literal_suffix(&mut self) {
         self.eat_identifier();
     }
 
-    // Eats the identifier.
+    // Eats the identifier. Note: succeeds on `_`, which isn't a valid
+    // identifer.
     fn eat_identifier(&mut self) {
         if !is_id_start(self.first()) {
             return;

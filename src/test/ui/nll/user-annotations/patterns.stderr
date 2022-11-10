@@ -76,7 +76,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let _: Vec<&'static String> = vec![&String::new()];
    |            --------------------         ^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
    |            |                            |
-   |            |                            creates a temporary which is freed while still in use
+   |            |                            creates a temporary value which is freed while still in use
    |            type annotation requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
@@ -85,7 +85,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
    |                 -------------------------          ^^^^^^^^^^^^^      - temporary value is freed at the end of this statement
    |                 |                                  |
-   |                 |                                  creates a temporary which is freed while still in use
+   |                 |                                  creates a temporary value which is freed while still in use
    |                 type annotation requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
@@ -94,7 +94,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
    |                  -------------------------          ^^^^^^^^^^^^^      - temporary value is freed at the end of this statement
    |                  |                                  |
-   |                  |                                  creates a temporary which is freed while still in use
+   |                  |                                  creates a temporary value which is freed while still in use
    |                  type annotation requires that borrow lasts for `'static`
 
 error[E0597]: `x` does not live long enough

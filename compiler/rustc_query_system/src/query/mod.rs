@@ -12,7 +12,7 @@ pub use self::caches::{
 };
 
 mod config;
-pub use self::config::{QueryConfig, QueryDescription, QueryVTable};
+pub use self::config::{QueryConfig, QueryVTable};
 
 use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 use rustc_data_structures::sync::Lock;

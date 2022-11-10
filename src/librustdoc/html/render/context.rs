@@ -32,7 +32,7 @@ use crate::html::escape::Escape;
 use crate::html::format::{join_with_double_colon, Buffer};
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
 use crate::html::url_parts_builder::UrlPartsBuilder;
-use crate::html::{layout, sources};
+use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
 
@@ -498,7 +498,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         );
 
         let (sender, receiver) = channel();
-        let mut scx = SharedContext {
+        let scx = SharedContext {
             tcx,
             src_root,
             local_sources,
@@ -520,19 +520,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             cache,
             call_locations,
         };
-
-        // Add the default themes to the `Vec` of stylepaths
-        //
-        // Note that these must be added before `sources::render` is called
-        // so that the resulting source pages are styled
-        //
-        // `light.css` is not disabled because it is the stylesheet that stays loaded
-        // by the browser as the theme stylesheet. The theme system (hackily) works by
-        // changing the href to this stylesheet. All other themes are disabled to
-        // prevent rule conflicts
-        scx.style_files.push(StylePath { path: PathBuf::from("light.css") });
-        scx.style_files.push(StylePath { path: PathBuf::from("dark.css") });
-        scx.style_files.push(StylePath { path: PathBuf::from("ayu.css") });
 
         let dst = output;
         scx.ensure_dir(&dst)?;
@@ -647,10 +634,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                         </section>\
                      </noscript>\
                      <link rel=\"stylesheet\" type=\"text/css\" \
-                         href=\"{root_path}settings{suffix}.css\">\
-                     <script defer src=\"{root_path}settings{suffix}.js\"></script>",
-                    root_path = page.static_root_path.unwrap_or(""),
-                    suffix = page.resource_suffix,
+                         href=\"{static_root_path}{settings_css}\">\
+                     <script defer src=\"{static_root_path}{settings_js}\"></script>",
+                    static_root_path = page.get_static_root_path(),
+                    settings_css = static_files::STATIC_FILES.settings_css,
+                    settings_js = static_files::STATIC_FILES.settings_js,
                 )
             },
             &shared.style_files,

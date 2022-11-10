@@ -12,6 +12,7 @@ allow-unauthenticated = [
     "T-*",
     "WG-*",
     "const-hack",
+    "llvm-main",
     "needs-fcp",
     "relnotes",
     "requires-nightly",

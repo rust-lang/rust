@@ -52,9 +52,8 @@ pub trait DepContext: Copy {
     }
 
     /// Try to force a dep node to execute and see if it's green.
+    #[instrument(skip(self), level = "debug")]
     fn try_force_from_dep_node(self, dep_node: DepNode<Self::DepKind>) -> bool {
-        debug!("try_force_from_dep_node({:?}) --- trying to force", dep_node);
-
         let cb = self.dep_kind_info(dep_node.kind);
         if let Some(f) = cb.force_from_dep_node {
             f(self, dep_node);

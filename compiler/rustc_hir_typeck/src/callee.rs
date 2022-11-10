@@ -129,6 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         output
     }
 
+    #[instrument(level = "debug", skip(self, call_expr, callee_expr, arg_exprs, autoderef), ret)]
     fn try_overloaded_call_step(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
@@ -138,10 +139,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<CallStep<'tcx>> {
         let adjusted_ty =
             self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
-        debug!(
-            "try_overloaded_call_step(call_expr={:?}, adjusted_ty={:?})",
-            call_expr, adjusted_ty
-        );
 
         // If the callee is a bare function or a closure, then we're all set.
         match *adjusted_ty.kind() {
@@ -470,6 +467,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             TupleArgumentsFlag::DontTupleArguments,
             def_id,
         );
+
+        if fn_sig.abi == abi::Abi::RustCall {
+            let sp = arg_exprs.last().map_or(call_expr.span, |expr| expr.span);
+            if let Some(ty) = fn_sig.inputs().last().copied() {
+                self.register_bound(
+                    ty,
+                    self.tcx.require_lang_item(hir::LangItem::Tuple, Some(sp)),
+                    traits::ObligationCause::new(sp, self.body_id, traits::RustCall),
+                );
+            } else {
+                self.tcx.sess.span_err(
+                        sp,
+                        "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
+                    );
+            }
+        }
 
         fn_sig.output()
     }

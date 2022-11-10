@@ -7,7 +7,7 @@
         {%- endfor -%}
         <a class="{{item_type}}" href="#">{{name}}</a> {#- -#}
         <button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"> {#- -#}
-            <img src="{{static_root_path|safe}}clipboard{{page.resource_suffix}}.svg" {# -#}
+        <img src="{{static_root_path|safe}}{{clipboard_svg}}" {# -#}
                 width="19" height="18" {# -#}
                 alt="Copy item path"> {#- -#}
         </button> {#- -#}

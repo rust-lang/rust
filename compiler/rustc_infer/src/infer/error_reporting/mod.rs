@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! Error Reporting Code for the inference engine
 //!
 //! Because of the way inference, and in particular region inference,
@@ -58,12 +59,15 @@ use crate::traits::{
     StatementAsExpression,
 };
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use crate::errors::SuggAddLetForLetChains;
+use hir::intravisit::{walk_expr, walk_stmt};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Node;
 use rustc_middle::dep_graph::DepContext;
@@ -91,6 +95,7 @@ pub mod nice_region_error;
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
+    pub fallback_has_occurred: bool,
 }
 
 impl TypeErrCtxt<'_, '_> {
@@ -206,9 +211,12 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
                         };
                         (text, sp)
                     }
-                    ty::BrAnon(idx) => (
+                    ty::BrAnon(idx, span) => (
                         format!("the anonymous lifetime #{} defined here", idx + 1),
-                        tcx.def_span(scope)
+                        match span {
+                            Some(span) => span,
+                            None => tcx.def_span(scope)
+                        }
                     ),
                     _ => (
                         format!("the lifetime `{}` as defined here", region),
@@ -1498,9 +1506,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             values = None;
         }
         struct OpaqueTypesVisitor<'tcx> {
-            types: FxHashMap<TyCategory, FxHashSet<Span>>,
-            expected: FxHashMap<TyCategory, FxHashSet<Span>>,
-            found: FxHashMap<TyCategory, FxHashSet<Span>>,
+            types: FxIndexMap<TyCategory, FxIndexSet<Span>>,
+            expected: FxIndexMap<TyCategory, FxIndexSet<Span>>,
+            found: FxIndexMap<TyCategory, FxIndexSet<Span>>,
             ignore_span: Span,
             tcx: TyCtxt<'tcx>,
         }
@@ -1538,7 +1546,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 &self,
                 err: &mut Diagnostic,
                 target: &str,
-                types: &FxHashMap<TyCategory, FxHashSet<Span>>,
+                types: &FxIndexMap<TyCategory, FxIndexSet<Span>>,
             ) {
                 for (key, values) in types.iter() {
                     let count = values.len();
@@ -2332,6 +2340,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 }
                             }
                         }
+                        // For code `if Some(..) = expr `, the type mismatch may be expected `bool` but found `()`,
+                        // we try to suggest to add the missing `let` for `if let Some(..) = expr`
+                        (ty::Bool, ty::Tuple(list)) => if list.len() == 0 {
+                            self.suggest_let_for_letchains(&mut err, &trace.cause, span);
+                        }
                         _ => {}
                     }
                 }
@@ -2354,6 +2367,67 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
         self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false, false);
         diag
+    }
+
+    /// Try to find code with pattern `if Some(..) = expr`
+    /// use a `visitor` to mark the `if` which its span contains given error span,
+    /// and then try to find a assignment in the `cond` part, which span is equal with error span
+    fn suggest_let_for_letchains(
+        &self,
+        err: &mut Diagnostic,
+        cause: &ObligationCause<'_>,
+        span: Span,
+    ) {
+        let hir = self.tcx.hir();
+        let fn_hir_id = hir.get_parent_node(cause.body_id);
+        if let Some(node) = self.tcx.hir().find(fn_hir_id) &&
+            let hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Fn(_sig, _, body_id), ..
+                }) = node {
+        let body = hir.body(*body_id);
+
+        /// Find the if expression with given span
+        struct IfVisitor {
+            pub result: bool,
+            pub found_if: bool,
+            pub err_span: Span,
+        }
+
+        impl<'v> Visitor<'v> for IfVisitor {
+            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+                if self.result { return; }
+                match ex.kind {
+                    hir::ExprKind::If(cond, _, _) => {
+                        self.found_if = true;
+                        walk_expr(self, cond);
+                        self.found_if = false;
+                    }
+                    _ => walk_expr(self, ex),
+                }
+            }
+
+            fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
+                if let hir::StmtKind::Local(hir::Local {
+                        span, pat: hir::Pat{..}, ty: None, init: Some(_), ..
+                    }) = &ex.kind
+                    && self.found_if
+                    && span.eq(&self.err_span) {
+                        self.result = true;
+                }
+                walk_stmt(self, ex);
+            }
+
+            fn visit_body(&mut self, body: &'v hir::Body<'v>) {
+                hir::intravisit::walk_body(self, body);
+            }
+        }
+
+        let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
+        visitor.visit_body(&body);
+        if visitor.result {
+                err.subdiagnostic(SuggAddLetForLetChains{span: span.shrink_to_lo()});
+            }
+        }
     }
 
     fn emit_tuple_wrap_err(
@@ -3254,7 +3328,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if blk.expr.is_some() {
             return false;
         }
-        let mut shadowed = FxHashSet::default();
+        let mut shadowed = FxIndexSet::default();
         let mut candidate_idents = vec![];
         let mut find_compatible_candidates = |pat: &hir::Pat<'_>| {
             if let hir::PatKind::Binding(_, hir_id, ident, _) = &pat.kind
