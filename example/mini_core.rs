@@ -19,6 +19,9 @@ pub trait Sized {}
 #[lang = "destruct"]
 pub trait Destruct {}
 
+#[lang = "tuple_trait"]
+pub trait Tuple {}
+
 #[lang = "unsize"]
 pub trait Unsize<T: ?Sized> {}
 
@@ -443,7 +446,7 @@ pub struct PhantomData<T: ?Sized>;
 
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
-pub trait FnOnce<Args> {
+pub trait FnOnce<Args: Tuple> {
     #[lang = "fn_once_output"]
     type Output;
 
@@ -452,7 +455,7 @@ pub trait FnOnce<Args> {
 
 #[lang = "fn_mut"]
 #[rustc_paren_sugar]
-pub trait FnMut<Args>: FnOnce<Args> {
+pub trait FnMut<Args: Tuple>: FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
