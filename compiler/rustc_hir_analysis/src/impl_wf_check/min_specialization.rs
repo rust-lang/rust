@@ -426,15 +426,13 @@ fn trait_predicates_eq<'tcx>(
     predicate2: ty::Predicate<'tcx>,
     span: Span,
 ) -> bool {
-    let pred1_kind = predicate1.kind().no_bound_vars();
-    let pred2_kind = predicate2.kind().no_bound_vars();
+    let pred1_kind = predicate1.kind().skip_binder();
+    let pred2_kind = predicate2.kind().skip_binder();
     let (trait_pred1, trait_pred2) = match (pred1_kind, pred2_kind) {
-        (Some(ty::PredicateKind::Trait(pred1)), Some(ty::PredicateKind::Trait(pred2))) => {
-            (pred1, pred2)
-        }
+        (ty::PredicateKind::Trait(pred1), ty::PredicateKind::Trait(pred2)) => (pred1, pred2),
         // Just use plain syntactic equivalence if either of the predicates aren't
         // trait predicates or have bound vars.
-        _ => return pred1_kind == pred2_kind,
+        _ => return predicate1 == predicate2,
     };
 
     let predicates_equal_modulo_constness = {
@@ -451,10 +449,11 @@ fn trait_predicates_eq<'tcx>(
 
     // Check that the predicate on the specializing impl is at least as const as
     // the one on the base.
-    if trait_pred2.constness == ty::BoundConstness::ConstIfConst
-        && trait_pred1.constness == ty::BoundConstness::NotConst
-    {
-        tcx.sess.struct_span_err(span, "missing `~const` qualifier").emit();
+    match (trait_pred2.constness, trait_pred1.constness) {
+        (ty::BoundConstness::ConstIfConst, ty::BoundConstness::NotConst) => {
+            tcx.sess.struct_span_err(span, "missing `~const` qualifier for specialization").emit();
+        }
+        _ => {}
     }
 
     true
