@@ -129,32 +129,15 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'
                 }
                 Some((path, bound_ident)) => {
                     // If-let.
-                    let match_expr = {
-                        let happy_arm = {
-                            let pat = make::tuple_struct_pat(
-                                path,
-                                once(make::ext::simple_ident_pat(make::name("it")).into()),
-                            );
-                            let expr = {
-                                let path = make::ext::ident_path("it");
-                                make::expr_path(path)
-                            };
-                            make::match_arm(once(pat.into()), None, expr)
-                        };
-
-                        let sad_arm = make::match_arm(
-                            // FIXME: would be cool to use `None` or `Err(_)` if appropriate
-                            once(make::wildcard_pat().into()),
-                            None,
-                            early_expression,
-                        );
-
-                        make::expr_match(cond_expr, make::match_arm_list(vec![happy_arm, sad_arm]))
-                    };
-
-                    let let_stmt = make::let_stmt(bound_ident, None, Some(match_expr));
-                    let let_stmt = let_stmt.indent(if_indent_level);
-                    let_stmt.syntax().clone_for_update()
+                    let pat = make::tuple_struct_pat(path, once(bound_ident));
+                    let let_else_stmt = make::let_else_stmt(
+                        pat.into(),
+                        None,
+                        cond_expr,
+                        ast::make::tail_only_block_expr(early_expression),
+                    );
+                    let let_else_stmt = let_else_stmt.indent(if_indent_level);
+                    let_else_stmt.syntax().clone_for_update()
                 }
             };
 
@@ -238,10 +221,7 @@ fn main(n: Option<String>) {
             r#"
 fn main(n: Option<String>) {
     bar();
-    let n = match n {
-        Some(it) => it,
-        _ => return,
-    };
+    let Some(n) = n else { return };
     foo(n);
 
     // comment
@@ -264,10 +244,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    let x = match Err(92) {
-        Ok(it) => it,
-        _ => return,
-    };
+    let Ok(x) = Err(92) else { return };
     foo(x);
 }
 "#,
@@ -292,10 +269,7 @@ fn main(n: Option<String>) {
             r#"
 fn main(n: Option<String>) {
     bar();
-    let n = match n {
-        Some(it) => it,
-        _ => return,
-    };
+    let Some(n) = n else { return };
     foo(n);
 
     // comment
@@ -323,10 +297,7 @@ fn main(n: Option<String>) {
             r#"
 fn main(n: Option<String>) {
     bar();
-    let mut n = match n {
-        Some(it) => it,
-        _ => return,
-    };
+    let Some(mut n) = n else { return };
     foo(n);
 
     // comment
@@ -354,10 +325,7 @@ fn main(n: Option<&str>) {
             r#"
 fn main(n: Option<&str>) {
     bar();
-    let ref n = match n {
-        Some(it) => it,
-        _ => return,
-    };
+    let Some(ref n) = n else { return };
     foo(n);
 
     // comment
@@ -412,10 +380,7 @@ fn main() {
             r#"
 fn main() {
     while true {
-        let n = match n {
-            Some(it) => it,
-            _ => continue,
-        };
+        let Some(n) = n else { continue };
         foo(n);
         bar();
     }
@@ -469,10 +434,7 @@ fn main() {
             r#"
 fn main() {
     loop {
-        let n = match n {
-            Some(it) => it,
-            _ => continue,
-        };
+        let Some(n) = n else { continue };
         foo(n);
         bar();
     }

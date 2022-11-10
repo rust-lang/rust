@@ -119,7 +119,7 @@ pub enum TypeRef {
     Array(Box<TypeRef>, ConstScalarOrPath),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
-    Fn(Vec<(Option<Name>, TypeRef)>, bool /*varargs*/),
+    Fn(Vec<(Option<Name>, TypeRef)>, bool /*varargs*/, bool /*is_unsafe*/),
     ImplTrait(Vec<Interned<TypeBound>>),
     DynTrait(Vec<Interned<TypeBound>>),
     Macro(AstId<ast::MacroCall>),
@@ -229,7 +229,7 @@ impl TypeRef {
                     Vec::new()
                 };
                 params.push((None, ret_ty));
-                TypeRef::Fn(params, is_varargs)
+                TypeRef::Fn(params, is_varargs, inner.unsafe_token().is_some())
             }
             // for types are close enough for our purposes to the inner type for now...
             ast::Type::ForType(inner) => TypeRef::from_ast_opt(ctx, inner.ty()),
@@ -263,7 +263,7 @@ impl TypeRef {
         fn go(type_ref: &TypeRef, f: &mut impl FnMut(&TypeRef)) {
             f(type_ref);
             match type_ref {
-                TypeRef::Fn(params, _) => {
+                TypeRef::Fn(params, _, _) => {
                     params.iter().for_each(|(_, param_type)| go(param_type, f))
                 }
                 TypeRef::Tuple(types) => types.iter().for_each(|t| go(t, f)),

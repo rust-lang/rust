@@ -1020,7 +1020,7 @@ impl Expectation {
     /// The primary use case is where the expected type is a fat pointer,
     /// like `&[isize]`. For example, consider the following statement:
     ///
-    ///    let x: &[isize] = &[1, 2, 3];
+    ///     let x: &[isize] = &[1, 2, 3];
     ///
     /// In this case, the expected type for the `&[1, 2, 3]` expression is
     /// `&[isize]`. If however we were to say that `[1, 2, 3]` has the
