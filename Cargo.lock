@@ -63,7 +63,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "cranelift-bforest"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 dependencies = [
  "cranelift-entity",
 ]
@@ -71,7 +71,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 dependencies = [
  "arrayvec",
  "bumpalo",
@@ -91,7 +91,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen-meta"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 dependencies = [
  "cranelift-codegen-shared",
 ]
@@ -99,12 +99,12 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen-shared"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 
 [[package]]
 name = "cranelift-egraph"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 dependencies = [
  "cranelift-entity",
  "fxhash",
@@ -117,12 +117,12 @@ dependencies = [
 [[package]]
 name = "cranelift-entity"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 
 [[package]]
 name = "cranelift-frontend"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 dependencies = [
  "cranelift-codegen",
  "log",
@@ -133,12 +133,12 @@ dependencies = [
 [[package]]
 name = "cranelift-isle"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 
 [[package]]
 name = "cranelift-jit"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -156,7 +156,7 @@ dependencies = [
 [[package]]
 name = "cranelift-module"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -165,7 +165,7 @@ dependencies = [
 [[package]]
 name = "cranelift-native"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 dependencies = [
  "cranelift-codegen",
  "libc",
@@ -175,7 +175,7 @@ dependencies = [
 [[package]]
 name = "cranelift-object"
 version = "0.90.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -391,7 +391,7 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 [[package]]
 name = "wasmtime-jit-icache-coherence"
 version = "2.0.0"
-source = "git+https://github.com/bytecodealliance/wasmtime.git#2c69b94744c93247075ed1c6754b4cb5549cd90d"
+source = "git+https://github.com/bytecodealliance/wasmtime.git?branch=release-3.0.0#0102cd7bc0c9a178a8a492340961f5822f9b95c8"
 dependencies = [
  "cfg-if",
  "libc",

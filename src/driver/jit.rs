@@ -159,7 +159,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
 
     tcx.sess.abort_if_errors();
 
-    jit_module.finalize_definitions();
+    jit_module.finalize_definitions().unwrap();
     unsafe { cx.unwind_context.register_jit(&jit_module) };
 
     println!(
@@ -278,7 +278,7 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
             });
 
             assert!(cx.global_asm.is_empty());
-            jit_module.finalize_definitions();
+            jit_module.finalize_definitions().unwrap();
             unsafe { cx.unwind_context.register_jit(&jit_module) };
             jit_module.get_finalized_function(func_id)
         })
