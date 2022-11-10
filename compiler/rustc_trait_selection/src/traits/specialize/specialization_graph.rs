@@ -3,7 +3,6 @@ use super::OverlapError;
 use crate::traits;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 
 pub use rustc_middle::traits::specialization_graph::*;
@@ -15,15 +14,15 @@ pub enum FutureCompatOverlapErrorKind {
 }
 
 #[derive(Debug)]
-pub struct FutureCompatOverlapError {
-    pub error: OverlapError,
+pub struct FutureCompatOverlapError<'tcx> {
+    pub error: OverlapError<'tcx>,
     pub kind: FutureCompatOverlapErrorKind,
 }
 
 /// The result of attempting to insert an impl into a group of children.
-enum Inserted {
+enum Inserted<'tcx> {
     /// The impl was inserted as a new child in this group of children.
-    BecameNewSibling(Option<FutureCompatOverlapError>),
+    BecameNewSibling(Option<FutureCompatOverlapError<'tcx>>),
 
     /// The impl should replace existing impls [X1, ..], because the impl specializes X1, X2, etc.
     ReplaceChildren(Vec<DefId>),
@@ -42,12 +41,12 @@ trait ChildrenExt<'tcx> {
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
         overlap_mode: OverlapMode,
-    ) -> Result<Inserted, OverlapError>;
+    ) -> Result<Inserted<'tcx>, OverlapError<'tcx>>;
 }
 
-impl ChildrenExt<'_> for Children {
+impl<'tcx> ChildrenExt<'tcx> for Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
-    fn insert_blindly(&mut self, tcx: TyCtxt<'_>, impl_def_id: DefId) {
+    fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsInfer)
         {
@@ -62,7 +61,7 @@ impl ChildrenExt<'_> for Children {
     /// Removes an impl from this set of children. Used when replacing
     /// an impl with a parent. The impl must be present in the list of
     /// children already.
-    fn remove_existing(&mut self, tcx: TyCtxt<'_>, impl_def_id: DefId) {
+    fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let vec: &mut Vec<DefId>;
         if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), TreatParams::AsInfer)
@@ -82,11 +81,11 @@ impl ChildrenExt<'_> for Children {
     /// specialization relationships.
     fn insert(
         &mut self,
-        tcx: TyCtxt<'_>,
+        tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
         overlap_mode: OverlapMode,
-    ) -> Result<Inserted, OverlapError> {
+    ) -> Result<Inserted<'tcx>, OverlapError<'tcx>> {
         let mut last_lint = None;
         let mut replace_children = Vec::new();
 
@@ -103,30 +102,23 @@ impl ChildrenExt<'_> for Children {
                 impl_def_id, simplified_self, possible_sibling,
             );
 
-            let create_overlap_error = |overlap: traits::coherence::OverlapResult<'_>| {
+            let create_overlap_error = |overlap: traits::coherence::OverlapResult<'tcx>| {
                 let trait_ref = overlap.impl_header.trait_ref.unwrap();
                 let self_ty = trait_ref.self_ty();
 
-                // FIXME: should postpone string formatting until we decide to actually emit.
-                with_no_trimmed_paths!({
-                    OverlapError {
-                        with_impl: possible_sibling,
-                        trait_desc: trait_ref.print_only_trait_path().to_string(),
-                        // Only report the `Self` type if it has at least
-                        // some outer concrete shell; otherwise, it's
-                        // not adding much information.
-                        self_desc: if self_ty.has_concrete_skeleton() {
-                            Some(self_ty.to_string())
-                        } else {
-                            None
-                        },
-                        intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
-                        involves_placeholder: overlap.involves_placeholder,
-                    }
-                })
+                OverlapError {
+                    with_impl: possible_sibling,
+                    trait_ref,
+                    // Only report the `Self` type if it has at least
+                    // some outer concrete shell; otherwise, it's
+                    // not adding much information.
+                    self_ty: if self_ty.has_concrete_skeleton() { Some(self_ty) } else { None },
+                    intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
+                    involves_placeholder: overlap.involves_placeholder,
+                }
             };
 
-            let report_overlap_error = |overlap: traits::coherence::OverlapResult<'_>,
+            let report_overlap_error = |overlap: traits::coherence::OverlapResult<'tcx>,
                                         last_lint: &mut _| {
                 // Found overlap, but no specialization; error out or report future-compat warning.
 
@@ -255,31 +247,31 @@ where
     }
 }
 
-pub trait GraphExt {
+pub trait GraphExt<'tcx> {
     /// Insert a local impl into the specialization graph. If an existing impl
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.
     fn insert(
         &mut self,
-        tcx: TyCtxt<'_>,
+        tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
         overlap_mode: OverlapMode,
-    ) -> Result<Option<FutureCompatOverlapError>, OverlapError>;
+    ) -> Result<Option<FutureCompatOverlapError<'tcx>>, OverlapError<'tcx>>;
 
     /// Insert cached metadata mapping from a child impl back to its parent.
-    fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'_>, parent: DefId, child: DefId);
+    fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'tcx>, parent: DefId, child: DefId);
 }
 
-impl GraphExt for Graph {
+impl<'tcx> GraphExt<'tcx> for Graph {
     /// Insert a local impl into the specialization graph. If an existing impl
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.
     fn insert(
         &mut self,
-        tcx: TyCtxt<'_>,
+        tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
         overlap_mode: OverlapMode,
-    ) -> Result<Option<FutureCompatOverlapError>, OverlapError> {
+    ) -> Result<Option<FutureCompatOverlapError<'tcx>>, OverlapError<'tcx>> {
         assert!(impl_def_id.is_local());
 
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -376,7 +368,7 @@ impl GraphExt for Graph {
     }
 
     /// Insert cached metadata mapping from a child impl back to its parent.
-    fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'_>, parent: DefId, child: DefId) {
+    fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'tcx>, parent: DefId, child: DefId) {
         if self.parent.insert(child, parent).is_some() {
             bug!(
                 "When recording an impl from the crate store, information about its parent \

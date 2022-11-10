@@ -9,7 +9,7 @@ LL | impl Copy for i32 {}
    |
    = note: define and implement a trait or new type instead
 
-error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&NotSync`
+error[E0119]: conflicting implementations of trait `Copy` for type `&NotSync`
   --> $DIR/coherence-impls-copy.rs:28:1
    |
 LL | impl Copy for &'static NotSync {}

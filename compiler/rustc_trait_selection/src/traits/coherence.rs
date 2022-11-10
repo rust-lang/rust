@@ -64,13 +64,13 @@ pub fn add_placeholder_note(err: &mut Diagnostic) {
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, returns `None`.
 #[instrument(skip(tcx, skip_leak_check), level = "debug")]
-pub fn overlapping_impls(
-    tcx: TyCtxt<'_>,
+pub fn overlapping_impls<'tcx>(
+    tcx: TyCtxt<'tcx>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     skip_leak_check: SkipLeakCheck,
     overlap_mode: OverlapMode,
-) -> Option<OverlapResult<'_>> {
+) -> Option<OverlapResult<'tcx>> {
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
