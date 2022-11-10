@@ -149,6 +149,7 @@ async function main(argv) {
         // This is more convenient that setting fields one by one.
         let args = [
             "--variable", "DOC_PATH", opts["doc_folder"], "--enable-fail-on-js-error",
+            "--allow-file-access-from-files",
         ];
         if (opts["debug"]) {
             debug = true;

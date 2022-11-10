@@ -1,4 +1,8 @@
 // This test ensures that items and documentation code blocks are wrapped in <pre><code>
+
+// We need to disable this check because `implementors/test_docs/trait.AnotherOne.js`
+// doesn't exist.
+fail-on-request-error: false
 goto: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 size: (1080, 600)
 // There should be four doc codeblocks.
