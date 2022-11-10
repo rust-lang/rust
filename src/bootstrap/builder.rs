@@ -755,6 +755,7 @@ impl<'a> Builder<'a> {
                 run::BuildManifest,
                 run::BumpStage0,
                 run::ReplaceVersionPlaceholder,
+                run::Miri,
             ),
             // These commands either don't use paths, or they're special-cased in Build::build()
             Kind::Clean | Kind::Format | Kind::Setup => vec![],
@@ -818,7 +819,7 @@ impl<'a> Builder<'a> {
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
-            Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
+            Subcommand::Run { ref paths, .. } => (Kind::Run, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
             Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
                 panic!()
