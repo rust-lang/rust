@@ -1346,13 +1346,21 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     #[cfg(debug_assertions)]
                     {
-                        use crate::renumber::RegionCtxt;
+                        use crate::renumber::{BoundRegionInfo, RegionCtxt};
                         use rustc_span::Symbol;
 
-                        let name = match br.kind {
-                            ty::BoundRegionKind::BrAnon(_) => Symbol::intern("anon"),
-                            ty::BoundRegionKind::BrNamed(_, name) => name,
-                            ty::BoundRegionKind::BrEnv => Symbol::intern("env"),
+                        let reg_info = match br.kind {
+                            // FIXME Probably better to use the `Span` here
+                            ty::BoundRegionKind::BrAnon(_, Some(span)) => {
+                                BoundRegionInfo::Span(span)
+                            }
+                            ty::BoundRegionKind::BrAnon(..) => {
+                                BoundRegionInfo::Name(Symbol::intern("anon"))
+                            }
+                            ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
+                            ty::BoundRegionKind::BrEnv => {
+                                BoundRegionInfo::Name(Symbol::intern("env"))
+                            }
                         };
 
                         self.infcx.next_region_var(
@@ -1361,7 +1369,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 br.kind,
                                 LateBoundRegionConversionTime::FnCall,
                             ),
-                            RegionCtxt::LateBound(name),
+                            RegionCtxt::LateBound(reg_info),
                         )
                     }
                 });

@@ -32,7 +32,7 @@ use std::iter;
 
 use crate::nll::ToRegionVid;
 #[cfg(debug_assertions)]
-use crate::renumber::RegionCtxt;
+use crate::renumber::{BoundRegionInfo, RegionCtxt};
 use crate::BorrowckInferCtxt;
 
 #[derive(Debug)]
@@ -446,7 +446,22 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 |r| {
                     debug!(?r);
                     if !indices.indices.contains_key(&r) {
+                        #[cfg(not(debug_assertions))]
                         let region_vid = self.infcx.next_nll_region_var(FR);
+
+                        #[cfg(debug_assertions)]
+                        let region_vid = {
+                            let name = match r.get_name() {
+                                Some(name) => name,
+                                _ => Symbol::intern("anon"),
+                            };
+
+                            self.infcx.next_nll_region_var(
+                                FR,
+                                RegionCtxt::LateBound(BoundRegionInfo::Name(name)),
+                            )
+                        };
+
                         debug!(?region_vid);
                         indices.insert_late_bound_region(r, region_vid.to_region_vid());
                     }
@@ -474,7 +489,20 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         for_each_late_bound_region_in_item(self.infcx.tcx, self.mir_def.did, |r| {
             debug!(?r);
             if !indices.indices.contains_key(&r) {
+                #[cfg(not(debug_assertions))]
                 let region_vid = self.infcx.next_nll_region_var(FR);
+
+                #[cfg(debug_assertions)]
+                let region_vid = {
+                    let name = match r.get_name() {
+                        Some(name) => name,
+                        _ => Symbol::intern("anon"),
+                    };
+
+                    self.infcx
+                        .next_nll_region_var(FR, RegionCtxt::LateBound(BoundRegionInfo::Name(name)))
+                };
+
                 debug!(?region_vid);
                 indices.insert_late_bound_region(r, region_vid.to_region_vid());
             }
@@ -773,7 +801,6 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         })
     }
 
-    #[cfg(not(debug_assertions))]
     #[instrument(level = "debug", skip(self, indices))]
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
@@ -788,39 +815,19 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
             debug!(?br);
             let liberated_region = self.tcx.mk_re_free(all_outlive_scope.to_def_id(), br.kind);
+            #[cfg(not(debug_assertions))]
             let region_vid = self.next_nll_region_var(origin);
-            indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
-            debug!(?liberated_region, ?region_vid);
-            region_vid
-        });
-        value
-    }
 
-    #[cfg(debug_assertions)]
-    #[instrument(level = "debug", skip(self, indices))]
-    fn replace_bound_regions_with_nll_infer_vars<T>(
-        &self,
-        origin: NllRegionVariableOrigin,
-        all_outlive_scope: LocalDefId,
-        value: ty::Binder<'tcx, T>,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
-            debug!(?br);
-            let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                scope: all_outlive_scope.to_def_id(),
-                bound_region: br.kind,
-            }));
+            #[cfg(debug_assertions)]
+            let region_vid = {
+                let name = match br.kind.get_name() {
+                    Some(name) => name,
+                    _ => Symbol::intern("anon"),
+                };
 
-            let name = match br.kind.get_name() {
-                Some(name) => name,
-                _ => Symbol::intern("anon"),
+                self.next_nll_region_var(origin, RegionCtxt::Bound(BoundRegionInfo::Name(name)))
             };
 
-            let region_vid = self.next_nll_region_var(origin, RegionCtxt::Bound(name));
             indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
             debug!(?liberated_region, ?region_vid);
             region_vid
@@ -837,7 +844,6 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
     /// entries for them and store them in the indices map. This code iterates over the complete
     /// set of late-bound regions and checks for any that we have not yet seen, adding them to the
     /// inputs vector.
-    #[cfg(not(debug_assertions))]
     #[instrument(skip(self, indices))]
     fn replace_late_bound_regions_with_nll_infer_vars_in_recursive_scope(
         &self,
@@ -847,7 +853,19 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         for_each_late_bound_region_in_recursive_scope(self.tcx, mir_def_id, |r| {
             debug!(?r);
             if !indices.indices.contains_key(&r) {
+                #[cfg(not(debug_assertions))]
                 let region_vid = self.next_nll_region_var(FR);
+
+                #[cfg(debug_assertions)]
+                let region_vid = {
+                    let name = match r.get_name() {
+                        Some(name) => name,
+                        _ => Symbol::intern("anon"),
+                    };
+
+                    self.next_nll_region_var(FR, RegionCtxt::LateBound(BoundRegionInfo::Name(name)))
+                };
+
                 debug!(?region_vid);
                 indices.insert_late_bound_region(r, region_vid.to_region_vid());
             }
@@ -863,40 +881,19 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         for_each_late_bound_region_in_item(self.tcx, mir_def_id, |r| {
             debug!(?r);
             if !indices.indices.contains_key(&r) {
+                #[cfg(not(debug_assertions))]
                 let region_vid = self.next_nll_region_var(FR);
-                debug!(?region_vid);
-                indices.insert_late_bound_region(r, region_vid.to_region_vid());
-            }
-        });
-    }
 
-    /// Finds late-bound regions that do not appear in the parameter listing and adds them to the
-    /// indices vector. Typically, we identify late-bound regions as we process the inputs and
-    /// outputs of the closure/function. However, sometimes there are late-bound regions which do
-    /// not appear in the fn parameters but which are nonetheless in scope. The simplest case of
-    /// this are unused functions, like fn foo<'a>() { } (see e.g., #51351). Despite not being used,
-    /// users can still reference these regions (e.g., let x: &'a u32 = &22;), so we need to create
-    /// entries for them and store them in the indices map. This code iterates over the complete
-    /// set of late-bound regions and checks for any that we have not yet seen, adding them to the
-    /// inputs vector.
-    #[cfg(debug_assertions)]
-    #[instrument(skip(self, indices))]
-    fn replace_late_bound_regions_with_nll_infer_vars(
-        &self,
-        mir_def_id: LocalDefId,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    ) {
-        let typeck_root_def_id = self.tcx.typeck_root_def_id(mir_def_id.to_def_id());
-        for_each_late_bound_region_defined_on(self.tcx, typeck_root_def_id, |r| {
-            debug!(?r);
-            if !indices.indices.contains_key(&r) {
-                let name = match r.get_name() {
-                    Some(name) => name,
-                    _ => Symbol::intern("anon"),
+                #[cfg(debug_assertions)]
+                let region_vid = {
+                    let name = match r.get_name() {
+                        Some(name) => name,
+                        _ => Symbol::intern("anon"),
+                    };
+
+                    self.next_nll_region_var(FR, RegionCtxt::LateBound(BoundRegionInfo::Name(name)))
                 };
 
-                let region_vid = self.next_nll_region_var(FR, RegionCtxt::LateBound(name));
-                debug!(?region_vid);
                 indices.insert_late_bound_region(r, region_vid.to_region_vid());
             }
         });

@@ -9,7 +9,7 @@ use rustc_middle::mir::{Body, Location, Promoted};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 #[cfg(debug_assertions)]
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
@@ -64,14 +64,21 @@ where
 
 #[cfg(debug_assertions)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub(crate) enum BoundRegionInfo {
+    Name(Symbol),
+    Span(Span),
+}
+
+#[cfg(debug_assertions)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum RegionCtxt {
     Location(Location),
     TyContext(TyContext),
     Free(Symbol),
-    Bound(Symbol),
-    LateBound(Symbol),
+    Bound(BoundRegionInfo),
+    LateBound(BoundRegionInfo),
     Existential(Option<Symbol>),
-    Placeholder(Symbol),
+    Placeholder(BoundRegionInfo),
     Unknown,
 }
 
@@ -86,10 +93,7 @@ impl RegionCtxt {
         match self {
             RegionCtxt::Unknown => 1,
             RegionCtxt::Existential(None) => 2,
-            RegionCtxt::Existential(Some(_anon))
-            | RegionCtxt::Free(_anon)
-            | RegionCtxt::Bound(_anon)
-            | RegionCtxt::LateBound(_anon) => 2,
+            RegionCtxt::Existential(Some(_anon)) | RegionCtxt::Free(_anon) => 2,
             RegionCtxt::Location(_) => 3,
             RegionCtxt::TyContext(_) => 4,
             _ => 5,
