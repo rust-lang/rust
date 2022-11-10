@@ -30,6 +30,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         error: Option<TypeError<'tcx>>,
     ) {
+        if expr_ty == expected {
+            return;
+        }
+
         self.annotate_expected_due_to_let_ty(err, expr, error);
 
         // Use `||` to give these suggestions a precedence
