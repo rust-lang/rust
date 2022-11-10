@@ -1145,7 +1145,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }));
             }
 
-            _ => bug!(),
+            _ => bug!("source: {source}, target: {target}"),
         };
 
         Ok(ImplSourceBuiltinData { nested })
