@@ -2,7 +2,6 @@
 // only-windows
 // compile-flags: --crate-type lib --emit link
 #![allow(clashing_extern_declarations)]
-#![feature(raw_dylib)]
 #[link(name = "foo", kind = "raw-dylib")]
 extern "C" {
     fn f(x: i32);
