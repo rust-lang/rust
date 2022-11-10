@@ -82,6 +82,7 @@ where
 
     impl<T: Generator<ResumeTy, Yield = ()>> Future for GenFuture<T> {
         type Output = T::Return;
+        #[track_caller]
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             // SAFETY: Safe because we're !Unpin + !Drop, and this is just a field projection.
             let gen = unsafe { Pin::map_unchecked_mut(self, |s| &mut s.0) };
