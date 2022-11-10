@@ -329,6 +329,31 @@ mod tests {
 
     use super::reverse_fixups;
 
+    // The following three functions are only meant to check partial structural equivalence of
+    // `TokenTree`s, see the last assertion in `check()`.
+    fn check_leaf_eq(a: &tt::Leaf, b: &tt::Leaf) -> bool {
+        match (a, b) {
+            (tt::Leaf::Literal(a), tt::Leaf::Literal(b)) => a.text == b.text,
+            (tt::Leaf::Punct(a), tt::Leaf::Punct(b)) => a.char == b.char,
+            (tt::Leaf::Ident(a), tt::Leaf::Ident(b)) => a.text == b.text,
+            _ => false,
+        }
+    }
+
+    fn check_subtree_eq(a: &tt::Subtree, b: &tt::Subtree) -> bool {
+        a.delimiter.map(|it| it.kind) == b.delimiter.map(|it| it.kind)
+            && a.token_trees.len() == b.token_trees.len()
+            && a.token_trees.iter().zip(&b.token_trees).all(|(a, b)| check_tt_eq(a, b))
+    }
+
+    fn check_tt_eq(a: &tt::TokenTree, b: &tt::TokenTree) -> bool {
+        match (a, b) {
+            (tt::TokenTree::Leaf(a), tt::TokenTree::Leaf(b)) => check_leaf_eq(a, b),
+            (tt::TokenTree::Subtree(a), tt::TokenTree::Subtree(b)) => check_subtree_eq(a, b),
+            _ => false,
+        }
+    }
+
     #[track_caller]
     fn check(ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture);
@@ -341,8 +366,7 @@ mod tests {
             fixups.append,
         );
 
-        let mut actual = tt.to_string();
-        actual.push('\n');
+        let actual = format!("{}\n", tt);
 
         expect.indent(false);
         expect.assert_eq(&actual);
@@ -358,9 +382,12 @@ mod tests {
         reverse_fixups(&mut tt, &tmap, &fixups.undo_info);
 
         // the fixed-up + reversed version should be equivalent to the original input
-        // (but token IDs don't matter)
+        // modulo token IDs and `Punct`s' spacing.
         let (original_as_tt, _) = mbe::syntax_node_to_token_tree(&parsed.syntax_node());
-        assert_eq!(tt.to_string(), original_as_tt.to_string());
+        assert!(
+            check_subtree_eq(&tt, &original_as_tt),
+            "different token tree: {tt:?}, {original_as_tt:?}"
+        );
     }
 
     #[test]
@@ -483,7 +510,6 @@ fn foo () {a . __ra_fixup}
     }
 
     #[test]
-    #[ignore]
     fn incomplete_field_expr_2() {
         check(
             r#"
@@ -492,13 +518,12 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a .__ra_fixup ;}
+fn foo () {a . __ra_fixup ;}
 "#]],
         )
     }
 
     #[test]
-    #[ignore]
     fn incomplete_field_expr_3() {
         check(
             r#"
@@ -508,7 +533,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a .__ra_fixup ; bar () ;}
+fn foo () {a . __ra_fixup ; bar () ;}
 "#]],
         )
     }
