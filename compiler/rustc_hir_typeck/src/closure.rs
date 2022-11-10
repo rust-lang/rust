@@ -173,34 +173,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
-            ty::Opaque(def_id, substs) => {
-                let bounds = self.tcx.bound_explicit_item_bounds(def_id);
-                let sig =
-                    bounds.subst_iter_copied(self.tcx, substs).find_map(|(pred, span)| match pred
-                        .kind()
-                        .skip_binder()
-                    {
-                        ty::PredicateKind::Projection(proj_predicate) => self
-                            .deduce_sig_from_projection(
-                                Some(span),
-                                pred.kind().rebind(proj_predicate),
-                            ),
-                        _ => None,
-                    });
-
-                let kind = bounds
-                    .0
-                    .iter()
-                    .filter_map(|(pred, _)| match pred.kind().skip_binder() {
-                        ty::PredicateKind::Trait(tp) => {
-                            self.tcx.fn_trait_kind_from_lang_item(tp.def_id())
-                        }
-                        _ => None,
-                    })
-                    .fold(None, |best, cur| Some(best.map_or(cur, |best| cmp::min(best, cur))));
-                trace!(?sig, ?kind);
-                (sig, kind)
-            }
+            ty::Opaque(def_id, substs) => self.deduce_signature_from_predicates(
+                self.tcx.bound_explicit_item_bounds(def_id).subst_iter_copied(self.tcx, substs),
+            ),
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
                     let pb = pb.with_self_ty(self.tcx, self.tcx.types.trait_object_dummy_self);
@@ -211,7 +186,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|did| self.tcx.fn_trait_kind_from_lang_item(did));
                 (sig, kind)
             }
-            ty::Infer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
+            ty::Infer(ty::TyVar(vid)) => self.deduce_signature_from_predicates(
+                self.obligations_for_self_ty(vid).map(|obl| (obl.predicate, obl.cause.span)),
+            ),
             ty::FnPtr(sig) => {
                 let expected_sig = ExpectedSig { cause_span: None, sig };
                 (Some(expected_sig), Some(ty::ClosureKind::Fn))
@@ -220,19 +197,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn deduce_expectations_from_obligations(
+    fn deduce_signature_from_predicates(
         &self,
-        expected_vid: ty::TyVid,
+        predicates: impl DoubleEndedIterator<Item = (ty::Predicate<'tcx>, Span)>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         let mut expected_sig = None;
         let mut expected_kind = None;
 
-        for obligation in traits::elaborate_obligations(
+        for obligation in traits::elaborate_predicates_with_span(
             self.tcx,
             // Reverse the obligations here, since `elaborate_*` uses a stack,
             // and we want to keep inference generally in the same order of
             // the registered obligations.
-            self.obligations_for_self_ty(expected_vid).rev().collect(),
+            predicates.rev(),
         ) {
             debug!(?obligation.predicate);
             let bound_predicate = obligation.predicate.kind();
