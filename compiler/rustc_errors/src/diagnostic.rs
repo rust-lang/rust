@@ -742,7 +742,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = String>,
+        suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestions_with_style(
@@ -759,11 +759,11 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = String>,
+        suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
-        let mut suggestions: Vec<_> = suggestions.collect();
+        let mut suggestions: Vec<_> = suggestions.into_iter().collect();
         suggestions.sort();
 
         debug_assert!(
@@ -790,10 +790,10 @@ impl Diagnostic {
     pub fn multipart_suggestions(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = Vec<(Span, String)>>,
+        suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self {
-        let suggestions: Vec<_> = suggestions.collect();
+        let suggestions: Vec<_> = suggestions.into_iter().collect();
         debug_assert!(
             !(suggestions
                 .iter()
