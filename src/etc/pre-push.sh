@@ -12,11 +12,9 @@ unset GIT_DIR
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 COMMAND="$ROOT_DIR/x.py test tidy"
 
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-  COMMAND="python $COMMAND"
-elif ! command -v python &> /dev/null; then
-  COMMAND="python3 $COMMAND"
-fi
+
+COMMAND="python3.10 $COMMAND"
+
 
 echo "Running pre-push script '$COMMAND'"
 
