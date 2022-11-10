@@ -1900,6 +1900,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | ty::Str
                         | ty::Projection(_)
                         | ty::Param(_) => format!("{deref_ty}"),
+                        // we need to test something like  <&[_]>::len
+                        // and Vec::function();
+                        // <&[_]>::len doesn't need an extra "<>" between
+                        // but for Adt type like Vec::function()
+                        // we would suggest <[_]>::function();
+                        _ if self.tcx.sess.source_map().span_wrapped_by_angle_bracket(ty.span)  => format!("{deref_ty}"),
                         _ => format!("<{deref_ty}>"),
                     };
                     err.span_suggestion_verbose(
