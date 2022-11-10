@@ -4,6 +4,7 @@ use std::mem;
 
 use mbe::{SyntheticToken, SyntheticTokenId, TokenMap};
 use rustc_hash::FxHashMap;
+use smallvec::SmallVec;
 use syntax::{
     ast::{self, AstNode, HasLoopBody},
     match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
@@ -292,21 +293,34 @@ pub(crate) fn reverse_fixups(
     token_map: &TokenMap,
     undo_info: &SyntaxFixupUndoInfo,
 ) {
-    tt.token_trees.retain(|tt| match tt {
-        tt::TokenTree::Leaf(leaf) => token_map.synthetic_token_id(leaf.id()) != Some(EMPTY_ID),
-        tt::TokenTree::Subtree(st) => {
-            st.delimiter.map_or(true, |d| token_map.synthetic_token_id(d.id) != Some(EMPTY_ID))
-        }
-    });
-    tt.token_trees.iter_mut().for_each(|tt| match tt {
-        tt::TokenTree::Subtree(tt) => reverse_fixups(tt, token_map, undo_info),
-        tt::TokenTree::Leaf(leaf) => {
-            if let Some(id) = token_map.synthetic_token_id(leaf.id()) {
-                let original = &undo_info.original[id.0 as usize];
-                *tt = tt::TokenTree::Subtree(original.clone());
+    let tts = std::mem::take(&mut tt.token_trees);
+    tt.token_trees = tts
+        .into_iter()
+        .filter(|tt| match tt {
+            tt::TokenTree::Leaf(leaf) => token_map.synthetic_token_id(leaf.id()) != Some(EMPTY_ID),
+            tt::TokenTree::Subtree(st) => {
+                st.delimiter.map_or(true, |d| token_map.synthetic_token_id(d.id) != Some(EMPTY_ID))
             }
-        }
-    });
+        })
+        .flat_map(|tt| match tt {
+            tt::TokenTree::Subtree(mut tt) => {
+                reverse_fixups(&mut tt, token_map, undo_info);
+                SmallVec::from_const([tt.into()])
+            }
+            tt::TokenTree::Leaf(leaf) => {
+                if let Some(id) = token_map.synthetic_token_id(leaf.id()) {
+                    let original = undo_info.original[id.0 as usize].clone();
+                    if original.delimiter.is_none() {
+                        original.token_trees.into()
+                    } else {
+                        SmallVec::from_const([original.into()])
+                    }
+                } else {
+                    SmallVec::from_const([leaf.into()])
+                }
+            }
+        })
+        .collect();
 }
 
 #[cfg(test)]
