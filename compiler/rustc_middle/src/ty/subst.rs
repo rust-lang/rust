@@ -260,6 +260,13 @@ impl<'tcx> InternalSubsts<'tcx> {
         }
     }
 
+    /// Transmutes the generic args list into a type list without checking the contents.
+    pub unsafe fn as_type_list_unchecked(&'tcx self) -> &'tcx List<Ty<'tcx>> {
+        assert_eq!(TYPE_TAG, 0);
+        // SAFETY: All elements are types, see `List<Ty<'tcx>>::as_substs`.
+        unsafe { &*(self as *const List<GenericArg<'tcx>> as *const List<Ty<'tcx>>) }
+    }
+
     /// Interpret these substitutions as the substitutions of a closure type.
     /// Closure substitutions have a particular structure controlled by the
     /// compiler that encodes information like the signature and closure kind;

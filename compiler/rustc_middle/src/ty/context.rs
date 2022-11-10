@@ -2721,7 +2721,10 @@ impl<'tcx> TyCtxt<'tcx> {
             // and `List<GenericArg<'tcx>>`, the uniqueness requirement for
             // lists is upheld.
             let substs = self._intern_substs(ty::subst::ty_slice_as_generic_args(ts));
-            substs.try_as_type_list().unwrap()
+            // SAFETY: We just turned this slice into a generic args list
+            // and interned it, which should not change the GenericArgKind
+            // of the contents.
+            unsafe { substs.as_type_list_unchecked() }
         }
     }
 
