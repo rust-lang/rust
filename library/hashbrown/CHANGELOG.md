@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.13.1] - 2022-11-10
+
+# Added
+
+- Added `Equivalent` trait to customize key lookups. (#350)
+- Added support for 16-bit targets. (#368)
+- Added `RawTable::allocation_info` which provides information about the memory
+  usage of a table. (#371)
+
+# Changed
+
+- Bumped MSRV to 1.61.0.
+- Upgraded to `ahash` 0.8. (#357)
+- Make `with_hasher_in` const. (#355)
+- The following methods have been removed from the `RawTable` API in favor of
+  safer alternatives:
+  - `RawTable::erase_no_drop` => Use `RawTable::erase` or `RawTable::remove` instead.
+  - `Bucket::read` => Use `RawTable::remove` instead.
+  - `Bucket::drop` => Use `RawTable::erase` instead.
+  - `Bucket::write` => Use `Bucket::as_mut` instead.
+
+# Fixed
+
+- Ensure that `HashMap` allocations don't exceed `isize::MAX`. (#362)
+- Fixed issue with field retagging in scopeguard. (#359)
+
 ## [v0.12.3] - 2022-07-17
 
 ## Fixed
@@ -363,7 +389,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.12.3...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.13.1...HEAD
+[v0.13.1]: https://github.com/rust-lang/hashbrown/compare/v0.12.3...v0.13.1
 [v0.12.3]: https://github.com/rust-lang/hashbrown/compare/v0.12.2...v0.12.3
 [v0.12.2]: https://github.com/rust-lang/hashbrown/compare/v0.12.1...v0.12.2
 [v0.12.1]: https://github.com/rust-lang/hashbrown/compare/v0.12.0...v0.12.1

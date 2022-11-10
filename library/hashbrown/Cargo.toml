@@ -1,6 +1,6 @@
 [package]
 name = "hashbrown"
-version = "0.12.3"
+version = "0.13.1"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
 description = "A Rust port of Google's SwissTable hash map"
 license = "MIT OR Apache-2.0"
@@ -10,7 +10,7 @@ keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
 exclude = [".github", "/ci/*"]
 edition = "2021"
-rust-version = "1.56.0"
+rust-version = "1.61.0"
 
 [dependencies]
 # For the default hasher
