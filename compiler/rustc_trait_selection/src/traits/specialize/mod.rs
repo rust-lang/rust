@@ -10,10 +10,12 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 pub mod specialization_graph;
+use rustc_infer::traits::{TraitEngine, TraitEngineExt as _};
 use specialization_graph::GraphExt;
 
 use crate::errors::NegativePositiveConflict;
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use crate::traits::engine::TraitEngineExt as _;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause};
 use rustc_data_structures::fx::FxIndexSet;
@@ -200,36 +202,32 @@ fn fulfill_implication<'tcx>(
         return Err(());
     };
 
+    // Needs to be `in_snapshot` because this function is used to rebase
+    // substitutions, which may happen inside of a select within a probe.
+    let mut engine = <dyn TraitEngine<'tcx>>::new_in_snapshot(infcx.tcx);
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
+    engine.register_predicate_obligations(infcx, obligations.chain(more_obligations));
 
-    infcx.save_and_restore_in_snapshot_flag(|infcx| {
-        let errors = traits::fully_solve_obligations(&infcx, obligations.chain(more_obligations));
-        match &errors[..] {
-            [] => {
-                debug!(
-                    "fulfill_implication: an impl for {:?} specializes {:?}",
-                    source_trait, target_trait
-                );
+    let errors = engine.select_all_or_error(infcx);
+    if !errors.is_empty() {
+        // no dice!
+        debug!(
+            "fulfill_implication: for impls on {:?} and {:?}, \
+                 could not fulfill: {:?} given {:?}",
+            source_trait,
+            target_trait,
+            errors,
+            param_env.caller_bounds()
+        );
+        return Err(());
+    }
 
-                // Now resolve the *substitution* we built for the target earlier, replacing
-                // the inference variables inside with whatever we got from fulfillment.
-                Ok(infcx.resolve_vars_if_possible(target_substs))
-            }
-            errors => {
-                // no dice!
-                debug!(
-                    "fulfill_implication: for impls on {:?} and {:?}, \
-                     could not fulfill: {:?} given {:?}",
-                    source_trait,
-                    target_trait,
-                    errors,
-                    param_env.caller_bounds()
-                );
-                Err(())
-            }
-        }
-    })
+    debug!("fulfill_implication: an impl for {:?} specializes {:?}", source_trait, target_trait);
+
+    // Now resolve the *substitution* we built for the target earlier, replacing
+    // the inference variables inside with whatever we got from fulfillment.
+    Ok(infcx.resolve_vars_if_possible(target_substs))
 }
 
 // Query provider for `specialization_graph_of`.
