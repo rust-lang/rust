@@ -19,7 +19,9 @@ pub trait SimdConstPtr: Copy + Sealed {
     fn is_null(self) -> Self::Mask;
 
     /// Changes constness without changing the type.
-    fn as_mut(self) -> Self::MutPtr;
+    ///
+    /// Equivalent to calling [`pointer::cast_mut`] on each lane.
+    fn cast_mut(self) -> Self::MutPtr;
 
     /// Gets the "address" portion of the pointer.
     ///
@@ -85,7 +87,7 @@ where
     }
 
     #[inline]
-    fn as_mut(self) -> Self::MutPtr {
+    fn cast_mut(self) -> Self::MutPtr {
         self.cast_ptr()
     }
 
