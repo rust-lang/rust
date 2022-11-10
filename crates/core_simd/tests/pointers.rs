@@ -21,6 +21,22 @@ macro_rules! common_tests {
                 );
             }
 
+            fn with_addr<const LANES: usize>() {
+                test_helpers::test_binary_elementwise(
+                    &Simd::<*$constness u32, LANES>::with_addr,
+                    &<*$constness u32>::with_addr,
+                    &|_, _| true,
+                );
+            }
+
+            fn expose_addr<const LANES: usize>() {
+                test_helpers::test_unary_elementwise(
+                    &Simd::<*$constness u32, LANES>::expose_addr,
+                    &<*$constness u32>::expose_addr,
+                    &|_| true,
+                );
+            }
+
             fn wrapping_offset<const LANES: usize>() {
                 test_helpers::test_binary_elementwise(
                     &Simd::<*$constness u32, LANES>::wrapping_offset,
@@ -51,9 +67,45 @@ macro_rules! common_tests {
 mod const_ptr {
     use super::*;
     common_tests! { const }
+
+    test_helpers::test_lanes! {
+        fn cast_mut<const LANES: usize>() {
+            test_helpers::test_unary_elementwise(
+                &Simd::<*const u32, LANES>::cast_mut,
+                &<*const u32>::cast_mut,
+                &|_| true,
+            );
+        }
+
+        fn from_exposed_addr<const LANES: usize>() {
+            test_helpers::test_unary_elementwise(
+                &Simd::<*const u32, LANES>::from_exposed_addr,
+                &core::ptr::from_exposed_addr::<u32>,
+                &|_| true,
+            );
+        }
+    }
 }
 
 mod mut_ptr {
     use super::*;
     common_tests! { mut }
+
+    test_helpers::test_lanes! {
+        fn cast_const<const LANES: usize>() {
+            test_helpers::test_unary_elementwise(
+                &Simd::<*mut u32, LANES>::cast_const,
+                &<*mut u32>::cast_const,
+                &|_| true,
+            );
+        }
+
+        fn from_exposed_addr<const LANES: usize>() {
+            test_helpers::test_unary_elementwise(
+                &Simd::<*mut u32, LANES>::from_exposed_addr,
+                &core::ptr::from_exposed_addr_mut::<u32>,
+                &|_| true,
+            );
+        }
+    }
 }
