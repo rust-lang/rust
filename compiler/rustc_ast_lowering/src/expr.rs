@@ -617,18 +617,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             hir::ExprKind::Closure(c)
         };
-        let mut parent_has_track_caller = false;
-        for attrs in self.attrs.values() {
-            for attr in attrs.into_iter() {
-                if attr.has_name(sym::track_caller) {
-                    parent_has_track_caller = true;
-                    break;
-                }
-            }
-            if parent_has_track_caller {
-                break;
-            }
-        }
+        let parent_has_track_caller = self
+            .attrs
+            .values()
+            .find(|attrs| attrs.into_iter().find(|attr| attr.has_name(sym::track_caller)).is_some())
+            .is_some();
         let unstable_span =
             self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
 
