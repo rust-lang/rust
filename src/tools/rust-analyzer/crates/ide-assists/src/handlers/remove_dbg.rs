@@ -102,7 +102,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
             };
             (
                 macro_call.syntax().text_range(),
-                if wrap { format!("({})", expr) } else { expr.to_string() },
+                if wrap { format!("({expr})") } else { expr.to_string() },
             )
         }
         // dbg!(expr0, expr1, ...)
@@ -127,8 +127,8 @@ mod tests {
     fn check(ra_fixture_before: &str, ra_fixture_after: &str) {
         check_assist(
             remove_dbg,
-            &format!("fn main() {{\n{}\n}}", ra_fixture_before),
-            &format!("fn main() {{\n{}\n}}", ra_fixture_after),
+            &format!("fn main() {{\n{ra_fixture_before}\n}}"),
+            &format!("fn main() {{\n{ra_fixture_after}\n}}"),
         );
     }
 

@@ -143,9 +143,12 @@ pub(crate) fn print_type_ref(type_ref: &TypeRef, buf: &mut dyn Write) -> fmt::Re
             print_type_ref(elem, buf)?;
             write!(buf, "]")?;
         }
-        TypeRef::Fn(args_and_ret, varargs) => {
+        TypeRef::Fn(args_and_ret, varargs, is_unsafe) => {
             let ((_, return_type), args) =
                 args_and_ret.split_last().expect("TypeRef::Fn is missing return type");
+            if *is_unsafe {
+                write!(buf, "unsafe ")?;
+            }
             write!(buf, "fn(")?;
             for (i, (_, typeref)) in args.iter().enumerate() {
                 if i != 0 {
