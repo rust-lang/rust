@@ -1911,6 +1911,7 @@ impl Target {
                 Abi::Stdcall { unwind }
             }
             Abi::System { unwind } => Abi::C { unwind },
+            Abi::EfiApi if self.arch == "arm" => Abi::Aapcs { unwind: false },
             Abi::EfiApi if self.arch == "x86_64" => Abi::Win64 { unwind: false },
             Abi::EfiApi => Abi::C { unwind: false },
 
