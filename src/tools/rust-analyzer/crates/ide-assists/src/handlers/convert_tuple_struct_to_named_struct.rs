@@ -226,7 +226,13 @@ fn edit_field_references(
 }
 
 fn generate_names(fields: impl Iterator<Item = ast::TupleField>) -> Vec<ast::Name> {
-    fields.enumerate().map(|(i, _)| ast::make::name(&format!("field{}", i + 1))).collect()
+    fields
+        .enumerate()
+        .map(|(i, _)| {
+            let idx = i + 1;
+            ast::make::name(&format!("field{idx}"))
+        })
+        .collect()
 }
 
 #[cfg(test)]

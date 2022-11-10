@@ -140,6 +140,7 @@ pub enum Subcommand {
     },
     Run {
         paths: Vec<PathBuf>,
+        args: Vec<String>,
     },
     Setup {
         profile: Profile,
@@ -341,6 +342,9 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             }
             Kind::Format => {
                 opts.optflag("", "check", "check formatting instead of applying.");
+            }
+            Kind::Run => {
+                opts.optmulti("", "args", "arguments for the tool", "ARGS");
             }
             _ => {}
         };
@@ -613,7 +617,7 @@ Arguments:
                     println!("\nrun requires at least a path!\n");
                     usage(1, &opts, verbose, &subcommand_help);
                 }
-                Subcommand::Run { paths }
+                Subcommand::Run { paths, args: matches.opt_strs("args") }
             }
             Kind::Setup => {
                 let profile = if paths.len() > 1 {
@@ -721,16 +725,12 @@ impl Subcommand {
     }
 
     pub fn test_args(&self) -> Vec<&str> {
-        let mut args = vec![];
-
         match *self {
             Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
-                args.extend(test_args.iter().flat_map(|s| s.split_whitespace()))
+                test_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
-            _ => (),
+            _ => vec![],
         }
-
-        args
     }
 
     pub fn rustc_args(&self) -> Vec<&str> {
@@ -738,7 +738,16 @@ impl Subcommand {
             Subcommand::Test { ref rustc_args, .. } => {
                 rustc_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
-            _ => Vec::new(),
+            _ => vec![],
+        }
+    }
+
+    pub fn args(&self) -> Vec<&str> {
+        match *self {
+            Subcommand::Run { ref args, .. } => {
+                args.iter().flat_map(|s| s.split_whitespace()).collect()
+            }
+            _ => vec![],
         }
     }
 

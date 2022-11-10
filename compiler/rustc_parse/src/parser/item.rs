@@ -971,6 +971,23 @@ impl<'a> Parser<'a> {
             if self.eat(&token::ModSep) {
                 self.parse_use_tree_glob_or_nested()?
             } else {
+                // Recover from using a colon as path separator.
+                while self.eat_noexpect(&token::Colon) {
+                    self.struct_span_err(self.prev_token.span, "expected `::`, found `:`")
+                        .span_suggestion_short(
+                            self.prev_token.span,
+                            "use double colon",
+                            "::",
+                            Applicability::MachineApplicable,
+                        )
+                        .note_once("import paths are delimited using `::`")
+                        .emit();
+
+                    // We parse the rest of the path and append it to the original prefix.
+                    self.parse_path_segments(&mut prefix.segments, PathStyle::Mod, None)?;
+                    prefix.span = lo.to(self.prev_token.span);
+                }
+
                 UseTreeKind::Simple(self.parse_rename()?, DUMMY_NODE_ID, DUMMY_NODE_ID)
             }
         };

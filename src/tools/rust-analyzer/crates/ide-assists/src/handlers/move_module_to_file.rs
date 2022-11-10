@@ -52,7 +52,7 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 let mut buf = String::from("./");
                 match parent_module.name(ctx.db()) {
                     Some(name) if !parent_module.is_mod_rs(ctx.db()) => {
-                        format_to!(buf, "{}/", name)
+                        format_to!(buf, "{name}/")
                     }
                     _ => (),
                 }
@@ -82,7 +82,7 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 items
             };
 
-            let buf = format!("mod {};", module_name);
+            let buf = format!("mod {module_name};");
 
             let replacement_start = match module_ast.mod_token() {
                 Some(mod_token) => mod_token.text_range(),
