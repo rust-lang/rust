@@ -544,6 +544,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             RemainderByZero(op) => RemainderByZero(eval_to_int(op)?),
             ResumedAfterReturn(generator_kind) => ResumedAfterReturn(*generator_kind),
             ResumedAfterPanic(generator_kind) => ResumedAfterPanic(*generator_kind),
+            MisalignedPointerDereference { ref required, ref found } => {
+                MisalignedPointerDereference {
+                    required: eval_to_int(required)?,
+                    found: eval_to_int(found)?,
+                }
+            }
         };
         Err(ConstEvalErrKind::AssertFailure(err).into())
     }

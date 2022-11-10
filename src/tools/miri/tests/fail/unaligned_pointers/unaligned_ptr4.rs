@@ -1,5 +1,5 @@
 // This should fail even without validation or Stacked Borrows.
-//@compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
+//@compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows -Cdebug-assertions=no
 
 fn main() {
     // Make sure we notice when a u16 is loaded at offset 1 into a u8 allocation.

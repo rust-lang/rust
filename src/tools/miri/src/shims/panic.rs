@@ -220,6 +220,34 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     },
                 )?;
             }
+            MisalignedPointerDereference { required, found } => {
+                // Forward to `panic_misaligned_pointer_dereference` lang item.
+
+                // First arg: required.
+                let required = this.read_scalar(&this.eval_operand(required, None)?)?;
+                // Second arg: found.
+                let found = this.read_scalar(&this.eval_operand(found, None)?)?;
+
+                // Call the lang item.
+                let panic_misaligned_pointer_dereference =
+                    this.tcx.lang_items().panic_misaligned_pointer_dereference_fn().unwrap();
+                let panic_misaligned_pointer_dereference =
+                    ty::Instance::mono(this.tcx.tcx, panic_misaligned_pointer_dereference);
+                this.call_function(
+                    panic_misaligned_pointer_dereference,
+                    Abi::Rust,
+                    &[required.into(), found.into()],
+                    None,
+                    StackPopCleanup::Goto {
+                        ret: None,
+                        unwind: match unwind {
+                            Some(cleanup) => StackPopUnwind::Cleanup(cleanup),
+                            None => StackPopUnwind::Skip,
+                        },
+                    },
+                )?;
+            }
+
             _ => {
                 // Forward everything else to `panic` lang item.
                 this.start_panic(
