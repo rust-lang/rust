@@ -34,6 +34,7 @@
 	--sidebar-current-link-background-color: #444;
 	--search-result-link-focus-background-color: #616161;
 	--search-result-border-color: #aaa3;
+	--search-failed-link-color: #0089ff;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--search-color: #111;
@@ -80,10 +81,6 @@ body.source .example-wrap pre.rust a {
 
 details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
-}
-
-.search-failed a {
-	color: #0089ff;
 }
 
 .tooltip::after {

@@ -34,6 +34,7 @@
 	--sidebar-current-link-background-color: #fff;
 	--search-result-link-focus-background-color: #ccc;
 	--search-result-border-color: #aaa3;
+	--search-failed-link-color: #3873ad;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--search-color: #000;
@@ -69,15 +70,10 @@
 	--crate-search-hover-border: #717171;
 }
 
-
 .content .item-info::before { color: #ccc; }
 
 body.source .example-wrap pre.rust a {
 	background: #eee;
-}
-
-.search-failed a {
-	color: #3873AD;
 }
 
 .tooltip::after {
