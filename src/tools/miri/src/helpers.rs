@@ -15,7 +15,7 @@ use rustc_middle::ty::{
     layout::{LayoutOf, TyAndLayout},
     List, TyCtxt,
 };
-use rustc_span::{def_id::CrateNum, sym, Span, Symbol};
+use rustc_span::{def_id::CrateNum, Span, Symbol};
 use rustc_target::abi::{Align, FieldsShape, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
@@ -936,7 +936,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn item_link_name(&self, def_id: DefId) -> Symbol {
         let tcx = self.eval_context_ref().tcx;
-        match tcx.get_attrs(def_id, sym::link_name).filter_map(|a| a.value_str()).next() {
+        match tcx.codegen_fn_attrs(def_id).link_name {
             Some(name) => name,
             None => tcx.item_name(def_id),
         }
