@@ -16,6 +16,13 @@ lint_enum_intrinsics_mem_variant =
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
 
+lint_for_loops_over_fallibles =
+    for loop over {$article} `{$ty}`. This is more readably written as an `if let` statement
+    .suggestion = consider using `if let` to clear intent
+    .remove_next = to iterate over `{$recv_snip}` remove the call to `next`
+    .use_while_let = to check pattern in a loop use `while let`
+    .use_question_mark = consider unwrapping the `Result` with `?` to iterate over its contents
+
 lint_non_binding_let_on_sync_lock =
     non-binding let on a synchronization lock
 

@@ -333,6 +333,55 @@ impl<'a> DecorateLint<'a, ()> for Expectation<'_> {
     }
 }
 
+// for_loops_over_fallibles.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_for_loops_over_fallibles)]
+pub struct ForLoopsOverFalliblesDiag<'a> {
+    pub article: &'static str,
+    pub ty: &'static str,
+    #[subdiagnostic]
+    pub sub: ForLoopsOverFalliblesLoopSub<'a>,
+    #[subdiagnostic]
+    pub question_mark: Option<ForLoopsOverFalliblesQuestionMark>,
+    #[subdiagnostic]
+    pub suggestion: ForLoopsOverFalliblesSuggestion<'a>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum ForLoopsOverFalliblesLoopSub<'a> {
+    #[suggestion(remove_next, code = ".by_ref()", applicability = "maybe-incorrect")]
+    RemoveNext {
+        #[primary_span]
+        suggestion: Span,
+        recv_snip: String,
+    },
+    #[multipart_suggestion(use_while_let, applicability = "maybe-incorrect")]
+    UseWhileLet {
+        #[suggestion_part(code = "while let {var}(")]
+        start_span: Span,
+        #[suggestion_part(code = ") = ")]
+        end_span: Span,
+        var: &'a str,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(use_question_mark, code = "?", applicability = "maybe-incorrect")]
+pub struct ForLoopsOverFalliblesQuestionMark {
+    #[primary_span]
+    pub suggestion: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(suggestion, applicability = "maybe-incorrect")]
+pub struct ForLoopsOverFalliblesSuggestion<'a> {
+    pub var: &'a str,
+    #[suggestion_part(code = "if let {var}(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ") = ")]
+    pub end_span: Span,
+}
+
 // internal.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_default_hash_types)]
