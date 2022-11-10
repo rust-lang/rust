@@ -342,7 +342,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated""#),
         DuplicatesOk,
     ),
-    ungated!(link_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
+    ungated!(link_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, @only_local: true),
     ungated!(no_link, Normal, template!(Word), WarnFollowing),
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, @only_local: true),
     ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
