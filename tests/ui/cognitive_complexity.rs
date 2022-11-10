@@ -393,3 +393,11 @@ impl Moo {
         }
     }
 }
+
+#[clippy::cognitive_complexity = "1"]
+mod issue9300 {
+    async fn a() {
+        let a = 0;
+        if a == 0 {}
+    }
+}
