@@ -26,6 +26,7 @@
     - [armv7-unknown-linux-uclibceabi](platform-support/armv7-unknown-linux-uclibceabi.md)
     - [armv7-unknown-linux-uclibceabihf](platform-support/armv7-unknown-linux-uclibceabihf.md)
     - [\*-android and \*-androideabi](platform-support/android.md)
+    - [\*-linux-ohos](platform-support/openharmony.md)
     - [\*-unknown-fuchsia](platform-support/fuchsia.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
     - [m68k-unknown-linux-gnu](platform-support/m68k-unknown-linux-gnu.md)

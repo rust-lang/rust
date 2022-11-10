@@ -214,6 +214,8 @@ pub fn target_machine_factory(
 
     let path_mapping = sess.source_map().path_mapping().clone();
 
+    let force_emulated_tls = sess.target.force_emulated_tls;
+
     Arc::new(move |config: TargetMachineFactoryConfig| {
         let split_dwarf_file =
             path_mapping.map_prefix(config.split_dwarf_file.unwrap_or_default()).0;
@@ -239,6 +241,7 @@ pub fn target_machine_factory(
                 relax_elf_relocations,
                 use_init_array,
                 split_dwarf_file.as_ptr(),
+                force_emulated_tls,
             )
         };
 
