@@ -1810,29 +1810,22 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         false
     }
 
-    fn let_binding_suggestion(&self, err: &mut Diagnostic, ident_span: Span) -> bool {
-        // try to give a suggestion for this pattern: `name = 1`, which is common in other languages
-        let mut added_suggestion = false;
-        if let Some(Expr { kind: ExprKind::Assign(lhs, _rhs, _), .. }) = self.diagnostic_metadata.in_assignment &&
+    // try to give a suggestion for this pattern: `name = blah`, which is common in other languages
+    // suggest `let name = blah` to introduce a new binding
+    fn let_binding_suggestion(&mut self, err: &mut Diagnostic, ident_span: Span) -> bool {
+        if let Some(Expr { kind: ExprKind::Assign(lhs, .. ), .. }) = self.diagnostic_metadata.in_assignment &&
             let ast::ExprKind::Path(None, _) = lhs.kind {
-                let sm = self.r.session.source_map();
-                let line_span = sm.span_extend_to_line(ident_span);
-                let ident_name = sm.span_to_snippet(ident_span).unwrap();
-                // HACK(chenyukang): make sure ident_name is at the starting of the line to protect against macros
-                if sm
-                    .span_to_snippet(line_span)
-                    .map_or(false, |s| s.trim().starts_with(&ident_name))
-                {
+                if !ident_span.from_expansion() {
                     err.span_suggestion_verbose(
                         ident_span.shrink_to_lo(),
                         "you might have meant to introduce a new binding",
                         "let ".to_string(),
                         Applicability::MaybeIncorrect,
                     );
-                    added_suggestion = true;
+                    return true;
                 }
             }
-        added_suggestion
+        false
     }
 
     fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
