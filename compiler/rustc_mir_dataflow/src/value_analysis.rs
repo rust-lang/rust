@@ -36,7 +36,6 @@ use std::fmt::{Debug, Formatter};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -552,9 +551,10 @@ impl<V: JoinSemiLattice + Clone> JoinSemiLattice for State<V> {
     }
 }
 
-/// A partial mapping from `Place` to `PlaceIndex`, where some place indices have value indices.
+/// Partial mapping from [`Place`] to [`PlaceIndex`], where some places also have a [`ValueIndex`].
 ///
-/// Some additional bookkeeping is done to speed up traversal:
+/// This data structure essentially maintains a tree of places and their projections. Some
+/// additional bookkeeping is done, to speed up traversal over this tree:
 /// - For iteration, every [`PlaceInfo`] contains an intrusive linked list of its children.
 /// - To directly get the child for a specific projection, there is a `projections` map.
 #[derive(Debug)]
@@ -578,7 +578,8 @@ impl Map {
     /// Returns a map that only tracks places whose type passes the filter.
     ///
     /// This is currently the only way to create a [`Map`]. The way in which the tracked places are
-    /// chosen is an implementation detail and may not be relied upon.
+    /// chosen is an implementation detail and may not be relied upon (other than that their type
+    /// passes the filter).
     #[instrument(skip_all, level = "debug")]
     pub fn from_filter<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -599,6 +600,7 @@ impl Map {
         mut filter: impl FnMut(Ty<'tcx>) -> bool,
         exclude: &FxHashSet<Place<'tcx>>,
     ) {
+        // We use this vector as stack, pushing and popping projections.
         let mut projection = Vec::new();
         for (local, decl) in body.local_decls.iter_enumerated() {
             self.register_with_filter_rec(
@@ -612,6 +614,9 @@ impl Map {
         }
     }
 
+    /// Register fields of the given (local, projection) place.
+    ///
+    /// Invariant: The projection must only contain fields.
     fn register_with_filter_rec<'tcx>(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -626,10 +631,19 @@ impl Map {
             return;
         }
 
-        if filter(ty) {
-            // This might fail if `ty` is not scalar.
-            let _ = self.register_with_ty(local, projection, ty);
+        // Note: The framework supports only scalars for now.
+        if filter(ty) && ty.is_scalar() {
+            // We know that the projection only contains trackable elements.
+            let place = self.make_place(local, projection).unwrap();
+
+            // Allocate a value slot if it doesn't have one.
+            if self.places[place].value_index.is_none() {
+                self.places[place].value_index = Some(self.value_count.into());
+                self.value_count += 1;
+            }
         }
+
+        // Recurse with all fields of this place.
         iter_fields(ty, tcx, |variant, field, ty| {
             if variant.is_some() {
                 // Downcasts are currently not supported.
@@ -668,59 +682,17 @@ impl Map {
         Ok(index)
     }
 
-    #[allow(unused)]
-    fn register<'tcx>(
-        &mut self,
-        local: Local,
-        projection: &[PlaceElem<'tcx>],
-        decls: &impl HasLocalDecls<'tcx>,
-        tcx: TyCtxt<'tcx>,
-    ) -> Result<(), ()> {
-        projection
-            .iter()
-            .fold(PlaceTy::from_ty(decls.local_decls()[local].ty), |place_ty, &elem| {
-                place_ty.projection_ty(tcx, elem)
-            });
-
-        let place_ty = Place::ty_from(local, projection, decls, tcx);
-        if place_ty.variant_index.is_some() {
-            return Err(());
-        }
-        self.register_with_ty(local, projection, place_ty.ty)
-    }
-
-    /// Tries to track the given place. Fails if type is non-scalar or projection is not trackable.
-    fn register_with_ty<'tcx>(
-        &mut self,
-        local: Local,
-        projection: &[PlaceElem<'tcx>],
-        ty: Ty<'tcx>,
-    ) -> Result<(), ()> {
-        if !ty.is_scalar() {
-            // Currently, only scalar types are allowed, because they are atomic
-            // and therefore do not require invalidation of parent places.
-            return Err(());
-        }
-
-        let place = self.make_place(local, projection)?;
-
-        // Allocate a value slot if it doesn't have one.
-        if self.places[place].value_index.is_none() {
-            self.places[place].value_index = Some(self.value_count.into());
-            self.value_count += 1;
-        }
-
-        Ok(())
-    }
-
+    /// Returns the number of tracked places, i.e., those for which a value can be stored.
     pub fn tracked_places(&self) -> usize {
         self.value_count
     }
 
+    /// Applies a single projection element, yielding the corresponding child.
     pub fn apply(&self, place: PlaceIndex, elem: TrackElem) -> Option<PlaceIndex> {
         self.projections.get(&(place, elem)).copied()
     }
 
+    /// Locates the given place, if it exists in the tree.
     pub fn find(&self, place: PlaceRef<'_>) -> Option<PlaceIndex> {
         let mut index = *self.locals.get(place.local)?.as_ref()?;
 
@@ -736,6 +708,7 @@ impl Map {
         Children::new(self, parent)
     }
 
+    /// Invoke a function on the given place and all descendants.
     pub fn preorder_invoke(&self, root: PlaceIndex, f: &mut impl FnMut(PlaceIndex)) {
         f(root);
         for child in self.children(root) {
