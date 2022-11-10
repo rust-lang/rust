@@ -118,7 +118,7 @@ assert: ".setting-line.hidden #theme"
 assert-text: ("#preferred-dark-theme .setting-name", "Preferred dark theme")
 assert-text: ("#preferred-light-theme .setting-name", "Preferred light theme")
 
-// We now check that clicking on the "sliders"' text is like clicking on the slider.
+// We now check that clicking on the toggles' text is like clicking on the checkbox.
 // To test it, we use the "Disable keyboard shortcuts".
 local-storage: {"rustdoc-disable-shortcuts": "false"}
 click: ".setting-line:last-child .toggle .label"
@@ -141,10 +141,7 @@ assert-css: ("#settings-menu .popover", {"display": "none"})
 // Now we go to the settings page to check that the CSS is loaded as expected.
 goto: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
-assert-css: (
-    ".setting-line .toggle .slider",
-    {"width": "45px", "margin-right": "20px", "border": "0px none rgb(0, 0, 0)"},
-)
+assert-css: (".setting-line", {"position": "relative"})
 
 assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
 compare-elements-position: (".sub form", "#settings", ("x"))
@@ -162,4 +159,4 @@ reload:
 size: (300, 1000)
 click: "#settings-menu"
 wait-for: "#settings"
-assert-css: ("#settings .slider", {"width": "45px"}, ALL)
+assert-css: (".setting-line", {"position": "relative"})
