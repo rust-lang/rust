@@ -2251,7 +2251,9 @@ impl<'tcx> ConstantKind<'tcx> {
                 match tcx.const_eval_resolve(param_env, uneval, None) {
                     Ok(val) => Self::Val(val, ty),
                     Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
-                    Err(_) => Self::Ty(tcx.const_error(ty)),
+                    Err(ErrorHandled::Reported(guar)) => {
+                        Self::Ty(tcx.const_error_with_guaranteed(ty, guar))
+                    }
                 }
             }
         }
