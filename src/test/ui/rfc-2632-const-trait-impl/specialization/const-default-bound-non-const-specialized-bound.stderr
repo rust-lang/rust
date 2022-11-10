@@ -1,4 +1,4 @@
-error: missing `~const` qualifier
+error: missing `~const` qualifier for specialization
   --> $DIR/const-default-bound-non-const-specialized-bound.rs:28:8
    |
 LL |     T: Foo,
