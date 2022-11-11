@@ -1,3 +1,6 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::ConstraintCategory;

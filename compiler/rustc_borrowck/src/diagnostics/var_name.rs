@@ -1,3 +1,6 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use crate::Upvar;
 use crate::{nll::ToRegionVid, region_infer::RegionInferenceContext};
 use rustc_index::vec::{Idx, IndexVec};
