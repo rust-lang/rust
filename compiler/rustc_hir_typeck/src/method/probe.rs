@@ -83,8 +83,6 @@ struct ProbeContext<'a, 'tcx> {
     unsatisfied_predicates:
         Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>,
 
-    is_suggestion: IsSuggestion,
-
     scope_expr_id: hir::HirId,
 }
 
@@ -209,6 +207,9 @@ pub struct Pick<'tcx> {
     /// `*mut T`, convert it to `*const T`.
     pub autoref_or_ptr_adjustment: Option<AutorefOrPtrAdjustment>,
     pub self_ty: Ty<'tcx>,
+
+    /// Unstable candidates alongside the stable ones.
+    unstable_candidates: Vec<(Candidate<'tcx>, Symbol)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -445,7 +446,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return_type,
                 orig_values,
                 steps.steps,
-                is_suggestion,
                 scope_expr_id,
             );
 
@@ -540,7 +540,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         return_type: Option<Ty<'tcx>>,
         orig_steps_var_values: OriginalQueryValues<'tcx>,
         steps: &'tcx [CandidateStep<'tcx>],
-        is_suggestion: IsSuggestion,
         scope_expr_id: hir::HirId,
     ) -> ProbeContext<'a, 'tcx> {
         ProbeContext {
@@ -558,7 +557,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             allow_similar_names: false,
             private_candidate: None,
             unsatisfied_predicates: Vec::new(),
-            is_suggestion,
             scope_expr_id,
         }
     }
@@ -880,7 +878,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
-    pub fn matches_return_type(
+    fn matches_return_type(
         &self,
         method: &ty::AssocItem,
         self_ty: Option<Ty<'tcx>>,
@@ -1051,26 +1049,17 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
-        let mut unstable_candidates = Vec::new();
-        let pick = self.pick_all_method(Some(&mut unstable_candidates));
+        let pick = self.pick_all_method(Some(&mut vec![]));
 
         // In this case unstable picking is done by `pick_method`.
         if !self.tcx.sess.opts.unstable_opts.pick_stable_methods_before_any_unstable {
             return pick;
         }
 
-        match pick {
-            // Emit a lint if there are unstable candidates alongside the stable ones.
-            //
-            // We suppress warning if we're picking the method only because it is a
-            // suggestion.
-            Some(Ok(ref p)) if !self.is_suggestion.0 && !unstable_candidates.is_empty() => {
-                self.emit_unstable_name_collision_hint(p, &unstable_candidates);
-                pick
-            }
-            Some(_) => pick,
-            None => self.pick_all_method(None),
+        if pick.is_none() {
+            return self.pick_all_method(None);
         }
+        pick
     }
 
     fn pick_all_method(
@@ -1215,7 +1204,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug!("pick_method_with_unstable(self_ty={})", self.ty_to_string(self_ty));
 
         let mut possibly_unsatisfied_predicates = Vec::new();
-        let mut unstable_candidates = Vec::new();
 
         for (kind, candidates) in
             &[("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]
@@ -1225,26 +1213,17 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self_ty,
                 candidates.iter(),
                 &mut possibly_unsatisfied_predicates,
-                Some(&mut unstable_candidates),
+                Some(&mut vec![]),
             );
-            if let Some(pick) = res {
-                if !self.is_suggestion.0 && !unstable_candidates.is_empty() {
-                    if let Ok(p) = &pick {
-                        // Emit a lint if there are unstable candidates alongside the stable ones.
-                        //
-                        // We suppress warning if we're picking the method only because it is a
-                        // suggestion.
-                        self.emit_unstable_name_collision_hint(p, &unstable_candidates);
-                    }
-                }
-                return Some(pick);
+            if res.is_some() {
+                return res;
             }
         }
 
         debug!("searching unstable candidates");
         let res = self.consider_candidates(
             self_ty,
-            unstable_candidates.iter().map(|(c, _)| c),
+            self.inherent_candidates.iter().chain(&self.extension_candidates),
             &mut possibly_unsatisfied_predicates,
             None,
         );
@@ -1299,7 +1278,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
         )>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>>
     where
         ProbesIter: Iterator<Item = &'b Candidate<'tcx>> + Clone,
@@ -1323,7 +1302,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        if let Some(uc) = unstable_candidates {
+        if let Some(uc) = &mut unstable_candidates {
             applicable_candidates.retain(|&(p, _)| {
                 if let stability::EvalResult::Deny { feature, .. } =
                     self.tcx.eval_stability(p.item.def_id, None, self.span, None)
@@ -1342,30 +1321,37 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         applicable_candidates.pop().map(|(probe, status)| {
             if status == ProbeResult::Match {
-                Ok(probe.to_unadjusted_pick(self_ty))
+                Ok(probe
+                    .to_unadjusted_pick(self_ty, unstable_candidates.cloned().unwrap_or_default()))
             } else {
                 Err(MethodError::BadReturnType)
             }
         })
     }
+}
 
-    fn emit_unstable_name_collision_hint(
+impl<'tcx> Pick<'tcx> {
+    pub fn emit_unstable_name_collision_hint(
         &self,
-        stable_pick: &Pick<'_>,
-        unstable_candidates: &[(Candidate<'tcx>, Symbol)],
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+        scope_expr_id: hir::HirId,
     ) {
-        let def_kind = stable_pick.item.kind.as_def_kind();
-        self.tcx.struct_span_lint_hir(
+        if self.unstable_candidates.is_empty() {
+            return;
+        }
+        let def_kind = self.item.kind.as_def_kind();
+        tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
-            self.scope_expr_id,
-            self.span,
+            scope_expr_id,
+            span,
             format!(
                 "{} {} with this name may be added to the standard library in the future",
                 def_kind.article(),
-                def_kind.descr(stable_pick.item.def_id),
+                def_kind.descr(self.item.def_id),
             ),
             |lint| {
-                match (stable_pick.item.kind, stable_pick.item.container) {
+                match (self.item.kind, self.item.container) {
                     (ty::AssocKind::Fn, _) => {
                         // FIXME: This should be a `span_suggestion` instead of `help`
                         // However `self.span` only
@@ -1374,31 +1360,31 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         lint.help(&format!(
                             "call with fully qualified syntax `{}(...)` to keep using the current \
                              method",
-                            self.tcx.def_path_str(stable_pick.item.def_id),
+                            tcx.def_path_str(self.item.def_id),
                         ));
                     }
                     (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer) => {
-                        let def_id = stable_pick.item.container_id(self.tcx);
+                        let def_id = self.item.container_id(tcx);
                         lint.span_suggestion(
-                            self.span,
+                            span,
                             "use the fully qualified path to the associated const",
                             format!(
                                 "<{} as {}>::{}",
-                                stable_pick.self_ty,
-                                self.tcx.def_path_str(def_id),
-                                stable_pick.item.name
+                                self.self_ty,
+                                tcx.def_path_str(def_id),
+                                self.item.name
                             ),
                             Applicability::MachineApplicable,
                         );
                     }
                     _ => {}
                 }
-                if self.tcx.sess.is_nightly_build() {
-                    for (candidate, feature) in unstable_candidates {
+                if tcx.sess.is_nightly_build() {
+                    for (candidate, feature) in &self.unstable_candidates {
                         lint.help(&format!(
                             "add `#![feature({})]` to the crate attributes to enable `{}`",
                             feature,
-                            self.tcx.def_path_str(candidate.item.def_id),
+                            tcx.def_path_str(candidate.item.def_id),
                         ));
                     }
                 }
@@ -1407,7 +1393,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             },
         );
     }
+}
 
+impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn select_trait_candidate(
         &self,
         trait_ref: ty::TraitRef<'tcx>,
@@ -1666,6 +1654,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,
+            unstable_candidates: vec![],
         })
     }
 
@@ -1685,7 +1674,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.return_type,
                 self.orig_steps_var_values.clone(),
                 steps,
-                IsSuggestion(true),
                 self.scope_expr_id,
             );
             pcx.allow_similar_names = true;
@@ -1893,7 +1881,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 }
 
 impl<'tcx> Candidate<'tcx> {
-    fn to_unadjusted_pick(&self, self_ty: Ty<'tcx>) -> Pick<'tcx> {
+    fn to_unadjusted_pick(
+        &self,
+        self_ty: Ty<'tcx>,
+        unstable_candidates: Vec<(Candidate<'tcx>, Symbol)>,
+    ) -> Pick<'tcx> {
         Pick {
             item: self.item,
             kind: match self.kind {
@@ -1918,6 +1910,7 @@ impl<'tcx> Candidate<'tcx> {
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,
+            unstable_candidates,
         }
     }
 }

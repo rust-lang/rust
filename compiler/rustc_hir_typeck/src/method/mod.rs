@@ -101,7 +101,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             call_expr_id,
             ProbeScope::TraitsInScope,
         ) {
-            Ok(..) => true,
+            Ok(pick) => {
+                pick.emit_unstable_name_collision_hint(self.tcx, method_name.span, call_expr_id);
+                true
+            }
             Err(NoMatch(..)) => false,
             Err(Ambiguity(..)) => true,
             Err(PrivateMatch(..)) => allow_private,
@@ -245,14 +248,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         scope: ProbeScope,
     ) -> probe::PickResult<'tcx> {
-        self.probe_for_name(
+        let pick = self.probe_for_name(
             probe::Mode::MethodCall,
             method_name,
             IsSuggestion(false),
             self_ty,
             call_expr.hir_id,
             scope,
-        )
+        )?;
+        pick.emit_unstable_name_collision_hint(self.tcx, method_name.span, call_expr.hir_id);
+        Ok(pick)
     }
 
     pub(super) fn obligation_for_method(
@@ -577,12 +582,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let pick = self.probe_for_name(
             probe::Mode::Path,
-            method_name.with_span_pos(span),
+            method_name,
             IsSuggestion(false),
             self_ty,
             expr_id,
             ProbeScope::TraitsInScope,
         )?;
+
+        pick.emit_unstable_name_collision_hint(self.tcx, span, expr_id);
 
         self.lint_fully_qualified_call_from_2018(
             span,
