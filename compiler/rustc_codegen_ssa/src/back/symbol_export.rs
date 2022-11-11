@@ -224,10 +224,17 @@ fn exported_symbols_provider_local<'tcx>(
         // These are weak symbols that point to the profile version and the
         // profile name, which need to be treated as exported so LTO doesn't nix
         // them.
-        const PROFILER_WEAK_SYMBOLS: [&str; 2] =
-            ["__llvm_profile_raw_version", "__llvm_profile_filename"];
+        // __llvm_profile_counter_bias is not weak, but is only referenced by the
+        // profiling initialization runtime, which is itself pulled in by an
+        // undefined reference to __llvm_profile_runtime. This happens at link time
+        // and thus this symbol cannot be internalized until then.
+        const PROFILER_DEFAULT_VIS_SYMBOLS: [&str; 3] = [
+            "__llvm_profile_raw_version",
+            "__llvm_profile_filename",
+            "__llvm_profile_counter_bias",
+        ];
 
-        symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
+        symbols.extend(PROFILER_DEFAULT_VIS_SYMBOLS.iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
             (
                 exported_symbol,
