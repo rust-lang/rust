@@ -1,4 +1,5 @@
 use rustc_hir::def::DefKind;
+use rustc_hir::LangItem;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty::layout::LayoutOf;
@@ -178,9 +179,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
         } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
             // For panic_fmt, call const_panic_fmt instead.
-            let Some(const_def_id) = self.tcx.lang_items().const_panic_fmt() else {
-                bug!("`const_panic_fmt` must be defined to call `panic_fmt` in const eval")
-            };
+            let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
             let new_instance = ty::Instance::resolve(
                 *self.tcx,
                 ty::ParamEnv::reveal_all(),
