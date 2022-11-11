@@ -521,3 +521,7 @@ pub enum AppleSdkRootError<'a> {
     #[diag(codegen_ssa_apple_sdk_error_sdk_path)]
     SdkPath { sdk_name: &'a str, error: Error },
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unsupported_link_self_contained)]
+pub struct UnsupportedLinkSelfContained;
