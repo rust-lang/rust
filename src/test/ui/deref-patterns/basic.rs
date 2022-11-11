@@ -1,6 +1,6 @@
 // run-pass
 // check-run-results
-#![feature(deref_patterns)]
+#![feature(string_deref_patterns)]
 
 fn main() {
     test(Some(String::from("42")));
