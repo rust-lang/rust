@@ -84,40 +84,30 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
         Node::ImplItem(item) => item.generics,
 
-        Node::Item(item) => {
-            match item.kind {
-                ItemKind::Impl(ref impl_) => {
-                    if impl_.defaultness.is_default() {
-                        is_default_impl_trait = tcx.impl_trait_ref(def_id).map(ty::Binder::dummy);
-                    }
-                    &impl_.generics
+        Node::Item(item) => match item.kind {
+            ItemKind::Impl(ref impl_) => {
+                if impl_.defaultness.is_default() {
+                    is_default_impl_trait = tcx.impl_trait_ref(def_id).map(ty::Binder::dummy);
                 }
-                ItemKind::Fn(.., ref generics, _)
-                | ItemKind::TyAlias(_, ref generics)
-                | ItemKind::Enum(_, ref generics)
-                | ItemKind::Struct(_, ref generics)
-                | ItemKind::Union(_, ref generics) => *generics,
-
-                ItemKind::Trait(_, _, ref generics, ..) => {
-                    is_trait = Some(ty::TraitRef::identity(tcx, def_id));
-                    *generics
-                }
-                ItemKind::TraitAlias(ref generics, _) => {
-                    is_trait = Some(ty::TraitRef::identity(tcx, def_id));
-                    *generics
-                }
-                ItemKind::OpaqueTy(OpaqueTy {
-                    ref generics,
-                    origin: hir::OpaqueTyOrigin::TyAlias,
-                    ..
-                }) => {
-                    // type-alias impl trait
-                    generics
-                }
-
-                _ => NO_GENERICS,
+                &impl_.generics
             }
-        }
+            ItemKind::Fn(.., ref generics, _)
+            | ItemKind::TyAlias(_, ref generics)
+            | ItemKind::Enum(_, ref generics)
+            | ItemKind::Struct(_, ref generics)
+            | ItemKind::Union(_, ref generics) => *generics,
+
+            ItemKind::Trait(_, _, ref generics, ..) => {
+                is_trait = Some(ty::TraitRef::identity(tcx, def_id));
+                *generics
+            }
+            ItemKind::TraitAlias(ref generics, _) => {
+                is_trait = Some(ty::TraitRef::identity(tcx, def_id));
+                *generics
+            }
+            ItemKind::OpaqueTy(OpaqueTy { ref generics, .. }) => generics,
+            _ => NO_GENERICS,
+        },
 
         Node::ForeignItem(item) => match item.kind {
             ForeignItemKind::Static(..) => NO_GENERICS,
@@ -161,6 +151,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
     trace!(?predicates);
     trace!(?ast_generics);
+    trace!(?generics);
 
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T: Foo>`).
@@ -277,6 +268,54 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             trait_ref,
             &mut cgp::parameters_for_impl(self_ty, trait_ref),
         );
+    }
+
+    // Opaque types duplicate some of their generic parameters.
+    // We create bi-directional Outlives predicates between the original
+    // and the duplicated parameter, to ensure that they do not get out of sync.
+    if let Node::Item(&Item { kind: ItemKind::OpaqueTy(..), .. }) = node {
+        let opaque_ty_id = tcx.hir().get_parent_node(hir_id);
+        let opaque_ty_node = tcx.hir().get(opaque_ty_id);
+        let Node::Ty(&Ty { kind: TyKind::OpaqueDef(_, lifetimes, _), .. }) = opaque_ty_node else {
+            bug!("unexpected {opaque_ty_node:?}")
+        };
+        debug!(?lifetimes);
+        for (arg, duplicate) in std::iter::zip(lifetimes, ast_generics.params) {
+            let hir::GenericArg::Lifetime(arg) = arg else { bug!() };
+            let orig_region = <dyn AstConv<'_>>::ast_region_to_region(&icx, &arg, None);
+            if !matches!(orig_region.kind(), ty::ReEarlyBound(..)) {
+                // Only early-bound regions can point to the original generic parameter.
+                continue;
+            }
+
+            let hir::GenericParamKind::Lifetime { .. } = duplicate.kind else { continue };
+            let dup_def = tcx.hir().local_def_id(duplicate.hir_id).to_def_id();
+
+            let Some(dup_index) = generics.param_def_id_to_index(tcx, dup_def) else { bug!() };
+
+            let dup_region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+                def_id: dup_def,
+                index: dup_index,
+                name: duplicate.name.ident().name,
+            }));
+            predicates.push((
+                ty::Binder::dummy(ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
+                    orig_region,
+                    dup_region,
+                )))
+                .to_predicate(icx.tcx),
+                duplicate.span,
+            ));
+            predicates.push((
+                ty::Binder::dummy(ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
+                    dup_region,
+                    orig_region,
+                )))
+                .to_predicate(icx.tcx),
+                duplicate.span,
+            ));
+        }
+        debug!(?predicates);
     }
 
     ty::GenericPredicates {
