@@ -1207,6 +1207,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     _ => None,
                 };
 
+                let found_node = found_did.and_then(|did| self.tcx.hir().get_if_local(did));
                 let found_span = found_did.and_then(|did| self.tcx.hir().span_if_local(did));
 
                 if self.reported_closure_mismatch.borrow().contains(&(span, found_span)) {
@@ -1260,6 +1261,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         found_trait_ref,
                         expected_trait_ref,
                         obligation.cause.code(),
+                        found_node,
                     )
                 } else {
                     let (closure_span, found) = found_did
