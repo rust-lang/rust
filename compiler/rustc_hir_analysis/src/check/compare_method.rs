@@ -51,7 +51,7 @@ pub(crate) fn compare_impl_method<'tcx>(
         return;
     }
 
-    if let Err(_) = compare_number_of_generics(tcx, impl_m, impl_m_span, trait_m, trait_item_span) {
+    if let Err(_) = compare_number_of_generics(tcx, impl_m, trait_m, trait_item_span) {
         return;
     }
 
@@ -352,6 +352,10 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     let impl_trait_ref = tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap();
     let param_env = tcx.param_env(def_id);
 
+    // First, check a few of the same thing as `compare_impl_method`, just so we don't ICE during substitutions later.
+    compare_number_of_generics(tcx, impl_m, trait_m, tcx.hir().span_if_local(impl_m.def_id))?;
+    compare_generic_param_kinds(tcx, impl_m, trait_m)?;
+
     let trait_to_impl_substs = impl_trait_ref.substs;
 
     let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
@@ -376,6 +380,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
 
+    // Normalize the impl signature with fresh variables for lifetime inference.
     let norm_cause = ObligationCause::misc(return_span, impl_m_hir_id);
     let impl_sig = ocx.normalize(
         norm_cause.clone(),
@@ -388,6 +393,10 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     );
     let impl_return_ty = impl_sig.output();
 
+    // Normalize the trait signature with liberated bound vars, passing it through
+    // the ImplTraitInTraitCollector, which gathers all of the RPITITs and replaces
+    // them with inference variables.
+    // We will use these inference variables to collect the hidden types of RPITITs.
     let mut collector = ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_hir_id);
     let unnormalized_trait_sig = tcx
         .liberate_late_bound_regions(
@@ -922,7 +931,6 @@ fn compare_self_type<'tcx>(
 fn compare_number_of_generics<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_: &ty::AssocItem,
-    _impl_span: Span,
     trait_: &ty::AssocItem,
     trait_span: Option<Span>,
 ) -> Result<(), ErrorGuaranteed> {
@@ -1489,7 +1497,7 @@ pub(crate) fn compare_ty_impl<'tcx>(
     debug!("compare_impl_type(impl_trait_ref={:?})", impl_trait_ref);
 
     let _: Result<(), ErrorGuaranteed> = (|| {
-        compare_number_of_generics(tcx, impl_ty, impl_ty_span, trait_ty, trait_item_span)?;
+        compare_number_of_generics(tcx, impl_ty, trait_ty, trait_item_span)?;
 
         compare_generic_param_kinds(tcx, impl_ty, trait_ty)?;
 
