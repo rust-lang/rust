@@ -4,12 +4,12 @@ error: unused implementer of `Future` that must be used
 LL |     foo();
    |     ^^^^^
    |
+   = note: futures do nothing unless you `.await` or poll them
 note: the lint level is defined here
   --> $DIR/unused-async.rs:2:9
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-   = note: futures do nothing unless you `.await` or poll them
 
 error: unused return value of `foo` that must be used
   --> $DIR/unused-async.rs:31:5
