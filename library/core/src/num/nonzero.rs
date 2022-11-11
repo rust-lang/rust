@@ -1,5 +1,6 @@
 //! Definitions of integer that is known not to equal zero.
 
+use crate::convert::TryFrom;
 use crate::fmt;
 use crate::ops::{BitOr, BitOrAssign, Div, Rem};
 use crate::str::FromStr;
