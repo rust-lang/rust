@@ -108,8 +108,7 @@ macro_rules! int_impl {
         /// Returns the number of leading zeros in the binary representation of `self`.
         ///
         /// Depending on what you're doing with the value, you might also be interested in the
-        #[doc = concat!("[`", stringify!($SelfTy), "::ilog2()`]")]
-        /// function which returns a consistent number, even if the type widens.
+        /// [`ilog2`] function which returns a consistent number, even if the type widens.
         ///
         /// # Examples
         ///
@@ -120,6 +119,7 @@ macro_rules! int_impl {
         ///
         /// assert_eq!(n.leading_zeros(), 0);
         /// ```
+        #[doc = concat!("[`ilog2`]: ", stringify!($SelfT), "::ilog2")]
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
