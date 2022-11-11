@@ -714,7 +714,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     obligation.cause.body_id,
                     span,
                     base_ty,
-                    span,
                 );
                 if let Some(steps) = autoderef.find_map(|(ty, steps)| {
                     // Re-add the `&`
@@ -1117,7 +1116,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         err.span_suggestions(
                             span.shrink_to_lo(),
                             "consider borrowing here",
-                            ["&".to_string(), "&mut ".to_string()].into_iter(),
+                            ["&".to_string(), "&mut ".to_string()],
                             Applicability::MaybeIncorrect,
                         );
                     } else {

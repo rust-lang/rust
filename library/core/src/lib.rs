@@ -112,6 +112,7 @@
 #![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
 #![feature(const_fmt_arguments_new)]
+#![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_convert)]
 #![feature(const_index_range_slice_index)]

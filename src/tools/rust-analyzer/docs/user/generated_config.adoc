@@ -1,3 +1,9 @@
+[[rust-analyzer.assist.emitMustUse]]rust-analyzer.assist.emitMustUse (default: `false`)::
++
+--
+Whether to insert #[must_use] when generating `as_` methods
+for enum variants.
+--
 [[rust-analyzer.assist.expressionFillDefault]]rust-analyzer.assist.expressionFillDefault (default: `"todo"`)::
 +
 --

@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/hrtb-implied-1.rs:31:22
    |
 LL |     let slice = &mut ();
-   |                      ^^ creates a temporary which is freed while still in use
+   |                      ^^ creates a temporary value which is freed while still in use
 ...
 LL |     print_items::<WindowsMut<'_>>(windows);
    |     -------------------------------------- argument requires that borrow lasts for `'static`

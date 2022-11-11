@@ -2,7 +2,7 @@ use crate::infer::InferCtxt;
 use crate::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use crate::traits::query::NoSolution;
 use crate::traits::ObligationCause;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_middle::ty::{self, ParamEnv, Ty};
@@ -22,7 +22,7 @@ pub trait InferCtxtExt<'a, 'tcx> {
         &'a self,
         param_env: ty::ParamEnv<'tcx>,
         body_id: hir::HirId,
-        tys: FxHashSet<Ty<'tcx>>,
+        tys: FxIndexSet<Ty<'tcx>>,
     ) -> Bounds<'a, 'tcx>;
 }
 
@@ -103,7 +103,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         &'a self,
         param_env: ParamEnv<'tcx>,
         body_id: HirId,
-        tys: FxHashSet<Ty<'tcx>>,
+        tys: FxIndexSet<Ty<'tcx>>,
     ) -> Bounds<'a, 'tcx> {
         tys.into_iter()
             .map(move |ty| {

@@ -22,6 +22,7 @@ use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::AttributesData;
 use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::util::case::Case;
 use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, Extern};
@@ -636,6 +637,20 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw)
     }
 
+    fn check_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
+        if self.check_keyword(kw) {
+            return true;
+        }
+
+        if case == Case::Insensitive
+        && let Some((ident, /* is_raw */ false)) = self.token.ident()
+        && ident.as_str().to_lowercase() == kw.as_str().to_lowercase() {
+            true
+        } else {
+            false
+        }
+    }
+
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
     // Public for rustfmt usage.
@@ -646,6 +661,33 @@ impl<'a> Parser<'a> {
         } else {
             false
         }
+    }
+
+    /// Eats a keyword, optionally ignoring the case.
+    /// If the case differs (and is ignored) an error is issued.
+    /// This is useful for recovery.
+    fn eat_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
+        if self.eat_keyword(kw) {
+            return true;
+        }
+
+        if case == Case::Insensitive
+        && let Some((ident, /* is_raw */ false)) = self.token.ident()
+        && ident.as_str().to_lowercase() == kw.as_str().to_lowercase() {
+            self
+                .struct_span_err(ident.span, format!("keyword `{kw}` is written in a wrong case"))
+                .span_suggestion(
+                    ident.span,
+                    "write it in the correct case",
+                    kw,
+                    Applicability::MachineApplicable
+                ).emit();
+
+            self.bump();
+            return true;
+        }
+
+        false
     }
 
     fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
@@ -1127,8 +1169,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses asyncness: `async` or nothing.
-    fn parse_asyncness(&mut self) -> Async {
-        if self.eat_keyword(kw::Async) {
+    fn parse_asyncness(&mut self, case: Case) -> Async {
+        if self.eat_keyword_case(kw::Async, case) {
             let span = self.prev_token.uninterpolated_span();
             Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
         } else {
@@ -1137,8 +1179,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses unsafety: `unsafe` or nothing.
-    fn parse_unsafety(&mut self) -> Unsafe {
-        if self.eat_keyword(kw::Unsafe) {
+    fn parse_unsafety(&mut self, case: Case) -> Unsafe {
+        if self.eat_keyword_case(kw::Unsafe, case) {
             Unsafe::Yes(self.prev_token.uninterpolated_span())
         } else {
             Unsafe::No
@@ -1146,10 +1188,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses constness: `const` or nothing.
-    fn parse_constness(&mut self) -> Const {
+    fn parse_constness(&mut self, case: Case) -> Const {
         // Avoid const blocks to be parsed as const items
         if self.look_ahead(1, |t| t != &token::OpenDelim(Delimiter::Brace))
-            && self.eat_keyword(kw::Const)
+            && self.eat_keyword_case(kw::Const, case)
         {
             Const::Yes(self.prev_token.uninterpolated_span())
         } else {
@@ -1404,8 +1446,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `extern string_literal?`.
-    fn parse_extern(&mut self) -> Extern {
-        if self.eat_keyword(kw::Extern) {
+    fn parse_extern(&mut self, case: Case) -> Extern {
+        if self.eat_keyword_case(kw::Extern, case) {
             let mut extern_span = self.prev_token.span;
             let abi = self.parse_abi();
             if let Some(abi) = abi {

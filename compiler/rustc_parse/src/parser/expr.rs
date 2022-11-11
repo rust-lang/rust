@@ -9,9 +9,9 @@ use crate::errors::{
     ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncMoveOrderIncorrect,
     BinaryFloatLiteralNotSupported, BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct,
     ComparisonInterpretedAsGeneric, ComparisonOrShiftInterpretedAsGenericSugg,
-    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedExpressionFoundLet,
-    FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt,
-    HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
+    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedEqForLetExpr,
+    ExpectedExpressionFoundLet, FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart,
+    FoundExprWouldBeStmt, HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
     IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub, IntLiteralTooLarge,
     InvalidBlockMacroSegment, InvalidComparisonOperator, InvalidComparisonOperatorSub,
     InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth, InvalidIntLiteralWidth,
@@ -33,6 +33,7 @@ use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
+use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
@@ -2090,7 +2091,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
         let asyncness = if self.token.uninterpolated_span().rust_2018() {
-            self.parse_asyncness()
+            self.parse_asyncness(Case::Sensitive)
         } else {
             Async::No
         };
@@ -2329,7 +2330,15 @@ impl<'a> Parser<'a> {
             RecoverColon::Yes,
             CommaRecoveryMode::LikelyTuple,
         )?;
-        self.expect(&token::Eq)?;
+        if self.token == token::EqEq {
+            self.sess.emit_err(ExpectedEqForLetExpr {
+                span: self.token.span,
+                sugg_span: self.token.span,
+            });
+            self.bump();
+        } else {
+            self.expect(&token::Eq)?;
+        }
         let expr = self.with_res(self.restrictions | Restrictions::NO_STRUCT_LITERAL, |this| {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         })?;

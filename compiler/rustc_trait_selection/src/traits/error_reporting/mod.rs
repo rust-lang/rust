@@ -3,19 +3,20 @@ pub mod on_unimplemented;
 pub mod suggestions;
 
 use super::{
-    FulfillmentContext, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
-    Obligation, ObligationCause, ObligationCauseCode, OutputTypeParameterMismatch, Overflow,
-    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
+    FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation, ObligationCause,
+    ObligationCauseCode, OutputTypeParameterMismatch, Overflow, PredicateObligation,
+    SelectionContext, SelectionError, TraitNotObjectSafe,
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
+use crate::traits::engine::TraitEngineExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::AtExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
 use on_unimplemented::OnUnimplementedNote;
 use on_unimplemented::TypeErrCtxtExt as _;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     MultiSpan, Style,
@@ -352,7 +353,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     })
                     .to_predicate(self.tcx),
                 );
-                let mut fulfill_cx = FulfillmentContext::new_in_snapshot();
+                let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new_in_snapshot(self.tcx);
                 fulfill_cx.register_predicate_obligation(self, obligation);
                 if fulfill_cx.select_all_or_error(self).is_empty() {
                     return Ok((
@@ -379,7 +380,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             index: Option<usize>, // None if this is an old error
         }
 
-        let mut error_map: FxHashMap<_, Vec<_>> = self
+        let mut error_map: FxIndexMap<_, Vec<_>> = self
             .reported_trait_errors
             .borrow()
             .iter()

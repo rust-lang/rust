@@ -15,7 +15,6 @@ cfg_if::cfg_if! {
         target_os = "espidf",
     ))] {
         // These "unix" family members do not have unwinder.
-        // Note this also matches x86_64-unknown-none-linuxkernel.
     } else if #[cfg(any(
         unix,
         windows,

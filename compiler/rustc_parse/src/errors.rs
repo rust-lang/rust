@@ -421,6 +421,15 @@ pub(crate) struct ExpectedExpressionFoundLet {
 }
 
 #[derive(Diagnostic)]
+#[diag(parser_expect_eq_instead_of_eqeq)]
+pub(crate) struct ExpectedEqForLetExpr {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(applicability = "maybe-incorrect", code = "=", style = "verbose")]
+    pub sugg_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parser_expected_else_block)]
 pub(crate) struct ExpectedElseBlock {
     #[primary_span]

@@ -1059,7 +1059,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// 8  | let x: Pin<&mut Foo> = {
 ///    |     - borrow later stored here
 /// 9  |     let x: Pin<&mut Foo> = pin!(Foo { /* … */ });
-///    |                            ^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+///    |                            ^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
 /// 10 |     x
 /// 11 | }; // <- Foo is dropped
 ///    | - temporary value is freed at the end of this statement

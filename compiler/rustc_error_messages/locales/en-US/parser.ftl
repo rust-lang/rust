@@ -125,6 +125,9 @@ parser_if_expression_missing_condition = missing condition for `if` expression
 
 parser_expected_expression_found_let = expected expression, found `let` statement
 
+parser_expect_eq_instead_of_eqeq = expected `=`, found `==`
+    .suggestion = consider using `=` here
+
 parser_expected_else_block = expected `{"{"}`, found {$first_tok}
     .label = expected an `if` or a block after this `else`
     .suggestion = add an `if` if this is the condition of a chained `else if` statement

@@ -10,6 +10,7 @@ pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine, TraitEngineExt};
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
@@ -294,7 +295,7 @@ pub struct InferCtxt<'tcx> {
 
     /// the set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
-    pub reported_trait_errors: RefCell<FxHashMap<Span, Vec<ty::Predicate<'tcx>>>>,
+    pub reported_trait_errors: RefCell<FxIndexMap<Span, Vec<ty::Predicate<'tcx>>>>,
 
     pub reported_closure_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
