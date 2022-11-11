@@ -781,7 +781,7 @@ impl Config {
         config.llvm_optimize = true;
         config.ninja_in_file = true;
         config.llvm_version_check = true;
-        config.llvm_static_stdcpp = true;
+        config.llvm_static_stdcpp = false;
         config.backtrace = true;
         config.rust_optimize = true;
         config.rust_optimize_tests = true;

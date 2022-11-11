@@ -58,6 +58,8 @@
 	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
 	--test-arrow-hover-color: #dedede;
 	--test-arrow-hover-background-color: #4e8bca;
+	--target-background-color: #494a3d;
+	--target-border-color: #bb7410;
 	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
@@ -88,11 +90,6 @@ body.source .example-wrap pre.rust a {
 
 details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
-}
-
-:target {
-	background-color: #494a3d;
-	border-right: 3px solid #bb7410;
 }
 
 .search-failed a {

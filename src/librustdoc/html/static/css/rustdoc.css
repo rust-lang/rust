@@ -1269,6 +1269,8 @@ h3.variant {
 
 :target {
 	padding-right: 3px;
+	background-color: var(--target-background-color);
+	border-right: 3px solid var(--target-border-color);
 }
 
 .notable-traits-tooltip {

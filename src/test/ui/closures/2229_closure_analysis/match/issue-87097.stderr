@@ -16,7 +16,7 @@ LL | /     || match out_ref {
 LL | |         Variant::A => (),
 LL | |         Variant::B => (),
 LL | |     };
-   | |______^
+   | |_____^
    |
    = note: closures are lazy and do nothing unless called
    = note: `#[warn(unused_must_use)]` on by default
@@ -28,7 +28,7 @@ LL | /     || match here.field {
 LL | |         Variant::A => (),
 LL | |         Variant::B => (),
 LL | |     };
-   | |______^
+   | |_____^
    |
    = note: closures are lazy and do nothing unless called
 

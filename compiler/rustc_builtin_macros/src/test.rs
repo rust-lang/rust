@@ -112,7 +112,7 @@ pub fn expand_test_or_bench(
     };
 
     // Note: non-associated fn items are already handled by `expand_test_or_bench`
-    if !matches!(item.kind, ast::ItemKind::Fn(_)) {
+    let ast::ItemKind::Fn(fn_) = &item.kind else {
         let diag = &cx.sess.parse_sess.span_diagnostic;
         let msg = "the `#[test]` attribute may only be used on a non-associated function";
         let mut err = match item.kind {
@@ -130,7 +130,7 @@ pub fn expand_test_or_bench(
             .emit();
 
         return vec![Annotatable::Item(item)];
-    }
+    };
 
     // has_*_signature will report any errors in the type so compilation
     // will fail. We shouldn't try to expand in this case because the errors
@@ -141,12 +141,14 @@ pub fn expand_test_or_bench(
         return vec![Annotatable::Item(item)];
     }
 
-    let (sp, attr_sp) = (cx.with_def_site_ctxt(item.span), cx.with_def_site_ctxt(attr_sp));
+    let sp = cx.with_def_site_ctxt(item.span);
+    let ret_ty_sp = cx.with_def_site_ctxt(fn_.sig.decl.output.span());
+    let attr_sp = cx.with_def_site_ctxt(attr_sp);
 
     let test_id = Ident::new(sym::test, attr_sp);
 
     // creates test::$name
-    let test_path = |name| cx.path(sp, vec![test_id, Ident::from_str_and_span(name, sp)]);
+    let test_path = |name| cx.path(ret_ty_sp, vec![test_id, Ident::from_str_and_span(name, sp)]);
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
@@ -192,7 +194,7 @@ pub fn expand_test_or_bench(
                         vec![
                             // super::$test_fn(b)
                             cx.expr_call(
-                                sp,
+                                ret_ty_sp,
                                 cx.expr_path(cx.path(sp, vec![item.ident])),
                                 vec![cx.expr_ident(sp, b)],
                             ),
@@ -216,7 +218,11 @@ pub fn expand_test_or_bench(
                         cx.expr_path(test_path("assert_test_result")),
                         vec![
                             // $test_fn()
-                            cx.expr_call(sp, cx.expr_path(cx.path(sp, vec![item.ident])), vec![]), // )
+                            cx.expr_call(
+                                ret_ty_sp,
+                                cx.expr_path(cx.path(sp, vec![item.ident])),
+                                vec![],
+                            ), // )
                         ],
                     ), // }
                 ), // )
