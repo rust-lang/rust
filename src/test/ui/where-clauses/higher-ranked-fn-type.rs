@@ -19,7 +19,7 @@ where
 {
     called()
     //[quiet]~^ ERROR the trait bound `for<'b> fn(&'b ()): Foo` is not satisfied
-    //[verbose]~^^ ERROR the trait bound `for<'b> fn(&ReLateBound(
+    //[verbose]~^^ ERROR the trait bound `for<Region(
 }
 
 fn main() {}
