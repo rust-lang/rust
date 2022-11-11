@@ -1312,10 +1312,10 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
     if has_notable_trait {
         cx.types_with_notable_traits.insert(ty.clone());
         Some(format!(
-            "<span class=\"notable-traits\" data-ty=\"{ty:#}\">\
+            "<span class=\"notable-traits\" data-ty=\"{ty}\">\
                 <span class=\"notable-traits-tooltip\">ⓘ</span>\
             </span>",
-            ty = ty.print(cx),
+            ty = Escape(&format!("{:#}", ty.print(cx))),
         ))
     } else {
         None
