@@ -109,9 +109,9 @@ macro_rules! uint_impl {
 
         /// Returns the number of leading zeros in the binary representation of `self`.
         ///
-        /// The
+        /// Depending on what you're doing with the value, you might also be interested in the
         #[doc = concat!("[`", stringify!($SelfTy), "::ilog2()`]")]
-        /// function returns a consistent number, even if the type widens.
+        /// function which returns a consistent number, even if the type widens.
         ///
         /// # Examples
         ///
