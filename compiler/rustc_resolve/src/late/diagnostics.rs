@@ -807,14 +807,16 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         err.code(rustc_errors::error_code!(E0411));
         err.span_label(span, "`Self` is only available in impls, traits, and type definitions");
         if let Some(item_kind) = self.diagnostic_metadata.current_item {
-            err.span_label(
-                item_kind.ident.span,
-                format!(
-                    "`Self` not allowed in {} {}",
-                    item_kind.kind.article(),
-                    item_kind.kind.descr()
-                ),
-            );
+            if !item_kind.ident.span.is_dummy() {
+                err.span_label(
+                    item_kind.ident.span,
+                    format!(
+                        "`Self` not allowed in {} {}",
+                        item_kind.kind.article(),
+                        item_kind.kind.descr()
+                    ),
+                );
+            }
         }
         true
     }
