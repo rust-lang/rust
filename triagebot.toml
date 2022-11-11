@@ -573,6 +573,7 @@ fallback = [
 "/src/llvm-project" =                        ["@cuviper"]
 "/src/rustdoc-json-types" =                  ["rustdoc"]
 "/src/stage0.json" =                         ["bootstrap"]
+"/src/test/ui" =                             ["compiler"]
 "/src/tools/cargo" =                         ["@ehuss", "@joshtriplett"]
 "/src/tools/compiletest" =                   ["bootstrap"]
 "/src/tools/linkchecker" =                   ["@ehuss"]
