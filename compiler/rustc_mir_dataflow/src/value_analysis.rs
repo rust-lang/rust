@@ -360,6 +360,10 @@ where
         // FIXME: Dataflow framework provides no access to current state here.
         self.0.handle_switch_int(discr, apply_edge_effects)
     }
+
+    fn initial_work(&self) -> Option<FxHashSet<BasicBlock>> {
+        Some(self.0.map().constants.clone())
+    }
 }
 
 rustc_index::newtype_index!(
@@ -549,6 +553,13 @@ impl<V: JoinSemiLattice + Clone> JoinSemiLattice for State<V> {
             (StateData::Reachable(this), StateData::Reachable(other)) => this.join(other),
         }
     }
+
+    fn len(&self) -> usize {
+        match &self.0 {
+            StateData::Reachable(v) => v.len(),
+            StateData::Unreachable => 0,
+        }
+    }
 }
 
 /// Partial mapping from [`Place`] to [`PlaceIndex`], where some places also have a [`ValueIndex`].
@@ -563,6 +574,7 @@ pub struct Map {
     projections: FxHashMap<(PlaceIndex, TrackElem), PlaceIndex>,
     places: IndexVec<PlaceIndex, PlaceInfo>,
     value_count: usize,
+    constants: FxHashSet<BasicBlock>,
 }
 
 impl Map {
@@ -572,6 +584,7 @@ impl Map {
             projections: FxHashMap::default(),
             places: IndexVec::new(),
             value_count: 0,
+            constants: FxHashSet::default(),
         }
     }
 
@@ -587,8 +600,10 @@ impl Map {
         filter: impl FnMut(Ty<'tcx>) -> bool,
     ) -> Self {
         let mut map = Self::new();
-        map.register_with_filter(tcx, body, filter, &escaped_places(body));
+        let (escaped, constants) = escaped_places(body);
+        map.register_with_filter(tcx, body, filter, &escaped);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
+        map.constants = constants;
         map
     }
 
@@ -685,6 +700,11 @@ impl Map {
     /// Returns the number of tracked places, i.e., those for which a value can be stored.
     pub fn tracked_places(&self) -> usize {
         self.value_count
+    }
+
+    /// Returns the number of constants in this Body
+    pub fn constants(&self) -> usize {
+        self.constants.len()
     }
 
     /// Applies a single projection element, yielding the corresponding child.
@@ -835,9 +855,10 @@ fn iter_fields<'tcx>(
 /// Returns all places, that have their reference or address taken.
 ///
 /// This includes shared references, and also drops and `InlineAsm` out parameters.
-fn escaped_places<'tcx>(body: &Body<'tcx>) -> FxHashSet<Place<'tcx>> {
+fn escaped_places<'tcx>(body: &Body<'tcx>) -> (FxHashSet<Place<'tcx>>, FxHashSet<BasicBlock>) {
     struct Collector<'tcx> {
         result: FxHashSet<Place<'tcx>>,
+        constants: FxHashSet<BasicBlock>,
     }
 
     impl<'tcx> Visitor<'tcx> for Collector<'tcx> {
@@ -850,11 +871,15 @@ fn escaped_places<'tcx>(body: &Body<'tcx>) -> FxHashSet<Place<'tcx>> {
                 self.result.insert(*place);
             }
         }
+
+        fn visit_constant(&mut self, _constant: &Constant<'tcx>, location: Location) {
+            self.constants.insert(location.block);
+        }
     }
 
-    let mut collector = Collector { result: FxHashSet::default() };
+    let mut collector = Collector { result: FxHashSet::default(), constants: FxHashSet::default() };
     collector.visit_body(body);
-    collector.result
+    (collector.result, collector.constants)
 }
 
 /// This is used to visualize the dataflow analysis.

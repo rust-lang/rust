@@ -54,6 +54,9 @@ pub trait JoinSemiLattice: Eq {
     ///
     /// The lattice join operator is abbreviated as `∨`.
     fn join(&mut self, other: &Self) -> bool;
+
+    /// A thing
+    fn len(&self) -> usize;
 }
 
 /// A [partially ordered set][poset] that has a [greatest lower bound][glb] for any pair of
@@ -99,6 +102,10 @@ impl JoinSemiLattice for bool {
 
         false
     }
+
+    fn len(&self) -> usize {
+        1
+    }
 }
 
 impl MeetSemiLattice for bool {
@@ -139,6 +146,10 @@ impl<I: Idx, T: JoinSemiLattice> JoinSemiLattice for IndexVec<I, T> {
         }
         changed
     }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
 
 impl<I: Idx, T: MeetSemiLattice> MeetSemiLattice for IndexVec<I, T> {
@@ -160,6 +171,10 @@ impl<T: Idx> JoinSemiLattice for BitSet<T> {
     fn join(&mut self, other: &Self) -> bool {
         self.union(other)
     }
+
+    fn len(&self) -> usize {
+        self.words().len()
+    }
 }
 
 impl<T: Idx> MeetSemiLattice for BitSet<T> {
@@ -171,6 +186,10 @@ impl<T: Idx> MeetSemiLattice for BitSet<T> {
 impl<T: Idx> JoinSemiLattice for ChunkedBitSet<T> {
     fn join(&mut self, other: &Self) -> bool {
         self.union(other)
+    }
+
+    fn len(&self) -> usize {
+        self.iter().count()
     }
 }
 
@@ -211,6 +230,10 @@ impl<T: Idx> BitSetExt<T> for Dual<BitSet<T>> {
 impl<T: MeetSemiLattice> JoinSemiLattice for Dual<T> {
     fn join(&mut self, other: &Self) -> bool {
         self.0.meet(&other.0)
+    }
+
+    fn len(&self) -> usize {
+        panic!("ow");
     }
 }
 
@@ -254,6 +277,13 @@ impl<T: Clone + Eq> JoinSemiLattice for FlatSet<T> {
 
         *self = result;
         true
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            Self::Top | Self::Bottom => 0,
+            Self::Elem(_t) => panic!("ow"),
+        }
     }
 }
 

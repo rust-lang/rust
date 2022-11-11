@@ -45,11 +45,18 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
             debug!("aborted dataflow const prop due to too many tracked places");
             return;
         }
+        if map.tracked_places() == 0 {
+            return;
+        }
 
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);
         let results = debug_span!("analyze")
-            .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
+            .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint_limited(100));
+
+        let Some(results) = results else {
+            return;
+        };
 
         // Collect results and patch the body afterwards.
         let mut visitor = CollectAndPatch::new(tcx, &results.analysis.0.map);

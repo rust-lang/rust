@@ -325,6 +325,10 @@ impl JoinSemiLattice for State {
     fn join(&mut self, other: &Self) -> bool {
         self.qualif.join(&other.qualif) || self.borrow.join(&other.borrow)
     }
+
+    fn len(&self) -> usize {
+        0
+    }
 }
 
 impl<'tcx, Q> AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>

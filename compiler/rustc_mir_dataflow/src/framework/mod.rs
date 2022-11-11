@@ -32,6 +32,7 @@
 
 use std::cmp::Ordering;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, BasicBlock, Location};
@@ -266,6 +267,10 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         Self: Sized,
     {
         Engine::new_generic(tcx, body, self)
+    }
+
+    fn initial_work(&self) -> Option<FxHashSet<BasicBlock>> {
+        None
     }
 }
 

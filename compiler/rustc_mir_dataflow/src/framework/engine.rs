@@ -185,6 +185,78 @@ where
     }
 
     /// Computes the fixpoint for this dataflow problem and returns it.
+    pub fn iterate_to_fixpoint_limited(self, limit: usize) -> Option<Results<'tcx, A>>
+    where
+        A::Domain: DebugWithContext<A>,
+    {
+        let Engine {
+            analysis,
+            body,
+            dead_unwinds,
+            mut entry_sets,
+            tcx,
+            apply_trans_for_block,
+            pass_name,
+            ..
+        } = self;
+
+        let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
+        #[allow(rustc::potential_query_instability)]
+        for item in analysis.initial_work().unwrap() {
+            dirty_queue.insert(item);
+        }
+
+        // `state` is not actually used between iterations;
+        // this is just an optimization to avoid reallocating
+        // every iteration.
+        let mut state = analysis.bottom_value(body);
+        let mut pushes = 0;
+        while let Some(bb) = dirty_queue.pop() {
+            let bb_data = &body[bb];
+
+            // Set the state to the entry state of the block.
+            // This is equivalent to `state = entry_sets[bb].clone()`,
+            // but it saves an allocation, thus improving compile times.
+            state.clone_from(&entry_sets[bb]);
+
+            // Apply the block transfer function, using the cached one if it exists.
+            match &apply_trans_for_block {
+                Some(apply) => apply(bb, &mut state),
+                None => A::Direction::apply_effects_in_block(&analysis, &mut state, bb, bb_data),
+            }
+
+            A::Direction::join_state_into_successors_of(
+                &analysis,
+                tcx,
+                body,
+                dead_unwinds,
+                &mut state,
+                (bb, bb_data),
+                |target: BasicBlock, state: &A::Domain| {
+                    let old_len = entry_sets[target].len();
+                    let set_changed = entry_sets[target].join(state);
+                    if set_changed {
+                        pushes += entry_sets[target].len() - old_len;
+                        dirty_queue.insert(target);
+                    }
+                },
+            );
+            if pushes > limit {
+                return None;
+            }
+        }
+
+        let results = Results { analysis, entry_sets };
+
+        let res = write_graphviz_results(tcx, &body, &results, pass_name);
+        if let Err(e) = res {
+            error!("Failed to write graphviz dataflow results: {}", e);
+        }
+
+        Some(results)
+    }
+
+    /// Computes the fixpoint for this dataflow problem and returns it.
     pub fn iterate_to_fixpoint(self) -> Results<'tcx, A>
     where
         A::Domain: DebugWithContext<A>,
