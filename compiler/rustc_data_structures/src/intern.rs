@@ -156,7 +156,11 @@ impl<T> Deref for WithStableHash<T> {
 impl<T: Hash> Hash for WithStableHash<T> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.internee.hash(s)
+        if self.stable_hash != Fingerprint::ZERO {
+            self.stable_hash.hash(s)
+        } else {
+            self.internee.hash(s)
+        }
     }
 }
 
