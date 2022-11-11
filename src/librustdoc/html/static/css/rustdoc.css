@@ -1331,10 +1331,6 @@ h3.variant {
 	display: none;
 }
 
-.search-failed a {
-	color: var(--search-failed-link-color);
-}
-
 .search-failed.active {
 	display: block;
 }

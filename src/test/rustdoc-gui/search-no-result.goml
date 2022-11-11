@@ -26,8 +26,8 @@ call-function: ("check-no-result", {
 })
 call-function: ("check-no-result", {
     "theme": "dark",
-    "link": "rgb(0, 137, 255)",
-    "link_hover": "rgb(0, 137, 255)",
+    "link": "rgb(210, 153, 29)",
+    "link_hover": "rgb(210, 153, 29)",
 })
 call-function: ("check-no-result", {
     "theme": "light",
