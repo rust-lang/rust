@@ -5,6 +5,7 @@ pub use TokenKind::*;
 
 use crate::ast;
 use crate::ptr::P;
+use crate::util::case::Case;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -613,6 +614,15 @@ impl Token {
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: Symbol) -> bool {
         self.is_non_raw_ident_where(|id| id.name == kw)
+    }
+
+    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this token is an identifier equal to `kw` ignoring the case.
+    pub fn is_keyword_case(&self, kw: Symbol, case: Case) -> bool {
+        self.is_keyword(kw)
+            || (case == Case::Insensitive
+                && self.is_non_raw_ident_where(|id| {
+                    id.name.as_str().to_lowercase() == kw.as_str().to_lowercase()
+                }))
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
