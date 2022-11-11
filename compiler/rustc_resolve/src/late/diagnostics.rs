@@ -219,26 +219,26 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             let (mod_prefix, mod_str, suggestion) = if path.len() == 1 {
                 debug!(?self.diagnostic_metadata.current_impl_items);
                 debug!(?self.diagnostic_metadata.current_function);
-                let suggestion = if let Some(items) = self.diagnostic_metadata.current_impl_items
+                let suggestion = if self.current_trait_ref.is_none()
                     && let Some((fn_kind, _)) = self.diagnostic_metadata.current_function
-                    && self.current_trait_ref.is_none()
                     && let Some(FnCtxt::Assoc(_)) = fn_kind.ctxt()
+                    && let Some(items) = self.diagnostic_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
-                        if let AssocItemKind::Fn(fn_) = &i.kind
-                            && !fn_.sig.decl.has_self()
-                            && i.ident.name == item_str.name
+                        if let AssocItemKind::Fn(_) = &i.kind && i.ident.name == item_str.name
                         {
                             debug!(?item_str.name);
-                            debug!(?fn_.sig.decl.inputs);
                             return true
                         }
                         false
                     })
+                    && let AssocItemKind::Fn(fn_) = &item.kind
                 {
+                    debug!(?fn_);
+                    let self_sugg = if fn_.sig.decl.has_self() { "self." } else { "Self::" };
                     Some((
-                        item_span,
+                        item_span.shrink_to_lo(),
                         "consider using the associated function",
-                        format!("Self::{}", item.ident)
+                        self_sugg.to_string()
                     ))
                 } else {
                     None
@@ -396,11 +396,13 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     }
 
     fn suggest_self_or_self_ref(&mut self, err: &mut Diagnostic, path: &[Segment], span: Span) {
-        let is_assoc_fn = self.self_type_is_available();
+        if !self.self_type_is_available() {
+            return;
+        }
         let Some(path_last_segment) = path.last() else { return };
         let item_str = path_last_segment.ident;
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
-        if ["this", "my"].contains(&item_str.as_str()) && is_assoc_fn {
+        if ["this", "my"].contains(&item_str.as_str()) {
             err.span_suggestion_short(
                 span,
                 "you might have meant to use `self` here instead",
@@ -451,7 +453,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
         let path_str = Segment::names_to_string(path);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
-
         let mut candidates = self
             .r
             .lookup_import_candidates(ident, ns, &self.parent_scope, is_expected)
@@ -1542,7 +1543,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 _ => None,
             }
         }
-
         // Fields are generally expected in the same contexts as locals.
         if filter_fn(Res::Local(ast::DUMMY_NODE_ID)) {
             if let Some(node_id) =
