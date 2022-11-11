@@ -242,8 +242,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestKind::Eq { value, ty } => {
                 let tcx = self.tcx;
                 if let ty::Adt(def, _) = ty.kind() && Some(def.did()) == tcx.lang_items().string() {
-                    if !tcx.features().deref_patterns {
-                        bug!("matching on `String` went through without enabling deref_patterns");
+                    if !tcx.features().string_deref_patterns {
+                        bug!("matching on `String` went through without enabling string_deref_patterns");
                     }
                     let re_erased = tcx.lifetimes.re_erased;
                     let ref_string = self.temp(tcx.mk_imm_ref(re_erased, ty), test.span);

@@ -1,4 +1,4 @@
-// gate-test-deref_patterns
+// gate-test-string_deref_patterns
 fn main() {
     match String::new() {
         "" | _ => {}
