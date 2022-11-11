@@ -528,7 +528,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     cmd.args(binary_args);
 
     // Make sure we use the build-time working directory for interpreting Miri/rustc arguments.
-    // But then we need to switch to the run-time one, which we instruct Miri do do by setting `MIRI_CWD`.
+    // But then we need to switch to the run-time one, which we instruct Miri to do by setting `MIRI_CWD`.
     cmd.current_dir(info.current_dir);
     cmd.env("MIRI_CWD", env::current_dir().unwrap());
 

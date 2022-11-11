@@ -1,4 +1,3 @@
-//@ignore-target-windows: Condvars on Windows are not supported yet.
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-strict-provenance -Zmiri-preemption-rate=0
 
