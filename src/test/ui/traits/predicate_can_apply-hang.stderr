@@ -1,0 +1,21 @@
+error[E0277]: can't compare `Vec<[[[B; 1]; 1]; 1]>` with `B`
+  --> $DIR/predicate_can_apply-hang.rs:1:38
+   |
+LL | fn f<B>(x: Vec<[[[B; 1]; 1]; 1]>) -> impl PartialEq<B> {
+   |                                      ^^^^^^^^^^^^^^^^^ no implementation for `Vec<[[[B; 1]; 1]; 1]> == B`
+LL |
+LL |     x
+   |     - return type was inferred to be `Vec<[[[B; 1]; 1]; 1]>` here
+   |
+   = help: the trait `PartialEq<B>` is not implemented for `Vec<[[[B; 1]; 1]; 1]>`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             <Vec<T, A1> as PartialEq<Vec<U, A2>>>
+             <Vec<T, A> as PartialEq<&[U; N]>>
+             <Vec<T, A> as PartialEq<&[U]>>
+             <Vec<T, A> as PartialEq<&mut [U]>>
+             <Vec<T, A> as PartialEq<[U; N]>>
+             <Vec<T, A> as PartialEq<[U]>>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
