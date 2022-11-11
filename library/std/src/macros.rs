@@ -164,6 +164,8 @@ macro_rules! println {
 /// # Examples
 ///
 /// ```
+/// # use std::io;
+///
 /// eprint!("Error: Could not complete task");
 ///
 /// io::stderr().flush().unwrap();
