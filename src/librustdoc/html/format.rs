@@ -107,10 +107,6 @@ impl Buffer {
         self.buffer
     }
 
-    pub(crate) fn insert_str(&mut self, idx: usize, s: &str) {
-        self.buffer.insert_str(idx, s);
-    }
-
     pub(crate) fn push_str(&mut self, s: &str) {
         self.buffer.push_str(s);
     }
