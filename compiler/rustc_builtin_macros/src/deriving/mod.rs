@@ -38,9 +38,10 @@ pub mod partial_ord;
 
 pub mod generic;
 
-pub(crate) struct BuiltinDerive(
-    pub(crate) fn(&mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable)),
-);
+pub(crate) type BuiltinDeriveFn =
+    fn(&mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable), bool);
+
+pub(crate) struct BuiltinDerive(pub(crate) BuiltinDeriveFn);
 
 impl MultiItemModifier for BuiltinDerive {
     fn expand(
@@ -49,6 +50,7 @@ impl MultiItemModifier for BuiltinDerive {
         span: Span,
         meta_item: &MetaItem,
         item: Annotatable,
+        is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         // FIXME: Built-in derives often forget to give spans contexts,
         // so we are doing it here in a centralized way.
@@ -57,21 +59,28 @@ impl MultiItemModifier for BuiltinDerive {
         match item {
             Annotatable::Stmt(stmt) => {
                 if let ast::StmtKind::Item(item) = stmt.into_inner().kind {
-                    (self.0)(ecx, span, meta_item, &Annotatable::Item(item), &mut |a| {
-                        // Cannot use 'ecx.stmt_item' here, because we need to pass 'ecx'
-                        // to the function
-                        items.push(Annotatable::Stmt(P(ast::Stmt {
-                            id: ast::DUMMY_NODE_ID,
-                            kind: ast::StmtKind::Item(a.expect_item()),
-                            span,
-                        })));
-                    });
+                    (self.0)(
+                        ecx,
+                        span,
+                        meta_item,
+                        &Annotatable::Item(item),
+                        &mut |a| {
+                            // Cannot use 'ecx.stmt_item' here, because we need to pass 'ecx'
+                            // to the function
+                            items.push(Annotatable::Stmt(P(ast::Stmt {
+                                id: ast::DUMMY_NODE_ID,
+                                kind: ast::StmtKind::Item(a.expect_item()),
+                                span,
+                            })));
+                        },
+                        is_derive_const,
+                    );
                 } else {
                     unreachable!("should have already errored on non-item statement")
                 }
             }
             _ => {
-                (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a));
+                (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a), is_derive_const);
             }
         }
         ExpandResult::Ready(items)
