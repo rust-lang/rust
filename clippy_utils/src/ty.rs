@@ -13,9 +13,9 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
-    self, AdtDef, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, GenericParamDefKind, IntTy, ParamEnv, Predicate,
-    PredicateKind, ProjectionTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitor, UintTy, VariantDef, VariantDiscr,
+    self, AdtDef, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, GenericParamDefKind, IntTy, List, ParamEnv,
+    Predicate, PredicateKind, ProjectionTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
@@ -843,6 +843,42 @@ pub fn for_each_top_level_late_bound_region<B>(
         }
     }
     ty.visit_with(&mut V { index: 0, f })
+}
+
+pub struct AdtVariantInfo {
+    pub ind: usize,
+    pub size: u64,
+
+    /// (ind, size)
+    pub fields_size: Vec<(usize, u64)>,
+}
+
+impl AdtVariantInfo {
+    /// Returns ADT variants ordered by size
+    pub fn new<'tcx>(cx: &LateContext<'tcx>, adt: AdtDef<'tcx>, subst: &'tcx List<GenericArg<'tcx>>) -> Vec<Self> {
+        let mut variants_size = adt
+            .variants()
+            .iter()
+            .enumerate()
+            .map(|(i, variant)| {
+                let mut fields_size = variant
+                    .fields
+                    .iter()
+                    .enumerate()
+                    .map(|(i, f)| (i, approx_ty_size(cx, f.ty(cx.tcx, subst))))
+                    .collect::<Vec<_>>();
+                fields_size.sort_by(|(_, a_size), (_, b_size)| (a_size.cmp(b_size)));
+
+                Self {
+                    ind: i,
+                    size: fields_size.iter().map(|(_, size)| size).sum(),
+                    fields_size,
+                }
+            })
+            .collect::<Vec<_>>();
+        variants_size.sort_by(|a, b| (b.size.cmp(&a.size)));
+        variants_size
+    }
 }
 
 /// Gets the struct or enum variant from the given `Res`
