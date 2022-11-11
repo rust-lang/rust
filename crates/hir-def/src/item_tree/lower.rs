@@ -451,15 +451,7 @@ impl<'a> Ctx<'a> {
                 .collect()
         });
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
-        let res = Trait {
-            name,
-            visibility,
-            generic_params,
-            is_auto,
-            is_unsafe,
-            items: items.unwrap_or_default(),
-            ast_id,
-        };
+        let res = Trait { name, visibility, generic_params, is_auto, is_unsafe, items, ast_id };
         Some(id(self.data().traits.alloc(res)))
     }
 
