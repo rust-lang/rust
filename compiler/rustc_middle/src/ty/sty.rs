@@ -59,7 +59,7 @@ pub struct FreeRegion {
 #[derive(HashStable)]
 pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
-    BrAnon(u32, Option<Span>),
+    BrAnon(u32, Option<DefId>),
 
     /// Named region parameters for functions (a in &'a T)
     ///

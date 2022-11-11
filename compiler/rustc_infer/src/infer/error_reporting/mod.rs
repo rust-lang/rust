@@ -211,10 +211,10 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
                         };
                         (text, sp)
                     }
-                    ty::BrAnon(idx, span) => (
+                    ty::BrAnon(idx, def_id) => (
                         format!("the anonymous lifetime #{} defined here", idx + 1),
-                        match span {
-                            Some(span) => span,
+                        match def_id {
+                            Some(def_id) => tcx.def_span(def_id),
                             None => tcx.def_span(scope)
                         }
                     ),
@@ -3048,7 +3048,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 br_string(br),
                 self.tcx.associated_item(def_id).name
             ),
-            infer::EarlyBoundRegion(_, name) => format!(" for lifetime parameter `{}`", name),
+            infer::EarlyBoundRegion(_, def_id) => {
+                format!(" for lifetime parameter `{}`", self.tcx.item_name(def_id))
+            }
             infer::UpvarRegion(ref upvar_id, _) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 format!(" for capture of `{}` by closure", var_name)

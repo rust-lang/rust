@@ -89,11 +89,11 @@ impl<'a> DescriptionCtx<'a> {
                             };
                             me.span = Some(sp);
                         }
-                        ty::BrAnon(idx, span) => {
+                        ty::BrAnon(idx, def_id) => {
                             me.kind = "anon_num_here";
                             me.num_arg = idx+1;
-                            me.span = match span {
-                                Some(_) => span,
+                            me.span = match def_id {
+                                Some(def_id) => Some(tcx.def_span(def_id)),
                                 None => Some(tcx.def_span(scope)),
                             }
                         },

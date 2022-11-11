@@ -228,8 +228,8 @@ pub fn resolve_interior<'a, 'tcx>(
             // typeck had previously found constraints that would cause them to be related.
 
             let mut counter = 0;
-            let mut mk_bound_region = |span| {
-                let kind = ty::BrAnon(counter, span);
+            let mut mk_bound_region = |def_id| {
+                let kind = ty::BrAnon(counter, def_id);
                 let var = ty::BoundVar::from_u32(counter);
                 counter += 1;
                 ty::BoundRegion { var, kind }
@@ -240,22 +240,18 @@ pub fn resolve_interior<'a, 'tcx>(
                     ty::ReVar(vid) => {
                         let origin = fcx.region_var_origin(vid);
                         match origin {
-                            RegionVariableOrigin::EarlyBoundRegion(span, _) => {
-                                mk_bound_region(Some(span))
+                            RegionVariableOrigin::EarlyBoundRegion(_, def_id) => {
+                                mk_bound_region(Some(def_id))
                             }
                             _ => mk_bound_region(None),
                         }
                     }
                     // FIXME: these should use `BrNamed`
-                    ty::ReEarlyBound(region) => {
-                        mk_bound_region(Some(fcx.tcx.def_span(region.def_id)))
-                    }
+                    ty::ReEarlyBound(region) => mk_bound_region(Some(region.def_id)),
                     ty::ReLateBound(_, ty::BoundRegion { kind, .. })
                     | ty::ReFree(ty::FreeRegion { bound_region: kind, .. }) => match kind {
-                        ty::BoundRegionKind::BrAnon(_, span) => mk_bound_region(span),
-                        ty::BoundRegionKind::BrNamed(def_id, _) => {
-                            mk_bound_region(Some(fcx.tcx.def_span(def_id)))
-                        }
+                        ty::BoundRegionKind::BrAnon(_, def_id) => mk_bound_region(def_id),
+                        ty::BoundRegionKind::BrNamed(def_id, _) => mk_bound_region(Some(def_id)),
                         ty::BoundRegionKind::BrEnv => mk_bound_region(None),
                     },
                     _ => mk_bound_region(None),

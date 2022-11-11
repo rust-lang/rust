@@ -33,7 +33,6 @@ use rustc_middle::ty::visit::TypeVisitable;
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
-use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 
 use std::cell::{Cell, RefCell};
@@ -470,7 +469,7 @@ pub enum RegionVariableOrigin {
     Coercion(Span),
 
     /// Region variables created as the values for early-bound regions
-    EarlyBoundRegion(Span, Symbol),
+    EarlyBoundRegion(Span, DefId),
 
     /// Region variables created for bound regions
     /// in a function or method that is called
@@ -1181,7 +1180,7 @@ impl<'tcx> InferCtxt<'tcx> {
             GenericParamDefKind::Lifetime => {
                 // Create a region inference variable for the given
                 // region parameter definition.
-                self.next_region_var(EarlyBoundRegion(span, param.name)).into()
+                self.next_region_var(EarlyBoundRegion(span, param.def_id)).into()
             }
             GenericParamDefKind::Type { .. } => {
                 // Create a type inference variable for the given
