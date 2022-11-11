@@ -161,6 +161,7 @@ enum ImplTraitContext {
     Universal(LocalDefId),
 }
 
+#[derive(Debug)]
 struct BindingError {
     name: Symbol,
     origin: BTreeSet<Span>,
@@ -168,6 +169,7 @@ struct BindingError {
     could_be_path: bool,
 }
 
+#[derive(Debug)]
 enum ResolutionError<'a> {
     /// Error E0401: can't use type or const parameters from outer function.
     GenericParamsFromOuterFunction(Res, HasGenericParams),

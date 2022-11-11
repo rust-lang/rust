@@ -633,6 +633,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.resolve_local(local);
         self.diagnostic_metadata.current_let_binding = original;
     }
+    #[instrument(level = "trace", skip_all, fields(?ty.kind))]
     fn visit_ty(&mut self, ty: &'ast Ty) {
         let prev = self.diagnostic_metadata.current_trait_object;
         let prev_ty = self.diagnostic_metadata.current_type_path;
@@ -945,8 +946,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_generic_arg(&mut self, arg: &'ast GenericArg) {
-        debug!("visit_generic_arg({:?})", arg);
         let prev = replace(&mut self.diagnostic_metadata.currently_processing_generics, true);
         match arg {
             GenericArg::Type(ref ty) => {
@@ -1072,8 +1073,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
-        debug!("visit_where_predicate {:?}", p);
         let previous_value =
             replace(&mut self.diagnostic_metadata.current_where_predicate, Some(p));
         self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
@@ -1846,16 +1847,20 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             let Err(failure_info) = elision_lifetime else { bug!() };
             self.report_missing_lifetime_specifiers(elision_failures, Some(failure_info));
         }
+
+        self.in_func_params = outer_in_params;
     }
 
     /// Resolve inside function parameters and parameter types.
     /// Returns the lifetime for elision in fn return type,
     /// or diagnostic information in case of elision failure.
+    #[instrument(level = "debug", skip(self, inputs))]
     fn resolve_fn_params(
         &mut self,
         has_self: bool,
         inputs: impl Iterator<Item = (Option<&'ast Pat>, &'ast Ty)>,
     ) -> Result<LifetimeRes, (Vec<MissingLifetime>, Vec<ElisionFnParameter>)> {
+        #[derive(Debug)]
         enum Elision {
             /// We have not found any candidate.
             None,
@@ -2085,8 +2090,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         true
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn resolve_adt(&mut self, item: &'ast Item, generics: &'ast Generics) {
-        debug!("resolve_adt");
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(
                 &generics.params,
@@ -2156,10 +2161,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
+    #[instrument(level = "debug", skip_all, fields(name = %item.ident.name, kind = ?item.kind))]
     fn resolve_item(&mut self, item: &'ast Item) {
-        let name = item.ident.name;
-        debug!("(resolving item) resolving {} ({:?})", name, item.kind);
-
         match item.kind {
             ItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
                 self.with_generic_param_rib(
@@ -2293,6 +2296,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, f))]
     fn with_generic_param_rib<'c, F>(
         &'c mut self,
         params: &'c [GenericParam],
@@ -2302,7 +2306,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     ) where
         F: FnOnce(&mut Self),
     {
-        debug!("with_generic_param_rib");
         let LifetimeRibKind::Generics { binder, span: generics_span, kind: generics_kind, .. }
             = lifetime_kind else { panic!() };
 
@@ -2337,7 +2340,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         for param in params {
             let ident = param.ident.normalize_to_macros_2_0();
-            debug!("with_generic_param_rib: {}", param.id);
+            debug!(%param.id);
 
             if let GenericParamKind::Lifetime = param.kind
                 && let Some(&original) = seen_lifetimes.get(&ident)
@@ -2601,6 +2604,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_self_rib_ns(TypeNS, self_res, f)
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn resolve_implementation(
         &mut self,
         generics: &'ast Generics,
@@ -2609,7 +2613,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         item_id: NodeId,
         impl_items: &'ast [P<AssocItem>],
     ) {
-        debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(
             &generics.params,
@@ -2680,6 +2683,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn resolve_impl_item(
         &mut self,
         item: &'ast AssocItem,
@@ -2688,7 +2692,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         use crate::ResolutionError::*;
         match &item.kind {
             AssocItemKind::Const(_, ty, default) => {
-                debug!("resolve_implementation AssocItemKind::Const");
+                debug!("AssocItemKind::Const");
                 // If this is a trait impl, ensure the const
                 // exists in trait
                 self.check_trait_item(
@@ -2719,7 +2723,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 }
             }
             AssocItemKind::Fn(box Fn { generics, .. }) => {
-                debug!("resolve_implementation AssocItemKind::Fn");
+                debug!("AssocItemKind::Fn");
                 // We also need a new scope for the impl item type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -2747,7 +2751,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 );
             }
             AssocItemKind::Type(box TyAlias { generics, .. }) => {
-                debug!("resolve_implementation AssocItemKind::Type");
+                debug!("AssocItemKind::Type");
                 // We also need a new scope for the impl item type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -2884,8 +2888,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn resolve_local(&mut self, local: &'ast Local) {
-        debug!("resolving local ({:?})", local);
         // Resolve the type.
         walk_list!(self, visit_ty, &local.ty);
 
@@ -3310,6 +3314,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
     }
 
+    #[instrument(level = "debug", skip(self, source), ret)]
     fn smart_resolve_path_fragment(
         &mut self,
         qself: Option<&QSelf>,
@@ -3317,10 +3322,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         source: PathSource<'ast>,
         finalize: Finalize,
     ) -> PartialRes {
-        debug!(
-            "smart_resolve_path_fragment(qself={:?}, path={:?}, finalize={:?})",
-            qself, path, finalize,
-        );
         let ns = source.namespace();
 
         let Finalize { node_id, path_span, .. } = finalize;
@@ -3575,6 +3576,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     /// Handles paths that may refer to associated items.
+    #[instrument(level = "debug", skip(self), ret)]
     fn resolve_qpath(
         &mut self,
         qself: Option<&QSelf>,
@@ -3582,11 +3584,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ns: Namespace,
         finalize: Finalize,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
-        debug!(
-            "resolve_qpath(qself={:?}, path={:?}, ns={:?}, finalize={:?})",
-            qself, path, ns, finalize,
-        );
-
         if let Some(qself) = qself {
             if qself.position == 0 {
                 // This is a case like `<T>::B`, where there is no
@@ -3685,6 +3682,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         Ok(Some(result))
     }
 
+    #[instrument(level = "trace", skip(self, f))]
     fn with_resolved_label(&mut self, label: Option<Label>, id: NodeId, f: impl FnOnce(&mut Self)) {
         if let Some(label) = label {
             if label.ident.as_str().as_bytes()[1] != b'_' {
@@ -3760,8 +3758,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("(resolving block) leaving block");
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn resolve_anon_const(&mut self, constant: &'ast AnonConst, is_repeat: IsRepeatExpr) {
-        debug!("resolve_anon_const {:?} is_repeat: {:?}", constant, is_repeat);
         self.with_constant_rib(
             is_repeat,
             if constant.value.is_potential_trivial_const_param() {
@@ -3774,8 +3772,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn resolve_inline_const(&mut self, constant: &'ast AnonConst) {
-        debug!("resolve_anon_const {constant:?}");
         self.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, None, |this| {
             visit::walk_anon_const(this, constant)
         });
