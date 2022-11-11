@@ -614,7 +614,7 @@ impl Map {
         }
     }
 
-    /// Register fields of the given (local, projection) place.
+    /// Potentially register the (local, projection) place and its fields, recursively.
     ///
     /// Invariant: The projection must only contain fields.
     fn register_with_filter_rec<'tcx>(
@@ -626,13 +626,16 @@ impl Map {
         filter: &mut impl FnMut(Ty<'tcx>) -> bool,
         exclude: &FxHashSet<Place<'tcx>>,
     ) {
-        if exclude.contains(&Place { local, projection: tcx.intern_place_elems(projection) }) {
+        let place = Place { local, projection: tcx.intern_place_elems(projection) };
+        if exclude.contains(&place) {
             // This will also exclude all projections of the excluded place.
             return;
         }
 
         // Note: The framework supports only scalars for now.
         if filter(ty) && ty.is_scalar() {
+            trace!("registering place: {:?}", place);
+
             // We know that the projection only contains trackable elements.
             let place = self.make_place(local, projection).unwrap();
 
