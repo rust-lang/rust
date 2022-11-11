@@ -1,5 +1,8 @@
 // run-pass
 // edition:2021
+
+// ignore-wasm no panic or subprocess support
+// ignore-emscripten no panic or subprocess support
 #![feature(closure_track_caller)]
 
 use std::future::Future;
@@ -70,6 +73,6 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
 }
 
 fn main() {
-    assert_eq!(panicked_at(|| block_on(foo())), 40);
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 53);
+    assert_eq!(panicked_at(|| block_on(foo())), 43);
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 56);
 }
