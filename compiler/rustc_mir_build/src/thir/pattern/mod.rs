@@ -577,6 +577,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     self.errors.push(PatternError::ConstParamInPattern(span));
                     return PatKind::Wild;
                 }
+                ConstKind::Error(_) => {
+                    return PatKind::Wild;
+                }
                 _ => bug!("Expected ConstKind::Param"),
             },
             mir::ConstantKind::Val(_, _) => self.const_to_pat(value, id, span, false).kind,
