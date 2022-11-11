@@ -106,6 +106,14 @@ impl GlobalState {
             status.health = lsp_ext::Health::Error;
             status.message = Some(error)
         }
+
+        if self.config.linked_projects().is_empty()
+            && self.config.detached_files().is_empty()
+            && self.config.notifications().cargo_toml_not_found
+        {
+            status.health = lsp_ext::Health::Warning;
+            status.message = Some("Workspace reload required".to_string())
+        }
         status
     }
 
@@ -427,9 +435,14 @@ impl GlobalState {
     fn fetch_workspace_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
-        for ws in self.fetch_workspaces_queue.last_op_result() {
-            if let Err(err) = ws {
-                stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
+        let last_op_result = self.fetch_workspaces_queue.last_op_result();
+        if last_op_result.is_empty() {
+            stdx::format_to!(buf, "rust-analyzer failed to discover workspace");
+        } else {
+            for ws in last_op_result {
+                if let Err(err) = ws {
+                    stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
+                }
             }
         }
 
