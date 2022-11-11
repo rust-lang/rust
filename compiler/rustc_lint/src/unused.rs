@@ -9,7 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::util::elaborate_predicates_with_span;
 use rustc_middle::ty::adjustment;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
@@ -87,17 +87,33 @@ declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
-        let expr = match s.kind {
-            hir::StmtKind::Semi(ref expr) => &**expr,
-            _ => return,
-        };
+        let hir::StmtKind::Semi(expr) = s.kind else { return; };
 
         if let hir::ExprKind::Ret(..) = expr.kind {
             return;
         }
 
+        if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
+            && let ty = cx.typeck_results().expr_ty(&await_expr)
+            && let ty::Opaque(future_def_id, _) = ty.kind()
+            && cx.tcx.ty_is_opaque_future(ty)
+            // FIXME: This also includes non-async fns that return `impl Future`.
+            && let async_fn_def_id = cx.tcx.parent(*future_def_id)
+            && check_must_use_def(
+                cx,
+                async_fn_def_id,
+                expr.span,
+                "output of future returned by ",
+                "",
+            )
+        {
+            // We have a bare `foo().await;` on an opaque type from an async function that was
+            // annotated with `#[must_use]`.
+            return;
+        }
+
         let ty = cx.typeck_results().expr_ty(&expr);
-        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1);
+        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, expr.span, "", "", 1);
 
         let mut fn_warned = false;
         let mut op_warned = false;
@@ -119,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             _ => None,
         };
         if let Some(def_id) = maybe_def_id {
-            fn_warned = check_must_use_def(cx, def_id, s.span, "return value of ", "");
+            fn_warned = check_must_use_def(cx, def_id, expr.span, "return value of ", "");
         } else if type_permits_lack_of_use {
             // We don't warn about unused unit or uninhabited types.
             // (See https://github.com/rust-lang/rust/issues/43806 for details.)
