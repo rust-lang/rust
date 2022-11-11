@@ -210,8 +210,8 @@ metrics.
 
 ## link-self-contained
 
-On targets that support it this flag controls whether the linker will use libraries and objects
-shipped with Rust instead or those in the system.
+On `windows-gnu`, `linux-musl`, and `wasi` targets, this flag controls whether the
+linker will use libraries and objects shipped with Rust instead or those in the system.
 It takes one of the following values:
 
 * no value: rustc will use heuristic to disable self-contained mode if system has necessary tools.
