@@ -580,7 +580,7 @@ fn module_resolution_decl_inside_inline_module_in_crate_root() {
 //- /main.rs
 mod foo {
     #[path = "baz.rs"]
-    mod bar;
+    pub mod bar;
 }
 use self::foo::bar::Baz;
 

@@ -268,12 +268,12 @@ fn main() {
     foo::Foo { bar: 3, $0baz: false};
 }
 //- /foo.rs
-struct Foo {
+pub struct Foo {
     bar: i32
 }
 "#,
             r#"
-struct Foo {
+pub struct Foo {
     bar: i32,
     pub(crate) baz: bool
 }

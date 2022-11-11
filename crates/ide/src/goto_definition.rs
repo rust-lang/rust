@@ -289,10 +289,10 @@ mod b;
 enum E { X(Foo$0) }
 
 //- /a.rs
-struct Foo;
-     //^^^
+pub struct Foo;
+         //^^^
 //- /b.rs
-struct Foo;
+pub struct Foo;
 "#,
         );
     }
