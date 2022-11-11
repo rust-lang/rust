@@ -451,7 +451,7 @@ impl GlobalState {
                     ProjectWorkspaceProgress::Begin => (Progress::Begin, None),
                     ProjectWorkspaceProgress::Report(msg) => (Progress::Report, Some(msg)),
                     ProjectWorkspaceProgress::End(workspaces) => {
-                        self.fetch_workspaces_queue.op_completed(workspaces);
+                        self.fetch_workspaces_queue.op_completed(Some(workspaces));
 
                         let old = Arc::clone(&self.workspaces);
                         self.switch_workspaces("fetched workspace".to_string());
