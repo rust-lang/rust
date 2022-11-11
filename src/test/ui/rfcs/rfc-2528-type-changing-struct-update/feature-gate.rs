@@ -18,10 +18,9 @@ fn update_to_state2() {
         common_field2: 2,
     };
     let m2: Machine<State2> = Machine {
-        state: State2,
+        state: State1,
+        //~^ ERROR mismatched types [E0308]
         ..m1
-        //~^ ERROR type changing struct updating is experimental [E0658]
-        //~| ERROR mismatched types [E0308]
     };
     assert_eq!(State2, m2.state);
 }
