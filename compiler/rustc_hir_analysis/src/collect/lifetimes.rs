@@ -693,8 +693,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             self.tcx.sess,
                             lifetime.span,
                             E0657,
-                            "`impl Trait` can only capture lifetimes \
-                                    bound at the fn or impl level"
+                            "`impl Trait` can only capture lifetimes bound at the fn or impl level"
                         )
                         .emit();
                         self.uninsert_lifetime_on_error(lifetime, def.unwrap());
@@ -704,9 +703,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     }) = self.tcx.hir().get(parent_id)
                     {
                         let mut err = self.tcx.sess.struct_span_err(
-                                lifetime.span,
-                                "higher kinded lifetime bounds on nested opaque types are not supported yet",
-                            );
+                            lifetime.span,
+                            "higher kinded lifetime bounds on nested opaque types are not supported yet",
+                        );
                         err.span_note(self.tcx.def_span(def_id), "lifetime declared here");
                         err.emit();
                         self.uninsert_lifetime_on_error(lifetime, def.unwrap());
