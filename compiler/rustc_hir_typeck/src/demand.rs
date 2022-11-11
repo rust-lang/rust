@@ -43,7 +43,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
             || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
             || self.suggest_into(err, expr, expr_ty, expected)
-            || self.suggest_option_to_bool(err, expr, expr_ty, expected);
+            || self.suggest_option_to_bool(err, expr, expr_ty, expected)
+            || self.suggest_floating_point_literal(err, expr, expected);
 
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
