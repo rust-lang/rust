@@ -1823,9 +1823,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug_assert!(self.diagnostic_metadata.current_trait_object.is_some());
 
         if self.in_func_params {
-            self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
-                this.resolve_anonymous_lifetime(lifetime, false)
-            });
+            self.with_lifetime_rib(
+                LifetimeRibKind::Elided(LifetimeRes::ImplicitObjectLifetimeDefault),
+                |this| this.resolve_anonymous_lifetime(lifetime, false),
+            );
         } else {
             self.resolve_anonymous_lifetime(lifetime, false);
         }
@@ -1850,7 +1851,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     candidates.push((res, candidate));
                 }
             }
-            LifetimeRes::Infer | LifetimeRes::Error | LifetimeRes::ElidedAnchor { .. } => {}
+            LifetimeRes::ImplicitObjectLifetimeDefault
+            | LifetimeRes::Infer
+            | LifetimeRes::Error
+            | LifetimeRes::ElidedAnchor { .. } => {}
         }
     }
 

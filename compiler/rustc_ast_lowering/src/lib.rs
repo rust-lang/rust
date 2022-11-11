@@ -2131,6 +2131,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 hir::LifetimeName::Param(param, ParamName::Fresh)
             }
+            LifetimeRes::ImplicitObjectLifetimeDefault => {
+                hir::LifetimeName::ImplicitObjectLifetimeDefault
+            }
             LifetimeRes::Infer => hir::LifetimeName::Infer,
             LifetimeRes::Static => hir::LifetimeName::Static,
             LifetimeRes::Error => hir::LifetimeName::Error,

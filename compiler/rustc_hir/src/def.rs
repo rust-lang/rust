@@ -765,6 +765,8 @@ pub enum LifetimeRes {
         /// Id of the introducing place. See `Param`.
         binder: NodeId,
     },
+    /// FIXME(bgr360): document this.
+    ImplicitObjectLifetimeDefault,
     /// This variant is used for anonymous lifetimes that we did not resolve during
     /// late resolution.  Those lifetimes will be inferred by typechecking.
     Infer,
@@ -773,5 +775,8 @@ pub enum LifetimeRes {
     /// Resolution failure.
     Error,
     /// HACK: This is used to recover the NodeId of an elided lifetime.
-    ElidedAnchor { start: NodeId, end: NodeId },
+    ElidedAnchor {
+        start: NodeId,
+        end: NodeId,
+    },
 }

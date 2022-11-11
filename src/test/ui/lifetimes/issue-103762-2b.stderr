@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/issue-103762-3.rs:10:8
+  --> $DIR/issue-103762-2b.rs:10:8
    |
 LL |     -> &str { loop {} }
    |        ^ expected named lifetime parameter
