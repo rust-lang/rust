@@ -10,8 +10,8 @@ use super::{
 use crate::errors::{
     AssignmentElseNotAllowed, CompoundAssignmentExpressionInLet, ConstLetMutuallyExclusive,
     DocCommentDoesNotDocumentAnything, ExpectedStatementAfterOuterAttr, InvalidCurlyInLetElse,
-    InvalidExpressionInLetElse, InvalidVariableDeclaration, InvalidVariableDeclarationSub,
-    WrapExpressionInParentheses,
+    InvalidExpressionInLetElse, InvalidIdentiferStartsWithNumber, InvalidVariableDeclaration,
+    InvalidVariableDeclarationSub, WrapExpressionInParentheses,
 };
 use crate::maybe_whole;
 
@@ -264,6 +264,7 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
+        self.report_invalid_identifier_error()?;
         let (pat, colon) = self.parse_pat_before_ty(None, RecoverComma::Yes, "`let` bindings")?;
 
         let (err, ty) = if colon {
@@ -353,6 +354,18 @@ impl<'a> Parser<'a> {
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local { ty, pat, kind, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
+    }
+
+    /// report error for `let 1x = 123`
+    pub fn report_invalid_identifier_error(&mut self) -> PResult<'a, ()> {
+        if let token::Literal(lit) = self.token.uninterpolate().kind &&
+            let Err(_) = rustc_ast::Lit::from_token(&self.token) &&
+            (lit.kind == token::LitKind::Integer || lit.kind == token::LitKind::Float) &&
+            self.look_ahead(1, |t| matches!(t.kind, token::Eq) || matches!(t.kind, token::Colon ) ) {
+                let err = self.sess.create_err(InvalidIdentiferStartsWithNumber { span: self.token.span });
+                return Err(err);
+        }
+        Ok(())
     }
 
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
