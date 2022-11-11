@@ -584,6 +584,12 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
     /// If it is `true`, then it will be updated when entering a nested function or trait body.
     in_func_body: bool,
 
+    /// State used to know whether we are currently resolving params for a
+    /// function or closure.
+    ///
+    /// Notably, rustc uses this to allow `dyn Trait + '_` in certain cases.
+    in_func_params: bool,
+
     /// Count the number of places a lifetime is used.
     lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
 }
@@ -923,6 +929,16 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, use_ctxt: visit::LifetimeCtxt) {
         self.resolve_lifetime(lifetime, use_ctxt)
     }
+    fn visit_param_bound(&mut self, bound: &'ast GenericBound, bound_kind: BoundKind) {
+        match (bound_kind, bound) {
+            (BoundKind::TraitObject, GenericBound::Outlives(lifetime @ Lifetime { ident, .. }))
+                if ident.name == kw::UnderscoreLifetime =>
+            {
+                self.resolve_anonymous_lifetime_in_trait_object_bounds(lifetime);
+            }
+            _ => visit::walk_param_bound(self, bound),
+        }
+    }
 
     fn visit_generics(&mut self, generics: &'ast Generics) {
         self.visit_generic_params(
@@ -1173,6 +1189,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             diagnostic_metadata: Box::new(DiagnosticMetadata::default()),
             // errors at module scope should always be reported
             in_func_body: false,
+            in_func_params: false,
             lifetime_uses: Default::default(),
         }
     }
@@ -1788,6 +1805,32 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
+    /// For backwards compatibility, we need to accept the following:
+    ///
+    /// ```
+    /// trait AsStr {
+    ///     fn as_str(&self) -> &str;
+    /// }
+    ///
+    /// fn foo(a: &(dyn AsStr + '_)) -> &str { a.as_str() }
+    /// ```
+    ///
+    /// When we're resolving function parameters, we usually want each elided or
+    /// anonymous lifetime to result in a new elision candidate, but not in this case.
+    #[instrument(level = "trace", skip(self))]
+    fn resolve_anonymous_lifetime_in_trait_object_bounds(&mut self, lifetime: &Lifetime) {
+        debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
+        debug_assert!(self.diagnostic_metadata.current_trait_object.is_some());
+
+        if self.in_func_params {
+            self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                this.resolve_anonymous_lifetime(lifetime, false)
+            });
+        } else {
+            self.resolve_anonymous_lifetime(lifetime, false);
+        }
+    }
+
     #[instrument(level = "debug", skip(self))]
     fn record_lifetime_res(
         &mut self,
@@ -1834,6 +1877,19 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let elision_lifetime = self.resolve_fn_params(has_self, inputs);
         debug!(?elision_lifetime);
 
+        // We might be about to resolve the return type of some
+        // `fn() -> T`-typed parameter, like:
+        //
+        // ```
+        // fn foo(f: fn(&str) -> Box<dyn Trait + '_>) { ... }
+        // ```
+        //
+        // In that case, we don't want to act like we're resolving function
+        // parameters.
+        //
+        // FIXME(bgr360): test multiple levels of this
+        let outer_in_params = replace(&mut self.in_func_params, false);
+
         let outer_failures = take(&mut self.diagnostic_metadata.current_elision_failures);
         let output_rib = if let Ok(res) = elision_lifetime.as_ref() {
             LifetimeRibKind::Elided(*res)
@@ -1872,7 +1928,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             Err,
         }
 
-        // Save elision state to reinstate it later.
+        // Save state to reinstate it later.
+        let outer_in_params = replace(&mut self.in_func_params, true);
         let outer_candidates = self.lifetime_elision_candidates.take();
 
         // Result of elision.
@@ -1895,9 +1952,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             self.lifetime_elision_candidates = Some(Default::default());
             self.visit_ty(ty);
             let local_candidates = self.lifetime_elision_candidates.take();
+            trace!(?local_candidates);
 
             if let Some(candidates) = local_candidates {
                 let distinct: FxHashSet<_> = candidates.iter().map(|(res, _)| *res).collect();
+                trace!(?distinct);
                 let lifetime_count = distinct.len();
                 if lifetime_count != 0 {
                     parameter_info.push(ElisionFnParameter {
@@ -1952,12 +2011,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     elision_lifetime = Elision::None;
                 }
             }
+            trace!(?elision_lifetime);
             debug!("(resolving function / closure) recorded parameter");
         }
 
-        // Reinstate elision state.
+        // Reinstate state.
         debug_assert_matches!(self.lifetime_elision_candidates, None);
         self.lifetime_elision_candidates = outer_candidates;
+        self.in_func_params = outer_in_params;
 
         if let Elision::Param(res) | Elision::Self_(res) = elision_lifetime {
             return Ok(res);
