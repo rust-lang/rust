@@ -3,6 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
+use crate::convert::TryFrom;
 use crate::error::Error;
 use crate::intrinsics;
 use crate::mem;
@@ -1076,6 +1077,18 @@ macro_rules! from_str_radix_int_impl {
     )*}
 }
 from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
+
+macro_rules! try_from_str_radix_int_impl {
+    ($($t:ty)*) => {$(
+        impl<'a> TryFrom<&'a str> for $t {
+            type Error = ParseIntError;
+            fn try_from(src: &'a str) -> Result<Self, ParseIntError> {
+                from_str_radix(src, 10)
+            }
+        }
+    )*}
+}
+try_from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 
 macro_rules! impl_helper_for {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {

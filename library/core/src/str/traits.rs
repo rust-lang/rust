@@ -1,6 +1,7 @@
 //! Trait implementations for `str`.
 
 use crate::cmp::Ordering;
+use crate::convert::TryFrom;
 use crate::ops;
 use crate::ptr;
 use crate::slice::SliceIndex;
@@ -404,11 +405,19 @@ unsafe impl const SliceIndex<str> for ops::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get(slice) }
+        if *self.end() == usize::MAX {
+            None
+        } else {
+            self.into_slice_range().get(slice)
+        }
     }
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+        if *self.end() == usize::MAX {
+            None
+        } else {
+            self.into_slice_range().get_mut(slice)
+        }
     }
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
@@ -456,11 +465,19 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if self.end == usize::MAX { None } else { (..self.end + 1).get(slice) }
+        if self.end == usize::MAX {
+            None
+        } else {
+            (..self.end + 1).get(slice)
+        }
     }
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if self.end == usize::MAX { None } else { (..self.end + 1).get_mut(slice) }
+        if self.end == usize::MAX {
+            None
+        } else {
+            (..self.end + 1).get_mut(slice)
+        }
     }
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
@@ -599,6 +616,41 @@ impl FromStr for bool {
     /// ```
     #[inline]
     fn from_str(s: &str) -> Result<bool, ParseBoolError> {
+        match s {
+            "true" => Ok(true),
+            "false" => Ok(false),
+            _ => Err(ParseBoolError),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a str> for bool {
+    type Error = ParseBoolError;
+
+    /// Parse a `bool` from a string.
+    ///
+    /// The only accepted values are `"true"` and `"false"`. Any other input
+    /// will return an error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::str::FromStr;
+    ///
+    /// assert_eq!(FromStr::from_str("true"), Ok(true));
+    /// assert_eq!(FromStr::from_str("false"), Ok(false));
+    /// assert!(<bool as FromStr>::from_str("not even a boolean").is_err());
+    /// ```
+    ///
+    /// Note, in many cases, the `.parse()` method on `str` is more proper.
+    ///
+    /// ```
+    /// assert_eq!("true".parse(), Ok(true));
+    /// assert_eq!("false".parse(), Ok(false));
+    /// assert!("not even a boolean".parse::<bool>().is_err());
+    /// ```
+    #[inline]
+    fn try_from(s: &'a str) -> Result<bool, ParseBoolError> {
         match s {
             "true" => Ok(true),
             "false" => Ok(false),

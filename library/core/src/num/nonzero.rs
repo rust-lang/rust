@@ -194,6 +194,23 @@ macro_rules! from_str_radix_nzint_impl {
 from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize
 NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
 
+macro_rules! try_from_str_radix_nzint_impl {
+    ($($t:ty)*) => {$(
+        impl<'a> TryFrom<&'a str> for $t {
+            type Error = ParseIntError;
+            fn try_from(src: &'a str) -> Result<Self, Self::Err> {
+                Self::new(from_str_radix(src, 10)?)
+                    .ok_or(ParseIntError {
+                        kind: IntErrorKind::Zero
+                    })
+            }
+        }
+    )*}
+}
+
+try_from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize
+NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
+
 macro_rules! nonzero_leading_trailing_zeros {
     ( $( $Ty: ident($Uint: ty) , $LeadingTestExpr:expr ;)+ ) => {
         $(

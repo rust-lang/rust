@@ -194,6 +194,20 @@ impl FromStr for char {
     }
 }
 
+impl<'a> TryFrom<&'a str> for char {
+    type Error = ParseCharError;
+
+    #[inline]
+    fn try_from(s: &'a str) -> Result<Self, Self::Err> {
+        let mut chars = s.chars();
+        match (chars.next(), chars.next()) {
+            (None, _) => Err(ParseCharError { kind: CharErrorKind::EmptyString }),
+            (Some(c), None) => Ok(c),
+            _ => Err(ParseCharError { kind: CharErrorKind::TooManyChars }),
+        }
+    }
+}
+
 #[inline]
 const fn char_try_from_u32(i: u32) -> Result<char, CharTryFromError> {
     // This is an optimized version of the check

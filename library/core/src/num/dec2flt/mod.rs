@@ -75,6 +75,7 @@
     issue = "none"
 )]
 
+use crate::convert::TryFrom;
 use crate::fmt;
 use crate::str::FromStr;
 
@@ -155,6 +156,66 @@ macro_rules! from_str_float_impl {
 }
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
+
+macro_rules! try_from_str_float_impl {
+    ($t:ty) => {
+        impl<'a> TryFrom<&'a str> for $t {
+            type Error = ParseFloatError;
+
+            /// Converts a string in base 10 to a float.
+            /// Accepts an optional decimal exponent.
+            ///
+            /// This function accepts strings such as
+            ///
+            /// * '3.14'
+            /// * '-3.14'
+            /// * '2.5E10', or equivalently, '2.5e10'
+            /// * '2.5E-10'
+            /// * '5.'
+            /// * '.5', or, equivalently, '0.5'
+            /// * 'inf', '-inf', '+infinity', 'NaN'
+            ///
+            /// Note that alphabetical characters are not case-sensitive.
+            ///
+            /// Leading and trailing whitespace represent an error.
+            ///
+            /// # Grammar
+            ///
+            /// All strings that adhere to the following [EBNF] grammar when
+            /// lowercased will result in an [`Ok`] being returned:
+            ///
+            /// ```txt
+            /// Float  ::= Sign? ( 'inf' | 'infinity' | 'nan' | Number )
+            /// Number ::= ( Digit+ |
+            ///              Digit+ '.' Digit* |
+            ///              Digit* '.' Digit+ ) Exp?
+            /// Exp    ::= 'e' Sign? Digit+
+            /// Sign   ::= [+-]
+            /// Digit  ::= [0-9]
+            /// ```
+            ///
+            /// [EBNF]: https://www.w3.org/TR/REC-xml/#sec-notation
+            ///
+            /// # Arguments
+            ///
+            /// * src - A string
+            ///
+            /// # Return value
+            ///
+            /// `Err(ParseFloatError)` if the string did not represent a valid
+            /// number. Otherwise, `Ok(n)` where `n` is the closest
+            /// representable floating-point number to the number represented
+            /// by `src` (following the same rules for rounding as for the
+            /// results of primitive operations).
+            #[inline]
+            fn try_from(src: &'a str) -> Result<Self, ParseFloatError> {
+                dec2flt(src)
+            }
+        }
+    };
+}
+try_from_str_float_impl!(f32);
+try_from_str_float_impl!(f64);
 
 /// An error which can be returned when parsing a float.
 ///
