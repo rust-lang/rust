@@ -12,6 +12,7 @@ and [BlackBerry][BlackBerry].
 ## Target maintainers
 
 - Florian Bartels, `Florian.Bartels@elektrobit.com`, https://github.com/flba-eb
+- Tristan Roach, `TRoach@blackberry.com`, https://github.com/gh-tr
 
 ## Requirements
 
