@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{BasicBlock, Body, Location};
 
