@@ -33,6 +33,7 @@
     - [nvptx64-nvidia-cuda](platform-support/nvptx64-nvidia-cuda.md)
     - [riscv32imac-unknown-xous-elf](platform-support/riscv32imac-unknown-xous-elf.md)
     - [*-pc-windows-gnullvm](platform-support/pc-windows-gnullvm.md)
+    - [\*-nto-qnx-\*](platform-support/nto-qnx.md)
     - [*-unknown-openbsd](platform-support/openbsd.md)
     - [\*-unknown-uefi](platform-support/unknown-uefi.md)
     - [wasm64-unknown-unknown](platform-support/wasm64-unknown-unknown.md)
