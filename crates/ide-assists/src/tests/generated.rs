@@ -741,7 +741,7 @@ mod m {
     fn frobnicate() {}
 }
 fn main() {
-    m::frobnicate$0() {}
+    m::frobnicate$0();
 }
 "#####,
         r#####"
@@ -749,7 +749,7 @@ mod m {
     $0pub(crate) fn frobnicate() {}
 }
 fn main() {
-    m::frobnicate() {}
+    m::frobnicate();
 }
 "#####,
     )
