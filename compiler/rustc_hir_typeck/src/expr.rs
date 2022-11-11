@@ -1667,16 +1667,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         self.register_predicates(obligations)
                                     }
                                     Err(_) => {
-                                        // This should never happen, since we're just subtyping the
-                                        // remaining_fields, but it's fine to emit this, I guess.
-                                        self.err_ctxt()
-                                            .report_mismatched_types(
-                                                &cause,
-                                                target_ty,
-                                                fru_ty,
-                                                FieldMisMatch(variant.name, ident.name),
-                                            )
-                                            .emit();                                    }
+                                        bug!("subtype fresh substs failed")
+                                    }
                                 }
                             }
                             self.resolve_vars_if_possible(fru_ty)
@@ -1701,12 +1693,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // This is important to allow coercions to happen in
                     // `other_struct` itself. See `coerce-in-base-expr.rs`.
                     let fresh_base_ty = self.tcx.mk_adt(*adt, fresh_substs);
-                    self.check_expr_has_type_or_error(
-                        base_expr,
-                        fresh_base_ty,
-                        |_| {},
-                    );
-                    self.typeck_results.borrow_mut().base_expr_backup_mut().insert(base_expr.hir_id, (fresh_base_ty, adt_ty));
+                    self.check_expr_has_type_or_error(base_expr, fresh_base_ty, |_| {});
+                    let fresh_base_ty = self.resolve_vars_if_possible(fresh_base_ty);
+                    if fresh_base_ty.needs_infer() {
+                        self.typeck_results.borrow_mut().base_expr_backup.push((
+                            base_expr.span,
+                            adt_ty,
+                            fresh_base_ty,
+                        ));
+                    }
                     fru_tys
                 } else {
                     // Check the base_expr, regardless of a bad expected adt_ty, so we can get

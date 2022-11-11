@@ -50,6 +50,7 @@ use self::region_constraints::{
 use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 
 pub mod at;
+pub mod base_struct;
 pub mod canonical;
 mod combine;
 mod equate;
@@ -71,7 +72,6 @@ pub mod resolve;
 mod sub;
 pub mod type_variable;
 mod undo_log;
-pub mod base_struct;
 
 #[must_use]
 #[derive(Debug)]

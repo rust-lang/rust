@@ -341,6 +341,10 @@ fn typeck_with_fallback<'tcx>(
             fcx.require_type_is_sized(ty, span, code);
         }
 
+        // If the base structs used to creat structs still remain infer generics,
+        // unify it with the created ones.
+        fcx.resolve_base_expr();
+
         fcx.select_all_obligations_or_error();
 
         if !fcx.infcx.is_tainted_by_errors() {

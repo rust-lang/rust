@@ -11,7 +11,8 @@ use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
 pub struct Sub<'combine, 'a, 'tcx> {
-    fields: &'combine mut CombineFields<'a, 'tcx>,    a_is_expected: bool,
+    fields: &'combine mut CombineFields<'a, 'tcx>,
+    a_is_expected: bool,
 }
 
 impl<'combine, 'infcx, 'tcx> Sub<'combine, 'infcx, 'tcx> {

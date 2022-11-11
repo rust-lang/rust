@@ -606,11 +606,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(in super::super) fn resolve_base_expr(&self) {
-        for (_, (base_ty, adt_ty)) in self.typeck_results.borrow().base_expr_backup().iter() {
+        for (span, adt_ty, base_ty) in self.typeck_results.borrow().base_expr_backup.iter() {
             let base_ty = self.resolve_vars_if_possible(*base_ty);
-            if base_ty.has_infer_types() {
-                if let Some(mut err) =
-                    self.demand_base_struct(&self.misc(DUMMY_SP), *adt_ty, base_ty)
+            if base_ty.needs_infer() {
+                if let Some(mut err) = self.demand_base_struct(&self.misc(*span), *adt_ty, base_ty)
                 {
                     err.emit();
                 }

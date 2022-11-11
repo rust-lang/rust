@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-101970.rs:34:35
+   |
+LL | impl<P: Default, T: Default> Foo<P, T> {
+   |                  - found type parameter
+...
+LL |     pub fn o3<T2: Default>(t1: T, t2: T2) -> (Foo<P, T>, Foo<P, T2>) {
+   |               -- expected type parameter
+...
+LL |         let foo2 = Foo { t: t2, ..d };
+   |                                   ^ expected type parameter `T2`, found type parameter `T`
+   |
+   = note: expected type parameter `T2`
+              found type parameter `T`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

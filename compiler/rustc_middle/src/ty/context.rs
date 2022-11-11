@@ -515,8 +515,6 @@ pub struct TypeckResults<'tcx> {
     /// MIR construction and hence is not serialized to metadata.
     fru_field_types: ItemLocalMap<Vec<Ty<'tcx>>>,
 
-    base_expr_backup: ItemLocalMap<(Ty<'tcx>, Ty<'tcx>)>,
-
     /// For every coercion cast we add the HIR node ID of the cast
     /// expression to this set.
     coercion_casts: ItemLocalSet,
@@ -583,6 +581,10 @@ pub struct TypeckResults<'tcx> {
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
     pub closure_size_eval: FxHashMap<LocalDefId, ClosureSizeProfileData<'tcx>>,
+
+    /// Hold the generic parameters that were not fully instantiated when
+    /// creating a struct from a base struct.
+    pub base_expr_backup: Vec<(Span, Ty<'tcx>, Ty<'tcx>)>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -838,14 +840,6 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn fru_field_types_mut(&mut self) -> LocalTableInContextMut<'_, Vec<Ty<'tcx>>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.fru_field_types }
-    }
-
-    pub fn base_expr_backup(&self) -> LocalTableInContext<'_, (Ty<'tcx>, Ty<'tcx>)> {
-        LocalTableInContext { hir_owner: self.hir_owner, data: &self.base_expr_backup }
-    }
-
-    pub fn base_expr_backup_mut(&mut self) -> LocalTableInContextMut<'_, (Ty<'tcx>, Ty<'tcx>)> {
-        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.base_expr_backup }
     }
 
     pub fn is_coercion_cast(&self, hir_id: hir::HirId) -> bool {

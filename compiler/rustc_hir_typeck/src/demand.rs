@@ -1,14 +1,10 @@
 use crate::FnCtxt;
-use rustc_infer::infer::base_struct::base_struct;
-use rustc_infer::infer::InferOk;
-use rustc_middle::middle::stability::EvalResult;
-use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::ObligationCause;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
+use rustc_infer::infer::base_struct::base_struct;
 use rustc_infer::infer::InferOk;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
@@ -183,16 +179,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn demand_base_struct(
         &self,
         cause: &ObligationCause<'tcx>,
-        expected: Ty<'tcx>,
-        actual: Ty<'tcx>,
+        adt_ty: Ty<'tcx>,
+        base_ty: Ty<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let at = self.at(cause, self.param_env);
-        match base_struct(at, expected, actual) {
+        match base_struct(at, adt_ty, base_ty) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
                 None
             }
-            Err(e) => Some(self.report_mismatched_types(&cause, expected, actual, e)),
+            Err(e) => Some(self.err_ctxt().report_mismatched_types(&cause, adt_ty, base_ty, e)),
         }
     }
 
