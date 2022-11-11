@@ -32,6 +32,7 @@
 //! Because of that, we can assume that the only way to change the value behind a tracked place is
 //! by direct assignment.
 
+use either::Either;
 use std::fmt::{Debug, Formatter};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -362,7 +363,7 @@ where
     }
 
     fn initial_work(&self) -> Option<FxHashSet<BasicBlock>> {
-        Some(self.0.map().constants.clone())
+        Some(self.0.map().blocks_with_constants.clone())
     }
 }
 
@@ -574,7 +575,12 @@ pub struct Map {
     projections: FxHashMap<(PlaceIndex, TrackElem), PlaceIndex>,
     places: IndexVec<PlaceIndex, PlaceInfo>,
     value_count: usize,
-    constants: FxHashSet<BasicBlock>,
+    blocks_with_constants: FxHashSet<BasicBlock>,
+}
+
+pub enum FilterError {
+    NoConstants,
+    TooManyConstants,
 }
 
 impl Map {
@@ -584,7 +590,7 @@ impl Map {
             projections: FxHashMap::default(),
             places: IndexVec::new(),
             value_count: 0,
-            constants: FxHashSet::default(),
+            blocks_with_constants: FxHashSet::default(),
         }
     }
 
@@ -598,13 +604,20 @@ impl Map {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         filter: impl FnMut(Ty<'tcx>) -> bool,
-    ) -> Self {
+        limit: usize,
+    ) -> Result<Self, FilterError> {
+        let (escaped_places, blocks_with_constants) = escaped_places(body, limit);
+        if blocks_with_constants.is_empty() {
+            return Err(FilterError::NoConstants);
+        }
+        if blocks_with_constants.len() > limit {
+            return Err(FilterError::TooManyConstants);
+        }
         let mut map = Self::new();
-        let (escaped, constants) = escaped_places(body);
-        map.register_with_filter(tcx, body, filter, &escaped);
+        map.register_with_filter(tcx, body, filter, &escaped_places);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
-        map.constants = constants;
-        map
+        map.blocks_with_constants = blocks_with_constants;
+        Ok(map)
     }
 
     /// Register all non-excluded places that pass the filter.
@@ -703,8 +716,8 @@ impl Map {
     }
 
     /// Returns the number of constants in this Body
-    pub fn constants(&self) -> usize {
-        self.constants.len()
+    pub fn blocks_with_constants(&self) -> usize {
+        self.blocks_with_constants.len()
     }
 
     /// Applies a single projection element, yielding the corresponding child.
@@ -855,31 +868,54 @@ fn iter_fields<'tcx>(
 /// Returns all places, that have their reference or address taken.
 ///
 /// This includes shared references, and also drops and `InlineAsm` out parameters.
-fn escaped_places<'tcx>(body: &Body<'tcx>) -> (FxHashSet<Place<'tcx>>, FxHashSet<BasicBlock>) {
-    struct Collector<'tcx> {
-        result: FxHashSet<Place<'tcx>>,
+fn escaped_places<'tcx>(
+    body: &Body<'tcx>,
+    limit: usize,
+) -> (FxHashSet<Place<'tcx>>, FxHashSet<BasicBlock>) {
+    struct Collector<'tcx, 'a> {
+        body: &'a Body<'tcx>,
+        places: FxHashSet<Place<'tcx>>,
         constants: FxHashSet<BasicBlock>,
+        limit: usize,
     }
 
-    impl<'tcx> Visitor<'tcx> for Collector<'tcx> {
+    impl<'tcx, 'a> Visitor<'tcx> for Collector<'tcx, 'a> {
         fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
+            if self.constants.len() > self.limit {
+                return;
+            }
             if context.is_borrow()
                 || context.is_address_of()
                 || context.is_drop()
                 || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
             {
-                self.result.insert(*place);
+                self.places.insert(*place);
             }
         }
 
         fn visit_constant(&mut self, _constant: &Constant<'tcx>, location: Location) {
+            if self.constants.len() > self.limit {
+                return;
+            }
+            match self.body.stmt_at(location) {
+                Either::Left(statement) => {
+                    if let StatementKind::StorageLive(_) = statement.kind {
+                        return; // Ignore encountering a constant when we are just marking it live
+                    }
+                }
+                Either::Right(_terminator) => {
+                    return; // Ignore constants in terminators
+                }
+            }
             self.constants.insert(location.block);
         }
     }
 
-    let mut collector = Collector { result: FxHashSet::default(), constants: FxHashSet::default() };
+    let mut collector =
+        Collector { places: FxHashSet::default(), constants: FxHashSet::default(), body, limit };
     collector.visit_body(body);
-    (collector.result, collector.constants)
+
+    (collector.places, collector.constants)
 }
 
 /// This is used to visualize the dataflow analysis.

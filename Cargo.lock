@@ -3886,6 +3886,7 @@ dependencies = [
 name = "rustc_mir_dataflow"
 version = "0.0.0"
 dependencies = [
+ "either",
  "polonius-engine",
  "regex",
  "rustc_ast",

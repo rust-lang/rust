@@ -7,14 +7,18 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_mir_dataflow::value_analysis::{Map, State, TrackElem, ValueAnalysis, ValueOrPlace};
+use rustc_mir_dataflow::value_analysis::{
+    FilterError, Map, State, TrackElem, ValueAnalysis, ValueOrPlace,
+};
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, ResultsVisitor, SwitchIntEdgeEffects};
 use rustc_span::DUMMY_SP;
 
 use crate::MirPass;
 
-const BLOCK_LIMIT: usize = 100;
-const PLACE_LIMIT: usize = 100;
+const BLOCK_LIMIT: usize = 1_000_000;
+const PLACE_LIMIT: usize = 1_000_000;
+
+const DATAFLOW_COMPLEXITY_LIMIT: usize = 1_000_000;
 
 pub struct DataflowConstProp;
 
@@ -30,8 +34,25 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
             return;
         }
 
+        // FIXME: This seems to suffice to replace all the other limits. It disables most of the
+        // const prop that is possible in big programs, which is unfortunate.
+        let blocks_with_constants_limit = if tcx.sess.mir_opt_level() < 3 { 1 } else { usize::MAX };
+
         // Decide which places to track during the analysis.
-        let map = Map::from_filter(tcx, body, Ty::is_scalar);
+        let map = match Map::from_filter(tcx, body, Ty::is_scalar, blocks_with_constants_limit) {
+            Ok(map) => map,
+            Err(FilterError::NoConstants) => {
+                debug!("aborted dataflow const prop due to a total lack of constants");
+                return;
+            }
+            Err(FilterError::TooManyConstants) => {
+                debug!(
+                    "aborted dataflow const prop due to finding more than {} blocks with constants",
+                    blocks_with_constants_limit
+                );
+                return;
+            }
+        };
 
         // We want to have a somewhat linear runtime w.r.t. the number of statements/terminators.
         // Let's call this number `n`. Dataflow analysis has `O(h*n)` transfer function
@@ -45,16 +66,20 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
             debug!("aborted dataflow const prop due to too many tracked places");
             return;
         }
-        if map.tracked_places() == 0 {
-            return;
-        }
+        let blocks_with_constants = map.blocks_with_constants();
+        assert!(blocks_with_constants > 0 && blocks_with_constants <= blocks_with_constants_limit);
 
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);
-        let results = debug_span!("analyze")
-            .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint_limited(100));
+        let results = debug_span!("analyze").in_scope(|| {
+            analysis
+                .wrap()
+                .into_engine(tcx, body)
+                .iterate_to_fixpoint_limited(DATAFLOW_COMPLEXITY_LIMIT)
+        });
 
         let Some(results) = results else {
+            debug!("aborted dataflow const prop due to to dataflow complexity limit");
             return;
         };
 
@@ -62,6 +87,11 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
         let mut visitor = CollectAndPatch::new(tcx, &results.analysis.0.map);
         debug_span!("collect").in_scope(|| results.visit_reachable_with(body, &mut visitor));
         debug_span!("patch").in_scope(|| visitor.visit_body(body));
+
+        debug!(
+            "DataflowConstProp considered {} blocks, and propagated {} consts",
+            blocks_with_constants, visitor.props,
+        );
     }
 }
 
@@ -328,11 +358,19 @@ struct CollectAndPatch<'tcx, 'map> {
 
     /// Stores the assigned values for assignments where the Rvalue is constant.
     assignments: FxHashMap<Location, ScalarTy<'tcx>>,
+
+    props: usize,
 }
 
 impl<'tcx, 'map> CollectAndPatch<'tcx, 'map> {
     fn new(tcx: TyCtxt<'tcx>, map: &'map Map) -> Self {
-        Self { tcx, map, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
+        Self {
+            tcx,
+            map,
+            before_effect: FxHashMap::default(),
+            assignments: FxHashMap::default(),
+            props: 0,
+        }
     }
 
     fn make_operand(&self, scalar: ScalarTy<'tcx>) -> Operand<'tcx> {
@@ -404,6 +442,7 @@ impl<'tcx, 'map> MutVisitor<'tcx> for CollectAndPatch<'tcx, 'map> {
             match &mut statement.kind {
                 StatementKind::Assign(box (_, rvalue)) => {
                     *rvalue = Rvalue::Use(self.make_operand(value.clone()));
+                    self.props += 1;
                 }
                 _ => bug!("found assignment info for non-assign statement"),
             }
@@ -417,6 +456,7 @@ impl<'tcx, 'map> MutVisitor<'tcx> for CollectAndPatch<'tcx, 'map> {
             Operand::Copy(place) | Operand::Move(place) => {
                 if let Some(value) = self.before_effect.get(&(location, *place)) {
                     *operand = self.make_operand(value.clone());
+                    self.props += 1;
                 }
             }
             _ => (),
