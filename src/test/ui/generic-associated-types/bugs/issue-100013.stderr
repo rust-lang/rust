@@ -9,15 +9,15 @@ LL | |     }
    | |_____^
    |
 note: the lifetime defined here...
-  --> $DIR/issue-100013.rs:17:38
+  --> $DIR/issue-100013.rs:9:21
    |
-LL |         let x = None::<I::Future<'_, '_>>; // a type referencing GAT
-   |                                      ^^
+LL |     type Future<'s, 'cx>: Send
+   |                     ^^^
 note: ...must outlive the lifetime defined here
-  --> $DIR/issue-100013.rs:17:34
+  --> $DIR/issue-100013.rs:9:17
    |
-LL |         let x = None::<I::Future<'_, '_>>; // a type referencing GAT
-   |                                  ^^
+LL |     type Future<'s, 'cx>: Send
+   |                 ^^
    = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
 
 error: lifetime bound not satisfied
