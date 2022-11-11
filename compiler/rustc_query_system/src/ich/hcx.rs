@@ -49,15 +49,13 @@ pub(super) enum BodyResolver<'tcx> {
 
 impl<'a> StableHashingContext<'a> {
     #[inline]
-    fn new_with_or_without_spans(
+    pub fn new(
         sess: &'a Session,
         definitions: &'a Definitions,
         cstore: &'a dyn CrateStore,
         source_span: &'a IndexVec<LocalDefId, Span>,
-        always_ignore_spans: bool,
     ) -> Self {
-        let hash_spans_initial =
-            !always_ignore_spans && !sess.opts.unstable_opts.incremental_ignore_spans;
+        let hash_spans_initial = !sess.opts.unstable_opts.incremental_ignore_spans;
 
         StableHashingContext {
             body_resolver: BodyResolver::Forbidden,
@@ -69,33 +67,6 @@ impl<'a> StableHashingContext<'a> {
             raw_source_map: sess.source_map(),
             hashing_controls: HashingControls { hash_spans: hash_spans_initial },
         }
-    }
-
-    #[inline]
-    pub fn new(
-        sess: &'a Session,
-        definitions: &'a Definitions,
-        cstore: &'a dyn CrateStore,
-        source_span: &'a IndexVec<LocalDefId, Span>,
-    ) -> Self {
-        Self::new_with_or_without_spans(
-            sess,
-            definitions,
-            cstore,
-            source_span,
-            /*always_ignore_spans=*/ false,
-        )
-    }
-
-    #[inline]
-    pub fn ignore_spans(
-        sess: &'a Session,
-        definitions: &'a Definitions,
-        cstore: &'a dyn CrateStore,
-        source_span: &'a IndexVec<LocalDefId, Span>,
-    ) -> Self {
-        let always_ignore_spans = true;
-        Self::new_with_or_without_spans(sess, definitions, cstore, source_span, always_ignore_spans)
     }
 
     #[inline]
@@ -199,12 +170,6 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     #[inline]
     fn hashing_controls(&self) -> HashingControls {
         self.hashing_controls.clone()
-    }
-}
-
-impl<'a> rustc_data_structures::intern::InternedHashingContext for StableHashingContext<'a> {
-    fn with_def_path_and_no_spans(&mut self, f: impl FnOnce(&mut Self)) {
-        self.while_hashing_spans(false, f);
     }
 }
 
