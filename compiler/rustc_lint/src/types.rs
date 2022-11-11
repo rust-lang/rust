@@ -3,7 +3,7 @@
 use crate::lints::{
     AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
     InvalidAtomicOrderingDiag, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
-    OverflowingBinHexSub, OverflowingInt, OverflowingLiteral, OverflowingUInt,
+    OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
     RangeEndpointOutOfRange, UnusedComparisons, VariantSizeDifferencesDiag,
 };
 use crate::{LateContext, LateLintPass, LintContext};
@@ -339,24 +339,18 @@ fn lint_int_literal<'tcx>(
             return;
         }
 
+        let lit = cx
+            .sess()
+            .source_map()
+            .span_to_snippet(lit.span)
+            .expect("must get snippet from literal");
+        let help = get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
+            .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
+
         cx.emit_spanned_lint(
             OVERFLOWING_LITERALS,
             e.span,
-            OverflowingInt {
-                ty: t.name_str(),
-                lit: cx
-                    .sess()
-                    .source_map()
-                    .span_to_snippet(lit.span)
-                    .expect("must get snippet from literal"),
-                min,
-                max,
-                suggestion_ty: get_type_suggestion(
-                    cx.typeck_results().node_type(e.hir_id),
-                    v,
-                    negative,
-                ),
-            },
+            OverflowingInt { ty: t.name_str(), lit, min, max, help },
         );
     }
 }

@@ -26,7 +26,8 @@ use crate::{
         BuiltinAnonymousParams, BuiltinBoxPointers, BuiltinConstNoMangle,
         BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr, BuiltinEllipsisInclusiveRangePatternsLint,
         BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinIncompleteFeatures,
-        BuiltinKeywordIdents, BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
+        BuiltinIncompleteFeaturesHelp, BuiltinIncompleteFeaturesNote, BuiltinKeywordIdents,
+        BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
         BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
         BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinUnexpectedCliConfigName,
         BuiltinUnexpectedCliConfigValue, BuiltinUnnameableTestItems, BuiltinUnreachablePub,
@@ -2379,14 +2380,17 @@ impl EarlyLintPass for IncompleteFeatures {
             .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
             .filter(|(&name, _)| features.incomplete(name))
             .for_each(|(&name, &span)| {
+                let note = rustc_feature::find_feature_issue(name, GateIssue::Language)
+                    .map(|n| BuiltinIncompleteFeaturesNote { n });
+                let help = if HAS_MIN_FEATURES.contains(&name) {
+                    Some(BuiltinIncompleteFeaturesHelp)
+                } else {
+                    None
+                };
                 cx.emit_spanned_lint(
                     INCOMPLETE_FEATURES,
                     span,
-                    BuiltinIncompleteFeatures {
-                        name,
-                        note: rustc_feature::find_feature_issue(name, GateIssue::Language),
-                        help: HAS_MIN_FEATURES.contains(&name).then_some(()),
-                    },
+                    BuiltinIncompleteFeatures { name, note, help },
                 );
             });
     }

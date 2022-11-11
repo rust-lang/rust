@@ -1,6 +1,6 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-use crate::lints::Expectation;
+use crate::lints::{Expectation, ExpectationNote};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
@@ -29,11 +29,13 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
             if !fulfilled_expectations.contains(&id)
                 && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
             {
+                let rationale = expectation.reason.map(|rationale| ExpectationNote { rationale });
+                let note = expectation.is_unfulfilled_lint_expectations.then_some(());
                 tcx.emit_spanned_lint(
                     UNFULFILLED_LINT_EXPECTATIONS,
                     *hir_id,
                     expectation.emission_span,
-                    Expectation { expectation },
+                    Expectation { rationale, note },
                 );
             }
         } else {

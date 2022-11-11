@@ -3,10 +3,7 @@ use std::num::NonZeroU32;
 use rustc_errors::{fluent, AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
-use rustc_middle::{
-    lint::LintExpectation,
-    ty::{Predicate, Ty, TyCtxt},
-};
+use rustc_middle::ty::{Predicate, Ty, TyCtxt};
 use rustc_span::{edition::Edition, symbol::Ident, Span, Symbol};
 
 use crate::{errors::OverruledAttributeSub, LateContext};
@@ -80,6 +77,7 @@ pub struct BuiltinMissingDebugImpl<'a> {
     pub def_id: DefId,
 }
 
+// Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for BuiltinMissingDebugImpl<'_> {
     fn decorate_lint<'b>(
         self,
@@ -225,31 +223,24 @@ pub struct BuiltinExplicitOutlivesSuggestion {
     pub applicability: Applicability,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_incomplete_features)]
 pub struct BuiltinIncompleteFeatures {
     pub name: Symbol,
-    pub note: Option<NonZeroU32>,
-    pub help: Option<()>,
+    #[subdiagnostic]
+    pub note: Option<BuiltinIncompleteFeaturesNote>,
+    #[subdiagnostic]
+    pub help: Option<BuiltinIncompleteFeaturesHelp>,
 }
 
-impl<'a> DecorateLint<'a, ()> for BuiltinIncompleteFeatures {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
-        diag.set_arg("name", self.name);
-        if let Some(n) = self.note {
-            diag.set_arg("n", n);
-            diag.note(fluent::note);
-        }
-        if let Some(_) = self.help {
-            diag.help(fluent::help);
-        }
-        diag
-    }
+#[derive(Subdiagnostic)]
+#[help(help)]
+pub struct BuiltinIncompleteFeaturesHelp;
 
-    fn msg(&self) -> DiagnosticMessage {
-        fluent::lint_builtin_incomplete_features
-    }
+#[derive(Subdiagnostic)]
+#[note(note)]
+pub struct BuiltinIncompleteFeaturesNote {
+    pub n: NonZeroU32,
 }
 
 // FIXME: migrate "the type `{}` does not permit {}"
@@ -308,29 +299,19 @@ pub struct EnumIntrinsicsMemVariant<'a> {
 }
 
 // expect.rs
-pub struct Expectation<'a> {
-    pub expectation: &'a LintExpectation,
+#[derive(LintDiagnostic)]
+#[diag(lint_expectation)]
+pub struct Expectation {
+    #[subdiagnostic]
+    pub rationale: Option<ExpectationNote>,
+    #[note]
+    pub note: Option<()>,
 }
 
-impl<'a> DecorateLint<'a, ()> for Expectation<'_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
-        if let Some(rationale) = self.expectation.reason {
-            diag.note(rationale.as_str());
-        }
-
-        if self.expectation.is_unfulfilled_lint_expectations {
-            diag.note(fluent::note);
-        }
-
-        diag
-    }
-
-    fn msg(&self) -> DiagnosticMessage {
-        fluent::lint_expectation
-    }
+#[derive(Subdiagnostic)]
+#[note(rationale)]
+pub struct ExpectationNote {
+    pub rationale: Symbol,
 }
 
 // for_loops_over_fallibles.rs
@@ -511,59 +492,37 @@ pub struct DeprecatedLintName<'a> {
     pub replace: &'a str,
 }
 
+// FIXME: Non-translatable msg
+#[derive(LintDiagnostic)]
+#[diag(lint_renamed_or_removed_lint)]
 pub struct RenamedOrRemovedLint<'a> {
     pub msg: &'a str,
+    #[subdiagnostic]
+    pub suggestion: Option<RenamedOrRemovedLintSuggestion<'a>>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(suggestion, code = "{replace}", applicability = "machine-applicable")]
+pub struct RenamedOrRemovedLintSuggestion<'a> {
+    #[primary_span]
     pub suggestion: Span,
-    pub renamed: &'a Option<String>,
+    pub replace: &'a str,
 }
 
-impl<'a> DecorateLint<'a, ()> for RenamedOrRemovedLint<'_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
-        if let Some(new_name) = self.renamed {
-            diag.span_suggestion(
-                self.suggestion,
-                fluent::lint_renamed_or_removed_lint_suggestion,
-                new_name,
-                Applicability::MachineApplicable,
-            );
-        };
-        diag
-    }
-
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
-        rustc_errors::DiagnosticMessage::Str(self.msg.to_string())
-    }
-}
-
-pub struct UnknownLint<'a> {
+#[derive(LintDiagnostic)]
+#[diag(lint_unknown_lint)]
+pub struct UnknownLint {
     pub name: String,
-    pub suggestion: Span,
-    pub replace: &'a Option<Symbol>,
+    #[subdiagnostic]
+    pub suggestion: Option<UnknownLintSuggestion>,
 }
 
-impl<'a> DecorateLint<'a, ()> for UnknownLint<'_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
-        diag.set_arg("name", self.name);
-        if let Some(replace) = self.replace {
-            diag.span_suggestion(
-                self.suggestion,
-                fluent::suggestion,
-                replace,
-                Applicability::MaybeIncorrect,
-            );
-        };
-        diag
-    }
-
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
-        fluent::lint_unknown_lint
-    }
+#[derive(Subdiagnostic)]
+#[suggestion(suggestion, code = "{replace}", applicability = "maybe-incorrect")]
+pub struct UnknownLintSuggestion {
+    #[primary_span]
+    pub suggestion: Span,
+    pub replace: Symbol,
 }
 
 #[derive(LintDiagnostic)]
@@ -618,6 +577,7 @@ pub struct NonFmtPanicUnused {
     pub suggestion: Option<Span>,
 }
 
+// Used because of two suggestions based on one Option<Span>
 impl<'a> DecorateLint<'a, ()> for NonFmtPanicUnused {
     fn decorate_lint<'b>(
         self,
@@ -803,6 +763,7 @@ pub struct DropTraitConstraintsDiag<'a> {
     pub def_id: DefId,
 }
 
+// Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for DropTraitConstraintsDiag<'_> {
     fn decorate_lint<'b>(
         self,
@@ -822,6 +783,7 @@ pub struct DropGlue<'a> {
     pub def_id: DefId,
 }
 
+// Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for DropGlue<'_> {
     fn decorate_lint<'b>(
         self,
@@ -902,35 +864,22 @@ pub enum OverflowingBinHexSub<'a> {
     Help { suggestion_ty: &'a str },
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_overflowing_int)]
+#[note]
 pub struct OverflowingInt<'a> {
     pub ty: &'a str,
     pub lit: String,
     pub min: i128,
     pub max: u128,
-    pub suggestion_ty: Option<&'a str>,
+    #[subdiagnostic]
+    pub help: Option<OverflowingIntHelp<'a>>,
 }
 
-// FIXME: refactor with `Option<&'a str>` in macro
-impl<'a> DecorateLint<'a, ()> for OverflowingInt<'_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
-        diag.set_arg("ty", self.ty);
-        diag.set_arg("lit", self.lit);
-        diag.set_arg("min", self.min);
-        diag.set_arg("max", self.max);
-        diag.note(fluent::note);
-        if let Some(suggestion_ty) = self.suggestion_ty {
-            diag.set_arg("suggestion_ty", suggestion_ty);
-            diag.help(fluent::help);
-        }
-        diag
-    }
-
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
-        fluent::lint_overflowing_int
-    }
+#[derive(Subdiagnostic)]
+#[help(help)]
+pub struct OverflowingIntHelp<'a> {
+    pub suggestion_ty: &'a str,
 }
 
 #[derive(LintDiagnostic)]
@@ -972,6 +921,7 @@ pub struct ImproperCTypes<'a> {
     pub span_note: Option<Span>,
 }
 
+// Used because of the complexity of Option<DiagnosticMessage>, DiagnosticMessage, and Option<Span>
 impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
     fn decorate_lint<'b>(
         self,
@@ -1074,7 +1024,7 @@ pub struct UnusedDef<'a, 'b> {
     pub note: Option<Symbol>,
 }
 
-// FIXME: refactor with `Option<String>` in macro
+// Needed because of def_path_str
 impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
     fn decorate_lint<'b>(
         self,

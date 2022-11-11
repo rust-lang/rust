@@ -4,7 +4,7 @@ use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
 use crate::lints::{
     DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAtributeLint, RenamedOrRemovedLint,
-    UnknownLint,
+    RenamedOrRemovedLintSuggestion, UnknownLint, UnknownLintSuggestion,
 };
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
@@ -887,10 +887,15 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     _ if !self.warn_about_weird_lints => {}
 
                     CheckLintNameResult::Warning(msg, renamed) => {
+                        let suggestion =
+                            renamed.as_ref().map(|replace| RenamedOrRemovedLintSuggestion {
+                                suggestion: sp,
+                                replace: replace.as_str(),
+                            });
                         self.emit_spanned_lint(
                             RENAMED_AND_REMOVED_LINTS,
                             sp.into(),
-                            RenamedOrRemovedLint { msg, suggestion: sp, renamed },
+                            RenamedOrRemovedLint { msg, suggestion },
                         );
                     }
                     CheckLintNameResult::NoLint(suggestion) => {
@@ -899,10 +904,12 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         } else {
                             name.to_string()
                         };
+                        let suggestion = suggestion
+                            .map(|replace| UnknownLintSuggestion { suggestion: sp, replace });
                         self.emit_spanned_lint(
                             UNKNOWN_LINTS,
                             sp.into(),
-                            UnknownLint { name, suggestion: sp, replace: suggestion },
+                            UnknownLint { name, suggestion },
                         );
                     }
                 }

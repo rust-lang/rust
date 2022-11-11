@@ -15,6 +15,7 @@ lint_enum_intrinsics_mem_variant =
 
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
+    .rationale = {$rationale}
 
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ty}`. This is more readably written as an `if let` statement
@@ -39,7 +40,8 @@ lint_deprecated_lint_name =
     lint name `{$name}` is deprecated and may not have an effect in the future.
     .suggestion = change it to
 
-lint_renamed_or_removed_lint_suggestion = use the new name
+lint_renamed_or_removed_lint = {$msg}
+    .suggestion = use the new name
 
 lint_unknown_lint =
     unknown lint: `{$name}`
