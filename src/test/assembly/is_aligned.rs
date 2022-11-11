@@ -10,9 +10,9 @@
 #![feature(pointer_is_aligned)]
 
 // CHECK-LABEL: is_aligned_to_unchecked
-// CHECK: decq %rsi
-// CHECK-NEXT: testq %rdi, %rsi
-// CHECK-NEXT: sete %al
+// CHECK: decq
+// CHECK-NEXT: testq
+// CHECK-NEXT: sete
 // CHECK-NEXT: retq
 #[no_mangle]
 pub unsafe fn is_aligned_to_unchecked(ptr: *const u8, align: usize) -> bool {
@@ -23,7 +23,7 @@ pub unsafe fn is_aligned_to_unchecked(ptr: *const u8, align: usize) -> bool {
 }
 
 // CHECK-LABEL: is_aligned_1
-// CHECK: movb $1, %al
+// CHECK: movb $1
 // CHECK-NEXT: retq
 #[no_mangle]
 pub fn is_aligned_1(ptr: *const u8) -> bool {
@@ -31,8 +31,8 @@ pub fn is_aligned_1(ptr: *const u8) -> bool {
 }
 
 // CHECK-LABEL: is_aligned_2
-// CHECK: testb $1, %dil
-// CHECK-NEXT: sete %al
+// CHECK: testb $1
+// CHECK-NEXT: sete
 // CHECK-NEXT: retq
 #[no_mangle]
 pub fn is_aligned_2(ptr: *const u16) -> bool {
@@ -40,8 +40,8 @@ pub fn is_aligned_2(ptr: *const u16) -> bool {
 }
 
 // CHECK-LABEL: is_aligned_4
-// CHECK: testb $3, %dil
-// CHECK-NEXT: sete %al
+// CHECK: testb $3
+// CHECK-NEXT: sete
 // CHECK-NEXT: retq
 #[no_mangle]
 pub fn is_aligned_4(ptr: *const u32) -> bool {
@@ -49,8 +49,8 @@ pub fn is_aligned_4(ptr: *const u32) -> bool {
 }
 
 // CHECK-LABEL: is_aligned_8
-// CHECK: testb $7, %dil
-// CHECK-NEXT: sete %al
+// CHECK: testb $7
+// CHECK-NEXT: sete
 // CHECK-NEXT: retq
 #[no_mangle]
 pub fn is_aligned_8(ptr: *const u64) -> bool {
