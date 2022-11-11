@@ -1340,9 +1340,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     obligation.param_env,
                     trait_pred_and_suggested_ty,
                 );
-                let suggested_ty_would_satisfy_obligation = self
-                    .evaluate_obligation_no_overflow(&new_obligation)
-                    .must_apply_modulo_regions();
+                let suggested_ty_would_satisfy_obligation =
+                    self.predicate_must_hold_modulo_regions(&new_obligation);
                 if suggested_ty_would_satisfy_obligation {
                     let sp = self
                         .tcx
