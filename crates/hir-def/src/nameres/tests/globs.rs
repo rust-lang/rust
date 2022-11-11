@@ -119,7 +119,7 @@ use foo::*;
 use foo::bar::*;
 
 //- /foo/mod.rs
-mod bar;
+pub mod bar;
 fn Foo() {};
 pub struct Foo {};
 
@@ -132,6 +132,7 @@ pub(crate) struct PubCrateStruct;
             crate
             Foo: t
             PubCrateStruct: t v
+            bar: t
             foo: t
 
             crate::foo

@@ -58,9 +58,9 @@ extern {
 "#,
         expect![[r#"
             crate
-            E: t
+            E: _
             S: t v
-            V: t v
+            V: _
             foo: t
 
             crate::foo
@@ -307,7 +307,7 @@ pub struct FromLib;
             Bar: t v
 
             crate::foo
-            Bar: t v
+            Bar: _
             FromLib: t v
         "#]],
     );
