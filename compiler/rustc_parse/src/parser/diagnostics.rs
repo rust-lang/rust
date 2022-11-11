@@ -1653,15 +1653,29 @@ impl<'a> Parser<'a> {
             (token::CloseDelim(Delimiter::Parenthesis), Some(begin_par_sp)) => {
                 self.bump();
 
+                let sm = self.sess.source_map();
+                let left = begin_par_sp;
+                let right = self.prev_token.span;
+                let left_snippet = if let Ok(snip) = sm.span_to_prev_source(left) &&
+                        !snip.ends_with(" ") {
+                                " ".to_string()
+                            } else {
+                                "".to_string()
+                            };
+
+                let right_snippet = if let Ok(snip) = sm.span_to_next_source(right) &&
+                        !snip.starts_with(" ") {
+                                " ".to_string()
+                            } else {
+                                "".to_string()
+                        };
+
                 self.sess.emit_err(ParenthesesInForHead {
-                    span: vec![begin_par_sp, self.prev_token.span],
+                    span: vec![left, right],
                     // With e.g. `for (x) in y)` this would replace `(x) in y)`
                     // with `x) in y)` which is syntactically invalid.
                     // However, this is prevented before we get here.
-                    sugg: ParenthesesInForHeadSugg {
-                        left: begin_par_sp,
-                        right: self.prev_token.span,
-                    },
+                    sugg: ParenthesesInForHeadSugg { left, right, left_snippet, right_snippet },
                 });
 
                 // Unwrap `(pat)` into `pat` to avoid the `unused_parens` lint.
