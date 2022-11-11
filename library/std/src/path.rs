@@ -2142,7 +2142,10 @@ impl Path {
 
     /// Returns the `Path` without its final component, if there is one.
     ///
-    /// Returns [`None`] if the path terminates in a root or prefix.
+    /// This means it returns `Some("")` for relative paths with one component.
+    ///
+    /// Returns [`None`] if the path terminates in a root or prefix, or if it's
+    /// the empty string.
     ///
     /// # Examples
     ///
@@ -2156,6 +2159,14 @@ impl Path {
     /// let grand_parent = parent.parent().unwrap();
     /// assert_eq!(grand_parent, Path::new("/"));
     /// assert_eq!(grand_parent.parent(), None);
+    ///
+    /// let relative_path = Path::new("foo/bar");
+    /// let parent = relative_path.parent();
+    /// assert_eq!(parent, Some(Path::new("foo")));
+    /// let grand_parent = parent.and_then(Path::parent);
+    /// assert_eq!(grand_parent, Some(Path::new("")));
+    /// let great_grand_parent = grand_parent.and_then(Path::parent);
+    /// assert_eq!(great_grand_parent, None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[doc(alias = "dirname")]
