@@ -146,6 +146,11 @@ macro_rules! println {
 /// Use `eprint!` only for error and progress messages. Use `print!`
 /// instead for the primary output of your program.
 ///
+/// Note that stderr is frequently line-buffered by default so it may be
+/// necessary to use [`io::stderr().flush()`][flush] to ensure the output is emitted
+/// immediately.
+///
+/// [flush]: crate::io::Write::flush
 /// [`io::stderr`]: crate::io::stderr
 /// [`io::stdout`]: crate::io::stdout
 ///
@@ -160,6 +165,8 @@ macro_rules! println {
 ///
 /// ```
 /// eprint!("Error: Could not complete task");
+///
+/// io::stderr().flush().unwrap();
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
