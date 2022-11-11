@@ -74,6 +74,7 @@ mod linux_musl_base;
 mod linux_uclibc_base;
 mod msvc_base;
 mod netbsd_base;
+mod nto_qnx_base;
 mod openbsd_base;
 mod redox_base;
 mod solaris_base;
@@ -1242,6 +1243,9 @@ supported_targets! {
     ("x86_64-unknown-none", x86_64_unknown_none),
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
+
+    ("aarch64-unknown-nto-qnx7.1.0", aarch64_unknown_nto_qnx_710),
+    ("x86_64-pc-nto-qnx7.1.0", x86_64_pc_nto_qnx710),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
