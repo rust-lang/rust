@@ -623,8 +623,6 @@ impl Map {
     ) {
         // Note: The framework supports only scalars for now.
         if filter(ty) && ty.is_scalar() {
-            // trace!("registering place {:?}", PlaceRef { local, projection: &*projection });
-
             // We know that the projection only contains trackable elements.
             let place = self.make_place(local, projection).unwrap();
 
