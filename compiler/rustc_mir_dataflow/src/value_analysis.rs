@@ -34,7 +34,7 @@
 
 use std::fmt::{Debug, Formatter};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -587,7 +587,8 @@ impl Map {
         filter: impl FnMut(Ty<'tcx>) -> bool,
     ) -> Self {
         let mut map = Self::new();
-        map.register_with_filter(tcx, body, filter, &escaped_places(body));
+        let exclude = excluded_locals(body);
+        map.register_with_filter(tcx, body, filter, &exclude);
         debug!("registered {} places ({} nodes in total)", map.value_count, map.places.len());
         map
     }
@@ -598,19 +599,14 @@ impl Map {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         mut filter: impl FnMut(Ty<'tcx>) -> bool,
-        exclude: &FxHashSet<Place<'tcx>>,
+        exclude: &IndexVec<Local, bool>,
     ) {
         // We use this vector as stack, pushing and popping projections.
         let mut projection = Vec::new();
         for (local, decl) in body.local_decls.iter_enumerated() {
-            self.register_with_filter_rec(
-                tcx,
-                local,
-                &mut projection,
-                decl.ty,
-                &mut filter,
-                exclude,
-            );
+            if !exclude[local] {
+                self.register_with_filter_rec(tcx, local, &mut projection, decl.ty, &mut filter);
+            }
         }
     }
 
@@ -624,17 +620,10 @@ impl Map {
         projection: &mut Vec<PlaceElem<'tcx>>,
         ty: Ty<'tcx>,
         filter: &mut impl FnMut(Ty<'tcx>) -> bool,
-        exclude: &FxHashSet<Place<'tcx>>,
     ) {
-        let place = Place { local, projection: tcx.intern_place_elems(projection) };
-        if exclude.contains(&place) {
-            // This will also exclude all projections of the excluded place.
-            return;
-        }
-
         // Note: The framework supports only scalars for now.
         if filter(ty) && ty.is_scalar() {
-            trace!("registering place: {:?}", place);
+            // trace!("registering place {:?}", PlaceRef { local, projection: &*projection });
 
             // We know that the projection only contains trackable elements.
             let place = self.make_place(local, projection).unwrap();
@@ -653,7 +642,7 @@ impl Map {
                 return;
             }
             projection.push(PlaceElem::Field(field, ty));
-            self.register_with_filter_rec(tcx, local, projection, ty, filter, exclude);
+            self.register_with_filter_rec(tcx, local, projection, ty, filter);
             projection.pop();
         });
     }
@@ -835,27 +824,27 @@ fn iter_fields<'tcx>(
     }
 }
 
-/// Returns all places, that have their reference or address taken.
-///
-/// This includes shared references, and also drops and `InlineAsm` out parameters.
-fn escaped_places<'tcx>(body: &Body<'tcx>) -> FxHashSet<Place<'tcx>> {
-    struct Collector<'tcx> {
-        result: FxHashSet<Place<'tcx>>,
+/// Returns all locals with projections that have their reference or address taken.
+fn excluded_locals<'tcx>(body: &Body<'tcx>) -> IndexVec<Local, bool> {
+    struct Collector {
+        result: IndexVec<Local, bool>,
     }
 
-    impl<'tcx> Visitor<'tcx> for Collector<'tcx> {
+    impl<'tcx> Visitor<'tcx> for Collector {
         fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
             if context.is_borrow()
                 || context.is_address_of()
                 || context.is_drop()
                 || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
             {
-                self.result.insert(*place);
+                // A pointer to a place could be used to access other places with the same local,
+                // hence we have to exclude the local completely.
+                self.result[place.local] = true;
             }
         }
     }
 
-    let mut collector = Collector { result: FxHashSet::default() };
+    let mut collector = Collector { result: IndexVec::from_elem(false, &body.local_decls) };
     collector.visit_body(body);
     collector.result
 }
