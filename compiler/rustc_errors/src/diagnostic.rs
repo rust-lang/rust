@@ -51,6 +51,9 @@ impl<'source> IntoDiagnosticArg for DiagnosticArgValue<'source> {
         match self {
             DiagnosticArgValue::Str(s) => DiagnosticArgValue::Str(Cow::Owned(s.into_owned())),
             DiagnosticArgValue::Number(n) => DiagnosticArgValue::Number(n),
+            DiagnosticArgValue::StrListSepByAnd(l) => DiagnosticArgValue::StrListSepByAnd(
+                l.into_iter().map(|s| Cow::Owned(s.into_owned())).collect(),
+            ),
         }
     }
 }
