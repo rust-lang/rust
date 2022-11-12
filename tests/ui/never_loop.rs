@@ -229,6 +229,18 @@ pub fn test18() {
     };
 }
 
+// Issue #9831: unconditional break to internal labeled block
+pub fn test19() {
+    fn thing(iter: impl Iterator) {
+        for _ in iter {
+            'b: {
+                // error goes away if we just have the block's value be ().
+                break 'b;
+            }
+        }
+    }
+}
+
 fn main() {
     test1();
     test2();

@@ -169,7 +169,8 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
                 combine_seq(e, arms)
             }
         },
-        ExprKind::Block(b, _) => never_loop_block(b, main_loop_id),
+        ExprKind::Block(b, None) => never_loop_block(b, main_loop_id),
+        ExprKind::Block(b, Some(_label)) => absorb_break(never_loop_block(b, main_loop_id)),
         ExprKind::Continue(d) => {
             let id = d
                 .target_id
