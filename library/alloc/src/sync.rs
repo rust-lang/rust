@@ -852,6 +852,9 @@ impl<T: ?Sized> Arc<T> {
     /// The counts are not affected in any way and the `Arc` is not consumed. The pointer is valid for
     /// as long as there are strong counts in the `Arc`.
     ///
+    /// Note that even though the returned pointer is a `*const T`, it is also valid for writes
+    /// so long as this `Arc` remains unique (i.e. strong count is 1 and weak count is 0).
+    ///
     /// # Examples
     ///
     /// ```

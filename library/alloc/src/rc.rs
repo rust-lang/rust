@@ -845,6 +845,9 @@ impl<T: ?Sized> Rc<T> {
     /// The counts are not affected in any way and the `Rc` is not consumed. The pointer is valid
     /// for as long there are strong counts in the `Rc`.
     ///
+    /// Note that even though the returned pointer is a `*const T`, it is also valid for writes
+    /// so long as this `Rc` remains unique (i.e. strong count is 1 and weak count is 0).
+    ///
     /// # Examples
     ///
     /// ```
