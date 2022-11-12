@@ -256,9 +256,9 @@ where
     }
 }
 
-pub(crate) enum SourceContext<'a> {
+pub(crate) enum SourceContext {
     Standalone,
-    Embedded { url: &'a str, offset: usize, needs_expansion: bool },
+    Embedded { offset: usize, needs_expansion: bool },
 }
 
 /// Wrapper struct to render the source code of a file. This will do things like
@@ -270,7 +270,7 @@ pub(crate) fn print_src(
     context: &Context<'_>,
     root_path: &str,
     decoration_info: highlight::DecorationInfo,
-    source_context: SourceContext<'_>,
+    source_context: SourceContext,
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
@@ -286,12 +286,12 @@ pub(crate) fn print_src(
                 writeln!(line_numbers, "<a href=\"#{line}\" id=\"{line}\">{line}</a>")
             }
         }
-        SourceContext::Embedded { url, offset, needs_expansion } => {
+        SourceContext::Embedded { offset, needs_expansion } => {
             extra =
                 if needs_expansion { Some(r#"<span class="expand">&varr;</span>"#) } else { None };
             for line_number in 1..=lines {
                 let line = line_number + offset;
-                writeln!(line_numbers, "<a href=\"{root_path}{url}#{line}\">{line}</a>")
+                writeln!(line_numbers, "<span>{line}</span>")
             }
         }
     }

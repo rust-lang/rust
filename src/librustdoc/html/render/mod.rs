@@ -2899,11 +2899,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             cx,
             &cx.root_path(),
             highlight::DecorationInfo(decoration_info),
-            sources::SourceContext::Embedded {
-                url: &call_data.url,
-                offset: line_min,
-                needs_expansion,
-            },
+            sources::SourceContext::Embedded { offset: line_min, needs_expansion },
         );
         write!(w, "</div></div>");
 
