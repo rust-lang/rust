@@ -6,7 +6,6 @@ use super::{FnDeclKind, LoweringContext, ParamMode};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -67,7 +66,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             // HirId handling.
             bodies: Vec::new(),
             attrs: SortedMap::default(),
-            children: FxHashMap::default(),
+            children: Vec::default(),
             current_hir_id_owner: hir::CRATE_OWNER_ID,
             item_local_id_counter: hir::ItemLocalId::new(0),
             node_id_to_local_id: Default::default(),
@@ -95,7 +94,13 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         for (def_id, info) in lctx.children {
             self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
             debug_assert!(matches!(self.owners[def_id], hir::MaybeOwner::Phantom));
-            self.owners[def_id] = info;
+            match (self.owners[def_id], info) {
+                (hir::MaybeOwner::Phantom, _)
+                | (hir::MaybeOwner::NonOwner(_), hir::MaybeOwner::Owner(_)) => {
+                    self.owners[def_id] = info;
+                }
+                _ => unreachable!(),
+            }
         }
     }
 
@@ -534,12 +539,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 for new_node_id in [id1, id2] {
                     let new_id = self.local_def_id(new_node_id);
                     let Some(res) = resolutions.next() else {
+                        debug_assert!(self.children.iter().find(|(id, _)| id == &new_id).is_none());
                         // Associate an HirId to both ids even if there is no resolution.
-                        let _old = self.children.insert(
+                        self.children.push((
                             new_id,
-                            hir::MaybeOwner::NonOwner(hir::HirId::make_owner(new_id)),
+                            hir::MaybeOwner::NonOwner(hir::HirId::make_owner(new_id))),
                         );
-                        debug_assert!(_old.is_none());
                         continue;
                     };
                     let ident = *ident;

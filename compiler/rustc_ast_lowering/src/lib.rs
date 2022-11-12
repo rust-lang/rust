@@ -106,7 +106,7 @@ struct LoweringContext<'a, 'hir> {
     /// Attributes inside the owner being lowered.
     attrs: SortedMap<hir::ItemLocalId, &'hir [Attribute]>,
     /// Collect items that were created by lowering the current owner.
-    children: FxHashMap<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
+    children: Vec<(LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>)>,
 
     generator_kind: Option<hir::GeneratorKind>,
 
@@ -610,8 +610,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.impl_trait_defs = current_impl_trait_defs;
         self.impl_trait_bounds = current_impl_trait_bounds;
 
-        let _old = self.children.insert(def_id, hir::MaybeOwner::Owner(info));
-        debug_assert!(_old.is_none())
+        debug_assert!(self.children.iter().find(|(id, _)| id == &def_id).is_none());
+        self.children.push((def_id, hir::MaybeOwner::Owner(info)));
     }
 
     /// Installs the remapping `remap` in scope while `f` is being executed.
@@ -718,8 +718,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 assert_ne!(local_id, hir::ItemLocalId::new(0));
                 if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
-                    // Do not override a `MaybeOwner::Owner` that may already here.
-                    self.children.entry(def_id).or_insert(hir::MaybeOwner::NonOwner(hir_id));
+                    self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
                     self.local_id_to_def_id.insert(local_id, def_id);
                 }
 
