@@ -650,6 +650,30 @@ where
     }
 }
 
+impl<T, const LANES: usize> TryFrom<&[T]> for Simd<T, LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+    T: SimdElement,
+{
+    type Error = core::array::TryFromSliceError;
+
+    fn try_from(slice: &[T]) -> Result<Self, Self::Error> {
+        Ok(Self::from_array(slice.try_into()?))
+    }
+}
+
+impl<T, const LANES: usize> TryFrom<&mut [T]> for Simd<T, LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+    T: SimdElement,
+{
+    type Error = core::array::TryFromSliceError;
+
+    fn try_from(slice: &mut [T]) -> Result<Self, Self::Error> {
+        Ok(Self::from_array(slice.try_into()?))
+    }
+}
+
 mod sealed {
     pub trait Sealed {}
 }
