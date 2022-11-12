@@ -13,6 +13,7 @@ use rustc_span::DUMMY_SP;
 
 use crate::MirPass;
 
+// These constants are somewhat random guesses and have not been optimized.
 const BLOCK_LIMIT: usize = 100;
 const PLACE_LIMIT: usize = 100;
 
