@@ -7,7 +7,7 @@ LL | async fn buy_lock(generator: &Mutex<MarketMultiplier>) -> LockedMarket<'_> 
    |                                                           expected 0 lifetime arguments
    |
 note: struct defined here, with 0 lifetime parameters
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:23:8
+  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:22:8
    |
 LL | struct LockedMarket<T>(T);
    |        ^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | async fn buy_lock(generator: &Mutex<MarketMultiplier>) -> LockedMarket<'_> 
    |                                                           ^^^^^^^^^^^^ expected 1 generic argument
    |
 note: struct defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:23:8
+  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:22:8
    |
 LL | struct LockedMarket<T>(T);
    |        ^^^^^^^^^^^^ -
@@ -28,16 +28,6 @@ help: add missing generic argument
 LL | async fn buy_lock(generator: &Mutex<MarketMultiplier>) -> LockedMarket<'_, T> {
    |                                                                          +++
 
-error[E0515]: cannot return value referencing temporary value
-  --> $DIR/issue-82126-mismatched-subst-and-hir.rs:19:5
-   |
-LL |     LockedMarket(generator.lock().unwrap().buy())
-   |     ^^^^^^^^^^^^^-------------------------^^^^^^^
-   |     |            |
-   |     |            temporary value created here
-   |     returns a value referencing data owned by the current function
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0107, E0515.
-For more information about an error, try `rustc --explain E0107`.
+For more information about this error, try `rustc --explain E0107`.
