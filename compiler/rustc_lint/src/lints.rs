@@ -1,6 +1,8 @@
 use std::num::NonZeroU32;
 
-use rustc_errors::{fluent, AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage};
+use rustc_errors::{
+    fluent, AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage, SuggestionStyle,
+};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{Predicate, Ty, TyCtxt};
@@ -361,6 +363,92 @@ pub struct ForLoopsOverFalliblesSuggestion<'a> {
     pub start_span: Span,
     #[suggestion_part(code = ") = ")]
     pub end_span: Span,
+}
+
+// hidden_unicode_codepoints.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_hidden_unicode_codepoints)]
+#[note]
+pub struct HiddenUnicodeCodepointsDiag<'a> {
+    pub label: &'a str,
+    pub count: usize,
+    #[label]
+    pub span_label: Span,
+    #[subdiagnostic]
+    pub labels: Option<HiddenUnicodeCodepointsDiagLabels>,
+    #[subdiagnostic]
+    pub sub: HiddenUnicodeCodepointsDiagSub,
+}
+
+pub struct HiddenUnicodeCodepointsDiagLabels {
+    pub spans: Vec<(char, Span)>,
+}
+
+impl AddToDiagnostic for HiddenUnicodeCodepointsDiagLabels {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        for (c, span) in self.spans {
+            diag.span_label(span, format!("{:?}", c));
+        }
+    }
+}
+
+pub enum HiddenUnicodeCodepointsDiagSub {
+    Escape { spans: Vec<(char, Span)> },
+    NoEscape { spans: Vec<(char, Span)> },
+}
+
+// Used because of multiple multipart_suggestion and note
+impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        match self {
+            HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
+                diag.multipart_suggestion_with_style(
+                    fluent::suggestion_remove,
+                    spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
+                    Applicability::MachineApplicable,
+                    SuggestionStyle::HideCodeAlways,
+                );
+                diag.multipart_suggestion(
+                    fluent::suggestion_escape,
+                    spans
+                        .into_iter()
+                        .map(|(c, span)| {
+                            let c = format!("{:?}", c);
+                            (span, c[1..c.len() - 1].to_string())
+                        })
+                        .collect(),
+                    Applicability::MachineApplicable,
+                );
+            }
+            HiddenUnicodeCodepointsDiagSub::NoEscape { spans } => {
+                // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
+                // should do the same here to provide the same good suggestions as we do for
+                // literals above.
+                diag.set_arg(
+                    "escaped",
+                    spans
+                        .into_iter()
+                        .map(|(c, _)| format!("{:?}", c))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                );
+                diag.note(fluent::suggestion_remove);
+                diag.note(fluent::no_suggestion_note_escape);
+            }
+        }
+    }
 }
 
 // internal.rs
