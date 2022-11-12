@@ -9,7 +9,7 @@ LL |     loop {
 LL |         take(x);
    |              ^ value moved here, in previous iteration of loop
    |
-note: consider changing this parameter type in function `take` to borrow instead if ownering the value isn't necessary
+note: consider changing this parameter type in function `take` to borrow instead if owning the value isn't necessary
   --> $DIR/liveness-move-call-arg.rs:1:13
    |
 LL | fn take(_x: Box<isize>) {}

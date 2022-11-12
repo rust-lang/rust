@@ -9,7 +9,7 @@ LL |         (1, 2) if take(x) => (),
 LL |         (1, 2) if take(x) => (),
    |                        ^ value used here after move
    |
-note: consider changing this parameter type in function `take` to borrow instead if ownering the value isn't necessary
+note: consider changing this parameter type in function `take` to borrow instead if owning the value isn't necessary
   --> $DIR/move-guard-same-consts.rs:25:15
    |
 LL | fn take<T>(_: T) -> bool { false }
