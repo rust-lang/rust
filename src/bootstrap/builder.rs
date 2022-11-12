@@ -1074,11 +1074,11 @@ impl<'a> Builder<'a> {
         let mut hasher = sha2::Sha256::new();
         // FIXME: this is ok for rustfmt (4.1 MB large at time of writing), but it seems memory-intensive for rustc and larger components.
         // Consider using streaming IO instead?
-        let contents = if self.config.dry_run { vec![] } else { t!(fs::read(path)) };
+        let contents = if self.config.dry_run() { vec![] } else { t!(fs::read(path)) };
         hasher.update(&contents);
         let found = hex::encode(hasher.finalize().as_slice());
         let verified = found == expected;
-        if !verified && !self.config.dry_run {
+        if !verified && !self.config.dry_run() {
             println!(
                 "invalid checksum: \n\
                 found:    {found}\n\
@@ -1292,7 +1292,7 @@ impl<'a> Builder<'a> {
     /// Note that this returns `None` if LLVM is disabled, or if we're in a
     /// check build or dry-run, where there's no need to build all of LLVM.
     fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
-        if self.config.llvm_enabled() && self.kind != Kind::Check && !self.config.dry_run {
+        if self.config.llvm_enabled() && self.kind != Kind::Check && !self.config.dry_run() {
             let llvm_config = self.ensure(native::Llvm { target });
             if llvm_config.is_file() {
                 return Some(llvm_config);
@@ -1644,7 +1644,7 @@ impl<'a> Builder<'a> {
         //
         // Only clear out the directory if we're compiling std; otherwise, we
         // should let Cargo take care of things for us (via depdep info)
-        if !self.config.dry_run && mode == Mode::Std && cmd == "build" {
+        if !self.config.dry_run() && mode == Mode::Std && cmd == "build" {
             self.clear_if_dirty(&out_dir, &self.rustc(compiler));
         }
 
@@ -2142,7 +2142,7 @@ impl<'a> Builder<'a> {
             (out, dur - deps)
         };
 
-        if self.config.print_step_timings && !self.config.dry_run {
+        if self.config.print_step_timings && !self.config.dry_run() {
             let step_string = format!("{:?}", step);
             let brace_index = step_string.find("{").unwrap_or(0);
             let type_string = type_name::<S>();
@@ -2216,7 +2216,7 @@ impl<'a> Builder<'a> {
     }
 
     pub(crate) fn open_in_browser(&self, path: impl AsRef<Path>) {
-        if self.config.dry_run || !self.config.cmd.open() {
+        if self.config.dry_run() || !self.config.cmd.open() {
             return;
         }
 

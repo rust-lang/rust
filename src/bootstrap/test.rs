@@ -508,7 +508,7 @@ impl Miri {
         cargo.arg("--print-sysroot");
 
         // FIXME: Is there a way in which we can re-use the usual `run` helpers?
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             String::new()
         } else {
             builder.verbose(&format!("running: {:?}", cargo));
@@ -1537,7 +1537,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         let mut copts_passed = false;
         if builder.config.llvm_enabled() {
             let llvm_config = builder.ensure(native::Llvm { target: builder.config.build });
-            if !builder.config.dry_run {
+            if !builder.config.dry_run() {
                 let llvm_version = output(Command::new(&llvm_config).arg("--version"));
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
                 // Remove trailing newline from llvm-config output.
@@ -1555,14 +1555,14 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             // requirement, but the `-L` library path is not propagated across
             // separate compilations. We can add LLVM's library path to the
             // platform-specific environment variable as a workaround.
-            if !builder.config.dry_run && suite.ends_with("fulldeps") {
+            if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
 
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
-            if !builder.config.dry_run && matches!(suite, "run-make" | "run-make-fulldeps") {
+            if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
                 // The llvm/bin directory contains many useful cross-platform
                 // tools. Pass the path to run-make tests so they can use them.
                 let llvm_bin_path = llvm_config
@@ -1590,7 +1590,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         // Only pass correct values for these flags for the `run-make` suite as it
         // requires that a C++ compiler was configured which isn't always the case.
-        if !builder.config.dry_run && matches!(suite, "run-make" | "run-make-fulldeps") {
+        if !builder.config.dry_run() && matches!(suite, "run-make" | "run-make-fulldeps") {
             cmd.arg("--cc")
                 .arg(builder.cc(target))
                 .arg("--cxx")
