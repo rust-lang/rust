@@ -1172,7 +1172,7 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit_as_bytes, maybe_uninit_slice)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let val = 0x12345678i32;
+    /// let val = 0x12345678_i32;
     /// let uninit = MaybeUninit::new(val);
     /// let uninit_bytes = uninit.as_bytes();
     /// let bytes = unsafe { MaybeUninit::slice_assume_init_ref(uninit_bytes) };
@@ -1198,7 +1198,7 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit_as_bytes)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let val = 0x12345678i32;
+    /// let val = 0x12345678_i32;
     /// let mut uninit = MaybeUninit::new(val);
     /// let uninit_bytes = uninit.as_bytes_mut();
     /// if cfg!(target_endian = "little") {
