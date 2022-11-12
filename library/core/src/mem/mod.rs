@@ -1176,6 +1176,71 @@ pub const fn variant_count<T>() -> usize {
     intrinsics::variant_count::<T>()
 }
 
+/// Create a `String` formatted with a type's name, size, and alignment
+///
+/// This is useful for quickly obtaining parameters about a type during debugging.
+///
+/// ```
+/// use playground::type_info;
+///
+/// // For usage with raw types, wrap the type in `<..>`
+/// let result = type_info!(<Option<String>>);
+/// let expected = "core::option::Option<alloc::string::String>: size 24, alignment 8";
+/// assert_eq!(result, expected);
+///
+/// // This macro also works with expressions
+/// let s: Option<String> = Some("abcd".to_owned());
+/// assert_eq!(type_info!(s), expected);
+/// ```
+///
+/// It can also be used to write to a destination for use in `no_std`. Semantics
+/// are the same as the `write!` macro
+///
+/// ```
+/// use playground::type_info;
+/// use std::io::Write;
+///
+/// // in `no_std` a different type would be used; this is just an example
+/// let mut w = Vec::new();
+/// type_info!(w, <Option<&str>>);
+/// let expected = b"core::option::Option<&str>: size 16, alignment 8";
+/// assert_eq!(w, expected);
+/// ```
+///
+/// Note: Do not rely on the exact output of this macro, as it may change
+/// at any time.
+#[macro_export]
+macro_rules! type_info {
+    (<$ty:ty>) => {
+        format!(
+            "{}: size {}, alignment {}",
+            core::any::type_name::<$ty>(),
+            core::mem::size_of::<$ty>(),
+            core::mem::align_of::<$ty>(),
+        )
+    };
+    ($dst:expr, <$ty:ty>) => {
+        write!(
+            $dst,
+            "{}: size {}, alignment {}",
+            core::any::type_name::<$ty>(),
+            core::mem::size_of::<$ty>(),
+            core::mem::align_of::<$ty>())
+    };
+    ($expr:expr) => {{
+        fn __make_typename<T>(_: T) -> String {
+            type_info!(<T>)
+        }
+        __make_typename($expr)
+    }};
+    ($dst:expr, $expr:expr) => {{
+        fn __make_typename<T>(_: T) {
+            type_info!($dst, <T>)
+        }
+        __make_typename($expr)
+    }};
+}
+
 /// Provides associated constants for various useful properties of types,
 /// to give them a canonical form in our code and make them easier to read.
 ///
