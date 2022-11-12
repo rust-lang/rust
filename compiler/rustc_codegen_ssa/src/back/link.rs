@@ -2454,15 +2454,17 @@ fn add_upstream_rust_crates<'a>(
         // We must always link crates `compiler_builtins` and `profiler_builtins` statically.
         // Even if they were already included into a dylib
         // (e.g. `libstd` when `-C prefer-dynamic` is used).
+        // FIXME: `dependency_formats` can report `profiler_builtins` as `NotLinked` for some
+        // reason, it shouldn't do that because `profiler_builtins` should indeed be linked.
         let linkage = data[cnum.as_usize() - 1];
         let link_static_crate = linkage == Linkage::Static
-            || linkage == Linkage::IncludedFromDylib
+            || (linkage == Linkage::IncludedFromDylib || linkage == Linkage::NotLinked)
                 && (codegen_results.crate_info.compiler_builtins == Some(cnum)
                     || codegen_results.crate_info.profiler_runtime == Some(cnum));
 
         let mut bundled_libs = Default::default();
         match linkage {
-            Linkage::Static | Linkage::IncludedFromDylib => {
+            Linkage::Static | Linkage::IncludedFromDylib | Linkage::NotLinked => {
                 if link_static_crate {
                     bundled_libs = codegen_results.crate_info.native_libraries[&cnum]
                         .iter()
@@ -2483,7 +2485,6 @@ fn add_upstream_rust_crates<'a>(
                 let src = &codegen_results.crate_info.used_crate_source[&cnum];
                 add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0);
             }
-            Linkage::NotLinked => {}
         }
 
         // Static libraries are linked for a subset of linked upstream crates.
