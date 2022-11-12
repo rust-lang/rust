@@ -43,6 +43,9 @@ pub fn expand_concat(
                     has_errors = true;
                 }
             },
+            ast::ExprKind::IncludedBytes(..) => {
+                cx.span_err(e.span, "cannot concatenate a byte string literal")
+            }
             ast::ExprKind::Err => {
                 has_errors = true;
             }

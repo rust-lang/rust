@@ -87,6 +87,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Lit(ref l) => {
                     hir::ExprKind::Lit(respan(self.lower_span(l.span), l.kind.clone()))
                 }
+                ExprKind::IncludedBytes(ref bytes) => hir::ExprKind::Lit(respan(
+                    self.lower_span(e.span),
+                    LitKind::ByteStr(bytes.clone()),
+                )),
                 ExprKind::Cast(ref expr, ref ty) => {
                     let expr = self.lower_expr(expr);
                     let ty =
