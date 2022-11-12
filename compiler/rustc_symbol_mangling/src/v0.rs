@@ -779,7 +779,17 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             // Uppercase categories are more stable than lowercase ones.
             DefPathData::TypeNs(_) => 't',
             DefPathData::ValueNs(_) => 'v',
-            DefPathData::ClosureExpr => 'C',
+            DefPathData::ClosureExpr(generator_kind) => {
+                // FIXME(swatinem): figure out how to move forward with closure-type aware mangling
+                // use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
+                match generator_kind {
+                    // Some(GeneratorKind::Async(AsyncGeneratorKind::Block)) => 'B',
+                    // Some(GeneratorKind::Async(AsyncGeneratorKind::Closure)) => 'a',
+                    // Some(GeneratorKind::Async(AsyncGeneratorKind::Fn)) => 'A',
+                    // Some(GeneratorKind::Gen) => 'G',
+                    _ => 'C',
+                }
+            }
             DefPathData::Ctor => 'c',
             DefPathData::AnonConst => 'k',
             DefPathData::ImplTrait => 'i',

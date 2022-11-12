@@ -7,6 +7,7 @@
 pub use crate::def_id::DefPathHash;
 use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::def_path_hash_map::DefPathHashMap;
+use crate::GeneratorKind;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -272,7 +273,7 @@ pub enum DefPathData {
     /// Something in the lifetime namespace.
     LifetimeNs(Symbol),
     /// A closure expression.
-    ClosureExpr,
+    ClosureExpr(Option<GeneratorKind>),
 
     // Subportions of items:
     /// Implicit constructor for a unit or tuple-like struct or enum variant.
@@ -403,8 +404,8 @@ impl DefPathData {
         match *self {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
-            Impl | ForeignMod | CrateRoot | Use | GlobalAsm | ClosureExpr | Ctor | AnonConst
-            | ImplTrait => None,
+            Impl | ForeignMod | CrateRoot | Use | GlobalAsm | ClosureExpr(..) | Ctor
+            | AnonConst | ImplTrait => None,
         }
     }
 
@@ -420,7 +421,7 @@ impl DefPathData {
             ForeignMod => DefPathDataName::Anon { namespace: kw::Extern },
             Use => DefPathDataName::Anon { namespace: kw::Use },
             GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm },
-            ClosureExpr => DefPathDataName::Anon { namespace: sym::closure },
+            ClosureExpr(..) => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             ImplTrait => DefPathDataName::Anon { namespace: sym::opaque },

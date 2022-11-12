@@ -573,8 +573,8 @@ fn push_unqualified_item_name(
         DefPathData::CrateRoot => {
             output.push_str(tcx.crate_name(def_id.krate).as_str());
         }
-        DefPathData::ClosureExpr => {
-            let label = generator_kind_label(tcx.generator_kind(def_id));
+        DefPathData::ClosureExpr(generator_kind) => {
+            let label = generator_kind_label(generator_kind);
 
             push_disambiguated_special_name(
                 label,

@@ -204,7 +204,7 @@ impl<'tcx> InstanceDef<'tcx> {
         };
         matches!(
             tcx.def_key(def_id).disambiguated_data.data,
-            DefPathData::Ctor | DefPathData::ClosureExpr
+            DefPathData::Ctor | DefPathData::ClosureExpr(..)
         )
     }
 

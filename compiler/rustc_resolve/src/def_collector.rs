@@ -4,6 +4,7 @@ use rustc_ast::*;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::definitions::*;
+use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -151,7 +152,9 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 // then the closure_def will never be used, and we should avoid generating a
                 // def-id for it.
                 if let Some(body) = body {
-                    let closure_def = self.create_def(closure_id, DefPathData::ClosureExpr, span);
+                    let generator_kind = Some(GeneratorKind::Async(AsyncGeneratorKind::Fn));
+                    let closure_def =
+                        self.create_def(closure_id, DefPathData::ClosureExpr(generator_kind), span);
                     self.with_parent(closure_def, |this| this.visit_block(body));
                 }
                 return;
@@ -265,16 +268,24 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
             ExprKind::Closure(_, _, asyncness, ..) => {
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
-                let closure_def = self.create_def(expr.id, DefPathData::ClosureExpr, expr.span);
+                let closure_def =
+                    self.create_def(expr.id, DefPathData::ClosureExpr(None), expr.span);
                 match asyncness {
                     Async::Yes { closure_id, .. } => {
-                        self.create_def(closure_id, DefPathData::ClosureExpr, expr.span)
+                        let generator_kind =
+                            Some(GeneratorKind::Async(AsyncGeneratorKind::Closure));
+                        self.create_def(
+                            closure_id,
+                            DefPathData::ClosureExpr(generator_kind),
+                            expr.span,
+                        )
                     }
                     Async::No => closure_def,
                 }
             }
             ExprKind::Async(_, async_id, _) => {
-                self.create_def(async_id, DefPathData::ClosureExpr, expr.span)
+                let generator_kind = Some(GeneratorKind::Async(AsyncGeneratorKind::Block));
+                self.create_def(async_id, DefPathData::ClosureExpr(generator_kind), expr.span)
             }
             _ => self.parent_def,
         };

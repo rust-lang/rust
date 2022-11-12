@@ -9,7 +9,7 @@ use bitflags::bitflags;
 use core::fmt::Display;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
+use rustc_hir::definitions::DefPathData;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
     self, Binder, Const, ExistentialPredicate, FloatTy, FnSig, IntTy, List, Region, RegionKind,
@@ -388,20 +388,20 @@ fn encode_ty_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     def_path.data.reverse();
     for disambiguated_data in &def_path.data {
         s.push('N');
-        s.push_str(match disambiguated_data.data {
-            hir::definitions::DefPathData::Impl => "I", // Not specified in v0's <namespace>
-            hir::definitions::DefPathData::ForeignMod => "F", // Not specified in v0's <namespace>
-            hir::definitions::DefPathData::TypeNs(..) => "t",
-            hir::definitions::DefPathData::ValueNs(..) => "v",
-            hir::definitions::DefPathData::ClosureExpr => "C",
-            hir::definitions::DefPathData::Ctor => "c",
-            hir::definitions::DefPathData::AnonConst => "k",
-            hir::definitions::DefPathData::ImplTrait => "i",
-            hir::definitions::DefPathData::CrateRoot
-            | hir::definitions::DefPathData::Use
-            | hir::definitions::DefPathData::GlobalAsm
-            | hir::definitions::DefPathData::MacroNs(..)
-            | hir::definitions::DefPathData::LifetimeNs(..) => {
+        s.push(match disambiguated_data.data {
+            DefPathData::Impl => 'I',       // Not specified in v0's <namespace>
+            DefPathData::ForeignMod => 'F', // Not specified in v0's <namespace>
+            DefPathData::TypeNs(..) => 't',
+            DefPathData::ValueNs(..) => 'v',
+            DefPathData::ClosureExpr(_generator_kind) => 'C',
+            DefPathData::Ctor => 'c',
+            DefPathData::AnonConst => 'k',
+            DefPathData::ImplTrait => 'i',
+            DefPathData::CrateRoot
+            | DefPathData::Use
+            | DefPathData::GlobalAsm
+            | DefPathData::MacroNs(..)
+            | DefPathData::LifetimeNs(..) => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
             }
         });
