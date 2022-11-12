@@ -58,9 +58,6 @@ mem = []
 # compiler-rt implementations. Also used for testing
 mangled-names = []
 
-# Don't generate lang items for i128 intrisnics and such
-no-lang-items = []
-
 # Only used in the compiler's build system
 rustc-dep-of-std = ['compiler-builtins', 'core']
 
