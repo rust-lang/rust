@@ -364,8 +364,44 @@ where
         let base_ptr = Simd::<*const T, LANES>::splat(slice.as_ptr());
         // Ferris forgive me, I have done pointer arithmetic here.
         let ptrs = base_ptr.wrapping_add(idxs);
-        // Safety: The ptrs have been bounds-masked to prevent memory-unsafe reads insha'allah
-        unsafe { intrinsics::simd_gather(or, ptrs, enable.to_int()) }
+        // Safety: The caller is responsible for determining the indices are okay to read
+        unsafe { Self::gather_select_ptr(ptrs, enable, or) }
+    }
+
+    /// Read pointers elementwise into a SIMD vector vector.
+    ///
+    /// # Safety
+    ///
+    /// Each read must satisfy the same conditions as [`core::ptr::read`].
+    #[must_use]
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub unsafe fn gather_ptr(source: Simd<*const T, LANES>) -> Self
+    where
+        T: Default,
+    {
+        // TODO: add an intrinsic that doesn't use a passthru vector, and remove the T: Default bound
+        // Safety: The caller is responsible for upholding all invariants
+        unsafe { Self::gather_select_ptr(source, Mask::splat(true), Self::default()) }
+    }
+
+    /// Conditionally read pointers elementwise into a SIMD vector vector.
+    /// The mask `enable`s all `true` lanes and disables all `false` lanes.
+    /// If a lane is disabled, the lane is selected from the `or` vector and no read is performed.
+    ///
+    /// # Safety
+    ///
+    /// Enabled lanes must satisfy the same conditions as [`core::ptr::read`].
+    #[must_use]
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub unsafe fn gather_select_ptr(
+        source: Simd<*const T, LANES>,
+        enable: Mask<isize, LANES>,
+        or: Self,
+    ) -> Self {
+        // Safety: The caller is responsible for upholding all invariants
+        unsafe { intrinsics::simd_gather(or, source, enable.to_int()) }
     }
 
     /// Writes the values in a SIMD vector to potentially discontiguous indices in `slice`.
@@ -473,9 +509,35 @@ where
             // Ferris forgive me, I have done pointer arithmetic here.
             let ptrs = base_ptr.wrapping_add(idxs);
             // The ptrs have been bounds-masked to prevent memory-unsafe writes insha'allah
-            intrinsics::simd_scatter(self, ptrs, enable.to_int())
+            self.scatter_select_ptr(ptrs, enable);
             // Cleared ☢️ *mut T Zone
         }
+    }
+
+    /// Write pointers elementwise into a SIMD vector vector.
+    ///
+    /// # Safety
+    ///
+    /// Each write must satisfy the same conditions as [`core::ptr::write`].
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub unsafe fn scatter_ptr(self, dest: Simd<*mut T, LANES>) {
+        // Safety: The caller is responsible for upholding all invariants
+        unsafe { self.scatter_select_ptr(dest, Mask::splat(true)) }
+    }
+
+    /// Conditionally write pointers elementwise into a SIMD vector vector.
+    /// The mask `enable`s all `true` lanes and disables all `false` lanes.
+    /// If a lane is disabled, the writing that lane is skipped.
+    ///
+    /// # Safety
+    ///
+    /// Enabled lanes must satisfy the same conditions as [`core::ptr::write`].
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub unsafe fn scatter_select_ptr(self, dest: Simd<*mut T, LANES>, enable: Mask<isize, LANES>) {
+        // Safety: The caller is responsible for upholding all invariants
+        unsafe { intrinsics::simd_scatter(self, dest, enable.to_int()) }
     }
 }
 
