@@ -164,7 +164,7 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]
         ("x86", "bmi1") => smallvec!["bmi"],
         ("x86", "cmpxchg16b") => smallvec!["cx16"],
         // FIXME: These aliases are misleading, and should be removed before avx512_target_feature is
-        // stabilized. For now, they must be kept at a minimum because std::arch uses them.
+        // stabilized. They must remain until std::arch switches off them.
         // rust#100752
         ("x86", "avx512vaes") => smallvec!["vaes"],
         ("x86", "avx512gfni") => smallvec!["gfni"],
