@@ -143,5 +143,13 @@ LL |     async fn a() {
    |
    = help: you could split it up into multiple smaller functions
 
-error: aborting due to 18 previous errors
+error: the function has a cognitive complexity of (2/1)
+  --> $DIR/cognitive_complexity.rs:406:22
+   |
+LL |         pub async fn async_method() {
+   |                      ^^^^^^^^^^^^
+   |
+   = help: you could split it up into multiple smaller functions
+
+error: aborting due to 19 previous errors
 

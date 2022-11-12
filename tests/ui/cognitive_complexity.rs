@@ -400,4 +400,12 @@ mod issue9300 {
         let a = 0;
         if a == 0 {}
     }
+
+    pub struct S;
+    impl S {
+        pub async fn async_method() {
+            let a = 0;
+            if a == 0 {}
+        }
+    }
 }
