@@ -21,7 +21,7 @@ pub struct DataflowConstProp;
 
 impl<'tcx> MirPass<'tcx> for DataflowConstProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 1
+        sess.mir_opt_level() >= 3
     }
 
     #[instrument(skip_all level = "debug")]
