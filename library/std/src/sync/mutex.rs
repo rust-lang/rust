@@ -5,7 +5,7 @@ use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::ops::{Deref, DerefMut};
 use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
-use crate::sys::locks as sys;
+use crate::sys_common::locks as sys;
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
