@@ -92,10 +92,6 @@ details.rustdoc-toggle > summary::before {
 	border-color: transparent black transparent transparent;
 }
 
-.notable-traits-tooltiptext {
-	background-color: #111;
-}
-
 #titles > button:not(.selected) {
 	background-color: #252525;
 	border-top-color: #252525;

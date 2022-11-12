@@ -84,10 +84,6 @@ body.source .example-wrap pre.rust a {
 	border-color: transparent black transparent transparent;
 }
 
-.notable-traits-tooltiptext {
-	background-color: #eee;
-}
-
 #titles > button:not(.selected) {
 	background-color: #e6e6e6;
 	border-top-color: #e6e6e6;
