@@ -18,6 +18,7 @@ use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryRespons
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
@@ -32,9 +33,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt,
-};
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use std::collections::hash_map::Entry;
 use std::slice;
@@ -766,34 +765,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let expect_args = self
             .fudge_inference_if_ok(|| {
+                let ocx = ObligationCtxt::new_in_snapshot(self);
+
                 // Attempt to apply a subtyping relationship between the formal
                 // return type (likely containing type variables if the function
                 // is polymorphic) and the expected return type.
                 // No argument expectations are produced if unification fails.
                 let origin = self.misc(call_span);
-                let ures = self.at(&origin, self.param_env).sup(ret_ty, formal_ret);
-
-                // FIXME(#27336) can't use ? here, Try::from_error doesn't default
-                // to identity so the resulting type is not constrained.
-                match ures {
-                    Ok(ok) => {
-                        // Process any obligations locally as much as
-                        // we can.  We don't care if some things turn
-                        // out unconstrained or ambiguous, as we're
-                        // just trying to get hints here.
-                        let errors = self.save_and_restore_in_snapshot_flag(|_| {
-                            let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);
-                            for obligation in ok.obligations {
-                                fulfill.register_predicate_obligation(self, obligation);
-                            }
-                            fulfill.select_where_possible(self)
-                        });
-
-                        if !errors.is_empty() {
-                            return Err(());
-                        }
-                    }
-                    Err(_) => return Err(()),
+                ocx.sup(&origin, self.param_env, ret_ty, formal_ret)?;
+                if !ocx.select_where_possible().is_empty() {
+                    return Err(TypeError::Mismatch);
                 }
 
                 // Record all the argument types, with the substitutions
