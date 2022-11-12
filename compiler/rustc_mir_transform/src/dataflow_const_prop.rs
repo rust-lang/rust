@@ -317,7 +317,7 @@ struct CollectAndPatch<'tcx, 'map> {
 
     /// For a given MIR location, this stores the values of the operands used by that location. In
     /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
-    /// properly captured.
+    /// properly captured. (This may become UB soon, but it is currently emitted even by safe code.)
     before_effect: FxHashMap<(Location, Place<'tcx>), ScalarTy<'tcx>>,
 
     /// Stores the assigned values for assignments where the Rvalue is constant.
