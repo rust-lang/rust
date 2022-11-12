@@ -69,15 +69,6 @@
 	--crate-search-hover-border: #717171;
 }
 
-.slider {
-	background-color: #ccc;
-}
-.slider:before {
-	background-color: white;
-}
-input:focus + .slider {
-	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
-}
 
 .content .item-info::before { color: #ccc; }
 

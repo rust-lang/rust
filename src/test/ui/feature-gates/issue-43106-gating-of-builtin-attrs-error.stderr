@@ -110,19 +110,19 @@ error: attribute should be applied to an `extern crate` item
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:25:1
    |
 LL | #![no_link]
-   | ^^^^^^^^^^^
+   | ^^^^^^^^^^^ not an `extern crate` item
 
 error: attribute should be applied to a free function, impl method or static
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:27:1
    |
 LL | #![export_name = "2200"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ not a free function, impl method or static
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:29:1
    |
 LL | #![inline]
-   | ^^^^^^^^^^
+   | ^^^^^^^^^^ not a function or closure
 
 error: `macro_export` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:12:1

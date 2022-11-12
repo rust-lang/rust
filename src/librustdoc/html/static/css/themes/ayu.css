@@ -77,16 +77,6 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--crate-search-hover-border: #e0e0e0;
 }
 
-.slider {
-	background-color: #ccc;
-}
-.slider:before {
-	background-color: white;
-}
-input:focus + .slider {
-	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
-}
-
 h1, h2, h3, h4 {
 	color: white;
 }
