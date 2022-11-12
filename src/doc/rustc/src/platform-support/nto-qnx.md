@@ -32,7 +32,7 @@ QNX Neutrino toolchain).
 
 ### Small example application
 
-```rust
+```rust,ignore (platform-specific)
 #![no_std]
 #![no_main]
 #![feature(lang_items)]
