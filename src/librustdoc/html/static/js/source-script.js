@@ -157,7 +157,7 @@ function highlightSourceLines(match) {
         x.scrollIntoView();
     }
     onEachLazy(document.getElementsByClassName("src-line-numbers"), e => {
-        onEachLazy(e.getElementsByTagName("span"), i_e => {
+        onEachLazy(e.getElementsByTagName("a"), i_e => {
             removeClass(i_e, "line-highlighted");
         });
     });
@@ -188,8 +188,13 @@ const handleSourceHighlight = (function() {
 
     return ev => {
         let cur_line_id = parseInt(ev.target.id, 10);
-        // It can happen when clicking not on a line number span.
-        if (isNaN(cur_line_id)) {
+        // This event handler is attached to the entire line number column, but it should only
+        // be run if one of the anchors is clicked. It also shouldn't do anything if the anchor
+        // is clicked with a modifier key (to open a new browser tab).
+        if (isNaN(cur_line_id) ||
+            ev.ctrlKey ||
+            ev.altKey ||
+            ev.metaKey) {
             return;
         }
         ev.preventDefault();

@@ -579,15 +579,16 @@ ul.block, .block li {
 	border-color: var(--example-line-numbers-border-color);
 }
 
-.src-line-numbers span {
-	cursor: pointer;
+.src-line-numbers a, .src-line-numbers span {
 	color: var(--src-line-numbers-span-color);
-}
-.src-line-numbers .line-highlighted {
-	background-color: var(--src-line-number-highlighted-background-color);
 }
 .src-line-numbers :target {
 	background-color: transparent;
+	border-right: none;
+	padding-right: 0;
+}
+.src-line-numbers .line-highlighted {
+	background-color: var(--src-line-number-highlighted-background-color);
 }
 
 .search-loading {
@@ -2044,6 +2045,7 @@ in storage.js
 	padding: 14px 0;
 }
 
+.scraped-example .code-wrapper .src-line-numbers a,
 .scraped-example .code-wrapper .src-line-numbers span {
 	padding: 0 14px;
 }
