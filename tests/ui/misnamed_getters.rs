@@ -85,6 +85,18 @@ impl B {
     }
 }
 
+struct C {
+    inner: Box<A>,
+}
+impl C {
+    unsafe fn a(&self) -> &u8 {
+        &self.inner.b
+    }
+    unsafe fn a_mut(&mut self) -> &mut u8 {
+        &mut self.inner.b
+    }
+}
+
 fn main() {
     // test code goes here
 }
