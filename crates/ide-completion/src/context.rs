@@ -19,7 +19,7 @@ use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
     AstNode,
     SyntaxKind::{self, *},
-    SyntaxToken, TextRange, TextSize,
+    SyntaxToken, TextRange, TextSize, T,
 };
 use text_edit::Indel;
 
@@ -569,6 +569,28 @@ impl<'a> CompletionContext<'a> {
         // completing on
         let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
 
+        // try to skip completions on path with qinvalid colons
+        // this approach works in normal path and inside token tree
+        match original_token.kind() {
+            T![:] => {
+                // return if no prev token before colon
+                let prev_token = original_token.prev_token()?;
+
+                // only has a single colon
+                if prev_token.kind() != T![:] {
+                    return None;
+                }
+
+                if !is_prev_token_valid_path_start_or_segment(&prev_token) {
+                    return None;
+                }
+            }
+            T![::] if !is_prev_token_valid_path_start_or_segment(&original_token) => {
+                return None;
+            }
+            _ => {}
+        }
+
         let AnalysisResult {
             analysis,
             expected: (expected_type, expected_name),
@@ -616,6 +638,24 @@ impl<'a> CompletionContext<'a> {
         };
         Some((ctx, analysis))
     }
+}
+
+fn is_prev_token_valid_path_start_or_segment(token: &SyntaxToken) -> bool {
+    if let Some(prev_token) = token.prev_token() {
+        // token before coloncolon is invalid
+        if !matches!(
+            prev_token.kind(),
+            // trival
+            WHITESPACE | COMMENT
+            // PathIdentSegment
+            | IDENT | T![super] | T![self] | T![Self] | T![crate]
+            // QualifiedPath
+            | T![>]
+        ) {
+            return false;
+        }
+    }
+    true
 }
 
 const OP_TRAIT_LANG_NAMES: &[&str] = &[
