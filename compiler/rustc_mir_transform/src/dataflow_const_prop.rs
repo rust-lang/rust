@@ -14,6 +14,7 @@ use rustc_span::DUMMY_SP;
 use crate::MirPass;
 
 // These constants are somewhat random guesses and have not been optimized.
+// If `tcx.sess.mir_opt_level() >= 4`, we ignore the limits (this can become very expensive).
 const BLOCK_LIMIT: usize = 100;
 const PLACE_LIMIT: usize = 100;
 
@@ -26,7 +27,7 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
 
     #[instrument(skip_all level = "debug")]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if body.basic_blocks.len() > BLOCK_LIMIT {
+        if tcx.sess.mir_opt_level() < 4 && body.basic_blocks.len() > BLOCK_LIMIT {
             debug!("aborted dataflow const prop due too many basic blocks");
             return;
         }
@@ -42,7 +43,7 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
         // `O(num_nodes * tracked_places * n)` in terms of time complexity. Since the number of
         // map nodes is strongly correlated to the number of tracked places, this becomes more or
         // less `O(n)` if we place a constant limit on the number of tracked places.
-        if map.tracked_places() > PLACE_LIMIT {
+        if tcx.sess.mir_opt_level() < 4 && map.tracked_places() > PLACE_LIMIT {
             debug!("aborted dataflow const prop due to too many tracked places");
             return;
         }
