@@ -326,7 +326,10 @@ impl Layout {
         let alloc_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
 
         // The safe constructor is called here to enforce the isize size limit.
-        Layout::from_size_alignment(alloc_size, self.align).map(|layout| (layout, padded_size))
+        match Layout::from_size_alignment(alloc_size, self.align) {
+            Ok(layout) => Ok((layout, padded_size)),
+            Err(e) => Err(e),
+        }
     }
 
     /// Creates a layout describing the record for `self` followed by
