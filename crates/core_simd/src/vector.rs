@@ -373,6 +373,19 @@ where
     /// # Safety
     ///
     /// Each read must satisfy the same conditions as [`core::ptr::read`].
+    ///
+    /// # Example
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdConstPtr};
+    /// let values = [6, 2, 4, 9];
+    /// let offsets = Simd::from_array([1, 0, 0, 3]);
+    /// let source = Simd::splat(values.as_ptr()).wrapping_add(offsets);
+    /// let gathered = unsafe { Simd::gather_ptr(source) };
+    /// assert_eq!(gathered, Simd::from_array([2, 6, 6, 9]));
+    /// ```
     #[must_use]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -392,6 +405,20 @@ where
     /// # Safety
     ///
     /// Enabled lanes must satisfy the same conditions as [`core::ptr::read`].
+    ///
+    /// # Example
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Mask, Simd, SimdConstPtr};
+    /// let values = [6, 2, 4, 9];
+    /// let enable = Mask::from_array([true, true, false, true]);
+    /// let offsets = Simd::from_array([1, 0, 0, 3]);
+    /// let source = Simd::splat(values.as_ptr()).wrapping_add(offsets);
+    /// let gathered = unsafe { Simd::gather_select_ptr(source, enable, Simd::splat(0)) };
+    /// assert_eq!(gathered, Simd::from_array([2, 6, 0, 9]));
+    /// ```
     #[must_use]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -519,6 +546,19 @@ where
     /// # Safety
     ///
     /// Each write must satisfy the same conditions as [`core::ptr::write`].
+    ///
+    /// # Example
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdMutPtr};
+    /// let mut values = [0; 4];
+    /// let offset = Simd::from_array([3, 2, 1, 0]);
+    /// let ptrs = Simd::splat(values.as_mut_ptr()).wrapping_add(offset);
+    /// unsafe { Simd::from_array([6, 3, 5, 7]).scatter_ptr(ptrs); }
+    /// assert_eq!(values, [7, 5, 3, 6]);
+    /// ```
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn scatter_ptr(self, dest: Simd<*mut T, LANES>) {
@@ -533,6 +573,20 @@ where
     /// # Safety
     ///
     /// Enabled lanes must satisfy the same conditions as [`core::ptr::write`].
+    ///
+    /// # Example
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Mask, Simd, SimdMutPtr};
+    /// let mut values = [0; 4];
+    /// let offset = Simd::from_array([3, 2, 1, 0]);
+    /// let ptrs = Simd::splat(values.as_mut_ptr()).wrapping_add(offset);
+    /// let enable = Mask::from_array([true, true, false, false]);
+    /// unsafe { Simd::from_array([6, 3, 5, 7]).scatter_select_ptr(ptrs, enable); }
+    /// assert_eq!(values, [0, 0, 3, 6]);
+    /// ```
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn scatter_select_ptr(self, dest: Simd<*mut T, LANES>, enable: Mask<isize, LANES>) {
