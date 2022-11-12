@@ -21,11 +21,6 @@ mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
-// FIXME: This is left here for now to avoid complications around pending reverts.
-// Once <https://github.com/rust-lang/rust/issues/101899> is fully resolved,
-// this should be removed and the references in `alloc::Layout` updated.
-pub(crate) use ptr::Alignment as ValidAlign;
-
 mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
 pub use transmutability::{Assume, BikeshedIntrinsicFrom};

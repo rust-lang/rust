@@ -183,8 +183,6 @@ h4.code-header {
 	font-weight: 600;
 	margin: 0;
 	padding: 0;
-	/* position notable traits in mobile mode within the header */
-	position: relative;
 }
 
 #crate-search,

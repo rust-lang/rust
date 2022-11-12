@@ -374,7 +374,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let annotation_span = ty.span;
                                 err.span_suggestion(
                                     annotation_span.with_hi(annotation_span.lo()),
-                                    format!("alternatively, consider changing the type annotation"),
+                                    "alternatively, consider changing the type annotation",
                                     suggest_annotation,
                                     Applicability::MaybeIncorrect,
                                 );
@@ -1201,6 +1201,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
+        }
+    }
+
+    #[instrument(skip(self, err))]
+    pub(crate) fn suggest_floating_point_literal(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        if !expected_ty.is_floating_point() {
+            return false;
+        }
+        match expr.kind {
+            ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [start, end], _) => {
+                err.span_suggestion_verbose(
+                    start.span.shrink_to_hi().with_hi(end.span.lo()),
+                    "remove the unnecessary `.` operator for a floating point literal",
+                    '.',
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, ..), [start], _) => {
+                err.span_suggestion_verbose(
+                    expr.span.with_lo(start.span.hi()),
+                    "remove the unnecessary `.` operator for a floating point literal",
+                    '.',
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, ..), [end], _) => {
+                err.span_suggestion_verbose(
+                    expr.span.until(end.span),
+                    "remove the unnecessary `.` operator and add an integer part for a floating point literal",
+                    "0.",
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            _ => false,
         }
     }
 

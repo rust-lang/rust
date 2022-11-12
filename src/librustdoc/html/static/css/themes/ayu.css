@@ -160,10 +160,6 @@ details.rustdoc-toggle > summary::before {
 	color: #788797;
 }
 
-.search-failed a {
-	color: #39AFD7;
-}
-
 .tooltip::after {
 	background-color: #314559;
 	color: #c5c5c5;
