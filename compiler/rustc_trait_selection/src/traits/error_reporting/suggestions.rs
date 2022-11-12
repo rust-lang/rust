@@ -2445,12 +2445,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             (Ok(l), Ok(r)) => l.line == r.line,
                             _ => true,
                         };
-                    if !ident.span.overlaps(span) && !same_line {
+                    if !ident.span.is_dummy() && !ident.span.overlaps(span) && !same_line {
                         multispan.push_span_label(ident.span, "required by a bound in this");
                     }
                 }
                 let descr = format!("required by a bound in `{}`", item_name);
-                if span != DUMMY_SP {
+                if !span.is_dummy() {
                     let msg = format!("required by this bound in `{}`", item_name);
                     multispan.push_span_label(span, msg);
                     err.span_note(multispan, &descr);
