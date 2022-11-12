@@ -536,6 +536,14 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             return;
         }
 
+        // if the const impl is derived using the `derive_const` attribute,
+        // then it would be "stable" at least for the impl.
+        // We gate usages of it using `feature(const_trait_impl)` anyways
+        // so there is no unstable leakage
+        if self.tcx.is_builtin_derive(def_id.to_def_id()) {
+            return;
+        }
+
         let is_const = self.tcx.is_const_fn(def_id.to_def_id())
             || self.tcx.is_const_trait_impl_raw(def_id.to_def_id());
         let is_stable = self
