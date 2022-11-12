@@ -82,10 +82,6 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
-.search-failed a {
-	color: #0089ff;
-}
-
 .tooltip::after {
 	background-color: #000;
 	color: #fff;
