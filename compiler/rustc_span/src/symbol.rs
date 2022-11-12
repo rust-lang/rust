@@ -1251,6 +1251,7 @@ symbols! {
         rustc_deallocator,
         rustc_def_path,
         rustc_default_body_unstable,
+        rustc_deny_explicit_impl,
         rustc_diagnostic_item,
         rustc_diagnostic_macros,
         rustc_dirty,
