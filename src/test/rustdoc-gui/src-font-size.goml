@@ -9,3 +9,8 @@ assert-css: (".impl.has-srclink .code-header", {"font-size": "18px", "font-weigh
 // Check the impl items.
 assert-css: (".impl-items .has-srclink .srclink", {"font-size": "16px", "font-weight": 400}, ALL)
 assert-css: (".impl-items .has-srclink .code-header", {"font-size": "16px", "font-weight": 600}, ALL)
+
+// Check that we can click on source link
+store-document-property: (url, "URL")
+click: ".impl-items .has-srclink .srclink"
+assert-document-property-false: {"URL": |url|}
