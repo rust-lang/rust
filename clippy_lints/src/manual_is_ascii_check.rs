@@ -91,15 +91,16 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
                     CharRange::Digit => Some("is_ascii_digit"),
                     CharRange::Otherwise => None,
                 } {
-                    let mut applicability = Applicability::MaybeIncorrect;
                     let default_snip = "..";
                     // `snippet_with_applicability` may set applicability to `MaybeIncorrect` for
-                    // macro span, so we check applicability manually by comaring `recv` is not default.
+                    // macro span, so we check applicability manually by comparing `recv` is not default.
                     let recv = snippet(cx, recv.span, default_snip);
 
-                    if recv != default_snip {
-                        applicability = Applicability::MachineApplicable;
-                    }
+                    let applicability = if recv == default_snip {
+                        Applicability::HasPlaceholders
+                    } else {
+                        Applicability::MachineApplicable
+                    };
 
                     span_lint_and_sugg(
                         cx,
