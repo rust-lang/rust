@@ -8,7 +8,7 @@ LL |     loop {
 LL |         takes_fnonce(f);
    |                      ^ value moved here, in previous iteration of loop
    |
-note: consider changing this parameter type in function `takes_fnonce` to borrow instead if ownering the value isn't necessary
+note: consider changing this parameter type in function `takes_fnonce` to borrow instead if owning the value isn't necessary
   --> $DIR/borrow-closures-instead-of-move.rs:34:20
    |
 LL | fn takes_fnonce(_: impl FnOnce()) {}
@@ -32,7 +32,7 @@ LL |         takes_fnonce(m);
 LL |     takes_fnonce(m);
    |                  ^ value used here after move
    |
-note: consider changing this parameter type in function `takes_fnonce` to borrow instead if ownering the value isn't necessary
+note: consider changing this parameter type in function `takes_fnonce` to borrow instead if owning the value isn't necessary
   --> $DIR/borrow-closures-instead-of-move.rs:34:20
    |
 LL | fn takes_fnonce(_: impl FnOnce()) {}
@@ -58,7 +58,7 @@ note: closure cannot be moved more than once as it is not `Copy` due to moving t
    |
 LL |         x += 1;
    |         ^
-note: consider changing this parameter type in function `takes_fnonce` to borrow instead if ownering the value isn't necessary
+note: consider changing this parameter type in function `takes_fnonce` to borrow instead if owning the value isn't necessary
   --> $DIR/borrow-closures-instead-of-move.rs:34:20
    |
 LL | fn takes_fnonce(_: impl FnOnce()) {}

@@ -17,7 +17,7 @@ LL |         drop_unsized(y);
 LL |         drop_unsized(y);
    |                      ^ value used here after move
    |
-note: consider changing this parameter type in function `drop_unsized` to borrow instead if ownering the value isn't necessary
+note: consider changing this parameter type in function `drop_unsized` to borrow instead if owning the value isn't necessary
   --> $DIR/double-move.rs:14:31
    |
 LL | fn drop_unsized<T: ?Sized>(_: T) {}

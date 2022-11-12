@@ -8,7 +8,7 @@ LL |     send(ch, message);
 LL |     println!("{}", message);
    |                    ^^^^^^^ value borrowed here after move
    |
-note: consider changing this parameter type in function `send` to borrow instead if ownering the value isn't necessary
+note: consider changing this parameter type in function `send` to borrow instead if owning the value isn't necessary
   --> $DIR/liveness-use-after-send.rs:3:54
    |
 LL | fn send<T:Send + std::fmt::Debug>(ch: Chan<T>, data: T) {
