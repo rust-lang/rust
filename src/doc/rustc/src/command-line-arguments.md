@@ -104,6 +104,33 @@ This modifier has no effect when building other targets like executables or dyna
 
 The default for this modifier is `+bundle`.
 
+### Linking modifiers: `verbatim`
+
+This modifier is compatible with all linking kinds.
+
+`+verbatim` means that rustc itself won't add any target-specified library prefixes or suffixes
+(like `lib` or `.a`) to the library name, and will try its best to ask for the same thing from the
+linker.
+
+For `ld`-like linkers supporting GNU extensions rustc will use the `-l:filename` syntax (note the
+colon) when passing the library, so the linker won't add any prefixes or suffixes to it.
+See [`-l namespec`](https://sourceware.org/binutils/docs/ld/Options.html) in ld documentation for
+more details. \
+For linkers not supporting any verbatim modifiers (e.g. `link.exe` or `ld64`) the library name will
+be passed as is. So the most reliable cross-platform use scenarios for this option are when no
+linker is involved, for example bundling native libraries into rlibs.
+
+`-verbatim` means that rustc will either add a target-specific prefix and suffix to the library
+name before passing it to linker, or won't prevent linker from implicitly adding it. \
+In case of `raw-dylib` kind in particular `.dll` will be added to the library name on Windows.
+
+The default for this modifier is `-verbatim`.
+
+NOTE: Even with `+verbatim` and `-l:filename` syntax `ld`-like linkers do not typically support
+passing absolute paths to libraries. Usually such paths need to be passed as input files without
+using any options like `-l`, e.g. `ld /my/absolute/path`. \
+`-Clink-arg=/my/absolute/path` can be used for doing this from stable `rustc`.
+
 <a id="option-crate-type"></a>
 ## `--crate-type`: a list of types of crates for the compiler to emit
 
