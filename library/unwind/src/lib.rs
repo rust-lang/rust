@@ -103,7 +103,3 @@ extern "C" {}
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
 #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
 extern "C" {}
-
-#[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]
-#[link(name = "unwind", kind = "static", modifiers = "-bundle")]
-extern "C" {}
