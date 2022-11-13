@@ -2285,9 +2285,31 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
                 let source_map = self.r.session.source_map();
 
+                // Make sure this is actually crate-relative.
+                let use_and_crate = import.use_span.with_hi(after_crate_name.lo());
+                let is_definitely_crate =
+                    source_map.span_to_snippet(use_and_crate).map_or(false, |s| {
+                        let mut s = s.trim();
+                        debug!("check_for_module_export_macro: s={s:?}",);
+                        s = s
+                            .split_whitespace()
+                            .rev()
+                            .next()
+                            .expect("split_whitespace always yields at least once");
+                        debug!("check_for_module_export_macro: s={s:?}",);
+                        if s.ends_with("::") {
+                            s = &s[..s.len() - 2];
+                        } else {
+                            return false;
+                        }
+                        s = s.trim();
+                        debug!("check_for_module_export_macro: s={s:?}",);
+                        s != "self" && s != "super"
+                    });
+
                 // Add the import to the start, with a `{` if required.
                 let start_point = source_map.start_point(after_crate_name);
-                if let Ok(start_snippet) = source_map.span_to_snippet(start_point) {
+                if is_definitely_crate && let Ok(start_snippet) = source_map.span_to_snippet(start_point) {
                     corrections.push((
                         start_point,
                         if has_nested {
@@ -2298,6 +2320,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             // was there before.
                             format!("{{{}, {}", import_snippet, start_snippet)
                         },
+                    ));
+                } else {
+                    // If the root import is module-relative, add the import separately
+                    corrections.push((
+                        source_map.start_point(import.use_span).shrink_to_lo(),
+                        format!("use {module_name}::{import_snippet};\n"),
                     ));
                 }
 
