@@ -277,7 +277,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
         let e = ExternalCrate { crate_num: LOCAL_CRATE };
 
-        // FIXME(adotinthevoid): Remove this, as it's not consistant with not
+        // FIXME(adotinthevoid): Remove this, as it's not consistent with not
         // inlining foreign items.
         let foreign_trait_items = self.get_trait_items();
         let mut index = (*self.index).clone().into_inner();

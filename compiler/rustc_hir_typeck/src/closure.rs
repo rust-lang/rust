@@ -35,7 +35,7 @@ struct ClosureSignatures<'tcx> {
     bound_sig: ty::PolyFnSig<'tcx>,
     /// The signature within the function body.
     /// This mostly differs in the sense that lifetimes are now early bound and any
-    /// opaque types from the signature expectation are overriden in case there are
+    /// opaque types from the signature expectation are overridden in case there are
     /// explicit hidden types written by the user in the closure signature.
     liberated_sig: ty::FnSig<'tcx>,
 }
