@@ -1083,6 +1083,11 @@ impl Abi {
         }
     }
 
+    #[inline]
+    pub fn is_sized(&self) -> bool {
+        !self.is_unsized()
+    }
+
     /// Returns `true` if this is a single signed integer scalar
     #[inline]
     pub fn is_signed(&self) -> bool {
@@ -1488,6 +1493,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         self.abi.is_unsized()
+    }
+
+    #[inline]
+    pub fn is_sized(&self) -> bool {
+        self.abi.is_sized()
     }
 
     /// Returns `true` if the type is a ZST and not unsized.

@@ -683,7 +683,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Use size and align of the type.
                 let ty = self.tcx.type_of(def_id);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                assert!(!layout.is_unsized());
+                assert!(layout.is_sized());
                 (layout.size, layout.align.abi, AllocKind::LiveData)
             }
             Some(GlobalAlloc::Memory(alloc)) => {
