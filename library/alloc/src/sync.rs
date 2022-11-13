@@ -456,7 +456,7 @@ impl<T> Arc<T> {
             //
             // These side effects do not impact us in any way, and no other side effects are
             // possible with safe code alone.
-            let prev_value = (*inner).strong.fetch_add(1, Release);
+            let prev_value = (&(*inner).strong).fetch_add(1, Release);
             debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
 
             Arc::from_inner(init_ptr)

@@ -70,7 +70,7 @@ fn unsafe_cell_2phase() {
     unsafe {
         let x = &UnsafeCell::new(vec![]);
         let x2 = &*x;
-        (*x.get()).push(0);
+        (&mut *x.get()).push(0);
         let _val = (*x2.get()).get(0);
     }
 }

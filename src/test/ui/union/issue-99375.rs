@@ -15,7 +15,7 @@ where
     R: Copy,
     F: Fn() -> R,
 {
-    (*params).result.init = ((*params).function)();
+    (*params).result.init = (&(*params).function)();
 }
 
 fn main() {}

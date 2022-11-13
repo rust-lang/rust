@@ -544,7 +544,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     fn set_parent_link(&mut self, parent: NonNull<InternalNode<K, V>>, parent_idx: usize) {
         let leaf = Self::as_leaf_ptr(self);
         unsafe { (*leaf).parent = Some(parent) };
-        unsafe { (*leaf).parent_idx.write(parent_idx as u16) };
+        unsafe { (*leaf).parent_idx = MaybeUninit::new(parent_idx as u16) };
     }
 }
 
@@ -1699,7 +1699,7 @@ unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
         if len > idx + 1 {
             ptr::copy(slice_ptr.add(idx), slice_ptr.add(idx + 1), len - idx - 1);
         }
-        (*slice_ptr.add(idx)).write(val);
+        (&mut *slice_ptr.add(idx)).write(val);
     }
 }
 
@@ -1713,7 +1713,7 @@ unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
         let len = slice.len();
         debug_assert!(idx < len);
         let slice_ptr = slice.as_mut_ptr();
-        let ret = (*slice_ptr.add(idx)).assume_init_read();
+        let ret = (&*slice_ptr.add(idx)).assume_init_read();
         ptr::copy(slice_ptr.add(idx + 1), slice_ptr.add(idx), len - idx - 1);
         ret
     }

@@ -29,7 +29,7 @@ pub fn main() {
         let x_split = split_u32_ptr(x_ptr);
         unsafe {
             let hi = x_split as *const u16 as *const AtomicU16;
-            (*hi).load(Relaxed); //~ ERROR: imperfectly overlapping
+            (&*hi).load(Relaxed); //~ ERROR: imperfectly overlapping
         }
     });
 

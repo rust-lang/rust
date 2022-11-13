@@ -102,8 +102,8 @@ fn raw_trait() {
     let x: Box<dyn Foo> = Box::new(Bar(17));
     let p = Box::into_raw(x);
     unsafe {
-        assert_eq!(17, (*p).get());
-        (*p).set(19);
+        assert_eq!(17, (&*p).get());
+        (&mut *p).set(19);
         let y: Box<dyn Foo> = Box::from_raw(p);
         assert_eq!(19, y.get());
     }

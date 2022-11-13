@@ -19,6 +19,7 @@
 #![feature(pointer_byte_offsets)]
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]
+#![feature(slice_ptr_len)]
 #![feature(strict_provenance)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -103,7 +104,7 @@ impl<T> ArenaChunk<T> {
                 // A pointer as large as possible for zero-sized elements.
                 ptr::invalid_mut(!0)
             } else {
-                self.start().add((*self.storage.as_ptr()).len())
+                self.start().add(self.storage.as_ptr().len())
             }
         }
     }
@@ -287,7 +288,7 @@ impl<T> TypedArena<T> {
                 // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = (*last_chunk.storage.as_ptr()).len().min(HUGE_PAGE / elem_size / 2);
+                new_cap = last_chunk.storage.as_ptr().len().min(HUGE_PAGE / elem_size / 2);
                 new_cap *= 2;
             } else {
                 new_cap = PAGE / elem_size;
@@ -395,7 +396,7 @@ impl DroplessArena {
                 // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = (*last_chunk.storage.as_ptr()).len().min(HUGE_PAGE / 2);
+                new_cap = last_chunk.storage.as_ptr().len().min(HUGE_PAGE / 2);
                 new_cap *= 2;
             } else {
                 new_cap = PAGE;

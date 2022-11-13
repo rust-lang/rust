@@ -13,7 +13,7 @@ impl Foo {
 fn main() {
     unsafe {
         let sfoo: *mut Foo = &mut SFOO;
-        let x = (*sfoo).x();
+        let x = (&mut *sfoo).x();
         (*sfoo).x[1] += 1;
         *x += 1;
     }

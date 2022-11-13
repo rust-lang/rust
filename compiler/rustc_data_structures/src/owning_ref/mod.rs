@@ -1105,14 +1105,14 @@ use std::sync::{MutexGuard, RwLockReadGuard, RwLockWriteGuard};
 impl<T: 'static> ToHandle for RefCell<T> {
     type Handle = Ref<'static, T>;
     unsafe fn to_handle(x: *const Self) -> Self::Handle {
-        (*x).borrow()
+        (&*x).borrow()
     }
 }
 
 impl<T: 'static> ToHandleMut for RefCell<T> {
     type HandleMut = RefMut<'static, T>;
     unsafe fn to_handle_mut(x: *const Self) -> Self::HandleMut {
-        (*x).borrow_mut()
+        (&*x).borrow_mut()
     }
 }
 

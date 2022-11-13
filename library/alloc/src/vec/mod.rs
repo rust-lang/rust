@@ -1942,7 +1942,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     unsafe fn append_elements(&mut self, other: *const [T]) {
-        let count = unsafe { (*other).len() };
+        let count = other.len();
         self.reserve(count);
         let len = self.len();
         unsafe { ptr::copy_nonoverlapping(other as *const T, self.as_mut_ptr().add(len), count) };
