@@ -2321,17 +2321,17 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             format!("{{{}, {}", import_snippet, start_snippet)
                         },
                     ));
+
+                    // Add a `};` to the end if nested, matching the `{` added at the start.
+                    if !has_nested {
+                        corrections.push((source_map.end_point(after_crate_name), "};".to_string()));
+                    }
                 } else {
                     // If the root import is module-relative, add the import separately
                     corrections.push((
                         source_map.start_point(import.use_span).shrink_to_lo(),
                         format!("use {module_name}::{import_snippet};\n"),
                     ));
-                }
-
-                // Add a `};` to the end if nested, matching the `{` added at the start.
-                if !has_nested {
-                    corrections.push((source_map.end_point(after_crate_name), "};".to_string()));
                 }
             }
 
