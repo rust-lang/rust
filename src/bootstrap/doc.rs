@@ -551,6 +551,49 @@ fn doc_std(
     extra_args: &[&OsStr],
     requested_crates: &[String],
 ) {
+    // `cargo` uses the same directory for both JSON docs and HTML docs.
+    // This could lead to cross-contamination when copying files into the specified `out` directory.
+    // For example:
+    // ```bash
+    // x doc std
+    // x doc std --json
+    // ```
+    // could lead to HTML docs being copied into the JSON docs output directory.
+    // To avoid this issue, we copy generated docs instead of whole directory by
+    // checking doc format and generated files.
+    fn cp_docs_by_doc_format(
+        format: &DocumentationFormat,
+        builder: &Builder<'_>,
+        src: &Path,
+        dst: &Path,
+    ) {
+        for f in builder.read_dir(src) {
+            let path = f.path();
+            let name = path.file_name().unwrap();
+            let dst = dst.join(name);
+
+            if t!(f.file_type()).is_dir() && format == &DocumentationFormat::HTML {
+                t!(fs::create_dir_all(&dst));
+                cp_docs_by_doc_format(format, builder, &path, &dst);
+            } else {
+                let _ = fs::remove_file(&dst);
+                let extension = path.extension().and_then(OsStr::to_str);
+
+                match format {
+                    DocumentationFormat::HTML if extension != Some("json") => {
+                        builder.copy(&path, &dst)
+                    }
+                    DocumentationFormat::JSON
+                        if extension == Some("json") || name.to_str() == Some(".stamp") =>
+                    {
+                        builder.copy(&path, &dst)
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
     builder.info(&format!(
         "Documenting stage{} std ({}) in {} format",
         stage,
@@ -568,18 +611,6 @@ fn doc_std(
     // We will then copy the files from this directory into the final `out` directory, the specified
     // as a function parameter.
     let out_dir = builder.stage_out(compiler, Mode::Std).join(target.triple).join("doc");
-    // `cargo` uses the same directory for both JSON docs and HTML docs.
-    // This could lead to cross-contamination when copying files into the specified `out` directory.
-    // For example:
-    // ```bash
-    // x doc std
-    // x doc std --json
-    // ```
-    // could lead to HTML docs being copied into the JSON docs output directory.
-    // To avoid this issue, we clean the doc folder before invoking `cargo`.
-    if out_dir.exists() {
-        builder.remove_dir(&out_dir);
-    }
 
     let run_cargo_rustdoc_for = |package: &str| {
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustdoc");
@@ -605,7 +636,9 @@ fn doc_std(
         }
     }
 
-    builder.cp_r(&out_dir, &out);
+    if !builder.config.dry_run() {
+        cp_docs_by_doc_format(&format, builder, &out_dir, &out);
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
