@@ -561,6 +561,24 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         count: u64,
         dest: PlaceRef<'tcx, &'ll Value>,
     ) -> Self {
+        if let OperandValue::Pair(mut v1, mut v2) = cg_elem.val && count < 1024 {
+            v1 = self.from_immediate(v1);
+            v2 = self.from_immediate(v2);
+            let ty = self.cx().val_ty(v1);
+            // Create a vector of size 2*count and store it in one instruction
+            if ty == self.cx().val_ty(v2) {
+                let count = count * 2;
+                let vec = unsafe { llvm::LLVMGetUndef(self.type_vector(ty, count as u64)) };
+                let vec = (0..count as usize).fold(vec, |acc, x| {
+                    let elt = [v1, v2][x % 2];
+                    self.insert_element(acc, elt, self.cx.const_i32(x as i32))
+                });
+                let vec = OperandRef::from_immediate_or_packed_pair(&mut self, vec, dest.layout);
+                vec.val.store(&mut self, dest);
+                return self;
+            }
+        }
+
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
         let start = dest.project_index(&mut self, zero).llval;

@@ -12,8 +12,6 @@ use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{Abi, Align, Size};
 
-use std::fmt;
-
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
 /// safety check.
@@ -38,19 +36,13 @@ pub enum OperandValue<V> {
 /// to avoid nasty edge cases. In particular, using `Builder::store`
 /// directly is sure to cause problems -- use `OperandRef::store`
 /// instead.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct OperandRef<'tcx, V> {
     // The value.
     pub val: OperandValue<V>,
 
     // The layout of value, based on its Rust type.
     pub layout: TyAndLayout<'tcx>,
-}
-
-impl<V: CodegenObject> fmt::Debug for OperandRef<'_, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "OperandRef({:?} @ {:?})", self.val, self.layout)
-    }
 }
 
 impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
