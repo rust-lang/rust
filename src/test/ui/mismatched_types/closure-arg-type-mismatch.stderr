@@ -2,8 +2,10 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-arg-type-mismatch.rs:3:14
    |
 LL |     a.iter().map(|_: (u32, u32)| 45);
-   |              ^^^ --------------- found signature defined here
-   |              |
+   |              ^^^ ---------------
+   |              |   |   |
+   |              |   |   help: consider borrowing the argument: `&(u32, u32)`
+   |              |   found signature defined here
    |              expected due to this
    |
    = note: expected closure signature `fn(&(u32, u32)) -> _`

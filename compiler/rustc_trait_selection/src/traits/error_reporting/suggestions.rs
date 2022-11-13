@@ -3429,25 +3429,36 @@ fn hint_missing_borrow<'tcx>(
         (ty, refs)
     }
 
+    let mut to_borrow = Vec::new();
+    let mut remove_borrow = Vec::new();
+
     for ((found_arg, expected_arg), arg_span) in found_args.zip(expected_args).zip(arg_spans) {
         let (found_ty, found_refs) = get_deref_type_and_refs(*found_arg);
         let (expected_ty, expected_refs) = get_deref_type_and_refs(*expected_arg);
 
         if found_ty == expected_ty {
-            let hint = if found_refs < expected_refs {
-                "consider borrowing the argument"
-            } else if found_refs == expected_refs {
-                continue;
-            } else {
-                "do not borrow the argument"
-            };
-            err.span_suggestion_verbose(
-                arg_span,
-                hint,
-                expected_arg.to_string(),
-                Applicability::MaybeIncorrect,
-            );
+            if found_refs < expected_refs {
+                to_borrow.push((arg_span, expected_arg.to_string()));
+            } else if found_refs > expected_refs {
+                remove_borrow.push((arg_span, expected_arg.to_string()));
+            }
         }
+    }
+
+    if !to_borrow.is_empty() {
+        err.multipart_suggestion(
+            "consider borrowing the argument",
+            to_borrow,
+            Applicability::MaybeIncorrect,
+        );
+    }
+
+    if !remove_borrow.is_empty() {
+        err.multipart_suggestion(
+            "do not borrow the argument",
+            remove_borrow,
+            Applicability::MaybeIncorrect,
+        );
     }
 }
 

@@ -2,8 +2,10 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/issue-36053-2.rs:7:32
    |
 LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
-   |                                ^^^^^^ --------- found signature defined here
-   |                                |
+   |                                ^^^^^^ ---------
+   |                                |      |   |
+   |                                |      |   help: consider borrowing the argument: `&&str`
+   |                                |      found signature defined here
    |                                expected due to this
    |
    = note: expected closure signature `for<'a> fn(&'a &str) -> _`
