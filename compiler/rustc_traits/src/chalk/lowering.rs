@@ -507,9 +507,6 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
                 name: ty::BoundRegionKind::BrAnon(p.idx as u32, None),
             }),
             chalk_ir::LifetimeData::Static => return interner.tcx.lifetimes.re_static,
-            chalk_ir::LifetimeData::Empty(_) => {
-                bug!("Chalk should not have been passed an empty lifetime.")
-            }
             chalk_ir::LifetimeData::Erased => return interner.tcx.lifetimes.re_erased,
             chalk_ir::LifetimeData::Phantom(void, _) => match *void {},
         };
