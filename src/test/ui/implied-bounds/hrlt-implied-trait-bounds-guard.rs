@@ -31,6 +31,16 @@ fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out T {
     sadness.cast()
 }
 
+fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) {
+    //~^ ERROR lifetime mismatch
+    let _: &'out T = sadness.cast();
+}
+
+fn badboi3<'in_, 'out, T>(a: Foo<'in_, 'out, (&'in_ T, &'out T)>, sadness: &'in_ T) {
+    //~^ ERROR lifetime mismatch
+    let _: &'out T = sadness.cast();
+}
+
 fn bad<'short, T>(value: &'short T) -> &'static T {
     let x: for<'in_, 'out> fn(Foo<'in_, 'out, T>, &'in_ T) -> &'out T = badboi;
     let x: for<'out> fn(Foo<'short, 'out, T>, &'short T) -> &'out T = x;
