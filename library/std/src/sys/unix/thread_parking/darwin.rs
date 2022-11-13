@@ -2,8 +2,7 @@
 //!
 //! Darwin actually has futex syscalls (`__ulock_wait`/`__ulock_wake`), but they
 //! cannot be used in `std` because they are non-public (their use will lead to
-//! rejection from the App Store) and because they are only available starting
-//! with macOS version 10.12, even though the minimum target version is 10.7.
+//! rejection from the App Store).
 //!
 //! Therefore, we need to look for other synchronization primitives. Luckily, Darwin
 //! supports semaphores, which allow us to implement the behaviour we need with

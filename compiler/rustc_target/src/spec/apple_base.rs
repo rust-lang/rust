@@ -67,13 +67,16 @@ impl Arch {
             Armv7s => "cortex-a9",
             Arm64 => "apple-a7",
             Arm64_32 => "apple-s4",
-            I386 | I686 => "yonah",
-            X86_64 | X86_64_sim => "core2",
+            // Only macOS 10.12+ is supported, which means
+            // all x86_64/x86 CPUs must be running at least penryn
+            // https://github.com/llvm/llvm-project/blob/01f924d0e37a5deae51df0d77e10a15b63aa0c0f/clang/lib/Driver/ToolChains/Arch/X86.cpp#L79-L82
+            I386 | I686 => "penryn",
+            X86_64 | X86_64_sim => "penryn",
+            X86_64_macabi => "penryn",
             // Note: `core-avx2` is slightly more advanced than `x86_64h`, see
             // comments (and disabled features) in `x86_64h_apple_darwin` for
-            // details.
+            // details. It is a higher baseline then `penryn` however.
             X86_64h => "core-avx2",
-            X86_64_macabi => "core2",
             Arm64_macabi => "apple-a12",
             Arm64_sim => "apple-a12",
         }
@@ -115,20 +118,8 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
 }
 
 pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
-    // Static TLS is only available in macOS 10.7+. If you try to compile for 10.6
-    // either the linker will complain if it is used or the binary will end up
-    // segfaulting at runtime when run on 10.6. Rust by default supports macOS
-    // 10.7+, but there is a standard environment variable,
-    // MACOSX_DEPLOYMENT_TARGET, which is used to signal targeting older
-    // versions of macOS. For example compiling on 10.10 with
-    // MACOSX_DEPLOYMENT_TARGET set to 10.6 will cause the linker to generate
-    // warnings about the usage of static TLS.
-    //
-    // Here we detect what version is being requested, defaulting to 10.7. Static
-    // TLS is flagged as enabled if it looks to be supported. The architecture
-    // only matters for default deployment target which is 11.0 for ARM64 and
-    // 10.7 for everything else.
-    let has_thread_local = os == "macos" && macos_deployment_target(Arch::X86_64) >= (10, 7);
+    // TODO: iOS 10+ always has TLS too.
+    let has_thread_local = os == "macos";
 
     let abi = arch.target_abi();
 
@@ -239,9 +230,7 @@ fn macos_default_deployment_target(arch: Arch) -> (u32, u32) {
     match arch {
         // Note: Arm64_sim is not included since macOS has no simulator.
         Arm64 | Arm64_macabi => (11, 0),
-        // x86_64h-apple-darwin only supports macOS 10.8 and later
-        X86_64h => (10, 8),
-        _ => (10, 7),
+        _ => (10, 12),
     }
 }
 
