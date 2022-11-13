@@ -31,8 +31,8 @@ use crate::{
         BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
         BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinUnexpectedCliConfigName,
         BuiltinUnexpectedCliConfigValue, BuiltinUnnameableTestItems, BuiltinUnreachablePub,
-        BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-        BuiltinWhileTrue,
+        BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
+        BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
     },
     types::{transparent_newtype_field, CItemKind},
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
@@ -46,8 +46,7 @@ use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    fluent, Applicability, DelayDm, Diagnostic, DiagnosticBuilder, DiagnosticMessage,
-    DiagnosticStyledString, MultiSpan,
+    fluent, Applicability, DecorateLint, DelayDm, Diagnostic, DiagnosticStyledString, MultiSpan,
 };
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
@@ -314,48 +313,21 @@ impl UnsafeCode {
         &self,
         cx: &EarlyContext<'_>,
         span: Span,
-        msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a> DecorateLint<'a, ()>,
     ) {
         // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
             return;
         }
 
-        cx.struct_span_lint(UNSAFE_CODE, span, msg, decorate);
-    }
-
-    fn report_overridden_symbol_name(
-        &self,
-        cx: &EarlyContext<'_>,
-        span: Span,
-        msg: DiagnosticMessage,
-    ) {
-        self.report_unsafe(cx, span, msg, |lint| {
-            lint.note(fluent::lint_builtin_overridden_symbol_name)
-        })
-    }
-
-    fn report_overridden_symbol_section(
-        &self,
-        cx: &EarlyContext<'_>,
-        span: Span,
-        msg: DiagnosticMessage,
-    ) {
-        self.report_unsafe(cx, span, msg, |lint| {
-            lint.note(fluent::lint_builtin_overridden_symbol_section)
-        })
+        cx.emit_spanned_lint(UNSAFE_CODE, span, decorate);
     }
 }
 
 impl EarlyLintPass for UnsafeCode {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         if attr.has_name(sym::allow_internal_unsafe) {
-            self.report_unsafe(cx, attr.span, fluent::lint_builtin_allow_internal_unsafe, |lint| {
-                lint
-            });
+            self.report_unsafe(cx, attr.span, BuiltinUnsafe::AllowInternalUnsafe);
         }
     }
 
@@ -364,7 +336,7 @@ impl EarlyLintPass for UnsafeCode {
         if let ast::ExprKind::Block(ref blk, _) = e.kind {
             // Don't warn about generated blocks; that'll just pollute the output.
             if blk.rules == ast::BlockCheckMode::Unsafe(ast::UserProvided) {
-                self.report_unsafe(cx, blk.span, fluent::lint_builtin_unsafe_block, |lint| lint);
+                self.report_unsafe(cx, blk.span, BuiltinUnsafe::UnsafeBlock);
             }
         }
     }
@@ -372,62 +344,38 @@ impl EarlyLintPass for UnsafeCode {
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         match it.kind {
             ast::ItemKind::Trait(box ast::Trait { unsafety: ast::Unsafe::Yes(_), .. }) => {
-                self.report_unsafe(cx, it.span, fluent::lint_builtin_unsafe_trait, |lint| lint)
+                self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeTrait);
             }
 
             ast::ItemKind::Impl(box ast::Impl { unsafety: ast::Unsafe::Yes(_), .. }) => {
-                self.report_unsafe(cx, it.span, fluent::lint_builtin_unsafe_impl, |lint| lint)
+                self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeImpl);
             }
 
             ast::ItemKind::Fn(..) => {
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_overridden_symbol_name(
-                        cx,
-                        attr.span,
-                        fluent::lint_builtin_no_mangle_fn,
-                    );
+                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleFn);
                 }
 
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                    self.report_overridden_symbol_name(
-                        cx,
-                        attr.span,
-                        fluent::lint_builtin_export_name_fn,
-                    );
+                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameFn);
                 }
 
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
-                    self.report_overridden_symbol_section(
-                        cx,
-                        attr.span,
-                        fluent::lint_builtin_link_section_fn,
-                    );
+                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionFn);
                 }
             }
 
             ast::ItemKind::Static(..) => {
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_overridden_symbol_name(
-                        cx,
-                        attr.span,
-                        fluent::lint_builtin_no_mangle_static,
-                    );
+                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleStatic);
                 }
 
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                    self.report_overridden_symbol_name(
-                        cx,
-                        attr.span,
-                        fluent::lint_builtin_export_name_static,
-                    );
+                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameStatic);
                 }
 
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::link_section) {
-                    self.report_overridden_symbol_section(
-                        cx,
-                        attr.span,
-                        fluent::lint_builtin_link_section_static,
-                    );
+                    self.report_unsafe(cx, attr.span, BuiltinUnsafe::LinkSectionStatic);
                 }
             }
 
@@ -438,18 +386,10 @@ impl EarlyLintPass for UnsafeCode {
     fn check_impl_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
         if let ast::AssocItemKind::Fn(..) = it.kind {
             if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                self.report_overridden_symbol_name(
-                    cx,
-                    attr.span,
-                    fluent::lint_builtin_no_mangle_method,
-                );
+                self.report_unsafe(cx, attr.span, BuiltinUnsafe::NoMangleMethod);
             }
             if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                self.report_overridden_symbol_name(
-                    cx,
-                    attr.span,
-                    fluent::lint_builtin_export_name_method,
-                );
+                self.report_unsafe(cx, attr.span, BuiltinUnsafe::ExportNameMethod);
             }
         }
     }
@@ -464,13 +404,13 @@ impl EarlyLintPass for UnsafeCode {
             body,
         ) = fk
         {
-            let msg = match ctxt {
+            let decorator = match ctxt {
                 FnCtxt::Foreign => return,
-                FnCtxt::Free => fluent::lint_builtin_decl_unsafe_fn,
-                FnCtxt::Assoc(_) if body.is_none() => fluent::lint_builtin_decl_unsafe_method,
-                FnCtxt::Assoc(_) => fluent::lint_builtin_impl_unsafe_method,
+                FnCtxt::Free => BuiltinUnsafe::DeclUnsafeFn,
+                FnCtxt::Assoc(_) if body.is_none() => BuiltinUnsafe::DeclUnsafeMethod,
+                FnCtxt::Assoc(_) => BuiltinUnsafe::ImplUnsafeMethod,
             };
-            self.report_unsafe(cx, span, msg, |lint| lint);
+            self.report_unsafe(cx, span, decorator);
         }
     }
 }
