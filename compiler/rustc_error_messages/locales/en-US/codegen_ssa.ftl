@@ -205,3 +205,17 @@ codegen_ssa_invalid_windows_subsystem = invalid windows subsystem `{$subsystem}`
 codegen_ssa_erroneous_constant = erroneous constant encountered
 
 codegen_ssa_shuffle_indices_evaluation = could not evaluate shuffle_indices at compile time
+
+codegen_ssa_missing_memory_ordering = Atomic intrinsic missing memory ordering
+
+codegen_ssa_unknown_atomic_ordering = unknown ordering in atomic intrinsic
+
+codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
+
+codegen_ssa_unknown_atomic_operation = unknown atomic operation
+
+codegen_ssa_invalid_monomorphization_basic_integer_type = invalid monomorphization of `{$name}` intrinsic: expected basic integer type, found `{$ty}`
+
+codegen_ssa_invalid_monomorphization_basic_float_type = invalid monomorphization of `{$name}` intrinsic: expected basic float type, found `{$ty}`
+
+codegen_ssa_invalid_monomorphization_float_to_int_unchecked = invalid monomorphization of `float_to_int_unchecked` intrinsic: expected basic float type, found `{$ty}`

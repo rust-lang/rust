@@ -10,6 +10,7 @@ use crate::value::Value;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
+use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
@@ -284,15 +285,11 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         _ => bug!(),
                     },
                     None => {
-                        span_invalid_monomorphization_error(
-                            tcx.sess,
+                        tcx.sess.emit_err(InvalidMonomorphization::BasicIntegerType {
                             span,
-                            &format!(
-                                "invalid monomorphization of `{}` intrinsic: \
-                                      expected basic integer type, found `{}`",
-                                name, ty
-                            ),
-                        );
+                            name,
+                            ty,
+                        });
                         return;
                     }
                 }

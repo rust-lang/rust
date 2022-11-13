@@ -6,6 +6,7 @@ use rustc_errors::{
     IntoDiagnosticArg,
 };
 use rustc_macros::Diagnostic;
+use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 use std::io::Error;
@@ -588,4 +589,46 @@ pub struct ErroneousConstant {
 pub struct ShuffleIndicesEvaluation {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_missing_memory_ordering)]
+pub struct MissingMemoryOrdering;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unknown_atomic_ordering)]
+pub struct UnknownAtomicOrdering;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_atomic_compare_exchange)]
+pub struct AtomicCompareExchange;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unknown_atomic_operation)]
+pub struct UnknownAtomicOperation;
+
+#[derive(Diagnostic)]
+pub enum InvalidMonomorphization<'tcx> {
+    #[diag(codegen_ssa_invalid_monomorphization_basic_integer_type, code = "E0511")]
+    BasicIntegerType {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        ty: Ty<'tcx>,
+    },
+
+    #[diag(codegen_ssa_invalid_monomorphization_basic_float_type, code = "E0511")]
+    BasicFloatType {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        ty: Ty<'tcx>,
+    },
+
+    #[diag(codegen_ssa_invalid_monomorphization_float_to_int_unchecked, code = "E0511")]
+    FloatToIntUnchecked {
+        #[primary_span]
+        span: Span,
+        ty: Ty<'tcx>,
+    },
 }
