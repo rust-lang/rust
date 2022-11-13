@@ -6,3 +6,11 @@ macro_rules! undocd_unsafe {
         }
     };
 }
+#[macro_export]
+macro_rules! undocd_safe {
+    () => {
+        pub fn vey_oy() {
+            unimplemented!();
+        }
+    };
+}

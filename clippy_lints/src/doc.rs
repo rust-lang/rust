@@ -221,6 +221,42 @@ declare_clippy_lint! {
     "possible typo for an intra-doc link"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the doc comments of publicly visible
+    /// safe functions and traits and warns if there is a `# Safety` section.
+    ///
+    /// ### Why is this bad?
+    /// Safe functions and traits are safe to implement and therefore do not
+    /// need to describe safety preconditions that users are required to uphold.
+    ///
+    /// ### Examples
+    /// ```rust
+    ///# type Universe = ();
+    /// /// # Safety
+    /// ///
+    /// /// This function should not be called before the horsemen are ready.
+    /// pub fn start_apocalypse_but_safely(u: &mut Universe) {
+    ///     unimplemented!();
+    /// }
+    /// ```
+    ///
+    /// The function is safe, so there shouldn't be any preconditions
+    /// that have to be explained for safety reasons.
+    ///
+    /// ```rust
+    ///# type Universe = ();
+    /// /// This function should really be documented
+    /// pub fn start_apocalypse(u: &mut Universe) {
+    ///     unimplemented!();
+    /// }
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub UNNECESSARY_SAFETY_DOC,
+    style,
+    "`pub fn` or `pub trait` with `# Safety` docs"
+}
+
 #[expect(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct DocMarkdown {
@@ -243,7 +279,8 @@ impl_lint_pass!(DocMarkdown => [
     MISSING_SAFETY_DOC,
     MISSING_ERRORS_DOC,
     MISSING_PANICS_DOC,
-    NEEDLESS_DOCTEST_MAIN
+    NEEDLESS_DOCTEST_MAIN,
+    UNNECESSARY_SAFETY_DOC,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
@@ -254,7 +291,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let headers = check_attrs(cx, &self.valid_idents, attrs);
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
                 if !(is_entrypoint_fn(cx, item.def_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
@@ -271,15 +308,20 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
             hir::ItemKind::Impl(impl_) => {
                 self.in_trait_impl = impl_.of_trait.is_some();
             },
-            hir::ItemKind::Trait(_, unsafety, ..) => {
-                if !headers.safety && unsafety == hir::Unsafety::Unsafe {
-                    span_lint(
-                        cx,
-                        MISSING_SAFETY_DOC,
-                        cx.tcx.def_span(item.def_id),
-                        "docs for unsafe trait missing `# Safety` section",
-                    );
-                }
+            hir::ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
+                (false, hir::Unsafety::Unsafe) => span_lint(
+                    cx,
+                    MISSING_SAFETY_DOC,
+                    cx.tcx.def_span(item.def_id),
+                    "docs for unsafe trait missing `# Safety` section",
+                ),
+                (true, hir::Unsafety::Normal) => span_lint(
+                    cx,
+                    UNNECESSARY_SAFETY_DOC,
+                    cx.tcx.def_span(item.def_id),
+                    "docs for safe trait have unnecessary `# Safety` section",
+                ),
+                _ => (),
             },
             _ => (),
         }
@@ -293,7 +335,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let headers = check_attrs(cx, &self.valid_idents, attrs);
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
                 lint_for_missing_headers(cx, item.def_id.def_id, sig, headers, None, None);
@@ -303,7 +345,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let headers = check_attrs(cx, &self.valid_idents, attrs);
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
             return;
         }
@@ -343,14 +385,20 @@ fn lint_for_missing_headers(
     }
 
     let span = cx.tcx.def_span(def_id);
-
-    if !headers.safety && sig.header.unsafety == hir::Unsafety::Unsafe {
-        span_lint(
+    match (headers.safety, sig.header.unsafety) {
+        (false, hir::Unsafety::Unsafe) => span_lint(
             cx,
             MISSING_SAFETY_DOC,
             span,
             "unsafe function's docs miss `# Safety` section",
-        );
+        ),
+        (true, hir::Unsafety::Normal) => span_lint(
+            cx,
+            UNNECESSARY_SAFETY_DOC,
+            span,
+            "safe function's docs have unnecessary `# Safety` section",
+        ),
+        _ => (),
     }
     if !headers.panics && panic_span.is_some() {
         span_lint_and_note(
@@ -452,7 +500,7 @@ struct DocHeaders {
     panics: bool,
 }
 
-fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[Attribute]) -> DocHeaders {
+fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[Attribute]) -> Option<DocHeaders> {
     use pulldown_cmark::{BrokenLink, CowStr, Options};
     /// We don't want the parser to choke on intra doc links. Since we don't
     /// actually care about rendering them, just pretend that all broken links are
@@ -473,11 +521,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         } else if attr.has_name(sym::doc) {
             // ignore mix of sugared and non-sugared doc
             // don't trigger the safety or errors check
-            return DocHeaders {
-                safety: true,
-                errors: true,
-                panics: true,
-            };
+            return None;
         }
     }
 
@@ -489,7 +533,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     }
 
     if doc.is_empty() {
-        return DocHeaders::default();
+        return Some(DocHeaders::default());
     }
 
     let mut cb = fake_broken_link_callback;
@@ -512,7 +556,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
             (previous, current) => Err(((previous, previous_range), (current, current_range))),
         }
     });
-    check_doc(cx, valid_idents, events, &spans)
+    Some(check_doc(cx, valid_idents, events, &spans))
 }
 
 const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
