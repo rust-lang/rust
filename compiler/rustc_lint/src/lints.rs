@@ -1,3 +1,5 @@
+#![allow(rustc::untranslatable_diagnostic)]
+#![allow(rustc::diagnostic_outside_of_impl)]
 use std::num::NonZeroU32;
 
 use rustc_errors::{
