@@ -368,7 +368,7 @@ where
         unsafe { Self::gather_select_ptr(ptrs, enable, or) }
     }
 
-    /// Read pointers elementwise into a SIMD vector vector.
+    /// Read pointers elementwise into a SIMD vector.
     ///
     /// # Safety
     ///
@@ -398,7 +398,7 @@ where
         unsafe { Self::gather_select_ptr(source, Mask::splat(true), Self::default()) }
     }
 
-    /// Conditionally read pointers elementwise into a SIMD vector vector.
+    /// Conditionally read pointers elementwise into a SIMD vector.
     /// The mask `enable`s all `true` lanes and disables all `false` lanes.
     /// If a lane is disabled, the lane is selected from the `or` vector and no read is performed.
     ///
@@ -541,7 +541,7 @@ where
         }
     }
 
-    /// Write pointers elementwise into a SIMD vector vector.
+    /// Write pointers elementwise into a SIMD vector.
     ///
     /// # Safety
     ///
@@ -566,7 +566,7 @@ where
         unsafe { self.scatter_select_ptr(dest, Mask::splat(true)) }
     }
 
-    /// Conditionally write pointers elementwise into a SIMD vector vector.
+    /// Conditionally write pointers elementwise into a SIMD vector.
     /// The mask `enable`s all `true` lanes and disables all `false` lanes.
     /// If a lane is disabled, the write to that lane is skipped.
     ///
