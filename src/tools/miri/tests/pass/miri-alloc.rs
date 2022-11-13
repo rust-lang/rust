@@ -14,7 +14,7 @@ extern "Rust" {
 fn start(_: isize, _: *const *const u8) -> isize {
     unsafe {
         let ptr = miri_alloc(123, 1);
-        core::ptr::write_bytes(ptr, 0, 123);
+        core::ptr::write_bytes(ptr, 0u8, 123);
         miri_dealloc(ptr, 123, 1);
     }
     0

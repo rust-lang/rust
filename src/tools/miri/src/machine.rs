@@ -123,7 +123,7 @@ impl fmt::Display for MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             Rust => write!(f, "Rust heap"),
-            Miri => write!(f, "Miri heap"),
+            Miri => write!(f, "Miri bare-metal heap"),
             C => write!(f, "C heap"),
             WinHeap => write!(f, "Windows heap"),
             Machine => write!(f, "machine-managed memory"),
