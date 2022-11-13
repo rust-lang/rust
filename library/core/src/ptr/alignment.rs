@@ -178,7 +178,7 @@ impl const cmp::Ord for Alignment {
     }
 }
 
-#[rustc_const_unstable(feature = "const_alloc_layout", issue = "87864")]
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl const cmp::PartialOrd for Alignment {
     #[inline]
