@@ -199,12 +199,12 @@ pub fn first_node_in_macro(cx: &LateContext<'_>, node: &impl HirNode) -> Option<
 pub fn is_panic(cx: &LateContext<'_>, def_id: DefId) -> bool {
     let Some(name) = cx.tcx.get_diagnostic_name(def_id) else { return false };
     matches!(
-        name.as_str(),
-        "core_panic_macro"
-            | "std_panic_macro"
-            | "core_panic_2015_macro"
-            | "std_panic_2015_macro"
-            | "core_panic_2021_macro"
+        name,
+        sym::core_panic_macro
+            | sym::std_panic_macro
+            | sym::core_panic_2015_macro
+            | sym::std_panic_2015_macro
+            | sym::core_panic_2021_macro
     )
 }
 

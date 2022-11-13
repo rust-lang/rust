@@ -43,6 +43,7 @@ pub macro panic_2015 {
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 #[allow_internal_unstable(core_panic, const_format_args)]
+#[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2021 {
     () => (
