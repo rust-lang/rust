@@ -831,32 +831,30 @@ declare_clippy_lint! {
     /// etc. instead.
     ///
     /// ### Why is this bad?
-    /// The function will always be called and potentially
-    /// allocate an object acting as the default.
+    /// The function will always be called. This is only bad if it allocates or
+    /// does some non-trivial amount of work.
     ///
     /// ### Known problems
-    /// If the function has side-effects, not calling it will
-    /// change the semantic of the program, but you shouldn't rely on that anyway.
+    /// If the function has side-effects, not calling it will change the
+    /// semantic of the program, but you shouldn't rely on that.
+    ///
+    /// The lint also cannot figure out whether the function you call is
+    /// actually expensive to call or not.
     ///
     /// ### Example
     /// ```rust
     /// # let foo = Some(String::new());
-    /// foo.unwrap_or(String::new());
+    /// foo.unwrap_or(String::from("empty"));
     /// ```
     ///
     /// Use instead:
     /// ```rust
     /// # let foo = Some(String::new());
-    /// foo.unwrap_or_else(String::new);
-    ///
-    /// // or
-    ///
-    /// # let foo = Some(String::new());
-    /// foo.unwrap_or_default();
+    /// foo.unwrap_or_else(|| String::from("empty"));
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub OR_FUN_CALL,
-    perf,
+    nursery,
     "using any `*or` method with a function call, which suggests `*or_else`"
 }
 
