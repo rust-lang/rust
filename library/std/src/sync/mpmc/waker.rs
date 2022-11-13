@@ -6,7 +6,6 @@ use super::select::{Operation, Selected};
 use crate::ptr;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::Mutex;
-use crate::thread::{self, ThreadId};
 
 /// Represents a thread blocked on a specific channel operation.
 pub(crate) struct Entry {
@@ -195,13 +194,11 @@ impl Drop for SyncWaker {
     }
 }
 
-/// Returns the id of the current thread.
+/// Returns a unique id for the current thread.
 #[inline]
-fn current_thread_id() -> ThreadId {
-    thread_local! {
-        /// Cached thread-local id.
-        static THREAD_ID: ThreadId = thread::current().id();
-    }
-
-    THREAD_ID.try_with(|id| *id).unwrap_or_else(|_| thread::current().id())
+pub fn current_thread_id() -> usize {
+    // `u8` is not drop so this variable will be available during thread destruction,
+    // whereas `thread::current()` would not be
+    thread_local! { static DUMMY: u8 = 0 }
+    DUMMY.with(|x| (x as *const u8).addr())
 }

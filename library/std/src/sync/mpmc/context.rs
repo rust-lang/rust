@@ -1,12 +1,13 @@
 //! Thread-local channel context.
 
 use super::select::Selected;
+use super::waker::current_thread_id;
 
 use crate::cell::Cell;
 use crate::ptr;
 use crate::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 use crate::sync::Arc;
-use crate::thread::{self, Thread, ThreadId};
+use crate::thread::{self, Thread};
 use crate::time::Instant;
 
 /// Thread-local context.
@@ -28,7 +29,7 @@ struct Inner {
     thread: Thread,
 
     /// Thread id.
-    thread_id: ThreadId,
+    thread_id: usize,
 }
 
 impl Context {
@@ -70,7 +71,7 @@ impl Context {
                 select: AtomicUsize::new(Selected::Waiting.into()),
                 packet: AtomicPtr::new(ptr::null_mut()),
                 thread: thread::current(),
-                thread_id: thread::current().id(),
+                thread_id: current_thread_id(),
             }),
         }
     }
@@ -148,7 +149,7 @@ impl Context {
 
     /// Returns the id of the thread this context belongs to.
     #[inline]
-    pub fn thread_id(&self) -> ThreadId {
+    pub fn thread_id(&self) -> usize {
         self.inner.thread_id
     }
 }
