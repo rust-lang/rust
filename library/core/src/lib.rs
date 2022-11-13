@@ -157,6 +157,7 @@
 #![feature(const_unsafecell_get_mut)]
 #![feature(const_waker)]
 #![feature(core_panic)]
+#![cfg_attr(not(bootstrap), feature(derive_const))]
 #![feature(duration_consts_float)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(ptr_alignment_type)]
