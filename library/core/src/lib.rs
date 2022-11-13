@@ -185,6 +185,7 @@
 #![feature(const_refs_to_cell)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
+#![cfg_attr(not(bootstrap), feature(derive_const))]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(rustdoc_internals)]
