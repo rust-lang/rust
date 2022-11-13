@@ -572,7 +572,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         metadata: &MemPlaceMeta<M::Provenance>,
         layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        if !layout.is_unsized() {
+        if layout.is_sized() {
             return Ok(Some((layout.size, layout.align.abi)));
         }
         match layout.ty.kind() {

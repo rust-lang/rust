@@ -201,7 +201,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
     }
 
@@ -333,7 +333,7 @@ where
         let mut mplace = self.ref_to_mplace(&val)?;
         if let Some(pointee_layout) = pointee_layout {
             assert!(
-                !mplace.layout.is_unsized() && !pointee_layout.is_unsized(),
+                mplace.layout.is_sized() && pointee_layout.is_sized(),
                 "overwriting the deref'd layout is only supported for sized types",
             );
             mplace.layout = pointee_layout;
@@ -356,7 +356,7 @@ where
         &self,
         place: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
-        assert!(!place.layout.is_unsized());
+        assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
         self.get_ptr_alloc(place.ptr, size, place.align)
@@ -367,7 +367,7 @@ where
         &mut self,
         place: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
-        assert!(!place.layout.is_unsized());
+        assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
         self.get_ptr_alloc_mut(place.ptr, size, place.align)
@@ -501,7 +501,7 @@ where
         src: Immediate<M::Provenance>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        assert!(!dest.layout.is_unsized(), "Cannot write unsized data");
+        assert!(dest.layout.is_sized(), "Cannot write unsized data");
         trace!("write_immediate: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
         // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
@@ -762,7 +762,7 @@ where
         layout: TyAndLayout<'tcx>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         let ptr = self.allocate_ptr(layout.size, layout.align.abi, kind)?;
         Ok(MPlaceTy::from_aligned_ptr(ptr.into(), layout))
     }

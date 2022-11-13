@@ -277,7 +277,7 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }
-    if !layout.is_unsized() && field_count > 0 {
+    if layout.is_sized() && field_count > 0 {
         if offset > layout.size {
             bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
         }
