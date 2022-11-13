@@ -568,7 +568,7 @@ where
 
     /// Conditionally write pointers elementwise into a SIMD vector vector.
     /// The mask `enable`s all `true` lanes and disables all `false` lanes.
-    /// If a lane is disabled, the writing that lane is skipped.
+    /// If a lane is disabled, the write to that lane is skipped.
     ///
     /// # Safety
     ///
