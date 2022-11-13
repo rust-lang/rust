@@ -568,6 +568,15 @@ extern "Rust" {
     /// program) the contents of a section of program memory, as bytes. Bytes
     /// written using this function will emerge from the interpreter's stderr.
     fn miri_write_to_stderr(bytes: &[u8]);
+
+    /// Miri-provided extern function to allocate memory from the interpreter.
+    /// 
+    /// This is useful when no fundamental way of allocating memory is
+    /// available, e.g. when using `no_std` + `alloc`.
+    fn miri_alloc(size: usize, align: usize) -> *mut u8;
+
+    /// Miri-provided extern function to deallocate memory.
+    fn miri_dealloc(ptr: *mut u8, size: usize, align: usize);
 }
 ```
 

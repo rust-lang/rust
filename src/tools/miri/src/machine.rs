@@ -77,6 +77,8 @@ impl VisitTags for FrameData<'_> {
 pub enum MiriMemoryKind {
     /// `__rust_alloc` memory.
     Rust,
+    /// `miri_alloc` memory.
+    Miri,
     /// `malloc` memory.
     C,
     /// Windows `HeapAlloc` memory.
@@ -110,7 +112,7 @@ impl MayLeak for MiriMemoryKind {
     fn may_leak(self) -> bool {
         use self::MiriMemoryKind::*;
         match self {
-            Rust | C | WinHeap | Runtime => false,
+            Rust | Miri | C | WinHeap | Runtime => false,
             Machine | Global | ExternStatic | Tls => true,
         }
     }
@@ -121,6 +123,7 @@ impl fmt::Display for MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             Rust => write!(f, "Rust heap"),
+            Miri => write!(f, "Miri bare-metal heap"),
             C => write!(f, "C heap"),
             WinHeap => write!(f, "Windows heap"),
             Machine => write!(f, "machine-managed memory"),
