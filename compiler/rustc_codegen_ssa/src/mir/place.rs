@@ -29,7 +29,7 @@ pub struct PlaceRef<'tcx, V> {
 
 impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(llval: V, layout: TyAndLayout<'tcx>) -> PlaceRef<'tcx, V> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         PlaceRef { llval, llextra: None, layout, align: layout.align.abi }
     }
 
@@ -38,7 +38,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         layout: TyAndLayout<'tcx>,
         align: Align,
     ) -> PlaceRef<'tcx, V> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         PlaceRef { llval, llextra: None, layout, align }
     }
 
@@ -48,7 +48,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
+        assert!(layout.is_sized(), "tried to statically allocate unsized place");
         let tmp = bx.alloca(bx.cx().backend_type(layout), layout.align.abi);
         Self::new_sized(tmp, layout)
     }
@@ -145,7 +145,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 );
                 return simple();
             }
-            _ if !field.is_unsized() => return simple(),
+            _ if field.is_sized() => return simple(),
             ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(),
             ty::Adt(def, _) => {
                 if def.repr().packed() {

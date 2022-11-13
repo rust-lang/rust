@@ -668,7 +668,7 @@ fn layout_of_uncached<'tcx>(
                 let mut abi = Abi::Aggregate { sized: true };
                 let index = VariantIdx::new(0);
                 for field in &variants[index] {
-                    assert!(!field.is_unsized());
+                    assert!(field.is_sized());
                     align = align.max(field.align);
 
                     // If all non-ZST fields have the same ABI, forward this ABI

@@ -128,7 +128,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
     let layout = fx.layout_of(ty);
-    assert!(!layout.is_unsized(), "sized const value");
+    assert!(layout.is_sized(), "unsized const value");
 
     if layout.is_zst() {
         return CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout);
