@@ -584,3 +584,4 @@ fallback = [
 "/src/tools/rustdoc-js" =                    ["rustdoc"]
 "/src/tools/rustdoc-themes" =                ["rustdoc"]
 "/src/tools/tidy" =                          ["bootstrap"]
+"/src/tools/x" =                             ["bootstrap"]
