@@ -1,14 +1,18 @@
 use std::num::NonZeroU32;
 
 use rustc_errors::{
-    fluent, AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage, SuggestionStyle,
+    fluent, AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage,
+    DiagnosticStyledString, SuggestionStyle,
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{Predicate, Ty, TyCtxt};
-use rustc_span::{edition::Edition, symbol::Ident, Span, Symbol};
+use rustc_session::parse::ParseSess;
+use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
 
-use crate::{errors::OverruledAttributeSub, LateContext};
+use crate::{
+    builtin::InitError, builtin::TypeAliasBounds, errors::OverruledAttributeSub, LateContext,
+};
 
 // array_into_iter.rs
 #[derive(LintDiagnostic)]
@@ -142,7 +146,31 @@ pub struct BuiltinAnonymousParams<'a> {
     pub ty_snip: &'a str,
 }
 
-// FIXME: add lint::builtin_deprecated_attr_link
+// FIXME(davidtwco) translatable deprecated attr
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_deprecated_attr_link)]
+pub struct BuiltinDeprecatedAttrLink<'a> {
+    pub name: Symbol,
+    pub reason: &'a str,
+    pub link: &'a str,
+    #[subdiagnostic]
+    pub suggestion: BuiltinDeprecatedAttrLinkSuggestion<'a>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum BuiltinDeprecatedAttrLinkSuggestion<'a> {
+    #[suggestion(msg_suggestion, code = "", applicability = "machine-applicable")]
+    Msg {
+        #[primary_span]
+        suggestion: Span,
+        msg: &'a str,
+    },
+    #[suggestion(default_suggestion, code = "", applicability = "machine-applicable")]
+    Default {
+        #[primary_span]
+        suggestion: Span,
+    },
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_deprecated_attr_used)]
@@ -199,6 +227,31 @@ pub struct BuiltinMutablesTransmutes;
 #[diag(lint_builtin_unstable_features)]
 pub struct BuiltinUnstableFeatures;
 
+// lint_ungated_async_fn_track_caller
+pub struct BuiltinUngatedAsyncFnTrackCaller<'a> {
+    pub label: Span,
+    pub parse_sess: &'a ParseSess,
+}
+
+impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        diag.span_label(self.label, fluent::label);
+        rustc_session::parse::add_feature_diagnostics(
+            diag,
+            &self.parse_sess,
+            sym::closure_track_caller,
+        );
+        diag
+    }
+
+    fn msg(&self) -> DiagnosticMessage {
+        fluent::lint_ungated_async_fn_track_caller
+    }
+}
+
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_unreachable_pub)]
 pub struct BuiltinUnreachablePub<'a> {
@@ -209,9 +262,83 @@ pub struct BuiltinUnreachablePub<'a> {
     pub help: Option<()>,
 }
 
-// FIXME: migrate builtin_type_alias_where_clause
+pub struct SuggestChangingAssocTypes<'a, 'b> {
+    pub ty: &'a rustc_hir::Ty<'b>,
+}
 
-// FIXME: migrate builtin_type_alias_generic_bounds
+impl AddToDiagnostic for SuggestChangingAssocTypes<'_, '_> {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
+        // bound.  Let's see if this type does that.
+
+        // We use a HIR visitor to walk the type.
+        use rustc_hir::intravisit::{self, Visitor};
+        struct WalkAssocTypes<'a> {
+            err: &'a mut rustc_errors::Diagnostic,
+        }
+        impl Visitor<'_> for WalkAssocTypes<'_> {
+            fn visit_qpath(
+                &mut self,
+                qpath: &rustc_hir::QPath<'_>,
+                id: rustc_hir::HirId,
+                span: Span,
+            ) {
+                if TypeAliasBounds::is_type_variable_assoc(qpath) {
+                    self.err.span_help(span, fluent::lint_builtin_type_alias_bounds_help);
+                }
+                intravisit::walk_qpath(self, qpath, id)
+            }
+        }
+
+        // Let's go for a walk!
+        let mut visitor = WalkAssocTypes { err: diag };
+        visitor.visit_ty(self.ty);
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_type_alias_where_clause)]
+pub struct BuiltinTypeAliasWhereClause<'a, 'b> {
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub suggestion: Span,
+    #[subdiagnostic]
+    pub sub: Option<SuggestChangingAssocTypes<'a, 'b>>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_type_alias_generic_bounds)]
+pub struct BuiltinTypeAliasGenericBounds<'a, 'b> {
+    #[subdiagnostic]
+    pub suggestion: BuiltinTypeAliasGenericBoundsSuggestion,
+    #[subdiagnostic]
+    pub sub: Option<SuggestChangingAssocTypes<'a, 'b>>,
+}
+
+pub struct BuiltinTypeAliasGenericBoundsSuggestion {
+    pub suggestions: Vec<(Span, String)>,
+}
+
+impl AddToDiagnostic for BuiltinTypeAliasGenericBoundsSuggestion {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        diag.multipart_suggestion(
+            fluent::suggestion,
+            self.suggestions,
+            Applicability::MachineApplicable,
+        );
+    }
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_trivial_bounds)]
@@ -285,9 +412,107 @@ pub struct BuiltinIncompleteFeaturesNote {
     pub n: NonZeroU32,
 }
 
-// FIXME: migrate "the type `{}` does not permit {}"
+pub struct BuiltinUnpermittedTypeInit<'a> {
+    pub msg: DiagnosticMessage,
+    pub ty: Ty<'a>,
+    pub label: Span,
+    pub sub: BuiltinUnpermittedTypeInitSub,
+}
 
-// FIXME: fluent::lint::builtin_clashing_extern_{same,diff}_name
+impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
+    fn decorate_lint<'b>(
+        self,
+        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
+    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+        diag.set_arg("ty", self.ty);
+        diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label);
+        diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label_suggestion);
+        self.sub.add_to_diagnostic(diag);
+        diag
+    }
+
+    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+        self.msg.clone()
+    }
+}
+
+// FIXME(davidtwco): make translatable
+pub struct BuiltinUnpermittedTypeInitSub {
+    pub err: InitError,
+}
+
+impl AddToDiagnostic for BuiltinUnpermittedTypeInitSub {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        let mut err = self.err;
+        loop {
+            if let Some(span) = err.span {
+                diag.span_note(span, err.message);
+            } else {
+                diag.note(err.message);
+            }
+            if let Some(e) = err.nested {
+                err = *e;
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+#[derive(LintDiagnostic)]
+pub enum BuiltinClashingExtern<'a> {
+    #[diag(lint_builtin_clashing_extern_same_name)]
+    SameName {
+        this: Symbol,
+        orig: Symbol,
+        #[label(previous_decl_label)]
+        previous_decl_label: Span,
+        #[label(mismatch_label)]
+        mismatch_label: Span,
+        #[subdiagnostic]
+        sub: BuiltinClashingExternSub<'a>,
+    },
+    #[diag(lint_builtin_clashing_extern_diff_name)]
+    DiffName {
+        this: Symbol,
+        orig: Symbol,
+        #[label(previous_decl_label)]
+        previous_decl_label: Span,
+        #[label(mismatch_label)]
+        mismatch_label: Span,
+        #[subdiagnostic]
+        sub: BuiltinClashingExternSub<'a>,
+    },
+}
+
+// FIXME(davidtwco): translatable expected/found
+pub struct BuiltinClashingExternSub<'a> {
+    pub tcx: TyCtxt<'a>,
+    pub expected: Ty<'a>,
+    pub found: Ty<'a>,
+}
+
+impl AddToDiagnostic for BuiltinClashingExternSub<'_> {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        let mut expected_str = DiagnosticStyledString::new();
+        expected_str.push(self.expected.fn_sig(self.tcx).to_string(), false);
+        let mut found_str = DiagnosticStyledString::new();
+        found_str.push(self.found.fn_sig(self.tcx).to_string(), true);
+        diag.note_expected_found(&"", expected_str, &"", found_str);
+    }
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_deref_nullptr)]

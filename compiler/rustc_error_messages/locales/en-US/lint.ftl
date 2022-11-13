@@ -370,6 +370,8 @@ lint_builtin_anonymous_params = anonymous parameters are deprecated and will be 
     .suggestion = try naming the parameter or explicitly ignoring it
 
 lint_builtin_deprecated_attr_link = use of deprecated attribute `{$name}`: {$reason}. See {$link}
+    .msg_suggestion = {$msg}
+    .default_suggestion = remove this attribute
 lint_builtin_deprecated_attr_used = use of deprecated attribute `{$name}`: no longer used.
 lint_builtin_deprecated_attr_default_suggestion = remove this attribute
 
@@ -430,10 +432,16 @@ lint_builtin_incomplete_features = the feature `{$name}` is incomplete and may n
     .note = see issue #{$n} <https://github.com/rust-lang/rust/issues/{$n}> for more information
     .help = consider using `min_{$name}` instead, which is more stable and complete
 
-lint_builtin_clashing_extern_same_name = `{$this_fi}` redeclared with a different signature
+lint_builtin_unpermitted_type_init_zeroed = the type `{$ty}` does not permit zero-initialization
+lint_builtin_unpermitted_type_init_unint = the type `{$ty}` does not permit being left uninitialized
+
+lint_builtin_unpermitted_type_init_label = this code causes undefined behavior when executed
+lint_builtin_unpermitted_type_init_label_suggestion = help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+
+lint_builtin_clashing_extern_same_name = `{$this}` redeclared with a different signature
     .previous_decl_label = `{$orig}` previously declared here
     .mismatch_label = this signature doesn't match the previous declaration
-lint_builtin_clashing_extern_diff_name = `{$this_fi}` redeclares `{$orig}` with a different signature
+lint_builtin_clashing_extern_diff_name = `{$this}` redeclares `{$orig}` with a different signature
     .previous_decl_label = `{$orig}` previously declared here
     .mismatch_label = this signature doesn't match the previous declaration
 

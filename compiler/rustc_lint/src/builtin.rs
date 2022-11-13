@@ -1,3 +1,5 @@
+// #![deny(rustc::untranslatable_diagnostic)]
+// #![deny(rustc::diagnostic_outside_of_impl)]
 //! Lints in the Rust compiler.
 //!
 //! This contains lints which can feasibly be implemented as their own
@@ -23,16 +25,21 @@
 use crate::{
     errors::BuiltinEllpisisInclusiveRangePatterns,
     lints::{
-        BuiltinAnonymousParams, BuiltinBoxPointers, BuiltinConstNoMangle,
-        BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr, BuiltinEllipsisInclusiveRangePatternsLint,
-        BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinIncompleteFeatures,
+        BuiltinAnonymousParams, BuiltinBoxPointers, BuiltinClashingExtern,
+        BuiltinClashingExternSub, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
+        BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr,
+        BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
+        BuiltinExplicitOutlivesSuggestion, BuiltinIncompleteFeatures,
         BuiltinIncompleteFeaturesHelp, BuiltinIncompleteFeaturesNote, BuiltinKeywordIdents,
         BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
         BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
-        BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinUnexpectedCliConfigName,
-        BuiltinUnexpectedCliConfigValue, BuiltinUnnameableTestItems, BuiltinUnreachablePub,
-        BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
-        BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
+        BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasGenericBounds,
+        BuiltinTypeAliasGenericBoundsSuggestion, BuiltinTypeAliasWhereClause,
+        BuiltinUnexpectedCliConfigName, BuiltinUnexpectedCliConfigValue,
+        BuiltinUngatedAsyncFnTrackCaller, BuiltinUnnameableTestItems, BuiltinUnpermittedTypeInit,
+        BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
+        BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
+        BuiltinWhileTrue, SuggestChangingAssocTypes,
     },
     types::{transparent_newtype_field, CItemKind},
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
@@ -45,9 +52,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{
-    fluent, Applicability, DecorateLint, DelayDm, Diagnostic, DiagnosticStyledString, MultiSpan,
-};
+use rustc_errors::{fluent, Applicability, DecorateLint, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -923,24 +928,18 @@ impl EarlyLintPass for DeprecatedAttr {
                     _,
                 ) = gate
                 {
-                    // FIXME(davidtwco) translatable deprecated attr
-                    cx.struct_span_lint(
+                    let suggestion = match suggestion {
+                        Some(msg) => {
+                            BuiltinDeprecatedAttrLinkSuggestion::Msg { suggestion: attr.span, msg }
+                        }
+                        None => {
+                            BuiltinDeprecatedAttrLinkSuggestion::Default { suggestion: attr.span }
+                        }
+                    };
+                    cx.emit_spanned_lint(
                         DEPRECATED,
                         attr.span,
-                        fluent::lint_builtin_deprecated_attr_link,
-                        |lint| {
-                            lint.set_arg("name", name)
-                                .set_arg("reason", reason)
-                                .set_arg("link", link)
-                                .span_suggestion_short(
-                                    attr.span,
-                                    suggestion.map(|s| s.into()).unwrap_or(
-                                        fluent::lint_builtin_deprecated_attr_default_suggestion,
-                                    ),
-                                    "",
-                                    Applicability::MachineApplicable,
-                                )
-                        },
+                        BuiltinDeprecatedAttrLink { name, reason, link, suggestion },
                     );
                 }
                 return;
@@ -1305,20 +1304,10 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
             // Now, check if the function has the `#[track_caller]` attribute
             && let Some(attr) = attrs.iter().find(|attr| attr.has_name(sym::track_caller))
             {
-                cx.struct_span_lint(
-                    UNGATED_ASYNC_FN_TRACK_CALLER,
-                    attr.span,
-                    fluent::lint_ungated_async_fn_track_caller,
-                    |lint| {
-                        lint.span_label(span, fluent::label);
-                        rustc_session::parse::add_feature_diagnostics(
-                            lint,
-                            &cx.tcx.sess.parse_sess,
-                            sym::closure_track_caller,
-                        );
-                        lint
-                    },
-                );
+                cx.emit_spanned_lint(UNGATED_ASYNC_FN_TRACK_CALLER, attr.span, BuiltinUngatedAsyncFnTrackCaller {
+                    label: span,
+                    parse_sess: &cx.tcx.sess.parse_sess,
+                });
             }
     }
 }
@@ -1447,7 +1436,7 @@ declare_lint_pass!(
 );
 
 impl TypeAliasBounds {
-    fn is_type_variable_assoc(qpath: &hir::QPath<'_>) -> bool {
+    pub(crate) fn is_type_variable_assoc(qpath: &hir::QPath<'_>) -> bool {
         match *qpath {
             hir::QPath::TypeRelative(ref ty, _) => {
                 // If this is a type variable, we found a `T::Assoc`.
@@ -1460,29 +1449,6 @@ impl TypeAliasBounds {
             }
             hir::QPath::Resolved(..) | hir::QPath::LangItem(..) => false,
         }
-    }
-
-    fn suggest_changing_assoc_types(ty: &hir::Ty<'_>, err: &mut Diagnostic) {
-        // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
-        // bound.  Let's see if this type does that.
-
-        // We use a HIR visitor to walk the type.
-        use rustc_hir::intravisit::{self, Visitor};
-        struct WalkAssocTypes<'a> {
-            err: &'a mut Diagnostic,
-        }
-        impl Visitor<'_> for WalkAssocTypes<'_> {
-            fn visit_qpath(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) {
-                if TypeAliasBounds::is_type_variable_assoc(qpath) {
-                    self.err.span_help(span, fluent::lint_builtin_type_alias_bounds_help);
-                }
-                intravisit::walk_qpath(self, qpath, id)
-            }
-        }
-
-        // Let's go for a walk!
-        let mut visitor = WalkAssocTypes { err };
-        visitor.visit_ty(ty);
     }
 }
 
@@ -1517,35 +1483,31 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
 
         let mut suggested_changing_assoc_types = false;
         if !where_spans.is_empty() {
-            cx.lint(TYPE_ALIAS_BOUNDS, fluent::lint_builtin_type_alias_where_clause, |lint| {
-                lint.set_span(where_spans);
-                lint.span_suggestion(
-                    type_alias_generics.where_clause_span,
-                    fluent::suggestion,
-                    "",
-                    Applicability::MachineApplicable,
-                );
-                if !suggested_changing_assoc_types {
-                    TypeAliasBounds::suggest_changing_assoc_types(ty, lint);
-                    suggested_changing_assoc_types = true;
-                }
-                lint
+            let sub = (!suggested_changing_assoc_types).then(|| {
+                suggested_changing_assoc_types = true;
+                SuggestChangingAssocTypes { ty }
             });
+            cx.emit_spanned_lint(
+                TYPE_ALIAS_BOUNDS,
+                where_spans,
+                BuiltinTypeAliasWhereClause {
+                    suggestion: type_alias_generics.where_clause_span,
+                    sub,
+                },
+            );
         }
 
         if !inline_spans.is_empty() {
-            cx.lint(TYPE_ALIAS_BOUNDS, fluent::lint_builtin_type_alias_generic_bounds, |lint| {
-                lint.set_span(inline_spans);
-                lint.multipart_suggestion(
-                    fluent::suggestion,
-                    inline_sugg,
-                    Applicability::MachineApplicable,
-                );
-                if !suggested_changing_assoc_types {
-                    TypeAliasBounds::suggest_changing_assoc_types(ty, lint);
-                }
-                lint
+            let suggestion = BuiltinTypeAliasGenericBoundsSuggestion { suggestions: inline_sugg };
+            let sub = (!suggested_changing_assoc_types).then(|| {
+                suggested_changing_assoc_types = true;
+                SuggestChangingAssocTypes { ty }
             });
+            cx.emit_spanned_lint(
+                TYPE_ALIAS_BOUNDS,
+                inline_spans,
+                BuiltinTypeAliasGenericBounds { suggestion, sub },
+            );
         }
     }
 }
@@ -2376,42 +2338,42 @@ declare_lint! {
 
 declare_lint_pass!(InvalidValue => [INVALID_VALUE]);
 
+/// Information about why a type cannot be initialized this way.
+pub struct InitError {
+    pub(crate) message: String,
+    /// Spans from struct fields and similar that can be obtained from just the type.
+    pub(crate) span: Option<Span>,
+    /// Used to report a trace through adts.
+    pub(crate) nested: Option<Box<InitError>>,
+}
+impl InitError {
+    fn spanned(self, span: Span) -> InitError {
+        Self { span: Some(span), ..self }
+    }
+
+    fn nested(self, nested: impl Into<Option<InitError>>) -> InitError {
+        assert!(self.nested.is_none());
+        Self { nested: nested.into().map(Box::new), ..self }
+    }
+}
+
+impl<'a> From<&'a str> for InitError {
+    fn from(s: &'a str) -> Self {
+        s.to_owned().into()
+    }
+}
+impl From<String> for InitError {
+    fn from(message: String) -> Self {
+        Self { message, span: None, nested: None }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for InvalidValue {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
         #[derive(Debug, Copy, Clone, PartialEq)]
         enum InitKind {
             Zeroed,
             Uninit,
-        }
-
-        /// Information about why a type cannot be initialized this way.
-        struct InitError {
-            message: String,
-            /// Spans from struct fields and similar that can be obtained from just the type.
-            span: Option<Span>,
-            /// Used to report a trace through adts.
-            nested: Option<Box<InitError>>,
-        }
-        impl InitError {
-            fn spanned(self, span: Span) -> InitError {
-                Self { span: Some(span), ..self }
-            }
-
-            fn nested(self, nested: impl Into<Option<InitError>>) -> InitError {
-                assert!(self.nested.is_none());
-                Self { nested: nested.into().map(Box::new), ..self }
-            }
-        }
-
-        impl<'a> From<&'a str> for InitError {
-            fn from(s: &'a str) -> Self {
-                s.to_owned().into()
-            }
-        }
-        impl From<String> for InitError {
-            fn from(message: String) -> Self {
-                Self { message, span: None, nested: None }
-            }
         }
 
         /// Test if this constant is all-0.
@@ -2637,46 +2599,16 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             // using zeroed or uninitialized memory.
             // We are extremely conservative with what we warn about.
             let conjured_ty = cx.typeck_results().expr_ty(expr);
-            if let Some(mut err) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init))
-            {
-                // FIXME(davidtwco): make translatable
-                cx.struct_span_lint(
+            if let Some(err) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init)) {
+                let msg = match init {
+                    InitKind::Zeroed => fluent::lint_builtin_unpermitted_type_init_zeroed,
+                    InitKind::Uninit => fluent::lint_builtin_unpermitted_type_init_unint,
+                };
+                let sub = BuiltinUnpermittedTypeInitSub { err };
+                cx.emit_spanned_lint(
                     INVALID_VALUE,
                     expr.span,
-                    DelayDm(|| {
-                        format!(
-                            "the type `{}` does not permit {}",
-                            conjured_ty,
-                            match init {
-                                InitKind::Zeroed => "zero-initialization",
-                                InitKind::Uninit => "being left uninitialized",
-                            },
-                        )
-                    }),
-                    |lint| {
-                        lint.span_label(
-                            expr.span,
-                            "this code causes undefined behavior when executed",
-                        );
-                        lint.span_label(
-                            expr.span,
-                            "help: use `MaybeUninit<T>` instead, \
-                            and only call `assume_init` after initialization is done",
-                        );
-                        loop {
-                            if let Some(span) = err.span {
-                                lint.span_note(span, &err.message);
-                            } else {
-                                lint.note(&err.message);
-                            }
-                            if let Some(e) = err.nested {
-                                err = *e;
-                            } else {
-                                break;
-                            }
-                        }
-                        lint
-                    },
+                    BuiltinUnpermittedTypeInit { msg, ty: conjured_ty, label: expr.span, sub },
                 );
             }
         }
@@ -3022,31 +2954,44 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                             SymbolName::Normal(_) => fi.span,
                             SymbolName::Link(_, annot_span) => fi.span.to(annot_span),
                         };
-                    // Finally, emit the diagnostic.
 
-                    let msg = if orig.get_name() == this_fi.ident.name {
-                        fluent::lint_builtin_clashing_extern_same_name
-                    } else {
-                        fluent::lint_builtin_clashing_extern_diff_name
+                    // Finally, emit the diagnostic.
+                    let mut expected_str = DiagnosticStyledString::new();
+                    expected_str.push(existing_decl_ty.fn_sig(tcx).to_string(), false);
+                    let mut found_str = DiagnosticStyledString::new();
+                    found_str.push(this_decl_ty.fn_sig(tcx).to_string(), true);
+
+                    let this = this_fi.ident.name;
+                    let orig = orig.get_name();
+                    let previous_decl_label = get_relevant_span(orig_fi);
+                    let mismatch_label = get_relevant_span(this_fi);
+                    let sub = BuiltinClashingExternSub {
+                        tcx,
+                        expected: existing_decl_ty,
+                        found: this_decl_ty,
                     };
-                    tcx.struct_span_lint_hir(
+                    let decorator = if orig == this {
+                        BuiltinClashingExtern::SameName {
+                            this,
+                            orig,
+                            previous_decl_label,
+                            mismatch_label,
+                            sub,
+                        }
+                    } else {
+                        BuiltinClashingExtern::DiffName {
+                            this,
+                            orig,
+                            previous_decl_label,
+                            mismatch_label,
+                            sub,
+                        }
+                    };
+                    tcx.emit_spanned_lint(
                         CLASHING_EXTERN_DECLARATIONS,
                         this_fi.hir_id(),
                         get_relevant_span(this_fi),
-                        msg,
-                        |lint| {
-                            let mut expected_str = DiagnosticStyledString::new();
-                            expected_str.push(existing_decl_ty.fn_sig(tcx).to_string(), false);
-                            let mut found_str = DiagnosticStyledString::new();
-                            found_str.push(this_decl_ty.fn_sig(tcx).to_string(), true);
-
-                            lint.set_arg("this_fi", this_fi.ident.name)
-                                .set_arg("orig", orig.get_name())
-                                .span_label(get_relevant_span(orig_fi), fluent::previous_decl_label)
-                                .span_label(get_relevant_span(this_fi), fluent::mismatch_label)
-                                // FIXME(davidtwco): translatable expected/found
-                                .note_expected_found(&"", expected_str, &"", found_str)
-                        },
+                        decorator,
                     );
                 }
             }
