@@ -316,8 +316,7 @@ where
         Ok(MPlaceTy { mplace, layout, align })
     }
 
-    /// Take an operand, representing a pointer, and dereference it to a place -- that
-    /// will always be a MemPlace.  Lives in `place.rs` because it creates a place.
+    /// Take an operand, representing a pointer, and dereference it to a place.
     #[instrument(skip(self), level = "debug")]
     pub fn deref_operand(
         &self,
@@ -331,7 +330,7 @@ where
         }
 
         let mplace = self.ref_to_mplace(&val)?;
-        self.check_mplace_access(mplace, CheckInAllocMsg::DerefTest)?;
+        self.check_mplace(mplace)?;
         Ok(mplace)
     }
 
@@ -358,17 +357,18 @@ where
     }
 
     /// Check if this mplace is dereferenceable and sufficiently aligned.
-    fn check_mplace_access(
-        &self,
-        mplace: MPlaceTy<'tcx, M::Provenance>,
-        msg: CheckInAllocMsg,
-    ) -> InterpResult<'tcx> {
+    pub fn check_mplace(&self, mplace: MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
         let (size, align) = self
             .size_and_align_of_mplace(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         assert!(mplace.align <= align, "dynamic alignment less strict than static one?");
         let align = M::enforce_alignment(self).then_some(align);
-        self.check_ptr_access_align(mplace.ptr, size, align.unwrap_or(Align::ONE), msg)?;
+        self.check_ptr_access_align(
+            mplace.ptr,
+            size,
+            align.unwrap_or(Align::ONE),
+            CheckInAllocMsg::DerefTest,
+        )?;
         Ok(())
     }
 
