@@ -36,7 +36,7 @@ target | notes
 `i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support]
 `i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+) [^windows-support]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+)
-`x86_64-apple-darwin` | 64-bit macOS (10.7+, Lion+)
+`x86_64-apple-darwin` | 64-bit macOS (10.12+, Sierra+)
 `x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+) [^windows-support]
 `x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+) [^windows-support]
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
@@ -264,7 +264,7 @@ target | std | host | notes
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS |
-`i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
+`i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+)
 `i686-pc-windows-msvc` | * |  | 32-bit Windows XP support
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 with SSE2
