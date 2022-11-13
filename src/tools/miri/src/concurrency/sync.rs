@@ -193,8 +193,9 @@ impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'m
 pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
     crate::MiriInterpCxExt<'mir, 'tcx>
 {
+    /// Lazily initialize the ID of this Miri sync structure.
+    /// ('0' indicates uninit.)
     #[inline]
-    // Miri sync structures contain zero-initialized ids stored at some offset behind a pointer
     fn get_or_create_id<Id: SyncId>(
         &mut self,
         next_id: Id,
@@ -205,6 +206,7 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
         let value_place =
             this.deref_operand_and_offset(lock_op, offset, this.machine.layouts.u32)?;
 
+        // Since we are lazy, this update has to be atomic.
         let (old, success) = this
             .atomic_compare_exchange_scalar(
                 &value_place,
