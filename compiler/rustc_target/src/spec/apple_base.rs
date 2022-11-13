@@ -322,7 +322,7 @@ pub fn ios_sim_llvm_target(arch: Arch) -> String {
 
 fn tvos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
+    from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
 }
 
 fn tvos_lld_platform_version() -> String {
