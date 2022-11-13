@@ -46,11 +46,12 @@ fn detect_llvm_link() -> (&'static str, &'static str) {
 // perfect -- we might actually want to see something from Cargo's added library paths -- but
 // for now it works.
 fn restore_library_path() {
-    let key = tracked_env_var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
-    if let Some(env) = tracked_env_var_os("REAL_LIBRARY_PATH") {
-        env::set_var(&key, &env);
-    } else {
-        env::remove_var(&key);
+    if let Some(key) = tracked_env_var_os("REAL_LIBRARY_PATH_VAR") {
+        if let Some(env) = tracked_env_var_os("REAL_LIBRARY_PATH") {
+            env::set_var(&key, &env);
+        } else {
+            env::remove_var(&key);
+        }
     }
 }
 

@@ -1361,9 +1361,11 @@ impl<'a> Builder<'a> {
 
         // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
         // needs to not accidentally link to libLLVM in stage0/lib.
-        cargo.env("REAL_LIBRARY_PATH_VAR", &util::dylib_path_var());
-        if let Some(e) = env::var_os(util::dylib_path_var()) {
-            cargo.env("REAL_LIBRARY_PATH", e);
+        if !self.config.llvm_from_ci {
+            cargo.env("REAL_LIBRARY_PATH_VAR", &util::dylib_path_var());
+            if let Some(e) = env::var_os(util::dylib_path_var()) {
+                cargo.env("REAL_LIBRARY_PATH", e);
+            }
         }
 
         // Found with `rg "init_env_logger\("`. If anyone uses `init_env_logger`
