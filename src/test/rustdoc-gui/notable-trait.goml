@@ -22,31 +22,26 @@ assert-position: (
 )
 assert-position: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    {"x": 951},
+    {"x": 955},
 )
-// The tooltip should be beside the `i`
+// The tooltip should be below the `i`
 // Also, clicking the tooltip should bring its text into the DOM
-assert-count: ("//*[@class='notable-traits-tooltiptext']", 0)
+assert-count: ("//*[@class='notable popover']", 0)
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-assert-count: ("//*[@class='notable-traits-tooltiptext']", 1)
+assert-count: ("//*[@class='notable popover']", 1)
 compare-elements-position-near: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@class='notable-traits-tooltiptext']",
-    {"y": 2}
+    "//*[@class='notable popover']",
+    {"y": 30}
 )
 compare-elements-position-false: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@class='notable-traits-tooltiptext']",
+    "//*[@class='notable popover']",
     ("x")
-)
-// The docblock should be flush with the border.
-assert-css: (
-    "//*[@class='notable-traits-tooltiptext']/*[@class='docblock']",
-    {"margin-left": "0px"}
 )
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
 move-cursor-to: "//h1"
-assert-count: ("//*[@class='notable-traits-tooltiptext']", 0)
+assert-count: ("//*[@class='notable popover']", 0)
 
 // Now only the `i` should be on the next line.
 size: (1055, 600)
@@ -77,7 +72,7 @@ assert-position: (
 )
 assert-position: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    {"x": 519},
+    {"x": 523},
 )
 
 // Checking on mobile now.
@@ -101,42 +96,28 @@ assert-position: (
 )
 assert-position: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    {"x": 289},
+    {"x": 293},
 )
-// The tooltip should be below `i`
+// The tooltip should STILL be below `i`
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
-assert-count: ("//*[@class='notable-traits-tooltiptext']", 1)
-compare-elements-position-near-false: (
+assert-count: ("//*[@class='notable popover']", 1)
+compare-elements-position-near: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@class='notable-traits-tooltiptext']",
-    {"y": 2}
+    "//*[@class='notable popover']",
+    {"y": 30}
 )
 compare-elements-position-false: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    "//*[@class='notable-traits-tooltiptext']",
+    "//*[@class='notable popover']",
     ("x")
 )
-compare-elements-position-near: (
-    "//*[@id='method.create_an_iterator_from_read']",
-    "//*[@class='notable-traits-tooltiptext']",
-    {"x": 10}
-)
-// The docblock should be flush with the border.
-assert-css: (
-    "//*[@class='notable-traits-tooltiptext']/*[@class='docblock']",
-    {"margin-left": "0px"}
+assert-position: (
+    "//*[@class='notable popover']",
+    {"x": 0}
 )
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
 move-cursor-to: "//h1"
-assert-count: ("//*[@class='notable-traits-tooltiptext']", 0)
-
-// Checking on very small mobile. The `i` should be on its own line.
-size: (365, 600)
-compare-elements-position-false: (
-    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    ("y", "x"),
-)
+assert-count: ("//*[@class='notable popover']", 0)
 
 // Now check the colors.
 define-function: (
@@ -153,25 +134,25 @@ define-function: (
         ("reload"),
 
         ("move-cursor-to", "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"),
-        ("assert-count", (".notable-traits-tooltiptext", 1)),
+        ("assert-count", (".notable.popover", 1)),
 
         ("assert-css", (
-             ".notable-traits-tooltiptext h3.notable",
+             ".notable.popover h3",
              {"color": |header_color|},
              ALL,
         )),
         ("assert-css", (
-             ".notable-traits-tooltiptext pre.content",
+             ".notable.popover pre",
              {"color": |content_color|},
              ALL,
         )),
         ("assert-css", (
-             ".notable-traits-tooltiptext pre.content a.struct",
+             ".notable.popover pre a.struct",
              {"color": |type_color|},
              ALL,
         )),
         ("assert-css", (
-             ".notable-traits-tooltiptext pre.content a.trait",
+             ".notable.popover pre a.trait",
              {"color": |trait_color|},
              ALL,
         )),
@@ -210,3 +191,31 @@ call-function: (
         "trait_color": "rgb(110, 79, 201)",
     },
 )
+
+reload:
+
+// Check that pressing escape works
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+move-cursor-to: "//*[@class='notable popover']"
+assert-count: ("//*[@class='notable popover']", 1)
+press-key: "Escape"
+assert-count: ("//*[@class='notable popover']", 0)
+
+// Check that clicking outside works.
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+assert-count: ("//*[@class='notable popover']", 1)
+click: ".search-input"
+assert-count: ("//*[@class='notable popover']", 0)
+
+// Check that pressing tab over and over works.
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+move-cursor-to: "//*[@class='notable popover']"
+assert-count: ("//*[@class='notable popover']", 1)
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+assert-count: ("//*[@class='notable popover']", 0)
