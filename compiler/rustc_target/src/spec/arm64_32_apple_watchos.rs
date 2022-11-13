@@ -12,6 +12,8 @@ pub fn target() -> Target {
             features: "+neon,+fp-armv8,+apple-a7".into(),
             max_atomic_width: Some(128),
             forces_embed_bitcode: true,
+            dynamic_linking: false,
+            position_independent_executables: true,
             // These arguments are not actually invoked - they just have
             // to look right to pass App Store validation.
             bitcode_llvm_cmdline: "-triple\0\
