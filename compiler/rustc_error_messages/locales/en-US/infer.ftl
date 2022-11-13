@@ -126,10 +126,10 @@ infer_data_lifetime_flow = ...but data with one lifetime flows into the other he
 infer_declared_multiple = this type is declared with multiple lifetimes...
 infer_types_declared_different = these two types are declared with different lifetimes...
 infer_data_flows = ...but data{$label_var1_exists ->
-    [true] -> {" "}from `{$label_var1}`
+    [true] {" "}from `{$label_var1}`
     *[false] -> {""}
 } flows{$label_var2_exists ->
-    [true] -> {" "}into `{$label_var2}`
+    [true] {" "}into `{$label_var2}`
     *[false] -> {""}
 } here
 
