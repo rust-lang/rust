@@ -1262,10 +1262,6 @@ h3.variant {
 	margin-left: 24px;
 }
 
-:target > code, :target > .code-header {
-	opacity: 1;
-}
-
 :target {
 	padding-right: 3px;
 	background-color: var(--target-background-color);
