@@ -290,9 +290,9 @@ mod inner {
     impl Instant {
         pub fn now() -> Instant {
             #[cfg(target_os = "macos")]
-            const clock_id: clock_t = libc::CLOCK_UPTIME_RAW;
+            const clock_id: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
             #[cfg(not(target_os = "macos"))]
-            const clock_id: clock_t = libc::CLOCK_MONOTONIC;
+            const clock_id: libc::clockid_t = libc::CLOCK_MONOTONIC;
             Instant { t: Timespec::now(clock_id) }
         }
 
@@ -324,13 +324,8 @@ mod inner {
         }
     }
 
-    #[cfg(not(any(target_os = "dragonfly", target_os = "espidf", target_os = "horizon")))]
-    pub type clock_t = libc::c_int;
-    #[cfg(any(target_os = "dragonfly", target_os = "espidf", target_os = "horizon"))]
-    pub type clock_t = libc::c_ulong;
-
     impl Timespec {
-        pub fn now(clock: clock_t) -> Timespec {
+        pub fn now(clock: libc::clockid_t) -> Timespec {
             // Try to use 64-bit time in preparation for Y2038.
             #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32"))]
             {
