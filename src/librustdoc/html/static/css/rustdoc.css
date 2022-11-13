@@ -579,15 +579,16 @@ ul.block, .block li {
 	border-color: var(--example-line-numbers-border-color);
 }
 
-.src-line-numbers span {
-	cursor: pointer;
+.src-line-numbers a, .src-line-numbers span {
 	color: var(--src-line-numbers-span-color);
-}
-.src-line-numbers .line-highlighted {
-	background-color: var(--src-line-number-highlighted-background-color);
 }
 .src-line-numbers :target {
 	background-color: transparent;
+	border-right: none;
+	padding-right: 0;
+}
+.src-line-numbers .line-highlighted {
+	background-color: var(--src-line-number-highlighted-background-color);
 }
 
 .search-loading {
@@ -928,13 +929,14 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	border-radius: 3px;
 	border: 1px solid var(--border-color);
 	font-size: 1rem;
+	--popover-arrow-offset: 11px;
 }
 
 /* This rule is to draw the little arrow connecting the settings menu to the gear icon. */
 .popover::before {
 	content: '';
 	position: absolute;
-	right: 11px;
+	right: var(--popover-arrow-offset);
 	border: solid var(--border-color);
 	border-width: 1px 1px 0 0;
 	display: inline-block;
@@ -951,10 +953,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 /* use larger max-width for help popover, but not for help.html */
 #help.popover {
 	max-width: 600px;
-}
-
-#help.popover::before {
-	right: 48px;
+	--popover-arrow-offset: 48px;
 }
 
 #help dt {
@@ -1273,54 +1272,34 @@ h3.variant {
 	border-right: 3px solid var(--target-border-color);
 }
 
-.notable-traits-tooltip {
-	display: inline-block;
-	cursor: pointer;
+.notable-traits {
+	color: inherit;
+	margin-right: 15px;
+	position: relative;
 }
 
-.notable-traits .notable-traits-tooltiptext {
-	display: inline-block;
-	visibility: hidden;
-}
-
-.notable-traits-tooltiptext {
-	padding: 5px 3px 3px 3px;
-	border-radius: 6px;
-	margin-left: 5px;
-	z-index: 10;
-	font-size: 1rem;
-	cursor: default;
+/* placeholder thunk so that the mouse can easily travel from "(i)" to popover
+	the resulting "hover tunnel" is a stepped triangle, approximating
+	https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown */
+.notable-traits:hover::after {
 	position: absolute;
-	border: 1px solid;
+	top: calc(100% - 10px);
+	left: -15px;
+	right: -15px;
+	height: 20px;
+	content: "\00a0";
 }
 
-.notable-traits-tooltip::after {
-	/* The margin on the tooltip does not capture hover events,
-	   this extends the area of hover enough so that mouse hover is not
-	   lost when moving the mouse to the tooltip */
-	content: "\00a0\00a0\00a0";
+.notable .docblock {
+	margin: 0.25em 0.5em;
 }
 
-.notable-traits-tooltiptext .docblock {
-	margin: 0;
-}
-
-.notable-traits-tooltiptext .notable {
-	font-size: 1.1875rem;
-	font-weight: 600;
-	display: block;
-}
-
-.notable-traits-tooltiptext pre, .notable-traits-tooltiptext code {
+.notable .docblock pre, .notable .docblock code {
 	background: transparent;
-}
-
-.notable-traits-tooltiptext .docblock pre.content {
 	margin: 0;
 	padding: 0;
 	font-size: 1.25rem;
 	white-space: pre-wrap;
-	overflow: hidden;
 }
 
 .search-failed {
@@ -1361,12 +1340,6 @@ h3.variant {
 #titles > button > div.count {
 	display: inline-block;
 	font-size: 1rem;
-}
-
-.notable-traits {
-	cursor: pointer;
-	z-index: 2;
-	margin-left: 5px;
 }
 
 #sidebar-toggle {
@@ -1853,11 +1826,6 @@ in storage.js
 		border-bottom: 1px solid;
 	}
 
-	.notable-traits .notable-traits-tooltiptext {
-		left: 0;
-		top: 100%;
-	}
-
 	/* We don't display the help button on mobile devices. */
 	#help-button {
 		display: none;
@@ -1982,7 +1950,6 @@ in storage.js
 	font-size: 12px;
 	position: relative;
 	bottom: 1px;
-	background: transparent;
 	border-width: 1px;
 	border-style: solid;
 	border-radius: 50px;
@@ -2044,6 +2011,7 @@ in storage.js
 	padding: 14px 0;
 }
 
+.scraped-example .code-wrapper .src-line-numbers a,
 .scraped-example .code-wrapper .src-line-numbers span {
 	padding: 0 14px;
 }

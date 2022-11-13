@@ -1312,9 +1312,7 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
     if has_notable_trait {
         cx.types_with_notable_traits.insert(ty.clone());
         Some(format!(
-            "<span class=\"notable-traits\" data-ty=\"{ty}\">\
-                <span class=\"notable-traits-tooltip\">ⓘ</span>\
-            </span>",
+            " <a href=\"#\" class=\"notable-traits\" data-ty=\"{ty}\">ⓘ</a>",
             ty = Escape(&format!("{:#}", ty.print(cx))),
         ))
     } else {
@@ -1343,7 +1341,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                 if out.is_empty() {
                     write!(
                         &mut out,
-                        "<h3 class=\"notable\">Notable traits for <code>{}</code></h3>\
+                        "<h3>Notable traits for <code>{}</code></h3>\
                      <pre class=\"content\"><code>",
                         impl_.for_.print(cx)
                     );
@@ -2939,9 +2937,6 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         })()
         .unwrap_or(rustc_span::DUMMY_SP);
 
-        // The root path is the inverse of Context::current
-        let root_path = vec!["../"; cx.current.len() - 1].join("");
-
         let mut decoration_info = FxHashMap::default();
         decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);
         decoration_info.insert("highlight", byte_ranges);
@@ -2951,7 +2946,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             contents_subset,
             file_span,
             cx,
-            &root_path,
+            &cx.root_path(),
             highlight::DecorationInfo(decoration_info),
             sources::SourceContext::Embedded { offset: line_min, needs_expansion },
         );
