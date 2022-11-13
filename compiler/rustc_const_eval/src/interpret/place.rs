@@ -317,11 +317,11 @@ where
     }
 
     /// Take an operand, representing a pointer, and dereference it to a place -- that
-    /// will always be a MemPlace.  Lives in `place.rs` because it creates a place.
-    #[instrument(skip(self), level = "debug")]
-    pub fn deref_operand(
+    /// will always be a MemPlace. The pointee layout can be overridden.
+    pub fn deref_operand_with_layout(
         &self,
         src: &OpTy<'tcx, M::Provenance>,
+        pointee_layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
@@ -330,9 +330,25 @@ where
             bug!("dereferencing {:?}", val.layout.ty);
         }
 
-        let mplace = self.ref_to_mplace(&val)?;
+        let mut mplace = self.ref_to_mplace(&val)?;
+        if let Some(pointee_layout) = pointee_layout {
+            assert!(
+                !mplace.layout.is_unsized() && !pointee_layout.is_unsized(),
+                "overwriting the deref'd layout is only supported for sized types",
+            );
+            mplace.layout = pointee_layout;
+        }
         self.check_mplace_access(mplace, CheckInAllocMsg::DerefTest)?;
         Ok(mplace)
+    }
+
+    /// Take an operand, representing a pointer, and dereference it to a place.
+    #[inline]
+    pub fn deref_operand(
+        &self,
+        src: &OpTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
+        self.deref_operand_with_layout(src, None)
     }
 
     #[inline]
