@@ -15,7 +15,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> (Bx::Value, Bx::Value) {
     let layout = bx.layout_of(t);
     debug!("size_and_align_of_dst(ty={}, info={:?}): layout: {:?}", t, info, layout);
-    if !layout.is_unsized() {
+    if layout.is_sized() {
         let size = bx.const_usize(layout.size.bytes());
         let align = bx.const_usize(layout.align.abi.bytes());
         return (size, align);
