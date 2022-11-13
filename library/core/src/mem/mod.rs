@@ -1181,7 +1181,7 @@ pub const fn variant_count<T>() -> usize {
 /// This is useful for quickly obtaining parameters about a type during debugging.
 ///
 /// ```
-/// use playground::type_info;
+/// use std::type_info;
 ///
 /// // For usage with raw types, wrap the type in `<..>`
 /// let result = type_info!(<Option<String>>);
@@ -1197,7 +1197,7 @@ pub const fn variant_count<T>() -> usize {
 /// are the same as the `write!` macro
 ///
 /// ```
-/// use playground::type_info;
+/// use std:type_info;
 /// use std::io::Write;
 ///
 /// // in `no_std` a different type would be used; this is just an example
