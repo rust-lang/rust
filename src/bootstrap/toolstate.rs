@@ -158,7 +158,7 @@ impl Step for ToolStateCheck {
     ///   stable tool. That is, the status is not allowed to get worse
     ///   (test-pass to test-fail or build-fail).
     fn run(self, builder: &Builder<'_>) {
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return;
         }
 
@@ -265,7 +265,7 @@ impl Builder<'_> {
         // If we're in a dry run setting we don't want to save toolstates as
         // that means if we e.g. panic down the line it'll look like we tested
         // everything (but we actually haven't).
-        if self.config.dry_run {
+        if self.config.dry_run() {
             return;
         }
         // Toolstate isn't tracked for clippy or rustfmt, but since most tools do, we avoid checking
