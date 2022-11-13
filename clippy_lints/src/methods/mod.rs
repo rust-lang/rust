@@ -105,11 +105,10 @@ use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{contains_return, is_trait_method, iter_input_pats, meets_msrv, msrvs, return_ty};
+use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, meets_msrv, msrvs, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, PrimTy, QPath, TraitItem, TraitItemKind};
+use rustc_hir::{Expr, ExprKind, TraitItem, TraitItemKind};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -3989,14 +3988,6 @@ impl OutType {
             (Self::Ref, &hir::FnRetTy::Return(ty)) => matches!(ty.kind, hir::TyKind::Rptr(_, _)),
             _ => false,
         }
-    }
-}
-
-fn is_bool(ty: &hir::Ty<'_>) -> bool {
-    if let hir::TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
-        matches!(path.res, Res::PrimTy(PrimTy::Bool))
-    } else {
-        false
     }
 }
 

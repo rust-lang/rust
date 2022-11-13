@@ -795,7 +795,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(single_component_path_imports::SingleComponentPathImports));
     let max_fn_params_bools = conf.max_fn_params_bools;
     let max_struct_bools = conf.max_struct_bools;
-    store.register_early_pass(move || {
+    store.register_late_pass(move |_| {
         Box::new(excessive_bools::ExcessiveBools::new(
             max_struct_bools,
             max_fn_params_bools,
