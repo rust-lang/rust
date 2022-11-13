@@ -182,6 +182,7 @@ trigger_files = [
     "x.ps1",
     "src/bootstrap",
     "src/tools/rust-installer",
+    "src/tools/x",
     "configure",
     "Cargo.toml",
     "Cargo.lock",
