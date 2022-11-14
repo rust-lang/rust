@@ -362,8 +362,7 @@ impl<'a> Parser<'a> {
             let Err(_) = rustc_ast::Lit::from_token(&self.token) &&
             (lit.kind == token::LitKind::Integer || lit.kind == token::LitKind::Float) &&
             self.look_ahead(1, |t| matches!(t.kind, token::Eq) || matches!(t.kind, token::Colon ) ) {
-                let err = self.sess.create_err(InvalidIdentiferStartsWithNumber { span: self.token.span });
-                return Err(err);
+                return Err(self.sess.create_err(InvalidIdentiferStartsWithNumber { span: self.token.span }));
         }
         Ok(())
     }
