@@ -17,6 +17,7 @@ use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
+use rustc_middle::ty::AssocItem;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
@@ -1331,6 +1332,31 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 }
 
 impl<'tcx> Pick<'tcx> {
+    /// In case there were unstable name collisions, emit them as a lint.
+    /// Checks whether two picks do not refer to the same trait item for the same `Self` type.
+    /// Only useful for comparisons of picks in order to improve diagnostics.
+    /// Do not use for type checking.
+    pub fn differs_from(&self, other: &Self) -> bool {
+        let Self {
+            item:
+                AssocItem {
+                    def_id,
+                    name: _,
+                    kind: _,
+                    container: _,
+                    trait_item_def_id: _,
+                    fn_has_self_parameter: _,
+                },
+            kind: _,
+            import_ids: _,
+            autoderefs: _,
+            autoref_or_ptr_adjustment: _,
+            self_ty,
+            unstable_candidates: _,
+        } = *self;
+        self_ty != other.self_ty || def_id != other.item.def_id
+    }
+
     /// In case there were unstable name collisions, emit them as a lint.
     pub fn maybe_emit_unstable_name_collision_hint(
         &self,
