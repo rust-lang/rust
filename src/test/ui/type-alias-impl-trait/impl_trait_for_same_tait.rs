@@ -30,5 +30,4 @@ impl Bop for Barr {}
 impl Bop for i32 {}
 //~^ ERROR conflicting implementations
 
-fn main() {
-}
+fn main() {}
