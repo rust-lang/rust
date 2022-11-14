@@ -243,7 +243,7 @@ impl AdtDefData {
         if Some(did) == tcx.lang_items().owned_box() {
             flags |= AdtFlags::IS_BOX;
         }
-        if Some(did) == tcx.lang_items().manually_drop() || tcx.has_attr(did, sym::manually_drop) {
+        if tcx.has_attr(did, sym::manually_drop) {
             flags |= AdtFlags::IS_MANUALLY_DROP;
         }
         if Some(did) == tcx.lang_items().unsafe_cell_type() {
