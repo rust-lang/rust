@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/issue-72616.rs:20:37
+  --> $DIR/issue-72616.rs:22:37
    |
 LL |         if String::from("a") == "a".try_into().unwrap() {}
    |                              --     ^^^^^^^^
@@ -16,6 +16,22 @@ help: try using a fully qualified path to specify the expected types
 LL |         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
    |                                 +++++++++++++++++++++++++++++++   ~
 
-error: aborting due to previous error
+error[E0283]: type annotations needed
+  --> $DIR/issue-72616.rs:22:37
+   |
+LL |         if String::from("a") == "a".try_into().unwrap() {}
+   |                                     ^^^^^^^^
+   |
+   = note: multiple `impl`s satisfying `_: TryFrom<&str>` found in the following crates: `core`, `std`:
+           - impl<> TryFrom<&str> for std::sys_common::net::LookupHost;
+           - impl<T, U> TryFrom<U> for T
+             where U: Into<T>;
+   = note: required for `&str` to implement `TryInto<_>`
+help: try using a fully qualified path to specify the expected types
+   |
+LL |         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
+   |                                 +++++++++++++++++++++++++++++++   ~
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0283`.

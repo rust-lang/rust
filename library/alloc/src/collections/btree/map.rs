@@ -580,7 +580,7 @@ impl<K, V> BTreeMap<K, V> {
     /// map.insert(1, "a");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_btree_new", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_btree_new", since = "1.66.0")]
     #[must_use]
     pub const fn new() -> BTreeMap<K, V> {
         BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(Global), _marker: PhantomData }
@@ -711,7 +711,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(2, "a");
     /// assert_eq!(map.first_key_value(), Some((&1, &"b")));
     /// ```
-    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn first_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
@@ -739,7 +739,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(*map.get(&1).unwrap(), "first");
     /// assert_eq!(*map.get(&2).unwrap(), "b");
     /// ```
-    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, A>>
     where
         K: Ord,
@@ -773,7 +773,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_first(&mut self) -> Option<(K, V)>
     where
         K: Ord,
@@ -796,7 +796,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// map.insert(2, "a");
     /// assert_eq!(map.last_key_value(), Some((&2, &"a")));
     /// ```
-    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn last_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
@@ -824,7 +824,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(*map.get(&1).unwrap(), "a");
     /// assert_eq!(*map.get(&2).unwrap(), "last");
     /// ```
-    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V, A>>
     where
         K: Ord,
@@ -858,7 +858,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// }
     /// assert!(map.is_empty());
     /// ```
-    #[stable(feature = "map_first_last", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_first_last", since = "1.66.0")]
     pub fn pop_last(&mut self) -> Option<(K, V)>
     where
         K: Ord,

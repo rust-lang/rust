@@ -959,6 +959,10 @@ impl<'tcx, 'a> Visitor<'tcx> for TestReachabilityVisitor<'tcx, 'a> {
                 for variant in def.variants.iter() {
                     let variant_id = self.tcx.hir().local_def_id(variant.id);
                     self.effective_visibility_diagnostic(variant_id);
+                    if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
+                        let ctor_def_id = self.tcx.hir().local_def_id(ctor_hir_id);
+                        self.effective_visibility_diagnostic(ctor_def_id);
+                    }
                     for field in variant.data.fields() {
                         let def_id = self.tcx.hir().local_def_id(field.hir_id);
                         self.effective_visibility_diagnostic(def_id);
@@ -966,6 +970,10 @@ impl<'tcx, 'a> Visitor<'tcx> for TestReachabilityVisitor<'tcx, 'a> {
                 }
             }
             hir::ItemKind::Struct(ref def, _) | hir::ItemKind::Union(ref def, _) => {
+                if let Some(ctor_hir_id) = def.ctor_hir_id() {
+                    let ctor_def_id = self.tcx.hir().local_def_id(ctor_hir_id);
+                    self.effective_visibility_diagnostic(ctor_def_id);
+                }
                 for field in def.fields() {
                     let def_id = self.tcx.hir().local_def_id(field.hir_id);
                     self.effective_visibility_diagnostic(def_id);
@@ -2131,6 +2139,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
         changed: false,
     };
 
+    visitor.effective_visibilities.check_invariants(tcx, true);
     loop {
         tcx.hir().walk_toplevel_module(&mut visitor);
         if visitor.changed {
@@ -2139,6 +2148,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
             break;
         }
     }
+    visitor.effective_visibilities.check_invariants(tcx, false);
 
     let mut check_visitor =
         TestReachabilityVisitor { tcx, effective_visibilities: &visitor.effective_visibilities };

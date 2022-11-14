@@ -1,7 +1,7 @@
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 use hir::def::DefKind;
 use rustc_ast as ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -105,7 +105,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     f(&mut wfcx);
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return;
     }
 
@@ -117,7 +117,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
-    let node = tcx.hir().expect_owner(def_id);
+    let node = tcx.hir().owner(def_id);
     match node {
         hir::OwnerNode::Crate(_) => {}
         hir::OwnerNode::Item(item) => check_item(tcx, item),
@@ -412,7 +412,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                                 .iter()
                                 .copied()
                                 .collect::<Vec<_>>(),
-                            &FxHashSet::default(),
+                            &FxIndexSet::default(),
                             gat_def_id.def_id,
                             gat_generics,
                         )
@@ -462,10 +462,10 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
             .into_iter()
             .filter(|clause| match clause.kind().skip_binder() {
                 ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
-                    !region_known_to_outlive(tcx, gat_hir, param_env, &FxHashSet::default(), a, b)
+                    !region_known_to_outlive(tcx, gat_hir, param_env, &FxIndexSet::default(), a, b)
                 }
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
-                    !ty_known_to_outlive(tcx, gat_hir, param_env, &FxHashSet::default(), a, b)
+                    !ty_known_to_outlive(tcx, gat_hir, param_env, &FxIndexSet::default(), a, b)
                 }
                 _ => bug!("Unexpected PredicateKind"),
             })
@@ -547,7 +547,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
     param_env: ty::ParamEnv<'tcx>,
     item_hir: hir::HirId,
     to_check: T,
-    wf_tys: &FxHashSet<Ty<'tcx>>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
     gat_def_id: LocalDefId,
     gat_generics: &'tcx ty::Generics,
 ) -> Option<FxHashSet<ty::Predicate<'tcx>>> {
@@ -654,7 +654,7 @@ fn ty_known_to_outlive<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxHashSet<Ty<'tcx>>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
     ty: Ty<'tcx>,
     region: ty::Region<'tcx>,
 ) -> bool {
@@ -671,7 +671,7 @@ fn region_known_to_outlive<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxHashSet<Ty<'tcx>>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
     region_a: ty::Region<'tcx>,
     region_b: ty::Region<'tcx>,
 ) -> bool {
@@ -695,7 +695,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxHashSet<Ty<'tcx>>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
     add_constraints: impl for<'a> FnOnce(&'a InferCtxt<'tcx>, &'a RegionBoundPairs<'tcx>),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
@@ -1708,8 +1708,7 @@ fn receiver_is_valid<'tcx>(
         return true;
     }
 
-    let mut autoderef =
-        Autoderef::new(infcx, wfcx.param_env, wfcx.body_id, span, receiver_ty, span);
+    let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_id, span, receiver_ty);
 
     // The `arbitrary_self_types` feature allows raw pointer receivers like `self: *const Self`.
     if arbitrary_self_types_enabled {

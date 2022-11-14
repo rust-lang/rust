@@ -529,8 +529,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                err.emit();
-                self.tcx.ty_error()
+                let reported = err.emit();
+                self.tcx.ty_error_with_guaranteed(reported)
             }
         };
 
@@ -772,7 +772,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match (method, trait_did) {
             (Some(ok), _) => {
                 let method = self.register_infer_ok_obligations(ok);
-                self.select_obligations_where_possible(false, |_| {});
+                self.select_obligations_where_possible(|_| {});
                 Ok(method)
             }
             (None, None) => Err(vec![]),

@@ -15,7 +15,6 @@ cfg_if::cfg_if! {
         target_os = "espidf",
     ))] {
         // These "unix" family members do not have unwinder.
-        // Note this also matches x86_64-unknown-none-linuxkernel.
     } else if #[cfg(any(
         unix,
         windows,
@@ -102,9 +101,5 @@ extern "C" {}
 extern "C" {}
 
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-#[link(name = "unwind", kind = "static", modifiers = "-bundle")]
-extern "C" {}
-
-#[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]
 #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
 extern "C" {}

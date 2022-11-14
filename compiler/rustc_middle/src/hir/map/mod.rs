@@ -353,6 +353,10 @@ impl<'hir> Map<'hir> {
         node.node.generics()
     }
 
+    pub fn owner(self, id: OwnerId) -> OwnerNode<'hir> {
+        self.tcx.hir_owner(id).unwrap_or_else(|| bug!("expected owner for {:?}", id)).node
+    }
+
     pub fn item(self, id: ItemId) -> &'hir Item<'hir> {
         self.tcx.hir_owner(id.owner_id).unwrap().node.expect_item()
     }
@@ -822,8 +826,11 @@ impl<'hir> Map<'hir> {
         )
     }
 
-    pub fn expect_owner(self, id: OwnerId) -> OwnerNode<'hir> {
-        self.tcx.hir_owner(id).unwrap_or_else(|| bug!("expected owner for {:?}", id)).node
+    pub fn expect_owner(self, def_id: LocalDefId) -> OwnerNode<'hir> {
+        self.tcx
+            .hir_owner(OwnerId { def_id })
+            .unwrap_or_else(|| bug!("expected owner for {:?}", def_id))
+            .node
     }
 
     pub fn expect_item(self, id: LocalDefId) -> &'hir Item<'hir> {

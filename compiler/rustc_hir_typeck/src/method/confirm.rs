@@ -151,8 +151,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Ty<'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
-        let mut autoderef =
-            self.autoderef_overloaded_span(self.span, unadjusted_self_ty, self.call_expr.span);
+        let mut autoderef = self.autoderef(self.call_expr.span, unadjusted_self_ty);
         let Some((ty, n)) = autoderef.nth(pick.autoderefs) else {
             return self.tcx.ty_error_with_message(
                 rustc_span::DUMMY_SP,

@@ -189,8 +189,8 @@ pub enum LayoutError<'tcx> {
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
 }
 
-impl<'a> IntoDiagnostic<'a, !> for LayoutError<'a> {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, !> {
+impl IntoDiagnostic<'_, !> for LayoutError<'_> {
+    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         let mut diag = handler.struct_fatal("");
 
         match self {
@@ -1126,8 +1126,8 @@ impl<'tcx> fmt::Display for FnAbiError<'tcx> {
     }
 }
 
-impl<'tcx> IntoDiagnostic<'tcx, !> for FnAbiError<'tcx> {
-    fn into_diagnostic(self, handler: &'tcx Handler) -> DiagnosticBuilder<'tcx, !> {
+impl IntoDiagnostic<'_, !> for FnAbiError<'_> {
+    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         handler.struct_fatal(self.to_string())
     }
 }

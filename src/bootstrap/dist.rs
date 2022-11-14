@@ -924,13 +924,13 @@ impl Step for PlainSourceTarball {
 
         // Create the version file
         builder.create(&plain_dst_src.join("version"), &builder.rust_version());
-        if let Some(info) = builder.rust_info.info() {
+        if let Some(info) = builder.rust_info().info() {
             channel::write_commit_hash_file(&plain_dst_src, &info.sha);
             channel::write_commit_info_file(&plain_dst_src, info);
         }
 
         // If we're building from git sources, we need to vendor a complete distribution.
-        if builder.rust_info.is_managed_git_subrepository() {
+        if builder.rust_info().is_managed_git_subrepository() {
             // Ensure we have the submodules checked out.
             builder.update_submodule(Path::new("src/tools/rust-analyzer"));
 
@@ -945,7 +945,7 @@ impl Step for PlainSourceTarball {
                 .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
                 .current_dir(&plain_dst_src);
 
-            let config = if !builder.config.dry_run {
+            let config = if !builder.config.dry_run() {
                 t!(String::from_utf8(t!(cmd.output()).stdout))
             } else {
                 String::new()
@@ -1386,7 +1386,7 @@ impl Step for Extended {
         let etc = builder.src.join("src/etc/installer");
 
         // Avoid producing tarballs during a dry run.
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return;
         }
 
@@ -1818,7 +1818,7 @@ impl Step for Extended {
             let _time = timeit(builder);
             builder.run(&mut cmd);
 
-            if !builder.config.dry_run {
+            if !builder.config.dry_run() {
                 t!(fs::rename(exe.join(&filename), distdir(builder).join(&filename)));
             }
         }
@@ -1882,12 +1882,12 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
-        !builder.config.dry_run
+        !builder.config.dry_run()
     } else if let Ok(llvm_config) = crate::native::prebuilt_llvm_config(builder, target) {
         let mut cmd = Command::new(llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(&format!("running {:?}", cmd));
-        let files = if builder.config.dry_run { "".into() } else { output(&mut cmd) };
+        let files = if builder.config.dry_run() { "".into() } else { output(&mut cmd) };
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
         for file in files.trim_end().split(' ') {
@@ -1899,7 +1899,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
             };
             builder.install(&file, dst_libdir, 0o644);
         }
-        !builder.config.dry_run
+        !builder.config.dry_run()
     } else {
         false
     }

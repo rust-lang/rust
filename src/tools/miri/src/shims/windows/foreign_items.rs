@@ -273,6 +273,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.InitOnceComplete(ptr, flags, context)?;
                 this.write_scalar(result, dest)?;
             }
+            "SleepConditionVariableSRW" => {
+                let [condvar, lock, timeout, flags] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                let result = this.SleepConditionVariableSRW(condvar, lock, timeout, flags, dest)?;
+                this.write_scalar(result, dest)?;
+            }
+            "WakeConditionVariable" => {
+                let [condvar] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                this.WakeConditionVariable(condvar)?;
+            }
+            "WakeAllConditionVariable" => {
+                let [condvar] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                this.WakeAllConditionVariable(condvar)?;
+            }
 
             // Dynamic symbol loading
             "GetProcAddress" => {

@@ -511,16 +511,17 @@ fn test_next_point() {
     assert_eq!(span.lo().0, 4);
     assert_eq!(span.hi().0, 5);
 
-    // A non-empty span at the last byte should advance to create an empty
-    // span pointing at the end of the file.
+    // Reaching to the end of file, return a span that will get error with `span_to_snippet`
     let span = Span::with_root_ctxt(BytePos(4), BytePos(5));
     let span = sm.next_point(span);
     assert_eq!(span.lo().0, 5);
-    assert_eq!(span.hi().0, 5);
+    assert_eq!(span.hi().0, 6);
+    assert!(sm.span_to_snippet(span).is_err());
 
-    // Empty span pointing just past the last byte.
+    // Reaching to the end of file, return a span that will get error with `span_to_snippet`
     let span = Span::with_root_ctxt(BytePos(5), BytePos(5));
     let span = sm.next_point(span);
     assert_eq!(span.lo().0, 5);
-    assert_eq!(span.hi().0, 5);
+    assert_eq!(span.hi().0, 6);
+    assert!(sm.span_to_snippet(span).is_err());
 }

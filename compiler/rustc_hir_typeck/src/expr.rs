@@ -80,14 +80,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // coercions from ! to `expected`.
         if ty.is_never() {
             if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
-                self.tcx().sess.delay_span_bug(
+                let reported = self.tcx().sess.delay_span_bug(
                     expr.span,
                     "expression with never type wound up being adjusted",
                 );
                 return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &adjustments[..] {
                     target.to_owned()
                 } else {
-                    self.tcx().ty_error()
+                    self.tcx().ty_error_with_guaranteed(reported)
                 };
             }
 
@@ -103,8 +103,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
-            let expr = expr.peel_drop_temps();
-            self.suggest_deref_ref_or_into(&mut err, expr, expected_ty, ty, None);
+            // FIXME(compiler-errors): We probably should fold some of the
+            // `suggest_` functions from  `emit_coerce_suggestions` into here,
+            // since some of those aren't necessarily just coerce suggestions.
+            let _ = self.suggest_deref_ref_or_into(
+                &mut err,
+                expr.peel_drop_temps(),
+                expected_ty,
+                ty,
+                None,
+            ) || self.suggest_option_to_bool(&mut err, expr, ty, expected_ty);
             extend_err(&mut err);
             err.emit();
         }
@@ -396,8 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         {
                             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                         }
-                        err.emit();
-                        oprnd_t = tcx.ty_error();
+                        oprnd_t = tcx.ty_error_with_guaranteed(err.emit());
                     }
                 }
                 hir::UnOp::Not => {
@@ -843,7 +850,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // Point any obligations that were registered due to opaque type
             // inference at the return expression.
-            self.select_obligations_where_possible(false, |errors| {
+            self.select_obligations_where_possible(|errors| {
                 self.point_at_return_for_opaque_ty_error(errors, span, return_expr_ty);
             });
         }
@@ -1097,12 +1104,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If the assignment expression itself is ill-formed, don't
             // bother emitting another error
-            if lhs_ty.references_error() || rhs_ty.references_error() {
-                err.delay_as_bug()
-            } else {
-                err.emit();
-            }
-            return self.tcx.ty_error();
+            let reported = err.emit_unless(lhs_ty.references_error() || rhs_ty.references_error());
+            return self.tcx.ty_error_with_guaranteed(reported);
         }
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
@@ -2738,7 +2741,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some((index_ty, element_ty)) => {
                     // two-phase not needed because index_ty is never mutable
                     self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);
-                    self.select_obligations_where_possible(false, |errors| {
+                    self.select_obligations_where_possible(|errors| {
                         self.point_at_index_if_possible(errors, idx.span)
                     });
                     element_ty
@@ -2777,8 +2780,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         }
                     }
-                    err.emit();
-                    self.tcx.ty_error()
+                    let reported = err.emit();
+                    self.tcx.ty_error_with_guaranteed(reported)
                 }
             }
         }

@@ -1942,6 +1942,79 @@ fn clean_bare_fn_ty<'tcx>(
     BareFunctionDecl { unsafety: bare_fn.unsafety, abi: bare_fn.abi, decl, generic_params }
 }
 
+/// This visitor is used to go through only the "top level" of a item and not enter any sub
+/// item while looking for a given `Ident` which is stored into `item` if found.
+struct OneLevelVisitor<'hir> {
+    map: rustc_middle::hir::map::Map<'hir>,
+    item: Option<&'hir hir::Item<'hir>>,
+    looking_for: Ident,
+    target_hir_id: hir::HirId,
+}
+
+impl<'hir> OneLevelVisitor<'hir> {
+    fn new(map: rustc_middle::hir::map::Map<'hir>, target_hir_id: hir::HirId) -> Self {
+        Self { map, item: None, looking_for: Ident::empty(), target_hir_id }
+    }
+
+    fn reset(&mut self, looking_for: Ident) {
+        self.looking_for = looking_for;
+        self.item = None;
+    }
+}
+
+impl<'hir> hir::intravisit::Visitor<'hir> for OneLevelVisitor<'hir> {
+    type NestedFilter = rustc_middle::hir::nested_filter::All;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.map
+    }
+
+    fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
+        if self.item.is_none()
+            && item.ident == self.looking_for
+            && matches!(item.kind, hir::ItemKind::Use(_, _))
+            || item.hir_id() == self.target_hir_id
+        {
+            self.item = Some(item);
+        }
+    }
+}
+
+/// Because a `Use` item directly links to the imported item, we need to manually go through each
+/// import one by one. To do so, we go to the parent item and look for the `Ident` into it. Then,
+/// if we found the "end item" (the imported one), we stop there because we don't need its
+/// documentation. Otherwise, we repeat the same operation until we find the "end item".
+fn get_all_import_attributes<'hir>(
+    mut item: &hir::Item<'hir>,
+    tcx: TyCtxt<'hir>,
+    target_hir_id: hir::HirId,
+    attributes: &mut Vec<ast::Attribute>,
+) {
+    let hir_map = tcx.hir();
+    let mut visitor = OneLevelVisitor::new(hir_map, target_hir_id);
+    // If the item is an import and has at least a path with two parts, we go into it.
+    while let hir::ItemKind::Use(path, _) = item.kind &&
+        path.segments.len() > 1 &&
+        let hir::def::Res::Def(_, def_id) = path.segments[path.segments.len() - 2].res
+    {
+        if let Some(hir::Node::Item(parent_item)) = hir_map.get_if_local(def_id) {
+            // We add the attributes from this import into the list.
+            attributes.extend_from_slice(hir_map.attrs(item.hir_id()));
+            // We get the `Ident` we will be looking for into `item`.
+            let looking_for = path.segments[path.segments.len() - 1].ident;
+            visitor.reset(looking_for);
+            hir::intravisit::walk_item(&mut visitor, parent_item);
+            if let Some(i) = visitor.item {
+                item = i;
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+}
+
 fn clean_maybe_renamed_item<'tcx>(
     cx: &mut DocContext<'tcx>,
     item: &hir::Item<'tcx>,
@@ -2023,13 +2096,20 @@ fn clean_maybe_renamed_item<'tcx>(
             }
             _ => unreachable!("not yet converted"),
         };
-        if let Some(import_id) = import_id {
-            let (attrs, cfg) = inline::merge_attrs(
-                cx,
-                Some(cx.tcx.parent_module(import_id).to_def_id()),
-                inline::load_attrs(cx, def_id),
-                Some(inline::load_attrs(cx, cx.tcx.hir().local_def_id(import_id).to_def_id())),
-            );
+
+        let mut extra_attrs = Vec::new();
+        if let Some(hir::Node::Item(use_node)) =
+            import_id.and_then(|hir_id| cx.tcx.hir().find(hir_id))
+        {
+            // We get all the various imports' attributes.
+            get_all_import_attributes(use_node, cx.tcx, item.hir_id(), &mut extra_attrs);
+        }
+
+        if !extra_attrs.is_empty() {
+            extra_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
+            let attrs = Attributes::from_ast(&extra_attrs);
+            let cfg = extra_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
+
             vec![Item::from_def_id_and_attrs_and_parts(
                 def_id,
                 Some(name),

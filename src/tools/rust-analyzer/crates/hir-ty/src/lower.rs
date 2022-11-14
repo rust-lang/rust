@@ -227,13 +227,17 @@ impl<'a> TyLoweringContext<'a> {
                     .intern(Interner)
             }
             TypeRef::Placeholder => TyKind::Error.intern(Interner),
-            TypeRef::Fn(params, is_varargs) => {
+            &TypeRef::Fn(ref params, variadic, is_unsafe) => {
                 let substs = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
                     Substitution::from_iter(Interner, params.iter().map(|(_, tr)| ctx.lower_ty(tr)))
                 });
                 TyKind::Function(FnPointer {
                     num_binders: 0, // FIXME lower `for<'a> fn()` correctly
-                    sig: FnSig { abi: (), safety: Safety::Safe, variadic: *is_varargs },
+                    sig: FnSig {
+                        abi: (),
+                        safety: if is_unsafe { Safety::Unsafe } else { Safety::Safe },
+                        variadic,
+                    },
                     substitution: FnSubst(substs),
                 })
                 .intern(Interner)
@@ -1573,7 +1577,12 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
         .with_type_param_mode(ParamLoweringMode::Variable);
     let ret = ctx_ret.lower_ty(&data.ret_type);
     let generics = generics(db.upcast(), def.into());
-    let sig = CallableSig::from_params_and_return(params, ret, data.is_varargs());
+    let sig = CallableSig::from_params_and_return(
+        params,
+        ret,
+        data.is_varargs(),
+        if data.has_unsafe_kw() { Safety::Unsafe } else { Safety::Safe },
+    );
     make_binders(db, &generics, sig)
 }
 
@@ -1617,7 +1626,7 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
         TyLoweringContext::new(db, &resolver).with_type_param_mode(ParamLoweringMode::Variable);
     let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
     let (ret, binders) = type_for_adt(db, def.into()).into_value_and_skipped_binders();
-    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false))
+    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false, Safety::Safe))
 }
 
 /// Build the type of a tuple struct constructor.
@@ -1644,7 +1653,7 @@ fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId)
         TyLoweringContext::new(db, &resolver).with_type_param_mode(ParamLoweringMode::Variable);
     let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
     let (ret, binders) = type_for_adt(db, def.parent.into()).into_value_and_skipped_binders();
-    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false))
+    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false, Safety::Safe))
 }
 
 /// Build the type of a tuple enum variant constructor.

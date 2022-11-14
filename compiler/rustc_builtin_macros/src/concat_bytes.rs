@@ -108,6 +108,16 @@ fn handle_array_element(
                 None
             }
         },
+        ast::ExprKind::IncludedBytes(..) => {
+            if !*has_errors {
+                cx.struct_span_err(expr.span, "cannot concatenate doubly nested array")
+                    .note("byte strings are treated as arrays of bytes")
+                    .help("try flattening the array")
+                    .emit();
+            }
+            *has_errors = true;
+            None
+        }
         _ => {
             missing_literals.push(expr.span);
             None
@@ -167,6 +177,9 @@ pub fn expand_concat_bytes(
                     has_errors = true;
                 }
             },
+            ast::ExprKind::IncludedBytes(ref bytes) => {
+                accumulator.extend_from_slice(bytes);
+            }
             ast::ExprKind::Err => {
                 has_errors = true;
             }

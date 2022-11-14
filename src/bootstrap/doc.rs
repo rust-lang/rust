@@ -151,7 +151,7 @@ impl Step for RustbookSrc {
         let index = out.join("index.html");
         let rustbook = builder.tool_exe(Tool::Rustbook);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        if builder.config.dry_run || up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
+        if builder.config.dry_run() || up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
             return;
         }
         builder.info(&format!("Rustbook ({}) - {}", target, name));
@@ -331,8 +331,8 @@ impl Step for Standalone {
                 && up_to_date(&footer, &html)
                 && up_to_date(&favicon, &html)
                 && up_to_date(&full_toc, &html)
-                && (builder.config.dry_run || up_to_date(&version_info, &html))
-                && (builder.config.dry_run || up_to_date(&rustdoc, &html))
+                && (builder.config.dry_run() || up_to_date(&version_info, &html))
+                && (builder.config.dry_run() || up_to_date(&rustdoc, &html))
             {
                 continue;
             }
@@ -402,11 +402,11 @@ impl Step for SharedAssets {
 
         let version_input = builder.src.join("src").join("doc").join("version_info.html.template");
         let version_info = out.join("version_info.html");
-        if !builder.config.dry_run && !up_to_date(&version_input, &version_info) {
+        if !builder.config.dry_run() && !up_to_date(&version_input, &version_info) {
             let info = t!(fs::read_to_string(&version_input))
                 .replace("VERSION", &builder.rust_release())
-                .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
-                .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
+                .replace("SHORT_HASH", builder.rust_info().sha_short().unwrap_or(""))
+                .replace("STAMP", builder.rust_info().sha().unwrap_or(""));
             t!(fs::write(&version_info, &info));
         }
 
@@ -900,7 +900,7 @@ impl Step for UnstableBookGen {
 }
 
 fn symlink_dir_force(config: &Config, src: &Path, dst: &Path) -> io::Result<()> {
-    if config.dry_run {
+    if config.dry_run() {
         return Ok(());
     }
     if let Ok(m) = fs::symlink_metadata(dst) {
@@ -965,7 +965,7 @@ impl Step for RustcBook {
         cmd.arg("--rustc");
         cmd.arg(&rustc);
         cmd.arg("--rustc-target").arg(&self.target.rustc_target_arg());
-        if builder.config.verbose() {
+        if builder.is_verbose() {
             cmd.arg("--verbose");
         }
         if self.validate {

@@ -1614,19 +1614,10 @@ rustc_queries! {
         desc { |tcx| "getting the native library for `{}`", tcx.def_path_str(def_id) }
     }
 
-    /// Does lifetime resolution, but does not descend into trait items. This
-    /// should only be used for resolving lifetimes of on trait definitions,
-    /// and is used to avoid cycles. Importantly, `resolve_lifetimes` still visits
-    /// the same lifetimes and is responsible for diagnostics.
-    /// See `rustc_resolve::late::lifetimes for details.
-    query resolve_lifetimes_trait_definition(_: LocalDefId) -> ResolveLifetimes {
-        arena_cache
-        desc { "resolving lifetimes for a trait definition" }
-    }
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes for details.
-    query resolve_lifetimes(_: LocalDefId) -> ResolveLifetimes {
+    query resolve_lifetimes(_: hir::OwnerId) -> ResolveLifetimes {
         arena_cache
         desc { "resolving lifetimes" }
     }

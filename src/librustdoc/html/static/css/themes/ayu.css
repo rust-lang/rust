@@ -63,20 +63,18 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--test-arrow-background-color: rgba(57, 175, 215, 0.09);
 	--test-arrow-hover-color: #c5c5c5;
 	--test-arrow-hover-background-color: rgba(57, 175, 215, 0.368);
+	--target-background-color: rgba(255, 236, 164, 0.06);
+	--target-border-color: rgba(255, 180, 76, 0.85);
 	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
 		drop-shadow(0 -1px 0 #fff);
-}
-
-.slider {
-	background-color: #ccc;
-}
-.slider:before {
-	background-color: white;
-}
-input:focus + .slider {
-	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	--crate-search-div-filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg)
+		brightness(94%) contrast(94%);
+	--crate-search-div-hover-filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg)
+		brightness(113%) contrast(76%);
+	--crate-search-hover-border: #e0e0e0;
 }
 
 h1, h2, h3, h4 {
@@ -153,17 +151,6 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search-div::after {
-	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
-	filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg) brightness(94%) contrast(94%);
-}
-#crate-search:hover, #crate-search:focus {
-	border-color: #e0e0e0 !important;
-}
-#crate-search-div:hover::after, #crate-search-div:focus-within::after {
-	filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg) brightness(113%) contrast(76%);
-}
-
 .module-item .stab,
 .import-item .stab {
 	color: #000;
@@ -173,15 +160,6 @@ details.rustdoc-toggle > summary::before {
 	color: #788797;
 }
 
-:target {
-	background: rgba(255, 236, 164, 0.06);
-	border-right: 3px solid rgba(255, 180, 76, 0.85);
-}
-
-.search-failed a {
-	color: #39AFD7;
-}
-
 .tooltip::after {
 	background-color: #314559;
 	color: #c5c5c5;
@@ -189,10 +167,6 @@ details.rustdoc-toggle > summary::before {
 
 .tooltip::before {
 	border-color: transparent #314559 transparent transparent;
-}
-
-.notable-traits-tooltiptext {
-	background-color: #314559;
 }
 
 #titles > button.selected {

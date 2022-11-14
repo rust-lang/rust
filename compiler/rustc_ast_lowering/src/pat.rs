@@ -323,7 +323,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // ```
     fn lower_expr_within_pat(&mut self, expr: &Expr, allow_paths: bool) -> &'hir hir::Expr<'hir> {
         match expr.kind {
-            ExprKind::Lit(..) | ExprKind::ConstBlock(..) | ExprKind::Err => {}
+            ExprKind::Lit(..)
+            | ExprKind::ConstBlock(..)
+            | ExprKind::IncludedBytes(..)
+            | ExprKind::Err => {}
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, ref inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => {

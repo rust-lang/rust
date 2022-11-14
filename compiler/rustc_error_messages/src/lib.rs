@@ -30,7 +30,8 @@ use intl_memoizer::concurrent::IntlLangMemoizer;
 #[cfg(not(parallel_compiler))]
 use intl_memoizer::IntlLangMemoizer;
 
-pub use fluent_bundle::{FluentArgs, FluentError, FluentValue};
+pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
+
 pub use unic_langid::{langid, LanguageIdentifier};
 
 // Generates `DEFAULT_LOCALE_RESOURCES` static and `fluent_generated` module.
@@ -42,6 +43,7 @@ fluent_messages! {
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
     codegen_gcc => "../locales/en-US/codegen_gcc.ftl",
+    codegen_llvm => "../locales/en-US/codegen_llvm.ftl",
     codegen_ssa => "../locales/en-US/codegen_ssa.ftl",
     compiletest => "../locales/en-US/compiletest.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",

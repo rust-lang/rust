@@ -10,6 +10,7 @@ mod suggest;
 pub use self::suggest::SelfSource;
 pub use self::MethodError::*;
 
+use crate::errors::OpMethodGenericParams;
 use crate::{Expectation, FnCtxt};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic};
@@ -443,7 +444,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
-        assert_eq!(generics.params.len(), 0);
+
+        if generics.params.len() != 0 {
+            tcx.sess.emit_fatal(OpMethodGenericParams {
+                span: tcx.def_span(method_item.def_id),
+                method_name: m_name.to_string(),
+            });
+        }
 
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
         let mut obligations = vec![];

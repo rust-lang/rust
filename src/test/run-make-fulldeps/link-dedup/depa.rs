@@ -5,3 +5,6 @@ extern "C" {}
 
 #[link(name = "testa")]
 extern "C" {}
+
+#[link(name = "testa")]
+extern "C" {}

@@ -250,6 +250,7 @@ pub trait MultiItemModifier {
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
+        is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable>;
 }
 
@@ -263,6 +264,7 @@ where
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
+        _is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         ExpandResult::Ready(self(ecx, span, meta_item, item))
     }
@@ -873,7 +875,7 @@ impl SyntaxExtension {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>)>;
+pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>, bool)>;
 
 pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;

@@ -3524,8 +3524,8 @@ impl<T> [T] {
         }
     }
 
-    /// Transmute the slice to a slice of another type, ensuring alignment of the types is
-    /// maintained.
+    /// Transmute the mutable slice to a mutable slice of another type, ensuring alignment of the
+    /// types is maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
     /// slice of a new type, and the suffix slice. The method may make the middle slice the greatest
@@ -3667,7 +3667,8 @@ impl<T> [T] {
         unsafe { self.align_to() }
     }
 
-    /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
+    /// Split a mutable slice into a mutable prefix, a middle of aligned SIMD types,
+    /// and a mutable suffix.
     ///
     /// This is a safe wrapper around [`slice::align_to_mut`], so has the same weak
     /// postconditions as that method.  You're only assured that

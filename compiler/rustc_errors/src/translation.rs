@@ -1,7 +1,10 @@
 use crate::snippet::Style;
 use crate::{DiagnosticArg, DiagnosticMessage, FluentBundle};
 use rustc_data_structures::sync::Lrc;
-use rustc_error_messages::FluentArgs;
+use rustc_error_messages::{
+    fluent_bundle::resolver::errors::{ReferenceKind, ResolverError},
+    FluentArgs, FluentError,
+};
 use std::borrow::Cow;
 
 /// Convert diagnostic arguments (a rustc internal type that exists to implement
@@ -102,14 +105,31 @@ pub trait Translate {
             .or_else(|| translate_with_bundle(self.fallback_fluent_bundle()))
             .map(|(translated, errs)| {
                 // Always bail out for errors with the fallback bundle.
-                assert!(
-                    errs.is_empty(),
-                    "identifier: {:?}, attr: {:?}, args: {:?}, errors: {:?}",
-                    identifier,
-                    attr,
-                    args,
-                    errs
-                );
+
+                let mut help_messages = vec![];
+
+                if !errs.is_empty() {
+                    for error in &errs {
+                        match error {
+                            FluentError::ResolverError(ResolverError::Reference(
+                                ReferenceKind::Message { id, .. },
+                            )) if args.iter().any(|(arg_id, _)| arg_id == id) => {
+                                help_messages.push(format!("Argument `{id}` exists but was not referenced correctly. Try using `{{${id}}}` instead"));
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    panic!(
+                        "Encountered errors while formatting message for `{identifier}`\n\
+                        help: {}\n\
+                        attr: `{attr:?}`\n\
+                        args: `{args:?}`\n\
+                        errors: `{errs:?}`",
+                        help_messages.join("\nhelp: ")
+                    );
+                }
+
                 translated
             })
             .expect("failed to find message in primary or fallback fluent bundles")

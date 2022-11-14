@@ -9,9 +9,9 @@ use crate::errors::{
     ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncMoveOrderIncorrect,
     BinaryFloatLiteralNotSupported, BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct,
     ComparisonInterpretedAsGeneric, ComparisonOrShiftInterpretedAsGenericSugg,
-    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedExpressionFoundLet,
-    FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt,
-    HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
+    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedEqForLetExpr,
+    ExpectedExpressionFoundLet, FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart,
+    FoundExprWouldBeStmt, HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
     IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub, IntLiteralTooLarge,
     InvalidBlockMacroSegment, InvalidComparisonOperator, InvalidComparisonOperatorSub,
     InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth, InvalidIntLiteralWidth,
@@ -33,6 +33,7 @@ use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
+use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
@@ -833,16 +834,11 @@ impl<'a> Parser<'a> {
                 ("cast", None)
             };
 
-        // Save the memory location of expr before parsing any following postfix operators.
-        // This will be compared with the memory location of the output expression.
-        // If they different we can assume we parsed another expression because the existing expression is not reallocated.
-        let addr_before = &*cast_expr as *const _ as usize;
         let with_postfix = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
-        let changed = addr_before != &*with_postfix as *const _ as usize;
 
         // Check if an illegal postfix operator has been added after the cast.
-        // If the resulting expression is not a cast, or has a different memory location, it is an illegal postfix operator.
-        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) || changed {
+        // If the resulting expression is not a cast, it is an illegal postfix operator.
+        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) {
             let msg = format!(
                 "{cast_kind} cannot be followed by {}",
                 match with_postfix.kind {
@@ -2095,7 +2091,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
         let asyncness = if self.token.uninterpolated_span().rust_2018() {
-            self.parse_asyncness()
+            self.parse_asyncness(Case::Sensitive)
         } else {
             Async::No
         };
@@ -2276,7 +2272,7 @@ impl<'a> Parser<'a> {
                 self.mk_block_err(cond_span.shrink_to_hi())
             }
         } else {
-            let attrs = self.parse_outer_attributes()?.take_for_recovery(); // For recovery.
+            let attrs = self.parse_outer_attributes()?; // For recovery.
             let block = if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.parse_block()?
             } else {
@@ -2293,7 +2289,7 @@ impl<'a> Parser<'a> {
                     })?
                 }
             };
-            self.error_on_if_block_attrs(lo, false, block.span, &attrs);
+            self.error_on_if_block_attrs(lo, false, block.span, attrs);
             block
         };
         let els = if self.eat_keyword(kw::Else) { Some(self.parse_else_expr()?) } else { None };
@@ -2334,7 +2330,15 @@ impl<'a> Parser<'a> {
             RecoverColon::Yes,
             CommaRecoveryMode::LikelyTuple,
         )?;
-        self.expect(&token::Eq)?;
+        if self.token == token::EqEq {
+            self.sess.emit_err(ExpectedEqForLetExpr {
+                span: self.token.span,
+                sugg_span: self.token.span,
+            });
+            self.bump();
+        } else {
+            self.expect(&token::Eq)?;
+        }
         let expr = self.with_res(self.restrictions | Restrictions::NO_STRUCT_LITERAL, |this| {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         })?;
@@ -2346,7 +2350,7 @@ impl<'a> Parser<'a> {
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
         let else_span = self.prev_token.span; // `else`
-        let attrs = self.parse_outer_attributes()?.take_for_recovery(); // For recovery.
+        let attrs = self.parse_outer_attributes()?; // For recovery.
         let expr = if self.eat_keyword(kw::If) {
             self.parse_if_expr()?
         } else if self.check(&TokenKind::OpenDelim(Delimiter::Brace)) {
@@ -2381,7 +2385,7 @@ impl<'a> Parser<'a> {
                 },
             }
         };
-        self.error_on_if_block_attrs(else_span, true, expr.span, &attrs);
+        self.error_on_if_block_attrs(else_span, true, expr.span, attrs);
         Ok(expr)
     }
 
@@ -2390,8 +2394,13 @@ impl<'a> Parser<'a> {
         ctx_span: Span,
         is_ctx_else: bool,
         branch_span: Span,
-        attrs: &[ast::Attribute],
+        attrs: AttrWrapper,
     ) {
+        if attrs.is_empty() {
+            return;
+        }
+
+        let attrs: &[ast::Attribute] = &attrs.take_for_recovery(self.sess);
         let (attributes, last) = match attrs {
             [] => return,
             [x0 @ xn] | [x0, .., xn] => (x0.span.to(xn.span), xn.span),

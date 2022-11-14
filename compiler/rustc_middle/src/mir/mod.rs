@@ -138,6 +138,48 @@ impl MirPhase {
             }
         }
     }
+
+    /// Parses an `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
+    pub fn parse(dialect: String, phase: Option<String>) -> Self {
+        match &*dialect.to_ascii_lowercase() {
+            "built" => {
+                assert!(phase.is_none(), "Cannot specify a phase for `Built` MIR");
+                MirPhase::Built
+            }
+            "analysis" => Self::Analysis(AnalysisPhase::parse(phase)),
+            "runtime" => Self::Runtime(RuntimePhase::parse(phase)),
+            _ => panic!("Unknown MIR dialect {}", dialect),
+        }
+    }
+}
+
+impl AnalysisPhase {
+    pub fn parse(phase: Option<String>) -> Self {
+        let Some(phase) = phase else {
+            return Self::Initial;
+        };
+
+        match &*phase.to_ascii_lowercase() {
+            "initial" => Self::Initial,
+            "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
+            _ => panic!("Unknown analysis phase {}", phase),
+        }
+    }
+}
+
+impl RuntimePhase {
+    pub fn parse(phase: Option<String>) -> Self {
+        let Some(phase) = phase else {
+            return Self::Initial;
+        };
+
+        match &*phase.to_ascii_lowercase() {
+            "initial" => Self::Initial,
+            "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
+            "optimized" => Self::Optimized,
+            _ => panic!("Unknown runtime phase {}", phase),
+        }
+    }
 }
 
 impl Display for MirPhase {
@@ -293,6 +335,13 @@ pub struct Body<'tcx> {
     /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
     pub is_polymorphic: bool,
 
+    /// The phase at which this MIR should be "injected" into the compilation process.
+    ///
+    /// Everything that comes before this `MirPhase` should be skipped.
+    ///
+    /// This is only `Some` if the function that this body comes from was annotated with `rustc_custom_mir`.
+    pub injection_phase: Option<MirPhase>,
+
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
@@ -339,6 +388,7 @@ impl<'tcx> Body<'tcx> {
             span,
             required_consts: Vec::new(),
             is_polymorphic: false,
+            injection_phase: None,
             tainted_by_errors,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -366,6 +416,7 @@ impl<'tcx> Body<'tcx> {
             required_consts: Vec::new(),
             var_debug_info: Vec::new(),
             is_polymorphic: false,
+            injection_phase: None,
             tainted_by_errors: None,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -507,6 +558,14 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn generator_kind(&self) -> Option<GeneratorKind> {
         self.generator.as_ref().map(|generator| generator.generator_kind)
+    }
+
+    #[inline]
+    pub fn should_skip(&self) -> bool {
+        let Some(injection_phase) = self.injection_phase else {
+            return false;
+        };
+        injection_phase > self.phase
     }
 }
 
@@ -1898,6 +1957,7 @@ impl BorrowKind {
         }
     }
 
+    // FIXME: won't be used after diagnostic migration
     pub fn describe_mutability(&self) -> &str {
         match *self {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => "immutable",
@@ -2192,7 +2252,9 @@ impl<'tcx> ConstantKind<'tcx> {
                 match tcx.const_eval_resolve(param_env, uneval, None) {
                     Ok(val) => Self::Val(val, ty),
                     Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
-                    Err(_) => Self::Ty(tcx.const_error(ty)),
+                    Err(ErrorHandled::Reported(guar)) => {
+                        Self::Ty(tcx.const_error_with_guaranteed(ty, guar))
+                    }
                 }
             }
         }

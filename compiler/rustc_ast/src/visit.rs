@@ -251,7 +251,7 @@ pub trait Visitor<'ast>: Sized {
 macro_rules! walk_list {
     ($visitor: expr, $method: ident, $list: expr $(, $($extra_args: expr),* )?) => {
         {
-            #[cfg_attr(not(bootstrap), allow(for_loops_over_fallibles))]
+            #[allow(for_loops_over_fallibles)]
             for elem in $list {
                 $visitor.$method(elem $(, $($extra_args,)* )?)
             }
@@ -901,7 +901,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::Try(ref subexpression) => visitor.visit_expr(subexpression),
         ExprKind::TryBlock(ref body) => visitor.visit_block(body),
-        ExprKind::Lit(_) | ExprKind::Err => {}
+        ExprKind::Lit(_) | ExprKind::IncludedBytes(..) | ExprKind::Err => {}
     }
 
     visitor.visit_expr_post(expression)

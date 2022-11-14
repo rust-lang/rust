@@ -1659,6 +1659,12 @@ impl<'t> TyCtxt<'t> {
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
         FmtPrinter::new(self, ns).print_def_path(def_id, substs).unwrap().into_buffer()
     }
+
+    pub fn value_path_str_with_substs(self, def_id: DefId, substs: &'t [GenericArg<'t>]) -> String {
+        let ns = guess_def_namespace(self, def_id);
+        debug!("value_path_str: def_id={:?}, ns={:?}", def_id, ns);
+        FmtPrinter::new(self, ns).print_value_path(def_id, substs).unwrap().into_buffer()
+    }
 }
 
 impl fmt::Write for FmtPrinter<'_, '_> {
@@ -2115,7 +2121,7 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
                 // If this is an anonymous placeholder, don't rename. Otherwise, in some
                 // async fns, we get a `for<'r> Send` bound
                 match kind {
-                    ty::BrAnon(_) | ty::BrEnv => r,
+                    ty::BrAnon(..) | ty::BrEnv => r,
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
                         let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind };
@@ -2219,46 +2225,12 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         // this is not *quite* right and changes the ordering of some output
         // anyways.
         let (new_value, map) = if self.should_print_verbose() {
-            let regions: Vec<_> = value
-                .bound_vars()
-                .into_iter()
-                .map(|var| {
-                    let ty::BoundVariableKind::Region(var) = var else {
-                    // This doesn't really matter because it doesn't get used,
-                    // it's just an empty value
-                    return ty::BrAnon(0);
-                };
-                    match var {
-                        ty::BrAnon(_) | ty::BrEnv => {
-                            start_or_continue(&mut self, "for<", ", ");
-                            let name = next_name(&self);
-                            debug!(?name);
-                            do_continue(&mut self, name);
-                            ty::BrNamed(CRATE_DEF_ID.to_def_id(), name)
-                        }
-                        ty::BrNamed(def_id, kw::UnderscoreLifetime) => {
-                            start_or_continue(&mut self, "for<", ", ");
-                            let name = next_name(&self);
-                            do_continue(&mut self, name);
-                            ty::BrNamed(def_id, name)
-                        }
-                        ty::BrNamed(def_id, name) => {
-                            start_or_continue(&mut self, "for<", ", ");
-                            do_continue(&mut self, name);
-                            ty::BrNamed(def_id, name)
-                        }
-                    }
-                })
-                .collect();
+            for var in value.bound_vars().iter() {
+                start_or_continue(&mut self, "for<", ", ");
+                write!(self, "{:?}", var)?;
+            }
             start_or_continue(&mut self, "", "> ");
-
-            self.tcx.replace_late_bound_regions(value.clone(), |br| {
-                let kind = regions[br.var.as_usize()];
-                self.tcx.mk_region(ty::ReLateBound(
-                    ty::INNERMOST,
-                    ty::BoundRegion { var: br.var, kind },
-                ))
-            })
+            (value.clone().skip_binder(), BTreeMap::default())
         } else {
             let tcx = self.tcx;
 
@@ -2271,7 +2243,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                             binder_level_idx: ty::DebruijnIndex,
                             br: ty::BoundRegion| {
                 let (name, kind) = match br.kind {
-                    ty::BrAnon(_) | ty::BrEnv => {
+                    ty::BrAnon(..) | ty::BrEnv => {
                         let name = next_name(&self);
 
                         if let Some(lt_idx) = lifetime_idx {

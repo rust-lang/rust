@@ -219,26 +219,26 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             let (mod_prefix, mod_str, suggestion) = if path.len() == 1 {
                 debug!(?self.diagnostic_metadata.current_impl_items);
                 debug!(?self.diagnostic_metadata.current_function);
-                let suggestion = if let Some(items) = self.diagnostic_metadata.current_impl_items
+                let suggestion = if self.current_trait_ref.is_none()
                     && let Some((fn_kind, _)) = self.diagnostic_metadata.current_function
-                    && self.current_trait_ref.is_none()
                     && let Some(FnCtxt::Assoc(_)) = fn_kind.ctxt()
+                    && let Some(items) = self.diagnostic_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
-                        if let AssocItemKind::Fn(fn_) = &i.kind
-                            && !fn_.sig.decl.has_self()
-                            && i.ident.name == item_str.name
+                        if let AssocItemKind::Fn(_) = &i.kind && i.ident.name == item_str.name
                         {
                             debug!(?item_str.name);
-                            debug!(?fn_.sig.decl.inputs);
                             return true
                         }
                         false
                     })
+                    && let AssocItemKind::Fn(fn_) = &item.kind
                 {
+                    debug!(?fn_);
+                    let self_sugg = if fn_.sig.decl.has_self() { "self." } else { "Self::" };
                     Some((
-                        item_span,
+                        item_span.shrink_to_lo(),
                         "consider using the associated function",
-                        format!("Self::{}", item.ident)
+                        self_sugg.to_string()
                     ))
                 } else {
                     None
@@ -396,11 +396,13 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     }
 
     fn suggest_self_or_self_ref(&mut self, err: &mut Diagnostic, path: &[Segment], span: Span) {
-        let is_assoc_fn = self.self_type_is_available();
+        if !self.self_type_is_available() {
+            return;
+        }
         let Some(path_last_segment) = path.last() else { return };
         let item_str = path_last_segment.ident;
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
-        if ["this", "my"].contains(&item_str.as_str()) && is_assoc_fn {
+        if ["this", "my"].contains(&item_str.as_str()) {
             err.span_suggestion_short(
                 span,
                 "you might have meant to use `self` here instead",
@@ -437,7 +439,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn try_lookup_name_relaxed(
         &mut self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
@@ -451,7 +453,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
         let path_str = Segment::names_to_string(path);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
-
         let mut candidates = self
             .r
             .lookup_import_candidates(ident, ns, &self.parent_scope, is_expected)
@@ -497,7 +498,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         .contains(span)
                     {
                         // Already reported this issue on the lhs of the type ascription.
-                        err.delay_as_bug();
+                        err.downgrade_to_delayed_bug();
                         return (true, candidates);
                     }
                 }
@@ -616,7 +617,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn suggest_trait_and_bounds(
         &mut self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: PathSource<'_>,
         res: Option<Res>,
         span: Span,
@@ -691,7 +692,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn suggest_typo(
         &mut self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
@@ -750,7 +751,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn err_code_special_cases(
         &mut self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: PathSource<'_>,
         path: &[Segment],
         span: Span,
@@ -806,14 +807,16 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         err.code(rustc_errors::error_code!(E0411));
         err.span_label(span, "`Self` is only available in impls, traits, and type definitions");
         if let Some(item_kind) = self.diagnostic_metadata.current_item {
-            err.span_label(
-                item_kind.ident.span,
-                format!(
-                    "`Self` not allowed in {} {}",
-                    item_kind.kind.article(),
-                    item_kind.kind.descr()
-                ),
-            );
+            if !item_kind.ident.span.is_dummy() {
+                err.span_label(
+                    item_kind.ident.span,
+                    format!(
+                        "`Self` not allowed in {} {}",
+                        item_kind.kind.article(),
+                        item_kind.kind.descr()
+                    ),
+                );
+            }
         }
         true
     }
@@ -1542,7 +1545,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 _ => None,
             }
         }
-
         // Fields are generally expected in the same contexts as locals.
         if filter_fn(Res::Local(ast::DUMMY_NODE_ID)) {
             if let Some(node_id) =
@@ -1810,29 +1812,22 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         false
     }
 
-    fn let_binding_suggestion(&self, err: &mut Diagnostic, ident_span: Span) -> bool {
-        // try to give a suggestion for this pattern: `name = 1`, which is common in other languages
-        let mut added_suggestion = false;
-        if let Some(Expr { kind: ExprKind::Assign(lhs, _rhs, _), .. }) = self.diagnostic_metadata.in_assignment &&
+    // try to give a suggestion for this pattern: `name = blah`, which is common in other languages
+    // suggest `let name = blah` to introduce a new binding
+    fn let_binding_suggestion(&mut self, err: &mut Diagnostic, ident_span: Span) -> bool {
+        if let Some(Expr { kind: ExprKind::Assign(lhs, .. ), .. }) = self.diagnostic_metadata.in_assignment &&
             let ast::ExprKind::Path(None, _) = lhs.kind {
-                let sm = self.r.session.source_map();
-                let line_span = sm.span_extend_to_line(ident_span);
-                let ident_name = sm.span_to_snippet(ident_span).unwrap();
-                // HACK(chenyukang): make sure ident_name is at the starting of the line to protect against macros
-                if sm
-                    .span_to_snippet(line_span)
-                    .map_or(false, |s| s.trim().starts_with(&ident_name))
-                {
+                if !ident_span.from_expansion() {
                     err.span_suggestion_verbose(
                         ident_span.shrink_to_lo(),
                         "you might have meant to introduce a new binding",
                         "let ".to_string(),
                         Applicability::MaybeIncorrect,
                     );
-                    added_suggestion = true;
+                    return true;
                 }
             }
-        added_suggestion
+        false
     }
 
     fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
@@ -1941,7 +1936,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     &msg,
-                    suggestable_variants.into_iter(),
+                    suggestable_variants,
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1995,7 +1990,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants.into_iter(),
+                    suggestable_variants,
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -2025,7 +2020,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants_with_placeholders.into_iter(),
+                    suggestable_variants_with_placeholders,
                     Applicability::HasPlaceholders,
                 );
             }

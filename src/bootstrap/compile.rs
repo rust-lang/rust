@@ -206,7 +206,6 @@ fn copy_third_party_objects(
     }
 
     if target == "x86_64-fortanix-unknown-sgx"
-        || target.contains("pc-windows-gnullvm")
         || builder.config.llvm_libunwind(target) == LlvmLibunwind::InTree
             && (target.contains("linux") || target.contains("fuchsia"))
     {
@@ -447,7 +446,7 @@ fn copy_sanitizers(
 ) -> Vec<PathBuf> {
     let runtimes: Vec<native::SanitizerRuntime> = builder.ensure(native::Sanitizers { target });
 
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return Vec::new();
     }
 
@@ -764,10 +763,10 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
 
-    if let Some(ref ver_date) = builder.rust_info.commit_date() {
+    if let Some(ref ver_date) = builder.rust_info().commit_date() {
         cargo.env("CFG_VER_DATE", ver_date);
     }
-    if let Some(ref ver_hash) = builder.rust_info.sha() {
+    if let Some(ref ver_hash) = builder.rust_info().sha() {
         cargo.env("CFG_VER_HASH", ver_hash);
     }
     if !builder.unstable_features() {
@@ -986,7 +985,7 @@ impl Step for CodegenBackend {
             compiler.stage, backend, &compiler.host, target
         ));
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return;
         }
         let mut files = files.into_iter().filter(|f| {
@@ -1034,7 +1033,7 @@ fn copy_codegen_backends_to_sysroot(
     let dst = builder.sysroot_codegen_backends(target_compiler);
     t!(fs::create_dir_all(&dst), dst);
 
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return;
     }
 
@@ -1332,7 +1331,7 @@ impl Step for Assemble {
 
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
             let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
-            if !builder.config.dry_run {
+            if !builder.config.dry_run() {
                 let llvm_bin_dir = output(Command::new(llvm_config_bin).arg("--bindir"));
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
 
@@ -1402,7 +1401,7 @@ pub fn run_cargo(
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
     is_check: bool,
 ) -> Vec<PathBuf> {
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return Vec::new();
     }
 
@@ -1542,7 +1541,7 @@ pub fn stream_cargo(
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
     let mut cargo = Command::from(cargo);
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return true;
     }
     // Instruct Cargo to give us json messages on stdout, critically leaving

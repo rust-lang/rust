@@ -698,7 +698,7 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
     }
 
     let Some(hidden) = locator.found else {
-        tcx.sess.emit_err(UnconstrainedOpaqueType {
+        let reported = tcx.sess.emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
             name: tcx.item_name(tcx.local_parent(def_id).to_def_id()),
             what: match tcx.hir().get(scope) {
@@ -708,7 +708,7 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
                 _ => "item",
             },
         });
-        return tcx.ty_error();
+        return tcx.ty_error_with_guaranteed(reported);
     };
 
     // Only check against typeck if we didn't already error

@@ -6,7 +6,6 @@ async fn copy() -> Result<()>
 //~^ ERROR this enum takes 2 generic arguments
 {
     Ok(())
-    //~^ ERROR type annotations needed
 }
 
 fn main() { }

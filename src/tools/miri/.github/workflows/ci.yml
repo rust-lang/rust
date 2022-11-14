@@ -67,9 +67,9 @@ jobs:
         shell: bash
         run: |
           if [[ ${{ github.event_name }} == 'schedule' ]]; then
-            ./rustup-toolchain HEAD --host ${{ matrix.host_target }}
+            ./miri toolchain HEAD --host ${{ matrix.host_target }}
           else
-            ./rustup-toolchain "" --host ${{ matrix.host_target }}
+            ./miri toolchain "" --host ${{ matrix.host_target }}
           fi
 
       - name: Show Rust version
@@ -118,7 +118,7 @@ jobs:
       - name: Install "master" toolchain
         shell: bash
         run: |
-          ./rustup-toolchain "" -c clippy
+          ./miri toolchain
 
       - name: Show Rust version
         run: |

@@ -14,19 +14,26 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::{
+    type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
+    RegionVariableOrigin,
+};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{
+    self, DefIdTree, GenericArg, GenericArgKind, ToPredicate, Ty, TyCtxt, TypeVisitable,
+};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
 use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
+use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    FulfillmentError, Obligation, ObligationCause, ObligationCauseCode, OnUnimplementedNote,
+    FulfillmentError, Obligation, ObligationCause, ObligationCauseCode,
 };
 
 use std::cmp::Ordering;
@@ -279,7 +286,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ) {
                     return None;
                 }
-
                 span = item_name.span;
 
                 // Don't show generic arguments when the method can't be found in any implementation (#81576).
@@ -392,28 +398,118 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     custom_span_label = true;
                 }
                 if static_candidates.len() == 1 {
-                    let ty_str =
-                        if let Some(CandidateSource::Impl(impl_did)) = static_candidates.get(0) {
-                            // When the "method" is resolved through dereferencing, we really want the
-                            // original type that has the associated function for accurate suggestions.
-                            // (#61411)
-                            let ty = tcx.at(span).type_of(*impl_did);
-                            match (&ty.peel_refs().kind(), &actual.peel_refs().kind()) {
-                                (ty::Adt(def, _), ty::Adt(def_actual, _)) if def == def_actual => {
-                                    // Use `actual` as it will have more `substs` filled in.
-                                    self.ty_to_value_string(actual.peel_refs())
+                    let mut has_unsuggestable_args = false;
+                    let ty_str = if let Some(CandidateSource::Impl(impl_did)) =
+                        static_candidates.get(0)
+                    {
+                        // When the "method" is resolved through dereferencing, we really want the
+                        // original type that has the associated function for accurate suggestions.
+                        // (#61411)
+                        let ty = tcx.at(span).type_of(*impl_did);
+                        match (&ty.peel_refs().kind(), &actual.peel_refs().kind()) {
+                            (ty::Adt(def, _), ty::Adt(def_actual, substs)) if def == def_actual => {
+                                // If there are any inferred arguments, (`{integer}`), we should replace
+                                // them with underscores to allow the compiler to infer them
+                                let infer_substs: Vec<GenericArg<'_>> = substs
+                                    .into_iter()
+                                    .map(|arg| {
+                                        if !arg.is_suggestable(tcx, true) {
+                                            has_unsuggestable_args = true;
+                                            match arg.unpack() {
+                                            GenericArgKind::Lifetime(_) => self
+                                                .next_region_var(RegionVariableOrigin::MiscVariable(
+                                                    rustc_span::DUMMY_SP,
+                                                ))
+                                                .into(),
+                                            GenericArgKind::Type(_) => self
+                                                .next_ty_var(TypeVariableOrigin {
+                                                    span: rustc_span::DUMMY_SP,
+                                                    kind: TypeVariableOriginKind::MiscVariable,
+                                                })
+                                                .into(),
+                                            GenericArgKind::Const(arg) => self
+                                                .next_const_var(
+                                                    arg.ty(),
+                                                    ConstVariableOrigin {
+                                                        span: rustc_span::DUMMY_SP,
+                                                        kind: ConstVariableOriginKind::MiscVariable,
+                                                    },
+                                                )
+                                                .into(),
+                                            }
+                                        } else {
+                                            arg
+                                        }
+                                    })
+                                    .collect::<Vec<_>>();
+
+                                tcx.value_path_str_with_substs(
+                                    def_actual.did(),
+                                    tcx.intern_substs(&infer_substs),
+                                )
+                            }
+                            _ => self.ty_to_value_string(ty.peel_refs()),
+                        }
+                    } else {
+                        self.ty_to_value_string(actual.peel_refs())
+                    };
+                    if let SelfSource::MethodCall(_) = source {
+                        let first_arg = if let Some(CandidateSource::Impl(impl_did)) = static_candidates.get(0) &&
+                            let Some(assoc) = self.associated_value(*impl_did, item_name) {
+                            let sig = self.tcx.fn_sig(assoc.def_id);
+                            if let Some(first) = sig.inputs().skip_binder().get(0) {
+                                if first.peel_refs() == rcvr_ty.peel_refs() {
+                                    None
+                                } else {
+                                    Some(if first.is_region_ptr() {
+                                        if first.is_mutable_ptr() { "&mut " } else { "&" }
+                                    } else {
+                                        ""
+                                    })
                                 }
-                                _ => self.ty_to_value_string(ty.peel_refs()),
+                            } else {
+                                None
                             }
                         } else {
-                            self.ty_to_value_string(actual.peel_refs())
+                            None
                         };
-                    if let SelfSource::MethodCall(expr) = source {
+                        let mut applicability = Applicability::MachineApplicable;
+                        let args = if let Some((receiver, args)) = args {
+                            // The first arg is the same kind as the receiver
+                            let explicit_args = if first_arg.is_some() {
+                                std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>()
+                            } else {
+                                // There is no `Self` kind to infer the arguments from
+                                if has_unsuggestable_args {
+                                    applicability = Applicability::HasPlaceholders;
+                                }
+                                args.iter().collect()
+                            };
+                            format!(
+                                "({}{})",
+                                first_arg.unwrap_or(""),
+                                explicit_args
+                                    .iter()
+                                    .map(|arg| tcx
+                                        .sess
+                                        .source_map()
+                                        .span_to_snippet(arg.span)
+                                        .unwrap_or_else(|_| {
+                                            applicability = Applicability::HasPlaceholders;
+                                            "_".to_owned()
+                                        }))
+                                    .collect::<Vec<_>>()
+                                    .join(", "),
+                            )
+                        } else {
+                            applicability = Applicability::HasPlaceholders;
+                            "(...)".to_owned()
+                        };
                         err.span_suggestion(
-                            expr.span.to(span),
+                            sugg_span,
                             "use associated function syntax instead",
-                            format!("{}::{}", ty_str, item_name),
-                            Applicability::MachineApplicable,
+                            format!("{}::{}{}", ty_str, item_name, args),
+                            applicability,
                         );
                     } else {
                         err.help(&format!("try with `{}::{}`", ty_str, item_name,));
@@ -1804,6 +1900,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | ty::Str
                         | ty::Projection(_)
                         | ty::Param(_) => format!("{deref_ty}"),
+                        // we need to test something like  <&[_]>::len
+                        // and Vec::function();
+                        // <&[_]>::len doesn't need an extra "<>" between
+                        // but for Adt type like Vec::function()
+                        // we would suggest <[_]>::function();
+                        _ if self.tcx.sess.source_map().span_wrapped_by_angle_bracket(ty.span)  => format!("{deref_ty}"),
                         _ => format!("<{deref_ty}>"),
                     };
                     err.span_suggestion_verbose(
@@ -1826,7 +1928,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Print out the type for use in value namespace.
     fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
         match ty.kind() {
-            ty::Adt(def, substs) => format!("{}", ty::Instance::new(def.did(), substs)),
+            ty::Adt(def, substs) => self.tcx.def_path_str_with_substs(def.did(), substs),
             _ => self.ty_to_string(ty),
         }
     }

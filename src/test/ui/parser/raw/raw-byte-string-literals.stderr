@@ -4,7 +4,7 @@ error: bare CR not allowed in raw string
 LL |     br"a";
    |         ^
 
-error: raw byte string must be ASCII
+error: non-ASCII character in raw byte string literal
   --> $DIR/raw-byte-string-literals.rs:5:8
    |
 LL |     br"é";

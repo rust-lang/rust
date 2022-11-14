@@ -421,6 +421,15 @@ pub(crate) struct ExpectedExpressionFoundLet {
 }
 
 #[derive(Diagnostic)]
+#[diag(parser_expect_eq_instead_of_eqeq)]
+pub(crate) struct ExpectedEqForLetExpr {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(applicability = "maybe-incorrect", code = "=", style = "verbose")]
+    pub sugg_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parser_expected_else_block)]
 pub(crate) struct ExpectedElseBlock {
     #[primary_span]
@@ -1156,10 +1165,12 @@ pub(crate) struct ParenthesesInForHead {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(suggestion, applicability = "machine-applicable")]
 pub(crate) struct ParenthesesInForHeadSugg {
-    #[suggestion_part(code = "")]
+    #[suggestion_part(code = "{left_snippet}")]
     pub left: Span,
-    #[suggestion_part(code = "")]
+    pub left_snippet: String,
+    #[suggestion_part(code = "{right_snippet}")]
     pub right: Span,
+    pub right_snippet: String,
 }
 
 #[derive(Diagnostic)]

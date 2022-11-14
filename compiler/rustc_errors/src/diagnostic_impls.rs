@@ -107,6 +107,12 @@ impl IntoDiagnosticArg for String {
     }
 }
 
+impl<'a> IntoDiagnosticArg for Cow<'a, str> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.into_owned()))
+    }
+}
+
 impl<'a> IntoDiagnosticArg for &'a Path {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(self.display().to_string()))

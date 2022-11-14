@@ -1,8 +1,12 @@
-use crate::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::dist::distdir;
-use crate::tool::Tool;
-use crate::util::output;
 use std::process::Command;
+
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::config::TargetSelection;
+use crate::dist::distdir;
+use crate::test;
+use crate::tool::{self, SourceType, Tool};
+use crate::util::output;
+use crate::Mode;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ExpandYamlAnchors;
@@ -123,5 +127,65 @@ impl Step for ReplaceVersionPlaceholder {
         let mut cmd = builder.tool_cmd(Tool::ReplaceVersionPlaceholder);
         cmd.arg(&builder.src);
         builder.run(&mut cmd);
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Miri {
+    stage: u32,
+    host: TargetSelection,
+    target: TargetSelection,
+}
+
+impl Step for Miri {
+    type Output = ();
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/miri")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Miri {
+            stage: run.builder.top_stage,
+            host: run.build_triple(),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let stage = self.stage;
+        let host = self.host;
+        let target = self.target;
+        let compiler = builder.compiler(stage, host);
+
+        let miri = builder
+            .ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() })
+            .expect("in-tree tool");
+        let miri_sysroot = test::Miri::build_miri_sysroot(builder, compiler, &miri, target);
+
+        // # Run miri.
+        // Running it via `cargo run` as that figures out the right dylib path.
+        // add_rustc_lib_path does not add the path that contains librustc_driver-<...>.so.
+        let mut miri = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            host,
+            "run",
+            "src/tools/miri",
+            SourceType::InTree,
+            &[],
+        );
+        miri.add_rustc_lib_path(builder, compiler);
+        // Forward arguments.
+        miri.arg("--").arg("--target").arg(target.rustc_target_arg());
+        miri.args(builder.config.cmd.args());
+
+        // miri tests need to know about the stage sysroot
+        miri.env("MIRI_SYSROOT", &miri_sysroot);
+
+        let mut miri = Command::from(miri);
+        builder.run(&mut miri);
     }
 }

@@ -231,7 +231,7 @@ fn token_to_symbol(token: &TokenStaticData) -> Option<scip_types::Symbol> {
         package: Some(scip_types::Package {
             manager: "cargo".to_string(),
             name: package_name,
-            version,
+            version: version.unwrap_or_else(|| ".".to_string()),
             ..Default::default()
         })
         .into(),
@@ -413,6 +413,44 @@ pub mod module {
     }
     "#,
             "",
+        );
+    }
+
+    #[test]
+    fn global_symbol_for_pub_struct() {
+        check_symbol(
+            r#"
+    //- /lib.rs crate:main
+    mod foo;
+
+    fn main() {
+        let _bar = foo::Bar { i: 0 };
+    }
+    //- /foo.rs
+    pub struct Bar$0 {
+        pub i: i32,
+    }
+    "#,
+            "rust-analyzer cargo main . foo/Bar#",
+        );
+    }
+
+    #[test]
+    fn global_symbol_for_pub_struct_reference() {
+        check_symbol(
+            r#"
+    //- /lib.rs crate:main
+    mod foo;
+
+    fn main() {
+        let _bar = foo::Bar$0 { i: 0 };
+    }
+    //- /foo.rs
+    pub struct Bar {
+        pub i: i32,
+    }
+    "#,
+            "rust-analyzer cargo main . foo/Bar#",
         );
     }
 }

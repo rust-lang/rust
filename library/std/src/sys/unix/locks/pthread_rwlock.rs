@@ -3,20 +3,26 @@ use crate::mem::forget;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
-pub struct RwLock {
+struct AllocatedRwLock {
     inner: UnsafeCell<libc::pthread_rwlock_t>,
     write_locked: UnsafeCell<bool>, // guarded by the `inner` RwLock
     num_readers: AtomicUsize,
 }
 
-pub(crate) type MovableRwLock = LazyBox<RwLock>;
+unsafe impl Send for AllocatedRwLock {}
+unsafe impl Sync for AllocatedRwLock {}
 
-unsafe impl Send for RwLock {}
-unsafe impl Sync for RwLock {}
+pub struct RwLock {
+    inner: LazyBox<AllocatedRwLock>,
+}
 
-impl LazyInit for RwLock {
+impl LazyInit for AllocatedRwLock {
     fn init() -> Box<Self> {
-        Box::new(Self::new())
+        Box::new(AllocatedRwLock {
+            inner: UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER),
+            write_locked: UnsafeCell::new(false),
+            num_readers: AtomicUsize::new(0),
+        })
     }
 
     fn destroy(mut rwlock: Box<Self>) {
@@ -35,17 +41,39 @@ impl LazyInit for RwLock {
     }
 }
 
-impl RwLock {
-    pub const fn new() -> RwLock {
-        RwLock {
-            inner: UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER),
-            write_locked: UnsafeCell::new(false),
-            num_readers: AtomicUsize::new(0),
+impl AllocatedRwLock {
+    #[inline]
+    unsafe fn raw_unlock(&self) {
+        let r = libc::pthread_rwlock_unlock(self.inner.get());
+        debug_assert_eq!(r, 0);
+    }
+}
+
+impl Drop for AllocatedRwLock {
+    fn drop(&mut self) {
+        let r = unsafe { libc::pthread_rwlock_destroy(self.inner.get()) };
+        // On DragonFly pthread_rwlock_destroy() returns EINVAL if called on a
+        // rwlock that was just initialized with
+        // libc::PTHREAD_RWLOCK_INITIALIZER. Once it is used (locked/unlocked)
+        // or pthread_rwlock_init() is called, this behaviour no longer occurs.
+        if cfg!(target_os = "dragonfly") {
+            debug_assert!(r == 0 || r == libc::EINVAL);
+        } else {
+            debug_assert_eq!(r, 0);
         }
     }
+}
+
+impl RwLock {
     #[inline]
-    pub unsafe fn read(&self) {
-        let r = libc::pthread_rwlock_rdlock(self.inner.get());
+    pub const fn new() -> RwLock {
+        RwLock { inner: LazyBox::new() }
+    }
+
+    #[inline]
+    pub fn read(&self) {
+        let lock = &*self.inner;
+        let r = unsafe { libc::pthread_rwlock_rdlock(lock.inner.get()) };
 
         // According to POSIX, when a thread tries to acquire this read lock
         // while it already holds the write lock
@@ -62,51 +90,61 @@ impl RwLock {
         // got the write lock more than once, or got a read and a write lock.
         if r == libc::EAGAIN {
             panic!("rwlock maximum reader count exceeded");
-        } else if r == libc::EDEADLK || (r == 0 && *self.write_locked.get()) {
+        } else if r == libc::EDEADLK || (r == 0 && unsafe { *lock.write_locked.get() }) {
             // Above, we make sure to only access `write_locked` when `r == 0` to avoid
             // data races.
             if r == 0 {
                 // `pthread_rwlock_rdlock` succeeded when it should not have.
-                self.raw_unlock();
+                unsafe {
+                    lock.raw_unlock();
+                }
             }
             panic!("rwlock read lock would result in deadlock");
         } else {
             // POSIX does not make guarantees about all the errors that may be returned.
             // See issue #94705 for more details.
             assert_eq!(r, 0, "unexpected error during rwlock read lock: {:?}", r);
-            self.num_readers.fetch_add(1, Ordering::Relaxed);
+            lock.num_readers.fetch_add(1, Ordering::Relaxed);
         }
     }
+
     #[inline]
-    pub unsafe fn try_read(&self) -> bool {
-        let r = libc::pthread_rwlock_tryrdlock(self.inner.get());
+    pub fn try_read(&self) -> bool {
+        let lock = &*self.inner;
+        let r = unsafe { libc::pthread_rwlock_tryrdlock(lock.inner.get()) };
         if r == 0 {
-            if *self.write_locked.get() {
+            if unsafe { *lock.write_locked.get() } {
                 // `pthread_rwlock_tryrdlock` succeeded when it should not have.
-                self.raw_unlock();
+                unsafe {
+                    lock.raw_unlock();
+                }
                 false
             } else {
-                self.num_readers.fetch_add(1, Ordering::Relaxed);
+                lock.num_readers.fetch_add(1, Ordering::Relaxed);
                 true
             }
         } else {
             false
         }
     }
+
     #[inline]
-    pub unsafe fn write(&self) {
-        let r = libc::pthread_rwlock_wrlock(self.inner.get());
+    pub fn write(&self) {
+        let lock = &*self.inner;
+        let r = unsafe { libc::pthread_rwlock_wrlock(lock.inner.get()) };
         // See comments above for why we check for EDEADLK and write_locked. For the same reason,
         // we also need to check that there are no readers (tracked in `num_readers`).
         if r == libc::EDEADLK
-            || (r == 0 && *self.write_locked.get())
-            || self.num_readers.load(Ordering::Relaxed) != 0
+            || (r == 0 && unsafe { *lock.write_locked.get() })
+            || lock.num_readers.load(Ordering::Relaxed) != 0
         {
             // Above, we make sure to only access `write_locked` when `r == 0` to avoid
             // data races.
             if r == 0 {
                 // `pthread_rwlock_wrlock` succeeded when it should not have.
-                self.raw_unlock();
+                unsafe {
+                    lock.raw_unlock();
+                }
             }
             panic!("rwlock write lock would result in deadlock");
         } else {
@@ -114,60 +152,44 @@ impl RwLock {
             // return EDEADLK or 0. We rely on that.
             debug_assert_eq!(r, 0);
         }
-        *self.write_locked.get() = true;
+
+        unsafe {
+            *lock.write_locked.get() = true;
+        }
     }
+
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        let r = libc::pthread_rwlock_trywrlock(self.inner.get());
+        let lock = &*self.inner;
+        let r = libc::pthread_rwlock_trywrlock(lock.inner.get());
         if r == 0 {
-            if *self.write_locked.get() || self.num_readers.load(Ordering::Relaxed) != 0 {
+            if *lock.write_locked.get() || lock.num_readers.load(Ordering::Relaxed) != 0 {
                 // `pthread_rwlock_trywrlock` succeeded when it should not have.
-                self.raw_unlock();
+                lock.raw_unlock();
                 false
             } else {
-                *self.write_locked.get() = true;
+                *lock.write_locked.get() = true;
                 true
             }
         } else {
             false
         }
     }
-    #[inline]
-    unsafe fn raw_unlock(&self) {
-        let r = libc::pthread_rwlock_unlock(self.inner.get());
-        debug_assert_eq!(r, 0);
-    }
+
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        debug_assert!(!*self.write_locked.get());
-        self.num_readers.fetch_sub(1, Ordering::Relaxed);
-        self.raw_unlock();
+        let lock = &*self.inner;
+        debug_assert!(!*lock.write_locked.get());
+        lock.num_readers.fetch_sub(1, Ordering::Relaxed);
+        lock.raw_unlock();
     }
+
     #[inline]
     pub unsafe fn write_unlock(&self) {
-        debug_assert_eq!(self.num_readers.load(Ordering::Relaxed), 0);
-        debug_assert!(*self.write_locked.get());
-        *self.write_locked.get() = false;
-        self.raw_unlock();
-    }
-    #[inline]
-    unsafe fn destroy(&mut self) {
-        let r = libc::pthread_rwlock_destroy(self.inner.get());
-        // On DragonFly pthread_rwlock_destroy() returns EINVAL if called on a
-        // rwlock that was just initialized with
-        // libc::PTHREAD_RWLOCK_INITIALIZER. Once it is used (locked/unlocked)
-        // or pthread_rwlock_init() is called, this behaviour no longer occurs.
-        if cfg!(target_os = "dragonfly") {
-            debug_assert!(r == 0 || r == libc::EINVAL);
-        } else {
-            debug_assert_eq!(r, 0);
-        }
-    }
-}
-
-impl Drop for RwLock {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe { self.destroy() };
+        let lock = &*self.inner;
+        debug_assert_eq!(lock.num_readers.load(Ordering::Relaxed), 0);
+        debug_assert!(*lock.write_locked.get());
+        *lock.write_locked.get() = false;
+        lock.raw_unlock();
     }
 }

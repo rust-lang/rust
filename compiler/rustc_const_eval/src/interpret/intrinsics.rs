@@ -713,7 +713,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         rhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap().ty)?;
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
 
         let get_bytes = |this: &InterpCx<'mir, 'tcx, M>,
                          op: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,

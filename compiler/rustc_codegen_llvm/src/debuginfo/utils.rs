@@ -72,7 +72,7 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
         layout.is_unsized()
     );
 
-    if !layout.is_unsized() {
+    if layout.is_sized() {
         return None;
     }
 

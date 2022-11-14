@@ -97,7 +97,11 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     }
     fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
         if self.references_error() {
-            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+            if let Some(reported) = ty::tls::with(|tcx| tcx.sess.has_errors()) {
+                Err(reported)
+            } else {
+                bug!("expect tcx.sess.has_errors return true");
+            }
         } else {
             Ok(())
         }

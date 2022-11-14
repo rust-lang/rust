@@ -46,7 +46,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         ecx.tcx.def_kind(cid.instance.def_id())
     );
     let layout = ecx.layout_of(body.bound_return_ty().subst(tcx, cid.instance.substs))?;
-    assert!(!layout.is_unsized());
+    assert!(layout.is_sized());
     let ret = ecx.allocate(layout, MemoryKind::Stack)?;
 
     trace!(

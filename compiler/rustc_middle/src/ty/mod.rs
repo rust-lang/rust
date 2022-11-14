@@ -2506,6 +2506,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.trait_def(trait_def_id).has_auto_impl
     }
 
+    pub fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
+        self.trait_is_auto(trait_def_id) || self.lang_items().sized_trait() == Some(trait_def_id)
+    }
+
     /// Returns layout of a generator. Layout might be unavailable if the
     /// generator is tainted by errors.
     pub fn generator_layout(self, def_id: DefId) -> Option<&'tcx GeneratorLayout<'tcx>> {
@@ -2550,11 +2554,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
     /// with the name of the crate containing the impl.
-    pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, Symbol> {
-        if let Some(impl_did) = impl_did.as_local() {
-            Ok(self.def_span(impl_did))
+    pub fn span_of_impl(self, impl_def_id: DefId) -> Result<Span, Symbol> {
+        if let Some(impl_def_id) = impl_def_id.as_local() {
+            Ok(self.def_span(impl_def_id))
         } else {
-            Err(self.crate_name(impl_did.krate))
+            Err(self.crate_name(impl_def_id.krate))
         }
     }
 

@@ -150,3 +150,6 @@ hir_analysis_const_bound_for_non_const_trait =
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
+
+hir_analysis_op_trait_generic_params =
+    `{$method_name}` must not have any generic parameters

@@ -810,6 +810,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_polymorphize_error, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_def_path, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_mir, Normal, template!(List: "arg1, arg2, ..."), DuplicatesOk),
+    gated!(
+        custom_mir, Normal, template!(List: r#"dialect = "...", phase = "...""#),
+        ErrorFollowing, "the `#[custom_mir]` attribute is just used for the Rust test suite",
+    ),
     rustc_attr!(TEST, rustc_dump_program_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_dump_env_program_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_object_lifetime_default, Normal, template!(Word), WarnFollowing),

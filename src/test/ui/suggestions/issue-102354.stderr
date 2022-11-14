@@ -13,7 +13,7 @@ LL |     fn func() {}
 help: use associated function syntax instead
    |
 LL |     i32::func();
-   |     ~~~~~~~~~
+   |     ~~~~~~~~~~~
 help: disambiguate the associated function for the candidate
    |
 LL |     <i32 as Trait>::func(x);

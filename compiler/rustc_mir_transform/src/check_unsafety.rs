@@ -471,6 +471,14 @@ fn unsafety_check_result<'tcx>(
     // `mir_built` force this.
     let body = &tcx.mir_built(def).borrow();
 
+    if body.should_skip() {
+        return tcx.arena.alloc(UnsafetyCheckResult {
+            violations: Vec::new(),
+            used_unsafe_blocks: FxHashSet::default(),
+            unused_unsafes: Some(Vec::new()),
+        });
+    }
+
     let param_env = tcx.param_env(def.did);
 
     let mut checker = UnsafetyChecker::new(body, def.did, tcx, param_env);

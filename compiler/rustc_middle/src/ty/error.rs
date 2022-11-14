@@ -430,7 +430,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     (ty::Projection(_), ty::Projection(_)) => {
                         diag.note("an associated type was expected, but a different one was found");
                     }
-                    (ty::Param(p), ty::Projection(proj)) | (ty::Projection(proj), ty::Param(p)) => {
+                    (ty::Param(p), ty::Projection(proj)) | (ty::Projection(proj), ty::Param(p))
+                        if self.def_kind(proj.item_def_id) != DefKind::ImplTraitPlaceholder =>
+                    {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {

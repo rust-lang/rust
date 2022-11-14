@@ -1,3 +1,6 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError;
@@ -158,6 +161,7 @@ trait TypeOpInfo<'tcx> {
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>>;
 
+    #[instrument(level = "debug", skip(self, mbcx))]
     fn report_error(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
@@ -167,6 +171,7 @@ trait TypeOpInfo<'tcx> {
     ) {
         let tcx = mbcx.infcx.tcx;
         let base_universe = self.base_universe();
+        debug!(?base_universe);
 
         let Some(adjusted_universe) =
             placeholder.universe.as_u32().checked_sub(base_universe.as_u32())
@@ -389,6 +394,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     )
 }
 
+#[instrument(level = "debug", skip(infcx, region_var_origin, universe_of_region))]
 fn try_extract_error_from_region_constraints<'tcx>(
     infcx: &InferCtxt<'tcx>,
     placeholder_region: ty::Region<'tcx>,

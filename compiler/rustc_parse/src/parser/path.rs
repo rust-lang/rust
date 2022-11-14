@@ -631,7 +631,9 @@ impl<'a> Parser<'a> {
     /// - A single-segment path.
     pub(super) fn expr_is_valid_const_arg(&self, expr: &P<rustc_ast::Expr>) -> bool {
         match &expr.kind {
-            ast::ExprKind::Block(_, _) | ast::ExprKind::Lit(_) => true,
+            ast::ExprKind::Block(_, _)
+            | ast::ExprKind::Lit(_)
+            | ast::ExprKind::IncludedBytes(..) => true,
             ast::ExprKind::Unary(ast::UnOp::Neg, expr) => {
                 matches!(expr.kind, ast::ExprKind::Lit(_))
             }

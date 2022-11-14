@@ -36,7 +36,7 @@ error: attribute should be applied to a function definition
   --> $DIR/naked-invalid-attr.rs:5:1
    |
 LL | #![naked]
-   | ^^^^^^^^^
+   | ^^^^^^^^^ cannot be applied to crates
 
 error: aborting due to 5 previous errors
 

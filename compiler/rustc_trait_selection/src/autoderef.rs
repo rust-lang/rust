@@ -1,6 +1,6 @@
 use crate::errors::AutoDerefReachedRecursionLimit;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{self, TraitEngine};
+use crate::traits::{self, TraitEngine, TraitEngineExt};
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
@@ -27,7 +27,6 @@ pub struct Autoderef<'a, 'tcx> {
     // Meta infos:
     infcx: &'a InferCtxt<'tcx>,
     span: Span,
-    overloaded_span: Span,
     body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
 
@@ -99,12 +98,10 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         body_id: hir::HirId,
         span: Span,
         base_ty: Ty<'tcx>,
-        overloaded_span: Span,
     ) -> Autoderef<'a, 'tcx> {
         Autoderef {
             infcx,
             span,
-            overloaded_span,
             body_id,
             param_env,
             state: AutoderefSnapshot {
@@ -142,7 +139,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let mut fulfillcx = traits::FulfillmentContext::new_in_snapshot();
+        let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
         let normalized_ty = fulfillcx.normalize_projection_type(
             &self.infcx,
             self.param_env,
@@ -191,10 +188,6 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
     pub fn span(&self) -> Span {
         self.span
-    }
-
-    pub fn overloaded_span(&self) -> Span {
-        self.overloaded_span
     }
 
     pub fn reached_recursion_limit(&self) -> bool {

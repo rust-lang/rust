@@ -139,7 +139,8 @@ fn test_iterator_array_chunks_fold() {
     let result =
         (0..10).map(|_| CountDrop::new(&count)).array_chunks::<3>().fold(0, |acc, _item| acc + 1);
     assert_eq!(result, 3);
-    assert_eq!(count.get(), 10);
+    // fold impls may or may not process the remainder
+    assert!(count.get() <= 10 && count.get() >= 9);
 }
 
 #[test]

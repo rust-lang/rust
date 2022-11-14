@@ -74,7 +74,7 @@ pub fn check(build: &mut Build) {
     let mut cmd_finder = Finder::new();
     // If we've got a git directory we're gonna need git to update
     // submodules and learn about various other aspects.
-    if build.rust_info.is_managed_git_subrepository() {
+    if build.rust_info().is_managed_git_subrepository() {
         cmd_finder.must_have("git");
     }
 
@@ -163,7 +163,7 @@ than building it.
             continue;
         }
 
-        if !build.config.dry_run {
+        if !build.config.dry_run() {
             cmd_finder.must_have(build.cc(*target));
             if let Some(ar) = build.ar(*target) {
                 cmd_finder.must_have(ar);
@@ -172,7 +172,7 @@ than building it.
     }
 
     for host in &build.hosts {
-        if !build.config.dry_run {
+        if !build.config.dry_run() {
             cmd_finder.must_have(build.cxx(*host).unwrap());
         }
     }

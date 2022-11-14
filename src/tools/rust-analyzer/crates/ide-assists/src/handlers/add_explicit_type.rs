@@ -69,14 +69,14 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     let inferred_type = ty.display_source_code(ctx.db(), module.into()).ok()?;
     acc.add(
         AssistId("add_explicit_type", AssistKind::RefactorRewrite),
-        format!("Insert explicit type `{}`", inferred_type),
+        format!("Insert explicit type `{inferred_type}`"),
         pat_range,
         |builder| match ascribed_ty {
             Some(ascribed_ty) => {
                 builder.replace(ascribed_ty.syntax().text_range(), inferred_type);
             }
             None => {
-                builder.insert(pat_range.end(), format!(": {}", inferred_type));
+                builder.insert(pat_range.end(), format!(": {inferred_type}"));
             }
         },
     )
