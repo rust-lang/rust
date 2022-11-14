@@ -556,8 +556,12 @@ where
         self.ambient_variance_info = self.ambient_variance_info.xform(info);
 
         debug!(?self.ambient_variance);
-
-        let r = self.relate(a, b)?;
+        // In a bivariant context this always succeeds.
+        let r = if self.ambient_variance == ty::Variance::Bivariant {
+            a
+        } else {
+            self.relate(a, b)?
+        };
 
         self.ambient_variance = old_ambient_variance;
 

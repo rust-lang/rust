@@ -23,7 +23,7 @@ use super::{
     MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
     Scalar, StackPopJump,
 };
-use crate::transform::validate::equal_up_to_regions;
+use crate::transform::validate;
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -354,8 +354,8 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // Type-changing assignments can happen when subtyping is used. While
     // all normal lifetimes are erased, higher-ranked types with their
     // late-bound lifetimes are still around and can lead to type
-    // differences. So we compare ignoring lifetimes.
-    if equal_up_to_regions(tcx, param_env, src.ty, dest.ty) {
+    // differences.
+    if validate::is_subtype(tcx, param_env, src.ty, dest.ty) {
         // Make sure the layout is equal, too -- just to be safe. Miri really
         // needs layout equality. For performance reason we skip this check when
         // the types are equal. Equal types *can* have different layouts when
