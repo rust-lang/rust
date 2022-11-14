@@ -20,11 +20,10 @@ use rustc_infer::infer::{
 };
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::util::supertraits;
+use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::{
-    self, DefIdTree, GenericArg, GenericArgKind, ToPredicate, Ty, TyCtxt, TypeVisitable,
-};
+use rustc_middle::ty::{self, DefIdTree, GenericArgKind, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
@@ -1090,50 +1089,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // When the "method" is resolved through dereferencing, we really want the
             // original type that has the associated function for accurate suggestions.
             // (#61411)
-            let ty = self.tcx.type_of(*impl_did);
-            match (&ty.peel_refs().kind(), &rcvr_ty.peel_refs().kind()) {
-                (ty::Adt(def, _), ty::Adt(def_actual, substs)) if def == def_actual => {
-                    // If there are any inferred arguments, (`{integer}`), we should replace
-                    // them with underscores to allow the compiler to infer them
-                    let infer_substs: Vec<GenericArg<'_>> = substs
-                        .into_iter()
-                        .map(|arg| {
-                            if !arg.is_suggestable(self.tcx, true) {
-                                has_unsuggestable_args = true;
-                                match arg.unpack() {
-                                    GenericArgKind::Lifetime(_) => self
-                                        .next_region_var(RegionVariableOrigin::MiscVariable(
-                                            rustc_span::DUMMY_SP,
-                                        ))
-                                        .into(),
-                                    GenericArgKind::Type(_) => self
-                                        .next_ty_var(TypeVariableOrigin {
-                                            span: rustc_span::DUMMY_SP,
-                                            kind: TypeVariableOriginKind::MiscVariable,
-                                        })
-                                        .into(),
-                                    GenericArgKind::Const(arg) => self
-                                        .next_const_var(
-                                            arg.ty(),
-                                            ConstVariableOrigin {
-                                                span: rustc_span::DUMMY_SP,
-                                                kind: ConstVariableOriginKind::MiscVariable,
-                                            },
-                                        )
-                                        .into(),
-                                }
-                            } else {
-                                arg
-                            }
-                        })
-                        .collect::<Vec<_>>();
+            let impl_ty = self.tcx.type_of(*impl_did);
+            let target_ty = self
+                .autoderef(sugg_span, rcvr_ty)
+                .find(|(rcvr_ty, _)| {
+                    DeepRejectCtxt { treat_obligation_params: TreatParams::AsInfer }
+                        .types_may_unify(*rcvr_ty, impl_ty)
+                })
+                .map_or(impl_ty, |(ty, _)| ty)
+                .peel_refs();
+            if let ty::Adt(def, substs) = target_ty.kind() {
+                // If there are any inferred arguments, (`{integer}`), we should replace
+                // them with underscores to allow the compiler to infer them
+                let infer_substs = self.tcx.mk_substs(substs.into_iter().map(|arg| {
+                    if !arg.is_suggestable(self.tcx, true) {
+                        has_unsuggestable_args = true;
+                        match arg.unpack() {
+                            GenericArgKind::Lifetime(_) => self
+                                .next_region_var(RegionVariableOrigin::MiscVariable(
+                                    rustc_span::DUMMY_SP,
+                                ))
+                                .into(),
+                            GenericArgKind::Type(_) => self
+                                .next_ty_var(TypeVariableOrigin {
+                                    span: rustc_span::DUMMY_SP,
+                                    kind: TypeVariableOriginKind::MiscVariable,
+                                })
+                                .into(),
+                            GenericArgKind::Const(arg) => self
+                                .next_const_var(
+                                    arg.ty(),
+                                    ConstVariableOrigin {
+                                        span: rustc_span::DUMMY_SP,
+                                        kind: ConstVariableOriginKind::MiscVariable,
+                                    },
+                                )
+                                .into(),
+                        }
+                    } else {
+                        arg
+                    }
+                }));
 
-                    self.tcx.value_path_str_with_substs(
-                        def_actual.did(),
-                        self.tcx.intern_substs(&infer_substs),
-                    )
-                }
-                _ => self.ty_to_value_string(ty.peel_refs()),
+                self.tcx.value_path_str_with_substs(def.did(), infer_substs)
+            } else {
+                self.ty_to_value_string(target_ty)
             }
         } else {
             self.ty_to_value_string(rcvr_ty.peel_refs())
