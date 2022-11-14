@@ -159,7 +159,6 @@ h1.fqn {
 .main-heading {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: space-between;
 	padding-bottom: 6px;
 	margin-bottom: 15px;
 }
