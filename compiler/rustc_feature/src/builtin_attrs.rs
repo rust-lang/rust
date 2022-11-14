@@ -147,7 +147,7 @@ pub enum AttributeDuplicates {
     FutureWarnPreceding,
 }
 
-/// A conveniece macro to deal with `$($expr)?`.
+/// A convenience macro to deal with `$($expr)?`.
 macro_rules! or_default {
     ($default:expr,) => {
         $default
