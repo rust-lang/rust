@@ -299,6 +299,7 @@ mod tests;
 
 use crate::cmp;
 use crate::fmt;
+use crate::fmt::Debug;
 use crate::mem::take;
 use crate::ops::{Deref, DerefMut};
 use crate::slice;
@@ -1786,38 +1787,14 @@ pub trait Write {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> Result<()> {
-        // Create a shim which translates a Write to a fmt::Write and saves
-        // off I/O errors. instead of discarding them
-        struct Adapter<'a, T: ?Sized + 'a> {
-            inner: &'a mut T,
-            error: Result<()>,
-        }
-
-        impl<T: Write + ?Sized> fmt::Write for Adapter<'_, T> {
-            fn write_str(&mut self, s: &str) -> fmt::Result {
-                match self.inner.write_all(s.as_bytes()) {
-                    Ok(()) => Ok(()),
-                    Err(e) => {
-                        self.error = Err(e);
-                        Err(fmt::Error)
-                    }
-                }
-            }
-        }
-
-        let mut output = Adapter { inner: self, error: Ok(()) };
-        match fmt::write(&mut output, fmt) {
-            Ok(()) => Ok(()),
-            Err(..) => {
-                // check if the error came from the underlying `Write` or not
-                if output.error.is_err() {
-                    output.error
-                } else {
-                    Err(error::const_io_error!(ErrorKind::Uncategorized, "formatter error"))
-                }
-            }
-        }
+    fn write_fmt(mut self: &mut Self, fmt: fmt::Arguments<'_>) -> Result<()> {
+        let mut output = (&mut self).fmt_adapter();
+        fmt::write(&mut output, fmt).map_err(|_| {
+            output
+                .mut_err()
+                .take()
+                .unwrap_or(const_io_error!(ErrorKind::Uncategorized, "formatter error"))
+        })
     }
 
     /// Creates a "by reference" adapter for this instance of `Write`.
@@ -1847,6 +1824,78 @@ pub trait Write {
         Self: Sized,
     {
         self
+    }
+
+    /// Convert an [`io::Write`](Write) to a [`FmtWriteAdapter`].
+    #[unstable(feature = "impl_fmt_write_for_io_write", issue = "77733")]
+    fn fmt_adapter(&mut self) -> FmtWriteAdapter<'_, Self>
+    where
+        Self: Sized,
+    {
+        FmtWriteAdapter { inner: self, error: None }
+    }
+}
+
+/// Adapter that enables writing through a [`fmt::Write`] to an underlying [`io::Write`](Write).
+///
+/// # Examples
+///
+/// ```rust
+/// #![feature(impl_fmt_write_for_io_write)]
+/// # use std::{fmt, io};
+/// # use std::io::Write;
+///
+/// let mut output1 = String::new();
+/// let mut output2 = io::stdout();
+///
+/// my_common_writer(&mut output1).unwrap();
+/// my_common_writer(&mut output2.fmt_adapter()).unwrap();
+///
+/// fn my_common_writer(output: &mut impl fmt::Write) -> fmt::Result {
+///     writeln!(output, "Hello World!")
+/// }
+/// ```
+#[unstable(feature = "impl_fmt_write_for_io_write", issue = "77733")]
+pub struct FmtWriteAdapter<'a, W: Write + ?Sized> {
+    inner: &'a mut W,
+    error: Option<Error>,
+}
+
+#[unstable(feature = "impl_fmt_write_for_io_write", issue = "77733")]
+impl<W: Write + ?Sized> FmtWriteAdapter<'_, W> {
+    /// Returns a reference to the last error that occurred in this adapter.
+    pub fn err(&self) -> &Option<Error> {
+        &self.error
+    }
+
+    /// Returns a mutable reference to the last error that occurred in this adapter.
+    pub fn mut_err(&mut self) -> &mut Option<Error> {
+        &mut self.error
+    }
+}
+
+#[unstable(feature = "impl_fmt_write_for_io_write", issue = "77733")]
+impl<W: Write + ?Sized> fmt::Write for FmtWriteAdapter<'_, W> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        match self.inner.write_all(s.as_bytes()) {
+            Ok(()) => {
+                self.error = None;
+                Ok(())
+            }
+            Err(e) => {
+                self.error = Some(e);
+                Err(fmt::Error)
+            }
+        }
+    }
+}
+
+#[unstable(feature = "impl_fmt_write_for_io_write", issue = "77733")]
+impl<W: Write + ?Sized> Debug for FmtWriteAdapter<'_, W> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut builder = f.debug_struct("FmtWriteAdapter");
+        builder.field("error", &self.error);
+        builder.finish()
     }
 }
 
