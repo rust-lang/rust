@@ -102,7 +102,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ProbeScope::TraitsInScope,
         ) {
             Ok(pick) => {
-                pick.emit_unstable_name_collision_hint(self.tcx, method_name.span, call_expr_id);
+                pick.maybe_emit_unstable_name_collision_hint(
+                    self.tcx,
+                    method_name.span,
+                    call_expr_id,
+                );
                 true
             }
             Err(NoMatch(..)) => false,
@@ -256,7 +260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             call_expr.hir_id,
             scope,
         )?;
-        pick.emit_unstable_name_collision_hint(self.tcx, method_name.span, call_expr.hir_id);
+        pick.maybe_emit_unstable_name_collision_hint(self.tcx, method_name.span, call_expr.hir_id);
         Ok(pick)
     }
 
@@ -589,7 +593,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ProbeScope::TraitsInScope,
         )?;
 
-        pick.emit_unstable_name_collision_hint(self.tcx, span, expr_id);
+        pick.maybe_emit_unstable_name_collision_hint(self.tcx, span, expr_id);
 
         self.lint_fully_qualified_call_from_2018(
             span,

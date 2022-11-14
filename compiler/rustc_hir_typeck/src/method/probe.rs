@@ -1331,7 +1331,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 }
 
 impl<'tcx> Pick<'tcx> {
-    pub fn emit_unstable_name_collision_hint(
+    /// In case there were unstable name collisions, emit them as a lint.
+    pub fn maybe_emit_unstable_name_collision_hint(
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,
