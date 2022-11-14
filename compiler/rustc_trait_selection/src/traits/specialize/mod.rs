@@ -19,9 +19,9 @@ use crate::traits::engine::TraitEngineExt as _;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{struct_span_err, DiagnosticBuilder, EmissionGuarantee};
+use rustc_errors::{error_code, DelayDm, Diagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::ty::{self, ImplSubject, TyCtxt};
+use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
@@ -32,10 +32,10 @@ use super::SelectionContext;
 
 /// Information pertinent to an overlapping impl error.
 #[derive(Debug)]
-pub struct OverlapError {
+pub struct OverlapError<'tcx> {
     pub with_impl: DefId,
-    pub trait_desc: String,
-    pub self_desc: Option<String>,
+    pub trait_ref: ty::TraitRef<'tcx>,
+    pub self_ty: Option<Ty<'tcx>>,
     pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause>,
     pub involves_placeholder: bool,
 }
@@ -275,9 +275,9 @@ pub(super) fn specialization_graph_provider(
 // it negatively impacts perf.
 #[cold]
 #[inline(never)]
-fn report_overlap_conflict(
-    tcx: TyCtxt<'_>,
-    overlap: OverlapError,
+fn report_overlap_conflict<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    overlap: OverlapError<'tcx>,
     impl_def_id: LocalDefId,
     used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
     sg: &mut specialization_graph::Graph,
@@ -313,9 +313,9 @@ fn report_overlap_conflict(
     }
 }
 
-fn report_negative_positive_conflict(
-    tcx: TyCtxt<'_>,
-    overlap: &OverlapError,
+fn report_negative_positive_conflict<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    overlap: &OverlapError<'tcx>,
     local_impl_def_id: LocalDefId,
     negative_impl_def_id: DefId,
     positive_impl_def_id: DefId,
@@ -323,17 +323,17 @@ fn report_negative_positive_conflict(
 ) {
     let mut err = tcx.sess.create_err(NegativePositiveConflict {
         impl_span: tcx.def_span(local_impl_def_id),
-        trait_desc: &overlap.trait_desc,
-        self_desc: &overlap.self_desc,
+        trait_desc: overlap.trait_ref,
+        self_ty: overlap.self_ty,
         negative_impl_span: tcx.span_of_impl(negative_impl_def_id),
         positive_impl_span: tcx.span_of_impl(positive_impl_def_id),
     });
     sg.has_errored = Some(err.emit());
 }
 
-fn report_conflicting_impls(
-    tcx: TyCtxt<'_>,
-    overlap: OverlapError,
+fn report_conflicting_impls<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    overlap: OverlapError<'tcx>,
     impl_def_id: LocalDefId,
     used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
     sg: &mut specialization_graph::Graph,
@@ -343,12 +343,12 @@ fn report_conflicting_impls(
     // Work to be done after we've built the DiagnosticBuilder. We have to define it
     // now because the struct_lint methods don't return back the DiagnosticBuilder
     // that's passed in.
-    fn decorate<'a, 'b, G: EmissionGuarantee>(
-        tcx: TyCtxt<'_>,
-        overlap: OverlapError,
+    fn decorate<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        overlap: &OverlapError<'tcx>,
         impl_span: Span,
-        err: &'b mut DiagnosticBuilder<'a, G>,
-    ) -> &'b mut DiagnosticBuilder<'a, G> {
+        err: &mut Diagnostic,
+    ) {
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
                 err.span_label(span, "first implementation here");
@@ -357,7 +357,7 @@ fn report_conflicting_impls(
                     impl_span,
                     format!(
                         "conflicting implementation{}",
-                        overlap.self_desc.map_or_else(String::new, |ty| format!(" for `{}`", ty))
+                        overlap.self_ty.map_or_else(String::new, |ty| format!(" for `{}`", ty))
                     ),
                 );
             }
@@ -379,26 +379,28 @@ fn report_conflicting_impls(
         if overlap.involves_placeholder {
             coherence::add_placeholder_note(err);
         }
-        err
     }
 
-    let msg = format!(
-        "conflicting implementations of trait `{}`{}{}",
-        overlap.trait_desc,
-        overlap.self_desc.as_deref().map_or_else(String::new, |ty| format!(" for type `{ty}`")),
-        match used_to_be_allowed {
-            Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
-            _ => "",
-        }
-    );
+    let msg = DelayDm(|| {
+        format!(
+            "conflicting implementations of trait `{}`{}{}",
+            overlap.trait_ref.print_only_trait_path(),
+            overlap.self_ty.map_or_else(String::new, |ty| format!(" for type `{ty}`")),
+            match used_to_be_allowed {
+                Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
+                _ => "",
+            }
+        )
+    });
 
     match used_to_be_allowed {
         None => {
             let reported = if overlap.with_impl.is_local()
                 || tcx.orphan_check_impl(impl_def_id).is_ok()
             {
-                let mut err = struct_span_err!(tcx.sess, impl_span, E0119, "{msg}",);
-                decorate(tcx, overlap, impl_span, &mut err);
+                let mut err = tcx.sess.struct_span_err(impl_span, msg);
+                err.code(error_code!(E0119));
+                decorate(tcx, &overlap, impl_span, &mut err);
                 Some(err.emit())
             } else {
                 Some(tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check"))
@@ -415,7 +417,10 @@ fn report_conflicting_impls(
                 tcx.hir().local_def_id_to_hir_id(impl_def_id),
                 impl_span,
                 msg,
-                |err| decorate(tcx, overlap, impl_span, err),
+                |err| {
+                    decorate(tcx, &overlap, impl_span, err);
+                    err
+                },
             );
         }
     };
