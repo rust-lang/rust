@@ -155,7 +155,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
         true
     }
 
-    fn register_opaque_type_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.type_checker
             .fully_perform_op(
                 self.locations,
