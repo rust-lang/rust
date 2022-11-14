@@ -18,6 +18,8 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
 use std::ops::ControlFlow;
 
+use crate::traits::ObligationCtxt;
+
 /// Check if a given constant can be evaluated.
 #[instrument(skip(infcx), level = "debug")]
 pub fn is_const_evaluatable<'tcx>(
@@ -71,26 +73,27 @@ pub fn is_const_evaluatable<'tcx>(
         // See #74595 for more details about this.
         let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));
         match concrete {
-          // If we're evaluating a generic foreign constant, under a nightly compiler while
-          // the current crate does not enable `feature(generic_const_exprs)`, abort
-          // compilation with a useful error.
-          Err(_) if tcx.sess.is_nightly_build()
-            && let Ok(Some(ac)) = tcx.expand_abstract_consts(ct)
-            && let ty::ConstKind::Expr(_) = ac.kind() => {
-              tcx.sess
-                  .struct_span_fatal(
-                      // Slightly better span than just using `span` alone
-                      if span == rustc_span::DUMMY_SP { tcx.def_span(uv.def.did) } else { span },
-                      "failed to evaluate generic const expression",
-                  )
-                  .note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
-                  .span_suggestion_verbose(
-                      rustc_span::DUMMY_SP,
-                      "consider enabling this feature",
-                      "#![feature(generic_const_exprs)]\n",
-                      rustc_errors::Applicability::MaybeIncorrect,
-                  )
-                  .emit()
+            // If we're evaluating a generic foreign constant, under a nightly compiler while
+            // the current crate does not enable `feature(generic_const_exprs)`, abort
+            // compilation with a useful error.
+            Err(_) if tcx.sess.is_nightly_build()
+                && let Ok(Some(ac)) = tcx.expand_abstract_consts(ct)
+                && let ty::ConstKind::Expr(_) = ac.kind() => 
+            {
+                tcx.sess
+                    .struct_span_fatal(
+                        // Slightly better span than just using `span` alone
+                        if span == rustc_span::DUMMY_SP { tcx.def_span(uv.def.did) } else { span },
+                        "failed to evaluate generic const expression",
+                    )
+                    .note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
+                    .span_suggestion_verbose(
+                        rustc_span::DUMMY_SP,
+                        "consider enabling this feature",
+                        "#![feature(generic_const_exprs)]\n",
+                        rustc_errors::Applicability::MaybeIncorrect,
+                    )
+                    .emit()
             }
 
             Err(ErrorHandled::TooGeneric) => {
@@ -130,12 +133,17 @@ fn satisfied_from_param_env<'tcx>(
     impl<'a, 'tcx> TypeVisitor<'tcx> for Visitor<'a, 'tcx> {
         type BreakTy = ();
         fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if c.ty() == self.ct.ty()
-                && let Ok(_nested_obligations) = self
-                    .infcx
-                    .at(&ObligationCause::dummy(), self.param_env)
-                    .eq(c, self.ct)
-            {
+            if let Ok(()) = self.infcx.commit_if_ok(|_| {
+                let ocx = ObligationCtxt::new_in_snapshot(self.infcx);
+                if let Ok(()) = ocx.eq(&ObligationCause::dummy(), self.param_env, c.ty(), self.ct.ty())
+                    && let Ok(()) = ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct)
+                    && ocx.select_all_or_error().is_empty()
+                {
+                    Ok(())
+                } else {
+                    Err(())
+                }
+            }) {
                 ControlFlow::BREAK
             } else if let ty::ConstKind::Expr(e) = c.kind() {
                 e.visit_with(self)

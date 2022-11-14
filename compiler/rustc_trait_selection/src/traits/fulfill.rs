@@ -3,7 +3,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
-use rustc_hir::def::DefKind;
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -465,6 +464,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     // Let's just see where this breaks :shrug:
                     match (c1.kind(), c2.kind()) {
                         (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) => {
+                            // FIXME: remove
+                            use rustc_hir::def::DefKind;
                             if tcx.def_kind(a.def.did) == DefKind::AssocConst
                                 || tcx.def_kind(b.def.did) == DefKind::AssocConst
                             {
@@ -477,16 +478,17 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     ),
                                 );
                             }
-                            if let (Ok(Some(a)), Ok(Some(b))) = (
-                                    tcx.expand_abstract_consts(c1),
-                                    tcx.expand_abstract_consts(c2),
-                                ) && a.ty() == b.ty() &&
-                                  let Ok(new_obligations) = infcx
-                                      .at(&obligation.cause, obligation.param_env)
-                                      .eq(a, b) {
-                                            return ProcessResult::Changed(mk_pending(
-                                                new_obligations.into_obligations(),
-                                            ));
+
+                            if let Ok(Some(a)) = tcx.expand_abstract_consts(c1)
+                                && let Ok(Some(b)) = tcx.expand_abstract_consts(c2)
+                                && a.ty() == b.ty() 
+                                && let Ok(new_obligations) = infcx
+                                    .at(&obligation.cause, obligation.param_env)
+                                    .eq(a, b) 
+                                {
+                                    return ProcessResult::Changed(mk_pending(
+                                        new_obligations.into_obligations(),
+                                    ));
                                 }
                         }
                         _ => {}

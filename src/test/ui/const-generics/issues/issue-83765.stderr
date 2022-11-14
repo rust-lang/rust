@@ -17,7 +17,7 @@ LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
               found constant `DIM`
 
 error[E0308]: method not compatible with trait
-  --> $DIR/issue-83765.rs:84:5
+  --> $DIR/issue-83765.rs:86:5
    |
 LL |     fn size(&self) -> [usize; DIM] {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
@@ -26,13 +26,26 @@ LL |     fn size(&self) -> [usize; DIM] {
               found constant `DIM`
 
 error[E0308]: method not compatible with trait
-  --> $DIR/issue-83765.rs:96:5
+  --> $DIR/issue-83765.rs:98:5
    |
 LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
    |
    = note: expected constant `Self::DIM`
               found constant `DIM`
+
+error: unconstrained generic constant
+  --> $DIR/issue-83765.rs:60:18
+   |
+LL |         if !self.inbounds(index) {
+   |                  ^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); Self::DIM]:`
+note: required by a bound in `TensorSize::inbounds`
+  --> $DIR/issue-83765.rs:16:39
+   |
+LL |     fn inbounds(&self, index: [usize; Self::DIM]) -> bool {
+   |                                       ^^^^^^^^^ required by this bound in `TensorSize::inbounds`
 
 error[E0308]: mismatched types
   --> $DIR/issue-83765.rs:60:27
@@ -43,8 +56,21 @@ LL |         if !self.inbounds(index) {
    = note: expected constant `Self::DIM`
               found constant `DIM`
 
+error: unconstrained generic constant
+  --> $DIR/issue-83765.rs:65:25
+   |
+LL |         let size = self.size();
+   |                         ^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); Self::DIM]:`
+note: required by a bound in `TensorSize::size`
+  --> $DIR/issue-83765.rs:15:31
+   |
+LL |     fn size(&self) -> [usize; Self::DIM];
+   |                               ^^^^^^^^^ required by this bound in `TensorSize::size`
+
 error[E0277]: the trait bound `[usize; _]: Default` is not satisfied
-  --> $DIR/issue-83765.rs:65:41
+  --> $DIR/issue-83765.rs:67:41
    |
 LL |         let newindex: [usize; T::DIM] = Default::default();
    |                                         ^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `[usize; _]`
@@ -55,7 +81,7 @@ LL | impl<'a, T: Broadcastable, const DIM: usize> Broadcastable for LazyUpdim<'a
    |                                                                                                  +++++++++++++++++++++++++
 
 error: unconstrained generic constant
-  --> $DIR/issue-83765.rs:86:24
+  --> $DIR/issue-83765.rs:88:24
    |
 LL |         self.reference.size()
    |                        ^^^^
@@ -68,7 +94,7 @@ LL |     fn size(&self) -> [usize; Self::DIM];
    |                               ^^^^^^^^^ required by this bound in `TensorSize::size`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-83765.rs:86:9
+  --> $DIR/issue-83765.rs:88:9
    |
 LL |         self.reference.size()
    |         ^^^^^^^^^^^^^^^^^^^^^ expected `DIM`, found `Self::DIM`
@@ -77,7 +103,7 @@ LL |         self.reference.size()
               found constant `Self::DIM`
 
 error: unconstrained generic constant
-  --> $DIR/issue-83765.rs:98:24
+  --> $DIR/issue-83765.rs:100:24
    |
 LL |         self.reference.bget(index).map(&self.closure)
    |                        ^^^^
@@ -90,7 +116,7 @@ LL |     fn bget(&self, index: [usize; Self::DIM]) -> Option<Self::Element>;
    |                                   ^^^^^^^^^ required by this bound in `Broadcastable::bget`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-83765.rs:98:29
+  --> $DIR/issue-83765.rs:100:29
    |
 LL |         self.reference.bget(index).map(&self.closure)
    |                             ^^^^^ expected `Self::DIM`, found `DIM`
@@ -98,7 +124,7 @@ LL |         self.reference.bget(index).map(&self.closure)
    = note: expected constant `Self::DIM`
               found constant `DIM`
 
-error: aborting due to 10 previous errors
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

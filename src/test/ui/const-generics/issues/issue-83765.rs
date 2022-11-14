@@ -59,9 +59,11 @@ impl<'a, T: Broadcastable, const DIM: usize> Broadcastable for LazyUpdim<'a, T, 
         assert!(DIM >= T::DIM);
         if !self.inbounds(index) {
             //~^ ERROR mismatched types
+            //~^^ ERROR unconstrained generic constant
             return None;
         }
         let size = self.size();
+        //~^ ERROR unconstrained generic constant
         let newindex: [usize; T::DIM] = Default::default();
         //~^ ERROR the trait bound
         self.reference.bget(newindex)
