@@ -561,18 +561,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         count: u64,
         dest: PlaceRef<'tcx, &'ll Value>,
     ) -> Self {
-        if let OperandValue::Pair(mut v1, mut v2) = cg_elem.val && count < 1024 {
+        if let OperandValue::Pair(mut v1, mut v2) = cg_elem.val {
             v1 = self.from_immediate(v1);
             v2 = self.from_immediate(v2);
             let ty = self.cx().val_ty(v1);
             // Create a vector of size 2*count and store it in one instruction
             if ty == self.cx().val_ty(v2) {
-                let count = count * 2;
-                let vec = unsafe { llvm::LLVMGetUndef(self.type_vector(ty, count as u64)) };
-                let vec = (0..count as usize).fold(vec, |acc, x| {
-                    let elt = [v1, v2][x % 2];
-                    self.insert_element(acc, elt, self.cx.const_i32(x as i32))
-                });
+                let vec = self.vector_repeat_two(v1, v2, count as usize);
                 let vec = OperandRef::from_immediate_or_packed_pair(&mut self, vec, dest.layout);
                 vec.val.store(&mut self, dest);
                 return self;
@@ -1344,6 +1339,27 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     }
     pub fn vector_reduce_max(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceMax(self.llbuilder, src, is_signed) }
+    }
+
+    // (v1, v2, 3) -> [v1, v2, v1, v2, v1, v2]
+    pub fn vector_repeat_two(
+        &mut self,
+        v1: &'ll Value,
+        v2: &'ll Value,
+        times: usize,
+    ) -> &'ll Value {
+        let ty = self.cx().val_ty(v1);
+        debug_assert!(ty == self.cx().val_ty(v2));
+        // shufflevector <2 x i8> <v1, v2>, <2 x i8> undef, <(timesx2) x i32> <i32 0, i32 1, i32 0...>
+        let undef = unsafe { llvm::LLVMGetUndef(self.type_vector(ty, 2)) };
+        let vec1 = self.insert_element(undef, v1, self.const_i32(0));
+        let vec1 = self.insert_element(vec1, v2, self.const_i32(1));
+        let mask = std::iter::repeat([self.const_i32(0), self.const_i32(1)])
+            .take(times)
+            .flatten()
+            .collect::<Vec<_>>();
+        let mask = self.const_vector(&mask);
+        self.shuffle_vector(vec1, undef, mask)
     }
 
     pub fn add_clause(&mut self, landing_pad: &'ll Value, clause: &'ll Value) {
