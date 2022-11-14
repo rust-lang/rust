@@ -41,7 +41,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Finds patterns of unchecked subtraction of [`Duration`] from [`Instant::now()`].
+    /// Lints subtraction between an [`Instant`] and a [`Duration`].
     ///
     /// ### Why is this bad?
     /// Unchecked subtraction could cause underflow on certain platforms, leading to
