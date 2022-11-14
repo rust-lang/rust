@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// let prev_instant = Instant::now();
     /// let duration = prev_instant.elapsed();
     /// ```
-    #[clippy::version = "1.64.0"]
+    #[clippy::version = "1.65.0"]
     pub MANUAL_INSTANT_ELAPSED,
     pedantic,
     "subtraction between `Instant::now()` and previous `Instant`"
