@@ -9,11 +9,11 @@ LL | struct Foo(Vec<Box<u8>>);
 error: `Vec<T>` is already on the heap, the boxing is unnecessary
   --> $DIR/test.rs:10:12
    |
-LL | struct Bar(Vec<Box<u32>>);
-   |            ^^^^^^^^^^^^^ help: try: `Vec<u32>`
+LL | struct Bar(Vec<Box<u16>>);
+   |            ^^^^^^^^^^^^^ help: try: `Vec<u16>`
 
 error: `Vec<T>` is already on the heap, the boxing is unnecessary
-  --> $DIR/test.rs:13:18
+  --> $DIR/test.rs:14:18
    |
 LL | struct FooBarBaz(Vec<Box<C>>);
    |                  ^^^^^^^^^^^ help: try: `Vec<C>`
