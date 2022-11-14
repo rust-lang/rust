@@ -128,6 +128,7 @@ pub struct RegionInferenceContext<'tcx> {
 /// adds a new lower bound to the SCC it is analyzing: so you wind up
 /// with `'R: 'O` where `'R` is the pick-region and `'O` is the
 /// minimal viable option.
+#[derive(Debug)]
 pub(crate) struct AppliedMemberConstraint {
     /// The SCC that was affected. (The "member region".)
     ///

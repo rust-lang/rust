@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
@@ -63,17 +63,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
     ) -> VecMap<LocalDefId, OpaqueHiddenType<'tcx>> {
         let mut result: VecMap<LocalDefId, OpaqueHiddenType<'tcx>> = VecMap::new();
+
+        let member_constraints: FxHashMap<_, _> = self
+            .member_constraints
+            .all_indices()
+            .map(|ci| (self.member_constraints[ci].key, ci))
+            .collect();
+        debug!(?member_constraints);
+
         for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
             let substs = opaque_type_key.substs;
             debug!(?concrete_type, ?substs);
 
             let mut subst_regions = vec![self.universal_regions.fr_static];
-            let universal_substs = infcx.tcx.fold_regions(substs, |region, _| {
-                if let ty::RePlaceholder(..) = region.kind() {
-                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
-                    return region;
-                }
-                let vid = self.to_region_vid(region);
+
+            let to_universal_region = |vid, subst_regions: &mut Vec<_>| {
                 trace!(?vid);
                 let scc = self.constraint_sccs.scc(vid);
                 trace!(?scc);
@@ -94,10 +98,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         infcx.tcx.lifetimes.re_static
                     }
                 }
-            });
+            };
 
-            subst_regions.sort();
-            subst_regions.dedup();
+            // Start by inserting universal regions from the member_constraint choice regions.
+            // This will ensure they get precedence when folding the regions in the concrete type.
+            if let Some(&ci) = member_constraints.get(&opaque_type_key) {
+                for &vid in self.member_constraints.choice_regions(ci) {
+                    to_universal_region(vid, &mut subst_regions);
+                }
+            }
+            debug!(?subst_regions);
+
+            // Next, insert universal regions from substs, so we can translate regions that appear
+            // in them but are not subject to member constraints, for instance closure substs.
+            let universal_substs = infcx.tcx.fold_regions(substs, |region, _| {
+                if let ty::RePlaceholder(..) = region.kind() {
+                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
+                    return region;
+                }
+                let vid = self.to_region_vid(region);
+                to_universal_region(vid, &mut subst_regions)
+            });
+            debug!(?universal_substs);
+            debug!(?subst_regions);
+
+            // Deduplicate the set of regions while keeping the chosen order.
+            let subst_regions = subst_regions.into_iter().collect::<FxIndexSet<_>>();
+            debug!(?subst_regions);
 
             let universal_concrete_type =
                 infcx.tcx.fold_regions(concrete_type, |region, _| match *region {
@@ -108,8 +135,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         .unwrap_or(infcx.tcx.lifetimes.re_erased),
                     _ => region,
                 });
-
-            debug!(?universal_concrete_type, ?universal_substs);
+            debug!(?universal_concrete_type);
 
             let opaque_type_key =
                 OpaqueTypeKey { def_id: opaque_type_key.def_id, substs: universal_substs };

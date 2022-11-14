@@ -1257,7 +1257,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable, Lift)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable, Lift)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct OpaqueTypeKey<'tcx> {
     pub def_id: LocalDefId,
@@ -1333,17 +1333,16 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         debug!(?id_substs);
 
         // This zip may have several times the same lifetime in `substs` paired with a different
-        // lifetime from `id_substs`.  In that case, we actually want to pick the last one, as it
-        // is the one we introduced in the impl-trait desugaring to be meaningful.  The other ones
-        // are redundant.
+        // lifetime from `id_substs`.  Simply `collect`ing the iterator is the correct behaviour:
+        // it will pick the last one, which is the one we introduced in the impl-trait desugaring.
         let map = substs.iter().zip(id_substs);
 
         let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> = match origin {
             // HACK: The HIR lowering for async fn does not generate
             // any `+ Captures<'x>` bounds for the `impl Future<...>`, so all async fns with lifetimes
             // would now fail to compile. We should probably just make hir lowering fill this in properly.
-            OpaqueTyOrigin::FnReturn(_) | OpaqueTyOrigin::AsyncFn(_) => map.collect(),
-            OpaqueTyOrigin::TyAlias => {
+            OpaqueTyOrigin::AsyncFn(_) => map.collect(),
+            OpaqueTyOrigin::FnReturn(_) | OpaqueTyOrigin::TyAlias => {
                 // Opaque types may only use regions that are bound. So for
                 // ```rust
                 // type Foo<'a, 'b, 'c> = impl Trait<'a> + 'b;
