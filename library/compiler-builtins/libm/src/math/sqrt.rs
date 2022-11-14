@@ -261,4 +261,16 @@ mod tests {
             assert_eq!(sqrt(f), f);
         }
     }
+    
+    #[test]
+    fn conformance_tests() {
+        let values = [3.14159265359, 10000.0, -1.0, INFINITY];
+        let results = [4610661241675116657u64, 4636737291354636288u64,
+        18444492273895866368u64, 9218868437227405312u64];
+        
+        for i in 0..values.len() {
+            let bits = f64::to_bits(sqrt(values[i]));
+            assert_eq!(results[i], bits);
+        } 
+    }
 }
