@@ -924,13 +924,13 @@ impl Step for PlainSourceTarball {
 
         // Create the version file
         builder.create(&plain_dst_src.join("version"), &builder.rust_version());
-        if let Some(info) = builder.rust_info.info() {
+        if let Some(info) = builder.rust_info().info() {
             channel::write_commit_hash_file(&plain_dst_src, &info.sha);
             channel::write_commit_info_file(&plain_dst_src, info);
         }
 
         // If we're building from git sources, we need to vendor a complete distribution.
-        if builder.rust_info.is_managed_git_subrepository() {
+        if builder.rust_info().is_managed_git_subrepository() {
             // Ensure we have the submodules checked out.
             builder.update_submodule(Path::new("src/tools/rust-analyzer"));
 

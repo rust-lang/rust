@@ -405,8 +405,8 @@ impl Step for SharedAssets {
         if !builder.config.dry_run() && !up_to_date(&version_input, &version_info) {
             let info = t!(fs::read_to_string(&version_input))
                 .replace("VERSION", &builder.rust_release())
-                .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
-                .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
+                .replace("SHORT_HASH", builder.rust_info().sha_short().unwrap_or(""))
+                .replace("STAMP", builder.rust_info().sha().unwrap_or(""));
             t!(fs::write(&version_info, &info));
         }
 
@@ -965,7 +965,7 @@ impl Step for RustcBook {
         cmd.arg("--rustc");
         cmd.arg(&rustc);
         cmd.arg("--rustc-target").arg(&self.target.rustc_target_arg());
-        if builder.config.verbose() {
+        if builder.is_verbose() {
             cmd.arg("--verbose");
         }
         if self.validate {
