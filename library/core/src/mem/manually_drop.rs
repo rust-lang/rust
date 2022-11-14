@@ -44,7 +44,8 @@ use crate::ptr;
 /// [`mem::zeroed`]: crate::mem::zeroed
 /// [`MaybeUninit<T>`]: crate::mem::MaybeUninit
 #[stable(feature = "manually_drop", since = "1.20.0")]
-#[lang = "manually_drop"]
+#[cfg_attr(bootstrap, lang = "manually_drop")]
+#[cfg_attr(not(bootstrap), manually_drop)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct ManuallyDrop<T: ?Sized> {
