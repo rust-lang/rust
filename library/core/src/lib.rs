@@ -128,6 +128,7 @@
 #![feature(const_ops)]
 #![feature(const_option)]
 #![feature(const_option_ext)]
+#![feature(const_result)]
 #![feature(const_pin)]
 #![feature(const_ptr_sub_ptr)]
 #![feature(const_replace)]

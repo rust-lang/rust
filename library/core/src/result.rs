@@ -770,7 +770,11 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn map<U, F: FnOnce(T) -> U>(self, op: F) -> Result<U, E> {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn map<U, F>(self, op: F) -> Result<U, E>
+    where
+        F: ~const FnOnce(T) -> U + ~const Destruct,
+    {
         match self {
             Ok(t) => Ok(op(t)),
             Err(e) => Err(e),
@@ -797,7 +801,14 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_map_or", since = "1.41.0")]
-    pub fn map_or<U, F: FnOnce(T) -> U>(self, default: U, f: F) -> U {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn map_or<U, F>(self, default: U, f: F) -> U
+    where
+        T: ~const Destruct,
+        E: ~const Destruct,
+        U: ~const Destruct,
+        F: ~const FnOnce(T) -> U + ~const Destruct,
+    {
         match self {
             Ok(t) => f(t),
             Err(_) => default,
@@ -826,7 +837,12 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_map_or_else", since = "1.41.0")]
-    pub fn map_or_else<U, D: FnOnce(E) -> U, F: FnOnce(T) -> U>(self, default: D, f: F) -> U {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn map_or_else<U, D, F>(self, default: D, f: F) -> U
+    where
+        D: ~const FnOnce(E) -> U + ~const Destruct,
+        F: ~const FnOnce(T) -> U + ~const Destruct,
+    {
         match self {
             Ok(t) => f(t),
             Err(e) => default(e),
@@ -855,7 +871,11 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn map_err<F, O: FnOnce(E) -> F>(self, op: O) -> Result<T, F> {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn map_err<F, O>(self, op: O) -> Result<T, F>
+    where
+        O: ~const FnOnce(E) -> F + ~const Destruct,
+    {
         match self {
             Ok(t) => Ok(t),
             Err(e) => Err(op(e)),
@@ -926,11 +946,17 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.as_deref(), y);
     /// ```
     #[stable(feature = "inner_deref", since = "1.47.0")]
-    pub fn as_deref(&self) -> Result<&T::Target, &E>
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn as_deref(&self) -> Result<&T::Target, &E>
     where
-        T: Deref,
+        T: ~const Deref,
     {
-        self.as_ref().map(|t| t.deref())
+        // FIXME (#104314): `self.as_ref().map(Deref::deref)` is rejected
+        // because `Deref::deref` does not impl `~const FnOnce`
+        match self.as_ref() {
+            Ok(t) => Ok(t.deref()),
+            Err(e) => Err(e),
+        }
     }
 
     /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut <T as DerefMut>::Target, &mut E>`.
@@ -952,11 +978,17 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
     /// ```
     #[stable(feature = "inner_deref", since = "1.47.0")]
-    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E>
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E>
     where
-        T: DerefMut,
+        T: ~const DerefMut,
     {
-        self.as_mut().map(|t| t.deref_mut())
+        // FIXME (#104314): `self.as_mut().map(DerefMut::deref_mut)` is rejected
+        // because `DerefMut::deref_mut` does not impl `~const FnOnce`
+        match self.as_mut() {
+            Ok(t) => Ok(t.deref_mut()),
+            Err(e) => Err(e),
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -1141,9 +1173,11 @@ impl<T, E> Result<T, E> {
     /// [`FromStr`]: crate::str::FromStr
     #[inline]
     #[stable(feature = "result_unwrap_or_default", since = "1.16.0")]
-    pub fn unwrap_or_default(self) -> T
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn unwrap_or_default(self) -> T
     where
-        T: Default,
+        T: ~const Default + ~const Destruct,
+        E: ~const Destruct,
     {
         match self {
             Ok(x) => x,
@@ -1367,7 +1401,11 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn and_then<U, F: FnOnce(T) -> Result<U, E>>(self, op: F) -> Result<U, E> {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn and_then<U, F>(self, op: F) -> Result<U, E>
+    where
+        F: ~const FnOnce(T) -> Result<U, E> + ~const Destruct,
+    {
         match self {
             Ok(t) => op(t),
             Err(e) => Err(e),
@@ -1440,7 +1478,11 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or_else<F, O: FnOnce(E) -> Result<T, F>>(self, op: O) -> Result<T, F> {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn or_else<F, O>(self, op: O) -> Result<T, F>
+    where
+        O: ~const FnOnce(E) -> Result<T, F> + ~const Destruct,
+    {
         match self {
             Ok(t) => Ok(t),
             Err(e) => op(e),
@@ -1498,7 +1540,11 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or_else<F: FnOnce(E) -> T>(self, op: F) -> T {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn unwrap_or_else<F>(self, op: F) -> T
+    where
+        F: ~const FnOnce(E) -> T + ~const Destruct,
+    {
         match self {
             Ok(t) => t,
             Err(e) => op(e),
@@ -1528,7 +1574,12 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[track_caller]
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
-    pub unsafe fn unwrap_unchecked(self) -> T {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const unsafe fn unwrap_unchecked(self) -> T
+    where
+        T: ~const Destruct,
+        E: ~const Destruct,
+    {
         debug_assert!(self.is_ok());
         match self {
             Ok(t) => t,
@@ -1560,7 +1611,12 @@ impl<T, E> Result<T, E> {
     #[inline]
     #[track_caller]
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
-    pub unsafe fn unwrap_err_unchecked(self) -> E {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const unsafe fn unwrap_err_unchecked(self) -> E
+    where
+        T: ~const Destruct,
+        E: ~const Destruct,
+    {
         debug_assert!(self.is_err());
         match self {
             // SAFETY: the safety contract must be upheld by the caller.
@@ -1647,11 +1703,15 @@ impl<T, E> Result<&T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_copied", since = "1.59.0")]
-    pub fn copied(self) -> Result<T, E>
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn copied(self) -> Result<T, E>
     where
         T: Copy,
     {
-        self.map(|&t| t)
+        match self {
+            Ok(&t) => Ok(t),
+            Err(e) => Err(e),
+        }
     }
 
     /// Maps a `Result<&T, E>` to a `Result<T, E>` by cloning the contents of the
@@ -1668,11 +1728,17 @@ impl<T, E> Result<&T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_cloned", since = "1.59.0")]
-    pub fn cloned(self) -> Result<T, E>
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn cloned(self) -> Result<T, E>
     where
-        T: Clone,
+        T: ~const Clone,
     {
-        self.map(|t| t.clone())
+        // FIXME (#104314): `self.map(Clone::clone)` is rejected
+        // because `Clone::clone` does not impl `~const FnOnce`
+        match self {
+            Ok(t) => Ok(t.clone()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -1691,11 +1757,15 @@ impl<T, E> Result<&mut T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_copied", since = "1.59.0")]
-    pub fn copied(self) -> Result<T, E>
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn copied(self) -> Result<T, E>
     where
         T: Copy,
     {
-        self.map(|&mut t| t)
+        match self {
+            Ok(&mut t) => Ok(t),
+            Err(e) => Err(e),
+        }
     }
 
     /// Maps a `Result<&mut T, E>` to a `Result<T, E>` by cloning the contents of the
@@ -1712,11 +1782,15 @@ impl<T, E> Result<&mut T, E> {
     /// ```
     #[inline]
     #[stable(feature = "result_cloned", since = "1.59.0")]
-    pub fn cloned(self) -> Result<T, E>
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn cloned(self) -> Result<T, E>
     where
-        T: Clone,
+        T: ~const Clone,
     {
-        self.map(|t| t.clone())
+        match self {
+            Ok(t) => Ok(t.clone()),
+            Err(e) => Err(e),
+        }
     }
 }
 
