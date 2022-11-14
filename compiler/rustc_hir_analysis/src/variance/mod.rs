@@ -89,7 +89,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         }
     }
 
-    // By default, we RPIT are invariant wrt type and const generics, but they are bivariant wrt
+    // By default, RPIT are invariant wrt type and const generics, but they are bivariant wrt
     // lifetime generics.
     let mut variances: Vec<_> = std::iter::repeat(ty::Invariant).take(generics.count()).collect();
 
