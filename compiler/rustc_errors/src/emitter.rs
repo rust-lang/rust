@@ -1386,20 +1386,13 @@ impl EmitterWriter {
         let mut annotated_files = FileWithAnnotatedLines::collect_annotations(self, args, msp);
 
         // Make sure our primary file comes first
-        let (primary_lo, sm) = if let (Some(sm), Some(ref primary_span)) =
-            (self.sm.as_ref(), msp.primary_span().as_ref())
-        {
-            if !primary_span.is_dummy() {
-                (sm.lookup_char_pos(primary_span.lo()), sm)
-            } else {
-                emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
-                return Ok(());
-            }
-        } else {
+        let primary_span = msp.primary_span().unwrap_or_default();
+        let (Some(sm), false) = (self.sm.as_ref(), primary_span.is_dummy()) else {
             // If we don't have span information, emit and exit
             emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
             return Ok(());
         };
+        let primary_lo = sm.lookup_char_pos(primary_span.lo());
         if let Ok(pos) =
             annotated_files.binary_search_by(|x| x.file.name.cmp(&primary_lo.file.name))
         {
