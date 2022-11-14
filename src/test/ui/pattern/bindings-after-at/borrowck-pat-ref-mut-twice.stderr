@@ -53,10 +53,10 @@ LL |       let ref mut a @ (
    | |
 LL | |
 LL | |         ref mut b,
-   | |         --------- another mutable borrow, by `b`, occurs here
+   | |         --------- another mutable borrow, by `d`, occurs here
 LL | |         [
 LL | |             ref mut c,
-   | |             --------- another mutable borrow, by `c`, occurs here
+   | |             --------- another mutable borrow, by `d`, occurs here
 LL | |             ref mut d,
    | |             --------- another mutable borrow, by `d`, occurs here
 LL | |             ref e,
@@ -75,10 +75,10 @@ LL |       let ref mut a @ (
    | |
 LL | |
 LL | |             ref mut b,
-   | |             --------- another mutable borrow, by `b`, occurs here
+   | |             --------- another mutable borrow, by `d`, occurs here
 LL | |             [
 LL | |                 ref mut c,
-   | |                 --------- another mutable borrow, by `c`, occurs here
+   | |                 --------- another mutable borrow, by `d`, occurs here
 LL | |                 ref mut d,
    | |                 --------- another mutable borrow, by `d`, occurs here
 LL | |                 ref e,

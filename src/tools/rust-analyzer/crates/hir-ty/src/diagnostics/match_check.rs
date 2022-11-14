@@ -3,7 +3,7 @@
 //! This module provides lowering from [hir_def::expr::Pat] to [self::Pat] and match
 //! checking algorithm.
 //!
-//! It is modeled on the rustc module `rustc_mir_build::thir::pattern`.
+//! It is modeled on the rustc module `rustc_mir_build_thir::pattern`.
 
 mod pat_util;
 
@@ -50,7 +50,7 @@ pub(crate) struct Pat {
     pub(crate) kind: Box<PatKind>,
 }
 
-/// Close relative to `rustc_mir_build::thir::pattern::PatKind`
+/// Close relative to `rustc_mir_build_thir::pattern::PatKind`
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum PatKind {
     Wild,
