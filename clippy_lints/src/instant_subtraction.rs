@@ -49,11 +49,13 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// # use std::time::{Instant, Duration};
     /// let time_passed = Instant::now() - Duration::from_secs(5);
     /// ```
     ///
     /// Use instead:
     /// ```rust
+    /// # use std::time::{Instant, Duration};
     /// let time_passed = Instant::now().checked_sub(Duration::from_secs(5));
     /// ```
     ///
