@@ -1,5 +1,6 @@
 use super::{Parser, PathStyle, TokenType};
 
+use crate::errors::{FnPtrWithGenerics, FnPtrWithGenericsSugg};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 use rustc_ast::ptr::P;
@@ -270,14 +271,19 @@ impl<'a> Parser<'a> {
             TyKind::Infer
         } else if self.check_fn_front_matter(false, Case::Sensitive) {
             // Function pointer type
-            self.parse_ty_bare_fn(lo, Vec::new(), recover_return_sign)?
+            self.parse_ty_bare_fn(lo, Vec::new(), None, recover_return_sign)?
         } else if self.check_keyword(kw::For) {
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
             let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
             if self.check_fn_front_matter(false, Case::Sensitive) {
-                self.parse_ty_bare_fn(lo, lifetime_defs, recover_return_sign)?
+                self.parse_ty_bare_fn(
+                    lo,
+                    lifetime_defs,
+                    Some(self.prev_token.span.shrink_to_lo()),
+                    recover_return_sign,
+                )?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;
                 let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
@@ -519,7 +525,8 @@ impl<'a> Parser<'a> {
     fn parse_ty_bare_fn(
         &mut self,
         lo: Span,
-        params: Vec<GenericParam>,
+        mut params: Vec<GenericParam>,
+        param_insertion_point: Option<Span>,
         recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, TyKind> {
         let inherited_vis = rustc_ast::Visibility {
@@ -530,6 +537,9 @@ impl<'a> Parser<'a> {
         let span_start = self.token.span;
         let ast::FnHeader { ext, unsafety, constness, asyncness } =
             self.parse_fn_front_matter(&inherited_vis)?;
+        if self.may_recover() && self.token.kind == TokenKind::Lt {
+            self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
+        }
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
         let whole_span = lo.to(self.prev_token.span);
         if let ast::Const::Yes(span) = constness {
@@ -543,6 +553,48 @@ impl<'a> Parser<'a> {
         }
         let decl_span = span_start.to(self.token.span);
         Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl, decl_span })))
+    }
+
+    /// Recover from function pointer types with a generic parameter list (e.g. `fn<'a>(&'a str)`).
+    fn recover_fn_ptr_with_generics(
+        &mut self,
+        lo: Span,
+        params: &mut Vec<GenericParam>,
+        param_insertion_point: Option<Span>,
+    ) -> PResult<'a, ()> {
+        let generics = self.parse_generics()?;
+        let arity = generics.params.len();
+
+        let mut lifetimes: Vec<_> = generics
+            .params
+            .into_iter()
+            .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime))
+            .collect();
+
+        let sugg = if !lifetimes.is_empty() {
+            let snippet =
+                lifetimes.iter().map(|param| param.ident.as_str()).intersperse(", ").collect();
+
+            let (left, snippet) = if let Some(span) = param_insertion_point {
+                (span, if params.is_empty() { snippet } else { format!(", {snippet}") })
+            } else {
+                (lo.shrink_to_lo(), format!("for<{snippet}> "))
+            };
+
+            Some(FnPtrWithGenericsSugg {
+                left,
+                snippet,
+                right: generics.span,
+                arity,
+                for_param_list_exists: param_insertion_point.is_some(),
+            })
+        } else {
+            None
+        };
+
+        self.sess.emit_err(FnPtrWithGenerics { span: generics.span, sugg });
+        params.append(&mut lifetimes);
+        Ok(())
     }
 
     /// Emit an error for the given bad function pointer qualifier.
