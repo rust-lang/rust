@@ -311,7 +311,7 @@ declare_features! (
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
     /// Alows async functions to be declared, implemented, and used in traits.
-    (incomplete, async_fn_in_trait, "CURRENT_RUSTC_VERSION", Some(91611), None),
+    (incomplete, async_fn_in_trait, "1.66.0", Some(91611), None),
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
     (active, c_unwind, "1.52.0", Some(74990), None),
     /// Allows using C-variadics.
@@ -414,7 +414,7 @@ declare_features! (
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
     /// Allows using `..=X` as a patterns in slices.
-    (active, half_open_range_patterns_in_slices, "CURRENT_RUSTC_VERSION", Some(67264), None),
+    (active, half_open_range_patterns_in_slices, "1.66.0", Some(67264), None),
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
