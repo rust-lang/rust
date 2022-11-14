@@ -572,9 +572,10 @@ pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     defining_use_anchor: DefiningAnchor,
     considering_regions: bool,
+    /// Whether we are in coherence mode.
+    intercrate: bool,
     normalize_fn_sig_for_diagnostic:
         Option<Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
-    intercrate: bool,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
