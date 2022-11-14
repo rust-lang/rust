@@ -125,8 +125,8 @@ const _: u32 = recursive_expand!(); //~ ERROR: recursion limit reached while exp
 
 fn main() {
     // https://github.com/rust-lang/rust/issues/104414
-    match b"a" {
+    match b"Included file contents\n" {
         include_bytes!("auxiliary/included-file.txt") => (),
-        _ => ()
+        _ => panic!("include_bytes! in pattern"),
     }
 }
