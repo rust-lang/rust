@@ -334,7 +334,7 @@ fn main() {
         "c++"
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
         // NetBSD uses a separate library when relocation is required
-        "stdc++_pic"
+        "stdc++_p"
     } else if llvm_use_libcxx.is_some() {
         "c++"
     } else {
