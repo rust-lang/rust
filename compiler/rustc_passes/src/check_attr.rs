@@ -2207,7 +2207,6 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         sym::rustc_main,
         sym::unix_sigpipe,
         sym::derive,
-        sym::manually_drop,
         sym::test,
         sym::test_case,
         sym::global_allocator,
