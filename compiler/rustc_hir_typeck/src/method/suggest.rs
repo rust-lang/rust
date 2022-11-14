@@ -398,122 +398,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     custom_span_label = true;
                 }
                 if static_candidates.len() == 1 {
-                    let mut has_unsuggestable_args = false;
-                    let ty_str = if let Some(CandidateSource::Impl(impl_did)) =
-                        static_candidates.get(0)
-                    {
-                        // When the "method" is resolved through dereferencing, we really want the
-                        // original type that has the associated function for accurate suggestions.
-                        // (#61411)
-                        let ty = tcx.at(span).type_of(*impl_did);
-                        match (&ty.peel_refs().kind(), &rcvr_ty.peel_refs().kind()) {
-                            (ty::Adt(def, _), ty::Adt(def_actual, substs)) if def == def_actual => {
-                                // If there are any inferred arguments, (`{integer}`), we should replace
-                                // them with underscores to allow the compiler to infer them
-                                let infer_substs: Vec<GenericArg<'_>> = substs
-                                    .into_iter()
-                                    .map(|arg| {
-                                        if !arg.is_suggestable(tcx, true) {
-                                            has_unsuggestable_args = true;
-                                            match arg.unpack() {
-                                            GenericArgKind::Lifetime(_) => self
-                                                .next_region_var(RegionVariableOrigin::MiscVariable(
-                                                    rustc_span::DUMMY_SP,
-                                                ))
-                                                .into(),
-                                            GenericArgKind::Type(_) => self
-                                                .next_ty_var(TypeVariableOrigin {
-                                                    span: rustc_span::DUMMY_SP,
-                                                    kind: TypeVariableOriginKind::MiscVariable,
-                                                })
-                                                .into(),
-                                            GenericArgKind::Const(arg) => self
-                                                .next_const_var(
-                                                    arg.ty(),
-                                                    ConstVariableOrigin {
-                                                        span: rustc_span::DUMMY_SP,
-                                                        kind: ConstVariableOriginKind::MiscVariable,
-                                                    },
-                                                )
-                                                .into(),
-                                            }
-                                        } else {
-                                            arg
-                                        }
-                                    })
-                                    .collect::<Vec<_>>();
-
-                                tcx.value_path_str_with_substs(
-                                    def_actual.did(),
-                                    tcx.intern_substs(&infer_substs),
-                                )
-                            }
-                            _ => self.ty_to_value_string(ty.peel_refs()),
-                        }
-                    } else {
-                        self.ty_to_value_string(rcvr_ty.peel_refs())
-                    };
-                    if let SelfSource::MethodCall(_) = source {
-                        let first_arg = if let Some(CandidateSource::Impl(impl_did)) = static_candidates.get(0) &&
-                            let Some(assoc) = self.associated_value(*impl_did, item_name) {
-                            let sig = self.tcx.fn_sig(assoc.def_id);
-                            if let Some(first) = sig.inputs().skip_binder().get(0) {
-                                if first.peel_refs() == rcvr_ty.peel_refs() {
-                                    None
-                                } else {
-                                    Some(if first.is_region_ptr() {
-                                        if first.is_mutable_ptr() { "&mut " } else { "&" }
-                                    } else {
-                                        ""
-                                    })
-                                }
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        };
-                        let mut applicability = Applicability::MachineApplicable;
-                        let args = if let Some((receiver, args)) = args {
-                            // The first arg is the same kind as the receiver
-                            let explicit_args = if first_arg.is_some() {
-                                std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>()
-                            } else {
-                                // There is no `Self` kind to infer the arguments from
-                                if has_unsuggestable_args {
-                                    applicability = Applicability::HasPlaceholders;
-                                }
-                                args.iter().collect()
-                            };
-                            format!(
-                                "({}{})",
-                                first_arg.unwrap_or(""),
-                                explicit_args
-                                    .iter()
-                                    .map(|arg| tcx
-                                        .sess
-                                        .source_map()
-                                        .span_to_snippet(arg.span)
-                                        .unwrap_or_else(|_| {
-                                            applicability = Applicability::HasPlaceholders;
-                                            "_".to_owned()
-                                        }))
-                                    .collect::<Vec<_>>()
-                                    .join(", "),
-                            )
-                        } else {
-                            applicability = Applicability::HasPlaceholders;
-                            "(...)".to_owned()
-                        };
-                        err.span_suggestion(
-                            sugg_span,
-                            "use associated function syntax instead",
-                            format!("{}::{}{}", ty_str, item_name, args),
-                            applicability,
-                        );
-                    } else {
-                        err.help(&format!("try with `{}::{}`", ty_str, item_name,));
-                    }
+                    self.suggest_associated_call_syntax(
+                        &mut err,
+                        &static_candidates,
+                        rcvr_ty,
+                        source,
+                        item_name,
+                        args,
+                        sugg_span,
+                    );
 
                     report_candidates(span, &mut err, &mut static_candidates, sugg_span);
                 } else if static_candidates.len() > 1 {
@@ -1178,6 +1071,137 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             MethodError::BadReturnType => bug!("no return type expectations but got BadReturnType"),
         }
         None
+    }
+
+    /// Suggest calling `Ty::method` if `.method()` isn't found because the method
+    /// doesn't take a `self` receiver.
+    fn suggest_associated_call_syntax(
+        &self,
+        err: &mut Diagnostic,
+        static_candidates: &Vec<CandidateSource>,
+        rcvr_ty: Ty<'tcx>,
+        source: SelfSource<'tcx>,
+        item_name: Ident,
+        args: Option<(&hir::Expr<'tcx>, &[hir::Expr<'tcx>])>,
+        sugg_span: Span,
+    ) {
+        let mut has_unsuggestable_args = false;
+        let ty_str = if let Some(CandidateSource::Impl(impl_did)) = static_candidates.get(0) {
+            // When the "method" is resolved through dereferencing, we really want the
+            // original type that has the associated function for accurate suggestions.
+            // (#61411)
+            let ty = self.tcx.type_of(*impl_did);
+            match (&ty.peel_refs().kind(), &rcvr_ty.peel_refs().kind()) {
+                (ty::Adt(def, _), ty::Adt(def_actual, substs)) if def == def_actual => {
+                    // If there are any inferred arguments, (`{integer}`), we should replace
+                    // them with underscores to allow the compiler to infer them
+                    let infer_substs: Vec<GenericArg<'_>> = substs
+                        .into_iter()
+                        .map(|arg| {
+                            if !arg.is_suggestable(self.tcx, true) {
+                                has_unsuggestable_args = true;
+                                match arg.unpack() {
+                                    GenericArgKind::Lifetime(_) => self
+                                        .next_region_var(RegionVariableOrigin::MiscVariable(
+                                            rustc_span::DUMMY_SP,
+                                        ))
+                                        .into(),
+                                    GenericArgKind::Type(_) => self
+                                        .next_ty_var(TypeVariableOrigin {
+                                            span: rustc_span::DUMMY_SP,
+                                            kind: TypeVariableOriginKind::MiscVariable,
+                                        })
+                                        .into(),
+                                    GenericArgKind::Const(arg) => self
+                                        .next_const_var(
+                                            arg.ty(),
+                                            ConstVariableOrigin {
+                                                span: rustc_span::DUMMY_SP,
+                                                kind: ConstVariableOriginKind::MiscVariable,
+                                            },
+                                        )
+                                        .into(),
+                                }
+                            } else {
+                                arg
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    self.tcx.value_path_str_with_substs(
+                        def_actual.did(),
+                        self.tcx.intern_substs(&infer_substs),
+                    )
+                }
+                _ => self.ty_to_value_string(ty.peel_refs()),
+            }
+        } else {
+            self.ty_to_value_string(rcvr_ty.peel_refs())
+        };
+        if let SelfSource::MethodCall(_) = source {
+            let first_arg = if let Some(CandidateSource::Impl(impl_did)) = static_candidates.get(0)
+                && let Some(assoc) = self.associated_value(*impl_did, item_name)
+                && assoc.kind == ty::AssocKind::Fn
+            {
+                let sig = self.tcx.fn_sig(assoc.def_id);
+                if let Some(first) = sig.inputs().skip_binder().get(0) {
+                    if first.peel_refs() == rcvr_ty.peel_refs() {
+                        None
+                    } else {
+                        Some(if first.is_region_ptr() {
+                            if first.is_mutable_ptr() { "&mut " } else { "&" }
+                        } else {
+                            ""
+                        })
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            let mut applicability = Applicability::MachineApplicable;
+            let args = if let Some((receiver, args)) = args {
+                // The first arg is the same kind as the receiver
+                let explicit_args = if first_arg.is_some() {
+                    std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>()
+                } else {
+                    // There is no `Self` kind to infer the arguments from
+                    if has_unsuggestable_args {
+                        applicability = Applicability::HasPlaceholders;
+                    }
+                    args.iter().collect()
+                };
+                format!(
+                    "({}{})",
+                    first_arg.unwrap_or(""),
+                    explicit_args
+                        .iter()
+                        .map(|arg| self
+                            .tcx
+                            .sess
+                            .source_map()
+                            .span_to_snippet(arg.span)
+                            .unwrap_or_else(|_| {
+                                applicability = Applicability::HasPlaceholders;
+                                "_".to_owned()
+                            }))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            } else {
+                applicability = Applicability::HasPlaceholders;
+                "(...)".to_owned()
+            };
+            err.span_suggestion(
+                sugg_span,
+                "use associated function syntax instead",
+                format!("{}::{}{}", ty_str, item_name, args),
+                applicability,
+            );
+        } else {
+            err.help(&format!("try with `{}::{}`", ty_str, item_name,));
+        }
     }
 
     /// Suggest calling a field with a type that implements the `Fn*` traits instead of a method with
