@@ -2019,9 +2019,6 @@ fn linker_with_args<'a>(
         tmpdir,
     );
 
-    // Dynamic native libraries from upstream crates.
-    add_upstream_native_libraries(cmd, sess, archive_builder_builder, codegen_results, tmpdir);
-
     // Link with the import library generated for any raw-dylib functions.
     for (raw_dylib_name, raw_dylib_imports) in
         collate_raw_dylibs(sess, codegen_results.crate_info.used_libraries.iter())?
@@ -2034,7 +2031,7 @@ fn linker_with_args<'a>(
             true,
         ));
     }
-    // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
+    // As with dynamic libraries, we need to add the upstream raw-dylib symbols in case
     // they are used within inlined functions or instantiated generic functions. We do this *after*
     // handling the raw-dylib symbols in the current crate to make sure that those are chosen first
     // by the linker.
@@ -2496,38 +2493,6 @@ fn add_upstream_rust_crates<'a>(
         // library, those symbols should be exported and available from the dylib anyway.
         // 3. Libraries bundled into `(compiler,profiler)_builtins` are special, see above.
         let link_static = link_static_crate;
-        // Dynamic libraries are not linked here, see the FIXME in `add_upstream_native_libraries`.
-        let link_dynamic = false;
-        add_native_libs_from_crate(
-            cmd,
-            sess,
-            archive_builder_builder,
-            codegen_results,
-            tmpdir,
-            &search_paths,
-            &bundled_libs,
-            cnum,
-            link_static,
-            link_dynamic,
-        );
-    }
-}
-
-fn add_upstream_native_libraries(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    codegen_results: &CodegenResults,
-    tmpdir: &Path,
-) {
-    let search_path = OnceCell::new();
-    for &cnum in &codegen_results.crate_info.used_crates {
-        // Static libraries are not linked here, they are linked in `add_upstream_rust_crates`.
-        // FIXME: Merge this function to `add_upstream_rust_crates` so that all native libraries
-        // are linked together with their respective upstream crates, and in their originally
-        // specified order. This is slightly breaking due to our use of `--as-needed` (see crater
-        // results in https://github.com/rust-lang/rust/pull/102832#issuecomment-1279772306).
-        let link_static = false;
         // Dynamic libraries are linked for all linked upstream crates.
         // 1. If the upstream crate is a directly linked rlib then we must link the native library
         // because the rlib is just an archive.
@@ -2542,8 +2507,8 @@ fn add_upstream_native_libraries(
             archive_builder_builder,
             codegen_results,
             tmpdir,
-            &search_path,
-            &Default::default(),
+            &search_paths,
+            &bundled_libs,
             cnum,
             link_static,
             link_dynamic,
