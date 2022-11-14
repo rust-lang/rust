@@ -333,6 +333,15 @@ struct ArcInner<T: ?Sized> {
     data: T,
 }
 
+/// Calculate layout for `ArcInner<T>` using the inner value's layout
+fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
+    // Calculate layout using the given value layout.
+    // Previously, layout was calculated on the expression
+    // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
+    // reference (see #54908).
+    Layout::new::<ArcInner<()>>().extend(layout).unwrap().0.pad_to_align()
+}
+
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
 unsafe impl<T: ?Sized + Sync + Send> Sync for ArcInner<T> {}
 
@@ -1154,11 +1163,7 @@ impl<T: ?Sized> Arc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> *mut ArcInner<T> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = arcinner_layout_for_value_layout(value_layout);
         unsafe {
             Arc::try_allocate_for_layout(value_layout, allocate, mem_to_arcinner)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
@@ -1176,11 +1181,7 @@ impl<T: ?Sized> Arc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> Result<*mut ArcInner<T>, AllocError> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = arcinner_layout_for_value_layout(value_layout);
 
         let ptr = allocate(layout)?;
 
@@ -1246,7 +1247,7 @@ impl<T> Arc<[T]> {
         }
     }
 
-    /// Copy elements from slice into newly allocated Arc<\[T\]>
+    /// Copy elements from slice into newly allocated `Arc<[T]>`
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`.
     #[cfg(not(no_global_oom_handling))]
@@ -1257,6 +1258,49 @@ impl<T> Arc<[T]> {
             ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).data as *mut [T] as *mut T, v.len());
 
             Self::from_ptr(ptr)
+        }
+    }
+
+    /// Create an `Arc<[T]>` by reusing the underlying memory
+    /// of a `Vec<T>`. This will return the vector if the existing allocation
+    /// is not large enough.
+    #[cfg(not(no_global_oom_handling))]
+    fn try_from_vec_in_place(mut v: Vec<T>) -> Result<Arc<[T]>, Vec<T>> {
+        let layout_elements = Layout::array::<T>(v.len()).unwrap();
+        let layout_allocation = Layout::array::<T>(v.capacity()).unwrap();
+        let layout_arcinner = arcinner_layout_for_value_layout(layout_elements);
+        let mut ptr = NonNull::new(v.as_mut_ptr()).expect("`Vec<T>` stores `NonNull<T>`");
+        if layout_arcinner.size() > layout_allocation.size()
+            || layout_arcinner.align() > layout_allocation.align()
+        {
+            // Can't fit - calling `grow` would involve `realloc`
+            // (which copies the elements), followed by copying again.
+            return Err(v);
+        }
+        if layout_arcinner.size() < layout_allocation.size()
+            || layout_arcinner.align() < layout_allocation.align()
+        {
+            // We need to shrink the allocation so that it fits
+            // https://doc.rust-lang.org/nightly/std/alloc/trait.Allocator.html#memory-fitting
+            // SAFETY:
+            // - Vec allocates by requesting `Layout::array::<T>(capacity)`, so this capacity matches
+            // - `layout_arcinner` is smaller
+            // If this fails, the ownership has not been transferred
+            if let Ok(p) = unsafe { Global.shrink(ptr.cast(), layout_allocation, layout_arcinner) }
+            {
+                ptr = p.cast();
+            } else {
+                return Err(v);
+            }
+        }
+        // Make sure the vec's memory isn't deallocated now
+        let v = mem::ManuallyDrop::new(v);
+        let ptr: *mut ArcInner<[T]> = ptr::slice_from_raw_parts_mut(ptr.as_ptr(), v.len()) as _;
+        unsafe {
+            ptr::copy(ptr.cast::<T>(), &mut (*ptr).data as *mut [T] as *mut T, v.len());
+            ptr::write(&mut (*ptr).strong, atomic::AtomicUsize::new(1));
+            ptr::write(&mut (*ptr).weak, atomic::AtomicUsize::new(1));
+            Ok(Self::from_ptr(ptr))
         }
     }
 
@@ -2571,14 +2615,17 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
-    fn from(mut v: Vec<T>) -> Arc<[T]> {
-        unsafe {
-            let arc = Arc::copy_from_slice(&v);
-
-            // Allow the Vec to free its memory, but not destroy its contents
-            v.set_len(0);
-
-            arc
+    fn from(v: Vec<T>) -> Arc<[T]> {
+        match Arc::try_from_vec_in_place(v) {
+            Ok(rc) => rc,
+            Err(mut v) => {
+                unsafe {
+                    let rc = Arc::copy_from_slice(&v);
+                    // Allow the Vec to free its memory, but not destroy its contents
+                    v.set_len(0);
+                    rc
+                }
+            }
         }
     }
 }
