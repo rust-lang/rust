@@ -1932,6 +1932,11 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    /// For rustdoc.
+    pub fn get_partial_res(&self, node_id: NodeId) -> Option<PartialRes> {
+        self.partial_res_map.get(&node_id).copied()
+    }
+
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
