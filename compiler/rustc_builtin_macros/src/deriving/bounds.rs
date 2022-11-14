@@ -1,4 +1,3 @@
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
@@ -18,7 +17,6 @@ pub fn expand_deriving_copy(
         path: path_std!(marker::Copy),
         skip_path_as_bound: false,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: true,
         methods: Vec::new(),
         associated_types: Vec::new(),

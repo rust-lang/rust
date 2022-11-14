@@ -195,9 +195,6 @@ pub struct TraitDef<'a> {
     /// other than the current trait
     pub additional_bounds: Vec<Ty>,
 
-    /// Any extra lifetimes and/or bounds, e.g., `D: serialize::Decoder`
-    pub generics: Bounds,
-
     /// Can this trait be derived for unions?
     pub supports_unions: bool,
 
@@ -581,19 +578,21 @@ impl<'a> TraitDef<'a> {
             })
         });
 
-        let Generics { mut params, mut where_clause, .. } =
-            self.generics.to_generics(cx, self.span, type_ident, generics);
+        let mut where_clause = ast::WhereClause::default();
         where_clause.span = generics.where_clause.span;
         let ctxt = self.span.ctxt();
         let span = generics.span.with_ctxt(ctxt);
 
         // Create the generic parameters
-        params.extend(generics.params.iter().map(|param| match &param.kind {
-            GenericParamKind::Lifetime { .. } => param.clone(),
-            GenericParamKind::Type { .. } => {
-                // I don't think this can be moved out of the loop, since
-                // a GenericBound requires an ast id
-                let bounds: Vec<_> =
+        let params: Vec<_> = generics
+            .params
+            .iter()
+            .map(|param| match &param.kind {
+                GenericParamKind::Lifetime { .. } => param.clone(),
+                GenericParamKind::Type { .. } => {
+                    // I don't think this can be moved out of the loop, since
+                    // a GenericBound requires an ast id
+                    let bounds: Vec<_> =
                     // extra restrictions on the generics parameters to the
                     // type being derived upon
                     self.additional_bounds.iter().map(|p| {
@@ -606,21 +605,22 @@ impl<'a> TraitDef<'a> {
                         param.bounds.iter().cloned()
                     ).collect();
 
-                cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, bounds, None)
-            }
-            GenericParamKind::Const { ty, kw_span, .. } => {
-                let const_nodefault_kind = GenericParamKind::Const {
-                    ty: ty.clone(),
-                    kw_span: kw_span.with_ctxt(ctxt),
+                    cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, bounds, None)
+                }
+                GenericParamKind::Const { ty, kw_span, .. } => {
+                    let const_nodefault_kind = GenericParamKind::Const {
+                        ty: ty.clone(),
+                        kw_span: kw_span.with_ctxt(ctxt),
 
-                    // We can't have default values inside impl block
-                    default: None,
-                };
-                let mut param_clone = param.clone();
-                param_clone.kind = const_nodefault_kind;
-                param_clone
-            }
-        }));
+                        // We can't have default values inside impl block
+                        default: None,
+                    };
+                    let mut param_clone = param.clone();
+                    param_clone.kind = const_nodefault_kind;
+                    param_clone
+                }
+            })
+            .collect();
 
         // and similarly for where clauses
         where_clause.predicates.extend(generics.where_clause.predicates.iter().map(|clause| {

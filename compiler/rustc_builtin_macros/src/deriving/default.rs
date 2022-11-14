@@ -26,7 +26,6 @@ pub fn expand_deriving_default(
         path: Path::new(vec![kw::Default, sym::Default]),
         skip_path_as_bound: has_a_default_variant(item),
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: false,
         methods: vec![MethodDef {
             name: kw::Default,

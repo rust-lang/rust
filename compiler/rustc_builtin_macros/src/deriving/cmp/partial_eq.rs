@@ -85,7 +85,6 @@ pub fn expand_deriving_partial_eq(
         path: path_std!(cmp::PartialEq),
         skip_path_as_bound: false,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: false,
         methods,
         associated_types: Vec::new(),

@@ -392,15 +392,7 @@ pub struct Generics {
 impl Default for Generics {
     /// Creates an instance of `Generics`.
     fn default() -> Generics {
-        Generics {
-            params: Vec::new(),
-            where_clause: WhereClause {
-                has_where_token: false,
-                predicates: Vec::new(),
-                span: DUMMY_SP,
-            },
-            span: DUMMY_SP,
-        }
+        Generics { params: Vec::new(), where_clause: Default::default(), span: DUMMY_SP }
     }
 }
 
@@ -413,6 +405,12 @@ pub struct WhereClause {
     pub has_where_token: bool,
     pub predicates: Vec<WherePredicate>,
     pub span: Span,
+}
+
+impl Default for WhereClause {
+    fn default() -> WhereClause {
+        WhereClause { has_where_token: false, predicates: Vec::new(), span: DUMMY_SP }
+    }
 }
 
 /// A single predicate in a where-clause.
