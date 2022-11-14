@@ -7,9 +7,10 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::{HasDataLayout, Size};
 
 use super::{alloc_range, AllocError, AllocId, AllocRange, AllocResult, Provenance};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 /// Stores the provenance information of pointers stored in memory.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(HashStable)]
 pub struct ProvenanceMap<Prov = AllocId> {
     /// Provenance in this map applies from the given offset for an entire pointer-size worth of
@@ -19,6 +20,20 @@ pub struct ProvenanceMap<Prov = AllocId> {
     /// This map is disjoint from the previous. It will always be empty when
     /// `Prov::OFFSET_IS_ADDR` is false.
     bytes: Option<Box<SortedMap<Size, Prov>>>,
+}
+
+impl<D: Decoder, Prov: Decodable<D>> Decodable<D> for ProvenanceMap<Prov> {
+    fn decode(d: &mut D) -> Self {
+        Self { ptrs: Decodable::decode(d), bytes: None }
+    }
+}
+
+impl<S: Encoder, Prov: Encodable<S>> Encodable<S> for ProvenanceMap<Prov> {
+    fn encode(&self, s: &mut S) {
+        let Self { ptrs, bytes } = self;
+        debug_assert!(bytes.is_none());
+        ptrs.encode(s)
+    }
 }
 
 impl<Prov> ProvenanceMap<Prov> {
