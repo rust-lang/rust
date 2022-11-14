@@ -94,13 +94,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         for (def_id, info) in lctx.children {
             self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
             debug_assert!(matches!(self.owners[def_id], hir::MaybeOwner::Phantom));
-            match (self.owners[def_id], info) {
-                (hir::MaybeOwner::Phantom, _)
-                | (hir::MaybeOwner::NonOwner(_), hir::MaybeOwner::Owner(_)) => {
-                    self.owners[def_id] = info;
-                }
-                _ => unreachable!(),
-            }
+            self.owners[def_id] = info;
         }
     }
 
