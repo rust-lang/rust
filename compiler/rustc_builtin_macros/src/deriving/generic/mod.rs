@@ -1063,9 +1063,7 @@ impl<'a> MethodDef<'a> {
             // Packed and not copy. Need to use ref patterns.
             let prefixes: Vec<_> =
                 (0..selflike_args.len()).map(|i| format!("__self_{}", i)).collect();
-            let addr_of = false;
-            let selflike_fields =
-                trait_.create_struct_pattern_fields(cx, struct_def, &prefixes, addr_of);
+            let selflike_fields = trait_.create_struct_pattern_fields(cx, struct_def, &prefixes);
             let mut body = mk_body(cx, selflike_fields);
 
             let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
@@ -1251,9 +1249,7 @@ impl<'a> MethodDef<'a> {
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
 
-                let addr_of = false; // because enums can't be repr(packed)
-                let fields =
-                    trait_.create_struct_pattern_fields(cx, &variant.data, &prefixes, addr_of);
+                let fields = trait_.create_struct_pattern_fields(cx, &variant.data, &prefixes);
 
                 let sp = variant.span.with_ctxt(trait_.span.ctxt());
                 let variant_path = cx.path(sp, vec![type_ident, variant.ident]);
@@ -1516,15 +1512,13 @@ impl<'a> TraitDef<'a> {
         cx: &mut ExtCtxt<'_>,
         struct_def: &'a VariantData,
         prefixes: &[String],
-        addr_of: bool,
     ) -> Vec<FieldInfo> {
         self.create_fields(struct_def, |i, _struct_field, sp| {
             prefixes
                 .iter()
                 .map(|prefix| {
                     let ident = self.mk_pattern_ident(prefix, i);
-                    let expr = cx.expr_path(cx.path_ident(sp, ident));
-                    if addr_of { cx.expr_addr_of(sp, expr) } else { expr }
+                    cx.expr_path(cx.path_ident(sp, ident))
                 })
                 .collect()
         })
