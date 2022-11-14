@@ -112,7 +112,7 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 /// A reference to some allocation that was already bounds-checked for the given region
 /// and had the on-access machine hooks run.
 #[derive(Copy, Clone)]
-pub struct AllocRef<'a, 'tcx, Prov, Extra> {
+pub struct AllocRef<'a, 'tcx, Prov: Provenance, Extra> {
     alloc: &'a Allocation<Prov, Extra>,
     range: AllocRange,
     tcx: TyCtxt<'tcx>,
@@ -120,7 +120,7 @@ pub struct AllocRef<'a, 'tcx, Prov, Extra> {
 }
 /// A reference to some allocation that was already bounds-checked for the given region
 /// and had the on-access machine hooks run.
-pub struct AllocRefMut<'a, 'tcx, Prov, Extra> {
+pub struct AllocRefMut<'a, 'tcx, Prov: Provenance, Extra> {
     alloc: &'a mut Allocation<Prov, Extra>,
     range: AllocRange,
     tcx: TyCtxt<'tcx>,

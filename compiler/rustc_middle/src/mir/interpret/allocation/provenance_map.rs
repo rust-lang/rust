@@ -22,15 +22,17 @@ pub struct ProvenanceMap<Prov = AllocId> {
     bytes: Option<Box<SortedMap<Size, Prov>>>,
 }
 
-impl<D: Decoder, Prov: Decodable<D>> Decodable<D> for ProvenanceMap<Prov> {
+impl<D: Decoder, Prov: Provenance + Decodable<D>> Decodable<D> for ProvenanceMap<Prov> {
     fn decode(d: &mut D) -> Self {
+        assert!(!Prov::OFFSET_IS_ADDR); // only `AllocId` is ever serialized
         Self { ptrs: Decodable::decode(d), bytes: None }
     }
 }
 
-impl<S: Encoder, Prov: Encodable<S>> Encodable<S> for ProvenanceMap<Prov> {
+impl<S: Encoder, Prov: Provenance + Encodable<S>> Encodable<S> for ProvenanceMap<Prov> {
     fn encode(&self, s: &mut S) {
         let Self { ptrs, bytes } = self;
+        assert!(!Prov::OFFSET_IS_ADDR); // only `AllocId` is ever serialized
         debug_assert!(bytes.is_none());
         ptrs.encode(s)
     }

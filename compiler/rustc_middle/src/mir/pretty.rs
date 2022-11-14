@@ -788,7 +788,7 @@ pub fn write_allocations<'tcx>(
 /// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
 /// characters or characters whose value is larger than 127) with a `.`
 /// This also prints provenance adequately.
-pub fn display_allocation<'a, 'tcx, Prov, Extra>(
+pub fn display_allocation<'a, 'tcx, Prov: Provenance, Extra>(
     tcx: TyCtxt<'tcx>,
     alloc: &'a Allocation<Prov, Extra>,
 ) -> RenderAllocation<'a, 'tcx, Prov, Extra> {
@@ -796,7 +796,7 @@ pub fn display_allocation<'a, 'tcx, Prov, Extra>(
 }
 
 #[doc(hidden)]
-pub struct RenderAllocation<'a, 'tcx, Prov, Extra> {
+pub struct RenderAllocation<'a, 'tcx, Prov: Provenance, Extra> {
     tcx: TyCtxt<'tcx>,
     alloc: &'a Allocation<Prov, Extra>,
 }

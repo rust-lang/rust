@@ -36,7 +36,7 @@ pub use init_mask::{InitChunk, InitChunkIter};
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
 #[derive(Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
-pub struct Allocation<Prov = AllocId, Extra = ()> {
+pub struct Allocation<Prov: Provenance = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
     bytes: Box<[u8]>,
@@ -108,9 +108,7 @@ impl hash::Hash for Allocation {
 /// (`ConstAllocation`) are used quite a bit.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub struct ConstAllocation<'tcx, Prov = AllocId, Extra = ()>(
-    pub Interned<'tcx, Allocation<Prov, Extra>>,
-);
+pub struct ConstAllocation<'tcx>(pub Interned<'tcx, Allocation>);
 
 impl<'tcx> fmt::Debug for ConstAllocation<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -120,8 +118,8 @@ impl<'tcx> fmt::Debug for ConstAllocation<'tcx> {
     }
 }
 
-impl<'tcx, Prov, Extra> ConstAllocation<'tcx, Prov, Extra> {
-    pub fn inner(self) -> &'tcx Allocation<Prov, Extra> {
+impl<'tcx> ConstAllocation<'tcx> {
+    pub fn inner(self) -> &'tcx Allocation {
         self.0.0
     }
 }
@@ -220,7 +218,7 @@ impl AllocRange {
 }
 
 // The constructors are all without extra; the extra gets added by a machine hook later.
-impl<Prov> Allocation<Prov> {
+impl<Prov: Provenance> Allocation<Prov> {
     /// Creates an allocation initialized by the given bytes
     pub fn from_bytes<'a>(
         slice: impl Into<Cow<'a, [u8]>>,
@@ -278,7 +276,7 @@ impl<Prov> Allocation<Prov> {
 impl Allocation {
     /// Adjust allocation from the ones in tcx to a custom Machine instance
     /// with a different Provenance and Extra type.
-    pub fn adjust_from_tcx<Prov, Extra, Err>(
+    pub fn adjust_from_tcx<Prov: Provenance, Extra, Err>(
         self,
         cx: &impl HasDataLayout,
         extra: Extra,
@@ -311,7 +309,7 @@ impl Allocation {
 }
 
 /// Raw accessors. Provide access to otherwise private bytes.
-impl<Prov, Extra> Allocation<Prov, Extra> {
+impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
     pub fn len(&self) -> usize {
         self.bytes.len()
     }
