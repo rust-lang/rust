@@ -10,6 +10,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ItemKind, Node, PathSegment};
+use rustc_infer::infer::opaque_types::ConstrainOpaqueTypeRegionVisitor;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{DefiningAnchor, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
@@ -254,100 +255,11 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
     let item = tcx.hir().expect_item(def_id);
     debug!(?item, ?span);
 
-    #[derive(Debug)]
-    struct FoundParentLifetime;
-    struct FindParentLifetimeVisitor<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        parent_count: u32,
-    }
-    impl<'tcx> ty::visit::TypeVisitor<'tcx> for FindParentLifetimeVisitor<'tcx> {
-        type BreakTy = FoundParentLifetime;
-
-        #[instrument(level = "trace", skip(self), ret)]
-        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = *r {
-                if index < self.parent_count {
-                    return ControlFlow::Break(FoundParentLifetime);
-                } else {
-                    return ControlFlow::CONTINUE;
-                }
-            }
-
-            r.super_visit_with(self)
-        }
-
-        #[instrument(level = "trace", skip(self), ret)]
-        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            // We're only interested in types involving regions
-            if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
-                return ControlFlow::CONTINUE;
-            }
-
-            match ty.kind() {
-                ty::Closure(_, ref substs) => {
-                    // Skip lifetime parameters of the enclosing item(s)
-
-                    substs.as_closure().tupled_upvars_ty().visit_with(self)?;
-                    substs.as_closure().sig_as_fn_ptr_ty().visit_with(self)?;
-                }
-
-                ty::Generator(_, ref substs, _) => {
-                    // Skip lifetime parameters of the enclosing item(s)
-                    // Also skip the witness type, because that has no free regions.
-
-                    substs.as_generator().tupled_upvars_ty().visit_with(self)?;
-                    substs.as_generator().return_ty().visit_with(self)?;
-                    substs.as_generator().yield_ty().visit_with(self)?;
-                    substs.as_generator().resume_ty().visit_with(self)?;
-                }
-
-                ty::Opaque(def_id, ref substs) => {
-                    // Skip lifetime paramters that are not captures.
-                    let variances = self.tcx.variances_of(*def_id);
-
-                    for (v, s) in std::iter::zip(variances, substs.iter()) {
-                        if *v != ty::Variance::Bivariant {
-                            s.visit_with(self)?;
-                        }
-                    }
-                }
-
-                ty::Projection(proj)
-                    if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
-                {
-                    // Skip lifetime paramters that are not captures.
-                    let variances = self.tcx.variances_of(proj.item_def_id);
-
-                    for (v, s) in std::iter::zip(variances, proj.substs.iter()) {
-                        if *v != ty::Variance::Bivariant {
-                            s.visit_with(self)?;
-                        }
-                    }
-                }
-
-                _ => {
-                    ty.super_visit_with(self)?;
-                }
-            }
-
-            ControlFlow::CONTINUE
-        }
-
-        fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ConstKind::Unevaluated(..) = c.kind() {
-                // FIXME(#72219) We currently don't detect lifetimes within substs
-                // which would violate this check. Even though the particular substitution is not used
-                // within the const, this should still be fixed.
-                return ControlFlow::CONTINUE;
-            }
-            c.super_visit_with(self)
-        }
-    }
-
     struct ProhibitOpaqueVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
         opaque_identity_ty: Ty<'tcx>,
-        generics: &'tcx ty::Generics,
+        parent_count: u32,
+        references_parent_regions: bool,
         selftys: Vec<(Span, Option<String>)>,
     }
 
@@ -359,11 +271,21 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
             if t == self.opaque_identity_ty {
                 ControlFlow::CONTINUE
             } else {
-                t.visit_with(&mut FindParentLifetimeVisitor {
+                t.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
                     tcx: self.tcx,
-                    parent_count: self.generics.parent_count as u32,
-                })
-                .map_break(|FoundParentLifetime| t)
+                    op: |region| {
+                        if let ty::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = *region
+                            && index < self.parent_count
+                        {
+                            self.references_parent_regions= true;
+                        }
+                    },
+                });
+                if self.references_parent_regions {
+                    ControlFlow::Break(t)
+                } else {
+                    ControlFlow::CONTINUE
+                }
             }
         }
     }
@@ -408,7 +330,8 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
         };
         let mut visitor = ProhibitOpaqueVisitor {
             opaque_identity_ty,
-            generics: tcx.generics_of(def_id),
+            parent_count: tcx.generics_of(def_id).parent_count as u32,
+            references_parent_regions: false,
             tcx,
             selftys: vec![],
         };

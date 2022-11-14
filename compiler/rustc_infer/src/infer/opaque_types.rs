@@ -423,9 +423,9 @@ impl<'tcx> InferCtxt<'tcx> {
 //
 // We ignore any type parameters because impl trait values are assumed to
 // capture all the in-scope type parameters.
-struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP> {
-    tcx: TyCtxt<'tcx>,
-    op: OP,
+pub struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
+    pub tcx: TyCtxt<'tcx>,
+    pub op: OP,
 }
 
 impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
