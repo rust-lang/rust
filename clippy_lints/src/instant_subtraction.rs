@@ -112,6 +112,8 @@ impl LateLintPass<'_> for InstantSubtraction {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 fn is_instant_now_call(cx: &LateContext<'_>, expr_block: &'_ Expr<'_>) -> bool {
