@@ -1133,7 +1133,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert_ne!(mem::discriminant(&Foo::B(3)), mem::discriminant(&Foo::C(3)));
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-#[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+#[rustc_const_stable(feature = "const_discriminant", since = "CURRENT_RUSTC_VERSION")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_discriminant")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const fn discriminant<T>(v: &T) -> Discriminant<T> {

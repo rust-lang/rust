@@ -2012,7 +2012,7 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     ///
     /// The stabilized version of this intrinsic is [`core::mem::discriminant`].
-    #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+    #[rustc_const_stable(feature = "const_discriminant", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_safe_intrinsic]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
