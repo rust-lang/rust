@@ -1060,18 +1060,17 @@ impl<'a> MethodDef<'a> {
                 trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, true);
             mk_body(cx, selflike_fields)
         } else {
-            // Neither packed nor copy. Need to use ref patterns.
+            // Packed and not copy. Need to use ref patterns.
             let prefixes: Vec<_> =
                 (0..selflike_args.len()).map(|i| format!("__self_{}", i)).collect();
-            let addr_of = always_copy;
+            let addr_of = false;
             let selflike_fields =
                 trait_.create_struct_pattern_fields(cx, struct_def, &prefixes, addr_of);
             let mut body = mk_body(cx, selflike_fields);
 
             let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
-            let by_ref = ByRef::from(is_packed && !always_copy);
             let patterns =
-                trait_.create_struct_patterns(cx, struct_path, struct_def, &prefixes, by_ref);
+                trait_.create_struct_patterns(cx, struct_path, struct_def, &prefixes, ByRef::Yes);
 
             // Do the let-destructuring.
             let mut stmts: Vec<_> = iter::zip(selflike_args, patterns)
