@@ -1,5 +1,5 @@
 error: attribute should be applied to a struct or enum
-  --> $DIR/manually_drop-bad-item.rs:7:1
+  --> $DIR/manually_drop-bad-item.rs:6:1
    |
 LL | #[manually_drop]
    | ^^^^^^^^^^^^^^^^
@@ -19,16 +19,5 @@ error: attribute should be applied to a struct or enum
 LL | #![manually_drop]
    | ^^^^^^^^^^^^^^^^^
 
-error: `manually_drop` attribute cannot be used at crate level
-  --> $DIR/manually_drop-bad-item.rs:3:1
-   |
-LL | #![manually_drop]
-   | ^^^^^^^^^^^^^^^^^
-   |
-help: perhaps you meant to use an outer attribute
-   |
-LL | #[manually_drop]
-   |
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
