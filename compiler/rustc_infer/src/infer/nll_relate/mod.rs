@@ -557,11 +557,8 @@ where
 
         debug!(?self.ambient_variance);
         // In a bivariant context this always succeeds.
-        let r = if self.ambient_variance == ty::Variance::Bivariant {
-            a
-        } else {
-            self.relate(a, b)?
-        };
+        let r =
+            if self.ambient_variance == ty::Variance::Bivariant { a } else { self.relate(a, b)? };
 
         self.ambient_variance = old_ambient_variance;
 
