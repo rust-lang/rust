@@ -28,6 +28,9 @@ pub fn is_equal_up_to_subtyping<'tcx>(
 }
 
 /// Returns whether `src` is a subtype of `dest`, i.e. `src <: dest`.
+///
+/// This mostly ignores opaque types as it can be used in constraining contexts
+/// while still computing the final underlying type.
 pub fn is_subtype<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
