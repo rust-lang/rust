@@ -4,7 +4,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::abstract_const::{CastKind, Node, NodeId};
-use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, ParamEnv, TyCtxt, TypeVisitable};
 use rustc_middle::{mir, thir};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
@@ -222,6 +222,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
     fn recurse_build(&mut self, node: thir::ExprId) -> Result<NodeId, ErrorGuaranteed> {
         use thir::ExprKind;
         let node = &self.body.exprs[node];
+        let param_env = ParamEnv::reveal_all().with_reveal_all_normalized(self.tcx);
+        let node_ty = self.tcx.try_normalize_erasing_regions(param_env, node.ty).unwrap_or(node.ty);
+
         Ok(match &node.kind {
             // I dont know if handling of these 3 is correct
             &ExprKind::Scope { value, .. } => self.recurse_build(value)?,
@@ -231,12 +234,12 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let sp = node.span;
                 let constant = match self.tcx.at(sp).lit_to_const(LitToConstInput {
                     lit: &lit.node,
-                    ty: node.ty,
+                    ty: node_ty,
                     neg,
                 }) {
                     Ok(c) => c,
                     Err(LitToConstError::Reported(guar)) => {
-                        self.tcx.const_error_with_guaranteed(node.ty, guar)
+                        self.tcx.const_error_with_guaranteed(node_ty, guar)
                     }
                     Err(LitToConstError::TypeError) => {
                         bug!("encountered type error in lit_to_const")
@@ -247,23 +250,23 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             }
             &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
                 let val = ty::ValTree::from_scalar_int(lit);
-                self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node.ty)))
+                self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node_ty)))
             }
             &ExprKind::ZstLiteral { user_ty: _ } => {
                 let val = ty::ValTree::zst();
-                self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node.ty)))
+                self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node_ty)))
             }
             &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
                 let uneval =
                     ty::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
 
-                let constant = self.tcx.mk_const(ty::ConstKind::Unevaluated(uneval), node.ty);
+                let constant = self.tcx.mk_const(ty::ConstKind::Unevaluated(uneval), node_ty);
 
                 self.nodes.push(Node::Leaf(constant))
             }
 
             ExprKind::ConstParam { param, .. } => {
-                let const_param = self.tcx.mk_const(ty::ConstKind::Param(*param), node.ty);
+                let const_param = self.tcx.mk_const(ty::ConstKind::Param(*param), node_ty);
                 self.nodes.push(Node::Leaf(const_param))
             }
 
@@ -308,11 +311,11 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             // This is important so that `N as usize as usize` doesnt unify with `N as usize`. (untested)
             &ExprKind::Use { source } => {
                 let arg = self.recurse_build(source)?;
-                self.nodes.push(Node::Cast(CastKind::Use, arg, node.ty))
+                self.nodes.push(Node::Cast(CastKind::Use, arg, node_ty))
             }
             &ExprKind::Cast { source } => {
                 let arg = self.recurse_build(source)?;
-                self.nodes.push(Node::Cast(CastKind::As, arg, node.ty))
+                self.nodes.push(Node::Cast(CastKind::As, arg, node_ty))
             }
             ExprKind::Borrow { arg, .. } => {
                 let arg_node = &self.body.exprs[*arg];

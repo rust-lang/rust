@@ -128,7 +128,7 @@ fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
 
     if let Some(generics) = node.generics() {
         for param in generics.params {
-            check_param_wf(tcx, param)
+            check_param_wf(tcx, param, def_id.def_id)
         }
     }
 }
@@ -846,140 +846,136 @@ fn check_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>) {
     check_associated_item(tcx, impl_item.owner_id.def_id, span, method_sig);
 }
 
-fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
+fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>, owner_id: LocalDefId) {
     match param.kind {
         // We currently only check wf of const params here.
         hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. } => (),
 
         // Const parameters are well formed if their type is structural match.
         hir::GenericParamKind::Const { ty: hir_ty, default: _ } => {
-            let mut ty = tcx.type_of(param.def_id);
-            while let ty::Projection(ty::ProjectionTy { substs, item_def_id }) = ty.kind() {
-                let binder_ty = tcx.bound_type_of(*item_def_id);
-                ty = binder_ty.subst(tcx, substs);
-            }
+            enter_wf_checking_ctxt(tcx, param.span, owner_id, |wfcx| {
+                let ty = tcx.type_of(param.def_id);
+                let ty = wfcx.normalize(hir_ty.span, None, ty);
 
-            if tcx.features().adt_const_params {
-                if let Some(non_structural_match_ty) =
-                    traits::search_for_adt_const_param_violation(param.span, tcx, ty)
-                {
-                    // We use the same error code in both branches, because this is really the same
-                    // issue: we just special-case the message for type parameters to make it
-                    // clearer.
-                    match non_structural_match_ty.kind() {
-                        ty::Param(_) => {
-                            // Const parameters may not have type parameters as their types,
-                            // because we cannot be sure that the type parameter derives `PartialEq`
-                            // and `Eq` (just implementing them is not enough for `structural_match`).
-                            struct_span_err!(
-                                tcx.sess,
-                                hir_ty.span,
-                                E0741,
-                                "`{ty}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
-                                used as the type of a const parameter",
-                            )
-                            .span_label(
-                                hir_ty.span,
-                                format!("`{ty}` may not derive both `PartialEq` and `Eq`"),
-                            )
-                            .note(
-                                "it is not currently possible to use a type parameter as the type of a \
-                                const parameter",
-                            )
-                            .emit();
-                        }
-                        ty::Float(_) => {
-                            struct_span_err!(
-                                tcx.sess,
-                                hir_ty.span,
-                                E0741,
-                                "`{ty}` is forbidden as the type of a const generic parameter",
-                            )
-                            .note("floats do not derive `Eq` or `Ord`, which are required for const parameters")
-                            .emit();
-                        }
-                        ty::FnPtr(_) => {
-                            struct_span_err!(
-                                tcx.sess,
-                                hir_ty.span,
-                                E0741,
-                                "using function pointers as const generic parameters is forbidden",
-                            )
-                            .emit();
-                        }
-                        ty::RawPtr(_) => {
-                            struct_span_err!(
-                                tcx.sess,
-                                hir_ty.span,
-                                E0741,
-                                "using raw pointers as const generic parameters is forbidden",
-                            )
-                            .emit();
-                        }
-                        // Should have been normalized in
-                        // `traits::search_for_adt_const_param_violation`
-                        ty::Projection(_) => unreachable!(),
-                        _ => {
-                            let mut diag = struct_span_err!(
-                                tcx.sess,
-                                hir_ty.span,
-                                E0741,
-                                "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
-                                the type of a const parameter",
-                                non_structural_match_ty,
-                            );
-
-                            if ty == non_structural_match_ty {
-                                diag.span_label(
+                if tcx.features().adt_const_params {
+                    if let Some(non_structural_match_ty) =
+                        traits::search_for_adt_const_param_violation(param.span, tcx, ty)
+                    {
+                        // We use the same error code in both branches, because this is really the same
+                        // issue: we just special-case the message for type parameters to make it
+                        // clearer.
+                        match non_structural_match_ty.kind() {
+                            ty::Param(_) => {
+                                // Const parameters may not have type parameters as their types,
+                                // because we cannot be sure that the type parameter derives `PartialEq`
+                                // and `Eq` (just implementing them is not enough for `structural_match`).
+                                struct_span_err!(
+                                    tcx.sess,
                                     hir_ty.span,
-                                    format!("`{ty}` doesn't derive both `PartialEq` and `Eq`"),
-                                );
+                                    E0741,
+                                    "`{ty}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
+                                    used as the type of a const parameter",
+                                )
+                                .span_label(
+                                    hir_ty.span,
+                                    format!("`{ty}` may not derive both `PartialEq` and `Eq`"),
+                                )
+                                .note(
+                                    "it is not currently possible to use a type parameter as the type of a \
+                                    const parameter",
+                                )
+                                .emit();
                             }
+                            ty::Float(_) => {
+                                struct_span_err!(
+                                    tcx.sess,
+                                    hir_ty.span,
+                                    E0741,
+                                    "`{ty}` is forbidden as the type of a const generic parameter",
+                                )
+                                .note("floats do not derive `Eq` or `Ord`, which are required for const parameters")
+                                .emit();
+                            }
+                            ty::FnPtr(_) => {
+                                struct_span_err!(
+                                    tcx.sess,
+                                    hir_ty.span,
+                                    E0741,
+                                    "using function pointers as const generic parameters is forbidden",
+                                )
+                                .emit();
+                            }
+                            ty::RawPtr(_) => {
+                                struct_span_err!(
+                                    tcx.sess,
+                                    hir_ty.span,
+                                    E0741,
+                                    "using raw pointers as const generic parameters is forbidden",
+                                )
+                                .emit();
+                            }
+                            _ => {
+                                let mut diag = struct_span_err!(
+                                    tcx.sess,
+                                    hir_ty.span,
+                                    E0741,
+                                    "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
+                                    the type of a const parameter",
+                                    non_structural_match_ty,
+                                );
 
-                            diag.emit();
+                                if ty == non_structural_match_ty {
+                                    diag.span_label(
+                                        hir_ty.span,
+                                        format!("`{ty}` doesn't derive both `PartialEq` and `Eq`"),
+                                    );
+                                }
+
+                                diag.emit();
+                            }
+                        }
+                    }
+                } else {
+                    let err_ty_str;
+                    let mut is_ptr = true;
+
+                    let err = match ty.kind() {
+                        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
+                        ty::FnPtr(_) => Some("function pointers"),
+                        ty::RawPtr(_) => Some("raw pointers"),
+                        _ => {
+                            is_ptr = false;
+                            err_ty_str = format!("`{ty}`");
+                            Some(err_ty_str.as_str())
+                        }
+                    };
+
+                    if let Some(unsupported_type) = err {
+                        if is_ptr {
+                            tcx.sess.span_err(
+                                hir_ty.span,
+                                &format!(
+                                    "using {unsupported_type} as const generic parameters is forbidden",
+                                ),
+                            );
+                        } else {
+                            let mut err = tcx.sess.struct_span_err(
+                                hir_ty.span,
+                                &format!(
+                                    "{unsupported_type} is forbidden as the type of a const generic parameter",
+                                ),
+                            );
+                            err.note("the only supported types are integers, `bool` and `char`");
+                            if tcx.sess.is_nightly_build() {
+                                err.help(
+                                "more complex types are supported with `#![feature(adt_const_params)]`",
+                            );
+                            }
+                            err.emit();
                         }
                     }
                 }
-            } else {
-                let err_ty_str;
-                let mut is_ptr = true;
-
-                let err = match ty.kind() {
-                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
-                    ty::FnPtr(_) => Some("function pointers"),
-                    ty::RawPtr(_) => Some("raw pointers"),
-                    _ => {
-                        is_ptr = false;
-                        err_ty_str = format!("`{ty}`");
-                        Some(err_ty_str.as_str())
-                    }
-                };
-
-                if let Some(unsupported_type) = err {
-                    if is_ptr {
-                        tcx.sess.span_err(
-                            hir_ty.span,
-                            &format!(
-                                "using {unsupported_type} as const generic parameters is forbidden",
-                            ),
-                        );
-                    } else {
-                        let mut err = tcx.sess.struct_span_err(
-                            hir_ty.span,
-                            &format!(
-                                "{unsupported_type} is forbidden as the type of a const generic parameter",
-                            ),
-                        );
-                        err.note("the only supported types are integers, `bool` and `char`");
-                        if tcx.sess.is_nightly_build() {
-                            err.help(
-                            "more complex types are supported with `#![feature(adt_const_params)]`",
-                        );
-                        }
-                        err.emit();
-                    }
-                }
-            }
+            });
         }
     }
 }

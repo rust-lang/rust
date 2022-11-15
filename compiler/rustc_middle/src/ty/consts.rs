@@ -74,6 +74,11 @@ impl<'tcx> Const<'tcx> {
 
         let ty = tcx.type_of(def.def_id_for_type_of());
 
+        let param_env = tcx.param_env(def.did);
+        // We check that the `ty` is well formed in `wfcheck::check_param_wf` so
+        // this should always succeed.
+        let ty = tcx.normalize_erasing_regions(param_env, ty);
+
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
             None => tcx.mk_const(
