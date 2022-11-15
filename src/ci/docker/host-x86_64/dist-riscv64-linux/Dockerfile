@@ -27,5 +27,5 @@ ENV CC_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-gcc \
 
 ENV HOSTS=riscv64gc-unknown-linux-gnu
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
+ENV RUST_CONFIGURE_ARGS --enable-extended --enable-profiler --disable-docs
 ENV SCRIPT python3 ../x.py dist --target $HOSTS --host $HOSTS
