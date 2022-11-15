@@ -26,7 +26,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, BoundVar, Const, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundVar, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 use std::fmt::Debug;
 use std::iter;
@@ -726,10 +726,6 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
             .to_predicate(self.infcx.tcx),
             recursion_depth: 0,
         });
-    }
-
-    fn const_equate(&mut self, _a: Const<'tcx>, _b: Const<'tcx>) {
-        span_bug!(self.cause.span(), "generic_const_exprs: unreachable `const_equate`");
     }
 
     fn normalization() -> NormalizationStrategy {

@@ -92,7 +92,6 @@ pub trait TypeRelatingDelegate<'tcx> {
         info: ty::VarianceDiagInfo<'tcx>,
     );
 
-    fn const_equate(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
     fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>);
 
     /// Creates a new universe index. Used when instantiating placeholders.
@@ -812,8 +811,12 @@ impl<'tcx, D> ConstEquateRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) {
-        self.delegate.const_equate(a, b);
+    fn const_equate_obligation(&mut self, _a: ty::Const<'tcx>, _b: ty::Const<'tcx>) {
+        // We don't have to worry about the equality of consts during borrow checking
+        // as consts always have a static lifetime.
+        // FIXME(oli-obk): is this really true? We can at least have HKL and with
+        // inline consts we may have further lifetimes that may be unsound to treat as
+        // 'static.
     }
 }
 
