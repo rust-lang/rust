@@ -236,9 +236,7 @@ fn get_transformed_assoc_item(
     );
 
     transform.apply(assoc_item.syntax());
-    if let ast::AssocItem::Fn(func) = &assoc_item {
-        func.remove_attrs_and_docs();
-    }
+    assoc_item.remove_attrs_and_docs();
     Some(assoc_item)
 }
 
@@ -335,7 +333,6 @@ fn add_const_impl(
 }
 
 fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> String {
-    const_.remove_attrs_and_docs();
     let const_ = if needs_whitespace {
         insert_whitespace_into_node::insert_ws_into(const_.syntax().clone())
     } else {
@@ -359,8 +356,6 @@ fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> Strin
 }
 
 fn function_declaration(node: &ast::Fn, needs_whitespace: bool) -> String {
-    node.remove_attrs_and_docs();
-
     let node = if needs_whitespace {
         insert_whitespace_into_node::insert_ws_into(node.syntax().clone())
     } else {
@@ -1208,6 +1203,81 @@ trait Tr<'b> {
 
 impl<'b> Tr<'b> for () {
     type Ty<'a: 'b, T: Copy, const C: usize> = $0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn strips_comments() {
+        check_edit(
+            "fn func",
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    fn func();
+}
+impl Tr for () {
+    $0
+}
+"#,
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    fn func();
+}
+impl Tr for () {
+    fn func() {
+    $0
+}
+}
+"#,
+        );
+        check_edit(
+            "const C",
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    const C: usize;
+}
+impl Tr for () {
+    $0
+}
+"#,
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    const C: usize;
+}
+impl Tr for () {
+    const C: usize = $0;
+}
+"#,
+        );
+        check_edit(
+            "type Item",
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    type Item;
+}
+impl Tr for () {
+    $0
+}
+"#,
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    type Item;
+}
+impl Tr for () {
+    type Item = $0;
 }
 "#,
         );
