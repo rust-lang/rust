@@ -76,6 +76,7 @@ pub(crate) use ParseResult::*;
 use crate::mbe::{macro_rules::Tracker, KleeneOp, TokenTree};
 
 use rustc_ast::token::{self, DocComment, Nonterminal, NonterminalKind, Token};
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
@@ -86,6 +87,7 @@ use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::Span;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::fmt::Display;
 
 /// A unit within a matcher that a `MatcherPos` can refer to. Similar to (and derived from)
 /// `mbe::TokenTree`, but designed specifically for fast and easy traversal during matching.
@@ -96,7 +98,7 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 ///
 /// This means a matcher can be represented by `&[MatcherLoc]`, and traversal mostly involves
 /// simply incrementing the current matcher position index by one.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) enum MatcherLoc {
     Token {
         token: Token,
@@ -127,6 +129,46 @@ pub(crate) enum MatcherLoc {
         seq_depth: usize,
     },
     Eof,
+}
+
+impl MatcherLoc {
+    pub(super) fn span(&self) -> Option<Span> {
+        match self {
+            MatcherLoc::Token { token } => Some(token.span),
+            MatcherLoc::Delimited => None,
+            MatcherLoc::Sequence { .. } => None,
+            MatcherLoc::SequenceKleeneOpNoSep { .. } => None,
+            MatcherLoc::SequenceSep { .. } => None,
+            MatcherLoc::SequenceKleeneOpAfterSep { .. } => None,
+            MatcherLoc::MetaVarDecl { span, .. } => Some(*span),
+            MatcherLoc::Eof => None,
+        }
+    }
+}
+
+impl Display for MatcherLoc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MatcherLoc::Token { token } | MatcherLoc::SequenceSep { separator: token } => {
+                write!(f, "`{}`", pprust::token_to_string(token))
+            }
+            MatcherLoc::MetaVarDecl { bind, kind, .. } => {
+                write!(f, "meta-variable `${bind}")?;
+                if let Some(kind) = kind {
+                    write!(f, ":{}", kind)?;
+                }
+                write!(f, "`")?;
+                Ok(())
+            }
+            MatcherLoc::Eof => f.write_str("end of macro"),
+
+            // These are not printed in the diagnostic
+            MatcherLoc::Delimited => f.write_str("delimiter"),
+            MatcherLoc::Sequence { .. } => f.write_str("sequence start"),
+            MatcherLoc::SequenceKleeneOpNoSep { .. } => f.write_str("sequence end"),
+            MatcherLoc::SequenceKleeneOpAfterSep { .. } => f.write_str("sequence end"),
+        }
+    }
 }
 
 pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
@@ -396,6 +438,10 @@ impl TtParser {
             bb_mps: vec![],
             empty_matches: Lrc::new(vec![]),
         }
+    }
+
+    pub(super) fn has_no_remaining_items_for_step(&self) -> bool {
+        self.cur_mps.is_empty()
     }
 
     /// Process the matcher positions of `cur_mps` until it is empty. In the process, this will

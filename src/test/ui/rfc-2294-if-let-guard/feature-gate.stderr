@@ -72,6 +72,12 @@ LL |     macro_rules! use_expr {
 ...
 LL |     use_expr!(let 0 = 1);
    |               ^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$e:expr`
+  --> $DIR/feature-gate.rs:61:10
+   |
+LL |         ($e:expr) => {
+   |          ^^^^^^^
 
 error[E0658]: `if let` guards are experimental
   --> $DIR/feature-gate.rs:7:12

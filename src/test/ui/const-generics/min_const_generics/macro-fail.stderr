@@ -53,6 +53,12 @@ LL |     macro_rules! gimme_a_const {
 ...
 LL |   let _fail = Example::<gimme_a_const!()>;
    |                         ^^^^^^^^^^^^^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$rusty:ident`
+  --> $DIR/macro-fail.rs:28:8
+   |
+LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
+   |        ^^^^^^^^^^^^^
 
 error[E0747]: type provided when a constant was expected
   --> $DIR/macro-fail.rs:14:33
