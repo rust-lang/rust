@@ -73,7 +73,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx
             }
 
-            mir::Rvalue::Repeat(ref elem, count) => {
+            mir::Rvalue::Repeat(ref elem, count, enum_tag_only) => {
                 let cg_elem = self.codegen_operand(&mut bx, elem);
 
                 // Do not generate the loop for zero-sized elements or empty arrays.
@@ -95,6 +95,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = bx.from_immediate(v);
+                    if bx.cx().val_ty(v) == bx.cx().type_i8() {
+                        bx.memset(start, v, size, dest.align, MemFlags::empty());
+                        return bx;
+                    }
+                } else if let OperandValue::Pair(tag, _) = cg_elem.val && enum_tag_only {
+                    let zero = bx.const_usize(0);
+                    let start = dest.project_index(&mut bx, zero).llval;
+                    let size = bx.const_usize(dest.layout.size.bytes());
+                    let v = bx.from_immediate(tag);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
                         bx.memset(start, v, size, dest.align, MemFlags::empty());
                         return bx;

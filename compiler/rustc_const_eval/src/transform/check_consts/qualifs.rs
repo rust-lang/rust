@@ -256,7 +256,7 @@ where
         Rvalue::CopyForDeref(place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
 
         Rvalue::Use(operand)
-        | Rvalue::Repeat(operand, _)
+        | Rvalue::Repeat(operand, _, _)
         | Rvalue::UnaryOp(_, operand)
         | Rvalue::Cast(_, operand, _)
         | Rvalue::ShallowInitBox(operand, _) => in_operand::<Q, _>(cx, in_local, operand),

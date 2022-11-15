@@ -1920,7 +1920,7 @@ impl<'tcx> Rvalue<'tcx> {
 
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(_)
-            | Rvalue::Repeat(_, _)
+            | Rvalue::Repeat(_, _, _)
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::AddressOf(_, _)
@@ -1979,7 +1979,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
         match *self {
             Use(ref place) => write!(fmt, "{:?}", place),
-            Repeat(ref a, b) => {
+            Repeat(ref a, b, _) => {
                 write!(fmt, "[{:?}; ", a)?;
                 pretty_print_const(b, fmt, false)?;
                 write!(fmt, "]")

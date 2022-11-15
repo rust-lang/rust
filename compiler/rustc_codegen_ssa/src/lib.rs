@@ -7,6 +7,7 @@
 #![feature(int_roundings)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
+#![feature(let_chains)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 

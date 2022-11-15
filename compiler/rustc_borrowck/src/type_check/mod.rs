@@ -1854,7 +1854,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_aggregate_rvalue(&body, rvalue, ak, ops, location)
             }
 
-            Rvalue::Repeat(operand, len) => {
+            Rvalue::Repeat(operand, len, _) => {
                 self.check_operand(operand, location);
 
                 // If the length cannot be evaluated we must assume that the length can be larger

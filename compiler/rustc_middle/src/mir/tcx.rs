@@ -162,7 +162,7 @@ impl<'tcx> Rvalue<'tcx> {
     {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
-            Rvalue::Repeat(ref operand, count) => {
+            Rvalue::Repeat(ref operand, count, _) => {
                 tcx.mk_ty(ty::Array(operand.ty(local_decls, tcx), count))
             }
             Rvalue::ThreadLocalRef(did) => {

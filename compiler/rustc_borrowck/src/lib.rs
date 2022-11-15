@@ -1233,7 +1233,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Rvalue::ThreadLocalRef(_) => {}
 
             Rvalue::Use(ref operand)
-            | Rvalue::Repeat(ref operand, _)
+            | Rvalue::Repeat(ref operand, _, _)
             | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
             | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/)
             | Rvalue::ShallowInitBox(ref operand, _ /*ty*/) => {

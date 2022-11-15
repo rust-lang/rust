@@ -207,7 +207,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Repeat(ref operand, _) => {
+            Repeat(ref operand, _, _) => {
                 let src = self.eval_operand(operand, None)?;
                 assert!(src.layout.is_sized());
                 let dest = self.force_allocation(&dest)?;

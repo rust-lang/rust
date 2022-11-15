@@ -58,16 +58,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if Some(0) == count.try_eval_usize(this.tcx, this.param_env) {
                     this.build_zero_repeat(block, value, scope, source_info)
                 } else {
+                    let value = &this.thir[value];
+                    let enum_tag_only = if let ExprKind::Scope {value: val, ..} = value.kind
+                        && let ExprKind::Adt(adt) = &this.thir[val].kind
+                        && adt.adt_def.is_enum() {
+                            // If this is an enum, and this variant has no fields, *and* other
+                            // variants do have fields, store this information. This allows emitting
+                            // a memset, instead of a series of single writes to the tag field
+                            adt.fields.is_empty() && adt.adt_def.all_fields().count() > 0
+                        } else {
+                            false
+                        };
                     let value_operand = unpack!(
-                        block = this.as_operand(
-                            block,
-                            scope,
-                            &this.thir[value],
-                            None,
-                            NeedsTemporary::No
-                        )
+                        block = this.as_operand(block, scope, value, None, NeedsTemporary::No)
                     );
-                    block.and(Rvalue::Repeat(value_operand, count))
+                    block.and(Rvalue::Repeat(value_operand, count, enum_tag_only))
                 }
             }
             ExprKind::Binary { op, lhs, rhs } => {

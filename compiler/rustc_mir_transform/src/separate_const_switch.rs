@@ -208,7 +208,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
                         | Rvalue::UnaryOp(_, Operand::Constant(_)) => return true,
 
                         // These rvalues make things ambiguous
-                        Rvalue::Repeat(_, _)
+                        Rvalue::Repeat(_, _, _)
                         | Rvalue::ThreadLocalRef(_)
                         | Rvalue::Len(_)
                         | Rvalue::BinaryOp(_, _)
@@ -282,7 +282,7 @@ fn find_determining_place<'tcx>(
                     | Rvalue::UnaryOp(_, Operand::Copy(new) | Operand::Move(new))
                     | Rvalue::CopyForDeref(new)
                     | Rvalue::Cast(_, Operand::Move(new) | Operand::Copy(new), _)
-                    | Rvalue::Repeat(Operand::Move(new) | Operand::Copy(new), _)
+                    | Rvalue::Repeat(Operand::Move(new) | Operand::Copy(new), _, _)
                     | Rvalue::Discriminant(new)
                     => switch_place = new,
 
@@ -297,7 +297,7 @@ fn find_determining_place<'tcx>(
                     // The following rvalues definitely mean we cannot
                     // or should not apply this optimization
                     | Rvalue::Use(Operand::Constant(_))
-                    | Rvalue::Repeat(Operand::Constant(_), _)
+                    | Rvalue::Repeat(Operand::Constant(_), _, _)
                     | Rvalue::ThreadLocalRef(_)
                     | Rvalue::AddressOf(_, _)
                     | Rvalue::NullaryOp(_, _)

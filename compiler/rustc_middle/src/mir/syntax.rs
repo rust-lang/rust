@@ -1004,10 +1004,13 @@ pub enum Rvalue<'tcx> {
     /// This is the cause of a bug in the case where the repetition count is zero because the value
     /// is not dropped, see [#74836].
     ///
+    /// The third param is true if the value we're repeating is an enum variant
+    /// with no fields so we can emit a memset.
+    ///
     /// Corresponds to source code like `[x; 32]`.
     ///
     /// [#74836]: https://github.com/rust-lang/rust/issues/74836
-    Repeat(Operand<'tcx>, ty::Const<'tcx>),
+    Repeat(Operand<'tcx>, ty::Const<'tcx>, bool),
 
     /// Creates a reference of the indicated kind to the place.
     ///

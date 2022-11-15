@@ -627,7 +627,7 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(operand, location);
                     }
 
-                    Rvalue::Repeat(value, _) => {
+                    Rvalue::Repeat(value, _, _) => {
                         self.visit_operand(value, location);
                     }
 

@@ -339,7 +339,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         match *rvalue {
             Rvalue::ThreadLocalRef(_) => {} // not-a-move
             Rvalue::Use(ref operand)
-            | Rvalue::Repeat(ref operand, _)
+            | Rvalue::Repeat(ref operand, _, _)
             | Rvalue::Cast(_, ref operand, _)
             | Rvalue::ShallowInitBox(ref operand, _)
             | Rvalue::UnaryOp(_, ref operand) => self.gather_operand(operand),

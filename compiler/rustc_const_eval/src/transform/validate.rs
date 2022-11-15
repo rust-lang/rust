@@ -591,7 +591,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            Rvalue::Repeat(_, _)
+            Rvalue::Repeat(_, _, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::AddressOf(_, _)
             | Rvalue::NullaryOp(_, _)
