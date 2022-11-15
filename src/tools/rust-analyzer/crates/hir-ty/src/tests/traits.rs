@@ -1706,7 +1706,7 @@ fn where_clause_trait_in_scope_for_method_resolution() {
     check_types(
         r#"
 mod foo {
-    trait Trait {
+    pub trait Trait {
         fn foo(&self) -> u32 { 0 }
     }
 }
@@ -1723,7 +1723,7 @@ fn super_trait_method_resolution() {
     check_infer(
         r#"
 mod foo {
-    trait SuperTrait {
+    pub trait SuperTrait {
         fn foo(&self) -> u32 {}
     }
 }
@@ -1735,15 +1735,15 @@ fn test<T: Trait1, U: Trait2>(x: T, y: U) {
     y.foo();
 }"#,
         expect![[r#"
-            49..53 'self': &Self
-            62..64 '{}': u32
-            181..182 'x': T
-            187..188 'y': U
-            193..222 '{     ...o(); }': ()
-            199..200 'x': T
-            199..206 'x.foo()': u32
-            212..213 'y': U
-            212..219 'y.foo()': u32
+            53..57 'self': &Self
+            66..68 '{}': u32
+            185..186 'x': T
+            191..192 'y': U
+            197..226 '{     ...o(); }': ()
+            203..204 'x': T
+            203..210 'x.foo()': u32
+            216..217 'y': U
+            216..223 'y.foo()': u32
         "#]],
     );
 }
@@ -1754,7 +1754,7 @@ fn super_trait_impl_trait_method_resolution() {
         r#"
 //- minicore: sized
 mod foo {
-    trait SuperTrait {
+    pub trait SuperTrait {
         fn foo(&self) -> u32 {}
     }
 }
@@ -1764,12 +1764,12 @@ fn test(x: &impl Trait1) {
     x.foo();
 }"#,
         expect![[r#"
-            49..53 'self': &Self
-            62..64 '{}': u32
-            115..116 'x': &impl Trait1
-            132..148 '{     ...o(); }': ()
-            138..139 'x': &impl Trait1
-            138..145 'x.foo()': u32
+            53..57 'self': &Self
+            66..68 '{}': u32
+            119..120 'x': &impl Trait1
+            136..152 '{     ...o(); }': ()
+            142..143 'x': &impl Trait1
+            142..149 'x.foo()': u32
         "#]],
     );
 }

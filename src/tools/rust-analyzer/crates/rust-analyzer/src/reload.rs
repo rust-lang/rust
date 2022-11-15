@@ -106,6 +106,14 @@ impl GlobalState {
             status.health = lsp_ext::Health::Error;
             status.message = Some(error)
         }
+
+        if self.config.linked_projects().is_empty()
+            && self.config.detached_files().is_empty()
+            && self.config.notifications().cargo_toml_not_found
+        {
+            status.health = lsp_ext::Health::Warning;
+            status.message = Some("Workspace reload required".to_string())
+        }
         status
     }
 
@@ -198,12 +206,9 @@ impl GlobalState {
             self.show_and_log_error("failed to run build scripts".to_string(), Some(error));
         }
 
-        let workspaces = self
-            .fetch_workspaces_queue
-            .last_op_result()
-            .iter()
-            .filter_map(|res| res.as_ref().ok().cloned())
-            .collect::<Vec<_>>();
+        let Some(workspaces) = self.fetch_workspaces_queue.last_op_result() else { return; };
+        let workspaces =
+            workspaces.iter().filter_map(|res| res.as_ref().ok().cloned()).collect::<Vec<_>>();
 
         fn eq_ignore_build_data<'a>(
             left: &'a ProjectWorkspace,
@@ -427,9 +432,14 @@ impl GlobalState {
     fn fetch_workspace_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
-        for ws in self.fetch_workspaces_queue.last_op_result() {
-            if let Err(err) = ws {
-                stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
+        let Some(last_op_result) = self.fetch_workspaces_queue.last_op_result() else { return Ok(()) };
+        if last_op_result.is_empty() {
+            stdx::format_to!(buf, "rust-analyzer failed to discover workspace");
+        } else {
+            for ws in last_op_result {
+                if let Err(err) = ws {
+                    stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
+                }
             }
         }
 

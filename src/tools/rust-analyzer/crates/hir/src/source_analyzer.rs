@@ -38,8 +38,7 @@ use hir_ty::{
         UnsafeExpr,
     },
     method_resolution::{self, lang_names_for_bin_op},
-    Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind,
-    TyLoweringContext,
+    Adjustment, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind, TyLoweringContext,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
@@ -156,21 +155,14 @@ impl SourceAnalyzer {
         Some(res)
     }
 
-    pub(crate) fn is_implicit_reborrow(
+    pub(crate) fn expr_adjustments(
         &self,
         db: &dyn HirDatabase,
         expr: &ast::Expr,
-    ) -> Option<Mutability> {
+    ) -> Option<&[Adjustment]> {
         let expr_id = self.expr_id(db, expr)?;
         let infer = self.infer.as_ref()?;
-        let adjustments = infer.expr_adjustments.get(&expr_id)?;
-        adjustments.windows(2).find_map(|slice| match slice {
-            &[Adjustment {kind: Adjust::Deref(None), ..}, Adjustment {kind: Adjust::Borrow(AutoBorrow::Ref(m)), ..}] => Some(match m {
-                hir_ty::Mutability::Mut => Mutability::Mut,
-                hir_ty::Mutability::Not => Mutability::Shared,
-            }),
-            _ => None,
-        })
+        infer.expr_adjustments.get(&expr_id).map(|v| &**v)
     }
 
     pub(crate) fn type_of_expr(

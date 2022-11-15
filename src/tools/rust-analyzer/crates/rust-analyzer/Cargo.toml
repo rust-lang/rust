@@ -8,7 +8,7 @@ documentation = "https://rust-analyzer.github.io/manual.html"
 license = "MIT OR Apache-2.0"
 autobins = false
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.65"
 
 [lib]
 doctest = false

@@ -173,7 +173,7 @@ Whether to pass `--no-default-features` to Cargo. Defaults to
 --
 Override the command rust-analyzer uses instead of `cargo check` for
 diagnostics on save. The command is required to output json and
-should therefor include `--message-format=json` or a similar option.
+should therefore include `--message-format=json` or a similar option.
 
 If you're changing this because you're using some tool wrapping
 Cargo, you might also want to change
@@ -450,6 +450,11 @@ to always show them).
 --
 Whether to show inlay type hints for return types of closures.
 --
+[[rust-analyzer.inlayHints.expressionAdjustmentHints.enable]]rust-analyzer.inlayHints.expressionAdjustmentHints.enable (default: `"never"`)::
++
+--
+Whether to show inlay hints for type adjustments.
+--
 [[rust-analyzer.inlayHints.lifetimeElisionHints.enable]]rust-analyzer.inlayHints.lifetimeElisionHints.enable (default: `"never"`)::
 +
 --
@@ -474,7 +479,8 @@ site.
 [[rust-analyzer.inlayHints.reborrowHints.enable]]rust-analyzer.inlayHints.reborrowHints.enable (default: `"never"`)::
 +
 --
-Whether to show inlay type hints for compiler inserted reborrows.
+Whether to show inlay hints for compiler inserted reborrows.
+This setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.
 --
 [[rust-analyzer.inlayHints.renderColons]]rust-analyzer.inlayHints.renderColons (default: `true`)::
 +
