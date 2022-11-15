@@ -59,7 +59,7 @@ use rustc_span::{
     symbol::{sym, Symbol},
     BytePos, FileName, RealFileName,
 };
-use serde::ser::SerializeSeq;
+use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Serialize, Serializer};
 
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
@@ -803,7 +803,7 @@ fn assoc_method(
     d: &clean::FnDecl,
     link: AssocItemLink<'_>,
     parent: ItemType,
-    cx: &Context<'_>,
+    cx: &mut Context<'_>,
     render_mode: RenderMode,
 ) {
     let tcx = cx.tcx();
@@ -836,6 +836,8 @@ fn assoc_method(
         + name.as_str().len()
         + generics_len;
 
+    let notable_traits = d.output.as_return().and_then(|output| notable_traits_button(output, cx));
+
     let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
         header_len += 4;
         let indent_str = "    ";
@@ -861,9 +863,9 @@ fn assoc_method(
         name = name,
         generics = g.print(cx),
         decl = d.full_print(header_len, indent, cx),
-        notable_traits = notable_traits_decl(d, cx),
+        notable_traits = notable_traits.unwrap_or_default(),
         where_clause = print_where_clause(g, cx, indent, end_newline),
-    )
+    );
 }
 
 /// Writes a span containing the versions at which an item became stable and/or const-stable. For
@@ -963,7 +965,7 @@ fn render_assoc_item(
     item: &clean::Item,
     link: AssocItemLink<'_>,
     parent: ItemType,
-    cx: &Context<'_>,
+    cx: &mut Context<'_>,
     render_mode: RenderMode,
 ) {
     match &*item.kind {
@@ -1273,88 +1275,133 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
-fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
-    let mut out = Buffer::html();
+pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> Option<String> {
+    let mut has_notable_trait = false;
 
-    if let Some((did, ty)) = decl.output.as_return().and_then(|t| Some((t.def_id(cx.cache())?, t)))
+    let did = ty.def_id(cx.cache())?;
+
+    // Box has pass-through impls for Read, Write, Iterator, and Future when the
+    // boxed type implements one of those. We don't want to treat every Box return
+    // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
+    // issue, with a pass-through impl for Future.
+    if Some(did) == cx.tcx().lang_items().owned_box()
+        || Some(did) == cx.tcx().lang_items().pin_type()
     {
-        // Box has pass-through impls for Read, Write, Iterator, and Future when the
-        // boxed type implements one of those. We don't want to treat every Box return
-        // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
-        // issue, with a pass-through impl for Future.
-        if Some(did) == cx.tcx().lang_items().owned_box()
-            || Some(did) == cx.tcx().lang_items().pin_type()
-        {
-            return "".to_string();
-        }
-        if let Some(impls) = cx.cache().impls.get(&did) {
-            for i in impls {
-                let impl_ = i.inner_impl();
-                if !impl_.for_.without_borrowed_ref().is_same(ty.without_borrowed_ref(), cx.cache())
+        return None;
+    }
+
+    if let Some(impls) = cx.cache().impls.get(&did) {
+        for i in impls {
+            let impl_ = i.inner_impl();
+            if !impl_.for_.without_borrowed_ref().is_same(ty.without_borrowed_ref(), cx.cache()) {
+                // Two different types might have the same did,
+                // without actually being the same.
+                continue;
+            }
+            if let Some(trait_) = &impl_.trait_ {
+                let trait_did = trait_.def_id();
+
+                if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx()))
                 {
-                    // Two different types might have the same did,
-                    // without actually being the same.
-                    continue;
-                }
-                if let Some(trait_) = &impl_.trait_ {
-                    let trait_did = trait_.def_id();
-
-                    if cx
-                        .cache()
-                        .traits
-                        .get(&trait_did)
-                        .map_or(false, |t| t.is_notable_trait(cx.tcx()))
-                    {
-                        if out.is_empty() {
-                            write!(
-                                &mut out,
-                                "<span class=\"notable\">Notable traits for {}</span>\
-                             <code class=\"content\">",
-                                impl_.for_.print(cx)
-                            );
-                        }
-
-                        //use the "where" class here to make it small
-                        write!(
-                            &mut out,
-                            "<span class=\"where fmt-newline\">{}</span>",
-                            impl_.print(false, cx)
-                        );
-                        for it in &impl_.items {
-                            if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
-                                out.push_str("<span class=\"where fmt-newline\">    ");
-                                let empty_set = FxHashSet::default();
-                                let src_link =
-                                    AssocItemLink::GotoSource(trait_did.into(), &empty_set);
-                                assoc_type(
-                                    &mut out,
-                                    it,
-                                    &tydef.generics,
-                                    &[], // intentionally leaving out bounds
-                                    Some(&tydef.type_),
-                                    src_link,
-                                    0,
-                                    cx,
-                                );
-                                out.push_str(";</span>");
-                            }
-                        }
-                    }
+                    has_notable_trait = true;
                 }
             }
         }
     }
 
-    if !out.is_empty() {
-        out.insert_str(
-            0,
-            "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\">ⓘ\
-            <span class=\"notable-traits-tooltiptext\"><span class=\"docblock\">",
-        );
-        out.push_str("</code></span></span></span></span>");
+    if has_notable_trait {
+        cx.types_with_notable_traits.insert(ty.clone());
+        Some(format!(
+            " <a href=\"#\" class=\"notable-traits\" data-ty=\"{ty}\">ⓘ</a>",
+            ty = Escape(&format!("{:#}", ty.print(cx))),
+        ))
+    } else {
+        None
+    }
+}
+
+fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
+    let mut out = Buffer::html();
+
+    let did = ty.def_id(cx.cache()).expect("notable_traits_button already checked this");
+
+    let impls = cx.cache().impls.get(&did).expect("notable_traits_button already checked this");
+
+    for i in impls {
+        let impl_ = i.inner_impl();
+        if !impl_.for_.without_borrowed_ref().is_same(ty.without_borrowed_ref(), cx.cache()) {
+            // Two different types might have the same did,
+            // without actually being the same.
+            continue;
+        }
+        if let Some(trait_) = &impl_.trait_ {
+            let trait_did = trait_.def_id();
+
+            if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx())) {
+                if out.is_empty() {
+                    write!(
+                        &mut out,
+                        "<h3>Notable traits for <code>{}</code></h3>\
+                     <pre class=\"content\"><code>",
+                        impl_.for_.print(cx)
+                    );
+                }
+
+                //use the "where" class here to make it small
+                write!(
+                    &mut out,
+                    "<span class=\"where fmt-newline\">{}</span>",
+                    impl_.print(false, cx)
+                );
+                for it in &impl_.items {
+                    if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
+                        out.push_str("<span class=\"where fmt-newline\">    ");
+                        let empty_set = FxHashSet::default();
+                        let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
+                        assoc_type(
+                            &mut out,
+                            it,
+                            &tydef.generics,
+                            &[], // intentionally leaving out bounds
+                            Some(&tydef.type_),
+                            src_link,
+                            0,
+                            cx,
+                        );
+                        out.push_str(";</span>");
+                    }
+                }
+            }
+        }
+    }
+    if out.is_empty() {
+        write!(&mut out, "</code></pre>",);
     }
 
-    out.into_inner()
+    (format!("{:#}", ty.print(cx)), out.into_inner())
+}
+
+pub(crate) fn notable_traits_json<'a>(
+    tys: impl Iterator<Item = &'a clean::Type>,
+    cx: &Context<'_>,
+) -> String {
+    let mut mp: Vec<(String, String)> = tys.map(|ty| notable_traits_decl(ty, cx)).collect();
+    mp.sort_by(|(name1, _html1), (name2, _html2)| name1.cmp(name2));
+    struct NotableTraitsMap(Vec<(String, String)>);
+    impl Serialize for NotableTraitsMap {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            let mut map = serializer.serialize_map(Some(self.0.len()))?;
+            for item in &self.0 {
+                map.serialize_entry(&item.0, &item.1)?;
+            }
+            map.end()
+        }
+    }
+    serde_json::to_string(&NotableTraitsMap(mp))
+        .expect("serialize (string, string) -> json object cannot fail")
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -2890,9 +2937,6 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         })()
         .unwrap_or(rustc_span::DUMMY_SP);
 
-        // The root path is the inverse of Context::current
-        let root_path = vec!["../"; cx.current.len() - 1].join("");
-
         let mut decoration_info = FxHashMap::default();
         decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);
         decoration_info.insert("highlight", byte_ranges);
@@ -2902,7 +2946,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             contents_subset,
             file_span,
             cx,
-            &root_path,
+            &cx.root_path(),
             highlight::DecorationInfo(decoration_info),
             sources::SourceContext::Embedded { offset: line_min, needs_expansion },
         );

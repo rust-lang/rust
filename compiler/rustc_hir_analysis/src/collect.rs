@@ -644,12 +644,6 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             }
         }
 
-        // Desugared from `impl Trait`, so visited by the function's return type.
-        hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-            origin: hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..),
-            ..
-        }) => {}
-
         // Don't call `type_of` on opaque types, since that depends on type
         // checking function bodies. `check_item_type` ensures that it's called
         // instead.
@@ -657,26 +651,31 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().predicates_of(def_id);
             tcx.ensure().explicit_item_bounds(def_id);
+            tcx.ensure().item_bounds(def_id);
         }
-        hir::ItemKind::TyAlias(..)
-        | hir::ItemKind::Static(..)
-        | hir::ItemKind::Const(..)
-        | hir::ItemKind::Fn(..) => {
+
+        hir::ItemKind::TyAlias(..) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
-            match it.kind {
-                hir::ItemKind::Fn(..) => tcx.ensure().fn_sig(def_id),
-                hir::ItemKind::OpaqueTy(..) => tcx.ensure().item_bounds(def_id),
-                hir::ItemKind::Const(ty, ..) | hir::ItemKind::Static(ty, ..) => {
-                    if !is_suggestable_infer_ty(ty) {
-                        let mut visitor = HirPlaceholderCollector::default();
-                        visitor.visit_item(it);
-                        placeholder_type_error(tcx, None, visitor.0, false, None, it.kind.descr());
-                    }
-                }
-                _ => (),
+        }
+
+        hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..) => {
+            tcx.ensure().generics_of(def_id);
+            tcx.ensure().type_of(def_id);
+            tcx.ensure().predicates_of(def_id);
+            if !is_suggestable_infer_ty(ty) {
+                let mut visitor = HirPlaceholderCollector::default();
+                visitor.visit_item(it);
+                placeholder_type_error(tcx, None, visitor.0, false, None, it.kind.descr());
             }
+        }
+
+        hir::ItemKind::Fn(..) => {
+            tcx.ensure().generics_of(def_id);
+            tcx.ensure().type_of(def_id);
+            tcx.ensure().predicates_of(def_id);
+            tcx.ensure().fn_sig(def_id);
         }
     }
 }

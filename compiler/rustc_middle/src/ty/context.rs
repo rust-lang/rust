@@ -198,12 +198,8 @@ impl<'tcx> CtxtInterners<'tcx> {
                         Fingerprint::ZERO
                     } else {
                         let mut hasher = StableHasher::new();
-                        let mut hcx = StableHashingContext::ignore_spans(
-                            sess,
-                            definitions,
-                            cstore,
-                            source_span,
-                        );
+                        let mut hcx =
+                            StableHashingContext::new(sess, definitions, cstore, source_span);
                         kind.hash_stable(&mut hcx, &mut hasher);
                         hasher.finish()
                     };

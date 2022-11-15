@@ -2225,46 +2225,12 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         // this is not *quite* right and changes the ordering of some output
         // anyways.
         let (new_value, map) = if self.should_print_verbose() {
-            let regions: Vec<_> = value
-                .bound_vars()
-                .into_iter()
-                .map(|var| {
-                    let ty::BoundVariableKind::Region(var) = var else {
-                    // This doesn't really matter because it doesn't get used,
-                    // it's just an empty value
-                    return ty::BrAnon(0, None);
-                };
-                    match var {
-                        ty::BrAnon(..) | ty::BrEnv => {
-                            start_or_continue(&mut self, "for<", ", ");
-                            let name = next_name(&self);
-                            debug!(?name);
-                            do_continue(&mut self, name);
-                            ty::BrNamed(CRATE_DEF_ID.to_def_id(), name)
-                        }
-                        ty::BrNamed(def_id, kw::UnderscoreLifetime) => {
-                            start_or_continue(&mut self, "for<", ", ");
-                            let name = next_name(&self);
-                            do_continue(&mut self, name);
-                            ty::BrNamed(def_id, name)
-                        }
-                        ty::BrNamed(def_id, name) => {
-                            start_or_continue(&mut self, "for<", ", ");
-                            do_continue(&mut self, name);
-                            ty::BrNamed(def_id, name)
-                        }
-                    }
-                })
-                .collect();
+            for var in value.bound_vars().iter() {
+                start_or_continue(&mut self, "for<", ", ");
+                write!(self, "{:?}", var)?;
+            }
             start_or_continue(&mut self, "", "> ");
-
-            self.tcx.replace_late_bound_regions(value.clone(), |br| {
-                let kind = regions[br.var.as_usize()];
-                self.tcx.mk_region(ty::ReLateBound(
-                    ty::INNERMOST,
-                    ty::BoundRegion { var: br.var, kind },
-                ))
-            })
+            (value.clone().skip_binder(), BTreeMap::default())
         } else {
             let tcx = self.tcx;
 

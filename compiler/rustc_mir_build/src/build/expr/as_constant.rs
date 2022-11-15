@@ -9,6 +9,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, TyCtxt};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::Size;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -26,7 +27,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let literal =
                     match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg }) {
                         Ok(c) => c,
-                        Err(LitToConstError::Reported) => ConstantKind::Ty(tcx.const_error(ty)),
+                        Err(LitToConstError::Reported(guar)) => {
+                            ConstantKind::Ty(tcx.const_error_with_guaranteed(ty, guar))
+                        }
                         Err(LitToConstError::TypeError) => {
                             bug!("encountered type error in `lit_to_mir_constant")
                         }
@@ -105,7 +108,15 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
     let LitToConstInput { lit, ty, neg } = lit_input;
     let trunc = |n| {
         let param_ty = ty::ParamEnv::reveal_all().and(ty);
-        let width = tcx.layout_of(param_ty).map_err(|_| LitToConstError::Reported)?.size;
+        let width = tcx
+            .layout_of(param_ty)
+            .map_err(|_| {
+                LitToConstError::Reported(tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    format!("couldn't compute width of literal: {:?}", lit_input.lit),
+                ))
+            })?
+            .size;
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
         let result = width.truncate(n);
         trace!("trunc result: {}", result);
@@ -136,12 +147,20 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
         (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
             trunc(if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n })?
         }
-        (ast::LitKind::Float(n, _), ty::Float(fty)) => {
-            parse_float_into_constval(*n, *fty, neg).ok_or(LitToConstError::Reported)?
-        }
+        (ast::LitKind::Float(n, _), ty::Float(fty)) => parse_float_into_constval(*n, *fty, neg)
+            .ok_or_else(|| {
+                LitToConstError::Reported(tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    format!("couldn't parse float literal: {:?}", lit_input.lit),
+                ))
+            })?,
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
-        (ast::LitKind::Err, _) => return Err(LitToConstError::Reported),
+        (ast::LitKind::Err, _) => {
+            return Err(LitToConstError::Reported(
+                tcx.sess.delay_span_bug(DUMMY_SP, "encountered LitKind::Err during mir build"),
+            ));
+        }
         _ => return Err(LitToConstError::TypeError),
     };
 

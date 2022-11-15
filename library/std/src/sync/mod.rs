@@ -182,6 +182,7 @@ pub mod mpsc;
 mod barrier;
 mod condvar;
 mod lazy_lock;
+mod mpmc;
 mod mutex;
 mod once;
 mod once_lock;

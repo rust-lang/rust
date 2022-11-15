@@ -1208,7 +1208,7 @@ impl Expr {
             ExprKind::Tup(_) => ExprPrecedence::Tup,
             ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node),
             ExprKind::Unary(..) => ExprPrecedence::Unary,
-            ExprKind::Lit(_) => ExprPrecedence::Lit,
+            ExprKind::Lit(_) | ExprKind::IncludedBytes(..) => ExprPrecedence::Lit,
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
             ExprKind::Let(..) => ExprPrecedence::Let,
             ExprKind::If(..) => ExprPrecedence::If,
@@ -1445,6 +1445,12 @@ pub enum ExprKind {
     /// A `do yeet` (aka `throw`/`fail`/`bail`/`raise`/whatever),
     /// with an optional value to be returned.
     Yeet(Option<P<Expr>>),
+
+    /// Bytes included via `include_bytes!`
+    /// Added for optimization purposes to avoid the need to escape
+    /// large binary blobs - should always behave like [`ExprKind::Lit`]
+    /// with a `ByteStr` literal.
+    IncludedBytes(Lrc<[u8]>),
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err,

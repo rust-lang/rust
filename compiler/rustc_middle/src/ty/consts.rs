@@ -2,7 +2,6 @@ use crate::mir::interpret::LitToConstInput;
 use crate::mir::ConstantKind;
 use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::HashStable;
@@ -225,7 +224,7 @@ impl<'tcx> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
             match val {
                 Ok(val) => Const::from_value(tcx, val, self.ty()),
-                Err(ErrorGuaranteed { .. }) => tcx.const_error(self.ty()),
+                Err(guar) => tcx.const_error_with_guaranteed(self.ty(), guar),
             }
         } else {
             // Either the constant isn't evaluatable or ValTree creation failed.
@@ -240,7 +239,7 @@ impl<'tcx> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_mir(tcx, param_env) {
             match val {
                 Ok(const_val) => ConstantKind::from_value(const_val, self.ty()),
-                Err(ErrorGuaranteed { .. }) => ConstantKind::Ty(tcx.const_error(self.ty())),
+                Err(guar) => ConstantKind::Ty(tcx.const_error_with_guaranteed(self.ty(), guar)),
             }
         } else {
             ConstantKind::Ty(self)

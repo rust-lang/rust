@@ -182,6 +182,7 @@ trigger_files = [
     "x.ps1",
     "src/bootstrap",
     "src/tools/rust-installer",
+    "src/tools/x",
     "configure",
     "Cargo.toml",
     "Cargo.lock",
@@ -573,6 +574,7 @@ fallback = [
 "/src/llvm-project" =                        ["@cuviper"]
 "/src/rustdoc-json-types" =                  ["rustdoc"]
 "/src/stage0.json" =                         ["bootstrap"]
+"/src/test/ui" =                             ["compiler"]
 "/src/tools/cargo" =                         ["@ehuss", "@joshtriplett"]
 "/src/tools/compiletest" =                   ["bootstrap"]
 "/src/tools/linkchecker" =                   ["@ehuss"]
@@ -582,3 +584,4 @@ fallback = [
 "/src/tools/rustdoc-js" =                    ["rustdoc"]
 "/src/tools/rustdoc-themes" =                ["rustdoc"]
 "/src/tools/tidy" =                          ["bootstrap"]
+"/src/tools/x" =                             ["bootstrap"]

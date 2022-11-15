@@ -487,6 +487,12 @@ https://docs.helix-editor.com/[Helix] supports LSP by default.
 However, it won't install `rust-analyzer` automatically.
 You can follow instructions for installing <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
+=== Crates
+
+There is a package named `ra_ap_rust_analyzer` available on https://crates.io/crates/ra_ap_rust-analyzer[crates.io], for someone who wants to use it programmatically.
+
+For more details, see https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/publish.yml[the publish workflow].
+
 == Troubleshooting
 
 Start with looking at the rust-analyzer version.

@@ -1,3 +1,6 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError;

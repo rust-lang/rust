@@ -141,7 +141,7 @@ impl CheckAttrVisitor<'_> {
                 sym::collapse_debuginfo => self.check_collapse_debuginfo(attr, span, target),
                 sym::const_trait => self.check_const_trait(attr, span, target),
                 sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
-                sym::must_use => self.check_must_use(hir_id, &attr, span, target),
+                sym::must_use => self.check_must_use(hir_id, &attr, target),
                 sym::rustc_pass_by_value => self.check_pass_by_value(&attr, span, target),
                 sym::rustc_allow_incoherent_impl => {
                     self.check_allow_incoherent_impl(&attr, span, target)
@@ -1176,17 +1176,7 @@ impl CheckAttrVisitor<'_> {
     }
 
     /// Warns against some misuses of `#[must_use]`
-    fn check_must_use(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
-        let node = self.tcx.hir().get(hir_id);
-        if let Some(kind) = node.fn_kind() && let rustc_hir::IsAsync::Async = kind.asyncness() {
-            self.tcx.emit_spanned_lint(
-                UNUSED_ATTRIBUTES,
-                hir_id,
-                attr.span,
-                errors::MustUseAsync { span }
-            );
-        }
-
+    fn check_must_use(&self, hir_id: HirId, attr: &Attribute, target: Target) -> bool {
         if !matches!(
             target,
             Target::Fn

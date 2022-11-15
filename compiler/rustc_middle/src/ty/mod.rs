@@ -2506,6 +2506,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.trait_def(trait_def_id).has_auto_impl
     }
 
+    pub fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
+        self.trait_is_auto(trait_def_id) || self.lang_items().sized_trait() == Some(trait_def_id)
+    }
+
     /// Returns layout of a generator. Layout might be unavailable if the
     /// generator is tainted by errors.
     pub fn generator_layout(self, def_id: DefId) -> Option<&'tcx GeneratorLayout<'tcx>> {

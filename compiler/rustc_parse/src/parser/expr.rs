@@ -33,6 +33,7 @@ use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
+use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
@@ -2090,7 +2091,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
         let asyncness = if self.token.uninterpolated_span().rust_2018() {
-            self.parse_asyncness()
+            self.parse_asyncness(Case::Sensitive)
         } else {
             Async::No
         };
@@ -2271,7 +2272,7 @@ impl<'a> Parser<'a> {
                 self.mk_block_err(cond_span.shrink_to_hi())
             }
         } else {
-            let attrs = self.parse_outer_attributes()?.take_for_recovery(); // For recovery.
+            let attrs = self.parse_outer_attributes()?; // For recovery.
             let block = if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.parse_block()?
             } else {
@@ -2288,7 +2289,7 @@ impl<'a> Parser<'a> {
                     })?
                 }
             };
-            self.error_on_if_block_attrs(lo, false, block.span, &attrs);
+            self.error_on_if_block_attrs(lo, false, block.span, attrs);
             block
         };
         let els = if self.eat_keyword(kw::Else) { Some(self.parse_else_expr()?) } else { None };
@@ -2349,7 +2350,7 @@ impl<'a> Parser<'a> {
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
         let else_span = self.prev_token.span; // `else`
-        let attrs = self.parse_outer_attributes()?.take_for_recovery(); // For recovery.
+        let attrs = self.parse_outer_attributes()?; // For recovery.
         let expr = if self.eat_keyword(kw::If) {
             self.parse_if_expr()?
         } else if self.check(&TokenKind::OpenDelim(Delimiter::Brace)) {
@@ -2384,7 +2385,7 @@ impl<'a> Parser<'a> {
                 },
             }
         };
-        self.error_on_if_block_attrs(else_span, true, expr.span, &attrs);
+        self.error_on_if_block_attrs(else_span, true, expr.span, attrs);
         Ok(expr)
     }
 
@@ -2393,8 +2394,13 @@ impl<'a> Parser<'a> {
         ctx_span: Span,
         is_ctx_else: bool,
         branch_span: Span,
-        attrs: &[ast::Attribute],
+        attrs: AttrWrapper,
     ) {
+        if attrs.is_empty() {
+            return;
+        }
+
+        let attrs: &[ast::Attribute] = &attrs.take_for_recovery(self.sess);
         let (attributes, last) = match attrs {
             [] => return,
             [x0 @ xn] | [x0, .., xn] => (x0.span.to(xn.span), xn.span),

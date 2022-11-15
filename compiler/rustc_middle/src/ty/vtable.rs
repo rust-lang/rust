@@ -66,7 +66,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     let layout = tcx
         .layout_of(ty::ParamEnv::reveal_all().and(ty))
         .expect("failed to build vtable representation");
-    assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
+    assert!(layout.is_sized(), "can't create a vtable for an unsized type");
     let size = layout.size.bytes();
     let align = layout.align.abi.bytes();
 

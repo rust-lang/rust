@@ -181,7 +181,7 @@ fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef
     let mut counter = 0;
     while names_in_scope.contains(&name) {
         counter += 1;
-        name = format!("{}{}", &default_name, counter)
+        name = format!("{default_name}{counter}")
     }
     make::name_ref(&name)
 }
@@ -1291,19 +1291,23 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> St
     match fun.outliving_locals.as_slice() {
         [] => {}
         [var] => {
-            format_to!(buf, "let {}{} = ", mut_modifier(var), var.local.name(ctx.db()))
+            let modifier = mut_modifier(var);
+            let name = var.local.name(ctx.db());
+            format_to!(buf, "let {modifier}{name} = ")
         }
         vars => {
             buf.push_str("let (");
             let bindings = vars.iter().format_with(", ", |local, f| {
-                f(&format_args!("{}{}", mut_modifier(local), local.local.name(ctx.db())))
+                let modifier = mut_modifier(local);
+                let name = local.local.name(ctx.db());
+                f(&format_args!("{modifier}{name}"))
             });
-            format_to!(buf, "{}", bindings);
+            format_to!(buf, "{bindings}");
             buf.push_str(") = ");
         }
     }
 
-    format_to!(buf, "{}", expr);
+    format_to!(buf, "{expr}");
     let insert_comma = fun
         .body
         .parent()
@@ -1447,6 +1451,8 @@ fn format_function(
     new_indent: IndentLevel,
 ) -> String {
     let mut fn_def = String::new();
+
+    let fun_name = &fun.name;
     let params = fun.make_param_list(ctx, module);
     let ret_ty = fun.make_ret_ty(ctx, module);
     let body = make_body(ctx, old_indent, new_indent, fun);
@@ -1454,42 +1460,28 @@ fn format_function(
     let async_kw = if fun.control_flow.is_async { "async " } else { "" };
     let unsafe_kw = if fun.control_flow.is_unsafe { "unsafe " } else { "" };
     let (generic_params, where_clause) = make_generic_params_and_where_clause(ctx, fun);
+
+    format_to!(fn_def, "\n\n{new_indent}{const_kw}{async_kw}{unsafe_kw}");
     match ctx.config.snippet_cap {
-        Some(_) => format_to!(
-            fn_def,
-            "\n\n{}{}{}{}fn $0{}",
-            new_indent,
-            const_kw,
-            async_kw,
-            unsafe_kw,
-            fun.name,
-        ),
-        None => format_to!(
-            fn_def,
-            "\n\n{}{}{}{}fn {}",
-            new_indent,
-            const_kw,
-            async_kw,
-            unsafe_kw,
-            fun.name,
-        ),
+        Some(_) => format_to!(fn_def, "fn $0{fun_name}"),
+        None => format_to!(fn_def, "fn {fun_name}"),
     }
 
     if let Some(generic_params) = generic_params {
-        format_to!(fn_def, "{}", generic_params);
+        format_to!(fn_def, "{generic_params}");
     }
 
-    format_to!(fn_def, "{}", params);
+    format_to!(fn_def, "{params}");
 
     if let Some(ret_ty) = ret_ty {
-        format_to!(fn_def, " {}", ret_ty);
+        format_to!(fn_def, " {ret_ty}");
     }
 
     if let Some(where_clause) = where_clause {
-        format_to!(fn_def, " {}", where_clause);
+        format_to!(fn_def, " {where_clause}");
     }
 
-    format_to!(fn_def, " {}", body);
+    format_to!(fn_def, " {body}");
 
     fn_def
 }

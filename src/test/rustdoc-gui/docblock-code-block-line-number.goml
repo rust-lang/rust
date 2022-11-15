@@ -30,10 +30,10 @@ wait-for: "#settings"
 assert-css: ("#settings", {"display": "block"})
 
 // Then, click the toggle button.
-click: "input#line-numbers + .slider"
+click: "input#line-numbers"
 wait-for: 100 // wait-for-false does not exist
 assert-false: "pre.example-line-numbers"
 
 // Finally, turn it on again.
-click: "input#line-numbers + .slider"
+click: "input#line-numbers"
 wait-for: "pre.example-line-numbers"

@@ -790,6 +790,19 @@ function loadCss(cssUrl) {
             // we need to switch away from mobile mode and make the main content area scrollable.
             hideSidebar();
         }
+        if (window.CURRENT_NOTABLE_ELEMENT) {
+            // As a workaround to the behavior of `contains: layout` used in doc togglers, the
+            // notable traits popup is positioned using javascript.
+            //
+            // This means when the window is resized, we need to redo the layout.
+            const base = window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE;
+            const force_visible = base.NOTABLE_FORCE_VISIBLE;
+            hideNotable();
+            if (force_visible) {
+                showNotable(base);
+                base.NOTABLE_FORCE_VISIBLE = true;
+            }
+        }
     });
 
     function handleClick(id, f) {
@@ -822,10 +835,121 @@ function loadCss(cssUrl) {
         });
     });
 
+    function showNotable(e) {
+        if (!window.NOTABLE_TRAITS) {
+            const data = document.getElementById("notable-traits-data");
+            if (data) {
+                window.NOTABLE_TRAITS = JSON.parse(data.innerText);
+            } else {
+                throw new Error("showNotable() called on page without any notable traits!");
+            }
+        }
+        if (window.CURRENT_NOTABLE_ELEMENT && window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE === e) {
+            // Make this function idempotent.
+            return;
+        }
+        hideNotable();
+        const ty = e.getAttribute("data-ty");
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = "<div class=\"docblock\">" + window.NOTABLE_TRAITS[ty] + "</div>";
+        wrapper.className = "notable popover";
+        const focusCatcher = document.createElement("div");
+        focusCatcher.setAttribute("tabindex", "0");
+        focusCatcher.onfocus = hideNotable;
+        wrapper.appendChild(focusCatcher);
+        const pos = e.getBoundingClientRect();
+        // 5px overlap so that the mouse can easily travel from place to place
+        wrapper.style.top = (pos.top + window.scrollY + pos.height) + "px";
+        wrapper.style.left = 0;
+        wrapper.style.right = "auto";
+        wrapper.style.visibility = "hidden";
+        const body = document.getElementsByTagName("body")[0];
+        body.appendChild(wrapper);
+        const wrapperPos = wrapper.getBoundingClientRect();
+        // offset so that the arrow points at the center of the "(i)"
+        const finalPos = pos.left + window.scrollX - wrapperPos.width + 24;
+        if (finalPos > 0) {
+            wrapper.style.left = finalPos + "px";
+        } else {
+            wrapper.style.setProperty(
+                "--popover-arrow-offset",
+                (wrapperPos.right - pos.right + 4) + "px"
+            );
+        }
+        wrapper.style.visibility = "";
+        window.CURRENT_NOTABLE_ELEMENT = wrapper;
+        window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE = e;
+        wrapper.onpointerleave = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            if (!e.NOTABLE_FORCE_VISIBLE && !elemIsInParent(event.relatedTarget, e)) {
+                hideNotable();
+            }
+        };
+    }
+
+    function notableBlurHandler(event) {
+        if (window.CURRENT_NOTABLE_ELEMENT &&
+            !elemIsInParent(document.activeElement, window.CURRENT_NOTABLE_ELEMENT) &&
+            !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT) &&
+            !elemIsInParent(document.activeElement, window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE) &&
+            !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE)
+        ) {
+            // Work around a difference in the focus behaviour between Firefox, Chrome, and Safari.
+            // When I click the button on an already-opened notable trait popover, Safari
+            // hides the popover and then immediately shows it again, while everyone else hides it
+            // and it stays hidden.
+            //
+            // To work around this, make sure the click finishes being dispatched before
+            // hiding the popover. Since `hideNotable()` is idempotent, this makes Safari behave
+            // consistently with the other two.
+            setTimeout(hideNotable, 0);
+        }
+    }
+
+    function hideNotable() {
+        if (window.CURRENT_NOTABLE_ELEMENT) {
+            if (window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE) {
+                window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.focus();
+                window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE = false;
+            }
+            const body = document.getElementsByTagName("body")[0];
+            body.removeChild(window.CURRENT_NOTABLE_ELEMENT);
+            window.CURRENT_NOTABLE_ELEMENT = null;
+        }
+    }
+
     onEachLazy(document.getElementsByClassName("notable-traits"), e => {
         e.onclick = function() {
-            this.getElementsByClassName("notable-traits-tooltiptext")[0]
-                .classList.toggle("force-tooltip");
+            this.NOTABLE_FORCE_VISIBLE = this.NOTABLE_FORCE_VISIBLE ? false : true;
+            if (window.CURRENT_NOTABLE_ELEMENT && !this.NOTABLE_FORCE_VISIBLE) {
+                hideNotable();
+            } else {
+                showNotable(this);
+                window.CURRENT_NOTABLE_ELEMENT.setAttribute("tabindex", "0");
+                window.CURRENT_NOTABLE_ELEMENT.focus();
+                window.CURRENT_NOTABLE_ELEMENT.onblur = notableBlurHandler;
+            }
+            return false;
+        };
+        e.onpointerenter = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            showNotable(this);
+        };
+        e.onpointerleave = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            if (!this.NOTABLE_FORCE_VISIBLE &&
+                !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT)) {
+                hideNotable();
+            }
         };
     });
 
@@ -935,6 +1059,7 @@ function loadCss(cssUrl) {
         onEachLazy(document.querySelectorAll(".search-form .popover"), elem => {
             elem.style.display = "none";
         });
+        hideNotable();
     };
 
     /**

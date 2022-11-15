@@ -85,7 +85,7 @@ pub enum MirPhase {
     ///
     /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a part
     /// of analysis to runtime MIR lowering. To ensure lints are reported reliably, this means that
-    /// transformations which may supress such errors should not run on analysis MIR.
+    /// transformations which may suppress such errors should not run on analysis MIR.
     Runtime(RuntimePhase),
 }
 

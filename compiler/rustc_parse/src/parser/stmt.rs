@@ -19,7 +19,7 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::util::classify;
-use rustc_ast::{AttrStyle, AttrVec, Attribute, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
+use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
         } else if self.eat(&token::Semi) {
             // Do not attempt to parse an expression if we're done here.
-            self.error_outer_attrs(&attrs.take_for_recovery());
+            self.error_outer_attrs(attrs);
             self.mk_stmt(lo, StmtKind::Empty)
         } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts.
@@ -120,7 +120,7 @@ impl<'a> Parser<'a> {
             }
             self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         } else {
-            self.error_outer_attrs(&attrs.take_for_recovery());
+            self.error_outer_attrs(attrs);
             return Ok(None);
         }))
     }
@@ -199,8 +199,10 @@ impl<'a> Parser<'a> {
 
     /// Error on outer attributes in this context.
     /// Also error if the previous token was a doc comment.
-    fn error_outer_attrs(&self, attrs: &[Attribute]) {
-        if let [.., last] = attrs {
+    fn error_outer_attrs(&self, attrs: AttrWrapper) {
+        if !attrs.is_empty()
+        && let attrs = attrs.take_for_recovery(self.sess)
+        && let attrs @ [.., last] = &*attrs {
             if last.is_doc_comment() {
                 self.sess.emit_err(DocCommentDoesNotDocumentAnything {
                     span: last.span,

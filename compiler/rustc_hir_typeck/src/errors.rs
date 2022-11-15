@@ -125,3 +125,11 @@ pub struct AddMissingParenthesesInRange {
     #[suggestion_part(code = ")")]
     pub right: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_op_trait_generic_params)]
+pub struct OpMethodGenericParams {
+    #[primary_span]
+    pub span: Span,
+    pub method_name: String,
+}

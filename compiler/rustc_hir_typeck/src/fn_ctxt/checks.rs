@@ -597,6 +597,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
+        let mk_trace = |span, (formal_ty, expected_ty), provided_ty| {
+            let mismatched_ty = if expected_ty == provided_ty {
+                // If expected == provided, then we must have failed to sup
+                // the formal type. Avoid printing out "expected Ty, found Ty"
+                // in that case.
+                formal_ty
+            } else {
+                expected_ty
+            };
+            TypeTrace::types(&self.misc(span), true, mismatched_ty, provided_ty)
+        };
+
         // The algorithm here is inspired by levenshtein distance and longest common subsequence.
         // We'll try to detect 4 different types of mistakes:
         // - An extra parameter has been provided that doesn't satisfy *any* of the other inputs
@@ -661,10 +673,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // A tuple wrap suggestion actually occurs within,
                         // so don't do anything special here.
                         err = self.err_ctxt().report_and_explain_type_error(
-                            TypeTrace::types(
-                                &self.misc(*lo),
-                                true,
-                                formal_and_expected_inputs[mismatch_idx.into()].1,
+                            mk_trace(
+                                *lo,
+                                formal_and_expected_inputs[mismatch_idx.into()],
                                 provided_arg_tys[mismatch_idx.into()].0,
                             ),
                             terr,
@@ -748,9 +759,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         errors.drain_filter(|error| {
                 let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) = error else { return false };
                 let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
-                let (expected_ty, _) = formal_and_expected_inputs[*expected_idx];
-                let cause = &self.misc(provided_span);
-                let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+                let trace = mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
                 if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
                     self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
                     return true;
@@ -774,8 +783,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let (formal_ty, expected_ty) = formal_and_expected_inputs[*expected_idx];
             let (provided_ty, provided_arg_span) = provided_arg_tys[*provided_idx];
-            let cause = &self.misc(provided_arg_span);
-            let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+            let trace = mk_trace(provided_arg_span, (formal_ty, expected_ty), provided_ty);
             let mut err = self.err_ctxt().report_and_explain_type_error(trace, *err);
             self.emit_coerce_suggestions(
                 &mut err,
@@ -847,8 +855,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (formal_ty, expected_ty) = formal_and_expected_inputs[expected_idx];
                     let (provided_ty, provided_span) = provided_arg_tys[provided_idx];
                     if let Compatibility::Incompatible(error) = compatibility {
-                        let cause = &self.misc(provided_span);
-                        let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+                        let trace = mk_trace(provided_span, (formal_ty, expected_ty), provided_ty);
                         if let Some(e) = error {
                             self.err_ctxt().note_type_err(
                                 &mut err,

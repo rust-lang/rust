@@ -66,8 +66,7 @@
 
     function setEvents(settingsElement) {
         updateLightAndDark();
-        onEachLazy(settingsElement.getElementsByClassName("slider"), elem => {
-            const toggle = elem.previousElementSibling;
+        onEachLazy(settingsElement.querySelectorAll("input[type=\"checkbox\"]"), toggle => {
             const settingId = toggle.id;
             const settingValue = getSettingValue(settingId);
             if (settingValue !== null) {
@@ -139,7 +138,6 @@
                 const checked = setting["default"] === true ? " checked" : "";
                 output += `<label class="toggle">\
                         <input type="checkbox" id="${js_data_name}"${checked}>\
-                        <span class="slider"></span>\
                         <span class="label">${setting_name}</span>\
                     </label>`;
             }

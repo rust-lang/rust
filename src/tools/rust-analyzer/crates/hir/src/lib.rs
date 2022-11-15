@@ -2995,7 +2995,17 @@ impl Type {
         let callee = match self.ty.kind(Interner) {
             TyKind::Closure(id, _) => Callee::Closure(*id),
             TyKind::Function(_) => Callee::FnPtr,
-            _ => Callee::Def(self.ty.callable_def(db)?),
+            TyKind::FnDef(..) => Callee::Def(self.ty.callable_def(db)?),
+            _ => {
+                let ty = hir_ty::replace_errors_with_variables(&self.ty);
+                let sig = hir_ty::callable_sig_from_fnonce(&ty, self.env.clone(), db)?;
+                return Some(Callable {
+                    ty: self.clone(),
+                    sig,
+                    callee: Callee::Other,
+                    is_bound_method: false,
+                });
+            }
         };
 
         let sig = self.ty.callable_sig(db)?;
@@ -3464,6 +3474,7 @@ enum Callee {
     Def(CallableDefId),
     Closure(ClosureId),
     FnPtr,
+    Other,
 }
 
 pub enum CallableKind {
@@ -3472,6 +3483,8 @@ pub enum CallableKind {
     TupleEnumVariant(Variant),
     Closure,
     FnPtr,
+    /// Some other type that implements `FnOnce`.
+    Other,
 }
 
 impl Callable {
@@ -3483,6 +3496,7 @@ impl Callable {
             Def(CallableDefId::EnumVariantId(it)) => CallableKind::TupleEnumVariant(it.into()),
             Closure(_) => CallableKind::Closure,
             FnPtr => CallableKind::FnPtr,
+            Other => CallableKind::Other,
         }
     }
     pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<ast::SelfParam> {

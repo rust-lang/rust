@@ -8,7 +8,7 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0751]: found both positive and negative implementation of trait `std::marker::Send` for type `TestType<_>`:
+error[E0751]: found both positive and negative implementation of trait `Send` for type `TestType<_>`:
   --> $DIR/specialization-overlap-negative.rs:9:1
    |
 LL | unsafe impl<T: Clone> Send for TestType<T> {}

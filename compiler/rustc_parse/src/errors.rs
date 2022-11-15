@@ -1165,10 +1165,12 @@ pub(crate) struct ParenthesesInForHead {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(suggestion, applicability = "machine-applicable")]
 pub(crate) struct ParenthesesInForHeadSugg {
-    #[suggestion_part(code = "")]
+    #[suggestion_part(code = "{left_snippet}")]
     pub left: Span,
-    #[suggestion_part(code = "")]
+    pub left_snippet: String,
+    #[suggestion_part(code = "{right_snippet}")]
     pub right: Span,
+    pub right_snippet: String,
 }
 
 #[derive(Diagnostic)]
@@ -1277,4 +1279,25 @@ pub(crate) struct DoubleColonInBound {
     pub span: Span,
     #[suggestion(code = ": ", applicability = "machine-applicable")]
     pub between: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser_fn_ptr_with_generics)]
+pub(crate) struct FnPtrWithGenerics {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<FnPtrWithGenericsSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct FnPtrWithGenericsSugg {
+    #[suggestion_part(code = "{snippet}")]
+    pub left: Span,
+    pub snippet: String,
+    #[suggestion_part(code = "")]
+    pub right: Span,
+    pub arity: usize,
+    pub for_param_list_exists: bool,
 }

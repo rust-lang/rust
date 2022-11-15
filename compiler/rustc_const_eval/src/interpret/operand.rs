@@ -280,7 +280,7 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
     }
 }
@@ -376,7 +376,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Read an immediate from a place, asserting that that is possible with the given layout.
     ///
-    /// If this suceeds, the `ImmTy` is never `Uninit`.
+    /// If this succeeds, the `ImmTy` is never `Uninit`.
     #[inline(always)]
     pub fn read_immediate(
         &self,

@@ -9,14 +9,15 @@ use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{self, TyCtxtInferExt};
+use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::util::ExplicitSelf;
-use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{
-    self, AssocItem, DefIdTree, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    self, AssocItem, DefIdTree, TraitRef, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitable,
 };
+use rustc_middle::ty::{FnSig, InternalSubsts};
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
@@ -303,102 +304,19 @@ fn compare_predicate_entailment<'tcx>(
     }
 
     if let Err(terr) = result {
-        debug!("sub_types failed: impl ty {:?}, trait ty {:?}", impl_fty, trait_fty);
+        debug!(?terr, "sub_types failed: impl ty {:?}, trait ty {:?}", impl_fty, trait_fty);
 
-        let (impl_err_span, trait_err_span) =
-            extract_spans_for_error_reporting(&infcx, terr, &cause, impl_m, trait_m);
-
-        cause.span = impl_err_span;
-
-        let mut diag = struct_span_err!(
-            tcx.sess,
-            cause.span(),
-            E0053,
-            "method `{}` has an incompatible type for trait",
-            trait_m.name
-        );
-        match &terr {
-            TypeError::ArgumentMutability(0) | TypeError::ArgumentSorts(_, 0)
-                if trait_m.fn_has_self_parameter =>
-            {
-                let ty = trait_sig.inputs()[0];
-                let sugg = match ExplicitSelf::determine(ty, |_| ty == impl_trait_ref.self_ty()) {
-                    ExplicitSelf::ByValue => "self".to_owned(),
-                    ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
-                    ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
-                    _ => format!("self: {ty}"),
-                };
-
-                // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
-                // span points only at the type `Box<Self`>, but we want to cover the whole
-                // argument pattern and type.
-                let span = match tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind {
-                    ImplItemKind::Fn(ref sig, body) => tcx
-                        .hir()
-                        .body_param_names(body)
-                        .zip(sig.decl.inputs.iter())
-                        .map(|(param, ty)| param.span.to(ty.span))
-                        .next()
-                        .unwrap_or(impl_err_span),
-                    _ => bug!("{:?} is not a method", impl_m),
-                };
-
-                diag.span_suggestion(
-                    span,
-                    "change the self-receiver type to match the trait",
-                    sugg,
-                    Applicability::MachineApplicable,
-                );
-            }
-            TypeError::ArgumentMutability(i) | TypeError::ArgumentSorts(_, i) => {
-                if trait_sig.inputs().len() == *i {
-                    // Suggestion to change output type. We do not suggest in `async` functions
-                    // to avoid complex logic or incorrect output.
-                    match tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind {
-                        ImplItemKind::Fn(ref sig, _)
-                            if sig.header.asyncness == hir::IsAsync::NotAsync =>
-                        {
-                            let msg = "change the output type to match the trait";
-                            let ap = Applicability::MachineApplicable;
-                            match sig.decl.output {
-                                hir::FnRetTy::DefaultReturn(sp) => {
-                                    let sugg = format!("-> {} ", trait_sig.output());
-                                    diag.span_suggestion_verbose(sp, msg, sugg, ap);
-                                }
-                                hir::FnRetTy::Return(hir_ty) => {
-                                    let sugg = trait_sig.output();
-                                    diag.span_suggestion(hir_ty.span, msg, sugg, ap);
-                                }
-                            };
-                        }
-                        _ => {}
-                    };
-                } else if let Some(trait_ty) = trait_sig.inputs().get(*i) {
-                    diag.span_suggestion(
-                        impl_err_span,
-                        "change the parameter type to match the trait",
-                        trait_ty,
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-            _ => {}
-        }
-
-        infcx.err_ctxt().note_type_err(
-            &mut diag,
-            &cause,
-            trait_err_span.map(|sp| (sp, "type in trait".to_owned())),
-            Some(infer::ValuePairs::Terms(ExpectedFound {
-                expected: trait_fty.into(),
-                found: impl_fty.into(),
-            })),
+        let emitted = report_trait_method_mismatch(
+            tcx,
+            &mut cause,
+            &infcx,
             terr,
-            false,
-            false,
+            (trait_m, trait_fty),
+            (impl_m, impl_fty),
+            &trait_sig,
+            &impl_trait_ref,
         );
-
-        return Err(diag.emit());
+        return Err(emitted);
     }
 
     // Check that all obligations are satisfied by the implementation's
@@ -424,6 +342,7 @@ fn compare_predicate_entailment<'tcx>(
     Ok(())
 }
 
+#[instrument(skip(tcx), level = "debug", ret)]
 pub fn collect_trait_impl_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -437,7 +356,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
 
     let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
     let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
-    let cause = ObligationCause::new(
+    let mut cause = ObligationCause::new(
         return_span,
         impl_m_hir_id,
         ObligationCauseCode::CompareImplItemObligation {
@@ -514,23 +433,35 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
         }
     }
 
+    debug!(?trait_sig, ?impl_sig, "equating function signatures");
+
+    let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
+    let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
+
     // Unify the whole function signature. We need to do this to fully infer
     // the lifetimes of the return type, but do this after unifying just the
     // return types, since we want to avoid duplicating errors from
     // `compare_predicate_entailment`.
-    match infcx
-        .at(&cause, param_env)
-        .eq(tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig)), tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig)))
-    {
+    match infcx.at(&cause, param_env).eq(trait_fty, impl_fty) {
         Ok(infer::InferOk { value: (), obligations }) => {
             ocx.register_obligations(obligations);
         }
         Err(terr) => {
-            let guar = tcx.sess.delay_span_bug(
-                return_span,
-                format!("could not unify `{trait_sig}` and `{impl_sig}`: {terr:?}"),
+            // This function gets called during `compare_predicate_entailment` when normalizing a
+            // signature that contains RPITIT. When the method signatures don't match, we have to
+            // emit an error now because `compare_predicate_entailment` will not report the error
+            // when normalization fails.
+            let emitted = report_trait_method_mismatch(
+                tcx,
+                &mut cause,
+                infcx,
+                terr,
+                (trait_m, trait_fty),
+                (impl_m, impl_fty),
+                &trait_sig,
+                &impl_trait_ref,
             );
-            return Err(guar);
+            return Err(emitted);
         }
     }
 
@@ -688,6 +619,112 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
             ty.super_fold_with(self)
         }
     }
+}
+
+fn report_trait_method_mismatch<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cause: &mut ObligationCause<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    terr: TypeError<'tcx>,
+    (trait_m, trait_fty): (&AssocItem, Ty<'tcx>),
+    (impl_m, impl_fty): (&AssocItem, Ty<'tcx>),
+    trait_sig: &FnSig<'tcx>,
+    impl_trait_ref: &TraitRef<'tcx>,
+) -> ErrorGuaranteed {
+    let (impl_err_span, trait_err_span) =
+        extract_spans_for_error_reporting(&infcx, terr, &cause, impl_m, trait_m);
+
+    cause.span = impl_err_span;
+
+    let mut diag = struct_span_err!(
+        tcx.sess,
+        cause.span(),
+        E0053,
+        "method `{}` has an incompatible type for trait",
+        trait_m.name
+    );
+    match &terr {
+        TypeError::ArgumentMutability(0) | TypeError::ArgumentSorts(_, 0)
+            if trait_m.fn_has_self_parameter =>
+        {
+            let ty = trait_sig.inputs()[0];
+            let sugg = match ExplicitSelf::determine(ty, |_| ty == impl_trait_ref.self_ty()) {
+                ExplicitSelf::ByValue => "self".to_owned(),
+                ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
+                ExplicitSelf::ByReference(_, hir::Mutability::Mut) => "&mut self".to_owned(),
+                _ => format!("self: {ty}"),
+            };
+
+            // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
+            // span points only at the type `Box<Self`>, but we want to cover the whole
+            // argument pattern and type.
+            let span = match tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind {
+                ImplItemKind::Fn(ref sig, body) => tcx
+                    .hir()
+                    .body_param_names(body)
+                    .zip(sig.decl.inputs.iter())
+                    .map(|(param, ty)| param.span.to(ty.span))
+                    .next()
+                    .unwrap_or(impl_err_span),
+                _ => bug!("{:?} is not a method", impl_m),
+            };
+
+            diag.span_suggestion(
+                span,
+                "change the self-receiver type to match the trait",
+                sugg,
+                Applicability::MachineApplicable,
+            );
+        }
+        TypeError::ArgumentMutability(i) | TypeError::ArgumentSorts(_, i) => {
+            if trait_sig.inputs().len() == *i {
+                // Suggestion to change output type. We do not suggest in `async` functions
+                // to avoid complex logic or incorrect output.
+                match tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind {
+                    ImplItemKind::Fn(ref sig, _)
+                        if sig.header.asyncness == hir::IsAsync::NotAsync =>
+                    {
+                        let msg = "change the output type to match the trait";
+                        let ap = Applicability::MachineApplicable;
+                        match sig.decl.output {
+                            hir::FnRetTy::DefaultReturn(sp) => {
+                                let sugg = format!("-> {} ", trait_sig.output());
+                                diag.span_suggestion_verbose(sp, msg, sugg, ap);
+                            }
+                            hir::FnRetTy::Return(hir_ty) => {
+                                let sugg = trait_sig.output();
+                                diag.span_suggestion(hir_ty.span, msg, sugg, ap);
+                            }
+                        };
+                    }
+                    _ => {}
+                };
+            } else if let Some(trait_ty) = trait_sig.inputs().get(*i) {
+                diag.span_suggestion(
+                    impl_err_span,
+                    "change the parameter type to match the trait",
+                    trait_ty,
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+        _ => {}
+    }
+
+    infcx.err_ctxt().note_type_err(
+        &mut diag,
+        &cause,
+        trait_err_span.map(|sp| (sp, "type in trait".to_owned())),
+        Some(infer::ValuePairs::Terms(ExpectedFound {
+            expected: trait_fty.into(),
+            found: impl_fty.into(),
+        })),
+        terr,
+        false,
+        false,
+    );
+
+    return diag.emit();
 }
 
 fn check_region_bounds_on_impl_item<'tcx>(

@@ -13,7 +13,7 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, IsSuggestable, ToPredicate, Ty};
+use rustc_middle::ty::{self, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -374,7 +374,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let annotation_span = ty.span;
                                 err.span_suggestion(
                                     annotation_span.with_hi(annotation_span.lo()),
-                                    format!("alternatively, consider changing the type annotation"),
+                                    "alternatively, consider changing the type annotation",
                                     suggest_annotation,
                                     Applicability::MaybeIncorrect,
                                 );
@@ -1116,6 +1116,53 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    /// When expecting a `bool` and finding an `Option`, suggests using `let Some(..)` or `.is_some()`
+    pub(crate) fn suggest_option_to_bool(
+        &self,
+        diag: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        if !expected_ty.is_bool() {
+            return false;
+        }
+
+        let ty::Adt(def, _) = expr_ty.peel_refs().kind() else { return false; };
+        if !self.tcx.is_diagnostic_item(sym::Option, def.did()) {
+            return false;
+        }
+
+        let hir = self.tcx.hir();
+        let cond_parent = hir.parent_iter(expr.hir_id).skip_while(|(_, node)| {
+            matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(op, _, _), .. }) if op.node == hir::BinOpKind::And)
+        }).next();
+        // Don't suggest:
+        //     `let Some(_) = a.is_some() && b`
+        //                     ++++++++++
+        // since the user probably just misunderstood how `let else`
+        // and `&&` work together.
+        if let Some((_, hir::Node::Local(local))) = cond_parent
+            && let hir::PatKind::Path(qpath) | hir::PatKind::TupleStruct(qpath, _, _) = &local.pat.kind
+            && let hir::QPath::Resolved(None, path) = qpath
+            && let Some(did) = path.res.opt_def_id()
+                .and_then(|did| self.tcx.opt_parent(did))
+                .and_then(|did| self.tcx.opt_parent(did))
+            && self.tcx.is_diagnostic_item(sym::Option, did)
+        {
+            return false;
+        }
+
+        diag.span_suggestion(
+            expr.span.shrink_to_hi(),
+            "use `Option::is_some` to test if the `Option` has a value",
+            ".is_some()",
+            Applicability::MachineApplicable,
+        );
+
+        true
+    }
+
     /// Suggest wrapping the block in square brackets instead of curly braces
     /// in case the block was mistaken array syntax, e.g. `{ 1 }` -> `[ 1 ]`.
     pub(crate) fn suggest_block_to_brackets(
@@ -1154,6 +1201,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
+        }
+    }
+
+    #[instrument(skip(self, err))]
+    pub(crate) fn suggest_floating_point_literal(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        if !expected_ty.is_floating_point() {
+            return false;
+        }
+        match expr.kind {
+            ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [start, end], _) => {
+                err.span_suggestion_verbose(
+                    start.span.shrink_to_hi().with_hi(end.span.lo()),
+                    "remove the unnecessary `.` operator for a floating point literal",
+                    '.',
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, ..), [start], _) => {
+                err.span_suggestion_verbose(
+                    expr.span.with_lo(start.span.hi()),
+                    "remove the unnecessary `.` operator for a floating point literal",
+                    '.',
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, ..), [end], _) => {
+                err.span_suggestion_verbose(
+                    expr.span.until(end.span),
+                    "remove the unnecessary `.` operator and add an integer part for a floating point literal",
+                    "0.",
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            _ => false,
         }
     }
 

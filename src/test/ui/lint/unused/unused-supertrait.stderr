@@ -2,7 +2,7 @@ error: unused implementer of `Iterator` that must be used
   --> $DIR/unused-supertrait.rs:9:5
    |
 LL |     it();
-   |     ^^^^^
+   |     ^^^^
    |
    = note: iterators are lazy and do nothing unless consumed
 note: the lint level is defined here
