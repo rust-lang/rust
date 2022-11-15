@@ -671,22 +671,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if let (ty::ConstKind::Unevaluated(_), ty::ConstKind::Unevaluated(_)) =
                         (c1.kind(), c2.kind())
                     {
-                        if let (Ok(Some(a)), Ok(Some(b))) = (
-                          tcx.expand_abstract_consts(c1),
-                          tcx.expand_abstract_consts(c2),
-                        ) && a.ty() == b.ty() && let Ok(new_obligations) =
-                                    self.infcx.at(&obligation.cause, obligation.param_env).eq(a, b)
-                                {
-                                    let mut obligations = new_obligations.obligations;
-                                    self.add_depth(
-                                        obligations.iter_mut(),
-                                        obligation.recursion_depth,
-                                    );
-                                    return self.evaluate_predicates_recursively(
-                                        previous_stack,
-                                        obligations.into_iter(),
-                                    );
-                                }
+                        if let Ok(Some(a)) = tcx.expand_abstract_consts(c1)
+                            && let Ok(Some(b)) = tcx.expand_abstract_consts(c2)
+                            && a.ty() == b.ty() 
+                            && let Ok(new_obligations) = self
+                                .infcx
+                                .at(&obligation.cause, obligation.param_env)
+                                .eq(a, b)
+                        {
+                            let mut obligations = new_obligations.obligations;
+                            self.add_depth(
+                                obligations.iter_mut(),
+                                obligation.recursion_depth,
+                            );
+                            return self.evaluate_predicates_recursively(
+                                previous_stack,
+                                obligations.into_iter(),
+                            );
+                        }
                     }
 
                     let evaluate = |c: ty::Const<'tcx>| {
