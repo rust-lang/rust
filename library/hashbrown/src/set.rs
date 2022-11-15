@@ -5,10 +5,9 @@ use alloc::borrow::ToOwned;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FromIterator, FusedIterator};
-use core::mem;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use super::map::{self, ConsumeAllOnDrop, DefaultHashBuilder, DrainFilterInner, HashMap, Keys};
+use super::map::{self, DefaultHashBuilder, DrainFilterInner, HashMap, Keys};
 use crate::raw::{Allocator, Global};
 
 // Future Optimization (FIXME!)
@@ -380,8 +379,9 @@ impl<T, S, A: Allocator + Clone> HashSet<T, S, A> {
     /// In other words, move all elements `e` such that `f(&e)` returns `true` out
     /// into another iterator.
     ///
-    /// When the returned DrainedFilter is dropped, any remaining elements that satisfy
-    /// the predicate are dropped from the set.
+    /// If the returned `DrainFilter` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use [`retain()`] with a negated predicate if you do not need the returned iterator.
     ///
     /// # Examples
     ///
@@ -1572,6 +1572,7 @@ pub struct Drain<'a, K, A: Allocator + Clone = Global> {
 ///
 /// [`drain_filter`]: struct.HashSet.html#method.drain_filter
 /// [`HashSet`]: struct.HashSet.html
+#[must_use = "Iterators are lazy unless consumed"]
 pub struct DrainFilter<'a, K, F, A: Allocator + Clone = Global>
 where
     F: FnMut(&K) -> bool,
@@ -1765,20 +1766,6 @@ impl<K: fmt::Debug, A: Allocator + Clone> fmt::Debug for Drain<'_, K, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let entries_iter = self.iter.iter().map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
-    }
-}
-
-impl<'a, K, F, A: Allocator + Clone> Drop for DrainFilter<'a, K, F, A>
-where
-    F: FnMut(&K) -> bool,
-{
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn drop(&mut self) {
-        while let Some(item) = self.next() {
-            let guard = ConsumeAllOnDrop(self);
-            drop(item);
-            mem::forget(guard);
-        }
     }
 }
 
@@ -2861,7 +2848,7 @@ mod test_set {
         }
         {
             let mut set: HashSet<i32> = (0..8).collect();
-            drop(set.drain_filter(|&k| k % 2 == 0));
+            set.drain_filter(|&k| k % 2 == 0).for_each(drop);
             assert_eq!(set.len(), 4, "Removes non-matching items on drop");
         }
     }

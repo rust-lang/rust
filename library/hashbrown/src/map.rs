@@ -975,12 +975,9 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Note that `drain_filter` lets you mutate every value in the filter closure, regardless of
     /// whether you choose to keep or remove it.
     ///
-    /// When the returned DrainedFilter is dropped, any remaining elements that satisfy
-    /// the predicate are dropped from the table.
-    ///
-    /// It is unspecified how many more elements will be subjected to the closure
-    /// if a panic occurs in the closure, or a panic occurs while dropping an element,
-    /// or if the `DrainFilter` value is leaked.
+    /// If the returned `DrainFilter` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use [`retain()`] with a negated predicate if you do not need the returned iterator.
     ///
     /// Keeps the allocated memory for reuse.
     ///
@@ -1007,9 +1004,8 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     ///     let d = map.drain_filter(|k, _v| k % 2 != 0);
     /// }
     ///
-    /// // But the map lens have been reduced by half
-    /// // even if we do not use DrainFilter iterator.
-    /// assert_eq!(map.len(), 4);
+    /// // DrainFilter was not exhausted, therefore no elements were drained.
+    /// assert_eq!(map.len(), 8);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F, A>
@@ -2760,36 +2756,13 @@ impl<K, V, A: Allocator + Clone> Drain<'_, K, V, A> {
 ///
 /// assert_eq!(map.len(), 1);
 /// ```
+#[must_use = "Iterators are lazy unless consumed"]
 pub struct DrainFilter<'a, K, V, F, A: Allocator + Clone = Global>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
     f: F,
     inner: DrainFilterInner<'a, K, V, A>,
-}
-
-impl<'a, K, V, F, A> Drop for DrainFilter<'a, K, V, F, A>
-where
-    F: FnMut(&K, &mut V) -> bool,
-    A: Allocator + Clone,
-{
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn drop(&mut self) {
-        while let Some(item) = self.next() {
-            let guard = ConsumeAllOnDrop(self);
-            drop(item);
-            mem::forget(guard);
-        }
-    }
-}
-
-pub(super) struct ConsumeAllOnDrop<'a, T: Iterator>(pub &'a mut T);
-
-impl<T: Iterator> Drop for ConsumeAllOnDrop<'_, T> {
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn drop(&mut self) {
-        self.0.for_each(drop);
-    }
 }
 
 impl<K, V, F, A> Iterator for DrainFilter<'_, K, V, F, A>
@@ -8180,7 +8153,7 @@ mod test_map {
         }
         {
             let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x * 10)).collect();
-            drop(map.drain_filter(|&k, _| k % 2 == 0));
+            map.drain_filter(|&k, _| k % 2 == 0).for_each(drop);
             assert_eq!(map.len(), 4);
         }
     }
