@@ -1301,3 +1301,11 @@ pub(crate) struct FnPtrWithGenericsSugg {
     pub arity: usize,
     pub for_param_list_exists: bool,
 }
+
+#[derive(Diagnostic)]
+#[diag(parser_unexpected_if_with_if)]
+pub(crate) struct UnexpectedIfWithIf(
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = " ", style = "verbose")]
+    pub Span,
+);
