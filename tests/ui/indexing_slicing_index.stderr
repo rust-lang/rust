@@ -4,11 +4,11 @@ error[E0080]: evaluation of `main::{constant#3}` failed
 LL |     const { &ARR[idx4()] }; // Ok, let rustc handle const contexts.
    |              ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
 
-error[E0080]: erroneous constant used
+note: erroneous constant used
   --> $DIR/indexing_slicing_index.rs:31:5
    |
 LL |     const { &ARR[idx4()] }; // Ok, let rustc handle const contexts.
-   |     ^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:22:5
@@ -65,6 +65,6 @@ error[E0080]: evaluation of constant value failed
 LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
    |                        ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
