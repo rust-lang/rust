@@ -1069,7 +1069,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let usize_layout =
             self.tcx().layout_of(ty::ParamEnv::empty().and(self.tcx().types.usize)).unwrap().layout;
         if let Ok(layout) = self.tcx().layout_of(obligation.param_env.and(self_ty))
-            && layout.layout.size().bytes() == usize_layout.size().bytes()
+            && layout.layout.size() == usize_layout.size()
+            && layout.layout.align() == usize_layout.align()
         {
             candidates.vec.push(BuiltinCandidate { has_nested: false });
         }
