@@ -75,7 +75,6 @@ pub fn expand_deriving_clone(
         path: path_std!(clone::Clone),
         skip_path_as_bound: false,
         additional_bounds: bounds,
-        generics: Bounds::empty(),
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::clone,

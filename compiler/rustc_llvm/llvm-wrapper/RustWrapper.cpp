@@ -9,7 +9,7 @@
 #include "llvm/IR/IntrinsicsARM.h"
 #include "llvm/IR/Mangler.h"
 #if LLVM_VERSION_GE(16, 0)
-#include "llvm/IR/ModRef.h"
+#include "llvm/Support/ModRef.h"
 #endif
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/COFFImportFile.h"

@@ -650,41 +650,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 ))
                         );
 
-                        if is_try_conversion {
-                            let none_error = self
-                                .tcx
-                                .get_diagnostic_item(sym::none_error)
-                                .map(|def_id| tcx.type_of(def_id));
-                            let should_convert_option_to_result =
-                                Some(trait_ref.skip_binder().substs.type_at(1)) == none_error;
-                            let should_convert_result_to_option =
-                                Some(trait_ref.self_ty().skip_binder()) == none_error;
-                            if should_convert_option_to_result {
-                                err.span_suggestion_verbose(
-                                    span.shrink_to_lo(),
-                                    "consider converting the `Option<T>` into a `Result<T, _>` \
-                                     using `Option::ok_or` or `Option::ok_or_else`",
-                                    ".ok_or_else(|| /* error value */)",
-                                    Applicability::HasPlaceholders,
-                                );
-                            } else if should_convert_result_to_option {
-                                err.span_suggestion_verbose(
-                                    span.shrink_to_lo(),
-                                    "consider converting the `Result<T, _>` into an `Option<T>` \
-                                     using `Result::ok`",
-                                    ".ok()",
-                                    Applicability::MachineApplicable,
-                                );
-                            }
-                            if let Some(ret_span) = self.return_type_span(&obligation) {
-                                err.span_label(
-                                    ret_span,
-                                    &format!(
-                                        "expected `{}` because of this",
-                                        trait_ref.skip_binder().self_ty()
-                                    ),
-                                );
-                            }
+                        if is_try_conversion && let Some(ret_span) = self.return_type_span(&obligation) {
+                            err.span_label(
+                                ret_span,
+                                &format!(
+                                    "expected `{}` because of this",
+                                    trait_ref.skip_binder().self_ty()
+                                ),
+                            );
                         }
 
                         if Some(trait_ref.def_id()) == tcx.lang_items().tuple_trait() {

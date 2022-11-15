@@ -1491,6 +1491,7 @@ function initSearch(rawSearchIndex) {
         const target = searchState.focusedByTab[searchState.currentTab] ||
             document.querySelectorAll(".search-results.active a").item(0) ||
             document.querySelectorAll("#titles > button").item(searchState.currentTab);
+        searchState.focusedByTab[searchState.currentTab] = null;
         if (target) {
             target.focus();
         }

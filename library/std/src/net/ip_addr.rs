@@ -73,7 +73,6 @@ pub enum IpAddr {
 /// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Ipv4Addr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
     octets: [u8; 4],
@@ -156,7 +155,6 @@ pub struct Ipv4Addr {
 /// assert_eq!(localhost.is_loopback(), true);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Ipv6Addr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
     octets: [u8; 16],
