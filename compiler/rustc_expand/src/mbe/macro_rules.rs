@@ -333,7 +333,7 @@ fn expand_macro<'cx>(
     assert!(try_success_result.is_err(), "Macro matching returned a success on the second try");
 
     if let Some(result) = tracker.result {
-        // An irrecoverable error occured and has been emitted.
+        // An irrecoverable error occurred and has been emitted.
         return result;
     }
 

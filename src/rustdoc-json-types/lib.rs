@@ -53,7 +53,7 @@ pub struct ItemSummary {
     /// `["std", "io", "lazy", "Lazy"]` for `std::io::lazy::Lazy`).
     ///
     /// Note that items can appear in multiple paths, and the one chosen is implementation
-    /// defined. Currenty, this is the full path to where the item was defined. Eg
+    /// defined. Currently, this is the full path to where the item was defined. Eg
     /// [`String`] is currently `["alloc", "string", "String"]` and [`HashMap`] is
     /// `["std", "collections", "hash", "map", "HashMap"]`, but this is subject to change.
     pub path: Vec<String>,
@@ -351,7 +351,7 @@ pub enum Variant {
     /// A variant with unnamed fields.
     ///
     /// Unlike most of json, `#[doc(hidden)]` fields will be given as `None`
-    /// instead of being ommited, because order matters.
+    /// instead of being omitted, because order matters.
     ///
     /// ```rust
     /// enum Demo {

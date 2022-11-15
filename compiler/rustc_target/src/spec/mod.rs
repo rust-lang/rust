@@ -114,7 +114,7 @@ pub enum Lld {
 /// relevant now.
 ///
 /// The second goal is to keep the number of flavors to the minimum if possible.
-/// LLD somewhat forces our hand here because that linker is self-sufficent only if its executable
+/// LLD somewhat forces our hand here because that linker is self-sufficient only if its executable
 /// (`argv[0]`) is named in specific way, otherwise it doesn't work and requires a
 /// `-flavor LLD_FLAVOR` argument to choose which logic to use. Our shipped `rust-lld` in
 /// particular is not named in such specific way, so it needs the flavor option, so we make our

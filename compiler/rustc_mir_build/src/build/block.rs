@@ -118,7 +118,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     else_block: Some(else_block),
                 } => {
                     // When lowering the statement `let <pat> = <expr> else { <else> };`,
-                    // the `<else>` block is nested in the parent scope enclosing this statment.
+                    // the `<else>` block is nested in the parent scope enclosing this statement.
                     // That scope is usually either the enclosing block scope,
                     // or the remainder scope of the last statement.
                     // This is to make sure that temporaries instantiated in `<expr>` are dropped

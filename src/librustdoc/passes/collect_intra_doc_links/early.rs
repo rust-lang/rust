@@ -354,7 +354,14 @@ impl Visitor<'_> for EarlyDocLinkResolver<'_, '_> {
             self.parent_scope.module = old_module;
         } else {
             match &item.kind {
-                ItemKind::Impl(box ast::Impl { of_trait: Some(..), .. }) => {
+                ItemKind::Impl(box ast::Impl { of_trait: Some(trait_ref), .. }) => {
+                    if let Some(partial_res) = self.resolver.get_partial_res(trait_ref.ref_id)
+                        && let Some(res) = partial_res.full_res()
+                        && let Some(trait_def_id) = res.opt_def_id()
+                        && !trait_def_id.is_local()
+                        && self.visited_mods.insert(trait_def_id) {
+                        self.resolve_doc_links_extern_impl(trait_def_id, false);
+                    }
                     self.all_trait_impls.push(self.resolver.local_def_id(item.id).to_def_id());
                 }
                 ItemKind::MacroDef(macro_def) if macro_def.macro_rules => {

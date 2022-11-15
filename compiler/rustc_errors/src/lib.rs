@@ -1254,6 +1254,10 @@ impl HandlerInner {
         }
 
         if diagnostic.has_future_breakage() {
+            // Future breakages aren't emitted if they're Level::Allowed,
+            // but they still need to be constructed and stashed below,
+            // so they'll trigger the good-path bug check.
+            self.suppressed_expected_diag = true;
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 

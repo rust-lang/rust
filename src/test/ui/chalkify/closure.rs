@@ -1,5 +1,3 @@
-// known-bug: unknown
-// FIXME(chalk): Chalk needs support for the Tuple trait
 // compile-flags: -Z chalk
 
 fn main() -> () {
@@ -26,7 +24,7 @@ fn main() -> () {
     let mut c = b;
 
     c();
-    b(); // FIXME: reenable when this is fixed ~ ERROR
+    b(); //~ ERROR
 
     // FIXME(chalk): this doesn't quite work
     /*

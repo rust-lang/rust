@@ -360,7 +360,7 @@ fn lint_int_literal<'tcx>(
         }
 
         if lint_overflowing_range_endpoint(cx, lit, v, max, e, t.name_str()) {
-            // The overflowing literal lint was emited by `lint_overflowing_range_endpoint`.
+            // The overflowing literal lint was emitted by `lint_overflowing_range_endpoint`.
             return;
         }
 
@@ -429,7 +429,7 @@ fn lint_uint_literal<'tcx>(
             }
         }
         if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, t.name_str()) {
-            // The overflowing literal lint was emited by `lint_overflowing_range_endpoint`.
+            // The overflowing literal lint was emitted by `lint_overflowing_range_endpoint`.
             return;
         }
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {

@@ -142,6 +142,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             Some(CoerceUnsized)
         } else if lang_items.dispatch_from_dyn_trait() == Some(def_id) {
             Some(DispatchFromDyn)
+        } else if lang_items.tuple_trait() == Some(def_id) {
+            Some(Tuple)
         } else {
             None
         };
@@ -570,6 +572,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             CoerceUnsized => lang_items.coerce_unsized_trait(),
             DiscriminantKind => lang_items.discriminant_kind_trait(),
             DispatchFromDyn => lang_items.dispatch_from_dyn_trait(),
+            Tuple => lang_items.tuple_trait(),
         };
         def_id.map(chalk_ir::TraitId)
     }
