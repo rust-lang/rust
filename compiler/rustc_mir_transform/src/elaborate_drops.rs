@@ -415,7 +415,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                                     UnwindAction::Cleanup(cleanup) => Unwind::To(cleanup),
                                     UnwindAction::Continue => Unwind::To(self.patch.resume_block()),
                                     UnwindAction::Unreachable => {
-                                        Unwind::To(self.patch.unreachable_block())
+                                        Unwind::To(self.patch.unreachable_cleanup_block())
                                     }
                                     UnwindAction::Terminate => {
                                         Unwind::To(self.patch.terminate_block())

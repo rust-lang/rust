@@ -1063,7 +1063,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             Unwind::To(match *unwind {
                 UnwindAction::Cleanup(tgt) => tgt,
                 UnwindAction::Continue => elaborator.patch.resume_block(),
-                UnwindAction::Unreachable => elaborator.patch.unreachable_block(),
+                UnwindAction::Unreachable => elaborator.patch.unreachable_cleanup_block(),
                 UnwindAction::Terminate => elaborator.patch.terminate_block(),
             })
         };

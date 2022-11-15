@@ -543,7 +543,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 TerminatorKind::Drop {
                     place: dest_field,
                     target: unwind,
-                    unwind: UnwindAction::Continue,
+                    unwind: UnwindAction::Terminate,
                 },
                 true,
             );
@@ -814,7 +814,7 @@ fn build_call_shim<'tcx>(
             TerminatorKind::Drop {
                 place: rcvr_place(),
                 target: BasicBlock::new(4),
-                unwind: UnwindAction::Continue,
+                unwind: UnwindAction::Terminate,
             },
             true,
         );

@@ -13,7 +13,7 @@ pub struct MirPatch<'tcx> {
     new_locals: Vec<LocalDecl<'tcx>>,
     resume_block: Option<BasicBlock>,
     // Only for unreachable in cleanup path.
-    unreachable_block: Option<BasicBlock>,
+    unreachable_cleanup_block: Option<BasicBlock>,
     terminate_block: Option<BasicBlock>,
     body_span: Span,
     next_local: usize,
@@ -28,7 +28,7 @@ impl<'tcx> MirPatch<'tcx> {
             new_locals: vec![],
             next_local: body.local_decls.len(),
             resume_block: None,
-            unreachable_block: None,
+            unreachable_cleanup_block: None,
             terminate_block: None,
             body_span: body.span,
         };
@@ -41,8 +41,11 @@ impl<'tcx> MirPatch<'tcx> {
             }
 
             // Check if we already have an unreachable block
-            if let TerminatorKind::Unreachable = block.terminator().kind && block.statements.is_empty() {
-                result.unreachable_block = Some(bb);
+            if let TerminatorKind::Unreachable = block.terminator().kind
+                && block.statements.is_empty()
+                && block.is_cleanup
+            {
+                result.unreachable_cleanup_block = Some(bb);
                 continue;
             }
 
@@ -73,8 +76,8 @@ impl<'tcx> MirPatch<'tcx> {
         bb
     }
 
-    pub fn unreachable_block(&mut self) -> BasicBlock {
-        if let Some(bb) = self.unreachable_block {
+    pub fn unreachable_cleanup_block(&mut self) -> BasicBlock {
+        if let Some(bb) = self.unreachable_cleanup_block {
             return bb;
         }
 
@@ -86,7 +89,7 @@ impl<'tcx> MirPatch<'tcx> {
             }),
             is_cleanup: true,
         });
-        self.unreachable_block = Some(bb);
+        self.unreachable_cleanup_block = Some(bb);
         bb
     }
 
