@@ -104,6 +104,10 @@ fn recurse_build<'tcx>(
 ) -> Result<ty::Const<'tcx>, ErrorGuaranteed> {
     use thir::ExprKind;
     let node = &body.exprs[node];
+
+    let maybe_supported_error = |a| maybe_supported_error(tcx, a, root_span);
+    let error = |a| error(tcx, a, root_span);
+
     Ok(match &node.kind {
         // I dont know if handling of these 3 is correct
         &ExprKind::Scope { value, .. } => recurse_build(tcx, body, value, root_span)?,
@@ -167,11 +171,7 @@ fn recurse_build<'tcx>(
             if let thir::Block { stmts: box [], expr: Some(e), .. } = &body.blocks[*block] {
                 recurse_build(tcx, body, *e, root_span)?
             } else {
-                maybe_supported_error(
-                    tcx,
-                    GenericConstantTooComplexSub::BlockNotSupported(node.span),
-                    root_span,
-                )?
+                maybe_supported_error(GenericConstantTooComplexSub::BlockNotSupported(node.span))?
             }
         }
         // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
@@ -194,90 +194,66 @@ fn recurse_build<'tcx>(
             if let ExprKind::Deref { arg } = arg_node.kind {
                 recurse_build(tcx, body, arg, root_span)?
             } else {
-                maybe_supported_error(
-                    tcx,
-                    GenericConstantTooComplexSub::BorrowNotSupported(node.span),
-                    root_span,
-                )?
+                maybe_supported_error(GenericConstantTooComplexSub::BorrowNotSupported(node.span))?
             }
         }
         // FIXME(generic_const_exprs): We may want to support these.
         ExprKind::AddressOf { .. } | ExprKind::Deref { .. } => maybe_supported_error(
-            tcx,
             GenericConstantTooComplexSub::AddressAndDerefNotSupported(node.span),
-            root_span,
         )?,
-        ExprKind::Repeat { .. } | ExprKind::Array { .. } => maybe_supported_error(
-            tcx,
-            GenericConstantTooComplexSub::ArrayNotSupported(node.span),
-            root_span,
-        )?,
-        ExprKind::NeverToAny { .. } => maybe_supported_error(
-            tcx,
-            GenericConstantTooComplexSub::NeverToAnyNotSupported(node.span),
-            root_span,
-        )?,
-        ExprKind::Tuple { .. } => maybe_supported_error(
-            tcx,
-            GenericConstantTooComplexSub::TupleNotSupported(node.span),
-            root_span,
-        )?,
-        ExprKind::Index { .. } => maybe_supported_error(
-            tcx,
-            GenericConstantTooComplexSub::IndexNotSupported(node.span),
-            root_span,
-        )?,
-        ExprKind::Field { .. } => maybe_supported_error(
-            tcx,
-            GenericConstantTooComplexSub::FieldNotSupported(node.span),
-            root_span,
-        )?,
-        ExprKind::ConstBlock { .. } => maybe_supported_error(
-            tcx,
-            GenericConstantTooComplexSub::ConstBlockNotSupported(node.span),
-            root_span,
-        )?,
-        ExprKind::Adt(_) => maybe_supported_error(
-            tcx,
-            GenericConstantTooComplexSub::AdtNotSupported(node.span),
-            root_span,
-        )?,
+        ExprKind::Repeat { .. } | ExprKind::Array { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::ArrayNotSupported(node.span))?
+        }
+        ExprKind::NeverToAny { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::NeverToAnyNotSupported(node.span))?
+        }
+        ExprKind::Tuple { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::TupleNotSupported(node.span))?
+        }
+        ExprKind::Index { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::IndexNotSupported(node.span))?
+        }
+        ExprKind::Field { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::FieldNotSupported(node.span))?
+        }
+        ExprKind::ConstBlock { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::ConstBlockNotSupported(node.span))?
+        }
+        ExprKind::Adt(_) => {
+            maybe_supported_error(GenericConstantTooComplexSub::AdtNotSupported(node.span))?
+        }
         // dont know if this is correct
         ExprKind::Pointer { .. } => {
-            error(tcx, GenericConstantTooComplexSub::PointerNotSupported(node.span), root_span)?
+            error(GenericConstantTooComplexSub::PointerNotSupported(node.span))?
         }
         ExprKind::Yield { .. } => {
-            error(tcx, GenericConstantTooComplexSub::YieldNotSupported(node.span), root_span)?
+            error(GenericConstantTooComplexSub::YieldNotSupported(node.span))?
         }
         ExprKind::Continue { .. } | ExprKind::Break { .. } | ExprKind::Loop { .. } => {
-            error(tcx, GenericConstantTooComplexSub::LoopNotSupported(node.span), root_span)?
+            error(GenericConstantTooComplexSub::LoopNotSupported(node.span))?
         }
-        ExprKind::Box { .. } => {
-            error(tcx, GenericConstantTooComplexSub::BoxNotSupported(node.span), root_span)?
-        }
+        ExprKind::Box { .. } => error(GenericConstantTooComplexSub::BoxNotSupported(node.span))?,
 
         ExprKind::Unary { .. } => unreachable!(),
         // we handle valid unary/binary ops above
         ExprKind::Binary { .. } => {
-            error(tcx, GenericConstantTooComplexSub::BinaryNotSupported(node.span), root_span)?
+            error(GenericConstantTooComplexSub::BinaryNotSupported(node.span))?
         }
         ExprKind::LogicalOp { .. } => {
-            error(tcx, GenericConstantTooComplexSub::LogicalOpNotSupported(node.span), root_span)?
+            error(GenericConstantTooComplexSub::LogicalOpNotSupported(node.span))?
         }
         ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
-            error(tcx, GenericConstantTooComplexSub::AssignNotSupported(node.span), root_span)?
+            error(GenericConstantTooComplexSub::AssignNotSupported(node.span))?
         }
-        ExprKind::Closure { .. } | ExprKind::Return { .. } => error(
-            tcx,
-            GenericConstantTooComplexSub::ClosureAndReturnNotSupported(node.span),
-            root_span,
-        )?,
+        ExprKind::Closure { .. } | ExprKind::Return { .. } => {
+            error(GenericConstantTooComplexSub::ClosureAndReturnNotSupported(node.span))?
+        }
         // let expressions imply control flow
         ExprKind::Match { .. } | ExprKind::If { .. } | ExprKind::Let { .. } => {
-            error(tcx, GenericConstantTooComplexSub::ControlFlowNotSupported(node.span), root_span)?
+            error(GenericConstantTooComplexSub::ControlFlowNotSupported(node.span))?
         }
         ExprKind::InlineAsm { .. } => {
-            error(tcx, GenericConstantTooComplexSub::InlineAsmNotSupported(node.span), root_span)?
+            error(GenericConstantTooComplexSub::InlineAsmNotSupported(node.span))?
         }
 
         // we dont permit let stmts so `VarRef` and `UpvarRef` cant happen
@@ -285,7 +261,7 @@ fn recurse_build<'tcx>(
         | ExprKind::UpvarRef { .. }
         | ExprKind::StaticRef { .. }
         | ExprKind::ThreadLocalRef(_) => {
-            error(tcx, GenericConstantTooComplexSub::OperationNotSupported(node.span), root_span)?
+            error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
         }
     })
 }
