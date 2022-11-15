@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process::Command;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
@@ -187,5 +188,37 @@ impl Step for Miri {
 
         let mut miri = Command::from(miri);
         builder.run(&mut miri);
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct CollectLicenseMetadata;
+
+impl Step for CollectLicenseMetadata {
+    type Output = PathBuf;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/collect-license-metadata")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CollectLicenseMetadata);
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let Some(reuse) = &builder.config.reuse else {
+            panic!("REUSE is required to collect the license metadata");
+        };
+
+        // Temporary location, it will be moved to src/etc once it's accurate.
+        let dest = builder.out.join("license-metadata.json");
+
+        let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
+        cmd.env("REUSE_EXE", reuse);
+        cmd.env("DEST", &dest);
+        builder.run(&mut cmd);
+
+        dest
     }
 }

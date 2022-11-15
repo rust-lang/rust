@@ -39,6 +39,7 @@ members = [
   "src/tools/bump-stage0",
   "src/tools/replace-version-placeholder",
   "src/tools/lld-wrapper",
+  "src/tools/collect-license-metadata",
 ]
 
 exclude = [
