@@ -1030,6 +1030,10 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// If the closure returns false, the element will remain in the list and will not be yielded
     /// by the iterator.
     ///
+    /// If the returned `DrainFilter` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use `drain_filter().for_each(drop)` if you do not need the returned iterator.
+    ///
     /// Note that `drain_filter` lets you mutate every element in the filter closure, regardless of
     /// whether you choose to keep or remove it.
     ///
@@ -1805,6 +1809,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
 
 /// An iterator produced by calling `drain_filter` on LinkedList.
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct DrainFilter<
     'a,
     T: 'a,
@@ -1846,33 +1851,6 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, Some(self.old_len - self.idx))
-    }
-}
-
-#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Drop for DrainFilter<'_, T, F, A>
-where
-    F: FnMut(&mut T) -> bool,
-{
-    fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T, F, A: Allocator>(&'r mut DrainFilter<'a, T, F, A>)
-        where
-            F: FnMut(&mut T) -> bool;
-
-        impl<'r, 'a, T, F, A: Allocator> Drop for DropGuard<'r, 'a, T, F, A>
-        where
-            F: FnMut(&mut T) -> bool,
-        {
-            fn drop(&mut self) {
-                self.0.for_each(drop);
-            }
-        }
-
-        while let Some(item) = self.next() {
-            let guard = DropGuard(self);
-            drop(item);
-            mem::forget(guard);
-        }
     }
 }
 
