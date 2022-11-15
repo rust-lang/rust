@@ -30,15 +30,17 @@ impl<'a> Drop for ManuallyDropped<'a> {
 
 #[manually_drop]
 enum ManuallyDroppedEnum<'a> {
-    A(DropCounter<'a>, DropCounter<'a>),
+    _A,
+    B(DropCounter<'a>, DropCounter<'a>),
 }
 
 impl<'a> Drop for ManuallyDroppedEnum<'a> {
     fn drop(&mut self) {
         // just do a LITTLE dropping.
-        let ManuallyDroppedEnum::A(a, _) = self;
-        unsafe {
-            core::ptr::drop_in_place(a);
+        if let ManuallyDroppedEnum::B(a, _) = self {
+            unsafe {
+                core::ptr::drop_in_place(a);
+            }
         }
     }
 }
@@ -56,7 +58,7 @@ fn test_destruction() {
     assert_eq!(counter.get(), 1);
     assert!(core::mem::needs_drop::<ManuallyDropped>());
 
-    core::mem::drop(ManuallyDroppedEnum::A(DropCounter(&counter), DropCounter(&counter)));
+    core::mem::drop(ManuallyDroppedEnum::B(DropCounter(&counter), DropCounter(&counter)));
     assert_eq!(counter.get(), 2);
     assert!(core::mem::needs_drop::<ManuallyDroppedEnum>());
 

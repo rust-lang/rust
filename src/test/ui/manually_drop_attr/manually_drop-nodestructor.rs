@@ -22,10 +22,11 @@ struct ManuallyDropped<'a> {
 
 #[manually_drop]
 enum ManuallyDroppedEnum<'a> {
-    A(DropCounter<'a>, DropCounter<'a>),
+    _A,
+    B(DropCounter<'a>, DropCounter<'a>),
 }
 
-/// Dropping a `#[manually_drop]` struct does not implicitly drop its fields.
+/// Dropping a `#[manually_drop]` type does not implicitly drop its fields.
 fn test_destruction() {
     let counter = Cell::new(0);
     core::mem::drop(ManuallyDropped {
@@ -35,7 +36,7 @@ fn test_destruction() {
     assert_eq!(counter.get(), 0);
     assert!(!core::mem::needs_drop::<ManuallyDropped>());
 
-    core::mem::drop(ManuallyDroppedEnum::A(DropCounter(&counter), DropCounter(&counter)));
+    core::mem::drop(ManuallyDroppedEnum::B(DropCounter(&counter), DropCounter(&counter)));
     assert_eq!(counter.get(), 0);
     assert!(!core::mem::needs_drop::<ManuallyDroppedEnum>());
 }
