@@ -6,7 +6,7 @@ LL |         __rust_alloc(1, 1);
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
    = note: BACKTRACE:
-   = note: inside `start`
+   = note: inside `start` at $DIR/no_global_allocator.rs:LL:CC
 
 error: aborting due to previous error
 

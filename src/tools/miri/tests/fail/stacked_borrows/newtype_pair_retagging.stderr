@@ -17,8 +17,8 @@ help: <TAG> is this argument
 LL | fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
    |                          ^^
    = note: BACKTRACE:
-   = note: inside `std::boxed::Box::<i32>::from_raw_in`
-   = note: inside `std::boxed::Box::<i32>::from_raw`
+   = note: inside `std::boxed::Box::<i32>::from_raw_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `std::boxed::Box::<i32>::from_raw` at RUSTLIB/alloc/src/boxed.rs:LL:CC
 note: inside closure
   --> $DIR/newtype_pair_retagging.rs:LL:CC
    |

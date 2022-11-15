@@ -364,7 +364,10 @@ fn report_msg<'tcx>(
         if is_local && idx > 0 {
             err.span_note(frame_info.span, &frame_info.to_string());
         } else {
-            err.note(&frame_info.to_string());
+            let sm = sess.source_map();
+            let lo = sm.lookup_char_pos(frame_info.span.lo());
+            let filename = sm.filename_for_diagnostics(&lo.file.name);
+            err.note(format!("{frame_info} at {}:{}:{}", filename, lo.line, lo.col.0 + 1));
         }
     }
 

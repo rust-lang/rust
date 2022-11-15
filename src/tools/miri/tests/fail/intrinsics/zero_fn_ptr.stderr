@@ -4,7 +4,7 @@ error: abnormal termination: aborted execution: attempted to zero-initialize typ
 LL |     unsafe { std::mem::zeroed::<fn()>() };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to zero-initialize type `fn()`, which is invalid
    |
-   = note: inside `main`
+   = note: inside `main` at $DIR/zero_fn_ptr.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -10,7 +10,7 @@ LL | |     panic!();
 LL | | }
    | |_^ the program aborted execution
    |
-   = note: inside `nounwind`
+   = note: inside `nounwind` at $DIR/exported_symbol_bad_unwind2.rs:LL:CC
 note: inside `main`
   --> $DIR/exported_symbol_bad_unwind2.rs:LL:CC
    |

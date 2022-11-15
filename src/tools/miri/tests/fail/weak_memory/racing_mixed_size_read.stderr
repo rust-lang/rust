@@ -6,7 +6,7 @@ LL |             (*hi).load(Relaxed);
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
    = note: BACKTRACE:
-   = note: inside closure
+   = note: inside closure at $DIR/racing_mixed_size_read.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
