@@ -222,3 +222,33 @@ impl Step for CollectLicenseMetadata {
         dest
     }
 }
+
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct GenerateCopyright;
+
+impl Step for GenerateCopyright {
+    type Output = PathBuf;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/generate-copyright")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(GenerateCopyright);
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let license_metadata = builder.ensure(CollectLicenseMetadata);
+
+        // Temporary location, it will be moved to the proper one once it's accurate.
+        let dest = builder.out.join("COPYRIGHT.md");
+
+        let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
+        cmd.env("LICENSE_METADATA", &license_metadata);
+        cmd.env("DEST", &dest);
+        builder.run(&mut cmd);
+
+        dest
+    }
+}
