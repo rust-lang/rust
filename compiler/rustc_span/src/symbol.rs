@@ -1035,7 +1035,6 @@ symbols! {
         non_exhaustive,
         non_exhaustive_omitted_patterns_lint,
         non_modrs_mods,
-        none_error,
         nontemporal_store,
         noop_method_borrow,
         noop_method_clone,
