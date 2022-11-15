@@ -510,49 +510,53 @@ fn align_offset_various_strides_const() {
         assert!(got == expected);
     }
 
-    // For pointers of stride != 1, we verify the algorithm against the naivest possible
-    // implementation
-    let mut align = 1;
-    let limit = 1024;
-    while align < limit {
-        for ptr in 1usize..4 * align {
-            unsafe {
-                #[repr(packed)]
-                struct A3(u16, u8);
-                test_stride::<A3>(ptr::invalid::<A3>(ptr), ptr, align);
+    const {
+        // For pointers of stride != 1, we verify the algorithm against the naivest possible
+        // implementation
+        let mut align = 1;
+        let limit = 32;
+        while align < limit {
+            let mut ptr = 1;
+            while ptr < 4 * align {
+                unsafe {
+                    #[repr(packed)]
+                    struct A3(u16, u8);
+                    test_stride::<A3>(ptr::invalid::<A3>(ptr), ptr, align);
 
-                struct A4(u32);
-                test_stride::<A4>(ptr::invalid::<A4>(ptr), ptr, align);
+                    struct A4(u32);
+                    test_stride::<A4>(ptr::invalid::<A4>(ptr), ptr, align);
 
-                #[repr(packed)]
-                struct A5(u32, u8);
-                test_stride::<A5>(ptr::invalid::<A5>(ptr), ptr, align);
+                    #[repr(packed)]
+                    struct A5(u32, u8);
+                    test_stride::<A5>(ptr::invalid::<A5>(ptr), ptr, align);
 
-                #[repr(packed)]
-                struct A6(u32, u16);
-                test_stride::<A6>(ptr::invalid::<A6>(ptr), ptr, align);
+                    #[repr(packed)]
+                    struct A6(u32, u16);
+                    test_stride::<A6>(ptr::invalid::<A6>(ptr), ptr, align);
 
-                #[repr(packed)]
-                struct A7(u32, u16, u8);
-                test_stride::<A7>(ptr::invalid::<A7>(ptr), ptr, align);
+                    #[repr(packed)]
+                    struct A7(u32, u16, u8);
+                    test_stride::<A7>(ptr::invalid::<A7>(ptr), ptr, align);
 
-                #[repr(packed)]
-                struct A8(u32, u32);
-                test_stride::<A8>(ptr::invalid::<A8>(ptr), ptr, align);
+                    #[repr(packed)]
+                    struct A8(u32, u32);
+                    test_stride::<A8>(ptr::invalid::<A8>(ptr), ptr, align);
 
-                #[repr(packed)]
-                struct A9(u32, u32, u8);
-                test_stride::<A9>(ptr::invalid::<A9>(ptr), ptr, align);
+                    #[repr(packed)]
+                    struct A9(u32, u32, u8);
+                    test_stride::<A9>(ptr::invalid::<A9>(ptr), ptr, align);
 
-                #[repr(packed)]
-                struct A10(u32, u32, u16);
-                test_stride::<A10>(ptr::invalid::<A10>(ptr), ptr, align);
+                    #[repr(packed)]
+                    struct A10(u32, u32, u16);
+                    test_stride::<A10>(ptr::invalid::<A10>(ptr), ptr, align);
 
-                test_stride::<u32>(ptr::invalid::<u32>(ptr), ptr, align);
-                test_stride::<u128>(ptr::invalid::<u128>(ptr), ptr, align);
+                    test_stride::<u32>(ptr::invalid::<u32>(ptr), ptr, align);
+                    test_stride::<u128>(ptr::invalid::<u128>(ptr), ptr, align);
+                }
+                ptr += 1;
             }
+            align = (align + 1).next_power_of_two();
         }
-        align = (align + 1).next_power_of_two();
     }
 }
 
@@ -630,6 +634,24 @@ fn align_offset_issue_103361() {
     const SIZE: usize = 1 << 13;
     struct HugeSize([u8; SIZE - 1]);
     let _ = (SIZE as *const HugeSize).align_offset(SIZE);
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn align_offset_issue_103361_const() {
+    #[cfg(target_pointer_width = "64")]
+    const SIZE: usize = 1 << 47;
+    #[cfg(target_pointer_width = "32")]
+    const SIZE: usize = 1 << 30;
+    #[cfg(target_pointer_width = "16")]
+    const SIZE: usize = 1 << 13;
+    struct HugeSize([u8; SIZE - 1]);
+
+    const {
+        assert!(ptr::invalid::<HugeSize>(SIZE - 1).align_offset(SIZE) == SIZE - 1);
+        assert!(ptr::invalid::<HugeSize>(SIZE).align_offset(SIZE) == 0);
+        assert!(ptr::invalid::<HugeSize>(SIZE + 1).align_offset(SIZE) == 1);
+    }
 }
 
 #[test]

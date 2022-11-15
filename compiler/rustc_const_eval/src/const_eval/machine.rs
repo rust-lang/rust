@@ -278,9 +278,8 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             return u64::MAX;
         }
 
-        let byte_offset = align - addr_mod_align;
-
         if align % stride == 0 {
+            let byte_offset = align - addr_mod_align;
             if byte_offset % stride == 0 {
                 return byte_offset / stride;
             } else {
@@ -296,8 +295,11 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             return u64::MAX;
         }
 
+        // Instead of `(addr + offset * stride) % align == 0`, we solve
+        // `((addr + offset * stride) / gcd) % (align / gcd) == 0`.
+        let addr2 = addr / gcd;
         let align2 = align / gcd;
-        let stride2 = (stride / gcd) % align2;
+        let stride2 = stride / gcd;
 
         let mut stride_inv = 1u64;
         let mut mod_gate = 2u64;
@@ -308,6 +310,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             (mod_gate, overflow) = mod_gate.overflowing_mul(mod_gate);
         }
 
+        let byte_offset = align2 - addr2 % align2;
         byte_offset.wrapping_mul(stride_inv) % align2
     }
 
