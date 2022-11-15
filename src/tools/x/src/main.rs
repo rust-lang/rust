@@ -8,7 +8,8 @@
 //! `x.py`, in that order of preference.
 
 use std::{
-    env, io,
+    env::{self, consts::EXE_EXTENSION},
+    io,
     process::{self, Command, ExitStatus},
 };
 
@@ -27,12 +28,12 @@ fn python() -> &'static str {
 
     for dir in env::split_paths(&val) {
         // `python` should always take precedence over python2 / python3 if it exists
-        if dir.join(PYTHON).exists() {
+        if dir.join(PYTHON).with_extension(EXE_EXTENSION).exists() {
             return PYTHON;
         }
 
-        python2 |= dir.join(PYTHON2).exists();
-        python3 |= dir.join(PYTHON3).exists();
+        python2 |= dir.join(PYTHON2).with_extension(EXE_EXTENSION).exists();
+        python3 |= dir.join(PYTHON3).with_extension(EXE_EXTENSION).exists();
     }
 
     // try 3 before 2

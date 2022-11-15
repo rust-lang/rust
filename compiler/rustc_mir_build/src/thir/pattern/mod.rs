@@ -577,6 +577,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     self.errors.push(PatternError::ConstParamInPattern(span));
                     return PatKind::Wild;
                 }
+                ConstKind::Error(_) => {
+                    return PatKind::Wild;
+                }
                 _ => bug!("Expected ConstKind::Param"),
             },
             mir::ConstantKind::Val(_, _) => self.const_to_pat(value, id, span, false).kind,
@@ -614,7 +617,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
         match self.tcx.at(expr.span).lit_to_mir_constant(lit_input) {
             Ok(constant) => self.const_to_pat(constant, expr.hir_id, lit.span, false).kind,
-            Err(LitToConstError::Reported) => PatKind::Wild,
+            Err(LitToConstError::Reported(_)) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
     }

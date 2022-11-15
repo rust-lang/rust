@@ -34,6 +34,7 @@ impl MultiItemModifier for Expander {
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
+        _is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         let template = AttributeTemplate { list: Some("path"), ..Default::default() };
         let attr = &ecx.attribute(meta_item.clone());

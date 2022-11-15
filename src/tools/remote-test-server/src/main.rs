@@ -39,6 +39,8 @@ macro_rules! t {
 }
 
 static TEST: AtomicUsize = AtomicUsize::new(0);
+const RETRY_INTERVAL: u64 = 1;
+const NUMBER_OF_RETRIES: usize = 5;
 
 #[derive(Copy, Clone)]
 struct Config {
@@ -115,7 +117,7 @@ fn main() {
     let config = Config::parse_args();
     println!("starting test server");
 
-    let listener = t!(TcpListener::bind(config.bind));
+    let listener = bind_socket(config.bind);
     let (work, tmp): (PathBuf, PathBuf) = if cfg!(target_os = "android") {
         ("/data/local/tmp/work".into(), "/data/local/tmp/work/tmp".into())
     } else {
@@ -157,6 +159,16 @@ fn main() {
             panic!("unknown command {:?}", buf);
         }
     }
+}
+
+fn bind_socket(addr: SocketAddr) -> TcpListener {
+    for _ in 0..(NUMBER_OF_RETRIES - 1) {
+        if let Ok(x) = TcpListener::bind(addr) {
+            return x;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(RETRY_INTERVAL));
+    }
+    TcpListener::bind(addr).unwrap()
 }
 
 fn handle_push(socket: TcpStream, work: &Path, config: Config) {

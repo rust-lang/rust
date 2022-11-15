@@ -1,0 +1,8 @@
+error: cannot specialize on const impl with non-const impl
+  --> $DIR/const-default-impl-non-const-specialized-impl.rs:19:1
+   |
+LL | impl Value for FortyTwo {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

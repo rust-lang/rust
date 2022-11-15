@@ -399,6 +399,7 @@ pub(crate) fn format_expr(
             }
         }
         ast::ExprKind::Underscore => Some("_".to_owned()),
+        ast::ExprKind::IncludedBytes(..) => unreachable!(),
         ast::ExprKind::Err => None,
     };
 

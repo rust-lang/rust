@@ -595,11 +595,34 @@ impl UseSpans<'_> {
         }
     }
 
-    // Add a span label to the use of the captured variable, if it exists.
-    // only adds label to the `path_span`
-    pub(super) fn var_span_label_path_only(self, err: &mut Diagnostic, message: impl Into<String>) {
-        if let UseSpans::ClosureUse { path_span, .. } = self {
-            err.span_label(path_span, message);
+    /// Add a span label to the use of the captured variable, if it exists.
+    /// only adds label to the `path_span`
+    pub(super) fn var_path_only_subdiag(
+        self,
+        err: &mut Diagnostic,
+        action: crate::InitializationRequiringAction,
+    ) {
+        use crate::session_diagnostics::CaptureVarPathUseCause::*;
+        use crate::InitializationRequiringAction::*;
+        if let UseSpans::ClosureUse { generator_kind, path_span, .. } = self {
+            match generator_kind {
+                Some(_) => {
+                    err.subdiagnostic(match action {
+                        Borrow => BorrowInGenerator { path_span },
+                        MatchOn | Use => UseInGenerator { path_span },
+                        Assignment => AssignInGenerator { path_span },
+                        PartialAssignment => AssignPartInGenerator { path_span },
+                    });
+                }
+                None => {
+                    err.subdiagnostic(match action {
+                        Borrow => BorrowInClosure { path_span },
+                        MatchOn | Use => UseInClosure { path_span },
+                        Assignment => AssignInClosure { path_span },
+                        PartialAssignment => AssignPartInClosure { path_span },
+                    });
+                }
+            }
         }
     }
 
@@ -627,19 +650,28 @@ impl UseSpans<'_> {
     pub(super) fn var_subdiag(
         self,
         err: &mut Diagnostic,
-        f: impl Fn(Span) -> crate::session_diagnostics::CaptureVarCause,
-        kind_desc: impl Into<String>,
+        kind: Option<rustc_middle::mir::BorrowKind>,
+        f: impl Fn(Option<GeneratorKind>, Span) -> crate::session_diagnostics::CaptureVarCause,
     ) {
-        if let UseSpans::ClosureUse { capture_kind_span, path_span, .. } = self {
-            if capture_kind_span == path_span {
-                err.subdiagnostic(f(capture_kind_span));
-            } else {
-                err.subdiagnostic(crate::session_diagnostics::CaptureVarKind {
-                    kind_desc: kind_desc.into(),
-                    kind_span: capture_kind_span,
+        use crate::session_diagnostics::CaptureVarKind::*;
+        if let UseSpans::ClosureUse { generator_kind, capture_kind_span, path_span, .. } = self {
+            if capture_kind_span != path_span {
+                err.subdiagnostic(match kind {
+                    Some(kd) => match kd {
+                        rustc_middle::mir::BorrowKind::Shared
+                        | rustc_middle::mir::BorrowKind::Shallow
+                        | rustc_middle::mir::BorrowKind::Unique => {
+                            Immute { kind_span: capture_kind_span }
+                        }
+
+                        rustc_middle::mir::BorrowKind::Mut { .. } => {
+                            Mut { kind_span: capture_kind_span }
+                        }
+                    },
+                    None => Move { kind_span: capture_kind_span },
                 });
-                err.subdiagnostic(f(path_span));
-            }
+            };
+            err.subdiagnostic(f(generator_kind, path_span));
         }
     }
 

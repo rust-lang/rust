@@ -150,21 +150,70 @@ pub(crate) enum RequireStaticErr {
 }
 
 #[derive(Subdiagnostic)]
-#[label(borrowck_capture_kind_label)]
-pub(crate) struct CaptureVarKind {
-    pub kind_desc: String,
-    #[primary_span]
-    pub kind_span: Span,
+pub(crate) enum CaptureVarPathUseCause {
+    #[label(borrowck_borrow_due_to_use_generator)]
+    BorrowInGenerator {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_use_due_to_use_generator)]
+    UseInGenerator {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_assign_due_to_use_generator)]
+    AssignInGenerator {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_assign_part_due_to_use_generator)]
+    AssignPartInGenerator {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_borrow_due_to_use_closure)]
+    BorrowInClosure {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_use_due_to_use_closure)]
+    UseInClosure {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_assign_due_to_use_closure)]
+    AssignInClosure {
+        #[primary_span]
+        path_span: Span,
+    },
+    #[label(borrowck_assign_part_due_to_use_closure)]
+    AssignPartInClosure {
+        #[primary_span]
+        path_span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum CaptureVarKind {
+    #[label(borrowck_capture_immute)]
+    Immute {
+        #[primary_span]
+        kind_span: Span,
+    },
+    #[label(borrowck_capture_mut)]
+    Mut {
+        #[primary_span]
+        kind_span: Span,
+    },
+    #[label(borrowck_capture_move)]
+    Move {
+        #[primary_span]
+        kind_span: Span,
+    },
 }
 
 #[derive(Subdiagnostic)]
 pub(crate) enum CaptureVarCause {
-    #[label(borrowck_var_borrow_by_use_place)]
-    BorrowUsePlace {
-        place: String,
-        #[primary_span]
-        var_span: Span,
-    },
     #[label(borrowck_var_borrow_by_use_place_in_generator)]
     BorrowUsePlaceGenerator {
         place: String,
@@ -177,4 +226,17 @@ pub(crate) enum CaptureVarCause {
         #[primary_span]
         var_span: Span,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(borrowck_cannot_move_when_borrowed, code = "E0505")]
+pub(crate) struct MoveBorrow<'a> {
+    pub place: &'a str,
+    pub borrow_place: &'a str,
+    pub value_place: &'a str,
+    #[primary_span]
+    #[label(move_label)]
+    pub span: Span,
+    #[label]
+    pub borrow_span: Span,
 }

@@ -1,6 +1,6 @@
 use crate::errors::AutoDerefReachedRecursionLimit;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{self, TraitEngine};
+use crate::traits::{self, TraitEngine, TraitEngineExt};
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
@@ -139,7 +139,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let mut fulfillcx = traits::FulfillmentContext::new_in_snapshot();
+        let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
         let normalized_ty = fulfillcx.normalize_projection_type(
             &self.infcx,
             self.param_env,

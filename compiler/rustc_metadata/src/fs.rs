@@ -22,9 +22,14 @@ pub const METADATA_FILENAME: &str = "lib.rmeta";
 /// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
 /// directory being searched for `extern crate` (observing an incomplete file).
 /// The returned path is the temporary file containing the complete metadata.
-pub fn emit_metadata(sess: &Session, metadata: &[u8], tmpdir: &MaybeTempDir) -> PathBuf {
-    let out_filename = tmpdir.as_ref().join(METADATA_FILENAME);
-    let result = fs::write(&out_filename, metadata);
+pub fn emit_wrapper_file(
+    sess: &Session,
+    data: &[u8],
+    tmpdir: &MaybeTempDir,
+    name: &str,
+) -> PathBuf {
+    let out_filename = tmpdir.as_ref().join(name);
+    let result = fs::write(&out_filename, data);
 
     if let Err(err) = result {
         sess.emit_fatal(FailedWriteError { filename: out_filename, err });

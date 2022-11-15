@@ -54,9 +54,9 @@ declare_features! (
     /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, adx_target_feature, "1.61.0", Some(44839), None),
     /// Allows explicit discriminants on non-unit enum variants.
-    (accepted, arbitrary_enum_discriminant, "CURRENT_RUSTC_VERSION", Some(60553), None),
+    (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553), None),
     /// Allows using `sym` operands in inline assembly.
-    (accepted, asm_sym, "CURRENT_RUSTC_VERSION", Some(93333), None),
+    (accepted, asm_sym, "1.66.0", Some(93333), None),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
     (accepted, associated_consts, "1.20.0", Some(29646), None),
     /// Allows using associated `type`s in `trait`s.
@@ -174,7 +174,7 @@ declare_features! (
     // FIXME: explain `globs`.
     (accepted, globs, "1.0.0", None, None),
     /// Allows using `..=X` as a pattern.
-    (accepted, half_open_range_patterns, "CURRENT_RUSTC_VERSION", Some(67264), None),
+    (accepted, half_open_range_patterns, "1.66.0", Some(67264), None),
     /// Allows using the `u128` and `i128` types.
     (accepted, i128_type, "1.26.0", Some(35118), None),
     /// Allows the use of `if let` expressions.

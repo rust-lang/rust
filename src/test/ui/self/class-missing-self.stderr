@@ -10,6 +10,10 @@ error[E0425]: cannot find function `sleep` in this scope
 LL |       sleep();
    |       ^^^^^ not found in this scope
    |
+help: consider using the associated function
+   |
+LL |       self.sleep();
+   |       +++++
 help: consider importing this function
    |
 LL | use std::thread::sleep;

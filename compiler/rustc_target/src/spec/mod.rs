@@ -74,6 +74,7 @@ mod linux_musl_base;
 mod linux_uclibc_base;
 mod msvc_base;
 mod netbsd_base;
+mod nto_qnx_base;
 mod openbsd_base;
 mod redox_base;
 mod solaris_base;
@@ -113,7 +114,7 @@ pub enum Lld {
 /// relevant now.
 ///
 /// The second goal is to keep the number of flavors to the minimum if possible.
-/// LLD somewhat forces our hand here because that linker is self-sufficent only if its executable
+/// LLD somewhat forces our hand here because that linker is self-sufficient only if its executable
 /// (`argv[0]`) is named in specific way, otherwise it doesn't work and requires a
 /// `-flavor LLD_FLAVOR` argument to choose which logic to use. Our shipped `rust-lld` in
 /// particular is not named in such specific way, so it needs the flavor option, so we make our
@@ -1242,6 +1243,9 @@ supported_targets! {
     ("x86_64-unknown-none", x86_64_unknown_none),
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
+
+    ("aarch64-unknown-nto-qnx7.1.0", aarch64_unknown_nto_qnx_710),
+    ("x86_64-pc-nto-qnx7.1.0", x86_64_pc_nto_qnx710),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1911,6 +1915,7 @@ impl Target {
                 Abi::Stdcall { unwind }
             }
             Abi::System { unwind } => Abi::C { unwind },
+            Abi::EfiApi if self.arch == "arm" => Abi::Aapcs { unwind: false },
             Abi::EfiApi if self.arch == "x86_64" => Abi::Win64 { unwind: false },
             Abi::EfiApi => Abi::C { unwind: false },
 

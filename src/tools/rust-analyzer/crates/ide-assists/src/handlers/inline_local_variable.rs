@@ -113,7 +113,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
         .collect::<Option<Vec<_>>>()?;
 
     let init_str = initializer_expr.syntax().text().to_string();
-    let init_in_paren = format!("({})", &init_str);
+    let init_in_paren = format!("({init_str})");
 
     let target = match target {
         ast::NameOrNameRef::Name(it) => it.syntax().text_range(),
@@ -132,7 +132,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 let replacement = if should_wrap { &init_in_paren } else { &init_str };
                 if ast::RecordExprField::for_field_name(&name).is_some() {
                     cov_mark::hit!(inline_field_shorthand);
-                    builder.insert(range.end(), format!(": {}", replacement));
+                    builder.insert(range.end(), format!(": {replacement}"));
                 } else {
                     builder.replace(range, replacement.clone())
                 }

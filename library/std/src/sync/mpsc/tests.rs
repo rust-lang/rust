@@ -706,3 +706,17 @@ fn issue_32114() {
     let _ = tx.send(123);
     assert_eq!(tx.send(123), Err(SendError(123)));
 }
+
+#[test]
+fn issue_39364() {
+    let (tx, rx) = channel::<()>();
+    let t = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(300));
+        let _ = tx.clone();
+        crate::mem::forget(tx);
+    });
+
+    let _ = rx.recv_timeout(Duration::from_millis(500));
+    t.join().unwrap();
+    let _ = rx.recv_timeout(Duration::from_millis(500));
+}

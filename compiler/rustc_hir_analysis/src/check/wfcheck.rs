@@ -117,7 +117,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
-    let node = tcx.hir().expect_owner(def_id);
+    let node = tcx.hir().owner(def_id);
     match node {
         hir::OwnerNode::Crate(_) => {}
         hir::OwnerNode::Item(item) => check_item(tcx, item),

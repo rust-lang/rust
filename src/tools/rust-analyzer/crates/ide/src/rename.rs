@@ -40,7 +40,9 @@ pub(crate) fn prepare_rename(
             if def.range_for_rename(&sema).is_none() {
                 bail!("No references found at position")
             }
-            let frange = sema.original_range(name_like.syntax());
+            let Some(frange) = sema.original_range_opt(name_like.syntax()) else {
+                bail!("No references found at position");
+            };
 
             always!(
                 frange.range.contains_inclusive(position.offset)
@@ -51,7 +53,7 @@ pub(crate) fn prepare_rename(
         .reduce(|acc, cur| match (acc, cur) {
             // ensure all ranges are the same
             (Ok(acc_inner), Ok(cur_inner)) if acc_inner == cur_inner => Ok(acc_inner),
-            (Err(e), _) => Err(e),
+            (e @ Err(_), _) | (_, e @ Err(_)) => e,
             _ => bail!("inconsistent text range"),
         });
 
@@ -2248,5 +2250,34 @@ fn foo((bar | bar | bar): ()) {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn regression_13498() {
+        check(
+            "Testing",
+            r"
+mod foo {
+    pub struct Test$0;
+}
+
+use foo::Test as Tester;
+
+fn main() {
+    let t = Tester;
+}
+",
+            r"
+mod foo {
+    pub struct Testing;
+}
+
+use foo::Testing as Tester;
+
+fn main() {
+    let t = Tester;
+}
+",
+        )
     }
 }

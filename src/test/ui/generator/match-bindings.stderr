@@ -8,7 +8,7 @@ LL | |                 match Enum::A(String::new()) {
 ...  |
 LL | |         }
 LL | |     };
-   | |______^
+   | |_____^
    |
    = note: generators are lazy and do nothing unless resumed
    = note: `#[warn(unused_must_use)]` on by default

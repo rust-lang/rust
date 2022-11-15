@@ -17,10 +17,8 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
     let only_setup = matches!(subcommand, MiriCommand::Setup);
     let ask_user = !only_setup;
     let print_sysroot = only_setup && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
-    if std::env::var_os("MIRI_SYSROOT").is_some() {
-        if only_setup {
-            println!("WARNING: MIRI_SYSROOT already set, not doing anything.")
-        }
+    if !only_setup && std::env::var_os("MIRI_SYSROOT").is_some() {
+        // Skip setup step if MIRI_SYSROOT is explicitly set, *unless* we are `cargo miri setup`.
         return;
     }
 
@@ -61,8 +59,13 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
     }
 
     // Determine where to put the sysroot.
-    let user_dirs = directories::ProjectDirs::from("org", "rust-lang", "miri").unwrap();
-    let sysroot_dir = user_dirs.cache_dir();
+    let sysroot_dir = match std::env::var_os("MIRI_SYSROOT") {
+        Some(dir) => PathBuf::from(dir),
+        None => {
+            let user_dirs = directories::ProjectDirs::from("org", "rust-lang", "miri").unwrap();
+            user_dirs.cache_dir().to_owned()
+        }
+    };
     // Sysroot configuration and build details.
     let sysroot_config = if std::env::var_os("MIRI_NO_STD").is_some() {
         SysrootConfig::NoStd
@@ -114,7 +117,7 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
     // not apply `RUSTFLAGS` to the sysroot either.
     let rustflags = &["-Cdebug-assertions=off", "-Coverflow-checks=on"];
     // Make sure all target-level Miri invocations know their sysroot.
-    std::env::set_var("MIRI_SYSROOT", sysroot_dir);
+    std::env::set_var("MIRI_SYSROOT", &sysroot_dir);
 
     // Do the build.
     if only_setup {
@@ -124,7 +127,7 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
         // We want to be quiet, but still let the user know that something is happening.
         eprint!("Preparing a sysroot for Miri (target: {target})... ");
     }
-    SysrootBuilder::new(sysroot_dir, target)
+    SysrootBuilder::new(&sysroot_dir, target)
         .build_mode(BuildMode::Check)
         .rustc_version(rustc_version.clone())
         .sysroot_config(sysroot_config)

@@ -103,8 +103,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
-            let expr = expr.peel_drop_temps();
-            self.suggest_deref_ref_or_into(&mut err, expr, expected_ty, ty, None);
+            // FIXME(compiler-errors): We probably should fold some of the
+            // `suggest_` functions from  `emit_coerce_suggestions` into here,
+            // since some of those aren't necessarily just coerce suggestions.
+            let _ = self.suggest_deref_ref_or_into(
+                &mut err,
+                expr.peel_drop_temps(),
+                expected_ty,
+                ty,
+                None,
+            ) || self.suggest_option_to_bool(&mut err, expr, ty, expected_ty);
             extend_err(&mut err);
             err.emit();
         }

@@ -959,7 +959,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
         let result = match predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ref data) => self.tcx().trait_is_auto(data.def_id()),
+            ty::PredicateKind::Trait(ref data) => self.tcx().trait_is_coinductive(data.def_id()),
             ty::PredicateKind::WellFormed(_) => true,
             _ => false,
         };

@@ -118,14 +118,14 @@ impl QualifyCandidate<'_> {
         match self {
             QualifyCandidate::QualifierStart(segment, generics) => {
                 let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);
-                replacer(format!("{}{}::{}", import, generics, segment));
+                replacer(format!("{import}{generics}::{segment}"));
             }
             QualifyCandidate::UnqualifiedName(generics) => {
                 let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);
-                replacer(format!("{}{}", import, generics));
+                replacer(format!("{import}{generics}"));
             }
             QualifyCandidate::TraitAssocItem(qualifier, segment) => {
-                replacer(format!("<{} as {}>::{}", qualifier, import, segment));
+                replacer(format!("<{qualifier} as {import}>::{segment}"));
             }
             QualifyCandidate::TraitMethod(db, mcall_expr) => {
                 Self::qualify_trait_method(db, mcall_expr, replacer, import, item);
@@ -155,16 +155,11 @@ impl QualifyCandidate<'_> {
                 hir::Access::Exclusive => make::expr_ref(receiver, true),
                 hir::Access::Owned => receiver,
             };
-            replacer(format!(
-                "{}::{}{}{}",
-                import,
-                method_name,
-                generics,
-                match arg_list {
-                    Some(args) => make::arg_list(iter::once(receiver).chain(args)),
-                    None => make::arg_list(iter::once(receiver)),
-                }
-            ));
+            let arg_list = match arg_list {
+                Some(args) => make::arg_list(iter::once(receiver).chain(args)),
+                None => make::arg_list(iter::once(receiver)),
+            };
+            replacer(format!("{import}::{method_name}{generics}{arg_list}"));
         }
         Some(())
     }
@@ -218,15 +213,17 @@ fn group_label(candidate: &ImportCandidate) -> GroupLabel {
         }
     }
     .text();
-    GroupLabel(format!("Qualify {}", name))
+    GroupLabel(format!("Qualify {name}"))
 }
 
 fn label(candidate: &ImportCandidate, import: &LocatedImport) -> String {
+    let import_path = &import.import_path;
+
     match candidate {
         ImportCandidate::Path(candidate) if candidate.qualifier.is_none() => {
-            format!("Qualify as `{}`", import.import_path)
+            format!("Qualify as `{import_path}`")
         }
-        _ => format!("Qualify with `{}`", import.import_path),
+        _ => format!("Qualify with `{import_path}`"),
     }
 }
 

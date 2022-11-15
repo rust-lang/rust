@@ -322,6 +322,10 @@ impl<'a> State<'a> {
             ast::ExprKind::Lit(ref lit) => {
                 self.print_literal(lit);
             }
+            ast::ExprKind::IncludedBytes(ref bytes) => {
+                let lit = ast::Lit::from_included_bytes(bytes, expr.span);
+                self.print_literal(&lit)
+            }
             ast::ExprKind::Cast(ref expr, ref ty) => {
                 let prec = AssocOp::As.precedence() as i8;
                 self.print_expr_maybe_paren(expr, prec);
