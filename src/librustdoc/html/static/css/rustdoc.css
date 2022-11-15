@@ -803,7 +803,6 @@ table,
 	align-items: baseline;
 }
 #crate-search-div {
-	display: inline-block;
 	/* ensures that 100% in properties of #crate-search-div:after
 	are relative to the size of this div */
 	position: relative;
