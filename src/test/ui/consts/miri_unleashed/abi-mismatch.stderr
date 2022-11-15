@@ -5,10 +5,10 @@ LL |     my_fn();
    |     ^^^^^^^
    |     |
    |     calling a function with calling convention C using calling convention Rust
-   |     inside `call_rust_fn` at $DIR/abi-mismatch.rs:9:5
+   |     inside `call_rust_fn`
 ...
 LL | static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
-   |                  --------------------------------------------------------------------- inside `VAL` at $DIR/abi-mismatch.rs:15:18
+   |                  --------------------------------------------------------------------- inside `VAL`
 
 warning: skipping const checks
    |

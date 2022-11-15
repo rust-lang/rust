@@ -7,12 +7,12 @@ LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `alloc::alloc::box_free::<i32, std::alloc::Global>` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-note: inside `main` at $DIR/stack_free.rs:LL:CC
+   = note: inside `std::alloc::dealloc`
+   = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate`
+   = note: inside `alloc::alloc::box_free::<i32, std::alloc::Global>`
+   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))`
+   = note: inside `std::mem::drop::<std::boxed::Box<i32>>`
+note: inside `main`
   --> $DIR/stack_free.rs:LL:CC
    |
 LL |     drop(bad_box);

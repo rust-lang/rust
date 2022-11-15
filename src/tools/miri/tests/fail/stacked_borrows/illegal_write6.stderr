@@ -17,8 +17,8 @@ help: <TAG> is this argument
 LL | fn foo(a: &mut u32, y: *mut u32) -> u32 {
    |        ^
    = note: BACKTRACE:
-   = note: inside `foo` at $DIR/illegal_write6.rs:LL:CC
-note: inside `main` at $DIR/illegal_write6.rs:LL:CC
+   = note: inside `foo`
+note: inside `main`
   --> $DIR/illegal_write6.rs:LL:CC
    |
 LL |     foo(x, p);

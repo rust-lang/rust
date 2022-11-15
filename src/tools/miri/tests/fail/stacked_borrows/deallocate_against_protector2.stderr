@@ -7,23 +7,23 @@ LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
    = note: BACKTRACE:
-   = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `alloc::alloc::box_free::<NotUnpin, std::alloc::Global>` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<NotUnpin>> - shim(Some(std::boxed::Box<NotUnpin>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::mem::drop::<std::boxed::Box<NotUnpin>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-note: inside closure at $DIR/deallocate_against_protector2.rs:LL:CC
+   = note: inside `std::alloc::dealloc`
+   = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate`
+   = note: inside `alloc::alloc::box_free::<NotUnpin, std::alloc::Global>`
+   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<NotUnpin>> - shim(Some(std::boxed::Box<NotUnpin>))`
+   = note: inside `std::mem::drop::<std::boxed::Box<NotUnpin>>`
+note: inside closure
   --> $DIR/deallocate_against_protector2.rs:LL:CC
    |
 LL |         drop(unsafe { Box::from_raw(raw) });
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: inside `<[closure@$DIR/deallocate_against_protector2.rs:LL:CC] as std::ops::FnOnce<(&mut NotUnpin,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
-note: inside `inner` at $DIR/deallocate_against_protector2.rs:LL:CC
+   = note: inside `<[closure@$DIR/deallocate_against_protector2.rs:LL:CC] as std::ops::FnOnce<(&mut NotUnpin,)>>::call_once - shim`
+note: inside `inner`
   --> $DIR/deallocate_against_protector2.rs:LL:CC
    |
 LL |     f(x)
    |     ^^^^
-note: inside `main` at $DIR/deallocate_against_protector2.rs:LL:CC
+note: inside `main`
   --> $DIR/deallocate_against_protector2.rs:LL:CC
    |
 LL | /     inner(Box::leak(Box::new(NotUnpin(0, PhantomPinned))), |x| {

@@ -17,10 +17,10 @@ LL |     unsafe { std::mem::transmute(()) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^
    |              |
    |              transmuting to uninhabited type
-   |              inside `foo` at $DIR/validate_uninhabited_zsts.rs:4:14
+   |              inside `foo`
 ...
 LL | const FOO: [empty::Empty; 3] = [foo(); 3];
-   |                                 ----- inside `FOO` at $DIR/validate_uninhabited_zsts.rs:19:33
+   |                                 ----- inside `FOO`
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/validate_uninhabited_zsts.rs:21:1

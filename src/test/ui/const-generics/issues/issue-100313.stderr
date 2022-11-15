@@ -5,10 +5,10 @@ LL |             *(B as *const bool as *mut bool) = false;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |             |
    |             writing to alloc7 which is read-only
-   |             inside `T::<&true>::set_false` at $DIR/issue-100313.rs:10:13
+   |             inside `T::<&true>::set_false`
 ...
 LL |     x.set_false();
-   |     ------------- inside `_` at $DIR/issue-100313.rs:18:5
+   |     ------------- inside `_`
 
 error: aborting due to previous error
 

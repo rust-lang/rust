@@ -16,11 +16,11 @@ LL |     f(x);
    |     ^^^^
    |     |
    |     reached the configured maximum number of stack frames
-   |     inside `f::<i32>` at $DIR/recursive.rs:4:5
-   |     [... 126 additional calls inside `f::<i32>` at $DIR/recursive.rs:4:5 ...]
+   |     inside `f::<i32>`
+   |     [... 126 additional calls inside `f::<i32>` ...]
 ...
 LL | const X: () = f(1);
-   |               ---- inside `X` at $DIR/recursive.rs:8:15
+   |               ---- inside `X`
 
 error: aborting due to previous error; 1 warning emitted
 

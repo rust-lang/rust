@@ -6,7 +6,7 @@ LL |             std::intrinsics::atomic_load_relaxed(hi);
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
    = note: BACKTRACE:
-   = note: inside closure at $DIR/racing_mixed_size.rs:LL:CC
+   = note: inside closure
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

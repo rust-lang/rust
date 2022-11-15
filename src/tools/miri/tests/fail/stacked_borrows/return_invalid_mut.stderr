@@ -20,8 +20,8 @@ help: <TAG> was later invalidated at offsets [0x0..0x8] by a read access
 LL |     let _val = unsafe { *xraw }; // invalidate xref
    |                         ^^^^^
    = note: BACKTRACE:
-   = note: inside `foo` at $DIR/return_invalid_mut.rs:LL:CC
-note: inside `main` at $DIR/return_invalid_mut.rs:LL:CC
+   = note: inside `foo`
+note: inside `main`
   --> $DIR/return_invalid_mut.rs:LL:CC
    |
 LL |     foo(&mut (1, 2));

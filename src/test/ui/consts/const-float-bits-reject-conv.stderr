@@ -5,15 +5,15 @@ LL |                     panic!("const-eval error: cannot use f32::to_bits on a 
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                     |
    |                     the evaluated program panicked at 'const-eval error: cannot use f32::to_bits on a NaN', $SRC_DIR/core/src/num/f32.rs:LL:COL
-   |                     inside `core::f32::<impl f32>::to_bits::ct_f32_to_u32` at $SRC_DIR/core/src/panic.rs:LL:COL
+   |                     inside `core::f32::<impl f32>::to_bits::ct_f32_to_u32`
 ...
 LL |         unsafe { intrinsics::const_eval_select((self,), ct_f32_to_u32, rt_f32_to_u32) }
-   |                  -------------------------------------------------------------------- inside `core::f32::<impl f32>::to_bits` at $SRC_DIR/core/src/num/f32.rs:LL:COL
+   |                  -------------------------------------------------------------------- inside `core::f32::<impl f32>::to_bits`
    |
   ::: $DIR/const-float-bits-reject-conv.rs:28:30
    |
 LL |     const MASKED_NAN1: u32 = f32::NAN.to_bits() ^ 0x002A_AAAA;
-   |                              ------------------ inside `f32::MASKED_NAN1` at $DIR/const-float-bits-reject-conv.rs:28:30
+   |                              ------------------ inside `f32::MASKED_NAN1`
    |
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -24,15 +24,15 @@ LL |                     panic!("const-eval error: cannot use f32::to_bits on a 
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                     |
    |                     the evaluated program panicked at 'const-eval error: cannot use f32::to_bits on a NaN', $SRC_DIR/core/src/num/f32.rs:LL:COL
-   |                     inside `core::f32::<impl f32>::to_bits::ct_f32_to_u32` at $SRC_DIR/core/src/panic.rs:LL:COL
+   |                     inside `core::f32::<impl f32>::to_bits::ct_f32_to_u32`
 ...
 LL |         unsafe { intrinsics::const_eval_select((self,), ct_f32_to_u32, rt_f32_to_u32) }
-   |                  -------------------------------------------------------------------- inside `core::f32::<impl f32>::to_bits` at $SRC_DIR/core/src/num/f32.rs:LL:COL
+   |                  -------------------------------------------------------------------- inside `core::f32::<impl f32>::to_bits`
    |
   ::: $DIR/const-float-bits-reject-conv.rs:30:30
    |
 LL |     const MASKED_NAN2: u32 = f32::NAN.to_bits() ^ 0x0055_5555;
-   |                              ------------------ inside `f32::MASKED_NAN2` at $DIR/const-float-bits-reject-conv.rs:30:30
+   |                              ------------------ inside `f32::MASKED_NAN2`
    |
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -67,15 +67,15 @@ LL |                     panic!("const-eval error: cannot use f64::to_bits on a 
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                     |
    |                     the evaluated program panicked at 'const-eval error: cannot use f64::to_bits on a NaN', $SRC_DIR/core/src/num/f64.rs:LL:COL
-   |                     inside `core::f64::<impl f64>::to_bits::ct_f64_to_u64` at $SRC_DIR/core/src/panic.rs:LL:COL
+   |                     inside `core::f64::<impl f64>::to_bits::ct_f64_to_u64`
 ...
 LL |         unsafe { intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f64_to_u64) }
-   |                  -------------------------------------------------------------------- inside `core::f64::<impl f64>::to_bits` at $SRC_DIR/core/src/num/f64.rs:LL:COL
+   |                  -------------------------------------------------------------------- inside `core::f64::<impl f64>::to_bits`
    |
   ::: $DIR/const-float-bits-reject-conv.rs:50:30
    |
 LL |     const MASKED_NAN1: u64 = f64::NAN.to_bits() ^ 0x000A_AAAA_AAAA_AAAA;
-   |                              ------------------ inside `f64::MASKED_NAN1` at $DIR/const-float-bits-reject-conv.rs:50:30
+   |                              ------------------ inside `f64::MASKED_NAN1`
    |
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -86,15 +86,15 @@ LL |                     panic!("const-eval error: cannot use f64::to_bits on a 
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                     |
    |                     the evaluated program panicked at 'const-eval error: cannot use f64::to_bits on a NaN', $SRC_DIR/core/src/num/f64.rs:LL:COL
-   |                     inside `core::f64::<impl f64>::to_bits::ct_f64_to_u64` at $SRC_DIR/core/src/panic.rs:LL:COL
+   |                     inside `core::f64::<impl f64>::to_bits::ct_f64_to_u64`
 ...
 LL |         unsafe { intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f64_to_u64) }
-   |                  -------------------------------------------------------------------- inside `core::f64::<impl f64>::to_bits` at $SRC_DIR/core/src/num/f64.rs:LL:COL
+   |                  -------------------------------------------------------------------- inside `core::f64::<impl f64>::to_bits`
    |
   ::: $DIR/const-float-bits-reject-conv.rs:52:30
    |
 LL |     const MASKED_NAN2: u64 = f64::NAN.to_bits() ^ 0x0005_5555_5555_5555;
-   |                              ------------------ inside `f64::MASKED_NAN2` at $DIR/const-float-bits-reject-conv.rs:52:30
+   |                              ------------------ inside `f64::MASKED_NAN2`
    |
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 

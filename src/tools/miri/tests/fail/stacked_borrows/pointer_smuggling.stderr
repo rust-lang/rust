@@ -20,8 +20,8 @@ help: <TAG> was later invalidated at offsets [0x0..0x1] by a write access
 LL |     *val = 2; // this invalidates any raw ptrs `fun1` might have created.
    |     ^^^^^^^^
    = note: BACKTRACE:
-   = note: inside `fun2` at $DIR/pointer_smuggling.rs:LL:CC
-note: inside `main` at $DIR/pointer_smuggling.rs:LL:CC
+   = note: inside `fun2`
+note: inside `main`
   --> $DIR/pointer_smuggling.rs:LL:CC
    |
 LL |     fun2(); // if they now use a raw ptr they break our reference

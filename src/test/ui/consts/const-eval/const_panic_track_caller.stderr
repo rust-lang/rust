@@ -5,10 +5,10 @@ LL |     b()
    |     ^^^
    |     |
    |     the evaluated program panicked at 'hey', $DIR/const_panic_track_caller.rs:15:5
-   |     inside `c` at $DIR/const_panic_track_caller.rs:15:5
+   |     inside `c`
 ...
 LL | const X: u32 = c();
-   |                --- inside `X` at $DIR/const_panic_track_caller.rs:21:16
+   |                --- inside `X`
 
 error: aborting due to previous error
 

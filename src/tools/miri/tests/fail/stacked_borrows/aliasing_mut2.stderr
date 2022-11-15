@@ -17,8 +17,8 @@ help: <TAG> is this argument
 LL | pub fn safe(_x: &i32, _y: &mut i32) {}
    |             ^^
    = note: BACKTRACE:
-   = note: inside `safe` at $DIR/aliasing_mut2.rs:LL:CC
-note: inside `main` at $DIR/aliasing_mut2.rs:LL:CC
+   = note: inside `safe`
+note: inside `main`
   --> $DIR/aliasing_mut2.rs:LL:CC
    |
 LL |     safe_raw(xshr, xraw);

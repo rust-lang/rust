@@ -5,8 +5,8 @@ error: abnormal termination: the program aborted execution
 LL |     core::intrinsics::abort();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the program aborted execution
    |
-   = note: inside `panic_handler` at $DIR/no_std.rs:LL:CC
-note: inside `start` at RUSTLIB/core/src/panic.rs:LL:CC
+   = note: inside `panic_handler`
+note: inside `start`
   --> $DIR/no_std.rs:LL:CC
    |
 LL |     panic!("blarg I am dead")

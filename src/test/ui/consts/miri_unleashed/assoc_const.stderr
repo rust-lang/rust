@@ -5,13 +5,13 @@ LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    | |
    | calling non-const function `<Vec<u32> as Drop>::drop`
-   | inside `std::ptr::drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   | inside `std::ptr::drop_in_place::<(Vec<u32>, u32)> - shim(Some((Vec<u32>, u32)))` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   | inside `std::ptr::drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))`
+   | inside `std::ptr::drop_in_place::<(Vec<u32>, u32)> - shim(Some((Vec<u32>, u32)))`
    |
   ::: $DIR/assoc_const.rs:12:31
    |
 LL |     const F: u32 = (U::X, 42).1;
-   |                               - inside `<String as Bar<Vec<u32>, String>>::F` at $DIR/assoc_const.rs:12:31
+   |                               - inside `<String as Bar<Vec<u32>, String>>::F`
 
 note: erroneous constant used
   --> $DIR/assoc_const.rs:29:13
