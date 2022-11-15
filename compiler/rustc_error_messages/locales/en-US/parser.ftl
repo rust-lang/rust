@@ -384,3 +384,6 @@ parser_fn_ptr_with_generics = function pointer types may not have generic parame
         [true] the
         *[false] a
     } `for` parameter list
+
+parser_invalid_identifier_with_leading_number = expected identifier, found number literal
+    .label = identifiers cannot start with a number

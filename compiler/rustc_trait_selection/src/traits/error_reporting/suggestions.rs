@@ -44,7 +44,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 #[derive(Debug)]
 pub enum GeneratorInteriorOrUpvar {
     // span of interior type
-    Interior(Span),
+    Interior(Span, Option<(Option<Span>, Span, Option<hir::HirId>, Option<Span>)>),
     // span of upvar
     Upvar(Span),
 }
@@ -283,7 +283,6 @@ pub trait TypeErrCtxtExt<'tcx> {
         &self,
         err: &mut Diagnostic,
         interior_or_upvar_span: GeneratorInteriorOrUpvar,
-        interior_extra_info: Option<(Option<Span>, Span, Option<hir::HirId>, Option<Span>)>,
         is_async: bool,
         outer_generator: Option<DefId>,
         trait_pred: ty::TraitPredicate<'tcx>,
@@ -2003,17 +2002,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .as_local()
             .and_then(|def_id| hir.maybe_body_owned_by(def_id))
             .map(|body_id| hir.body(body_id));
-        let is_async = match generator_did.as_local() {
-            Some(_) => generator_body
-                .and_then(|body| body.generator_kind())
-                .map(|generator_kind| matches!(generator_kind, hir::GeneratorKind::Async(..)))
-                .unwrap_or(false),
-            None => self
-                .tcx
-                .generator_kind(generator_did)
-                .map(|generator_kind| matches!(generator_kind, hir::GeneratorKind::Async(..)))
-                .unwrap_or(false),
-        };
+        let is_async = self
+            .tcx
+            .generator_kind(generator_did)
+            .map(|generator_kind| matches!(generator_kind, hir::GeneratorKind::Async(..)))
+            .unwrap_or(false);
         let mut visitor = AwaitsVisitor::default();
         if let Some(body) = generator_body {
             visitor.visit_body(body);
@@ -2043,61 +2036,60 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             eq
         };
 
-        let mut interior_or_upvar_span = None;
-        let mut interior_extra_info = None;
-
         // Get the typeck results from the infcx if the generator is the function we are currently
         // type-checking; otherwise, get them by performing a query.  This is needed to avoid
         // cycles. If we can't use resolved types because the generator comes from another crate,
         // we still provide a targeted error but without all the relevant spans.
-        let generator_data: Option<GeneratorData<'tcx, '_>> = match &self.typeck_results {
-            Some(t) if t.hir_owner.to_def_id() == generator_did_root => {
-                Some(GeneratorData::Local(&t))
-            }
+        let generator_data = match &self.typeck_results {
+            Some(t) if t.hir_owner.to_def_id() == generator_did_root => GeneratorData::Local(&t),
             _ if generator_did.is_local() => {
-                Some(GeneratorData::Local(self.tcx.typeck(generator_did.expect_local())))
+                GeneratorData::Local(self.tcx.typeck(generator_did.expect_local()))
             }
-            _ => self
-                .tcx
-                .generator_diagnostic_data(generator_did)
-                .as_ref()
-                .map(|generator_diag_data| GeneratorData::Foreign(generator_diag_data)),
+            _ if let Some(generator_diag_data) = self.tcx.generator_diagnostic_data(generator_did) => {
+                GeneratorData::Foreign(generator_diag_data)
+            }
+            _ => return false,
         };
 
-        if let Some(generator_data) = generator_data.as_ref() {
-            interior_or_upvar_span =
-                generator_data.try_get_upvar_span(&self, generator_did, ty_matches);
+        let mut interior_or_upvar_span = None;
 
-            // The generator interior types share the same binders
-            if let Some(cause) =
-                generator_data.get_generator_interior_types().skip_binder().iter().find(
-                    |ty::GeneratorInteriorTypeCause { ty, .. }| {
-                        ty_matches(generator_data.get_generator_interior_types().rebind(*ty))
-                    },
-                )
-            {
-                let from_awaited_ty = generator_data.get_from_await_ty(visitor, hir, ty_matches);
-                let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } =
-                    cause;
+        let from_awaited_ty = generator_data.get_from_await_ty(visitor, hir, ty_matches);
+        debug!(?from_awaited_ty);
 
-                interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(*span));
-                interior_extra_info = Some((*scope_span, *yield_span, *expr, from_awaited_ty));
-            }
+        // The generator interior types share the same binders
+        if let Some(cause) =
+            generator_data.get_generator_interior_types().skip_binder().iter().find(
+                |ty::GeneratorInteriorTypeCause { ty, .. }| {
+                    ty_matches(generator_data.get_generator_interior_types().rebind(*ty))
+                },
+            )
+        {
+            let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } = cause;
 
-            if interior_or_upvar_span.is_none() && generator_data.is_foreign() {
-                interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(span));
-            }
+            interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(
+                *span,
+                Some((*scope_span, *yield_span, *expr, from_awaited_ty)),
+            ));
         }
 
+        if interior_or_upvar_span.is_none() {
+            interior_or_upvar_span =
+                generator_data.try_get_upvar_span(&self, generator_did, ty_matches);
+        }
+
+        if interior_or_upvar_span.is_none() && generator_data.is_foreign() {
+            interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(span, None));
+        }
+
+        debug!(?interior_or_upvar_span);
         if let Some(interior_or_upvar_span) = interior_or_upvar_span {
-            let typeck_results = generator_data.and_then(|generator_data| match generator_data {
+            let typeck_results = match generator_data {
                 GeneratorData::Local(typeck_results) => Some(typeck_results),
                 GeneratorData::Foreign(_) => None,
-            });
+            };
             self.note_obligation_cause_for_async_await(
                 err,
                 interior_or_upvar_span,
-                interior_extra_info,
                 is_async,
                 outer_generator,
                 trait_ref,
@@ -2119,7 +2111,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         &self,
         err: &mut Diagnostic,
         interior_or_upvar_span: GeneratorInteriorOrUpvar,
-        interior_extra_info: Option<(Option<Span>, Span, Option<hir::HirId>, Option<Span>)>,
         is_async: bool,
         outer_generator: Option<DefId>,
         trait_pred: ty::TraitPredicate<'tcx>,
@@ -2241,7 +2232,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         };
         match interior_or_upvar_span {
-            GeneratorInteriorOrUpvar::Interior(interior_span) => {
+            GeneratorInteriorOrUpvar::Interior(interior_span, interior_extra_info) => {
                 if let Some((scope_span, yield_span, expr, from_awaited_ty)) = interior_extra_info {
                     if let Some(await_span) = from_awaited_ty {
                         // The type causing this obligation is one being awaited at await_span.

@@ -337,7 +337,7 @@ fn expand_macro<'cx>(
         return result;
     }
 
-    let Some((token, label)) = tracker.best_failure else {
+    let Some((token, label, remaining_matcher)) = tracker.best_failure else {
         return tracker.result.expect("must have encountered Error or ErrorReported");
     };
 
@@ -350,6 +350,12 @@ fn expand_macro<'cx>(
     }
 
     annotate_doc_comment(&mut err, sess.source_map(), span);
+
+    if let Some(span) = remaining_matcher.span() {
+        err.span_note(span, format!("while trying to match {remaining_matcher}"));
+    } else {
+        err.note(format!("while trying to match {remaining_matcher}"));
+    }
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
@@ -379,17 +385,22 @@ fn expand_macro<'cx>(
 }
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.
-struct CollectTrackerAndEmitter<'a, 'cx> {
+struct CollectTrackerAndEmitter<'a, 'cx, 'matcher> {
     cx: &'a mut ExtCtxt<'cx>,
+    remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
-    best_failure: Option<(Token, &'static str)>,
+    best_failure: Option<(Token, &'static str, MatcherLoc)>,
     root_span: Span,
     result: Option<Box<dyn MacResult + 'cx>>,
 }
 
-impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx> {
-    fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {
-        // Empty for now.
+impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 'matcher> {
+    fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc) {
+        if self.remaining_matcher.is_none()
+            || (parser.has_no_remaining_items_for_step() && *matcher != MatcherLoc::Eof)
+        {
+            self.remaining_matcher = Some(matcher);
+        }
     }
 
     fn after_arm(&mut self, result: &NamedParseResult) {
@@ -398,8 +409,16 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx> 
                 unreachable!("should not collect detailed info for successful macro match");
             }
             Failure(token, msg) => match self.best_failure {
-                Some((ref best_token, _)) if best_token.span.lo() >= token.span.lo() => {}
-                _ => self.best_failure = Some((token.clone(), msg)),
+                Some((ref best_token, _, _)) if best_token.span.lo() >= token.span.lo() => {}
+                _ => {
+                    self.best_failure = Some((
+                        token.clone(),
+                        msg,
+                        self.remaining_matcher
+                            .expect("must have collected matcher already")
+                            .clone(),
+                    ))
+                }
             },
             Error(err_sp, msg) => {
                 let span = err_sp.substitute_dummy(self.root_span);
@@ -415,9 +434,9 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx> 
     }
 }
 
-impl<'a, 'cx> CollectTrackerAndEmitter<'a, 'cx> {
+impl<'a, 'cx> CollectTrackerAndEmitter<'a, 'cx, '_> {
     fn new(cx: &'a mut ExtCtxt<'cx>, root_span: Span) -> Self {
-        Self { cx, best_failure: None, root_span, result: None }
+        Self { cx, remaining_matcher: None, best_failure: None, root_span, result: None }
     }
 }
 

@@ -6,7 +6,6 @@ use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
@@ -19,7 +18,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
-use std::ops::ControlFlow;
+use std::ops::{ControlFlow, Deref};
 use std::slice;
 
 /// An entity in the Rust type system, which can be one of
@@ -562,25 +561,86 @@ impl<T, U> EarlyBinder<(T, U)> {
     }
 }
 
-impl<'tcx, 's, T: IntoIterator<Item = I>, I: TypeFoldable<'tcx>> EarlyBinder<T> {
+impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
+where
+    I::Item: TypeFoldable<'tcx>,
+{
     pub fn subst_iter(
         self,
         tcx: TyCtxt<'tcx>,
         substs: &'s [GenericArg<'tcx>],
-    ) -> impl Iterator<Item = I> + Captures<'s> + Captures<'tcx> {
-        self.0.into_iter().map(move |t| EarlyBinder(t).subst(tcx, substs))
+    ) -> SubstIter<'s, 'tcx, I> {
+        SubstIter { it: self.0.into_iter(), tcx, substs }
     }
 }
 
-impl<'tcx, 's, 'a, T: IntoIterator<Item = &'a I>, I: Copy + TypeFoldable<'tcx> + 'a>
-    EarlyBinder<T>
+pub struct SubstIter<'s, 'tcx, I: IntoIterator> {
+    it: I::IntoIter,
+    tcx: TyCtxt<'tcx>,
+    substs: &'s [GenericArg<'tcx>],
+}
+
+impl<'tcx, I: IntoIterator> Iterator for SubstIter<'_, 'tcx, I>
+where
+    I::Item: TypeFoldable<'tcx>,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(self.it.next()?).subst(self.tcx, self.substs))
+    }
+}
+
+impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIter<'_, 'tcx, I>
+where
+    I::IntoIter: DoubleEndedIterator,
+    I::Item: TypeFoldable<'tcx>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(self.it.next_back()?).subst(self.tcx, self.substs))
+    }
+}
+
+impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
+where
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
 {
     pub fn subst_iter_copied(
         self,
         tcx: TyCtxt<'tcx>,
         substs: &'s [GenericArg<'tcx>],
-    ) -> impl Iterator<Item = I> + Captures<'s> + Captures<'tcx> + Captures<'a> {
-        self.0.into_iter().map(move |t| EarlyBinder(*t).subst(tcx, substs))
+    ) -> SubstIterCopied<'s, 'tcx, I> {
+        SubstIterCopied { it: self.0.into_iter(), tcx, substs }
+    }
+}
+
+pub struct SubstIterCopied<'a, 'tcx, I: IntoIterator> {
+    it: I::IntoIter,
+    tcx: TyCtxt<'tcx>,
+    substs: &'a [GenericArg<'tcx>],
+}
+
+impl<'tcx, I: IntoIterator> Iterator for SubstIterCopied<'_, 'tcx, I>
+where
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+{
+    type Item = <I::Item as Deref>::Target;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(*self.it.next()?).subst(self.tcx, self.substs))
+    }
+}
+
+impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIterCopied<'_, 'tcx, I>
+where
+    I::IntoIter: DoubleEndedIterator,
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(*self.it.next_back()?).subst(self.tcx, self.substs))
     }
 }
 

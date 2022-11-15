@@ -103,3 +103,27 @@ extern "C" {}
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
 #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
 extern "C" {}
+
+#[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
+#[link(name = "gcc_s")]
+extern "C" {}
+
+#[cfg(all(target_os = "openbsd", target_arch = "sparc64"))]
+#[link(name = "gcc")]
+extern "C" {}
+
+#[cfg(all(target_os = "openbsd", not(target_arch = "sparc64")))]
+#[link(name = "c++abi")]
+extern "C" {}
+
+#[cfg(any(target_os = "solaris", target_os = "illumos"))]
+#[link(name = "gcc_s")]
+extern "C" {}
+
+#[cfg(target_os = "dragonfly")]
+#[link(name = "gcc_pic")]
+extern "C" {}
+
+#[cfg(target_os = "haiku")]
+#[link(name = "gcc_s")]
+extern "C" {}

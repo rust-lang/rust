@@ -6,6 +6,12 @@ LL | macro_rules! one_arg_macro {
 ...
 LL |     one_arg_macro!();
    |     ^^^^^^^^^^^^^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$fmt:expr`
+  --> $DIR/issue-7970a.rs:2:6
+   |
+LL |     ($fmt:expr) => (print!(concat!($fmt, "\n")));
+   |      ^^^^^^^^^
 
 error: aborting due to previous error
 

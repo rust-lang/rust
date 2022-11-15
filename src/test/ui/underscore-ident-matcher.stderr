@@ -6,6 +6,12 @@ LL | macro_rules! identity {
 ...
 LL |     let identity!(_) = 10;
    |                   ^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$i:ident`
+  --> $DIR/underscore-ident-matcher.rs:2:6
+   |
+LL |     ($i: ident) => (
+   |      ^^^^^^^^^
 
 error: aborting due to previous error
 

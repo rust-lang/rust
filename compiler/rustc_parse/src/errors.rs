@@ -1206,6 +1206,14 @@ pub(crate) struct SelfParamNotFirst {
 }
 
 #[derive(Diagnostic)]
+#[diag(parser_invalid_identifier_with_leading_number)]
+pub(crate) struct InvalidIdentiferStartsWithNumber {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parser_const_generic_without_braces)]
 pub(crate) struct ConstGenericWithoutBraces {
     #[primary_span]
