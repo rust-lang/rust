@@ -57,11 +57,8 @@ Copyright: 2010 NAVER Corporation
 License: OFL-1.1
 
 Files: src/librustdoc/html/static/fonts/SourceCodePro*
-Copyright: 2010, 2012 Adobe Systems Incorporated
-License: OFL-1.1
-
-Files: src/librustdoc/html/static/fonts/SourceSerif4*
-Copyright: 2014-2021 Adobe Systems Incorporated
+       src/librustdoc/html/static/fonts/SourceSerif4*
+Copyright: 2010, 2012, 2014-2023, Adobe Systems Incorporated
 License: OFL-1.1
 
 Files: src/librustdoc/html/static/css/normalize.css
