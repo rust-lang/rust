@@ -16,19 +16,19 @@ LL | |         core::mem::size_of::<T>()
 LL | |     }
    | |_____- `Tt::const_val` defined here
 
-error[E0080]: evaluation of constant value failed
+note: erroneous constant used
   --> $DIR/issue-54954.rs:11:15
    |
 LL | fn f(z: [f32; ARR_LEN]) -> [f32; ARR_LEN] {
-   |               ^^^^^^^ referenced constant has errors
+   |               ^^^^^^^
 
-error[E0080]: evaluation of constant value failed
+note: erroneous constant used
   --> $DIR/issue-54954.rs:11:34
    |
 LL | fn f(z: [f32; ARR_LEN]) -> [f32; ARR_LEN] {
-   |                                  ^^^^^^^ referenced constant has errors
+   |                                  ^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0080, E0379, E0790.
-For more information about an error, try `rustc --explain E0080`.
+Some errors have detailed explanations: E0379, E0790.
+For more information about an error, try `rustc --explain E0379`.

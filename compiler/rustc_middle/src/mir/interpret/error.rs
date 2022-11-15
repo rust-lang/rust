@@ -16,8 +16,6 @@ pub enum ErrorHandled {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
     Reported(ErrorGuaranteed),
-    /// Already emitted a lint for this evaluation.
-    Linted,
     /// Don't emit an error, the evaluation failed because the MIR was generic
     /// and the substs didn't fully monomorphize it.
     TooGeneric,
@@ -89,18 +87,6 @@ fn print_backtrace(backtrace: &Backtrace) {
     eprintln!("\n\nAn error occurred in miri:\n{}", backtrace);
 }
 
-impl From<ErrorHandled> for InterpErrorInfo<'_> {
-    fn from(err: ErrorHandled) -> Self {
-        match err {
-            ErrorHandled::Reported(ErrorGuaranteed { .. }) | ErrorHandled::Linted => {
-                err_inval!(ReferencedConstant)
-            }
-            ErrorHandled::TooGeneric => err_inval!(TooGeneric),
-        }
-        .into()
-    }
-}
-
 impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
     fn from(err: ErrorGuaranteed) -> Self {
         InterpError::InvalidProgram(InvalidProgramInfo::AlreadyReported(err)).into()
@@ -138,9 +124,6 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
 pub enum InvalidProgramInfo<'tcx> {
     /// Resolution can fail if we are in a too generic context.
     TooGeneric,
-    /// Cannot compute this constant because it depends on another one
-    /// which already produced an error.
-    ReferencedConstant,
     /// Abort in case errors are already reported.
     AlreadyReported(ErrorGuaranteed),
     /// An error occurred during layout computation.
@@ -158,9 +141,11 @@ impl fmt::Display for InvalidProgramInfo<'_> {
         use InvalidProgramInfo::*;
         match self {
             TooGeneric => write!(f, "encountered overly generic constant"),
-            ReferencedConstant => write!(f, "referenced constant has errors"),
             AlreadyReported(ErrorGuaranteed { .. }) => {
-                write!(f, "encountered constants with type errors, stopping evaluation")
+                write!(
+                    f,
+                    "an error has already been reported elsewhere (this sould not usually be printed)"
+                )
             }
             Layout(ref err) => write!(f, "{err}"),
             FnAbiAdjustForForeignAbi(ref err) => write!(f, "{err}"),

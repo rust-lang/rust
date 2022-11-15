@@ -5,7 +5,6 @@ use crate::const_prop::CanConstProp;
 use crate::const_prop::ConstPropMachine;
 use crate::const_prop::ConstPropMode;
 use crate::MirLint;
-use rustc_const_eval::const_eval::ConstEvalErr;
 use rustc_const_eval::interpret::Immediate;
 use rustc_const_eval::interpret::{
     self, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
@@ -286,25 +285,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(
-        &mut self,
-        c: &Constant<'tcx>,
-        _source_info: SourceInfo,
-    ) -> Option<OpTy<'tcx>> {
+    fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.needs_subst() {
             return None;
         }
 
-        match self.ecx.const_to_op(&c.literal, None) {
-            Ok(op) => Some(op),
-            Err(error) => {
-                let tcx = self.ecx.tcx.at(c.span);
-                let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
-                err.report_as_error(tcx, "erroneous constant used");
-                None
-            }
-        }
+        self.use_ecx(source_info, |this| this.ecx.eval_mir_constant(&c.literal, Some(c.span), None))
     }
 
     /// Returns the value, if any, of evaluating `place`.

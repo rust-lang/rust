@@ -4,12 +4,18 @@ error[E0080]: evaluation of constant value failed
 LL |     const FIELD3: Field3 = unsafe { UNION.field3 };
    |                                     ^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
-error[E0080]: erroneous constant used
+note: erroneous constant used
   --> $DIR/union-const-eval-field.rs:31:5
    |
 LL |     FIELD3
-   |     ^^^^^^ referenced constant has errors
+   |     ^^^^^^
 
-error: aborting due to 2 previous errors
+note: erroneous constant used
+  --> $DIR/union-const-eval-field.rs:31:5
+   |
+LL |     FIELD3
+   |     ^^^^^^
+
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.
