@@ -48,10 +48,10 @@ pub fn is_subtype<'tcx>(
     let cause = ObligationCause::dummy();
     let src = ocx.normalize(cause.clone(), param_env, src);
     let dest = ocx.normalize(cause.clone(), param_env, dest);
-    let Ok(infer_ok) = infcx.at(&cause, param_env).sub(src, dest) else {
-        return false;
+    match ocx.sub(&cause, param_env, src, dest) {
+        Ok(()) => {}
+        Err(_) => return false,
     };
-    let () = ocx.register_infer_ok_obligations(infer_ok);
     let errors = ocx.select_all_or_error();
     // With `Reveal::All`, opaque types get normalized away, with `Reveal::UserFacing`
     // we would get unification errors because we're unable to look into opaque types,

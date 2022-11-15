@@ -402,10 +402,8 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
         unnormalized_trait_sig.inputs_and_output.iter().chain(trait_sig.inputs_and_output.iter()),
     );
 
-    match infcx.at(&cause, param_env).eq(trait_return_ty, impl_return_ty) {
-        Ok(infer::InferOk { value: (), obligations }) => {
-            ocx.register_obligations(obligations);
-        }
+    match ocx.eq(&cause, param_env, trait_return_ty, impl_return_ty) {
+        Ok(()) => {}
         Err(terr) => {
             let mut diag = struct_span_err!(
                 tcx.sess,
@@ -442,10 +440,8 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     // the lifetimes of the return type, but do this after unifying just the
     // return types, since we want to avoid duplicating errors from
     // `compare_predicate_entailment`.
-    match infcx.at(&cause, param_env).eq(trait_fty, impl_fty) {
-        Ok(infer::InferOk { value: (), obligations }) => {
-            ocx.register_obligations(obligations);
-        }
+    match ocx.eq(&cause, param_env, trait_fty, impl_fty) {
+        Ok(()) => {}
         Err(terr) => {
             // This function gets called during `compare_predicate_entailment` when normalizing a
             // signature that contains RPITIT. When the method signatures don't match, we have to
