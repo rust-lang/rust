@@ -2,10 +2,10 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::borrow::Borrow;
-use std::collections::hash_map::Entry;
 use std::hash::Hash;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::IndexEntry;
 use std::fmt;
 
 use rustc_ast::Mutability;
@@ -107,18 +107,18 @@ impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
     }
 }
 
-impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
+impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
     #[inline(always)]
     fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
     where
         K: Borrow<Q>,
     {
-        FxHashMap::contains_key(self, k)
+        FxIndexMap::contains_key(self, k)
     }
 
     #[inline(always)]
     fn insert(&mut self, k: K, v: V) -> Option<V> {
-        FxHashMap::insert(self, k, v)
+        FxIndexMap::insert(self, k, v)
     }
 
     #[inline(always)]
@@ -126,7 +126,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     where
         K: Borrow<Q>,
     {
-        FxHashMap::remove(self, k)
+        FxIndexMap::remove(self, k)
     }
 
     #[inline(always)]
@@ -148,8 +148,8 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     #[inline(always)]
     fn get_mut_or<E>(&mut self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&mut V, E> {
         match self.entry(k) {
-            Entry::Occupied(e) => Ok(e.into_mut()),
-            Entry::Vacant(e) => {
+            IndexEntry::Occupied(e) => Ok(e.into_mut()),
+            IndexEntry::Vacant(e) => {
                 let v = vacant()?;
                 Ok(e.insert(v))
             }

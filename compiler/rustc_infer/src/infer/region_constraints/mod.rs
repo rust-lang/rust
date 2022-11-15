@@ -7,7 +7,7 @@ use super::{
     InferCtxtUndoLogs, MiscVariable, RegionVariableOrigin, Rollback, Snapshot, SubregionOrigin,
 };
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
@@ -125,7 +125,7 @@ pub struct RegionConstraintData<'tcx> {
     /// we record the fact that `'a <= 'b` is implied by the fn
     /// signature, and then ignore the constraint when solving
     /// equations. This is a bit of a hack but seems to work.
-    pub givens: FxHashSet<(Region<'tcx>, ty::RegionVid)>,
+    pub givens: FxIndexSet<(Region<'tcx>, ty::RegionVid)>,
 }
 
 /// Represents a constraint that influences the inference process.

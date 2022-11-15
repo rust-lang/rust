@@ -149,6 +149,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         region: ty::BoundRegionKind,
     ) -> bool {
         let late_bound_regions = self.tcx().collect_referenced_late_bound_regions(&ty);
+        // We are only checking is any region meets the condition so order doesn't matter
+        #[allow(rustc::potential_query_instability)]
         late_bound_regions.iter().any(|r| *r == region)
     }
 

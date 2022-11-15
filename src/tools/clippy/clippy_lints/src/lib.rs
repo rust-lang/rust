@@ -39,7 +39,6 @@ extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_middle;
-extern crate rustc_mir_dataflow;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -291,6 +290,7 @@ mod missing_const_for_fn;
 mod missing_doc;
 mod missing_enforced_import_rename;
 mod missing_inline;
+mod missing_trait_methods;
 mod mixed_read_write_in_expression;
 mod module_style;
 mod multi_assignments;
@@ -326,6 +326,7 @@ mod option_if_let_else;
 mod overflow_check_conditional;
 mod panic_in_result_fn;
 mod panic_unimplemented;
+mod partial_pub_fields;
 mod partialeq_ne_impl;
 mod partialeq_to_none;
 mod pass_by_ref_or_value;
@@ -419,7 +420,7 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, sess: &Se
 
     let msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
-            sess.err(&format!(
+            sess.err(format!(
                 "error reading Clippy's configuration file. `{s}` is not a valid Rust version"
             ));
             None
@@ -435,7 +436,7 @@ fn read_msrv(conf: &Conf, sess: &Session) -> Option<RustcVersion> {
         .and_then(|v| parse_msrv(&v, None, None));
     let clippy_msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
-            sess.err(&format!(
+            sess.err(format!(
                 "error reading Clippy's configuration file. `{s}` is not a valid Rust version"
             ));
             None
@@ -446,7 +447,7 @@ fn read_msrv(conf: &Conf, sess: &Session) -> Option<RustcVersion> {
         if let Some(clippy_msrv) = clippy_msrv {
             // if both files have an msrv, let's compare them and emit a warning if they differ
             if clippy_msrv != cargo_msrv {
-                sess.warn(&format!(
+                sess.warn(format!(
                     "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
                 ));
             }
@@ -475,7 +476,7 @@ pub fn read_conf(sess: &Session) -> Conf {
     let TryConf { conf, errors, warnings } = utils::conf::read(&file_name);
     // all conf errors are non-fatal, we just use the default conf in case of error
     for error in errors {
-        sess.err(&format!(
+        sess.err(format!(
             "error reading Clippy's configuration file `{}`: {}",
             file_name.display(),
             format_error(error)
@@ -483,7 +484,7 @@ pub fn read_conf(sess: &Session) -> Conf {
     }
 
     for warning in warnings {
-        sess.struct_warn(&format!(
+        sess.struct_warn(format!(
             "error reading Clippy's configuration file `{}`: {}",
             file_name.display(),
             format_error(warning)
@@ -530,17 +531,23 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     // all the internal lints
     #[cfg(feature = "internal")]
     {
-        store.register_early_pass(|| Box::new(utils::internal_lints::ClippyLintsInternal));
-        store.register_early_pass(|| Box::new(utils::internal_lints::ProduceIce));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::CollapsibleCalls));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::CompilerLintFunctions::new()));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::IfChainStyle));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::InvalidPaths));
-        store.register_late_pass(|_| Box::<utils::internal_lints::InterningDefinedSymbol>::default());
-        store.register_late_pass(|_| Box::<utils::internal_lints::LintWithoutLintPass>::default());
-        store.register_late_pass(|_| Box::new(utils::internal_lints::UnnecessaryDefPath));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::OuterExpnDataPass));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::MsrvAttrImpl));
+        store.register_early_pass(|| Box::new(utils::internal_lints::clippy_lints_internal::ClippyLintsInternal));
+        store.register_early_pass(|| Box::new(utils::internal_lints::produce_ice::ProduceIce));
+        store.register_late_pass(|_| Box::new(utils::internal_lints::collapsible_calls::CollapsibleCalls));
+        store.register_late_pass(|_| {
+            Box::new(utils::internal_lints::compiler_lint_functions::CompilerLintFunctions::new())
+        });
+        store.register_late_pass(|_| Box::new(utils::internal_lints::if_chain_style::IfChainStyle));
+        store.register_late_pass(|_| Box::new(utils::internal_lints::invalid_paths::InvalidPaths));
+        store.register_late_pass(|_| {
+            Box::<utils::internal_lints::interning_defined_symbol::InterningDefinedSymbol>::default()
+        });
+        store.register_late_pass(|_| {
+            Box::<utils::internal_lints::lint_without_lint_pass::LintWithoutLintPass>::default()
+        });
+        store.register_late_pass(|_| Box::<utils::internal_lints::unnecessary_def_path::UnnecessaryDefPath>::default());
+        store.register_late_pass(|_| Box::new(utils::internal_lints::outer_expn_data_pass::OuterExpnDataPass));
+        store.register_late_pass(|_| Box::new(utils::internal_lints::msrv_attr_impl::MsrvAttrImpl));
     }
 
     let arithmetic_side_effects_allowed = conf.arithmetic_side_effects_allowed.clone();
@@ -910,6 +917,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(bool_to_int_with_if::BoolToIntWithIf));
     store.register_late_pass(|_| Box::new(box_default::BoxDefault));
     store.register_late_pass(|_| Box::new(implicit_saturating_add::ImplicitSaturatingAdd));
+    store.register_early_pass(|| Box::new(partial_pub_fields::PartialPubFields));
+    store.register_late_pass(|_| Box::new(missing_trait_methods::MissingTraitMethods));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

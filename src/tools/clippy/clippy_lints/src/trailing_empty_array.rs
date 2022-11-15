@@ -46,7 +46,7 @@ impl<'tcx> LateLintPass<'tcx> for TrailingEmptyArray {
                 None,
                 &format!(
                     "consider annotating `{}` with `#[repr(C)]` or another `repr` attribute",
-                    cx.tcx.def_path_str(item.def_id.to_def_id())
+                    cx.tcx.def_path_str(item.owner_id.to_def_id())
                 ),
             );
         }

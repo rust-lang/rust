@@ -1,10 +1,12 @@
 // run-rustfix
 
-#[warn(clippy::manual_range_contains)]
-#[allow(unused)]
-#[allow(clippy::no_effect)]
-#[allow(clippy::short_circuit_statement)]
-#[allow(clippy::unnecessary_operation)]
+#![feature(custom_inner_attributes)]
+#![warn(clippy::manual_range_contains)]
+#![allow(unused)]
+#![allow(clippy::no_effect)]
+#![allow(clippy::short_circuit_statement)]
+#![allow(clippy::unnecessary_operation)]
+
 fn main() {
     let x = 9_i32;
 
@@ -61,4 +63,18 @@ fn main() {
 // Fix #6373
 pub const fn in_range(a: i32) -> bool {
     3 <= a && a <= 20
+}
+
+fn msrv_1_34() {
+    #![clippy::msrv = "1.34"]
+
+    let x = 5;
+    x >= 8 && x < 34;
+}
+
+fn msrv_1_35() {
+    #![clippy::msrv = "1.35"]
+
+    let x = 5;
+    x >= 8 && x < 35;
 }

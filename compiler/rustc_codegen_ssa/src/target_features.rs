@@ -267,6 +267,7 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // tidy-alphabetical-start
     ("atomics", Some(sym::wasm_target_feature)),
     ("bulk-memory", Some(sym::wasm_target_feature)),
+    ("multivalue", Some(sym::wasm_target_feature)),
     ("mutable-globals", Some(sym::wasm_target_feature)),
     ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
     ("reference-types", Some(sym::wasm_target_feature)),

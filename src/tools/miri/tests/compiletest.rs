@@ -8,6 +8,12 @@ fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
 }
 
+fn get_host() -> String {
+    rustc_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
+        .expect("failed to parse rustc version info")
+        .host
+}
+
 // Build the shared object file for testing external C function calls.
 fn build_so_for_c_ffi_tests() -> PathBuf {
     let cc = option_env!("CC").unwrap_or("cc");
@@ -37,14 +43,9 @@ fn build_so_for_c_ffi_tests() -> PathBuf {
     so_file_path
 }
 
-fn run_tests(
-    mode: Mode,
-    path: &str,
-    target: Option<String>,
-    with_dependencies: bool,
-) -> Result<()> {
+fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
     let mut config = Config {
-        target,
+        target: Some(target.to_owned()),
         stderr_filters: STDERR.clone(),
         stdout_filters: STDOUT.clone(),
         root_dir: PathBuf::from(path),
@@ -138,6 +139,8 @@ regexes! {
     STDOUT:
     // Windows file paths
     r"\\"                           => "/",
+    // erase Stacked Borrows tags
+    "<[0-9]+>"                      => "<TAG>",
 }
 
 regexes! {
@@ -179,13 +182,8 @@ enum Dependencies {
 
 use Dependencies::*;
 
-fn ui(mode: Mode, path: &str, with_dependencies: Dependencies) -> Result<()> {
-    let target = get_target();
-
-    let msg = format!(
-        "## Running ui tests in {path} against miri for {}",
-        target.as_deref().unwrap_or("host")
-    );
+fn ui(mode: Mode, path: &str, target: &str, with_dependencies: Dependencies) -> Result<()> {
+    let msg = format!("## Running ui tests in {path} against miri for {target}");
     eprintln!("{}", msg.green().bold());
 
     let with_dependencies = match with_dependencies {
@@ -195,25 +193,31 @@ fn ui(mode: Mode, path: &str, with_dependencies: Dependencies) -> Result<()> {
     run_tests(mode, path, target, with_dependencies)
 }
 
-fn get_target() -> Option<String> {
-    env::var("MIRI_TEST_TARGET").ok()
+fn get_target() -> String {
+    env::var("MIRI_TEST_TARGET").ok().unwrap_or_else(get_host)
 }
 
 fn main() -> Result<()> {
     ui_test::color_eyre::install()?;
+    let target = get_target();
 
     // Add a test env var to do environment communication tests.
     env::set_var("MIRI_ENV_VAR_TEST", "0");
     // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
     env::set_var("MIRI_TEMP", env::temp_dir());
 
-    ui(Mode::Pass, "tests/pass", WithoutDependencies)?;
-    ui(Mode::Pass, "tests/pass-dep", WithDependencies)?;
-    ui(Mode::Panic, "tests/panic", WithDependencies)?;
-    ui(Mode::Fail { require_patterns: true }, "tests/fail", WithDependencies)?;
+    ui(Mode::Pass, "tests/pass", &target, WithoutDependencies)?;
+    ui(Mode::Pass, "tests/pass-dep", &target, WithDependencies)?;
+    ui(Mode::Panic, "tests/panic", &target, WithDependencies)?;
+    ui(Mode::Fail { require_patterns: true }, "tests/fail", &target, WithDependencies)?;
     if cfg!(target_os = "linux") {
-        ui(Mode::Pass, "tests/extern-so/pass", WithoutDependencies)?;
-        ui(Mode::Fail { require_patterns: true }, "tests/extern-so/fail", WithoutDependencies)?;
+        ui(Mode::Pass, "tests/extern-so/pass", &target, WithoutDependencies)?;
+        ui(
+            Mode::Fail { require_patterns: true },
+            "tests/extern-so/fail",
+            &target,
+            WithoutDependencies,
+        )?;
     }
 
     Ok(())

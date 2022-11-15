@@ -17,7 +17,7 @@ use std::iter;
 
 use crate::util::expand_aggregate;
 use crate::{
-    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator, marker,
+    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,
     pass_manager as pm, remove_noop_landing_pads, simplify,
 };
 use rustc_middle::mir::patch::MirPatch;
@@ -97,8 +97,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             &simplify::SimplifyCfg::new("make_shim"),
             &add_call_guards::CriticalCallEdges,
             &abort_unwinding_calls::AbortUnwindingCalls,
-            &marker::PhaseChange(MirPhase::Runtime(RuntimePhase::Optimized)),
         ],
+        Some(MirPhase::Runtime(RuntimePhase::Optimized)),
     );
 
     debug!("make_shim({:?}) = {:?}", instance, result);
@@ -312,7 +312,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let param_env = tcx.param_env(def_id);
 
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
-    let is_copy = self_ty.is_copy_modulo_regions(tcx.at(builder.span), param_env);
+    let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
 
     let dest = Place::return_place();
     let src = tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
@@ -569,17 +569,13 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
 /// Builds a "call" shim for `instance`. The shim calls the function specified by `call_kind`,
 /// first adjusting its first argument according to `rcvr_adjustment`.
+#[instrument(level = "debug", skip(tcx), ret)]
 fn build_call_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
     rcvr_adjustment: Option<Adjustment>,
     call_kind: CallKind<'tcx>,
 ) -> Body<'tcx> {
-    debug!(
-        "build_call_shim(instance={:?}, rcvr_adjustment={:?}, call_kind={:?})",
-        instance, rcvr_adjustment, call_kind
-    );
-
     // `FnPtrShim` contains the fn pointer type that a call shim is being built for - this is used
     // to substitute into the signature of the shim. It is not necessary for users of this
     // MIR body to perform further substitutions (see `InstanceDef::has_polymorphic_mir_body`).
@@ -641,7 +637,7 @@ fn build_call_shim<'tcx>(
 
     let span = tcx.def_span(def_id);
 
-    debug!("build_call_shim: sig={:?}", sig);
+    debug!(?sig);
 
     let mut local_decls = local_decls_for_sig(&sig, span);
     let source_info = SourceInfo::outermost(span);
@@ -845,7 +841,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
         span,
     );
 
-    rustc_middle::mir::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
+    crate::pass_manager::dump_mir_for_phase_change(tcx, &body);
 
     body
 }

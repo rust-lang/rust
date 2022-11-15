@@ -430,7 +430,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     (ty::Projection(_), ty::Projection(_)) => {
                         diag.note("an associated type was expected, but a different one was found");
                     }
-                    (ty::Param(p), ty::Projection(proj)) | (ty::Projection(proj), ty::Param(p)) => {
+                    (ty::Param(p), ty::Projection(proj)) | (ty::Projection(proj), ty::Param(p))
+                        if self.def_kind(proj.item_def_id) != DefKind::ImplTraitPlaceholder =>
+                    {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
@@ -872,9 +874,9 @@ fn foo(&self) -> Self::T { String::new() }
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
                             if let hir::Defaultness::Default { has_value: true } =
-                                self.impl_defaultness(item.id.def_id)
+                                self.impl_defaultness(item.id.owner_id)
                             {
-                                if self.type_of(item.id.def_id) == found {
+                                if self.type_of(item.id.owner_id) == found {
                                     diag.span_label(
                                         item.span,
                                         "associated type defaults can't be assumed inside the \
@@ -894,7 +896,7 @@ fn foo(&self) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
-                        if self.type_of(item.id.def_id) == found {
+                        if self.type_of(item.id.owner_id) == found {
                             diag.span_label(item.span, "expected this associated type");
                             return true;
                         }

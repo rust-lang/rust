@@ -511,12 +511,12 @@ impl<'tcx> Instance<'tcx> {
         Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
     }
 
+    #[instrument(level = "debug", skip(tcx), ret)]
     pub fn fn_once_adapter_instance(
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
         substs: ty::SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
-        debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
         let fn_once = tcx.require_lang_item(LangItem::FnOnce, None);
         let call_once = tcx
             .associated_items(fn_once)
@@ -536,7 +536,7 @@ impl<'tcx> Instance<'tcx> {
         assert_eq!(sig.inputs().len(), 1);
         let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);
 
-        debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
+        debug!(?self_ty, ?sig);
         Some(Instance { def, substs })
     }
 

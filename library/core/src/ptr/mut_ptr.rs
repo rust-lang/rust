@@ -588,6 +588,34 @@ impl<T: ?Sized> *mut T {
     ///
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// #![feature(ptr_mask, strict_provenance)]
+    /// let mut v = 17_u32;
+    /// let ptr: *mut u32 = &mut v;
+    ///
+    /// // `u32` is 4 bytes aligned,
+    /// // which means that lower 2 bits are always 0.
+    /// let tag_mask = 0b11;
+    /// let ptr_mask = !tag_mask;
+    ///
+    /// // We can store something in these lower bits
+    /// let tagged_ptr = ptr.map_addr(|a| a | 0b10);
+    ///
+    /// // Get the "tag" back
+    /// let tag = tagged_ptr.addr() & tag_mask;
+    /// assert_eq!(tag, 0b10);
+    ///
+    /// // Note that `tagged_ptr` is unaligned, it's UB to read from/write to it.
+    /// // To get original pointer `mask` can be used:
+    /// let masked_ptr = tagged_ptr.mask(ptr_mask);
+    /// assert_eq!(unsafe { *masked_ptr }, 17);
+    ///
+    /// unsafe { *masked_ptr = 0 };
+    /// assert_eq!(v, 0);
+    /// ```
     #[unstable(feature = "ptr_mask", issue = "98290")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline(always)]
@@ -730,7 +758,7 @@ impl<T: ?Sized> *mut T {
 
     /// Returns whether two pointers are guaranteed to be inequal.
     ///
-    /// At runtime this function behaves like `Some(self == other)`.
+    /// At runtime this function behaves like `Some(self != other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine inequality of two pointers, so this function may
     /// spuriously return `None` for pointers that later actually turn out to have its inequality known.

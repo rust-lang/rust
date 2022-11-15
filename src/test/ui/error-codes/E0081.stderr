@@ -32,7 +32,7 @@ LL |     First = -1,
    |             -- `-1` assigned here
 LL |
 LL |     Second = -2,
-   |     ----------- discriminant for `Last` incremented from this startpoint (`Second` + 1 variant later => `Last` = -1)
+   |     ------ discriminant for `Last` incremented from this startpoint (`Second` + 1 variant later => `Last` = -1)
 LL |
 LL |     Last,
    |     ---- `-1` assigned here
@@ -53,7 +53,7 @@ LL |     V4 = 0,
    |          - `0` assigned here
 LL |
 LL |     V5 = -2,
-   |     ------- discriminant for `V7` incremented from this startpoint (`V5` + 2 variants later => `V7` = 0)
+   |     -- discriminant for `V7` incremented from this startpoint (`V5` + 2 variants later => `V7` = 0)
 ...
 LL |     V7,
    |     -- `0` assigned here
@@ -68,7 +68,7 @@ LL |     V5 = -2,
    |          -- `-2` assigned here
 ...
 LL |     V8 = -3,
-   |     ------- discriminant for `V9` incremented from this startpoint (`V8` + 1 variant later => `V9` = -2)
+   |     -- discriminant for `V9` incremented from this startpoint (`V8` + 1 variant later => `V9` = -2)
 LL |
 LL |     V9,
    |     -- `-2` assigned here

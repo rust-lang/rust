@@ -175,5 +175,16 @@ help: nest the patterns
 LL |     if let S { x: 0 | 1, y } = (S { x: 0, y: 1 }) {}
    |            ~~~~~~~~~~~~~~~~~
 
-error: aborting due to 16 previous errors
+error: unnested or-patterns
+  --> $DIR/unnested_or_patterns.rs:46:12
+   |
+LL |     if let [1] | [53] = [0] {}
+   |            ^^^^^^^^^^
+   |
+help: nest the patterns
+   |
+LL |     if let [1 | 53] = [0] {}
+   |            ~~~~~~~~
+
+error: aborting due to 17 previous errors
 

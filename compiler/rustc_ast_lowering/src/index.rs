@@ -112,19 +112,19 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_nested_item(&mut self, item: ItemId) {
         debug!("visit_nested_item: {:?}", item);
-        self.insert_nested(item.def_id.def_id);
+        self.insert_nested(item.owner_id.def_id);
     }
 
     fn visit_nested_trait_item(&mut self, item_id: TraitItemId) {
-        self.insert_nested(item_id.def_id.def_id);
+        self.insert_nested(item_id.owner_id.def_id);
     }
 
     fn visit_nested_impl_item(&mut self, item_id: ImplItemId) {
-        self.insert_nested(item_id.def_id.def_id);
+        self.insert_nested(item_id.owner_id.def_id);
     }
 
     fn visit_nested_foreign_item(&mut self, foreign_id: ForeignItemId) {
-        self.insert_nested(foreign_id.def_id.def_id);
+        self.insert_nested(foreign_id.owner_id.def_id);
     }
 
     fn visit_nested_body(&mut self, id: BodyId) {
@@ -143,7 +143,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_item(&mut self, i: &'hir Item<'hir>) {
-        debug_assert_eq!(i.def_id, self.owner);
+        debug_assert_eq!(i.owner_id, self.owner);
         self.with_parent(i.hir_id(), |this| {
             if let ItemKind::Struct(ref struct_def, _) = i.kind {
                 // If this is a tuple or unit-like struct, register the constructor.
@@ -157,7 +157,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_foreign_item(&mut self, fi: &'hir ForeignItem<'hir>) {
-        debug_assert_eq!(fi.def_id, self.owner);
+        debug_assert_eq!(fi.owner_id, self.owner);
         self.with_parent(fi.hir_id(), |this| {
             intravisit::walk_foreign_item(this, fi);
         });
@@ -176,7 +176,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
-        debug_assert_eq!(ti.def_id, self.owner);
+        debug_assert_eq!(ti.owner_id, self.owner);
         self.with_parent(ti.hir_id(), |this| {
             intravisit::walk_trait_item(this, ti);
         });
@@ -184,7 +184,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_impl_item(&mut self, ii: &'hir ImplItem<'hir>) {
-        debug_assert_eq!(ii.def_id, self.owner);
+        debug_assert_eq!(ii.owner_id, self.owner);
         self.with_parent(ii.hir_id(), |this| {
             intravisit::walk_impl_item(this, ii);
         });

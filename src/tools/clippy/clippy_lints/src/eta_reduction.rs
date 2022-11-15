@@ -213,9 +213,8 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure_ty: Ty<'tcx>, call_ty: Ty<'tc
     if !closure_ty.has_late_bound_regions() {
         return true;
     }
-    let substs = match closure_ty.kind() {
-        ty::Closure(_, substs) => substs,
-        _ => return false,
+    let ty::Closure(_, substs) = closure_ty.kind() else {
+        return false;
     };
     let closure_sig = cx.tcx.signature_unclosure(substs.as_closure().sig(), Unsafety::Normal);
     cx.tcx.erase_late_bound_regions(closure_sig) == cx.tcx.erase_late_bound_regions(call_sig)

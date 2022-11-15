@@ -4,7 +4,9 @@ use std::{
 };
 
 use rustc_ast::Label;
-use rustc_errors::{error_code, Applicability, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
+use rustc_errors::{
+    error_code, Applicability, DiagnosticSymbolList, ErrorGuaranteed, IntoDiagnostic, MultiSpan,
+};
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{MainDefinition, Ty};
@@ -79,6 +81,7 @@ pub struct AttrShouldBeAppliedToFn {
     pub attr_span: Span,
     #[label]
     pub defn_span: Span,
+    pub on_crate: bool,
 }
 
 #[derive(Diagnostic)]
@@ -95,6 +98,7 @@ pub struct TrackedCallerWrongLocation {
     pub attr_span: Span,
     #[label]
     pub defn_span: Span,
+    pub on_crate: bool,
 }
 
 #[derive(Diagnostic)]
@@ -291,7 +295,7 @@ pub struct DocTestUnknownAny {
 #[note(no_op_note)]
 pub struct DocTestUnknownSpotlight {
     pub path: String,
-    #[suggestion_short(applicability = "machine-applicable", code = "notable_trait")]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "notable_trait")]
     pub span: Span,
 }
 
@@ -365,6 +369,7 @@ pub struct MustNotSuspend {
 pub struct Cold {
     #[label]
     pub span: Span,
+    pub on_crate: bool,
 }
 
 #[derive(LintDiagnostic)]
@@ -702,14 +707,6 @@ pub struct UnknownExternLangItem {
 pub struct MissingPanicHandler;
 
 #[derive(Diagnostic)]
-#[diag(passes_alloc_func_required)]
-pub struct AllocFuncRequired;
-
-#[derive(Diagnostic)]
-#[diag(passes_missing_alloc_error_handler)]
-pub struct MissingAllocErrorHandler;
-
-#[derive(Diagnostic)]
 #[diag(passes_missing_lang_item)]
 #[note]
 #[help]
@@ -744,6 +741,7 @@ pub struct InvalidAttrAtCrateLevel {
 }
 
 impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
@@ -876,6 +874,7 @@ pub struct BreakNonLoop<'a> {
 }
 
 impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &rustc_errors::Handler,
@@ -960,6 +959,7 @@ pub struct OutsideLoop<'a> {
     #[label]
     pub span: Span,
     pub name: &'a str,
+    pub is_break: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1013,6 +1013,7 @@ pub struct NakedFunctionsAsmBlock {
 }
 
 impl IntoDiagnostic<'_> for NakedFunctionsAsmBlock {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &rustc_errors::Handler,
@@ -1136,6 +1137,7 @@ pub struct NoMainErr {
 }
 
 impl<'a> IntoDiagnostic<'a> for NoMainErr {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'a rustc_errors::Handler,
@@ -1196,6 +1198,7 @@ pub struct DuplicateLangItem {
 }
 
 impl IntoDiagnostic<'_> for DuplicateLangItem {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &rustc_errors::Handler,
@@ -1448,4 +1451,60 @@ pub struct MissingConstErr {
     pub fn_sig_span: Span,
     #[label]
     pub const_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+pub enum MultipleDeadCodes<'tcx> {
+    #[diag(passes_dead_codes)]
+    DeadCodes {
+        multiple: bool,
+        num: usize,
+        descr: &'tcx str,
+        participle: &'tcx str,
+        name_list: DiagnosticSymbolList,
+        #[subdiagnostic]
+        parent_info: Option<ParentInfo<'tcx>>,
+        #[subdiagnostic]
+        ignored_derived_impls: Option<IgnoredDerivedImpls>,
+    },
+    #[diag(passes_dead_codes)]
+    UnusedTupleStructFields {
+        multiple: bool,
+        num: usize,
+        descr: &'tcx str,
+        participle: &'tcx str,
+        name_list: DiagnosticSymbolList,
+        #[subdiagnostic]
+        change_fields_suggestion: ChangeFieldsToBeOfUnitType,
+        #[subdiagnostic]
+        parent_info: Option<ParentInfo<'tcx>>,
+        #[subdiagnostic]
+        ignored_derived_impls: Option<IgnoredDerivedImpls>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[label(passes_parent_info)]
+pub struct ParentInfo<'tcx> {
+    pub num: usize,
+    pub descr: &'tcx str,
+    pub parent_descr: &'tcx str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(passes_ignored_derived_impls)]
+pub struct IgnoredDerivedImpls {
+    pub name: Symbol,
+    pub trait_list: DiagnosticSymbolList,
+    pub trait_list_len: usize,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(passes_change_fields_to_be_of_unit_type, applicability = "has-placeholders")]
+pub struct ChangeFieldsToBeOfUnitType {
+    pub num: usize,
+    #[suggestion_part(code = "()")]
+    pub spans: Vec<Span>,
 }

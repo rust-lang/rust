@@ -9,7 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::util::elaborate_predicates_with_span;
 use rustc_middle::ty::adjustment;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
@@ -87,17 +87,33 @@ declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
-        let expr = match s.kind {
-            hir::StmtKind::Semi(ref expr) => &**expr,
-            _ => return,
-        };
+        let hir::StmtKind::Semi(expr) = s.kind else { return; };
 
         if let hir::ExprKind::Ret(..) = expr.kind {
             return;
         }
 
+        if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
+            && let ty = cx.typeck_results().expr_ty(&await_expr)
+            && let ty::Opaque(future_def_id, _) = ty.kind()
+            && cx.tcx.ty_is_opaque_future(ty)
+            // FIXME: This also includes non-async fns that return `impl Future`.
+            && let async_fn_def_id = cx.tcx.parent(*future_def_id)
+            && check_must_use_def(
+                cx,
+                async_fn_def_id,
+                expr.span,
+                "output of future returned by ",
+                "",
+            )
+        {
+            // We have a bare `foo().await;` on an opaque type from an async function that was
+            // annotated with `#[must_use]`.
+            return;
+        }
+
         let ty = cx.typeck_results().expr_ty(&expr);
-        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1);
+        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, expr.span, "", "", 1);
 
         let mut fn_warned = false;
         let mut op_warned = false;
@@ -119,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             _ => None,
         };
         if let Some(def_id) = maybe_def_id {
-            fn_warned = check_must_use_def(cx, def_id, s.span, "return value of ", "");
+            fn_warned = check_must_use_def(cx, def_id, expr.span, "return value of ", "");
         } else if type_permits_lack_of_use {
             // We don't warn about unused unit or uninhabited types.
             // (See https://github.com/rust-lang/rust/issues/43806 for details.)
@@ -565,10 +581,24 @@ trait UnusedDelimLint {
             lint.set_arg("delim", Self::DELIM_STR);
             lint.set_arg("item", msg);
             if let Some((lo, hi)) = spans {
-                let replacement = vec![
-                    (lo, if keep_space.0 { " ".into() } else { "".into() }),
-                    (hi, if keep_space.1 { " ".into() } else { "".into() }),
-                ];
+                let sm = cx.sess().source_map();
+                let lo_replace =
+                    if keep_space.0 &&
+                        let Ok(snip) = sm.span_to_prev_source(lo) && !snip.ends_with(" ") {
+                        " ".to_string()
+                        } else {
+                            "".to_string()
+                        };
+
+                let hi_replace =
+                    if keep_space.1 &&
+                        let Ok(snip) = sm.span_to_next_source(hi) && !snip.starts_with(" ") {
+                        " ".to_string()
+                        } else {
+                            "".to_string()
+                        };
+
+                let replacement = vec![(lo, lo_replace), (hi, hi_replace)];
                 lint.multipart_suggestion(
                     fluent::suggestion,
                     replacement,
@@ -765,6 +795,7 @@ impl UnusedParens {
         value: &ast::Pat,
         avoid_or: bool,
         avoid_mut: bool,
+        keep_space: (bool, bool),
     ) {
         use ast::{BindingAnnotation, PatKind};
 
@@ -789,7 +820,7 @@ impl UnusedParens {
             } else {
                 None
             };
-            self.emit_unused_delims(cx, value.span, spans, "pattern", (false, false));
+            self.emit_unused_delims(cx, value.span, spans, "pattern", keep_space);
         }
     }
 }
@@ -798,7 +829,7 @@ impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         match e.kind {
             ExprKind::Let(ref pat, _, _) | ExprKind::ForLoop(ref pat, ..) => {
-                self.check_unused_parens_pat(cx, pat, false, false);
+                self.check_unused_parens_pat(cx, pat, false, false, (true, true));
             }
             // We ignore parens in cases like `if (((let Some(0) = Some(1))))` because we already
             // handle a hard error for them during AST lowering in `lower_expr_mut`, but we still
@@ -842,6 +873,7 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
         use ast::{Mutability, PatKind::*};
+        let keep_space = (false, false);
         match &p.kind {
             // Do not lint on `(..)` as that will result in the other arms being useless.
             Paren(_)
@@ -849,33 +881,33 @@ impl EarlyLintPass for UnusedParens {
             | Wild | Rest | Lit(..) | MacCall(..) | Range(..) | Ident(.., None) | Path(..) => {},
             // These are list-like patterns; parens can always be removed.
             TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
-                self.check_unused_parens_pat(cx, p, false, false);
+                self.check_unused_parens_pat(cx, p, false, false, keep_space);
             },
             Struct(_, _, fps, _) => for f in fps {
-                self.check_unused_parens_pat(cx, &f.pat, false, false);
+                self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
             },
             // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
-            Ident(.., Some(p)) | Box(p) => self.check_unused_parens_pat(cx, p, true, false),
+            Ident(.., Some(p)) | Box(p) => self.check_unused_parens_pat(cx, p, true, false, keep_space),
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
-            Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not),
+            Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space),
         }
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         if let StmtKind::Local(ref local) = s.kind {
-            self.check_unused_parens_pat(cx, &local.pat, true, false);
+            self.check_unused_parens_pat(cx, &local.pat, true, false, (false, false));
         }
 
         <Self as UnusedDelimLint>::check_stmt(self, cx, s)
     }
 
     fn check_param(&mut self, cx: &EarlyContext<'_>, param: &ast::Param) {
-        self.check_unused_parens_pat(cx, &param.pat, true, false);
+        self.check_unused_parens_pat(cx, &param.pat, true, false, (false, false));
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        self.check_unused_parens_pat(cx, &arm.pat, false, false);
+        self.check_unused_parens_pat(cx, &arm.pat, false, false, (false, false));
     }
 
     fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {

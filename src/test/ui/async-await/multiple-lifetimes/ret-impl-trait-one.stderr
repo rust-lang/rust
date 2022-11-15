@@ -25,7 +25,7 @@ LL | |     (a, b)
 LL | | }
    | |_^
    |
-help: to declare that the `impl Trait` captures `'b`, you can add an explicit `'b` lifetime bound
+help: to declare that `impl Trait<'a>` captures `'b`, you can add an explicit `'b` lifetime bound
    |
 LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + 'b {
    |                                                                                ++++

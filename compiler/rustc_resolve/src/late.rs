@@ -30,8 +30,9 @@ use rustc_span::{BytePos, Span};
 use smallvec::{smallvec, SmallVec};
 
 use rustc_span::source_map::{respan, Spanned};
+use std::assert_matches::debug_assert_matches;
 use std::collections::{hash_map::Entry, BTreeSet};
-use std::mem::{replace, take};
+use std::mem::{replace, swap, take};
 
 mod diagnostics;
 
@@ -526,6 +527,7 @@ struct DiagnosticMetadata<'ast> {
 
     /// Used to detect possible new binding written without `let` and to provide structured suggestion.
     in_assignment: Option<&'ast Expr>,
+    is_assign_rhs: bool,
 
     /// If we are currently in a trait object definition. Used to point at the bounds when
     /// encountering a struct or enum.
@@ -568,7 +570,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
     /// They will be used to determine the correct lifetime for the fn return type.
     /// The `LifetimeElisionCandidate` is used for diagnostics, to suggest introducing named
     /// lifetimes.
-    lifetime_elision_candidates: Option<FxIndexMap<LifetimeRes, LifetimeElisionCandidate>>,
+    lifetime_elision_candidates: Option<Vec<(LifetimeRes, LifetimeElisionCandidate)>>,
 
     /// The trait that the current context can refer to.
     current_trait_ref: Option<(Module<'a>, TraitRef)>,
@@ -1802,7 +1804,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         match res {
             LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static => {
                 if let Some(ref mut candidates) = self.lifetime_elision_candidates {
-                    candidates.insert(res, candidate);
+                    candidates.push((res, candidate));
                 }
             }
             LifetimeRes::Infer | LifetimeRes::Error | LifetimeRes::ElidedAnchor { .. } => {}
@@ -1855,12 +1857,25 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         has_self: bool,
         inputs: impl Iterator<Item = (Option<&'ast Pat>, &'ast Ty)>,
     ) -> Result<LifetimeRes, (Vec<MissingLifetime>, Vec<ElisionFnParameter>)> {
-        let outer_candidates =
-            replace(&mut self.lifetime_elision_candidates, Some(Default::default()));
+        enum Elision {
+            /// We have not found any candidate.
+            None,
+            /// We have a candidate bound to `self`.
+            Self_(LifetimeRes),
+            /// We have a candidate bound to a parameter.
+            Param(LifetimeRes),
+            /// We failed elision.
+            Err,
+        }
 
-        let mut elision_lifetime = None;
-        let mut lifetime_count = 0;
+        // Save elision state to reinstate it later.
+        let outer_candidates = self.lifetime_elision_candidates.take();
+
+        // Result of elision.
+        let mut elision_lifetime = Elision::None;
+        // Information for diagnostics.
         let mut parameter_info = Vec::new();
+        let mut all_candidates = Vec::new();
 
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
         for (index, (pat, ty)) in inputs.enumerate() {
@@ -1870,12 +1885,17 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     this.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
                 }
             });
-            self.visit_ty(ty);
 
-            if let Some(ref candidates) = self.lifetime_elision_candidates {
-                let new_count = candidates.len();
-                let local_count = new_count - lifetime_count;
-                if local_count != 0 {
+            // Record elision candidates only for this parameter.
+            debug_assert_matches!(self.lifetime_elision_candidates, None);
+            self.lifetime_elision_candidates = Some(Default::default());
+            self.visit_ty(ty);
+            let local_candidates = self.lifetime_elision_candidates.take();
+
+            if let Some(candidates) = local_candidates {
+                let distinct: FxHashSet<_> = candidates.iter().map(|(res, _)| *res).collect();
+                let lifetime_count = distinct.len();
+                if lifetime_count != 0 {
                     parameter_info.push(ElisionFnParameter {
                         index,
                         ident: if let Some(pat) = pat && let PatKind::Ident(_, ident, _) = pat.kind {
@@ -1883,48 +1903,64 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         } else {
                             None
                         },
-                        lifetime_count: local_count,
+                        lifetime_count,
                         span: ty.span,
                     });
+                    all_candidates.extend(candidates.into_iter().filter_map(|(_, candidate)| {
+                        match candidate {
+                            LifetimeElisionCandidate::Ignore | LifetimeElisionCandidate::Named => {
+                                None
+                            }
+                            LifetimeElisionCandidate::Missing(missing) => Some(missing),
+                        }
+                    }));
                 }
-                lifetime_count = new_count;
+                let mut distinct_iter = distinct.into_iter();
+                if let Some(res) = distinct_iter.next() {
+                    match elision_lifetime {
+                        // We are the first parameter to bind lifetimes.
+                        Elision::None => {
+                            if distinct_iter.next().is_none() {
+                                // We have a single lifetime => success.
+                                elision_lifetime = Elision::Param(res)
+                            } else {
+                                // We have have multiple lifetimes => error.
+                                elision_lifetime = Elision::Err;
+                            }
+                        }
+                        // We have 2 parameters that bind lifetimes => error.
+                        Elision::Param(_) => elision_lifetime = Elision::Err,
+                        // `self` elision takes precedence over everything else.
+                        Elision::Self_(_) | Elision::Err => {}
+                    }
+                }
             }
 
             // Handle `self` specially.
             if index == 0 && has_self {
                 let self_lifetime = self.find_lifetime_for_self(ty);
                 if let Set1::One(lifetime) = self_lifetime {
-                    elision_lifetime = Some(lifetime);
-                    self.lifetime_elision_candidates = None;
+                    // We found `self` elision.
+                    elision_lifetime = Elision::Self_(lifetime);
                 } else {
-                    self.lifetime_elision_candidates = Some(Default::default());
-                    lifetime_count = 0;
+                    // We do not have `self` elision: disregard the `Elision::Param` that we may
+                    // have found.
+                    elision_lifetime = Elision::None;
                 }
             }
             debug!("(resolving function / closure) recorded parameter");
         }
 
-        let all_candidates = replace(&mut self.lifetime_elision_candidates, outer_candidates);
-        debug!(?all_candidates);
+        // Reinstate elision state.
+        debug_assert_matches!(self.lifetime_elision_candidates, None);
+        self.lifetime_elision_candidates = outer_candidates;
 
-        if let Some(res) = elision_lifetime {
+        if let Elision::Param(res) | Elision::Self_(res) = elision_lifetime {
             return Ok(res);
         }
 
-        // We do not have a `self` candidate, look at the full list.
-        let all_candidates = all_candidates.unwrap();
-        if all_candidates.len() == 1 {
-            Ok(*all_candidates.first().unwrap().0)
-        } else {
-            let all_candidates = all_candidates
-                .into_iter()
-                .filter_map(|(_, candidate)| match candidate {
-                    LifetimeElisionCandidate::Ignore | LifetimeElisionCandidate::Named => None,
-                    LifetimeElisionCandidate::Missing(missing) => Some(missing),
-                })
-                .collect();
-            Err((all_candidates, parameter_info))
-        }
+        // We do not have a candidate.
+        Err((all_candidates, parameter_info))
     }
 
     /// List all the lifetimes that appear in the provided type.
@@ -2394,7 +2430,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // Do not account for the parameters we just bound for function lifetime elision.
         if let Some(ref mut candidates) = self.lifetime_elision_candidates {
             for (_, res) in function_lifetime_rib.bindings.values() {
-                candidates.remove(res);
+                candidates.retain(|(r, _)| r != res);
             }
         }
 
@@ -3334,11 +3370,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             let (mut err, candidates) =
                 this.smart_resolve_report_errors(path, path_span, PathSource::Type, None);
 
-            if candidates.is_empty() {
-                err.cancel();
-                return Some(parent_err);
-            }
-
             // There are two different error messages user might receive at
             // this point:
             // - E0412 cannot find type `{}` in this scope
@@ -3348,37 +3379,62 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // latter one - for paths in expression-position.
             //
             // Thus (since we're in expression-position at this point), not to
-            // confuse the user, we want to keep the *message* from E0432 (so
+            // confuse the user, we want to keep the *message* from E0433 (so
             // `parent_err`), but we want *hints* from E0412 (so `err`).
             //
             // And that's what happens below - we're just mixing both messages
             // into a single one.
             let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
 
+            // overwrite all properties with the parent's error message
             err.message = take(&mut parent_err.message);
             err.code = take(&mut parent_err.code);
+            swap(&mut err.span, &mut parent_err.span);
             err.children = take(&mut parent_err.children);
+            err.sort_span = parent_err.sort_span;
+            err.is_lint = parent_err.is_lint;
+
+            // merge the parent's suggestions with the typo suggestions
+            fn append_result<T, E>(res1: &mut Result<Vec<T>, E>, res2: Result<Vec<T>, E>) {
+                match res1 {
+                    Ok(vec1) => match res2 {
+                        Ok(mut vec2) => vec1.append(&mut vec2),
+                        Err(e) => *res1 = Err(e),
+                    },
+                    Err(_) => (),
+                };
+            }
+            append_result(&mut err.suggestions, parent_err.suggestions.clone());
 
             parent_err.cancel();
 
             let def_id = this.parent_scope.module.nearest_parent_mod();
 
             if this.should_report_errs() {
-                this.r.use_injections.push(UseError {
-                    err,
-                    candidates,
-                    def_id,
-                    instead: false,
-                    suggestion: None,
-                    path: path.into(),
-                    is_call: source.is_call(),
-                });
+                if candidates.is_empty() {
+                    // When there is no suggested imports, we can just emit the error
+                    // and suggestions immediately. Note that we bypass the usually error
+                    // reporting routine (ie via `self.r.report_error`) because we need
+                    // to post-process the `ResolutionError` above.
+                    err.emit();
+                } else {
+                    // If there are suggested imports, the error reporting is delayed
+                    this.r.use_injections.push(UseError {
+                        err,
+                        candidates,
+                        def_id,
+                        instead: false,
+                        suggestion: None,
+                        path: path.into(),
+                        is_call: source.is_call(),
+                    });
+                }
             } else {
                 err.cancel();
             }
 
             // We don't return `Some(parent_err)` here, because the error will
-            // be already printed as part of the `use` injections
+            // be already printed either immediately or as part of the `use` injections
             None
         };
 
@@ -3908,10 +3964,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.resolve_expr(elem, Some(expr));
                 self.visit_expr(idx);
             }
-            ExprKind::Assign(..) => {
-                let old = self.diagnostic_metadata.in_assignment.replace(expr);
-                visit::walk_expr(self, expr);
-                self.diagnostic_metadata.in_assignment = old;
+            ExprKind::Assign(ref lhs, ref rhs, _) => {
+                if !self.diagnostic_metadata.is_assign_rhs {
+                    self.diagnostic_metadata.in_assignment = Some(expr);
+                }
+                self.visit_expr(lhs);
+                self.diagnostic_metadata.is_assign_rhs = true;
+                self.diagnostic_metadata.in_assignment = None;
+                self.visit_expr(rhs);
+                self.diagnostic_metadata.is_assign_rhs = false;
             }
             _ => {
                 visit::walk_expr(self, expr);

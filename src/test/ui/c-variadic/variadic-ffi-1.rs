@@ -6,7 +6,9 @@
 trait Sized { }
 
 extern "stdcall" {
-    fn printf(_: *const u8, ...); //~ ERROR: variadic function must have C or cdecl calling
+    fn printf(_: *const u8, ...);
+    //~^ ERROR: C-variadic function must have a compatible calling convention,
+    // like C, cdecl, win64, sysv64 or efiapi
 }
 
 extern "C" {

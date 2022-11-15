@@ -11,7 +11,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::{Abi, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
@@ -360,7 +360,7 @@ fn lint_int_literal<'tcx>(
         }
 
         if lint_overflowing_range_endpoint(cx, lit, v, max, e, t.name_str()) {
-            // The overflowing literal lint was emited by `lint_overflowing_range_endpoint`.
+            // The overflowing literal lint was emitted by `lint_overflowing_range_endpoint`.
             return;
         }
 
@@ -429,7 +429,7 @@ fn lint_uint_literal<'tcx>(
             }
         }
         if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, t.name_str()) {
-            // The overflowing literal lint was emited by `lint_overflowing_range_endpoint`.
+            // The overflowing literal lint was emitted by `lint_overflowing_range_endpoint`.
             return;
         }
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
@@ -931,7 +931,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match *ty.kind() {
             ty::Adt(def, substs) => {
                 if def.is_box() && matches!(self.mode, CItemKind::Definition) {
-                    if ty.boxed_ty().is_sized(tcx.at(DUMMY_SP), self.cx.param_env) {
+                    if ty.boxed_ty().is_sized(tcx, self.cx.param_env) {
                         return FfiSafe;
                     } else {
                         return FfiUnsafe {
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _)
                 if {
                     matches!(self.mode, CItemKind::Definition)
-                        && ty.is_sized(self.cx.tcx.at(DUMMY_SP), self.cx.param_env)
+                        && ty.is_sized(self.cx.tcx, self.cx.param_env)
                 } =>
             {
                 FfiSafe
@@ -1195,35 +1195,30 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
-        struct ProhibitOpaqueTypes<'a, 'tcx> {
-            cx: &'a LateContext<'tcx>,
-        }
-
-        impl<'a, 'tcx> ty::visit::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
+        struct ProhibitOpaqueTypes;
+        impl<'tcx> ty::visit::TypeVisitor<'tcx> for ProhibitOpaqueTypes {
             type BreakTy = Ty<'tcx>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                match ty.kind() {
-                    ty::Opaque(..) => ControlFlow::Break(ty),
-                    // Consider opaque types within projections FFI-safe if they do not normalize
-                    // to more opaque types.
-                    ty::Projection(..) => {
-                        let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
+                if !ty.has_opaque_types() {
+                    return ControlFlow::CONTINUE;
+                }
 
-                        // If `ty` is an opaque type directly then `super_visit_with` won't invoke
-                        // this function again.
-                        if ty.has_opaque_types() {
-                            self.visit_ty(ty)
-                        } else {
-                            ControlFlow::CONTINUE
-                        }
-                    }
-                    _ => ty.super_visit_with(self),
+                if let ty::Opaque(..) = ty.kind() {
+                    ControlFlow::Break(ty)
+                } else {
+                    ty.super_visit_with(self)
                 }
             }
         }
 
-        if let Some(ty) = ty.visit_with(&mut ProhibitOpaqueTypes { cx: self.cx }).break_value() {
+        if let Some(ty) = self
+            .cx
+            .tcx
+            .normalize_erasing_regions(self.cx.param_env, ty)
+            .visit_with(&mut ProhibitOpaqueTypes)
+            .break_value()
+        {
             self.emit_ffi_unsafe_type_lint(ty, sp, fluent::lint_improper_ctypes_opaque, None);
             true
         } else {
@@ -1360,7 +1355,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
-            let t = cx.tcx.type_of(it.def_id);
+            let t = cx.tcx.type_of(it.owner_id);
             let ty = cx.tcx.erase_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };
             let Variants::Multiple {

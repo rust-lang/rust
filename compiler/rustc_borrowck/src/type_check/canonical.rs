@@ -28,7 +28,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     pub(super) fn fully_perform_op<R: fmt::Debug, Op>(
         &mut self,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         op: Op,
     ) -> Fallible<R>
     where
@@ -85,7 +85,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         trait_ref: ty::TraitRef<'tcx>,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) {
         self.prove_predicate(
             ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
@@ -124,7 +124,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         predicates: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) {
         for predicate in predicates {
             let predicate = predicate.to_predicate(self.tcx());
@@ -139,7 +139,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         predicate: ty::Predicate<'tcx>,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) {
         let param_env = self.param_env;
         self.fully_perform_op(
@@ -164,7 +164,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         value: T,
         location: impl NormalizeLocation,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) -> T
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,

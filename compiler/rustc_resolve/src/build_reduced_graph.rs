@@ -56,21 +56,7 @@ impl<'a, Id: Into<DefId>> ToNameBinding<'a>
 impl<'a, Id: Into<DefId>> ToNameBinding<'a> for (Res, ty::Visibility<Id>, Span, LocalExpnId) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Res(self.0, false),
-            ambiguity: None,
-            vis: self.1.to_def_id(),
-            span: self.2,
-            expansion: self.3,
-        })
-    }
-}
-
-struct IsMacroExport;
-
-impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, LocalExpnId, IsMacroExport) {
-    fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
-        arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Res(self.0, true),
+            kind: NameBindingKind::Res(self.0),
             ambiguity: None,
             vis: self.1.to_def_id(),
             span: self.2,
@@ -364,7 +350,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         module_path: Vec<Segment>,
         kind: ImportKind<'a>,
         span: Span,
-        id: NodeId,
         item: &ast::Item,
         root_span: Span,
         root_id: NodeId,
@@ -377,7 +362,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             module_path,
             imported_module: Cell::new(None),
             span,
-            id,
             use_span: item.span,
             use_span_with_attributes: item.span_with_attributes(),
             has_attributes: !item.attrs.is_empty(),
@@ -485,9 +469,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         }
 
                         // Replace `use foo::{ self };` with `use foo;`
+                        let self_span = source.ident.span;
                         source = module_path.pop().unwrap();
                         if rename.is_none() {
-                            ident = source.ident;
+                            // Keep the span of `self`, but the name of `foo`
+                            ident = Ident { name: source.ident.name, span: self_span };
                         }
                     }
                 } else {
@@ -574,27 +560,20 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     },
                     type_ns_only,
                     nested,
+                    id,
                     additional_ids: (id1, id2),
                 };
 
-                self.add_import(
-                    module_path,
-                    kind,
-                    use_tree.span,
-                    id,
-                    item,
-                    root_span,
-                    item.id,
-                    vis,
-                );
+                self.add_import(module_path, kind, use_tree.span, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Glob => {
                 let kind = ImportKind::Glob {
                     is_prelude: self.r.session.contains_name(&item.attrs, sym::prelude_import),
                     max_vis: Cell::new(None),
+                    id,
                 };
                 self.r.visibilities.insert(self.r.local_def_id(id), vis);
-                self.add_import(prefix, kind, use_tree.span, id, item, root_span, item.id, vis);
+                self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Nested(ref items) => {
                 // Ensure there is at most one `self` in the list
@@ -881,9 +860,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         })
         .unwrap_or((true, None, self.r.dummy_binding));
         let import = self.r.arenas.alloc_import(Import {
-            kind: ImportKind::ExternCrate { source: orig_name, target: ident },
+            kind: ImportKind::ExternCrate { source: orig_name, target: ident, id: item.id },
             root_id: item.id,
-            id: item.id,
             parent_scope: self.parent_scope,
             imported_module: Cell::new(module),
             has_attributes: !item.attrs.is_empty(),
@@ -1118,7 +1096,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             this.r.arenas.alloc_import(Import {
                 kind: ImportKind::MacroUse,
                 root_id: item.id,
-                id: item.id,
                 parent_scope: this.parent_scope,
                 imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
                 use_span_with_attributes: item.span_with_attributes(),
@@ -1278,8 +1255,22 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             let binding = (res, vis, span, expansion).to_name_binding(self.r.arenas);
             self.r.set_binding_parent_module(binding, parent_scope.module);
             if is_macro_export {
-                let module = self.r.graph_root;
-                self.r.define(module, ident, MacroNS, (res, vis, span, expansion, IsMacroExport));
+                let import = self.r.arenas.alloc_import(Import {
+                    kind: ImportKind::MacroExport,
+                    root_id: item.id,
+                    parent_scope: self.parent_scope,
+                    imported_module: Cell::new(None),
+                    has_attributes: false,
+                    use_span_with_attributes: span,
+                    use_span: span,
+                    root_span: span,
+                    span: span,
+                    module_path: Vec::new(),
+                    vis: Cell::new(Some(vis)),
+                    used: Cell::new(true),
+                });
+                let import_binding = self.r.import(binding, import);
+                self.r.define(self.r.graph_root, ident, MacroNS, import_binding);
             } else {
                 self.r.check_reserved_macro_name(ident, res);
                 self.insert_unused_macro(ident, def_id, item.id, &rule_spans);

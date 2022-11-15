@@ -15,7 +15,6 @@ use rustc_middle::mir::interpret::InterpError;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange};
 
 use std::hash::Hash;
@@ -726,7 +725,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx> {
         // Special check preventing `UnsafeCell` inside unions in the inner part of constants.
         if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true, .. })) {
-            if !op.layout.ty.is_freeze(self.ecx.tcx.at(DUMMY_SP), self.ecx.param_env) {
+            if !op.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.param_env) {
                 throw_validation_failure!(self.path, { "`UnsafeCell` in a `const`" });
             }
         }

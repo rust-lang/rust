@@ -16,25 +16,17 @@ pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
 #[cfg(feature = "internal")]
 pub const DIAGNOSTIC_BUILDER: [&str; 3] = ["rustc_errors", "diagnostic_builder", "DiagnosticBuilder"];
 pub const ARC_PTR_EQ: [&str; 4] = ["alloc", "sync", "Arc", "ptr_eq"];
-pub const ASMUT_TRAIT: [&str; 3] = ["core", "convert", "AsMut"];
-pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
-pub const BTREEMAP_ENTRY: [&str; 6] = ["alloc", "collections", "btree", "map", "entry", "Entry"];
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
 pub const BTREESET_ITER: [&str; 6] = ["alloc", "collections", "btree", "set", "BTreeSet", "iter"];
 pub const CLONE_TRAIT_METHOD: [&str; 4] = ["core", "clone", "Clone", "clone"];
-pub const COW: [&str; 3] = ["alloc", "borrow", "Cow"];
 pub const CORE_ITER_COLLECT: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "collect"];
 pub const CORE_ITER_CLONED: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "cloned"];
 pub const CORE_ITER_COPIED: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "copied"];
 pub const CORE_ITER_FILTER: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "filter"];
-pub const CORE_ITER_INTO_ITER: [&str; 6] = ["core", "iter", "traits", "collect", "IntoIterator", "into_iter"];
 pub const CSTRING_AS_C_STR: [&str; 5] = ["alloc", "ffi", "c_str", "CString", "as_c_str"];
 pub const DEFAULT_TRAIT_METHOD: [&str; 4] = ["core", "default", "Default", "default"];
 pub const DEREF_MUT_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "DerefMut", "deref_mut"];
-/// Preferably use the diagnostic item `sym::deref_method` where possible
-pub const DEREF_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "Deref", "deref"];
-pub const DISPLAY_TRAIT: [&str; 3] = ["core", "fmt", "Display"];
 #[cfg(feature = "internal")]
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
 #[cfg(feature = "internal")]
@@ -42,30 +34,22 @@ pub const EARLY_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "EarlyLintPass"]
 pub const EXIT: [&str; 3] = ["std", "process", "exit"];
 pub const F32_EPSILON: [&str; 4] = ["core", "f32", "<impl f32>", "EPSILON"];
 pub const F64_EPSILON: [&str; 4] = ["core", "f64", "<impl f64>", "EPSILON"];
-pub const FILE: [&str; 3] = ["std", "fs", "File"];
-pub const FILE_TYPE: [&str; 3] = ["std", "fs", "FileType"];
-pub const FROM_FROM: [&str; 4] = ["core", "convert", "From", "from"];
 pub const FROM_ITERATOR_METHOD: [&str; 6] = ["core", "iter", "traits", "collect", "FromIterator", "from_iter"];
 pub const FROM_STR_METHOD: [&str; 5] = ["core", "str", "traits", "FromStr", "from_str"];
-pub const FUTURE_FROM_GENERATOR: [&str; 3] = ["core", "future", "from_generator"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCREADEXT: [&str; 3] = ["futures_util", "io", "AsyncReadExt"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCWRITEEXT: [&str; 3] = ["futures_util", "io", "AsyncWriteExt"];
 pub const HASHMAP_CONTAINS_KEY: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "contains_key"];
-pub const HASHMAP_ENTRY: [&str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHMAP_INSERT: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "insert"];
 pub const HASHSET_ITER: [&str; 6] = ["std", "collections", "hash", "set", "HashSet", "iter"];
 #[cfg(feature = "internal")]
 pub const IDENT: [&str; 3] = ["rustc_span", "symbol", "Ident"];
 #[cfg(feature = "internal")]
 pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
-pub const INDEX: [&str; 3] = ["core", "ops", "Index"];
-pub const INDEX_MUT: [&str; 3] = ["core", "ops", "IndexMut"];
 pub const INSERT_STR: [&str; 4] = ["alloc", "string", "String", "insert_str"];
 pub const ITER_COUNT: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "count"];
 pub const ITER_EMPTY: [&str; 5] = ["core", "iter", "sources", "empty", "Empty"];
-pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat"];
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
 #[cfg(feature = "internal")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
@@ -76,13 +60,7 @@ pub const LATE_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "LateLintPass"];
 #[cfg(feature = "internal")]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
 pub const MEM_SWAP: [&str; 3] = ["core", "mem", "swap"];
-pub const MUTEX_GUARD: [&str; 4] = ["std", "sync", "mutex", "MutexGuard"];
 pub const OPEN_OPTIONS: [&str; 3] = ["std", "fs", "OpenOptions"];
-/// Preferably use the diagnostic item `sym::Option` where possible
-pub const OPTION: [&str; 3] = ["core", "option", "Option"];
-pub const OPTION_NONE: [&str; 4] = ["core", "option", "Option", "None"];
-pub const OPTION_SOME: [&str; 4] = ["core", "option", "Option", "Some"];
-pub const ORD: [&str; 3] = ["core", "cmp", "Ord"];
 pub const OS_STRING_AS_OS_STR: [&str; 5] = ["std", "ffi", "os_str", "OsString", "as_os_str"];
 pub const OS_STR_TO_OS_STRING: [&str; 5] = ["std", "ffi", "os_str", "OsStr", "to_os_string"];
 pub const PARKING_LOT_MUTEX_GUARD: [&str; 3] = ["lock_api", "mutex", "MutexGuard"];
@@ -95,8 +73,6 @@ pub const PERMISSIONS: [&str; 3] = ["std", "fs", "Permissions"];
 #[cfg_attr(not(unix), allow(clippy::invalid_paths))]
 pub const PERMISSIONS_FROM_MODE: [&str; 6] = ["std", "os", "unix", "fs", "PermissionsExt", "from_mode"];
 pub const POLL: [&str; 4] = ["core", "task", "poll", "Poll"];
-pub const POLL_PENDING: [&str; 5] = ["core", "task", "poll", "Poll", "Pending"];
-pub const POLL_READY: [&str; 5] = ["core", "task", "poll", "Poll", "Ready"];
 pub const PTR_COPY: [&str; 3] = ["core", "intrinsics", "copy"];
 pub const PTR_COPY_NONOVERLAPPING: [&str; 3] = ["core", "intrinsics", "copy_nonoverlapping"];
 pub const PTR_EQ: [&str; 3] = ["core", "ptr", "eq"];
@@ -119,26 +95,14 @@ pub const RANGE_ARGUMENT_TRAIT: [&str; 3] = ["core", "ops", "RangeBounds"];
 pub const RC_PTR_EQ: [&str; 4] = ["alloc", "rc", "Rc", "ptr_eq"];
 pub const REFCELL_REF: [&str; 3] = ["core", "cell", "Ref"];
 pub const REFCELL_REFMUT: [&str; 3] = ["core", "cell", "RefMut"];
-#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "unicode", "RegexBuilder", "new"];
-#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "bytes", "RegexBuilder", "new"];
-#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_NEW: [&str; 4] = ["regex", "re_bytes", "Regex", "new"];
-#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_SET_NEW: [&str; 5] = ["regex", "re_set", "bytes", "RegexSet", "new"];
-#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_NEW: [&str; 4] = ["regex", "re_unicode", "Regex", "new"];
-#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_SET_NEW: [&str; 5] = ["regex", "re_set", "unicode", "RegexSet", "new"];
-/// Preferably use the diagnostic item `sym::Result` where possible
-pub const RESULT: [&str; 3] = ["core", "result", "Result"];
-pub const RESULT_ERR: [&str; 4] = ["core", "result", "Result", "Err"];
-pub const RESULT_OK: [&str; 4] = ["core", "result", "Result", "Ok"];
 #[cfg(feature = "internal")]
 pub const RUSTC_VERSION: [&str; 2] = ["rustc_semver", "RustcVersion"];
-pub const RWLOCK_READ_GUARD: [&str; 4] = ["std", "sync", "rwlock", "RwLockReadGuard"];
-pub const RWLOCK_WRITE_GUARD: [&str; 4] = ["std", "sync", "rwlock", "RwLockWriteGuard"];
 pub const SERDE_DESERIALIZE: [&str; 3] = ["serde", "de", "Deserialize"];
 pub const SERDE_DE_VISITOR: [&str; 3] = ["serde", "de", "Visitor"];
 pub const SLICE_FROM_RAW_PARTS: [&str; 4] = ["core", "slice", "raw", "from_raw_parts"];

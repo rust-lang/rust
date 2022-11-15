@@ -119,7 +119,7 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         tcx: TyCtxt<'tcx>,
         module_name: &str,
         kind: AllocatorKind,
-        has_alloc_error_handler: bool,
+        alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module;
     /// This generates the codegen unit and returns it along with
     /// a `u64` giving an estimate of the unit's processing cost.

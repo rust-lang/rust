@@ -8,7 +8,7 @@ use vfs::AbsPathBuf;
 use crate::{
     from_json,
     global_state::GlobalStateSnapshot,
-    line_index::{LineIndex, OffsetEncoding},
+    line_index::{LineIndex, PositionEncoding},
     lsp_ext,
     lsp_utils::invalid_params_error,
     Result,
@@ -25,10 +25,10 @@ pub(crate) fn vfs_path(url: &lsp_types::Url) -> Result<vfs::VfsPath> {
 
 pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> Result<TextSize> {
     let line_col = match line_index.encoding {
-        OffsetEncoding::Utf8 => {
+        PositionEncoding::Utf8 => {
             LineCol { line: position.line as u32, col: position.character as u32 }
         }
-        OffsetEncoding::Utf16 => {
+        PositionEncoding::Utf16 => {
             let line_col =
                 LineColUtf16 { line: position.line as u32, col: position.character as u32 };
             line_index.index.to_utf8(line_col)

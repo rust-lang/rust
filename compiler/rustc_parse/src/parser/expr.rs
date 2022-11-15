@@ -9,9 +9,9 @@ use crate::errors::{
     ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncMoveOrderIncorrect,
     BinaryFloatLiteralNotSupported, BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct,
     ComparisonInterpretedAsGeneric, ComparisonOrShiftInterpretedAsGenericSugg,
-    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedExpressionFoundLet,
-    FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt,
-    HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
+    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedEqForLetExpr,
+    ExpectedExpressionFoundLet, FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart,
+    FoundExprWouldBeStmt, HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
     IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub, IntLiteralTooLarge,
     InvalidBlockMacroSegment, InvalidComparisonOperator, InvalidComparisonOperatorSub,
     InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth, InvalidIntLiteralWidth,
@@ -20,9 +20,9 @@ use crate::errors::{
     InvalidNumLiteralSuffix, LabeledLoopInBreak, LeadingPlusNotSupported, LeftArrowOperator,
     LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
     MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm,
-    MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall,
-    NotAsNegationOperator, NotAsNegationOperatorSub, OctalFloatLiteralNotSupported,
-    OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
+    MissingDotDot, MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray,
+    NoFieldsForFnCall, NotAsNegationOperator, NotAsNegationOperatorSub,
+    OctalFloatLiteralNotSupported, OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
     RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, StructLiteralNotAllowedHere,
     StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
     UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
@@ -33,6 +33,7 @@ use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
+use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
@@ -132,7 +133,7 @@ impl<'a> Parser<'a> {
             Ok(expr) => Ok(expr),
             Err(mut err) => match self.token.ident() {
                 Some((Ident { name: kw::Underscore, .. }, false))
-                    if self.look_ahead(1, |t| t == &token::Comma) =>
+                    if self.may_recover() && self.look_ahead(1, |t| t == &token::Comma) =>
                 {
                     // Special-case handling of `foo(_, _, _)`
                     err.emit();
@@ -456,7 +457,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
             (Some(op), _) => (op, self.token.span),
-            (None, Some((Ident { name: sym::and, span }, false))) => {
+            (None, Some((Ident { name: sym::and, span }, false))) if self.may_recover() => {
                 self.sess.emit_err(InvalidLogicalOperator {
                     span: self.token.span,
                     incorrect: "and".into(),
@@ -464,7 +465,7 @@ impl<'a> Parser<'a> {
                 });
                 (AssocOp::LAnd, span)
             }
-            (None, Some((Ident { name: sym::or, span }, false))) => {
+            (None, Some((Ident { name: sym::or, span }, false))) if self.may_recover() => {
                 self.sess.emit_err(InvalidLogicalOperator {
                     span: self.token.span,
                     incorrect: "or".into(),
@@ -615,7 +616,7 @@ impl<'a> Parser<'a> {
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
             }
-            token::Ident(..) if this.is_mistaken_not_ident_negation() => {
+            token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
             _ => return this.parse_dot_or_call_expr(Some(attrs)),
@@ -718,6 +719,10 @@ impl<'a> Parser<'a> {
         let cast_expr = match self.parse_as_cast_ty() {
             Ok(rhs) => mk_expr(self, lhs, rhs),
             Err(type_err) => {
+                if !self.may_recover() {
+                    return Err(type_err);
+                }
+
                 // Rewind to before attempting to parse the type with generics, to recover
                 // from situations like `x as usize < y` in which we first tried to parse
                 // `usize < y` as a type with generic arguments.
@@ -829,16 +834,11 @@ impl<'a> Parser<'a> {
                 ("cast", None)
             };
 
-        // Save the memory location of expr before parsing any following postfix operators.
-        // This will be compared with the memory location of the output expression.
-        // If they different we can assume we parsed another expression because the existing expression is not reallocated.
-        let addr_before = &*cast_expr as *const _ as usize;
         let with_postfix = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
-        let changed = addr_before != &*with_postfix as *const _ as usize;
 
         // Check if an illegal postfix operator has been added after the cast.
-        // If the resulting expression is not a cast, or has a different memory location, it is an illegal postfix operator.
-        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) || changed {
+        // If the resulting expression is not a cast, it is an illegal postfix operator.
+        if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) {
             let msg = format!(
                 "{cast_kind} cannot be followed by {}",
                 match with_postfix.kind {
@@ -1197,6 +1197,10 @@ impl<'a> Parser<'a> {
         seq: &mut PResult<'a, P<Expr>>,
         snapshot: Option<(SnapshotParser<'a>, ExprKind)>,
     ) -> Option<P<Expr>> {
+        if !self.may_recover() {
+            return None;
+        }
+
         match (seq.as_mut(), snapshot) {
             (Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
                 snapshot.bump(); // `(`
@@ -1360,7 +1364,7 @@ impl<'a> Parser<'a> {
             )
         } else if self.check_inline_const(0) {
             self.parse_const_block(lo.to(self.token.span), false)
-        } else if self.is_do_catch_block() {
+        } else if self.may_recover() && self.is_do_catch_block() {
             self.recover_do_catch()
         } else if self.is_try_block() {
             self.expect_keyword(kw::Try)?;
@@ -1532,6 +1536,7 @@ impl<'a> Parser<'a> {
         {
             self.parse_block_expr(label, lo, BlockCheckMode::Default)
         } else if !ate_colon
+            && self.may_recover()
             && (matches!(self.token.kind, token::CloseDelim(_) | token::Comma)
                 || self.token.is_op())
         {
@@ -1999,6 +2004,10 @@ impl<'a> Parser<'a> {
         prev_span: Span,
         open_delim_span: Span,
     ) -> PResult<'a, ()> {
+        if !self.may_recover() {
+            return Ok(());
+        }
+
         if self.token.kind == token::Comma {
             if !self.sess.source_map().is_multiline(prev_span.until(self.token.span)) {
                 return Ok(());
@@ -2039,7 +2048,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         blk_mode: BlockCheckMode,
     ) -> PResult<'a, P<Expr>> {
-        if self.is_array_like_block() {
+        if self.may_recover() && self.is_array_like_block() {
             if let Some(arr) = self.maybe_suggest_brackets_instead_of_braces(lo) {
                 return Ok(arr);
             }
@@ -2082,7 +2091,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
 
         let asyncness = if self.token.uninterpolated_span().rust_2018() {
-            self.parse_asyncness()
+            self.parse_asyncness(Case::Sensitive)
         } else {
             Async::No
         };
@@ -2112,6 +2121,8 @@ impl<'a> Parser<'a> {
             // HACK: This is needed so we can detect whether we're inside a macro,
             // where regular assumptions about what tokens can follow other tokens
             // don't necessarily apply.
+            && self.may_recover()
+            // FIXME(Nilstrieb): Remove this check once `may_recover` actually stops recovery
             && self.subparser_name.is_none()
         {
             // It is likely that the closure body is a block but where the
@@ -2261,7 +2272,7 @@ impl<'a> Parser<'a> {
                 self.mk_block_err(cond_span.shrink_to_hi())
             }
         } else {
-            let attrs = self.parse_outer_attributes()?.take_for_recovery(); // For recovery.
+            let attrs = self.parse_outer_attributes()?; // For recovery.
             let block = if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.parse_block()?
             } else {
@@ -2278,7 +2289,7 @@ impl<'a> Parser<'a> {
                     })?
                 }
             };
-            self.error_on_if_block_attrs(lo, false, block.span, &attrs);
+            self.error_on_if_block_attrs(lo, false, block.span, attrs);
             block
         };
         let els = if self.eat_keyword(kw::Else) { Some(self.parse_else_expr()?) } else { None };
@@ -2319,7 +2330,15 @@ impl<'a> Parser<'a> {
             RecoverColon::Yes,
             CommaRecoveryMode::LikelyTuple,
         )?;
-        self.expect(&token::Eq)?;
+        if self.token == token::EqEq {
+            self.sess.emit_err(ExpectedEqForLetExpr {
+                span: self.token.span,
+                sugg_span: self.token.span,
+            });
+            self.bump();
+        } else {
+            self.expect(&token::Eq)?;
+        }
         let expr = self.with_res(self.restrictions | Restrictions::NO_STRUCT_LITERAL, |this| {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         })?;
@@ -2331,7 +2350,7 @@ impl<'a> Parser<'a> {
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
         let else_span = self.prev_token.span; // `else`
-        let attrs = self.parse_outer_attributes()?.take_for_recovery(); // For recovery.
+        let attrs = self.parse_outer_attributes()?; // For recovery.
         let expr = if self.eat_keyword(kw::If) {
             self.parse_if_expr()?
         } else if self.check(&TokenKind::OpenDelim(Delimiter::Brace)) {
@@ -2366,7 +2385,7 @@ impl<'a> Parser<'a> {
                 },
             }
         };
-        self.error_on_if_block_attrs(else_span, true, expr.span, &attrs);
+        self.error_on_if_block_attrs(else_span, true, expr.span, attrs);
         Ok(expr)
     }
 
@@ -2375,8 +2394,13 @@ impl<'a> Parser<'a> {
         ctx_span: Span,
         is_ctx_else: bool,
         branch_span: Span,
-        attrs: &[ast::Attribute],
+        attrs: AttrWrapper,
     ) {
+        if attrs.is_empty() {
+            return;
+        }
+
+        let attrs: &[ast::Attribute] = &attrs.take_for_recovery(self.sess);
         let (attributes, last) = match attrs {
             [] => return,
             [x0 @ xn] | [x0, .., xn] => (x0.span.to(xn.span), xn.span),
@@ -2865,7 +2889,7 @@ impl<'a> Parser<'a> {
         };
 
         while self.token != token::CloseDelim(close_delim) {
-            if self.eat(&token::DotDot) {
+            if self.eat(&token::DotDot) || self.recover_struct_field_dots(close_delim) {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(&token::CloseDelim(close_delim)) {
@@ -3012,6 +3036,18 @@ impl<'a> Parser<'a> {
         self.recover_stmt();
     }
 
+    fn recover_struct_field_dots(&mut self, close_delim: Delimiter) -> bool {
+        if !self.look_ahead(1, |t| *t == token::CloseDelim(close_delim))
+            && self.eat(&token::DotDotDot)
+        {
+            // recover from typo of `...`, suggest `..`
+            let span = self.prev_token.span;
+            self.sess.emit_err(MissingDotDot { token_span: span, sugg_span: span });
+            return true;
+        }
+        false
+    }
+
     /// Parses `ident (COLON expr)?`.
     fn parse_expr_field(&mut self) -> PResult<'a, ExprField> {
         let attrs = self.parse_outer_attributes()?;
@@ -3142,6 +3178,8 @@ impl<'a> Parser<'a> {
                 && this.token.kind == token::Semi
             {
                 TrailingToken::Semi
+            } else if this.token.kind == token::Gt {
+                TrailingToken::Gt
             } else {
                 // FIXME - pass this through from the place where we know
                 // we need a comma, rather than assuming that `#[attr] expr,`

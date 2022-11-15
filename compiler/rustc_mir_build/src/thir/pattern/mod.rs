@@ -483,7 +483,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // Use `Reveal::All` here because patterns are always monomorphic even if their function
         // isn't.
         let param_env_reveal_all = self.param_env.with_reveal_all_normalized(self.tcx);
-        let substs = self.typeck_results.node_substs(id);
+        // N.B. There is no guarantee that substs collected in typeck results are fully normalized,
+        // so they need to be normalized in order to pass to `Instance::resolve`, which will ICE
+        // if given unnormalized types.
+        let substs = self
+            .tcx
+            .normalize_erasing_regions(param_env_reveal_all, self.typeck_results.node_substs(id));
         let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, substs) {
             Ok(Some(i)) => i,
             Ok(None) => {
@@ -572,6 +577,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     self.errors.push(PatternError::ConstParamInPattern(span));
                     return PatKind::Wild;
                 }
+                ConstKind::Error(_) => {
+                    return PatKind::Wild;
+                }
                 _ => bug!("Expected ConstKind::Param"),
             },
             mir::ConstantKind::Val(_, _) => self.const_to_pat(value, id, span, false).kind,
@@ -609,7 +617,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
         match self.tcx.at(expr.span).lit_to_mir_constant(lit_input) {
             Ok(constant) => self.const_to_pat(constant, expr.hir_id, lit.span, false).kind,
-            Err(LitToConstError::Reported) => PatKind::Wild,
+            Err(LitToConstError::Reported(_)) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
     }

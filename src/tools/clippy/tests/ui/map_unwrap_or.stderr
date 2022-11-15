@@ -1,5 +1,5 @@
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value. This can be done more directly by calling `map_or(<a>, <f>)` instead
-  --> $DIR/map_unwrap_or.rs:16:13
+  --> $DIR/map_unwrap_or.rs:18:13
    |
 LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
@@ -15,7 +15,7 @@ LL +     let _ = opt.map_or(0, |x| x + 1);
    |
 
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value. This can be done more directly by calling `map_or(<a>, <f>)` instead
-  --> $DIR/map_unwrap_or.rs:20:13
+  --> $DIR/map_unwrap_or.rs:22:13
    |
 LL |       let _ = opt.map(|x| {
    |  _____________^
@@ -33,7 +33,7 @@ LL ~     );
    |
 
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value. This can be done more directly by calling `map_or(<a>, <f>)` instead
-  --> $DIR/map_unwrap_or.rs:24:13
+  --> $DIR/map_unwrap_or.rs:26:13
    |
 LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
@@ -50,7 +50,7 @@ LL ~         }, |x| x + 1);
    |
 
 error: called `map(<f>).unwrap_or(None)` on an `Option` value. This can be done more directly by calling `and_then(<f>)` instead
-  --> $DIR/map_unwrap_or.rs:29:13
+  --> $DIR/map_unwrap_or.rs:31:13
    |
 LL |     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -62,7 +62,7 @@ LL +     let _ = opt.and_then(|x| Some(x + 1));
    |
 
 error: called `map(<f>).unwrap_or(None)` on an `Option` value. This can be done more directly by calling `and_then(<f>)` instead
-  --> $DIR/map_unwrap_or.rs:31:13
+  --> $DIR/map_unwrap_or.rs:33:13
    |
 LL |       let _ = opt.map(|x| {
    |  _____________^
@@ -80,7 +80,7 @@ LL ~     );
    |
 
 error: called `map(<f>).unwrap_or(None)` on an `Option` value. This can be done more directly by calling `and_then(<f>)` instead
-  --> $DIR/map_unwrap_or.rs:35:13
+  --> $DIR/map_unwrap_or.rs:37:13
    |
 LL |       let _ = opt
    |  _____________^
@@ -95,7 +95,7 @@ LL +         .and_then(|x| Some(x + 1));
    |
 
 error: called `map(<f>).unwrap_or(<a>)` on an `Option` value. This can be done more directly by calling `map_or(<a>, <f>)` instead
-  --> $DIR/map_unwrap_or.rs:46:13
+  --> $DIR/map_unwrap_or.rs:48:13
    |
 LL |     let _ = Some("prefix").map(|p| format!("{}.", p)).unwrap_or(id);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,7 +107,7 @@ LL +     let _ = Some("prefix").map_or(id, |p| format!("{}.", p));
    |
 
 error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value. This can be done more directly by calling `map_or_else(<g>, <f>)` instead
-  --> $DIR/map_unwrap_or.rs:50:13
+  --> $DIR/map_unwrap_or.rs:52:13
    |
 LL |       let _ = opt.map(|x| {
    |  _____________^
@@ -117,7 +117,7 @@ LL | |     ).unwrap_or_else(|| 0);
    | |__________________________^
 
 error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value. This can be done more directly by calling `map_or_else(<g>, <f>)` instead
-  --> $DIR/map_unwrap_or.rs:54:13
+  --> $DIR/map_unwrap_or.rs:56:13
    |
 LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
@@ -127,7 +127,7 @@ LL | |         );
    | |_________^
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be done more directly by calling `.map_or_else(<g>, <f>)` instead
-  --> $DIR/map_unwrap_or.rs:66:13
+  --> $DIR/map_unwrap_or.rs:68:13
    |
 LL |       let _ = res.map(|x| {
    |  _____________^
@@ -137,7 +137,7 @@ LL | |     ).unwrap_or_else(|_e| 0);
    | |____________________________^
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be done more directly by calling `.map_or_else(<g>, <f>)` instead
-  --> $DIR/map_unwrap_or.rs:70:13
+  --> $DIR/map_unwrap_or.rs:72:13
    |
 LL |       let _ = res.map(|x| x + 1)
    |  _____________^
@@ -146,5 +146,11 @@ LL | |             0
 LL | |         });
    | |__________^
 
-error: aborting due to 11 previous errors
+error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be done more directly by calling `.map_or_else(<g>, <f>)` instead
+  --> $DIR/map_unwrap_or.rs:98:13
+   |
+LL |     let _ = res.map(|x| x + 1).unwrap_or_else(|_e| 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `res.map_or_else(|_e| 0, |x| x + 1)`
+
+error: aborting due to 12 previous errors
 

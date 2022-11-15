@@ -16,7 +16,7 @@ LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
 note: trait defined here, with 1 generic parameter: `Args`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
-LL | pub trait Fn<Args>: FnMut<Args> {
+LL | pub trait Fn<Args: Tuple>: FnMut<Args> {
    |           ^^ ----
 help: add missing generic argument
    |

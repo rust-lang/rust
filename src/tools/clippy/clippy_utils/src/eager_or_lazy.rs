@@ -120,7 +120,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                             .expr_ty(e)
                             .has_significant_drop(self.cx.tcx, self.cx.param_env)
                         {
-                            self.eagerness = Lazy;
+                            self.eagerness = ForceNoChange;
                             return;
                         }
                     },

@@ -111,4 +111,8 @@ mod fixable {
 
         let _num = foo() as f32;
     }
+
+    fn issue_9603() {
+        let _: f32 = -0x400 as f32;
+    }
 }

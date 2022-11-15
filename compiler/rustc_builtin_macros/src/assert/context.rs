@@ -303,6 +303,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Field(_, _)
             | ExprKind::ForLoop(_, _, _, _)
             | ExprKind::If(_, _, _)
+            | ExprKind::IncludedBytes(..)
             | ExprKind::InlineAsm(_)
             | ExprKind::Let(_, _, _)
             | ExprKind::Lit(_)

@@ -55,6 +55,7 @@ pub fn placeholder(
         }),
         AstFragmentKind::Expr => AstFragment::Expr(expr_placeholder()),
         AstFragmentKind::OptExpr => AstFragment::OptExpr(Some(expr_placeholder())),
+        AstFragmentKind::MethodReceiverExpr => AstFragment::MethodReceiverExpr(expr_placeholder()),
         AstFragmentKind::Items => AstFragment::Items(smallvec![P(ast::Item {
             id,
             span,
@@ -292,6 +293,13 @@ impl MutVisitor for PlaceholderExpander {
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         match expr.kind {
             ast::ExprKind::MacCall(_) => *expr = self.remove(expr.id).make_expr(),
+            _ => noop_visit_expr(expr, self),
+        }
+    }
+
+    fn visit_method_receiver_expr(&mut self, expr: &mut P<ast::Expr>) {
+        match expr.kind {
+            ast::ExprKind::MacCall(_) => *expr = self.remove(expr.id).make_method_receiver_expr(),
             _ => noop_visit_expr(expr, self),
         }
     }

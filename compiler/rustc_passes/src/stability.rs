@@ -20,7 +20,7 @@ use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability::{AllowUnstable, DeprecationEntry, Index};
 use rustc_middle::ty::{query::Providers, TyCtxt};
 use rustc_session::lint;
@@ -378,7 +378,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         }
 
         self.annotate(
-            i.def_id.def_id,
+            i.owner_id.def_id,
             i.span,
             fn_sig,
             kind,
@@ -397,7 +397,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         };
 
         self.annotate(
-            ti.def_id.def_id,
+            ti.owner_id.def_id,
             ti.span,
             fn_sig,
             AnnotationKind::Required,
@@ -420,7 +420,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         };
 
         self.annotate(
-            ii.def_id.def_id,
+            ii.owner_id.def_id,
             ii.span,
             fn_sig,
             kind,
@@ -478,7 +478,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
         self.annotate(
-            i.def_id.def_id,
+            i.owner_id.def_id,
             i.span,
             None,
             AnnotationKind::Required,
@@ -516,13 +516,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
 struct MissingStabilityAnnotations<'tcx> {
     tcx: TyCtxt<'tcx>,
-    access_levels: &'tcx AccessLevels,
+    effective_visibilities: &'tcx EffectiveVisibilities,
 }
 
 impl<'tcx> MissingStabilityAnnotations<'tcx> {
     fn check_missing_stability(&self, def_id: LocalDefId, span: Span) {
         let stab = self.tcx.stability().local_stability(def_id);
-        if !self.tcx.sess.opts.test && stab.is_none() && self.access_levels.is_reachable(def_id) {
+        if !self.tcx.sess.opts.test
+            && stab.is_none()
+            && self.effective_visibilities.is_reachable(def_id)
+        {
             let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
             self.tcx.sess.emit_err(MissingStabilityAttr { span, descr });
         }
@@ -533,6 +536,14 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             return;
         }
 
+        // if the const impl is derived using the `derive_const` attribute,
+        // then it would be "stable" at least for the impl.
+        // We gate usages of it using `feature(const_trait_impl)` anyways
+        // so there is no unstable leakage
+        if self.tcx.is_builtin_derive(def_id.to_def_id()) {
+            return;
+        }
+
         let is_const = self.tcx.is_const_fn(def_id.to_def_id())
             || self.tcx.is_const_trait_impl_raw(def_id.to_def_id());
         let is_stable = self
@@ -540,7 +551,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             .lookup_stability(def_id)
             .map_or(false, |stability| stability.level.is_stable());
         let missing_const_stability_attribute = self.tcx.lookup_const_stability(def_id).is_none();
-        let is_reachable = self.access_levels.is_reachable(def_id);
+        let is_reachable = self.effective_visibilities.is_reachable(def_id);
 
         if is_const && is_stable && missing_const_stability_attribute && is_reachable {
             let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
@@ -566,25 +577,25 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
             hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })
                 | hir::ItemKind::ForeignMod { .. }
         ) {
-            self.check_missing_stability(i.def_id.def_id, i.span);
+            self.check_missing_stability(i.owner_id.def_id, i.span);
         }
 
         // Ensure stable `const fn` have a const stability attribute.
-        self.check_missing_const_stability(i.def_id.def_id, i.span);
+        self.check_missing_const_stability(i.owner_id.def_id, i.span);
 
         intravisit::walk_item(self, i)
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
-        self.check_missing_stability(ti.def_id.def_id, ti.span);
+        self.check_missing_stability(ti.owner_id.def_id, ti.span);
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         let impl_def_id = self.tcx.hir().get_parent_item(ii.hir_id());
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
-            self.check_missing_stability(ii.def_id.def_id, ii.span);
-            self.check_missing_const_stability(ii.def_id.def_id, ii.span);
+            self.check_missing_stability(ii.owner_id.def_id, ii.span);
+            self.check_missing_const_stability(ii.owner_id.def_id, ii.span);
         }
         intravisit::walk_impl_item(self, ii);
     }
@@ -603,7 +614,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
-        self.check_missing_stability(i.def_id.def_id, i.span);
+        self.check_missing_stability(i.owner_id.def_id, i.span);
         intravisit::walk_foreign_item(self, i);
     }
     // Note that we don't need to `check_missing_stability` for default generic parameters,
@@ -709,7 +720,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     return;
                 }
 
-                let Some(cnum) = self.tcx.extern_mod_stmt_cnum(item.def_id.def_id) else {
+                let Some(cnum) = self.tcx.extern_mod_stmt_cnum(item.owner_id.def_id) else {
                     return;
                 };
                 let def_id = cnum.as_def_id();
@@ -762,7 +773,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 }
 
                 for impl_item_ref in *items {
-                    let impl_item = self.tcx.associated_item(impl_item_ref.id.def_id);
+                    let impl_item = self.tcx.associated_item(impl_item_ref.id.owner_id);
 
                     if let Some(def_id) = impl_item.trait_item_def_id {
                         // Pass `None` to skip deprecation warnings.
@@ -919,8 +930,8 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let is_staged_api =
         tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api;
     if is_staged_api {
-        let access_levels = &tcx.privacy_access_levels(());
-        let mut missing = MissingStabilityAnnotations { tcx, access_levels };
+        let effective_visibilities = &tcx.effective_visibilities(());
+        let mut missing = MissingStabilityAnnotations { tcx, effective_visibilities };
         missing.check_missing_stability(CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID));
         tcx.hir().walk_toplevel_module(&mut missing);
         tcx.hir().visit_all_item_likes_in_crate(&mut missing);

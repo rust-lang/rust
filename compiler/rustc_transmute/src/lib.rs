@@ -122,7 +122,7 @@ mod rustc {
 
             let c = c.eval(tcx, param_env);
 
-            if let Some(err) = c.error_reported() {
+            if let Err(err) = c.error_reported() {
                 return Some(Self {
                     alignment: true,
                     lifetimes: true,

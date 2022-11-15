@@ -100,6 +100,7 @@ pub fn expand_deriving_rustc_encodable(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let krate = sym::rustc_serialize;
     let typaram = sym::__S;
@@ -109,7 +110,6 @@ pub fn expand_deriving_rustc_encodable(
         path: Path::new_(vec![krate, sym::Encodable], vec![], PathKind::Global),
         skip_path_as_bound: false,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::encode,
@@ -139,6 +139,7 @@ pub fn expand_deriving_rustc_encodable(
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     trait_def.expand(cx, mitem, item, push)

@@ -127,10 +127,6 @@ impl<'ll> CodegenCx<'ll, '_> {
     pub(crate) fn type_variadic_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, True) }
     }
-
-    pub(crate) fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
-        unsafe { llvm::LLVMRustArrayType(ty, len) }
-    }
 }
 
 impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
@@ -230,6 +226,10 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {
         common::val_ty(v)
+    }
+
+    fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+        unsafe { llvm::LLVMRustArrayType(ty, len) }
     }
 }
 

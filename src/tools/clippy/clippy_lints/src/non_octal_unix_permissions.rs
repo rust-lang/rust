@@ -55,9 +55,8 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                     if let ExprKind::Lit(_) = param.kind;
 
                     then {
-                        let snip = match snippet_opt(cx, param.span) {
-                            Some(s) => s,
-                            _ => return,
+                        let Some(snip) = snippet_opt(cx, param.span) else {
+                            return
                         };
 
                         if !snip.starts_with("0o") {
@@ -72,16 +71,10 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                     if let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id();
                     if match_def_path(cx, def_id, &paths::PERMISSIONS_FROM_MODE);
                     if let ExprKind::Lit(_) = param.kind;
-
+                    if let Some(snip) = snippet_opt(cx, param.span);
+                    if !snip.starts_with("0o");
                     then {
-                        let snip = match snippet_opt(cx, param.span) {
-                            Some(s) => s,
-                            _ => return,
-                        };
-
-                        if !snip.starts_with("0o") {
-                            show_error(cx, param);
-                        }
+                        show_error(cx, param);
                     }
                 }
             },

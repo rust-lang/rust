@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
+use clippy_utils::eq_expr_value;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{eq_expr_value, get_trait_def_id, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -483,7 +483,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
 
 fn implements_ord<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
-    get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]))
+    cx.tcx
+        .get_diagnostic_item(sym::Ord)
+        .map_or(false, |id| implements_trait(cx, ty, id, &[]))
 }
 
 struct NotSimplificationVisitor<'a, 'tcx> {

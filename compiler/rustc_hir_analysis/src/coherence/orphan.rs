@@ -23,9 +23,7 @@ pub(crate) fn orphan_check_impl(
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-    if let Some(err) = trait_ref.error_reported() {
-        return Err(err);
-    }
+    trait_ref.error_reported()?;
 
     let ret = do_orphan_check_impl(tcx, trait_ref, impl_def_id);
     if tcx.trait_is_auto(trait_ref.def_id) {
@@ -101,7 +99,7 @@ fn do_orphan_check_impl<'tcx>(
         span_bug!(sp, "opaque type not found, but `has_opaque_types` is set")
     }
 
-    match traits::orphan_check(tcx, item.def_id.to_def_id()) {
+    match traits::orphan_check(tcx, item.owner_id.to_def_id()) {
         Ok(()) => {}
         Err(err) => emit_orphan_check_error(
             tcx,

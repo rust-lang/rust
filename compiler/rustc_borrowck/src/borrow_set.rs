@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::nll::ToRegionVid;
 use crate::path_utils::allow_two_phase_borrow;
 use crate::place_ext::PlaceExt;

@@ -4,8 +4,6 @@ use crate::sync::atomic::{
 };
 use crate::sys::futex::{futex_wait, futex_wake};
 
-pub type MovableMutex = Mutex;
-
 pub struct Mutex {
     /// 0: unlocked
     /// 1: locked, no other threads waiting
@@ -20,12 +18,12 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
+    pub fn try_lock(&self) -> bool {
         self.futex.compare_exchange(0, 1, Acquire, Relaxed).is_ok()
     }
 
     #[inline]
-    pub unsafe fn lock(&self) {
+    pub fn lock(&self) {
         if self.futex.compare_exchange(0, 1, Acquire, Relaxed).is_err() {
             self.lock_contended();
         }

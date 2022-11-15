@@ -14,6 +14,7 @@ pub fn expand_deriving_clone(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     // The simple form is `fn clone(&self) -> Self { *self }`, possibly with
     // some additional `AssertParamIsClone` assertions.
@@ -74,7 +75,6 @@ pub fn expand_deriving_clone(
         path: path_std!(clone::Clone),
         skip_path_as_bound: false,
         additional_bounds: bounds,
-        generics: Bounds::empty(),
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::clone,
@@ -87,6 +87,7 @@ pub fn expand_deriving_clone(
             combine_substructure: substructure,
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     trait_def.expand_ext(cx, mitem, item, push, is_simple)

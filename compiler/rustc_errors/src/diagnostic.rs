@@ -12,6 +12,7 @@ use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::panic::Location;
 
 /// Error type for `Diagnostic`'s `suggestions` field, indicating that
 /// `.disable_suggestions()` was called on the `Diagnostic`.
@@ -43,6 +44,15 @@ pub trait IntoDiagnosticArg {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
 }
 
+impl<'source> IntoDiagnosticArg for DiagnosticArgValue<'source> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        match self {
+            DiagnosticArgValue::Str(s) => DiagnosticArgValue::Str(Cow::Owned(s.into_owned())),
+            DiagnosticArgValue::Number(n) => DiagnosticArgValue::Number(n),
+        }
+    }
+}
+
 impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
     fn into(self) -> FluentValue<'source> {
         match self {
@@ -54,8 +64,7 @@ impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
-#[cfg_attr(bootstrap, rustc_diagnostic_item = "AddSubdiagnostic")]
-#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "AddToDiagnostic")]
+#[rustc_diagnostic_item = "AddToDiagnostic"]
 pub trait AddToDiagnostic
 where
     Self: Sized,
@@ -107,6 +116,31 @@ pub struct Diagnostic {
     /// If diagnostic is from Lint, custom hash function ignores notes
     /// otherwise hash is based on the all the fields
     pub is_lint: bool,
+
+    /// With `-Ztrack_diagnostics` enabled,
+    /// we print where in rustc this error was emitted.
+    pub emitted_at: DiagnosticLocation,
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct DiagnosticLocation {
+    file: Cow<'static, str>,
+    line: u32,
+    col: u32,
+}
+
+impl DiagnosticLocation {
+    #[track_caller]
+    fn caller() -> Self {
+        let loc = Location::caller();
+        DiagnosticLocation { file: loc.file().into(), line: loc.line(), col: loc.column() }
+    }
+}
+
+impl fmt::Display for DiagnosticLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}:{}", self.file, self.line, self.col)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
@@ -173,10 +207,28 @@ impl StringPart {
 }
 
 impl Diagnostic {
+    #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
         Diagnostic::new_with_code(level, None, message)
     }
 
+    #[track_caller]
+    pub fn new_with_messages(level: Level, messages: Vec<(DiagnosticMessage, Style)>) -> Self {
+        Diagnostic {
+            level,
+            message: messages,
+            code: None,
+            span: MultiSpan::new(),
+            children: vec![],
+            suggestions: Ok(vec![]),
+            args: Default::default(),
+            sort_span: DUMMY_SP,
+            is_lint: false,
+            emitted_at: DiagnosticLocation::caller(),
+        }
+    }
+
+    #[track_caller]
     pub fn new_with_code<M: Into<DiagnosticMessage>>(
         level: Level,
         code: Option<DiagnosticId>,
@@ -192,6 +244,7 @@ impl Diagnostic {
             args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: false,
+            emitted_at: DiagnosticLocation::caller(),
         }
     }
 
@@ -688,10 +741,28 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = String>,
+        suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self {
-        let mut suggestions: Vec<_> = suggestions.collect();
+        self.span_suggestions_with_style(
+            sp,
+            msg,
+            suggestions,
+            applicability,
+            SuggestionStyle::ShowCode,
+        )
+    }
+
+    /// [`Diagnostic::span_suggestions()`] but you can set the [`SuggestionStyle`].
+    pub fn span_suggestions_with_style(
+        &mut self,
+        sp: Span,
+        msg: impl Into<SubdiagnosticMessage>,
+        suggestions: impl IntoIterator<Item = String>,
+        applicability: Applicability,
+        style: SuggestionStyle,
+    ) -> &mut Self {
+        let mut suggestions: Vec<_> = suggestions.into_iter().collect();
         suggestions.sort();
 
         debug_assert!(
@@ -706,21 +777,22 @@ impl Diagnostic {
         self.push_suggestion(CodeSuggestion {
             substitutions,
             msg: self.subdiagnostic_message_to_diagnostic_message(msg),
-            style: SuggestionStyle::ShowCode,
+            style,
             applicability,
         });
         self
     }
 
-    /// Prints out a message with multiple suggested edits of the code.
-    /// See also [`Diagnostic::span_suggestion()`].
+    /// Prints out a message with multiple suggested edits of the code, where each edit consists of
+    /// multiple parts.
+    /// See also [`Diagnostic::multipart_suggestion()`].
     pub fn multipart_suggestions(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = Vec<(Span, String)>>,
+        suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self {
-        let suggestions: Vec<_> = suggestions.collect();
+        let suggestions: Vec<_> = suggestions.into_iter().collect();
         debug_assert!(
             !(suggestions
                 .iter()
@@ -745,6 +817,7 @@ impl Diagnostic {
         });
         self
     }
+
     /// Prints out a message with a suggested edit of the code. If the suggestion is presented
     /// inline, it will only show the message and not the suggestion.
     ///
@@ -880,6 +953,13 @@ impl Diagnostic {
     ) -> &mut Self {
         self.args.insert(name.into(), arg.into_diagnostic_arg());
         self
+    }
+
+    pub fn replace_args(
+        &mut self,
+        args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue<'static>>,
+    ) {
+        self.args = args;
     }
 
     pub fn styled_message(&self) -> &[(DiagnosticMessage, Style)] {

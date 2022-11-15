@@ -388,6 +388,8 @@ impl<'hir> GenericArgs<'hir> {
     }
 
     #[inline]
+    /// This function returns the number of type and const generic params.
+    /// It should only be used for diagnostics.
     pub fn num_generic_params(&self) -> usize {
         self.args.iter().filter(|arg| !matches!(arg, GenericArg::Lifetime(_))).count()
     }
@@ -2207,14 +2209,14 @@ pub struct FnSig<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct TraitItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl TraitItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -2225,7 +2227,7 @@ impl TraitItemId {
 #[derive(Debug, HashStable_Generic)]
 pub struct TraitItem<'hir> {
     pub ident: Ident,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub generics: &'hir Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
@@ -2236,11 +2238,11 @@ impl TraitItem<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn trait_item_id(&self) -> TraitItemId {
-        TraitItemId { def_id: self.def_id }
+        TraitItemId { owner_id: self.owner_id }
     }
 }
 
@@ -2271,14 +2273,14 @@ pub enum TraitItemKind<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct ImplItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl ImplItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -2286,7 +2288,7 @@ impl ImplItemId {
 #[derive(Debug, HashStable_Generic)]
 pub struct ImplItem<'hir> {
     pub ident: Ident,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub generics: &'hir Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub defaultness: Defaultness,
@@ -2298,11 +2300,11 @@ impl ImplItem<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn impl_item_id(&self) -> ImplItemId {
-        ImplItemId { def_id: self.def_id }
+        ImplItemId { owner_id: self.owner_id }
     }
 }
 
@@ -2417,6 +2419,30 @@ impl<'hir> Ty<'hir> {
             final_ty = &ty;
         }
         final_ty
+    }
+
+    pub fn find_self_aliases(&self) -> Vec<Span> {
+        use crate::intravisit::Visitor;
+        struct MyVisitor(Vec<Span>);
+        impl<'v> Visitor<'v> for MyVisitor {
+            fn visit_ty(&mut self, t: &'v Ty<'v>) {
+                if matches!(
+                    &t.kind,
+                    TyKind::Path(QPath::Resolved(
+                        _,
+                        Path { res: crate::def::Res::SelfTyAlias { .. }, .. },
+                    ))
+                ) {
+                    self.0.push(t.span);
+                    return;
+                }
+                crate::intravisit::walk_ty(self, t);
+            }
+        }
+
+        let mut my_visitor = MyVisitor(vec![]);
+        my_visitor.visit_ty(self);
+        my_visitor.0
     }
 }
 
@@ -2890,14 +2916,14 @@ impl<'hir> VariantData<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
 pub struct ItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl ItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -2907,7 +2933,7 @@ impl ItemId {
 #[derive(Debug, HashStable_Generic)]
 pub struct Item<'hir> {
     pub ident: Ident,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub kind: ItemKind<'hir>,
     pub span: Span,
     pub vis_span: Span,
@@ -2917,11 +2943,11 @@ impl Item<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn item_id(&self) -> ItemId {
-        ItemId { def_id: self.def_id }
+        ItemId { owner_id: self.owner_id }
     }
 }
 
@@ -3134,14 +3160,14 @@ pub enum AssocItemKind {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct ForeignItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl ForeignItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -3162,7 +3188,7 @@ pub struct ForeignItemRef {
 pub struct ForeignItem<'hir> {
     pub ident: Ident,
     pub kind: ForeignItemKind<'hir>,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub span: Span,
     pub vis_span: Span,
 }
@@ -3171,11 +3197,11 @@ impl ForeignItem<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn foreign_item_id(&self) -> ForeignItemId {
-        ForeignItemId { def_id: self.def_id }
+        ForeignItemId { owner_id: self.owner_id }
     }
 }
 
@@ -3267,10 +3293,10 @@ impl<'hir> OwnerNode<'hir> {
 
     pub fn def_id(self) -> OwnerId {
         match self {
-            OwnerNode::Item(Item { def_id, .. })
-            | OwnerNode::TraitItem(TraitItem { def_id, .. })
-            | OwnerNode::ImplItem(ImplItem { def_id, .. })
-            | OwnerNode::ForeignItem(ForeignItem { def_id, .. }) => *def_id,
+            OwnerNode::Item(Item { owner_id, .. })
+            | OwnerNode::TraitItem(TraitItem { owner_id, .. })
+            | OwnerNode::ImplItem(ImplItem { owner_id, .. })
+            | OwnerNode::ForeignItem(ForeignItem { owner_id, .. }) => *owner_id,
             OwnerNode::Crate(..) => crate::CRATE_HIR_ID.owner,
         }
     }

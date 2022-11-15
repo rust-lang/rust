@@ -18,11 +18,12 @@ use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryRespons
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, ToPolyTraitRef,
-    ToPredicate, Ty, UserType,
+    self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, ToPredicate, Ty,
+    UserType,
 };
 use rustc_middle::ty::{GenericArgKind, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts};
 use rustc_session::lint;
@@ -32,9 +33,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt,
-};
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use std::collections::hash_map::Entry;
 use std::slice;
@@ -106,7 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
-        self.select_obligations_where_possible(false, mutate_fulfillment_errors);
+        self.select_obligations_where_possible(mutate_fulfillment_errors);
         self.resolve_vars_if_possible(ty)
     }
 
@@ -143,7 +142,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().node_types_mut().insert(id, ty);
 
         if ty.references_error() {
-            self.has_errors.set(true);
             self.set_tainted_by_errors();
         }
     }
@@ -601,7 +599,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
         for (body_id, interior, kind) in generators.drain(..) {
-            self.select_obligations_where_possible(false, |_| {});
+            self.select_obligations_where_possible(|_| {});
             crate::generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
         }
     }
@@ -612,25 +610,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !errors.is_empty() {
             self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
-            self.err_ctxt().report_fulfillment_errors(&errors, self.inh.body_id, false);
+            self.err_ctxt().report_fulfillment_errors(&errors, self.inh.body_id);
         }
     }
 
     /// Select as many obligations as we can at present.
     pub(in super::super) fn select_obligations_where_possible(
         &self,
-        fallback_has_occurred: bool,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
         let mut result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
         if !result.is_empty() {
             mutate_fulfillment_errors(&mut result);
             self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
-            self.err_ctxt().report_fulfillment_errors(
-                &result,
-                self.inh.body_id,
-                fallback_has_occurred,
-            );
+            self.err_ctxt().report_fulfillment_errors(&result, self.inh.body_id);
         }
     }
 
@@ -650,12 +643,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn self_type_matches_expected_vid(
-        &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        expected_vid: ty::TyVid,
-    ) -> bool {
-        let self_ty = self.shallow_resolve(trait_ref.skip_binder().self_ty());
+    fn self_type_matches_expected_vid(&self, self_ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
+        let self_ty = self.shallow_resolve(self_ty);
         debug!(?self_ty);
 
         match *self_ty.kind() {
@@ -674,54 +663,61 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn obligations_for_self_ty<'b>(
         &'b self,
         self_ty: ty::TyVid,
-    ) -> impl Iterator<Item = (ty::PolyTraitRef<'tcx>, traits::PredicateObligation<'tcx>)>
-    + Captures<'tcx>
-    + 'b {
+    ) -> impl DoubleEndedIterator<Item = traits::PredicateObligation<'tcx>> + Captures<'tcx> + 'b
+    {
         // FIXME: consider using `sub_root_var` here so we
         // can see through subtyping.
         let ty_var_root = self.root_var(self_ty);
         trace!("pending_obligations = {:#?}", self.fulfillment_cx.borrow().pending_obligations());
 
-        self.fulfillment_cx
-            .borrow()
-            .pending_obligations()
-            .into_iter()
-            .filter_map(move |obligation| {
-                let bound_predicate = obligation.predicate.kind();
-                match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Projection(data) => Some((
-                        bound_predicate.rebind(data).required_poly_trait_ref(self.tcx),
-                        obligation,
-                    )),
-                    ty::PredicateKind::Trait(data) => {
-                        Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
-                    }
-                    ty::PredicateKind::Subtype(..) => None,
-                    ty::PredicateKind::Coerce(..) => None,
-                    ty::PredicateKind::RegionOutlives(..) => None,
-                    ty::PredicateKind::TypeOutlives(..) => None,
-                    ty::PredicateKind::WellFormed(..) => None,
-                    ty::PredicateKind::ObjectSafe(..) => None,
-                    ty::PredicateKind::ConstEvaluatable(..) => None,
-                    ty::PredicateKind::ConstEquate(..) => None,
-                    // N.B., this predicate is created by breaking down a
-                    // `ClosureType: FnFoo()` predicate, where
-                    // `ClosureType` represents some `Closure`. It can't
-                    // possibly be referring to the current closure,
-                    // because we haven't produced the `Closure` for
-                    // this closure yet; this is exactly why the other
-                    // code is looking for a self type of an unresolved
-                    // inference variable.
-                    ty::PredicateKind::ClosureKind(..) => None,
-                    ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+        self.fulfillment_cx.borrow().pending_obligations().into_iter().filter_map(
+            move |obligation| match &obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Projection(data)
+                    if self.self_type_matches_expected_vid(
+                        data.projection_ty.self_ty(),
+                        ty_var_root,
+                    ) =>
+                {
+                    Some(obligation)
                 }
-            })
-            .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))
+                ty::PredicateKind::Trait(data)
+                    if self.self_type_matches_expected_vid(data.self_ty(), ty_var_root) =>
+                {
+                    Some(obligation)
+                }
+
+                ty::PredicateKind::Trait(..)
+                | ty::PredicateKind::Projection(..)
+                | ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Coerce(..)
+                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::TypeOutlives(..)
+                | ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..)
+                // N.B., this predicate is created by breaking down a
+                // `ClosureType: FnFoo()` predicate, where
+                // `ClosureType` represents some `Closure`. It can't
+                // possibly be referring to the current closure,
+                // because we haven't produced the `Closure` for
+                // this closure yet; this is exactly why the other
+                // code is looking for a self type of an unresolved
+                // inference variable.
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+            },
+        )
     }
 
     pub(in super::super) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
-        self.obligations_for_self_ty(self_ty)
-            .any(|(tr, _)| Some(tr.def_id()) == self.tcx.lang_items().sized_trait())
+        let sized_did = self.tcx.lang_items().sized_trait();
+        self.obligations_for_self_ty(self_ty).any(|obligation| {
+            match obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Trait(data) => Some(data.def_id()) == sized_did,
+                _ => false,
+            }
+        })
     }
 
     pub(in super::super) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
@@ -769,34 +765,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let expect_args = self
             .fudge_inference_if_ok(|| {
+                let ocx = ObligationCtxt::new_in_snapshot(self);
+
                 // Attempt to apply a subtyping relationship between the formal
                 // return type (likely containing type variables if the function
                 // is polymorphic) and the expected return type.
                 // No argument expectations are produced if unification fails.
                 let origin = self.misc(call_span);
-                let ures = self.at(&origin, self.param_env).sup(ret_ty, formal_ret);
-
-                // FIXME(#27336) can't use ? here, Try::from_error doesn't default
-                // to identity so the resulting type is not constrained.
-                match ures {
-                    Ok(ok) => {
-                        // Process any obligations locally as much as
-                        // we can.  We don't care if some things turn
-                        // out unconstrained or ambiguous, as we're
-                        // just trying to get hints here.
-                        let errors = self.save_and_restore_in_snapshot_flag(|_| {
-                            let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);
-                            for obligation in ok.obligations {
-                                fulfill.register_predicate_obligation(self, obligation);
-                            }
-                            fulfill.select_where_possible(self)
-                        });
-
-                        if !errors.is_empty() {
-                            return Err(());
-                        }
-                    }
-                    Err(_) => return Err(()),
+                ocx.sup(&origin, self.param_env, ret_ty, formal_ret)?;
+                if !ocx.select_where_possible().is_empty() {
+                    return Err(TypeError::Mismatch);
                 }
 
                 // Record all the argument types, with the substitutions
@@ -1215,9 +1193,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    err.emit();
-
-                    return (tcx.ty_error(), res);
+                    let reported = err.emit();
+                    return (tcx.ty_error_with_guaranteed(reported), res);
                 }
             }
         } else {

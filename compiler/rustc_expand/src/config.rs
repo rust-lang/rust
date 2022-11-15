@@ -469,6 +469,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
+    #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
         if !self.features.map_or(true, |features| features.stmt_expr_attributes) {
             let mut err = feature_err(
@@ -486,9 +487,12 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    pub fn configure_expr(&self, expr: &mut P<ast::Expr>) {
-        for attr in expr.attrs.iter() {
-            self.maybe_emit_expr_attr_err(attr);
+    #[instrument(level = "trace", skip(self))]
+    pub fn configure_expr(&self, expr: &mut P<ast::Expr>, method_receiver: bool) {
+        if !method_receiver {
+            for attr in expr.attrs.iter() {
+                self.maybe_emit_expr_attr_err(attr);
+            }
         }
 
         // If an expr is valid to cfg away it will have been removed by the

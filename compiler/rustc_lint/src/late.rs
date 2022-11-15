@@ -338,14 +338,14 @@ fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
     module_def_id: LocalDefId,
     pass: T,
 ) {
-    let access_levels = &tcx.privacy_access_levels(());
+    let effective_visibilities = &tcx.effective_visibilities(());
 
     let context = LateContext {
         tcx,
         enclosing_body: None,
         cached_typeck_results: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
-        access_levels,
+        effective_visibilities,
         lint_store: unerased_lint_store(tcx),
         last_node_with_lint_attrs: tcx.hir().local_def_id_to_hir_id(module_def_id),
         generics: None,
@@ -386,14 +386,14 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
 }
 
 fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
-    let access_levels = &tcx.privacy_access_levels(());
+    let effective_visibilities = &tcx.effective_visibilities(());
 
     let context = LateContext {
         tcx,
         enclosing_body: None,
         cached_typeck_results: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
-        access_levels,
+        effective_visibilities,
         lint_store: unerased_lint_store(tcx),
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,
         generics: None,

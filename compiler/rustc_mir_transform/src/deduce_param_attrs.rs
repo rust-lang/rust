@@ -11,7 +11,6 @@ use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, Operand, Terminator, TerminatorKind, RETURN_PLACE};
 use rustc_middle::ty::{self, DeducedParamAttrs, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
-use rustc_span::DUMMY_SP;
 
 /// A visitor that determines which arguments have been mutated. We can't use the mutability field
 /// on LocalDecl for this because it has no meaning post-optimization.
@@ -232,7 +231,7 @@ pub fn deduced_param_attrs<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx [Ded
         body.local_decls.iter().skip(1).take(body.arg_count).enumerate().map(
             |(arg_index, local_decl)| DeducedParamAttrs {
                 read_only: !deduce_read_only.mutable_args.contains(arg_index)
-                    && local_decl.ty.is_freeze(tcx.at(DUMMY_SP), ParamEnv::reveal_all()),
+                    && local_decl.ty.is_freeze(tcx, ParamEnv::reveal_all()),
             },
         ),
     );

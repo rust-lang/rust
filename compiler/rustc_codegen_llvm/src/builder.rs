@@ -365,11 +365,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 Int(I64) => "llvm.ssub.with.overflow.i64",
                 Int(I128) => "llvm.ssub.with.overflow.i128",
 
-                Uint(U8) => "llvm.usub.with.overflow.i8",
-                Uint(U16) => "llvm.usub.with.overflow.i16",
-                Uint(U32) => "llvm.usub.with.overflow.i32",
-                Uint(U64) => "llvm.usub.with.overflow.i64",
-                Uint(U128) => "llvm.usub.with.overflow.i128",
+                Uint(_) => {
+                    // Emit sub and icmp instead of llvm.usub.with.overflow. LLVM considers these
+                    // to be the canonical form. It will attempt to reform llvm.usub.with.overflow
+                    // in the backend if profitable.
+                    let sub = self.sub(lhs, rhs);
+                    let cmp = self.icmp(IntPredicate::IntULT, lhs, rhs);
+                    return (sub, cmp);
+                }
 
                 _ => unreachable!(),
             },

@@ -374,9 +374,15 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
-* `-Zmiri-retag-fields` changes Stacked Borrows retagging to recurse into fields.
+* `-Zmiri-retag-fields` changes Stacked Borrows retagging to recurse into *all* fields.
   This means that references in fields of structs/enums/tuples/arrays/... are retagged,
   and in particular, they are protected when passed as function arguments.
+  (The default is to recurse only in cases where rustc would actually emit a `noalias` attribute.)
+* `-Zmiri-retag-fields=<all|none|scalar>` controls when Stacked Borrows retagging recurses into
+  fields. `all` means it always recurses (like `-Zmiri-retag-fields`), `none` means it never
+  recurses, `scalar` (the default) means it only recurses for types where we would also emit
+  `noalias` annotations in the generated LLVM IR (types passed as indivudal scalars or pairs of
+  scalars). Setting this to `none` is **unsound**.
 * `-Zmiri-tag-gc=<blocks>` configures how often the pointer tag garbage collector runs. The default
   is to search for and remove unreachable tags once every `10000` basic blocks. Setting this to
   `0` disables the garbage collector, which causes some programs to have explosive memory usage
@@ -414,9 +420,9 @@ Some native rustc `-Z` flags are also very relevant for Miri:
 
 Moreover, Miri recognizes some environment variables:
 
-* `MIRI_AUTO_OPS` indicates whether the automatic execution of rustfmt, clippy and rustup-toolchain
-  should be skipped. If it is set to any value, they are skipped. This is used for avoiding
-  infinite recursion in `./miri` and to allow automated IDE actions to avoid the auto ops.
+* `MIRI_AUTO_OPS` indicates whether the automatic execution of rustfmt, clippy and toolchain setup
+  should be skipped. If it is set to any value, they are skipped. This is used for avoiding infinite
+  recursion in `./miri` and to allow automated IDE actions to avoid the auto ops.
 * `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
   Miri executions, also [see "Testing the Miri driver" in `CONTRIBUTING.md`][testing-miri].
 * `MIRIFLAGS` (recognized by `cargo miri` and the test suite) defines extra
@@ -428,18 +434,19 @@ Moreover, Miri recognizes some environment variables:
   trigger a re-build of the standard library; you have to clear the Miri build
   cache manually (on Linux, `rm -rf ~/.cache/miri`).
 * `MIRI_SYSROOT` (recognized by `cargo miri` and the Miri driver) indicates the sysroot to use. When
-  using `cargo miri`, only set this if you do not want to use the automatically created sysroot. For
-  directly invoking the Miri driver, this variable (or a `--sysroot` flag) is mandatory.
+  using `cargo miri`, this skips the automatic setup -- only set this if you do not want to use the
+  automatically created sysroot. For directly invoking the Miri driver, this variable (or a
+  `--sysroot` flag) is mandatory. When invoking `cargo miri setup`, this indicates where the sysroot
+  will be put.
 * `MIRI_TEST_TARGET` (recognized by the test suite and the `./miri` script) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target` flag for the same
   purpose.
 * `MIRI_NO_STD` (recognized by `cargo miri` and the test suite) makes sure that the target's
   sysroot is built without libstd. This allows testing and running no_std programs.
-* `MIRI_BLESS` (recognized by the test suite) overwrite all `stderr` and `stdout` files
-  instead of checking whether the output matches.
-* `MIRI_SKIP_UI_CHECKS` (recognized by the test suite) don't check whether the
-  `stderr` or `stdout` files match the actual output. Useful for the rustc test suite
-  which has subtle differences that we don't care about.
+* `MIRI_BLESS` (recognized by the test suite and `cargo-miri-test/run-test.py`): overwrite all
+  `stderr` and `stdout` files instead of checking whether the output matches.
+* `MIRI_SKIP_UI_CHECKS` (recognized by the test suite): don't check whether the
+  `stderr` or `stdout` files match the actual output.
 
 The following environment variables are *internal* and must not be used by
 anyone but Miri itself. They are used to communicate between different Miri
@@ -532,6 +539,35 @@ extern "Rust" {
     /// This is internal and unstable and should not be used; we give it here
     /// just to be complete.
     fn miri_start_panic(payload: *mut u8) -> !;
+
+    /// Miri-provided extern function to get the internal unique identifier for the allocation that a pointer
+    /// points to. If this pointer is invalid (not pointing to an allocation), interpretation will abort.
+    ///
+    /// This is only useful as an input to `miri_print_borrow_stacks`, and it is a separate call because
+    /// getting a pointer to an allocation at runtime can change the borrow stacks in the allocation.
+    /// This function should be considered unstable. It exists only to support `miri_print_borrow_stacks` and so
+    /// inherits all of its instability.
+    fn miri_get_alloc_id(ptr: *const ()) -> u64;
+
+    /// Miri-provided extern function to print (from the interpreter, not the program) the contents of all
+    /// borrow stacks in an allocation. The leftmost tag is the bottom of the stack.
+    /// The format of what this emits is unstable and may change at any time. In particular, users should be
+    /// aware that Miri will periodically attempt to garbage collect the contents of all stacks. Callers of
+    /// this function may wish to pass `-Zmiri-tag-gc=0` to disable the GC.
+    ///
+    /// This function is extremely unstable. At any time the format of its output may change, its signature may
+    /// change, or it may be removed entirely.
+    fn miri_print_borrow_stacks(alloc_id: u64);
+
+    /// Miri-provided extern function to print (from the interpreter, not the
+    /// program) the contents of a section of program memory, as bytes. Bytes
+    /// written using this function will emerge from the interpreter's stdout.
+    fn miri_write_to_stdout(bytes: &[u8]);
+
+    /// Miri-provided extern function to print (from the interpreter, not the
+    /// program) the contents of a section of program memory, as bytes. Bytes
+    /// written using this function will emerge from the interpreter's stderr.
+    fn miri_write_to_stderr(bytes: &[u8]);
 }
 ```
 

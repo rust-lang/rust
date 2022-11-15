@@ -112,6 +112,9 @@ parser_missing_semicolon_before_array = expected `;`, found `[`
 parser_invalid_block_macro_segment = cannot use a `block` macro fragment here
     .label = the `block` fragment is within this context
 
+parser_expect_dotdot_not_dotdotdot = expected `..`, found `...`
+    .suggestion = use `..` to fill in the rest of the fields
+
 parser_if_expression_missing_then_block = this `if` expression is missing a block after the condition
     .add_then_block = add a block here
     .condition_possibly_unfinished = this binary operation is possibly unfinished
@@ -121,6 +124,9 @@ parser_if_expression_missing_condition = missing condition for `if` expression
     .block_label = if this block is the condition of the `if` expression, then it must be followed by another block
 
 parser_expected_expression_found_let = expected expression, found `let` statement
+
+parser_expect_eq_instead_of_eqeq = expected `=`, found `==`
+    .suggestion = consider using `=` here
 
 parser_expected_else_block = expected `{"{"}`, found {$first_tok}
     .label = expected an `if` or a block after this `else`
@@ -369,3 +375,15 @@ parser_async_move_order_incorrect = the order of `move` and `async` is incorrect
 
 parser_double_colon_in_bound = expected `:` followed by trait or lifetime
     .suggestion = use single colon
+
+parser_fn_ptr_with_generics = function pointer types may not have generic parameters
+    .suggestion = consider moving the lifetime {$arity ->
+        [one] parameter
+        *[other] parameters
+    } to {$for_param_list_exists ->
+        [true] the
+        *[false] a
+    } `for` parameter list
+
+parser_invalid_identifier_with_leading_number = expected identifier, found number literal
+    .label = identifiers cannot start with a number

@@ -22,9 +22,8 @@ pub(super) fn check_fn(
         return;
     }
 
-    let code_snippet = match snippet_opt(cx, body.value.span) {
-        Some(s) => s,
-        _ => return,
+    let Some(code_snippet) = snippet_opt(cx, body.value.span) else {
+        return
     };
     let mut line_count: u64 = 0;
     let mut in_comment = false;

@@ -41,19 +41,14 @@ pub struct PromoteTemps<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
-    fn phase_change(&self) -> Option<MirPhase> {
-        Some(MirPhase::Analysis(AnalysisPhase::Initial))
-    }
-
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
         // This does not include MIR that failed const-checking, which we still try to promote.
-        if body.return_ty().references_error() {
-            tcx.sess.delay_span_bug(body.span, "PromoteTemps: MIR had errors");
+        if let Err(_) = body.return_ty().error_reported() {
+            debug!("PromoteTemps: MIR had errors");
             return;
         }
-
         if body.source.promoted.is_some() {
             return;
         }

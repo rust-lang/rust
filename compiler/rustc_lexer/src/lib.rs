@@ -57,29 +57,44 @@ pub enum TokenKind {
     // Multi-char tokens:
     /// "// comment"
     LineComment { doc_style: Option<DocStyle> },
+
     /// `/* block comment */`
     ///
-    /// Block comments can be recursive, so the sequence like `/* /* */`
+    /// Block comments can be recursive, so a sequence like `/* /* */`
     /// will not be considered terminated and will result in a parsing error.
     BlockComment { doc_style: Option<DocStyle>, terminated: bool },
-    /// Any whitespace characters sequence.
+
+    /// Any whitespace character sequence.
     Whitespace,
+
     /// "ident" or "continue"
-    /// At this step keywords are also considered identifiers.
+    ///
+    /// At this step, keywords are also considered identifiers.
     Ident,
+
     /// Like the above, but containing invalid unicode codepoints.
     InvalidIdent,
+
     /// "r#ident"
     RawIdent,
-    /// An unknown prefix like `foo#`, `foo'`, `foo"`. Note that only the
+
+    /// An unknown prefix, like `foo#`, `foo'`, `foo"`.
+    ///
+    /// Note that only the
     /// prefix (`foo`) is included in the token, not the separator (which is
     /// lexed as its own distinct token). In Rust 2021 and later, reserved
     /// prefixes are reported as errors; in earlier editions, they result in a
     /// (allowed by default) lint, and are treated as regular identifier
     /// tokens.
     UnknownPrefix,
-    /// "12_u8", "1.0e-40", "b"123"". See `LiteralKind` for more details.
+
+    /// Examples: `12u8`, `1.0e-40`, `b"123"`. Note that `_` is an invalid
+    /// suffix, but may be present here on string and float literals. Users of
+    /// this type will need to check for and reject that case.
+    ///
+    /// See [LiteralKind] for more details.
     Literal { kind: LiteralKind, suffix_start: u32 },
+
     /// "'a"
     Lifetime { starts_with_number: bool },
 
@@ -190,13 +205,13 @@ pub enum RawStrError {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Base {
     /// Literal starts with "0b".
-    Binary,
+    Binary = 2,
     /// Literal starts with "0o".
-    Octal,
-    /// Literal starts with "0x".
-    Hexadecimal,
+    Octal = 8,
     /// Literal doesn't contain a prefix.
-    Decimal,
+    Decimal = 10,
+    /// Literal starts with "0x".
+    Hexadecimal = 16,
 }
 
 /// `rustc` allows files to have a shebang, e.g. "#!/usr/bin/rustrun",
@@ -827,12 +842,13 @@ impl Cursor<'_> {
         self.eat_decimal_digits()
     }
 
-    // Eats the suffix of the literal, e.g. "_u8".
+    // Eats the suffix of the literal, e.g. "u8".
     fn eat_literal_suffix(&mut self) {
         self.eat_identifier();
     }
 
-    // Eats the identifier.
+    // Eats the identifier. Note: succeeds on `_`, which isn't a valid
+    // identifer.
     fn eat_identifier(&mut self) {
         if !is_id_start(self.first()) {
             return;

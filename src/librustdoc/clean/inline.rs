@@ -3,7 +3,7 @@
 use std::iter::once;
 use std::sync::Arc;
 
-use thin_vec::ThinVec;
+use thin_vec::{thin_vec, ThinVec};
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
@@ -19,8 +19,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use crate::clean::{
     self, clean_fn_decl_from_did_and_sig, clean_generics, clean_impl_item, clean_middle_assoc_item,
     clean_middle_field, clean_middle_ty, clean_trait_ref_with_bindings, clean_ty,
-    clean_ty_generics, clean_variant_def, clean_visibility, utils, Attributes, AttributesExt,
-    ImplKind, ItemId, Type, Visibility,
+    clean_ty_generics, clean_variant_def, utils, Attributes, AttributesExt, ImplKind, ItemId, Type,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -55,12 +54,39 @@ pub(crate) fn try_inline(
     let mut ret = Vec::new();
 
     debug!("attrs={:?}", attrs);
-    let attrs_clone = attrs;
+
+    let attrs_without_docs = attrs.map(|attrs| {
+        attrs.into_iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>()
+    });
+    // We need this ugly code because:
+    //
+    // ```
+    // attrs_without_docs.map(|a| a.as_slice())
+    // ```
+    //
+    // will fail because it returns a temporary slice and:
+    //
+    // ```
+    // attrs_without_docs.map(|s| {
+    //     vec = s.as_slice();
+    //     vec
+    // })
+    // ```
+    //
+    // will fail because we're moving an uninitialized variable into a closure.
+    let vec;
+    let attrs_without_docs = match attrs_without_docs {
+        Some(s) => {
+            vec = s;
+            Some(vec.as_slice())
+        }
+        None => None,
+    };
 
     let kind = match res {
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, ItemType::Trait);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::TraitItem(Box::new(build_external_trait(cx, did)))
         }
         Res::Def(DefKind::Fn, did) => {
@@ -69,27 +95,27 @@ pub(crate) fn try_inline(
         }
         Res::Def(DefKind::Struct, did) => {
             record_extern_fqn(cx, did, ItemType::Struct);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::StructItem(build_struct(cx, did))
         }
         Res::Def(DefKind::Union, did) => {
             record_extern_fqn(cx, did, ItemType::Union);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::UnionItem(build_union(cx, did))
         }
         Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, ItemType::Typedef);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::TypedefItem(build_type_alias(cx, did))
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, ItemType::Enum);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::EnumItem(build_enum(cx, did))
         }
         Res::Def(DefKind::ForeignTy, did) => {
             record_extern_fqn(cx, did, ItemType::ForeignType);
-            build_impls(cx, Some(parent_module), did, attrs, &mut ret);
+            build_impls(cx, Some(parent_module), did, attrs_without_docs, &mut ret);
             clean::ForeignTypeItem
         }
         // Never inline enum variants but leave them shown as re-exports.
@@ -123,20 +149,12 @@ pub(crate) fn try_inline(
         _ => return None,
     };
 
-    let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs_clone);
+    let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs);
     cx.inlined.insert(did.into());
-    let mut item = clean::Item::from_def_id_and_attrs_and_parts(
-        did,
-        Some(name),
-        kind,
-        Box::new(attrs),
-        cx,
-        cfg,
-    );
-    if let Some(import_def_id) = import_def_id {
-        // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
-        item.visibility = clean_visibility(cx.tcx.visibility(import_def_id));
-    }
+    let mut item =
+        clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, Box::new(attrs), cfg);
+    // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
+    item.inline_stmt_id = import_def_id;
     ret.push(item);
     Some(ret)
 }
@@ -212,13 +230,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
         .tcx
         .associated_items(did)
         .in_definition_order()
-        .map(|item| {
-            // When building an external trait, the cleaned trait will have all items public,
-            // which causes methods to have a `pub` prefix, which is invalid since items in traits
-            // can not have a visibility prefix. Thus we override the visibility here manually.
-            // See https://github.com/rust-lang/rust/issues/81274
-            clean::Item { visibility: Visibility::Inherited, ..clean_middle_assoc_item(item, cx) }
-        })
+        .map(|item| clean_middle_assoc_item(item, cx))
         .collect();
 
     let predicates = cx.tcx.predicates_of(did);
@@ -231,10 +243,19 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
 fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<clean::Function> {
     let sig = cx.tcx.fn_sig(did);
 
-    let predicates = cx.tcx.predicates_of(did);
+    let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
+        ty::BoundVariableKind::Region(ty::BrNamed(_, name)) if name != kw::UnderscoreLifetime => {
+            Some(clean::GenericParamDef::lifetime(name))
+        }
+        _ => None,
+    });
+
+    let predicates = cx.tcx.explicit_predicates_of(did);
     let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
         // NOTE: generics need to be cleaned before the decl!
-        let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
+        let mut generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
+        // FIXME: This does not place parameters in source order (late-bound ones come last)
+        generics.params.extend(late_bound_regions);
         let decl = clean_fn_decl_from_did_and_sig(cx, Some(did), sig);
         (generics, decl)
     });
@@ -296,6 +317,21 @@ pub(crate) fn build_impls(
     for &did in tcx.inherent_impls(did).iter() {
         build_impl(cx, parent_module, did, attrs, ret);
     }
+
+    // This pretty much exists expressly for `dyn Error` traits that exist in the `alloc` crate.
+    // See also:
+    //
+    // * https://github.com/rust-lang/rust/issues/103170 — where it didn't used to get documented
+    // * https://github.com/rust-lang/rust/pull/99917 — where the feature got used
+    // * https://github.com/rust-lang/rust/issues/53487 — overall tracking issue for Error
+    if tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
+        use rustc_middle::ty::fast_reject::SimplifiedTypeGen::*;
+        let type_ =
+            if tcx.is_trait(did) { TraitSimplifiedType(did) } else { AdtSimplifiedType(did) };
+        for &did in tcx.incoherent_impls(type_) {
+            build_impl(cx, parent_module, did, attrs, ret);
+        }
+    }
 }
 
 /// `parent_module` refers to the parent of the re-export, not the original item
@@ -347,7 +383,7 @@ pub(crate) fn build_impl(
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
             let did = traitref.def_id;
-            if !cx.cache.access_levels.is_public(did) {
+            if !cx.cache.effective_visibilities.is_directly_public(tcx, did) {
                 return;
             }
 
@@ -376,7 +412,7 @@ pub(crate) fn build_impl(
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(did) = for_.def_id(&cx.cache) {
-            if !cx.cache.access_levels.is_public(did) {
+            if !cx.cache.effective_visibilities.is_directly_public(tcx, did) {
                 return;
             }
 
@@ -517,7 +553,6 @@ pub(crate) fn build_impl(
             },
         })),
         Box::new(merged_attrs),
-        cx,
         cfg,
     ));
 }
@@ -565,13 +600,12 @@ fn build_module_items(
                     name: None,
                     attrs: Box::new(clean::Attributes::default()),
                     item_id: ItemId::Primitive(prim_ty, did.krate),
-                    visibility: clean::Public,
                     kind: Box::new(clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
                         clean::ImportSource {
                             path: clean::Path {
                                 res,
-                                segments: vec![clean::PathSegment {
+                                segments: thin_vec![clean::PathSegment {
                                     name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
                                         args: Default::default(),
@@ -584,6 +618,7 @@ fn build_module_items(
                         true,
                     ))),
                     cfg: None,
+                    inline_stmt_id: None,
                 });
             } else if let Some(i) = try_inline(cx, did, None, res, item.ident.name, None, visited) {
                 items.extend(i)
@@ -627,7 +662,7 @@ fn build_macro(
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.sess()) {
         LoadedMacro::MacroDef(item_def, _) => {
             if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
-                let vis = clean_visibility(cx.tcx.visibility(import_def_id.unwrap_or(def_id)));
+                let vis = cx.tcx.visibility(import_def_id.unwrap_or(def_id));
                 clean::MacroItem(clean::Macro {
                     source: utils::display_macro_source(cx, name, def, def_id, vis),
                 })

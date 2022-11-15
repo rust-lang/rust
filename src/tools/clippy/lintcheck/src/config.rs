@@ -73,8 +73,7 @@ impl LintcheckConfig {
         let sources_toml = env::var("LINTCHECK_TOML").unwrap_or_else(|_| {
             clap_config
                 .get_one::<String>("crates-toml")
-                .map(|s| &**s)
-                .unwrap_or("lintcheck/lintcheck_crates.toml")
+                .map_or("lintcheck/lintcheck_crates.toml", |s| &**s)
                 .into()
         });
 
@@ -97,7 +96,7 @@ impl LintcheckConfig {
             Some(&0) => {
                 // automatic choice
                 // Rayon seems to return thread count so half that for core count
-                (rayon::current_num_threads() / 2) as usize
+                rayon::current_num_threads() / 2
             },
             Some(&threads) => threads,
             // no -j passed, use a single thread

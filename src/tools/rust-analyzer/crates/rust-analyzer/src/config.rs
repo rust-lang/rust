@@ -32,7 +32,7 @@ use vfs::AbsPathBuf;
 use crate::{
     caps::completion_item_edit_resolve,
     diagnostics::DiagnosticsMapConfig,
-    line_index::OffsetEncoding,
+    line_index::PositionEncoding,
     lsp_ext::{self, supports_utf8, WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
@@ -56,6 +56,9 @@ mod patch_old_style;
 // parsing the old name.
 config_data! {
     struct ConfigData {
+        /// Whether to insert #[must_use] when generating `as_` methods
+        /// for enum variants.
+        assist_emitMustUse: bool               = "false",
         /// Placeholder expression to use for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = "\"todo\"",
 
@@ -69,6 +72,19 @@ config_data! {
         cargo_autoreload: bool           = "true",
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = "true",
+        /// Specifies the working directory for running build scripts.
+        /// - "workspace": run build scripts for a workspace in the workspace's root directory.
+        ///   This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.
+        /// - "root": run build scripts in the project's root directory.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        cargo_buildScripts_invocationLocation: InvocationLocation = "\"workspace\"",
+        /// Specifies the invocation strategy to use when running the build scripts command.
+        /// If `per_workspace` is set, the command will be executed for each workspace.
+        /// If `once` is set, the command will be executed once.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        cargo_buildScripts_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Override the command rust-analyzer uses to run build scripts and
         /// build procedural macros. The command is required to output json
         /// and should therefore include `--message-format=json` or a similar
@@ -122,6 +138,20 @@ config_data! {
         ///
         /// Set to `"all"` to pass `--all-features` to Cargo.
         checkOnSave_features: Option<CargoFeaturesDef>      = "null",
+        /// Specifies the working directory for running checks.
+        /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
+        // FIXME: Ideally we would support this in some way
+        ///   This falls back to "root" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.
+        /// - "root": run checks in the project's root directory.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        checkOnSave_invocationLocation: InvocationLocation = "\"workspace\"",
+        /// Specifies the invocation strategy to use when running the checkOnSave command.
+        /// If `per_workspace` is set, the command will be executed for each workspace.
+        /// If `once` is set, the command will be executed once.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        checkOnSave_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Whether to pass `--no-default-features` to Cargo. Defaults to
         /// `#rust-analyzer.cargo.noDefaultFeatures#`.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
@@ -921,11 +951,11 @@ impl Config {
         .is_some()
     }
 
-    pub fn offset_encoding(&self) -> OffsetEncoding {
+    pub fn position_encoding(&self) -> PositionEncoding {
         if supports_utf8(&self.caps) {
-            OffsetEncoding::Utf8
+            PositionEncoding::Utf8
         } else {
-            OffsetEncoding::Utf16
+            PositionEncoding::Utf16
         }
     }
 
@@ -1056,6 +1086,16 @@ impl Config {
             rustc_source,
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
+            invocation_strategy: match self.data.cargo_buildScripts_invocationStrategy {
+                InvocationStrategy::Once => project_model::InvocationStrategy::Once,
+                InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
+            },
+            invocation_location: match self.data.cargo_buildScripts_invocationLocation {
+                InvocationLocation::Root => {
+                    project_model::InvocationLocation::Root(self.root_path.clone())
+                }
+                InvocationLocation::Workspace => project_model::InvocationLocation::Workspace,
+            },
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
             extra_env: self.data.cargo_extraEnv.clone(),
         }
@@ -1087,6 +1127,18 @@ impl Config {
                     command,
                     args,
                     extra_env: self.check_on_save_extra_env(),
+                    invocation_strategy: match self.data.checkOnSave_invocationStrategy {
+                        InvocationStrategy::Once => flycheck::InvocationStrategy::Once,
+                        InvocationStrategy::PerWorkspace => {
+                            flycheck::InvocationStrategy::PerWorkspace
+                        }
+                    },
+                    invocation_location: match self.data.checkOnSave_invocationLocation {
+                        InvocationLocation::Root => {
+                            flycheck::InvocationLocation::Root(self.root_path.clone())
+                        }
+                        InvocationLocation::Workspace => flycheck::InvocationLocation::Workspace,
+                    },
                 }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
@@ -1227,6 +1279,7 @@ impl Config {
             allowed: None,
             insert_use: self.insert_use_config(),
             prefer_no_std: self.data.imports_prefer_no_std,
+            assist_emit_must_use: self.data.assist_emitMustUse,
         }
     }
 
@@ -1585,6 +1638,20 @@ enum CargoFeaturesDef {
     #[serde(deserialize_with = "de_unit_v::all")]
     All,
     Selected(Vec<String>),
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum InvocationStrategy {
+    Once,
+    PerWorkspace,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum InvocationLocation {
+    Root,
+    Workspace,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1999,6 +2066,22 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "Render annotations above the name of the item.",
                 "Render annotations above the whole item, including documentation comments and attributes."
+            ],
+        },
+        "InvocationStrategy" => set! {
+            "type": "string",
+            "enum": ["per_workspace", "once"],
+            "enumDescriptions": [
+                "The command will be executed for each workspace.",
+                "The command will be executed once."
+            ],
+        },
+        "InvocationLocation" => set! {
+            "type": "string",
+            "enum": ["workspace", "root"],
+            "enumDescriptions": [
+                "The command will be executed in the corresponding workspace root.",
+                "The command will be executed in the project root."
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),

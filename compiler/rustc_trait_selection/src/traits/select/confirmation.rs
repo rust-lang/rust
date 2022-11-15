@@ -555,13 +555,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             GenericParamDefKind::Const { .. } => {
                                 let bound_var = ty::BoundVariableKind::Const;
                                 bound_vars.push(bound_var);
-                                tcx.mk_const(ty::ConstS {
-                                    ty: tcx.type_of(param.def_id),
-                                    kind: ty::ConstKind::Bound(
+                                tcx.mk_const(
+                                    ty::ConstKind::Bound(
                                         ty::INNERMOST,
                                         ty::BoundVar::from_usize(bound_vars.len() - 1),
                                     ),
-                                })
+                                    tcx.type_of(param.def_id),
+                                )
                                 .into()
                             }
                         });

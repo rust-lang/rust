@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_lazy_eval;
 use clippy_utils::source::{snippet, snippet_with_macro_callsite};
-use clippy_utils::ty::{implements_trait, match_type};
-use clippy_utils::{contains_return, is_trait_item, last_path_segment, paths};
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::{contains_return, is_trait_item, last_path_segment};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Symbol};
 use std::borrow::Cow;
 
 use super::OR_FUN_CALL;
@@ -88,11 +88,11 @@ pub(super) fn check<'tcx>(
         fun_span: Option<Span>,
     ) {
         // (path, fn_has_argument, methods, suffix)
-        const KNOW_TYPES: [(&[&str], bool, &[&str], &str); 4] = [
-            (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
-            (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
-            (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
-            (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
+        const KNOW_TYPES: [(Symbol, bool, &[&str], &str); 4] = [
+            (sym::BTreeEntry, false, &["or_insert"], "with"),
+            (sym::HashMapEntry, false, &["or_insert"], "with"),
+            (sym::Option, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
+            (sym::Result, true, &["or", "unwrap_or"], "else"),
         ];
 
         if_chain! {
@@ -104,7 +104,7 @@ pub(super) fn check<'tcx>(
             let self_ty = cx.typeck_results().expr_ty(self_expr);
 
             if let Some(&(_, fn_has_arguments, poss, suffix)) =
-                KNOW_TYPES.iter().find(|&&i| match_type(cx, self_ty, i.0));
+                KNOW_TYPES.iter().find(|&&i| is_type_diagnostic_item(cx, self_ty, i.0));
 
             if poss.contains(&name);
 
@@ -121,10 +121,9 @@ pub(super) fn check<'tcx>(
                             macro_expanded_snipped = snippet(cx, snippet_span, "..");
                             match macro_expanded_snipped.strip_prefix("$crate::vec::") {
                                 Some(stripped) => Cow::from(stripped),
-                                None => macro_expanded_snipped
+                                None => macro_expanded_snipped,
                             }
-                        }
-                        else {
+                        } else {
                             not_macro_argument_snippet
                         }
                     };

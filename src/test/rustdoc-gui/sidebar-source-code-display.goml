@@ -3,7 +3,7 @@ javascript: false
 goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // Since the javascript is disabled, there shouldn't be a toggle.
 assert-false: "#sidebar-toggle"
-wait-for-css: (".sidebar > *", {"visibility": "hidden"})
+wait-for-css: (".sidebar", {"display": "none"})
 
 // Let's retry with javascript enabled.
 javascript: true

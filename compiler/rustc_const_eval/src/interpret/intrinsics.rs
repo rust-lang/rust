@@ -7,7 +7,9 @@ use std::convert::TryFrom;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
-    interpret::{ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar},
+    interpret::{
+        Allocation, ConstAllocation, ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar,
+    },
     BinOp, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
@@ -23,7 +25,6 @@ use super::{
 };
 
 mod caller_location;
-mod type_name;
 
 fn numeric_intrinsic<Prov>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<Prov> {
     let size = match kind {
@@ -42,6 +43,13 @@ fn numeric_intrinsic<Prov>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<
     Scalar::from_uint(bits_out, size)
 }
 
+/// Directly returns an `Allocation` containing an absolute path representation of the given type.
+pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
+    let path = crate::util::type_name(tcx, ty);
+    let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes());
+    tcx.intern_const_alloc(alloc)
+}
+
 /// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
 /// inside an `InterpCx` and instead have their value computed directly from rustc internal info.
 pub(crate) fn eval_nullary_intrinsic<'tcx>(
@@ -55,7 +63,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
     Ok(match name {
         sym::type_name => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            let alloc = type_name::alloc_type_name(tcx, tp_ty);
+            let alloc = alloc_type_name(tcx, tp_ty);
             ConstValue::Slice { data: alloc, start: 0, end: alloc.inner().len() }
         }
         sym::needs_drop => {
@@ -705,7 +713,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         rhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap().ty)?;
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
 
         let get_bytes = |this: &InterpCx<'mir, 'tcx, M>,
                          op: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,

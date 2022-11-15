@@ -35,7 +35,8 @@
 //!   be used for inter-thread synchronization.
 //! * The result of casting a reference to a pointer is valid for as long as the
 //!   underlying object is live and no reference (just raw pointers) is used to
-//!   access the same memory.
+//!   access the same memory. That is, reference and pointer accesses cannot be
+//!   interleaved.
 //!
 //! These axioms, along with careful use of [`offset`] for pointer arithmetic,
 //! are enough to correctly implement many useful things in unsafe code. Stronger guarantees
@@ -63,7 +64,6 @@
 //! Common examples of allocated objects include stack-allocated variables (each variable is a
 //! separate allocated object), heap allocations (each allocation created by the global allocator is
 //! a separate allocated object), and `static` variables.
-//!
 //!
 //! # Strict Provenance
 //!
@@ -581,12 +581,21 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// Convert an address back to a pointer, picking up a previously 'exposed' provenance.
 ///
 /// This is equivalent to `addr as *const T`. The provenance of the returned pointer is that of *any*
-/// pointer that was previously passed to [`expose_addr`][pointer::expose_addr] or a `ptr as usize`
-/// cast. If there is no previously 'exposed' provenance that justifies the way this pointer will be
-/// used, the program has undefined behavior. Note that there is no algorithm that decides which
-/// provenance will be used. You can think of this as "guessing" the right provenance, and the guess
-/// will be "maximally in your favor", in the sense that if there is any way to avoid undefined
-/// behavior, then that is the guess that will be taken.
+/// pointer that was previously exposed by passing it to [`expose_addr`][pointer::expose_addr],
+/// or a `ptr as usize` cast. In addition, memory which is outside the control of the Rust abstract
+/// machine (MMIO registers, for example) is always considered to be exposed, so long as this memory
+/// is disjoint from memory that will be used by the abstract machine such as the stack, heap,
+/// and statics.
+///
+/// If there is no 'exposed' provenance that justifies the way this pointer will be used,
+/// the program has undefined behavior. In particular, the aliasing rules still apply: pointers
+/// and references that have been invalidated due to aliasing accesses cannot be used any more,
+/// even if they have been exposed!
+///
+/// Note that there is no algorithm that decides which provenance will be used. You can think of this
+/// as "guessing" the right provenance, and the guess will be "maximally in your favor", in the sense
+/// that if there is any way to avoid undefined behavior (while upholding all aliasing requirements),
+/// then that is the guess that will be taken.
 ///
 /// On platforms with multiple address spaces, it is your responsibility to ensure that the
 /// address makes sense in the address space that this pointer will be used with.
@@ -889,7 +898,10 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     // SAFETY: the caller must guarantee that `x` and `y` are
     // valid for writes and properly aligned.
     unsafe {
-        assert_unsafe_precondition!([T](x: *mut T, y: *mut T, count: usize) =>
+        assert_unsafe_precondition!(
+            "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
+            and the specified memory ranges do not overlap",
+            [T](x: *mut T, y: *mut T, count: usize) =>
             is_aligned_and_not_null(x)
                 && is_aligned_and_not_null(y)
                 && is_nonoverlapping(x, y, count)
@@ -986,7 +998,10 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // and cannot overlap `src` since `dst` must point to a distinct
     // allocated object.
     unsafe {
-        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::replace requires that the pointer argument is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         mem::swap(&mut *dst, &mut src); // cannot overlap
     }
     src
@@ -1117,7 +1132,10 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // Also, since we just wrote a valid value into `tmp`, it is guaranteed
     // to be properly initialized.
     unsafe {
-        assert_unsafe_precondition!([T](src: *const T) => is_aligned_and_not_null(src));
+        assert_unsafe_precondition!(
+            "ptr::read requires that the pointer argument is aligned and non-null",
+            [T](src: *const T) => is_aligned_and_not_null(src)
+        );
         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
         tmp.assume_init()
     }
@@ -1311,7 +1329,10 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
-        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::write requires that the pointer argument is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         copy_nonoverlapping(&src as *const T, dst, 1);
         intrinsics::forget(src);
     }
@@ -1475,7 +1496,10 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
-        assert_unsafe_precondition!([T](src: *const T) => is_aligned_and_not_null(src));
+        assert_unsafe_precondition!(
+            "ptr::read_volatile requires that the pointer argument is aligned and non-null",
+            [T](src: *const T) => is_aligned_and_not_null(src)
+        );
         intrinsics::volatile_load(src)
     }
 }
@@ -1546,7 +1570,10 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
-        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!(
+            "ptr::write_volatile requires that the pointer argument is aligned and non-null",
+            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+        );
         intrinsics::volatile_store(dst, src);
     }
 }
@@ -1733,6 +1760,12 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 /// by their address rather than comparing the values they point to
 /// (which is what the `PartialEq for &T` implementation does).
 ///
+/// When comparing wide pointers, both the address and the metadata are tested for equality.
+/// However, note that comparing trait object pointers (`*const dyn Trait`) is unrealiable: pointers
+/// to values of the same underlying type can compare inequal (because vtables are duplicated in
+/// multiple codegen units), and pointers to values of *different* underlying type can compare equal
+/// (since identical vtables can be deduplicated within a codegen unit).
+///
 /// # Examples
 ///
 /// ```
@@ -1758,41 +1791,6 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 /// assert!(std::ptr::eq(&a[..3], &a[..3]));
 /// assert!(!std::ptr::eq(&a[..2], &a[..3]));
 /// assert!(!std::ptr::eq(&a[0..2], &a[1..3]));
-/// ```
-///
-/// Traits are also compared by their implementation:
-///
-/// ```
-/// #[repr(transparent)]
-/// struct Wrapper { member: i32 }
-///
-/// trait Trait {}
-/// impl Trait for Wrapper {}
-/// impl Trait for i32 {}
-///
-/// let wrapper = Wrapper { member: 10 };
-///
-/// // Pointers have equal addresses.
-/// assert!(std::ptr::eq(
-///     &wrapper as *const Wrapper as *const u8,
-///     &wrapper.member as *const i32 as *const u8
-/// ));
-///
-/// // Objects have equal addresses, but `Trait` has different implementations.
-/// assert!(!std::ptr::eq(
-///     &wrapper as &dyn Trait,
-///     &wrapper.member as &dyn Trait,
-/// ));
-/// assert!(!std::ptr::eq(
-///     &wrapper as &dyn Trait as *const dyn Trait,
-///     &wrapper.member as &dyn Trait as *const dyn Trait,
-/// ));
-///
-/// // Converting the reference to a `*const u8` compares by address.
-/// assert!(std::ptr::eq(
-///     &wrapper as &dyn Trait as *const dyn Trait as *const u8,
-///     &wrapper.member as &dyn Trait as *const dyn Trait as *const u8,
-/// ));
 /// ```
 #[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline]
@@ -1864,7 +1862,6 @@ macro_rules! fnptr_impls_safety_abi {
         fnptr_impls_safety_abi! { #[stable(feature = "fnptr_impls", since = "1.4.0")] $FnTy, $($Arg),* }
     };
     (@c_unwind $FnTy: ty, $($Arg: ident),*) => {
-        #[cfg(not(bootstrap))]
         fnptr_impls_safety_abi! { #[unstable(feature = "c_unwind", issue = "74990")] $FnTy, $($Arg),* }
     };
     (#[$meta:meta] $FnTy: ty, $($Arg: ident),*) => {

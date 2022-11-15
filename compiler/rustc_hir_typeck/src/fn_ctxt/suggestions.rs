@@ -13,7 +13,7 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, IsSuggestable, ToPredicate, Ty};
+use rustc_middle::ty::{self, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -22,6 +22,14 @@ use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
+        self.typeck_results
+            .borrow()
+            .liberated_fn_sigs()
+            .get(self.tcx.hir().get_parent_node(self.body_id))
+            .copied()
+    }
+
     pub(in super::super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut Diagnostic) {
         err.span_suggestion_short(
             span.shrink_to_hi(),
@@ -327,7 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
         let expr = expr.peel_blocks();
-        if let Some((sp, msg, suggestion, applicability, verbose)) =
+        if let Some((sp, msg, suggestion, applicability, verbose, annotation)) =
             self.check_ref(expr, found, expected)
         {
             if verbose {
@@ -335,9 +343,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 err.span_suggestion(sp, &msg, suggestion, applicability);
             }
+            if annotation {
+                let suggest_annotation = match expr.peel_drop_temps().kind {
+                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, _) => "&",
+                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) => "&mut ",
+                    _ => return true,
+                };
+                let mut tuple_indexes = Vec::new();
+                let mut expr_id = expr.hir_id;
+                for (parent_id, node) in self.tcx.hir().parent_iter(expr.hir_id) {
+                    match node {
+                        Node::Expr(&Expr { kind: ExprKind::Tup(subs), .. }) => {
+                            tuple_indexes.push(
+                                subs.iter()
+                                    .enumerate()
+                                    .find(|(_, sub_expr)| sub_expr.hir_id == expr_id)
+                                    .unwrap()
+                                    .0,
+                            );
+                            expr_id = parent_id;
+                        }
+                        Node::Local(local) => {
+                            if let Some(mut ty) = local.ty {
+                                while let Some(index) = tuple_indexes.pop() {
+                                    match ty.kind {
+                                        TyKind::Tup(tys) => ty = &tys[index],
+                                        _ => return true,
+                                    }
+                                }
+                                let annotation_span = ty.span;
+                                err.span_suggestion(
+                                    annotation_span.with_hi(annotation_span.lo()),
+                                    "alternatively, consider changing the type annotation",
+                                    suggest_annotation,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            break;
+                        }
+                        _ => break,
+                    }
+                }
+            }
             return true;
-        } else if self.suggest_else_fn_with_closure(err, expr, found, expected)
-        {
+        } else if self.suggest_else_fn_with_closure(err, expr, found, expected) {
             return true;
         } else if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
             && let ty::FnDef(def_id, ..) = &found.kind()
@@ -1067,6 +1116,53 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    /// When expecting a `bool` and finding an `Option`, suggests using `let Some(..)` or `.is_some()`
+    pub(crate) fn suggest_option_to_bool(
+        &self,
+        diag: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        if !expected_ty.is_bool() {
+            return false;
+        }
+
+        let ty::Adt(def, _) = expr_ty.peel_refs().kind() else { return false; };
+        if !self.tcx.is_diagnostic_item(sym::Option, def.did()) {
+            return false;
+        }
+
+        let hir = self.tcx.hir();
+        let cond_parent = hir.parent_iter(expr.hir_id).skip_while(|(_, node)| {
+            matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(op, _, _), .. }) if op.node == hir::BinOpKind::And)
+        }).next();
+        // Don't suggest:
+        //     `let Some(_) = a.is_some() && b`
+        //                     ++++++++++
+        // since the user probably just misunderstood how `let else`
+        // and `&&` work together.
+        if let Some((_, hir::Node::Local(local))) = cond_parent
+            && let hir::PatKind::Path(qpath) | hir::PatKind::TupleStruct(qpath, _, _) = &local.pat.kind
+            && let hir::QPath::Resolved(None, path) = qpath
+            && let Some(did) = path.res.opt_def_id()
+                .and_then(|did| self.tcx.opt_parent(did))
+                .and_then(|did| self.tcx.opt_parent(did))
+            && self.tcx.is_diagnostic_item(sym::Option, did)
+        {
+            return false;
+        }
+
+        diag.span_suggestion(
+            expr.span.shrink_to_hi(),
+            "use `Option::is_some` to test if the `Option` has a value",
+            ".is_some()",
+            Applicability::MachineApplicable,
+        );
+
+        true
+    }
+
     /// Suggest wrapping the block in square brackets instead of curly braces
     /// in case the block was mistaken array syntax, e.g. `{ 1 }` -> `[ 1 ]`.
     pub(crate) fn suggest_block_to_brackets(
@@ -1105,6 +1201,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
+        }
+    }
+
+    #[instrument(skip(self, err))]
+    pub(crate) fn suggest_floating_point_literal(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        if !expected_ty.is_floating_point() {
+            return false;
+        }
+        match expr.kind {
+            ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [start, end], _) => {
+                err.span_suggestion_verbose(
+                    start.span.shrink_to_hi().with_hi(end.span.lo()),
+                    "remove the unnecessary `.` operator for a floating point literal",
+                    '.',
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, ..), [start], _) => {
+                err.span_suggestion_verbose(
+                    expr.span.with_lo(start.span.hi()),
+                    "remove the unnecessary `.` operator for a floating point literal",
+                    '.',
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, ..), [end], _) => {
+                err.span_suggestion_verbose(
+                    expr.span.until(end.span),
+                    "remove the unnecessary `.` operator and add an integer part for a floating point literal",
+                    "0.",
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            _ => false,
         }
     }
 

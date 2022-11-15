@@ -30,6 +30,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         error: Option<TypeError<'tcx>>,
     ) {
+        if expr_ty == expected {
+            return;
+        }
+
         self.annotate_expected_due_to_let_ty(err, expr, error);
 
         // Use `||` to give these suggestions a precedence
@@ -42,7 +46,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
             || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
             || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
-            || self.suggest_into(err, expr, expr_ty, expected);
+            || self.suggest_into(err, expr, expr_ty, expected)
+            || self.suggest_option_to_bool(err, expr, expr_ty, expected)
+            || self.suggest_floating_point_literal(err, expr, expected);
 
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
@@ -530,24 +536,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         checked_ty: Ty<'tcx>,
         hir_id: hir::HirId,
     ) -> Vec<AssocItem> {
-        let mut methods =
-            self.probe_for_return_type(span, probe::Mode::MethodCall, expected, checked_ty, hir_id);
-        methods.retain(|m| {
-            self.has_only_self_parameter(m)
-                && self
-                    .tcx
-                    // This special internal attribute is used to permit
-                    // "identity-like" conversion methods to be suggested here.
-                    //
-                    // FIXME (#46459 and #46460): ideally
-                    // `std::convert::Into::into` and `std::borrow:ToOwned` would
-                    // also be `#[rustc_conversion_suggestion]`, if not for
-                    // method-probing false-positives and -negatives (respectively).
-                    //
-                    // FIXME? Other potential candidate methods: `as_ref` and
-                    // `as_mut`?
-                    .has_attr(m.def_id, sym::rustc_conversion_suggestion)
-        });
+        let methods = self.probe_for_return_type(
+            span,
+            probe::Mode::MethodCall,
+            expected,
+            checked_ty,
+            hir_id,
+            |m| {
+                self.has_only_self_parameter(m)
+                    && self
+                        .tcx
+                        // This special internal attribute is used to permit
+                        // "identity-like" conversion methods to be suggested here.
+                        //
+                        // FIXME (#46459 and #46460): ideally
+                        // `std::convert::Into::into` and `std::borrow:ToOwned` would
+                        // also be `#[rustc_conversion_suggestion]`, if not for
+                        // method-probing false-positives and -negatives (respectively).
+                        //
+                        // FIXME? Other potential candidate methods: `as_ref` and
+                        // `as_mut`?
+                        .has_attr(m.def_id, sym::rustc_conversion_suggestion)
+            },
+        );
 
         methods
     }
@@ -714,7 +725,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
-    ) -> Option<(Span, String, String, Applicability, bool /* verbose */)> {
+    ) -> Option<(
+        Span,
+        String,
+        String,
+        Applicability,
+        bool, /* verbose */
+        bool, /* suggest `&` or `&mut` type annotation */
+    )> {
         let sess = self.sess();
         let sp = expr.span;
 
@@ -746,6 +764,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     String::new(),
                                     Applicability::MachineApplicable,
                                     true,
+                                    false,
                                 ));
                             }
                         }
@@ -760,6 +779,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     "b".to_string(),
                                     Applicability::MachineApplicable,
                                     true,
+                                    false,
                                 ));
                     }
                 }
@@ -817,6 +837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 sugg.2,
                                 Applicability::MachineApplicable,
                                 false,
+                                false,
                             ));
                         }
 
@@ -844,12 +865,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 format!("{prefix}&mut {sugg_expr}"),
                                 Applicability::MachineApplicable,
                                 false,
+                                false,
                             ),
                             hir::Mutability::Not => (
                                 sp,
                                 "consider borrowing here".to_string(),
                                 format!("{prefix}&{sugg_expr}"),
                                 Applicability::MachineApplicable,
+                                false,
                                 false,
                             ),
                         });
@@ -880,6 +903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             String::new(),
                             Applicability::MachineApplicable,
                             true,
+                            true
                         ));
                     }
                     return None;
@@ -892,6 +916,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "consider removing the borrow".to_string(),
                         String::new(),
                         Applicability::MachineApplicable,
+                        true,
                         true,
                     ));
                 }
@@ -959,6 +984,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             src,
                             applicability,
                             true,
+                            false,
                         ));
                     }
                 }
@@ -999,6 +1025,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Applicability::MachineApplicable
                             },
                             true,
+                            false,
                         ));
                     }
 
@@ -1050,6 +1077,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             suggestion,
                             Applicability::MachineApplicable,
                             true,
+                            false,
                         ));
                     }
                 }

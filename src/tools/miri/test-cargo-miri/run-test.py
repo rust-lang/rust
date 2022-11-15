@@ -33,10 +33,13 @@ def normalize_stderr(str):
     return str
 
 def check_output(actual, path, name):
+    if 'MIRI_BLESS' in os.environ:
+        open(path, mode='w').write(actual)
+        return True
     expected = open(path).read()
     if expected == actual:
         return True
-    print(f"{path} did not match reference!")
+    print(f"{name} output did not match reference in {path}!")
     print(f"--- BEGIN diff {name} ---")
     for text in difflib.unified_diff(expected.split("\n"), actual.split("\n")):
         print(text)

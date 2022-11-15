@@ -1320,6 +1320,15 @@ impl PlaceContext {
         )
     }
 
+    /// Returns `true` if this place context represents an address-of.
+    pub fn is_address_of(&self) -> bool {
+        matches!(
+            self,
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
+                | PlaceContext::MutatingUse(MutatingUseContext::AddressOf)
+        )
+    }
+
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     #[inline]
     pub fn is_storage_marker(&self) -> bool {

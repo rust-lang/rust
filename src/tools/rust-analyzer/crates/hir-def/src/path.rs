@@ -68,6 +68,9 @@ pub struct GenericArgs {
 pub struct AssociatedTypeBinding {
     /// The name of the associated type.
     pub name: Name,
+    /// The generic arguments to the associated type. e.g. For `Trait<Assoc<'a, T> = &'a T>`, this
+    /// would be `['a, T]`.
+    pub args: Option<Interned<GenericArgs>>,
     /// The type bound to this associated type (in `Item = T`, this would be the
     /// `T`). This can be `None` if there are bounds instead.
     pub type_ref: Option<TypeRef>,

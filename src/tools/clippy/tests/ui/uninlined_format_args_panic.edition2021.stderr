@@ -1,0 +1,51 @@
+error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args_panic.rs:11:5
+   |
+LL |     println!("val='{}'", var);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::uninlined-format-args` implied by `-D warnings`
+help: change this to
+   |
+LL -     println!("val='{}'", var);
+LL +     println!("val='{var}'");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args_panic.rs:14:9
+   |
+LL |         panic!("p1 {}", var);
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -         panic!("p1 {}", var);
+LL +         panic!("p1 {var}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args_panic.rs:17:9
+   |
+LL |         panic!("p2 {0}", var);
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -         panic!("p2 {0}", var);
+LL +         panic!("p2 {var}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args_panic.rs:20:9
+   |
+LL |         panic!("p3 {var}", var = var);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -         panic!("p3 {var}", var = var);
+LL +         panic!("p3 {var}");
+   |
+
+error: aborting due to 4 previous errors
+

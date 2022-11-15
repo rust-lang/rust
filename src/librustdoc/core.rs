@@ -1,6 +1,7 @@
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
@@ -165,6 +166,7 @@ pub(crate) fn new_handler(
                     unstable_opts.teach,
                     diagnostic_width,
                     false,
+                    unstable_opts.track_diagnostics,
                 )
                 .ui_testing(unstable_opts.ui_testing),
             )
@@ -183,6 +185,7 @@ pub(crate) fn new_handler(
                     json_rendered,
                     diagnostic_width,
                     false,
+                    unstable_opts.track_diagnostics,
                 )
                 .ui_testing(unstable_opts.ui_testing),
             )
@@ -288,8 +291,7 @@ pub(crate) fn create_config(
             providers.typeck_item_bodies = |_, _| {};
             // hack so that `used_trait_imports` won't try to call typeck
             providers.used_trait_imports = |_, _| {
-                static EMPTY_SET: LazyLock<FxHashSet<LocalDefId>> =
-                    LazyLock::new(FxHashSet::default);
+                static EMPTY_SET: LazyLock<UnordSet<LocalDefId>> = LazyLock::new(UnordSet::default);
                 &EMPTY_SET
             };
             // In case typeck does end up being called, don't ICE in case there were name resolution errors
@@ -348,7 +350,6 @@ pub(crate) fn run_global_ctxt(
 
     let auto_traits =
         tcx.all_traits().filter(|&trait_def_id| tcx.trait_is_auto(trait_def_id)).collect();
-    let access_levels = tcx.privacy_access_levels(()).map_id(Into::into);
 
     let mut ctxt = DocContext {
         tcx,
@@ -361,7 +362,7 @@ pub(crate) fn run_global_ctxt(
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits,
-        cache: Cache::new(access_levels, render_options.document_private),
+        cache: Cache::new(render_options.document_private),
         inlined: FxHashSet::default(),
         output_format,
         render_options,

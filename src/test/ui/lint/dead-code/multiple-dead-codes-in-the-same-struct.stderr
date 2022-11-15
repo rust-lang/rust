@@ -1,4 +1,4 @@
-warning: fields `d`, `f` and `g` are never read
+warning: fields `d`, `f`, and `g` are never read
   --> $DIR/multiple-dead-codes-in-the-same-struct.rs:10:5
    |
 LL | struct Bar {

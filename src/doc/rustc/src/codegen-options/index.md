@@ -531,8 +531,10 @@ platforms. Possible values are:
   debug information. On other Unix platforms this means that `*.dwo` files will
   contain debug information.
 
-Note that `packed` and `unpacked` are gated behind `-Z unstable-options` on
-non-macOS platforms at this time.
+Note that all three options are supported on Linux and Apple platforms,
+`packed` is supported on Windows-MSVC, and all other platforms support `off`.
+Attempting to use an unsupported option requires using the nightly channel
+with the `-Z unstable-options` flag.
 
 ## strip
 

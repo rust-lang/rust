@@ -551,6 +551,7 @@ pub(crate) fn make_test(
                 false,
                 Some(80),
                 false,
+                false,
             )
             .supports_color();
 
@@ -563,6 +564,7 @@ pub(crate) fn make_test(
                 false,
                 false,
                 None,
+                false,
                 false,
             );
 
@@ -747,6 +749,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
                 false,
                 None,
+                false,
                 false,
             );
 

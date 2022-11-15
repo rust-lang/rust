@@ -6,7 +6,7 @@ use super::*;
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ItemKind, Node, PathSegment};
@@ -26,6 +26,7 @@ use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVE
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
+use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -75,7 +76,7 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         check_simd(tcx, span, def_id);
     }
 
-    check_transparent(tcx, span, def);
+    check_transparent(tcx, def);
     check_packed(tcx, span, def);
 }
 
@@ -83,7 +84,7 @@ fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
-    check_transparent(tcx, span, def);
+    check_transparent(tcx, def);
     check_union_fields(tcx, span, def_id);
     check_packed(tcx, span, def);
 }
@@ -114,7 +115,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 _ => {
                     // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
                     ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
-                        || ty.is_copy_modulo_regions(tcx.at(span), param_env)
+                        || ty.is_copy_modulo_regions(tcx, param_env)
                 }
             }
         }
@@ -227,17 +228,17 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
         return;
     }
 
-    let substs = InternalSubsts::identity_for_item(tcx, item.def_id.to_def_id());
-    let span = tcx.def_span(item.def_id.def_id);
+    let substs = InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id());
+    let span = tcx.def_span(item.owner_id.def_id);
 
-    check_opaque_for_inheriting_lifetimes(tcx, item.def_id.def_id, span);
-    if tcx.type_of(item.def_id.def_id).references_error() {
+    check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
+    if tcx.type_of(item.owner_id.def_id).references_error() {
         return;
     }
-    if check_opaque_for_cycles(tcx, item.def_id.def_id, substs, span, &origin).is_err() {
+    if check_opaque_for_cycles(tcx, item.owner_id.def_id, substs, span, &origin).is_err() {
         return;
     }
-    check_opaque_meets_bounds(tcx, item.def_id.def_id, substs, span, &origin);
+    check_opaque_meets_bounds(tcx, item.owner_id.def_id, substs, span, &origin);
 }
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
 /// in "inheriting lifetimes".
@@ -471,7 +472,7 @@ fn check_opaque_meets_bounds<'tcx>(
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
     }
     match origin {
         // Checked when type checking the function containing them.
@@ -492,25 +493,21 @@ fn check_opaque_meets_bounds<'tcx>(
 fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     debug!(
         "check_item_type(it.def_id={:?}, it.name={})",
-        id.def_id,
-        tcx.def_path_str(id.def_id.to_def_id())
+        id.owner_id,
+        tcx.def_path_str(id.owner_id.to_def_id())
     );
     let _indenter = indenter();
-    match tcx.def_kind(id.def_id) {
+    match tcx.def_kind(id.owner_id) {
         DefKind::Static(..) => {
-            tcx.ensure().typeck(id.def_id.def_id);
-            maybe_check_static_with_link_section(tcx, id.def_id.def_id);
-            check_static_inhabited(tcx, id.def_id.def_id);
+            tcx.ensure().typeck(id.owner_id.def_id);
+            maybe_check_static_with_link_section(tcx, id.owner_id.def_id);
+            check_static_inhabited(tcx, id.owner_id.def_id);
         }
         DefKind::Const => {
-            tcx.ensure().typeck(id.def_id.def_id);
+            tcx.ensure().typeck(id.owner_id.def_id);
         }
         DefKind::Enum => {
-            let item = tcx.hir().item(id);
-            let hir::ItemKind::Enum(ref enum_definition, _) = item.kind else {
-                return;
-            };
-            check_enum(tcx, &enum_definition.variants, item.def_id.def_id);
+            check_enum(tcx, id.owner_id.def_id);
         }
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl => {
@@ -518,12 +515,12 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             let hir::ItemKind::Impl(ref impl_) = it.kind else {
                 return;
             };
-            debug!("ItemKind::Impl {} with id {:?}", it.ident, it.def_id);
-            if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.def_id) {
+            debug!("ItemKind::Impl {} with id {:?}", it.ident, it.owner_id);
+            if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.owner_id) {
                 check_impl_items_against_trait(
                     tcx,
                     it.span,
-                    it.def_id.def_id,
+                    it.owner_id.def_id,
                     impl_trait_ref,
                     &impl_.items,
                 );
@@ -545,15 +542,15 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                         fn_maybe_err(tcx, item.ident.span, abi);
                     }
                     hir::TraitItemKind::Type(.., Some(default)) => {
-                        let assoc_item = tcx.associated_item(item.def_id);
+                        let assoc_item = tcx.associated_item(item.owner_id);
                         let trait_substs =
-                            InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
+                            InternalSubsts::identity_for_item(tcx, it.owner_id.to_def_id());
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
                             assoc_item,
                             assoc_item,
                             default.span,
-                            ty::TraitRef { def_id: it.def_id.to_def_id(), substs: trait_substs },
+                            ty::TraitRef { def_id: it.owner_id.to_def_id(), substs: trait_substs },
                         );
                     }
                     _ => {}
@@ -561,16 +558,16 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             }
         }
         DefKind::Struct => {
-            check_struct(tcx, id.def_id.def_id);
+            check_struct(tcx, id.owner_id.def_id);
         }
         DefKind::Union => {
-            check_union(tcx, id.def_id.def_id);
+            check_union(tcx, id.owner_id.def_id);
         }
         DefKind::OpaqueTy => {
             check_opaque(tcx, id);
         }
         DefKind::ImplTraitPlaceholder => {
-            let parent = tcx.impl_trait_in_trait_parent(id.def_id.to_def_id());
+            let parent = tcx.impl_trait_in_trait_parent(id.owner_id.to_def_id());
             // Only check the validity of this opaque type if the function has a default body
             if let hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
@@ -581,8 +578,8 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             }
         }
         DefKind::TyAlias => {
-            let pty_ty = tcx.type_of(id.def_id);
-            let generics = tcx.generics_of(id.def_id);
+            let pty_ty = tcx.type_of(id.owner_id);
+            let generics = tcx.generics_of(id.owner_id);
             check_type_params_are_used(tcx, &generics, pty_ty);
         }
         DefKind::ForeignMod => {
@@ -604,7 +601,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                 }
             } else {
                 for item in items {
-                    let def_id = item.id.def_id.def_id;
+                    let def_id = item.id.owner_id.def_id;
                     let generics = tcx.generics_of(def_id);
                     let own_counts = generics.own_counts();
                     if generics.params.len() - own_counts.lifetimes != 0 {
@@ -659,7 +656,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
 
 pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     // an error would be reported if this fails.
-    let _ = traits::OnUnimplementedDirective::of_item(tcx, item.def_id.to_def_id());
+    let _ = OnUnimplementedDirective::of_item(tcx, item.owner_id.to_def_id());
 }
 
 pub(super) fn check_specialization_validity<'tcx>(
@@ -746,7 +743,7 @@ fn check_impl_items_against_trait<'tcx>(
     let trait_def = tcx.trait_def(impl_trait_ref.def_id);
 
     for impl_item in impl_item_refs {
-        let ty_impl_item = tcx.associated_item(impl_item.id.def_id);
+        let ty_impl_item = tcx.associated_item(impl_item.id.owner_id);
         let ty_trait_item = if let Some(trait_item_id) = ty_impl_item.trait_item_def_id {
             tcx.associated_item(trait_item_id)
         } else {
@@ -758,7 +755,7 @@ fn check_impl_items_against_trait<'tcx>(
         match impl_item_full.kind {
             hir::ImplItemKind::Const(..) => {
                 let _ = tcx.compare_assoc_const_impl_item_with_trait_item((
-                    impl_item.id.def_id.def_id,
+                    impl_item.id.owner_id.def_id,
                     ty_impl_item.trait_item_def_id.unwrap(),
                 ));
             }
@@ -1026,7 +1023,7 @@ pub(super) fn check_packed_inner(
     None
 }
 
-pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtDef<'tcx>) {
+pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
     if !adt.repr().transparent() {
         return;
     }
@@ -1035,14 +1032,14 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
         feature_err(
             &tcx.sess.parse_sess,
             sym::transparent_unions,
-            sp,
+            tcx.def_span(adt.did()),
             "transparent unions are unstable",
         )
         .emit();
     }
 
     if adt.variants().len() != 1 {
-        bad_variant_count(tcx, adt, sp, adt.did());
+        bad_variant_count(tcx, adt, tcx.def_span(adt.did()), adt.did());
         if adt.variants().is_empty() {
             // Don't bother checking the fields. No variants (and thus no fields) exist.
             return;
@@ -1103,7 +1100,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
         .filter_map(|(span, zst, _align1, _non_exhaustive)| if !zst { Some(span) } else { None });
     let non_zst_count = non_zst_fields.clone().count();
     if non_zst_count >= 2 {
-        bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, sp);
+        bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, tcx.def_span(adt.did()));
     }
     let incompatible_zst_fields =
         field_infos.clone().filter(|(_, _, _, opt)| opt.is_some()).count();
@@ -1143,12 +1140,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
 }
 
 #[allow(trivial_numeric_casts)]
-fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: LocalDefId) {
+fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
-    let sp = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 
-    if vs.is_empty() {
+    if def.variants().is_empty() {
         if let Some(attr) = tcx.get_attrs(def_id.to_def_id(), sym::repr).next() {
             struct_span_err!(
                 tcx.sess,
@@ -1156,7 +1152,7 @@ fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: L
                 E0084,
                 "unsupported representation for zero-variant enum"
             )
-            .span_label(sp, "zero-variant enum")
+            .span_label(tcx.def_span(def_id), "zero-variant enum")
             .emit();
         }
     }
@@ -1167,87 +1163,95 @@ fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: L
             feature_err(
                 &tcx.sess.parse_sess,
                 sym::repr128,
-                sp,
+                tcx.def_span(def_id),
                 "repr with 128-bit type is unstable",
             )
             .emit();
         }
     }
 
-    for v in vs {
-        if let Some(ref e) = v.disr_expr {
-            tcx.ensure().typeck(tcx.hir().local_def_id(e.hir_id));
+    for v in def.variants() {
+        if let ty::VariantDiscr::Explicit(discr_def_id) = v.discr {
+            tcx.ensure().typeck(discr_def_id.expect_local());
         }
     }
 
-    if tcx.adt_def(def_id).repr().int.is_none() && tcx.features().arbitrary_enum_discriminant {
-        let is_unit = |var: &hir::Variant<'_>| matches!(var.data, hir::VariantData::Unit(..));
+    if def.repr().int.is_none() {
+        let is_unit = |var: &ty::VariantDef| matches!(var.ctor_kind, CtorKind::Const);
+        let has_disr = |var: &ty::VariantDef| matches!(var.discr, ty::VariantDiscr::Explicit(_));
 
-        let has_disr = |var: &hir::Variant<'_>| var.disr_expr.is_some();
-        let has_non_units = vs.iter().any(|var| !is_unit(var));
-        let disr_units = vs.iter().any(|var| is_unit(&var) && has_disr(&var));
-        let disr_non_unit = vs.iter().any(|var| !is_unit(&var) && has_disr(&var));
+        let has_non_units = def.variants().iter().any(|var| !is_unit(var));
+        let disr_units = def.variants().iter().any(|var| is_unit(&var) && has_disr(&var));
+        let disr_non_unit = def.variants().iter().any(|var| !is_unit(&var) && has_disr(&var));
 
         if disr_non_unit || (disr_units && has_non_units) {
-            let mut err =
-                struct_span_err!(tcx.sess, sp, E0732, "`#[repr(inttype)]` must be specified");
+            let mut err = struct_span_err!(
+                tcx.sess,
+                tcx.def_span(def_id),
+                E0732,
+                "`#[repr(inttype)]` must be specified"
+            );
             err.emit();
         }
     }
 
-    detect_discriminant_duplicate(tcx, def.discriminants(tcx).collect(), vs, sp);
-
-    check_transparent(tcx, sp, def);
+    detect_discriminant_duplicate(tcx, def);
+    check_transparent(tcx, def);
 }
 
 /// Part of enum check. Given the discriminants of an enum, errors if two or more discriminants are equal
-fn detect_discriminant_duplicate<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    mut discrs: Vec<(VariantIdx, Discr<'tcx>)>,
-    vs: &'tcx [hir::Variant<'tcx>],
-    self_span: Span,
-) {
+fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
     // Helper closure to reduce duplicate code. This gets called everytime we detect a duplicate.
     // Here `idx` refers to the order of which the discriminant appears, and its index in `vs`
-    let report = |dis: Discr<'tcx>, idx: usize, err: &mut Diagnostic| {
-        let var = &vs[idx]; // HIR for the duplicate discriminant
-        let (span, display_discr) = match var.disr_expr {
-            Some(ref expr) => {
+    let report = |dis: Discr<'tcx>, idx, err: &mut Diagnostic| {
+        let var = adt.variant(idx); // HIR for the duplicate discriminant
+        let (span, display_discr) = match var.discr {
+            ty::VariantDiscr::Explicit(discr_def_id) => {
                 // In the case the discriminant is both a duplicate and overflowed, let the user know
-                if let hir::ExprKind::Lit(lit) = &tcx.hir().body(expr.body).value.kind
+                if let hir::Node::AnonConst(expr) = tcx.hir().get_by_def_id(discr_def_id.expect_local())
+                    && let hir::ExprKind::Lit(lit) = &tcx.hir().body(expr.body).value.kind
                     && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
                     && *lit_value != dis.val
                 {
-                    (tcx.hir().span(expr.hir_id), format!("`{dis}` (overflowed from `{lit_value}`)"))
-                // Otherwise, format the value as-is
+                    (tcx.def_span(discr_def_id), format!("`{dis}` (overflowed from `{lit_value}`)"))
                 } else {
-                    (tcx.hir().span(expr.hir_id), format!("`{dis}`"))
+                    // Otherwise, format the value as-is
+                    (tcx.def_span(discr_def_id), format!("`{dis}`"))
                 }
             }
-            None => {
+            // This should not happen.
+            ty::VariantDiscr::Relative(0) => (tcx.def_span(var.def_id), format!("`{dis}`")),
+            ty::VariantDiscr::Relative(distance_to_explicit) => {
                 // At this point we know this discriminant is a duplicate, and was not explicitly
                 // assigned by the user. Here we iterate backwards to fetch the HIR for the last
                 // explicitly assigned discriminant, and letting the user know that this was the
                 // increment startpoint, and how many steps from there leading to the duplicate
-                if let Some((n, hir::Variant { span, ident, .. })) =
-                    vs[..idx].iter().rev().enumerate().find(|v| v.1.disr_expr.is_some())
+                if let Some(explicit_idx) =
+                    idx.as_u32().checked_sub(distance_to_explicit).map(VariantIdx::from_u32)
                 {
-                    let ve_ident = var.ident;
-                    let n = n + 1;
-                    let sp = if n > 1 { "variants" } else { "variant" };
+                    let explicit_variant = adt.variant(explicit_idx);
+                    let ve_ident = var.name;
+                    let ex_ident = explicit_variant.name;
+                    let sp = if distance_to_explicit > 1 { "variants" } else { "variant" };
 
                     err.span_label(
-                        *span,
-                        format!("discriminant for `{ve_ident}` incremented from this startpoint (`{ident}` + {n} {sp} later => `{ve_ident}` = {dis})"),
+                        tcx.def_span(explicit_variant.def_id),
+                        format!(
+                            "discriminant for `{ve_ident}` incremented from this startpoint \
+                            (`{ex_ident}` + {distance_to_explicit} {sp} later \
+                             => `{ve_ident}` = {dis})"
+                        ),
                     );
                 }
 
-                (vs[idx].span, format!("`{dis}`"))
+                (tcx.def_span(var.def_id), format!("`{dis}`"))
             }
         };
 
         err.span_label(span, format!("{display_discr} assigned here"));
     };
+
+    let mut discrs = adt.discriminants(tcx).collect::<Vec<_>>();
 
     // Here we loop through the discriminants, comparing each discriminant to another.
     // When a duplicate is detected, we instantiate an error and point to both
@@ -1257,29 +1261,29 @@ fn detect_discriminant_duplicate<'tcx>(
     // style as we are mutating `discrs` on the fly).
     let mut i = 0;
     while i < discrs.len() {
-        let hir_var_i_idx = discrs[i].0.index();
+        let var_i_idx = discrs[i].0;
         let mut error: Option<DiagnosticBuilder<'_, _>> = None;
 
         let mut o = i + 1;
         while o < discrs.len() {
-            let hir_var_o_idx = discrs[o].0.index();
+            let var_o_idx = discrs[o].0;
 
             if discrs[i].1.val == discrs[o].1.val {
                 let err = error.get_or_insert_with(|| {
                     let mut ret = struct_span_err!(
                         tcx.sess,
-                        self_span,
+                        tcx.def_span(adt.did()),
                         E0081,
                         "discriminant value `{}` assigned more than once",
                         discrs[i].1,
                     );
 
-                    report(discrs[i].1, hir_var_i_idx, &mut ret);
+                    report(discrs[i].1, var_i_idx, &mut ret);
 
                     ret
                 });
 
-                report(discrs[o].1, hir_var_o_idx, err);
+                report(discrs[o].1, var_o_idx, err);
 
                 // Safe to unwrap here, as we wouldn't reach this point if `discrs` was empty
                 discrs[o] = *discrs.last().unwrap();

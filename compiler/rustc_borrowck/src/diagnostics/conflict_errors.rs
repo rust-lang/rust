@@ -23,7 +23,6 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::TraitEngineExt as _;
 
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
@@ -225,10 +224,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            use_spans.var_span_label_path_only(
-                &mut err,
-                format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
-            );
+            use_spans.var_path_only_subdiag(&mut err, desired_action);
 
             if !is_loop_move {
                 err.span_label(
@@ -405,10 +401,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let used = desired_action.as_general_verb_in_past_tense();
         let mut err =
             struct_span_err!(self, span, E0381, "{used} binding {desc}{isnt_initialized}");
-        use_spans.var_span_label_path_only(
-            &mut err,
-            format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
-        );
+        use_spans.var_path_only_subdiag(&mut err, desired_action);
 
         if let InitializationRequiringAction::PartialAssignment
         | InitializationRequiringAction::Assignment = desired_action
@@ -613,24 +606,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         else { return; };
         // Try to find predicates on *generic params* that would allow copying `ty`
         let infcx = tcx.infer_ctxt().build();
-        let mut fulfill_cx = <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
-
         let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
         let cause = ObligationCause::new(
             span,
             self.mir_hir_id(),
             rustc_infer::traits::ObligationCauseCode::MiscObligation,
         );
-        fulfill_cx.register_bound(
+        let errors = rustc_trait_selection::traits::fully_solve_bound(
             &infcx,
+            cause,
             self.param_env,
             // Erase any region vids from the type, which may not be resolved
             infcx.tcx.erase_regions(ty),
             copy_did,
-            cause,
         );
-        // Select all, including ambiguous predicates
-        let errors = fulfill_cx.select_all_or_error(&infcx);
 
         // Only emit suggestion if all required predicates are on generic
         let predicates: Result<Vec<_>, _> = errors
@@ -678,15 +667,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let move_spans = self.move_spans(place.as_ref(), location);
         let span = move_spans.args_or_use();
 
-        let mut err =
-            self.cannot_move_when_borrowed(span, &self.describe_any_place(place.as_ref()));
-        err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_msg));
-        err.span_label(span, format!("move out of {} occurs here", value_msg));
-
-        borrow_spans.var_span_label_path_only(
-            &mut err,
-            format!("borrow occurs due to use{}", borrow_spans.describe()),
+        let mut err = self.cannot_move_when_borrowed(
+            span,
+            borrow_span,
+            &self.describe_any_place(place.as_ref()),
+            &borrow_msg,
+            &value_msg,
         );
+
+        borrow_spans.var_path_only_subdiag(&mut err, crate::InitializationRequiringAction::Borrow);
 
         move_spans.var_span_label(
             &mut err,
@@ -729,16 +718,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             borrow_span,
             &self.describe_any_place(borrow.borrowed_place.as_ref()),
         );
-
-        borrow_spans.var_span_label(
-            &mut err,
-            {
-                let place = &borrow.borrowed_place;
-                let desc_place = self.describe_any_place(place.as_ref());
-                format!("borrow occurs due to use of {}{}", desc_place, borrow_spans.describe())
-            },
-            "mutable",
-        );
+        borrow_spans.var_subdiag(&mut err, Some(borrow.kind), |kind, var_span| {
+            use crate::session_diagnostics::CaptureVarCause::*;
+            let place = &borrow.borrowed_place;
+            let desc_place = self.describe_any_place(place.as_ref());
+            match kind {
+                Some(_) => BorrowUsePlaceGenerator { place: desc_place, var_span },
+                None => BorrowUsePlaceClosure { place: desc_place, var_span },
+            }
+        });
 
         self.explain_why_borrow_contains_point(location, borrow, None)
             .add_explanation_to_diagnostic(
@@ -983,7 +971,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err: &mut Diagnostic,
         location: Location,
         issued_borrow: &BorrowData<'tcx>,
-        explanation: BorrowExplanation,
+        explanation: BorrowExplanation<'tcx>,
     ) {
         let used_in_call = matches!(
             explanation,
@@ -1333,7 +1321,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
-        explanation: BorrowExplanation,
+        explanation: BorrowExplanation<'tcx>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
@@ -1539,7 +1527,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
         proper_span: Span,
-        explanation: BorrowExplanation,
+        explanation: BorrowExplanation<'tcx>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
             explanation
@@ -1556,7 +1544,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         let mut err = self.temporary_value_borrowed_for_too_long(proper_span);
-        err.span_label(proper_span, "creates a temporary which is freed while still in use");
+        err.span_label(proper_span, "creates a temporary value which is freed while still in use");
         err.span_label(drop_span, "temporary value is freed at the end of this statement");
 
         match explanation {
@@ -1653,7 +1641,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         borrow_span: Span,
         return_span: Span,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         opt_place_desc: Option<&String>,
     ) -> Option<DiagnosticBuilder<'cx, ErrorGuaranteed>> {
         let return_kind = match category {
@@ -1748,7 +1736,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         use_span: UseSpans<'tcx>,
         var_span: Span,
         fr_name: &RegionName,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         constraint_span: Span,
         captured_var: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {

@@ -1,6 +1,4 @@
-//@ignore-target-windows: Channels on Windows are not supported yet.
-// FIXME: disallow preemption to work around https://github.com/rust-lang/rust/issues/55005
-//@compile-flags: -Zmiri-ignore-leaks -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-ignore-leaks
 
 //! Test that leaking threads works, and that their destructors are not executed.
 

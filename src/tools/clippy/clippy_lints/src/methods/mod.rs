@@ -102,9 +102,7 @@ use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_adt_constructor, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{
-    contains_return, get_trait_def_id, is_trait_method, iter_input_pats, meets_msrv, msrvs, paths, return_ty,
-};
+use clippy_utils::{contains_return, is_trait_method, iter_input_pats, meets_msrv, msrvs, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -3252,15 +3250,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let name = impl_item.ident.name.as_str();
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
         let item = cx.tcx.hir().expect_item(parent);
-        let self_ty = cx.tcx.type_of(item.def_id);
+        let self_ty = cx.tcx.type_of(item.owner_id);
 
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
-            let method_sig = cx.tcx.fn_sig(impl_item.def_id);
+            let method_sig = cx.tcx.fn_sig(impl_item.owner_id);
             let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
             // if this impl block implements a trait, lint in trait definition instead
-            if !implements_trait && cx.access_levels.is_exported(impl_item.def_id.def_id) {
+            if !implements_trait && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {
                 // check missing trait implementations
                 for method_config in &TRAIT_METHODS {
                     if name == method_config.method_name
@@ -3294,7 +3292,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
             if sig.decl.implicit_self.has_implicit_self()
                     && !(self.avoid_breaking_exported_api
-                    && cx.access_levels.is_exported(impl_item.def_id.def_id))
+                    && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id))
                     && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir().body(id)).next()
                     && let Some(first_arg_ty) = first_arg_ty_opt
                 {
@@ -3372,7 +3370,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             then {
                 let first_arg_span = first_arg_ty.span;
                 let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);
-                let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty().skip_binder();
+                let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id())
+                    .self_ty()
+                    .skip_binder();
                 wrong_self_convention::check(
                     cx,
                     item.ident.name.as_str(),
@@ -3380,7 +3380,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     first_arg_ty,
                     first_arg_span,
                     false,
-                    true
+                    true,
                 );
             }
         }
@@ -3389,7 +3389,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if item.ident.name == sym::new;
             if let TraitItemKind::Fn(_, _) = item.kind;
             let ret_ty = return_ty(cx, item.hir_id());
-            let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty().skip_binder();
+            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id())
+                .self_ty()
+                .skip_binder();
             if !ret_ty.contains(self_ty);
 
             then {
@@ -3846,14 +3848,13 @@ impl SelfKind {
                 return m == mutability && t == parent_ty;
             }
 
-            let trait_path = match mutability {
-                hir::Mutability::Not => &paths::ASREF_TRAIT,
-                hir::Mutability::Mut => &paths::ASMUT_TRAIT,
+            let trait_sym = match mutability {
+                hir::Mutability::Not => sym::AsRef,
+                hir::Mutability::Mut => sym::AsMut,
             };
 
-            let trait_def_id = match get_trait_def_id(cx, trait_path) {
-                Some(did) => did,
-                None => return false,
+            let Some(trait_def_id) = cx.tcx.get_diagnostic_item(trait_sym) else {
+                return false
             };
             implements_trait(cx, ty, trait_def_id, &[parent_ty.into()])
         }

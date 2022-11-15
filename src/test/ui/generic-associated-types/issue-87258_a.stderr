@@ -4,7 +4,7 @@ error: unconstrained opaque type
 LL |     type FooFuture<'a> = impl Trait1;
    |                          ^^^^^^^^^^^
    |
-   = note: `FooFuture` must be used in combination with a concrete type within the same module
+   = note: `FooFuture` must be used in combination with a concrete type within the same impl
 
 error: aborting due to previous error
 

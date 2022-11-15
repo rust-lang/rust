@@ -407,9 +407,8 @@ where
         self.drop_ladder(fields, succ, unwind).0
     }
 
+    #[instrument(level = "debug", ret)]
     fn open_drop_for_box(&mut self, adt: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> BasicBlock {
-        debug!("open_drop_for_box({:?}, {:?}, {:?})", self, adt, substs);
-
         // drop glue is sent straight to codegen
         // box cannot be directly dereferenced
         let unique_ty = adt.non_enum_variant().fields[0].ty(self.tcx(), substs);
@@ -431,8 +430,8 @@ where
         self.drop_subpath(interior, interior_path, succ, unwind_succ)
     }
 
+    #[instrument(level = "debug", ret)]
     fn open_drop_for_adt(&mut self, adt: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> BasicBlock {
-        debug!("open_drop_for_adt({:?}, {:?}, {:?})", self, adt, substs);
         if adt.variants().is_empty() {
             return self.elaborator.patch().new_block(BasicBlockData {
                 statements: vec![],

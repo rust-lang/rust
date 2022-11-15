@@ -65,28 +65,24 @@ declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let (cond_expr, then_expr, else_expr) = match higher::If::hir(expr) {
-            Some(higher::If { cond, then, r#else }) => (cond, then, r#else),
-            _ => return,
+        let Some(higher::If { cond: cond_expr, then: then_expr, r#else: else_expr }) = higher::If::hir(expr) else {
+            return
         };
 
-        let (map_ty, contains_expr) = match try_parse_contains(cx, cond_expr) {
-            Some(x) => x,
-            None => return,
+        let Some((map_ty, contains_expr)) = try_parse_contains(cx, cond_expr) else {
+            return
         };
 
-        let then_search = match find_insert_calls(cx, &contains_expr, then_expr) {
-            Some(x) => x,
-            None => return,
+        let Some(then_search) = find_insert_calls(cx, &contains_expr, then_expr) else {
+            return
         };
 
         let mut app = Applicability::MachineApplicable;
         let map_str = snippet_with_context(cx, contains_expr.map.span, contains_expr.call_ctxt, "..", &mut app).0;
         let key_str = snippet_with_context(cx, contains_expr.key.span, contains_expr.call_ctxt, "..", &mut app).0;
         let sugg = if let Some(else_expr) = else_expr {
-            let else_search = match find_insert_calls(cx, &contains_expr, else_expr) {
-                Some(search) => search,
-                None => return,
+            let Some(else_search) = find_insert_calls(cx, &contains_expr, else_expr) else {
+                return;
             };
 
             if then_search.edits.is_empty() && else_search.edits.is_empty() {

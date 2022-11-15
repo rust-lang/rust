@@ -1,5 +1,5 @@
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:10:14
+  --> $DIR/match_expr_like_matches_macro.rs:11:14
    |
 LL |       let _y = match x {
    |  ______________^
@@ -11,7 +11,7 @@ LL | |     };
    = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:16:14
+  --> $DIR/match_expr_like_matches_macro.rs:17:14
    |
 LL |       let _w = match x {
    |  ______________^
@@ -21,7 +21,7 @@ LL | |     };
    | |_____^ help: try this: `matches!(x, Some(_))`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/match_expr_like_matches_macro.rs:22:14
+  --> $DIR/match_expr_like_matches_macro.rs:23:14
    |
 LL |       let _z = match x {
    |  ______________^
@@ -33,7 +33,7 @@ LL | |     };
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:28:15
+  --> $DIR/match_expr_like_matches_macro.rs:29:15
    |
 LL |       let _zz = match x {
    |  _______________^
@@ -43,13 +43,13 @@ LL | |     };
    | |_____^ help: try this: `!matches!(x, Some(r) if r == 0)`
 
 error: if let .. else expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:34:16
+  --> $DIR/match_expr_like_matches_macro.rs:35:16
    |
 LL |     let _zzz = if let Some(5) = x { true } else { false };
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `matches!(x, Some(5))`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:58:20
+  --> $DIR/match_expr_like_matches_macro.rs:59:20
    |
 LL |           let _ans = match x {
    |  ____________________^
@@ -60,7 +60,7 @@ LL | |         };
    | |_________^ help: try this: `matches!(x, E::A(_) | E::B(_))`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:68:20
+  --> $DIR/match_expr_like_matches_macro.rs:69:20
    |
 LL |           let _ans = match x {
    |  ____________________^
@@ -73,7 +73,7 @@ LL | |         };
    | |_________^ help: try this: `matches!(x, E::A(_) | E::B(_))`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:78:20
+  --> $DIR/match_expr_like_matches_macro.rs:79:20
    |
 LL |           let _ans = match x {
    |  ____________________^
@@ -84,7 +84,7 @@ LL | |         };
    | |_________^ help: try this: `!matches!(x, E::B(_) | E::C)`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:138:18
+  --> $DIR/match_expr_like_matches_macro.rs:139:18
    |
 LL |           let _z = match &z {
    |  __________________^
@@ -94,7 +94,7 @@ LL | |         };
    | |_________^ help: try this: `matches!(z, Some(3))`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:147:18
+  --> $DIR/match_expr_like_matches_macro.rs:148:18
    |
 LL |           let _z = match &z {
    |  __________________^
@@ -104,7 +104,7 @@ LL | |         };
    | |_________^ help: try this: `matches!(&z, Some(3))`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:164:21
+  --> $DIR/match_expr_like_matches_macro.rs:165:21
    |
 LL |               let _ = match &z {
    |  _____________________^
@@ -114,7 +114,7 @@ LL | |             };
    | |_____________^ help: try this: `matches!(&z, AnEnum::X)`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:178:20
+  --> $DIR/match_expr_like_matches_macro.rs:179:20
    |
 LL |           let _res = match &val {
    |  ____________________^
@@ -124,7 +124,7 @@ LL | |         };
    | |_________^ help: try this: `matches!(&val, &Some(ref _a))`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:190:20
+  --> $DIR/match_expr_like_matches_macro.rs:191:20
    |
 LL |           let _res = match &val {
    |  ____________________^
@@ -133,5 +133,15 @@ LL | |             _ => false,
 LL | |         };
    | |_________^ help: try this: `matches!(&val, &Some(ref _a))`
 
-error: aborting due to 13 previous errors
+error: match expression looks like `matches!` macro
+  --> $DIR/match_expr_like_matches_macro.rs:251:14
+   |
+LL |       let _y = match Some(5) {
+   |  ______________^
+LL | |         Some(0) => true,
+LL | |         _ => false,
+LL | |     };
+   | |_____^ help: try this: `matches!(Some(5), Some(0))`
+
+error: aborting due to 14 previous errors
 

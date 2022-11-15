@@ -8,7 +8,6 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
-use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::{
     self, ImplSource, Obligation, ObligationCause, SelectionContext,
 };
@@ -92,7 +91,7 @@ impl Qualif for HasMutInterior {
     }
 
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        !ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env)
+        !ty.is_freeze(cx.tcx, cx.param_env)
     }
 
     fn in_adt_inherently<'tcx>(
@@ -147,6 +146,7 @@ impl Qualif for NeedsNonConstDrop {
         qualifs.needs_non_const_drop
     }
 
+    #[instrument(level = "trace", skip(cx), ret)]
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         // Avoid selecting for simple cases, such as builtin types.
         if ty::util::is_trivially_const_drop(ty) {
@@ -174,6 +174,8 @@ impl Qualif for NeedsNonConstDrop {
             // If we couldn't select a const destruct candidate, then it's bad
             return true;
         };
+
+        trace!(?impl_src);
 
         if !matches!(
             impl_src,

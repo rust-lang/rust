@@ -185,7 +185,7 @@ impl<'tcx> ObligationCause<'tcx> {
         self
     }
 
-    pub fn to_constraint_category(&self) -> ConstraintCategory {
+    pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self.code() {
             MatchImpl(cause, _) => cause.to_constraint_category(),
             AscribeUserTypeProvePredicate(predicate_span) => {
@@ -203,11 +203,18 @@ pub struct UnifyReceiverContext<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, Default)]
+#[derive(Clone, PartialEq, Eq, Hash, Lift, Default)]
 pub struct InternedObligationCauseCode<'tcx> {
     /// `None` for `ObligationCauseCode::MiscObligation` (a common case, occurs ~60% of
     /// the time). `Some` otherwise.
     code: Option<Lrc<ObligationCauseCode<'tcx>>>,
+}
+
+impl<'tcx> std::fmt::Debug for InternedObligationCauseCode<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let cause: &ObligationCauseCode<'_> = self;
+        cause.fmt(f)
+    }
 }
 
 impl<'tcx> ObligationCauseCode<'tcx> {
@@ -431,6 +438,8 @@ pub enum ObligationCauseCode<'tcx> {
     },
 
     AscribeUserTypeProvePredicate(Span),
+
+    RustCall,
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.
@@ -567,9 +576,6 @@ pub enum SelectionError<'tcx> {
     /// Signaling that an error has already been emitted, to avoid
     /// multiple errors being shown.
     ErrorReporting,
-    /// Multiple applicable `impl`s where found. The `DefId`s correspond to
-    /// all the `impl`s' Items.
-    Ambiguous(Vec<DefId>),
 }
 
 /// When performing resolution, it is typically the case that there

@@ -1,14 +1,21 @@
 use std::cell::RefCell;
+use std::fmt::Debug;
 
 use super::TraitEngine;
 use super::{ChalkFulfillmentContext, FulfillmentContext};
 use crate::infer::InferCtxtExt;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_infer::infer::at::ToTrace;
+use rustc_infer::infer::canonical::{
+    Canonical, CanonicalVarValues, CanonicalizedQueryResponse, QueryResponse,
+};
 use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::traits::query::Fallible;
 use rustc_infer::traits::{
     FulfillmentError, Obligation, ObligationCause, PredicateObligation, TraitEngineExt as _,
 };
+use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
@@ -31,7 +38,7 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
 
     fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self> {
         if tcx.sess.opts.unstable_opts.chalk {
-            Box::new(ChalkFulfillmentContext::new())
+            Box::new(ChalkFulfillmentContext::new_in_snapshot())
         } else {
             Box::new(FulfillmentContext::new_in_snapshot())
         }
@@ -105,20 +112,37 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.register_infer_ok_obligations(infer_ok)
     }
 
-    pub fn equate_types(
+    pub fn eq<T: ToTrace<'tcx>>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        expected: Ty<'tcx>,
-        actual: Ty<'tcx>,
+        expected: T,
+        actual: T,
     ) -> Result<(), TypeError<'tcx>> {
-        match self.infcx.at(cause, param_env).eq(expected, actual) {
+        self.infcx
+            .at(cause, param_env)
+            .eq(expected, actual)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+    }
+
+    pub fn sup<T: ToTrace<'tcx>>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> Result<(), TypeError<'tcx>> {
+        match self.infcx.at(cause, param_env).sup(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_obligations(obligations);
                 Ok(())
             }
             Err(e) => Err(e),
         }
+    }
+
+    pub fn select_where_possible(&self) -> Vec<FulfillmentError<'tcx>> {
+        self.engine.borrow_mut().select_where_possible(self.infcx)
     }
 
     pub fn select_all_or_error(&self) -> Vec<FulfillmentError<'tcx>> {
@@ -130,10 +154,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         span: Span,
         def_id: LocalDefId,
-    ) -> FxHashSet<Ty<'tcx>> {
+    ) -> FxIndexSet<Ty<'tcx>> {
         let tcx = self.infcx.tcx;
         let assumed_wf_types = tcx.assumed_wf_types(def_id);
-        let mut implied_bounds = FxHashSet::default();
+        let mut implied_bounds = FxIndexSet::default();
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let cause = ObligationCause::misc(span, hir_id);
         for ty in assumed_wf_types {
@@ -153,5 +177,21 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             implied_bounds.insert(normalized);
         }
         implied_bounds
+    }
+
+    pub fn make_canonicalized_query_response<T>(
+        &self,
+        inference_vars: CanonicalVarValues<'tcx>,
+        answer: T,
+    ) -> Fallible<CanonicalizedQueryResponse<'tcx, T>>
+    where
+        T: Debug + TypeFoldable<'tcx>,
+        Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
+    {
+        self.infcx.make_canonicalized_query_response(
+            inference_vars,
+            answer,
+            &mut **self.engine.borrow_mut(),
+        )
     }
 }

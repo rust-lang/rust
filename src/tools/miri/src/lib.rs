@@ -3,12 +3,12 @@
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
-#![feature(int_log)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(is_some_and)]
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
+#![feature(is_terminal)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -26,6 +26,7 @@
     clippy::type_complexity,
     clippy::single_element_loop,
     clippy::needless_return,
+    clippy::bool_to_int_with_if,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability
 )]
@@ -36,6 +37,8 @@
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
 )]
+// Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
+#![recursion_limit = "256"]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;
@@ -82,34 +85,28 @@ pub use crate::shims::EvalContextExt as _;
 
 pub use crate::clock::{Clock, Instant};
 pub use crate::concurrency::{
-    data_race::{
-        AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd,
-        EvalContextExt as DataRaceEvalContextExt,
-    },
-    sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId},
-    thread::{
-        EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager,
-        ThreadState, Time,
-    },
+    data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
+    init_once::{EvalContextExt as _, InitOnceId},
+    sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SyncId},
+    thread::{EvalContextExt as _, SchedulingAction, ThreadId, ThreadManager, ThreadState, Time},
 };
 pub use crate::diagnostics::{
-    report_error, EvalContextExt as DiagnosticsEvalContextExt, NonHaltingDiagnostic,
-    TerminationInfo,
+    report_error, EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo,
 };
 pub use crate::eval::{
     create_ecx, eval_entry, AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith,
 };
-pub use crate::helpers::{CurrentSpan, EvalContextExt as HelpersEvalContextExt};
+pub use crate::helpers::{CurrentSpan, EvalContextExt as _};
 pub use crate::intptrcast::ProvenanceMode;
 pub use crate::machine::{
-    AllocExtra, FrameData, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind, Provenance,
-    ProvenanceExtra, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
+    AllocExtra, FrameData, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
+    PrimitiveLayouts, Provenance, ProvenanceExtra, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;
-pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
+pub use crate::operator::EvalContextExt as _;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, SbTag, Stack, Stacks,
+    CallId, EvalContextExt as _, Item, Permission, RetagFields, SbTag, Stack, Stacks,
 };
 pub use crate::tag_gc::{EvalContextExt as _, VisitTags};
 

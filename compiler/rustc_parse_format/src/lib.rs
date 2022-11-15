@@ -819,19 +819,19 @@ fn find_skips_from_snippet(
     };
 
     fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
-        let mut s = snippet.char_indices().peekable();
+        let mut s = snippet.char_indices();
         let mut skips = vec![];
         while let Some((pos, c)) = s.next() {
-            match (c, s.peek()) {
+            match (c, s.clone().next()) {
                 // skip whitespace and empty lines ending in '\\'
                 ('\\', Some((next_pos, '\n'))) if !is_raw => {
                     skips.push(pos);
-                    skips.push(*next_pos);
+                    skips.push(next_pos);
                     let _ = s.next();
 
-                    while let Some((pos, c)) = s.peek() {
+                    while let Some((pos, c)) = s.clone().next() {
                         if matches!(c, ' ' | '\n' | '\t') {
-                            skips.push(*pos);
+                            skips.push(pos);
                             let _ = s.next();
                         } else {
                             break;
@@ -839,7 +839,7 @@ fn find_skips_from_snippet(
                     }
                 }
                 ('\\', Some((next_pos, 'n' | 't' | 'r' | '0' | '\\' | '\'' | '\"'))) => {
-                    skips.push(*next_pos);
+                    skips.push(next_pos);
                     let _ = s.next();
                 }
                 ('\\', Some((_, 'x'))) if !is_raw => {
@@ -858,19 +858,30 @@ fn find_skips_from_snippet(
                     }
                     if let Some((next_pos, next_c)) = s.next() {
                         if next_c == '{' {
-                            skips.push(next_pos);
-                            let mut i = 0; // consume up to 6 hexanumeric chars + closing `}`
-                            while let (Some((next_pos, c)), true) = (s.next(), i < 7) {
-                                if c.is_digit(16) {
-                                    skips.push(next_pos);
-                                } else if c == '}' {
-                                    skips.push(next_pos);
-                                    break;
-                                } else {
-                                    break;
-                                }
-                                i += 1;
+                            // consume up to 6 hexanumeric chars
+                            let digits_len =
+                                s.clone().take(6).take_while(|(_, c)| c.is_digit(16)).count();
+
+                            let len_utf8 = s
+                                .as_str()
+                                .get(..digits_len)
+                                .and_then(|digits| u32::from_str_radix(digits, 16).ok())
+                                .and_then(char::from_u32)
+                                .map_or(1, char::len_utf8);
+
+                            // Skip the digits, for chars that encode to more than 1 utf-8 byte
+                            // exclude as many digits as it is greater than 1 byte
+                            //
+                            // So for a 3 byte character, exclude 2 digits
+                            let required_skips =
+                                digits_len.saturating_sub(len_utf8.saturating_sub(1));
+
+                            // skip '{' and '}' also
+                            for pos in (next_pos..).take(required_skips + 2) {
+                                skips.push(pos)
                             }
+
+                            s.nth(digits_len);
                         } else if next_c.is_digit(16) {
                             skips.push(next_pos);
                             // We suggest adding `{` and `}` when appropriate, accept it here as if

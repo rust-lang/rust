@@ -1,4 +1,8 @@
 use crate::back::write::create_informational_target_machine;
+use crate::errors::{
+    PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature,
+    UnknownCTargetFeaturePrefix,
+};
 use crate::llvm;
 use libc::c_int;
 use rustc_codegen_ssa::target_features::{
@@ -434,12 +438,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 Some(c @ '+' | c @ '-') => c,
                 Some(_) => {
                     if diagnostics {
-                        let mut diag = sess.struct_warn(&format!(
-                            "unknown feature specified for `-Ctarget-feature`: `{}`",
-                            s
-                        ));
-                        diag.note("features must begin with a `+` to enable or `-` to disable it");
-                        diag.emit();
+                        sess.emit_warning(UnknownCTargetFeaturePrefix { feature: s });
                     }
                     return None;
                 }
@@ -456,17 +455,15 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                         None
                     }
                 });
-                let mut diag = sess.struct_warn(&format!(
-                    "unknown feature specified for `-Ctarget-feature`: `{}`",
-                    feature
-                ));
-                diag.note("it is still passed through to the codegen backend");
-                if let Some(rust_feature) = rust_feature {
-                    diag.help(&format!("you might have meant: `{}`", rust_feature));
+                let unknown_feature = if let Some(rust_feature) = rust_feature {
+                    UnknownCTargetFeature {
+                        feature,
+                        rust_feature: PossibleFeature::Some { rust_feature },
+                    }
                 } else {
-                    diag.note("consider filing a feature request");
-                }
-                diag.emit();
+                    UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
+                };
+                sess.emit_warning(unknown_feature);
             }
 
             if diagnostics {
@@ -492,10 +489,11 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     features.extend(feats);
 
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
-        sess.err(&format!(
-            "target features {} must all be enabled or disabled together",
-            f.join(", ")
-        ));
+        sess.emit_err(TargetFeatureDisableOrEnable {
+            features: f,
+            span: None,
+            missing_features: None,
+        });
     }
 
     features

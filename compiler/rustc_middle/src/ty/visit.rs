@@ -95,11 +95,15 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
-    fn error_reported(&self) -> Option<ErrorGuaranteed> {
+    fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
         if self.references_error() {
-            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+            if let Some(reported) = ty::tls::with(|tcx| tcx.sess.has_errors()) {
+                Err(reported)
+            } else {
+                bug!("expect tcx.sess.has_errors return true");
+            }
         } else {
-            None
+            Ok(())
         }
     }
     fn has_non_region_param(&self) -> bool {

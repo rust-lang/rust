@@ -468,7 +468,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, self.param_env)
+        ty.is_freeze(*self.tcx, self.param_env)
     }
 
     pub fn load_mir(
@@ -572,7 +572,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         metadata: &MemPlaceMeta<M::Provenance>,
         layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        if !layout.is_unsized() {
+        if layout.is_sized() {
             return Ok(Some((layout.size, layout.align.abi)));
         }
         match layout.ty.kind() {
@@ -598,7 +598,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1);
-                let Some((unsized_size, unsized_align)) = self.size_and_align_of(metadata, &field)? else {
+                let Some((unsized_size, mut unsized_align)) = self.size_and_align_of(metadata, &field)? else {
                     // A field with an extern type. We don't know the actual dynamic size
                     // or the alignment.
                     return Ok(None);
@@ -613,6 +613,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Return the sum of sizes and max of aligns.
                 let size = sized_size + unsized_size; // `Size` addition
+
+                // Packed types ignore the alignment of their fields.
+                if let ty::Adt(def, _) = layout.ty.kind() {
+                    if def.repr().packed() {
+                        unsized_align = sized_align;
+                    }
+                }
 
                 // Choose max of two known alignments (combined value must
                 // be aligned according to more restrictive of the two).

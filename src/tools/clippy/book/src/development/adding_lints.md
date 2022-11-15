@@ -478,8 +478,27 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 ```
 
 Once the `msrv` is added to the lint, a relevant test case should be added to
-`tests/ui/min_rust_version_attr.rs` which verifies that the lint isn't emitted
-if the project's MSRV is lower.
+the lint's test file, `tests/ui/manual_strip.rs` in this example. It should
+have a case for the version below the MSRV and one with the same contents but
+for the MSRV version itself.
+
+```rust
+#![feature(custom_inner_attributes)]
+
+...
+
+fn msrv_1_44() {
+    #![clippy::msrv = "1.44"]
+
+    /* something that would trigger the lint */
+}
+
+fn msrv_1_45() {
+    #![clippy::msrv = "1.45"]
+
+    /* something that would trigger the lint */
+}
+```
 
 As a last step, the lint should be added to the lint documentation. This is done
 in `clippy_lints/src/utils/conf.rs`:

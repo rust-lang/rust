@@ -6,19 +6,25 @@ use lsp_types::{
     FileOperationFilter, FileOperationPattern, FileOperationPatternKind,
     FileOperationRegistrationOptions, FoldingRangeProviderCapability, HoverProviderCapability,
     ImplementationProviderCapability, InlayHintOptions, InlayHintServerCapabilities, OneOf,
-    RenameOptions, SaveOptions, SelectionRangeProviderCapability, SemanticTokensFullOptions,
-    SemanticTokensLegend, SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions,
-    TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
-    TypeDefinitionProviderCapability, WorkDoneProgressOptions,
+    PositionEncodingKind, RenameOptions, SaveOptions, SelectionRangeProviderCapability,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, ServerCapabilities,
+    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
     WorkspaceFileOperationsServerCapabilities, WorkspaceServerCapabilities,
 };
 use serde_json::json;
 
 use crate::config::{Config, RustfmtConfig};
+use crate::lsp_ext::supports_utf8;
 use crate::semantic_tokens;
 
 pub fn server_capabilities(config: &Config) -> ServerCapabilities {
     ServerCapabilities {
+        position_encoding: if supports_utf8(config.caps()) {
+            Some(PositionEncodingKind::UTF8)
+        } else {
+            None
+        },
         text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
             open_close: Some(true),
             change: Some(TextDocumentSyncKind::INCREMENTAL),

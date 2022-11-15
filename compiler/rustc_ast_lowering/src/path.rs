@@ -191,7 +191,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
                 }
                 GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
-                    ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
+                    ParenthesizedGenericArgs::Ok => {
+                        self.lower_parenthesized_parameter_data(data, itctx)
+                    }
                     ParenthesizedGenericArgs::Err => {
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
                         let sub = if !data.inputs.is_empty() {
@@ -344,6 +346,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_parenthesized_parameter_data(
         &mut self,
         data: &ParenthesizedArgs,
+        itctx: &ImplTraitContext,
     ) -> (GenericArgsCtor<'hir>, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes; this
         // means that we permit things like `&Ref<T>`, where `Ref` has
@@ -355,6 +358,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_ty_direct(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
         }));
         let output_ty = match output {
+            // Only allow `impl Trait` in return position. i.e.:
+            // ```rust
+            // fn f(_: impl Fn() -> impl Debug) -> impl Fn() -> impl Debug
+            // //      disallowed --^^^^^^^^^^        allowed --^^^^^^^^^^
+            // ```
+            FnRetTy::Ty(ty)
+                if matches!(itctx, ImplTraitContext::ReturnPositionOpaqueTy { .. })
+                    && self.tcx.features().impl_trait_in_fn_trait_return =>
+            {
+                self.lower_ty(&ty, itctx)
+            }
             FnRetTy::Ty(ty) => {
                 self.lower_ty(&ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
             }

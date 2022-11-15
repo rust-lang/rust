@@ -69,7 +69,7 @@ the reference file with:
 cargo dev bless
 ```
 
-For example, this is necessary, if you fix a typo in an error message of a lint
+For example, this is necessary if you fix a typo in an error message of a lint,
 or if you modify a test file to add a test case.
 
 > _Note:_ This command may update more files than you intended. In that case
@@ -101,8 +101,9 @@ cargo dev setup intellij
 cargo dev dogfood
 ```
 
-More about intellij command usage and reasons
-[here](https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#intellij-rust)
+More about [intellij] command usage and reasons.
+
+[intellij]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#intellij-rust
 
 ## lintcheck
 

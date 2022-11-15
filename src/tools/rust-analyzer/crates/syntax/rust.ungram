@@ -51,7 +51,7 @@ TypeArg =
   Type
 
 AssocTypeArg =
-  NameRef GenericParamList? (':' TypeBoundList | ('=' Type | ConstArg))
+  NameRef GenericArgList? (':' TypeBoundList | ('=' Type | ConstArg))
 
 LifetimeArg =
   Lifetime

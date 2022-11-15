@@ -85,7 +85,7 @@
   </Type>
 
   <!-- alloc::rc::Rc<[T]> -->
-  <Type Name="alloc::rc::Rc&lt;slice$&lt;*&gt; &gt;">
+  <Type Name="alloc::rc::Rc&lt;slice2$&lt;*&gt; &gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
@@ -115,7 +115,7 @@
   </Type>
 
   <!-- alloc::rc::Weak<[T]> -->
-  <Type Name="alloc::rc::Weak&lt;slice$&lt;*&gt; &gt;">
+  <Type Name="alloc::rc::Weak&lt;slice2$&lt;*&gt; &gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
@@ -144,7 +144,7 @@
   </Type>
 
   <!-- alloc::sync::Arc<[T]> -->
-  <Type Name="alloc::sync::Arc&lt;slice$&lt;*&gt; &gt;">
+  <Type Name="alloc::sync::Arc&lt;slice2$&lt;*&gt; &gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
@@ -173,7 +173,7 @@
   </Type>
 
   <!-- alloc::sync::Weak<[T]> -->
-  <Type Name="alloc::sync::Weak&lt;slice$&lt;*&gt; &gt;">
+  <Type Name="alloc::sync::Weak&lt;slice2$&lt;*&gt; &gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>

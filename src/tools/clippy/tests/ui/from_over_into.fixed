@@ -1,0 +1,87 @@
+// run-rustfix
+
+#![feature(custom_inner_attributes)]
+#![warn(clippy::from_over_into)]
+#![allow(unused)]
+
+// this should throw an error
+struct StringWrapper(String);
+
+impl From<String> for StringWrapper {
+    fn from(val: String) -> Self {
+        StringWrapper(val)
+    }
+}
+
+struct SelfType(String);
+
+impl From<String> for SelfType {
+    fn from(val: String) -> Self {
+        SelfType(String::new())
+    }
+}
+
+#[derive(Default)]
+struct X;
+
+impl X {
+    const FOO: &'static str = "a";
+}
+
+struct SelfKeywords;
+
+impl From<X> for SelfKeywords {
+    fn from(val: X) -> Self {
+        let _ = X::default();
+        let _ = X::FOO;
+        let _: X = val;
+
+        SelfKeywords
+    }
+}
+
+struct ExplicitPaths(bool);
+
+impl core::convert::From<crate::ExplicitPaths> for bool {
+    fn from(mut val: crate::ExplicitPaths) -> Self {
+        let in_closure = || val.0;
+
+        val.0 = false;
+        val.0
+    }
+}
+
+// this is fine
+struct A(String);
+
+impl From<String> for A {
+    fn from(s: String) -> A {
+        A(s)
+    }
+}
+
+fn msrv_1_40() {
+    #![clippy::msrv = "1.40"]
+
+    struct FromOverInto<T>(Vec<T>);
+
+    impl<T> Into<FromOverInto<T>> for Vec<T> {
+        fn into(self) -> FromOverInto<T> {
+            FromOverInto(self)
+        }
+    }
+}
+
+fn msrv_1_41() {
+    #![clippy::msrv = "1.41"]
+
+    struct FromOverInto<T>(Vec<T>);
+
+    impl<T> From<Vec<T>> for FromOverInto<T> {
+        fn from(val: Vec<T>) -> Self {
+            FromOverInto(val)
+        }
+    }
+}
+
+fn main() {}

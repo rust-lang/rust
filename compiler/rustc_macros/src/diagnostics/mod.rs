@@ -129,7 +129,7 @@ pub fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// }
 ///
 /// #[derive(Subdiagnostic)]
-/// #[suggestion_verbose(parser::raw_identifier)]
+/// #[suggestion(style = "verbose",parser::raw_identifier)]
 /// pub struct RawIdentifierSuggestion<'tcx> {
 ///     #[primary_span]
 ///     span: Span,

@@ -42,5 +42,5 @@ pub trait Helper {
 }
 
 pub trait Aid<'src> {
-    type Result<'inter>;
+    type Result<'inter: 'src>;
 }

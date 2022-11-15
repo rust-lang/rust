@@ -253,6 +253,27 @@ fn negative_cases(res_opt: Result<Option<u32>, String>, res_res: Result<Result<u
     };
 }
 
+pub enum Issue9647 {
+    A { a: Option<Option<u8>>, b: () },
+    B,
+}
+
+pub fn test_1(x: Issue9647) {
+    if let Issue9647::A { a, .. } = x {
+        if let Some(u) = a {
+            println!("{u:?}")
+        }
+    }
+}
+
+pub fn test_2(x: Issue9647) {
+    if let Issue9647::A { a: Some(a), .. } = x {
+        if let Some(u) = a {
+            println!("{u}")
+        }
+    }
+}
+
 fn make<T>() -> T {
     unimplemented!()
 }

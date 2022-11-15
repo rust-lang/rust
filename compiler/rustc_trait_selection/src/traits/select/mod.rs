@@ -2,6 +2,12 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
 
+// FIXME: The `map` field in ProvisionalEvaluationCache should be changed to
+// a `FxIndexMap` to avoid query instability, but right now it causes a perf regression. This would be
+// fixed or at least lightened by the addition of the `drain_filter` method to `FxIndexMap`
+// Relevant: https://github.com/rust-lang/rust/pull/103723 and https://github.com/bluss/indexmap/issues/242
+#![allow(rustc::potential_query_instability)]
+
 use self::EvaluationResult::*;
 use self::SelectionCandidate::*;
 
@@ -24,7 +30,8 @@ use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -293,9 +300,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // earlier.
                 assert!(self.query_mode == TraitQueryMode::Canonical);
                 return Err(SelectionError::Overflow(OverflowError::Canonical));
-            }
-            Err(SelectionError::Ambiguous(_)) => {
-                return Ok(None);
             }
             Err(e) => {
                 return Err(e);
@@ -931,7 +935,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
-            Err(SelectionError::Ambiguous(_)) => Ok(EvaluatedToAmbig),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
             Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
@@ -956,7 +959,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
         let result = match predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ref data) => self.tcx().trait_is_auto(data.def_id()),
+            ty::PredicateKind::Trait(ref data) => self.tcx().trait_is_coinductive(data.def_id()),
             ty::PredicateKind::WellFormed(_) => true,
             _ => false,
         };
@@ -1132,12 +1135,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// filter_impls filters constant trait obligations and candidates that have a positive impl
     /// for a negative goal and a negative impl for a positive goal
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self, candidates))]
     fn filter_impls(
         &mut self,
         candidates: Vec<SelectionCandidate<'tcx>>,
         obligation: &TraitObligation<'tcx>,
     ) -> Vec<SelectionCandidate<'tcx>> {
+        trace!("{candidates:#?}");
         let tcx = self.tcx();
         let mut result = Vec::with_capacity(candidates.len());
 
@@ -1177,6 +1181,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
+        trace!("{result:#?}");
         result
     }
 
@@ -1973,6 +1978,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
+    #[instrument(level = "debug", skip(self), ret)]
     fn constituent_types_for_ty(
         &self,
         t: ty::Binder<'tcx, Ty<'tcx>>,

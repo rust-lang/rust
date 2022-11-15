@@ -392,15 +392,7 @@ pub struct Generics {
 impl Default for Generics {
     /// Creates an instance of `Generics`.
     fn default() -> Generics {
-        Generics {
-            params: Vec::new(),
-            where_clause: WhereClause {
-                has_where_token: false,
-                predicates: Vec::new(),
-                span: DUMMY_SP,
-            },
-            span: DUMMY_SP,
-        }
+        Generics { params: Vec::new(), where_clause: Default::default(), span: DUMMY_SP }
     }
 }
 
@@ -413,6 +405,12 @@ pub struct WhereClause {
     pub has_where_token: bool,
     pub predicates: Vec<WherePredicate>,
     pub span: Span,
+}
+
+impl Default for WhereClause {
+    fn default() -> WhereClause {
+        WhereClause { has_where_token: false, predicates: Vec::new(), span: DUMMY_SP }
+    }
 }
 
 /// A single predicate in a where-clause.
@@ -1112,24 +1110,6 @@ pub struct Expr {
 }
 
 impl Expr {
-    /// Returns `true` if this expression would be valid somewhere that expects a value;
-    /// for example, an `if` condition.
-    pub fn returns(&self) -> bool {
-        if let ExprKind::Block(ref block, _) = self.kind {
-            match block.stmts.last().map(|last_stmt| &last_stmt.kind) {
-                // Implicit return
-                Some(StmtKind::Expr(_)) => true,
-                // Last statement is an explicit return?
-                Some(StmtKind::Semi(expr)) => matches!(expr.kind, ExprKind::Ret(_)),
-                // This is a block that doesn't end in either an implicit or explicit return.
-                _ => false,
-            }
-        } else {
-            // This is not a block, it is a value.
-            true
-        }
-    }
-
     /// Is this expr either `N`, or `{ N }`.
     ///
     /// If this is not the case, name resolution does not resolve `N` when using
@@ -1226,7 +1206,7 @@ impl Expr {
             ExprKind::Tup(_) => ExprPrecedence::Tup,
             ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node),
             ExprKind::Unary(..) => ExprPrecedence::Unary,
-            ExprKind::Lit(_) => ExprPrecedence::Lit,
+            ExprKind::Lit(_) | ExprKind::IncludedBytes(..) => ExprPrecedence::Lit,
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
             ExprKind::Let(..) => ExprPrecedence::Let,
             ExprKind::If(..) => ExprPrecedence::If,
@@ -1463,6 +1443,12 @@ pub enum ExprKind {
     /// A `do yeet` (aka `throw`/`fail`/`bail`/`raise`/whatever),
     /// with an optional value to be returned.
     Yeet(Option<P<Expr>>),
+
+    /// Bytes included via `include_bytes!`
+    /// Added for optimization purposes to avoid the need to escape
+    /// large binary blobs - should always behave like [`ExprKind::Lit`]
+    /// with a `ByteStr` literal.
+    IncludedBytes(Lrc<[u8]>),
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err,

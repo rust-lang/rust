@@ -7,6 +7,12 @@ LL | |         panic!();
 LL | |     }
 LL | | }
    | |_^
+   |
+   = note: the trait `Foo` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
+help: add `unsafe` to this trait implementation
+   |
+LL | unsafe impl lib::Foo for Bar {
+   | ++++++
 
 error: aborting due to previous error
 

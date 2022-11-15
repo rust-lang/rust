@@ -14,15 +14,15 @@ fn main() {
     println!("{:?}", r##"/*‮ } ⁦if isAdmin⁩ ⁦ begin admins only "##);
     //~^ ERROR unicode codepoint changing visible direction of text present in literal
     println!("{:?}", b"/*‮ } ⁦if isAdmin⁩ ⁦ begin admins only ");
-    //~^ ERROR non-ASCII character in byte constant
-    //~| ERROR non-ASCII character in byte constant
-    //~| ERROR non-ASCII character in byte constant
-    //~| ERROR non-ASCII character in byte constant
+    //~^ ERROR non-ASCII character in byte string literal
+    //~| ERROR non-ASCII character in byte string literal
+    //~| ERROR non-ASCII character in byte string literal
+    //~| ERROR non-ASCII character in byte string literal
     println!("{:?}", br##"/*‮ } ⁦if isAdmin⁩ ⁦ begin admins only "##);
-    //~^ ERROR raw byte string must be ASCII
-    //~| ERROR raw byte string must be ASCII
-    //~| ERROR raw byte string must be ASCII
-    //~| ERROR raw byte string must be ASCII
+    //~^ ERROR non-ASCII character in raw byte string literal
+    //~| ERROR non-ASCII character in raw byte string literal
+    //~| ERROR non-ASCII character in raw byte string literal
+    //~| ERROR non-ASCII character in raw byte string literal
     println!("{:?}", '‮');
     //~^ ERROR unicode codepoint changing visible direction of text present in literal
 }

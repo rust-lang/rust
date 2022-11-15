@@ -77,7 +77,7 @@ macro_rules! arena_types {
                     rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
             [] all_traits: Vec<rustc_hir::def_id::DefId>,
-            [] privacy_access_levels: rustc_middle::middle::privacy::AccessLevels,
+            [] effective_visibilities: rustc_middle::middle::privacy::EffectiveVisibilities,
             [] foreign_module: rustc_session::cstore::ForeignModule,
             [] foreign_modules: Vec<rustc_session::cstore::ForeignModule>,
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
@@ -96,7 +96,7 @@ macro_rules! arena_types {
             // since we need to allocate this type on both the `rustc_hir` arena
             // (during lowering) and the `librustc_middle` arena (for decoding MIR)
             [decode] asm_template: rustc_ast::InlineAsmTemplatePiece,
-            [decode] used_trait_imports: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
+            [decode] used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
             [decode] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::def_id::LocalDefId>,
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 

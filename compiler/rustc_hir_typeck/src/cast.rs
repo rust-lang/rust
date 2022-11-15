@@ -60,6 +60,8 @@ pub struct CastCheck<'tcx> {
     cast_ty: Ty<'tcx>,
     cast_span: Span,
     span: Span,
+    /// whether the cast is made in a const context or not.
+    pub constness: hir::Constness,
 }
 
 /// The kind of pointer and associated metadata (thin, length or vtable) - we
@@ -92,10 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("pointer_kind({:?}, {:?})", t, span);
 
         let t = self.resolve_vars_if_possible(t);
-
-        if let Some(reported) = t.error_reported() {
-            return Err(reported);
-        }
+        t.error_reported()?;
 
         if self.type_is_sized_modulo_regions(self.param_env, t, span) {
             return Ok(Some(PointerKind::Thin));
@@ -210,17 +209,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         cast_ty: Ty<'tcx>,
         cast_span: Span,
         span: Span,
+        constness: hir::Constness,
     ) -> Result<CastCheck<'tcx>, ErrorGuaranteed> {
         let expr_span = expr.span.find_ancestor_inside(span).unwrap_or(expr.span);
-        let check = CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span };
+        let check = CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span, constness };
 
         // For better error messages, check for some obviously unsized
         // cases now. We do a more thorough check at the end, once
         // inference is more completely known.
         match cast_ty.kind() {
             ty::Dynamic(_, _, ty::Dyn) | ty::Slice(..) => {
-                let reported = check.report_cast_to_unsized_type(fcx);
-                Err(reported)
+                Err(check.report_cast_to_unsized_type(fcx))
             }
             _ => Ok(check),
         }
@@ -611,10 +610,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn report_cast_to_unsized_type(&self, fcx: &FnCtxt<'a, 'tcx>) -> ErrorGuaranteed {
-        if let Some(reported) =
-            self.cast_ty.error_reported().or_else(|| self.expr_ty.error_reported())
-        {
-            return reported;
+        if let Err(err) = self.cast_ty.error_reported() {
+            return err;
+        }
+        if let Err(err) = self.expr_ty.error_reported() {
+            return err;
         }
 
         let tstr = fcx.ty_to_string(self.cast_ty);
@@ -866,7 +866,13 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
 
-            (_, DynStar) | (DynStar, _) => bug!("should be handled by `try_coerce`"),
+            (_, DynStar) | (DynStar, _) => {
+                if fcx.tcx.features().dyn_star {
+                    bug!("should be handled by `try_coerce`")
+                } else {
+                    Err(CastError::IllegalCast)
+                }
+            }
         }
     }
 

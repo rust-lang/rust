@@ -454,7 +454,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
 
                 self.formatting_init.extend(code_init);
                 Ok(quote! {
-                    #diag.span_suggestion_with_style(
+                    #diag.span_suggestions_with_style(
                         #span_field,
                         rustc_errors::fluent::#slug,
                         #code_field,

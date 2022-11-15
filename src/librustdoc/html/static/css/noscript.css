@@ -18,3 +18,13 @@ nav.sub {
 	/* The search bar and related controls don't work without JS */
 	display: none;
 }
+
+.source .sidebar {
+	display: none;
+}
+
+.notable-traits {
+	/* layout requires javascript
+	    https://github.com/rust-lang/rust/issues/102576 */
+	display: none;
+}

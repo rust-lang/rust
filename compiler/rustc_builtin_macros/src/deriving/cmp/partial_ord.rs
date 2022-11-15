@@ -13,6 +13,7 @@ pub fn expand_deriving_partial_ord(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let ordering_ty = Path(path_std!(cmp::Ordering));
     let ret_ty =
@@ -39,10 +40,10 @@ pub fn expand_deriving_partial_ord(
         path: path_std!(cmp::PartialOrd),
         skip_path_as_bound: false,
         additional_bounds: vec![],
-        generics: Bounds::empty(),
         supports_unions: false,
         methods: vec![partial_cmp_def],
         associated_types: Vec::new(),
+        is_const,
     };
     trait_def.expand(cx, mitem, item, push)
 }

@@ -33,16 +33,27 @@ use rustc_span::{self, sym, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
+use std::mem;
 use std::ops::ControlFlow;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(in super::super) fn check_casts(&self) {
-        let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
+    pub(in super::super) fn check_casts(&mut self) {
+        // don't hold the borrow to deferred_cast_checks while checking to avoid borrow checker errors
+        // when writing to `self.param_env`.
+        let mut deferred_cast_checks = mem::take(&mut *self.deferred_cast_checks.borrow_mut());
+
         debug!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
         for cast in deferred_cast_checks.drain(..) {
+            let prev_env = self.param_env;
+            self.param_env = self.param_env.with_constness(cast.constness);
+
             cast.check(self);
+
+            self.param_env = prev_env;
         }
+
+        *self.deferred_cast_checks.borrow_mut() = deferred_cast_checks;
     }
 
     pub(in super::super) fn check_transmutes(&self) {
@@ -125,6 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tuple_arguments,
             Some(method.def_id),
         );
+
         method.sig.output()
     }
 
@@ -203,7 +215,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "cannot use call notation; the first type parameter \
                          for the function trait is neither a tuple nor unit"
                     )
-                    .emit();
+                    .delay_as_bug();
                     (self.err_args(provided_args.len()), None)
                 }
             }
@@ -333,7 +345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // an "opportunistic" trait resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
-                self.select_obligations_where_possible(false, |_| {})
+                self.select_obligations_where_possible(|_| {})
             }
 
             // Check each argument, to satisfy the input it was provided for
@@ -585,6 +597,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
+        let mk_trace = |span, (formal_ty, expected_ty), provided_ty| {
+            let mismatched_ty = if expected_ty == provided_ty {
+                // If expected == provided, then we must have failed to sup
+                // the formal type. Avoid printing out "expected Ty, found Ty"
+                // in that case.
+                formal_ty
+            } else {
+                expected_ty
+            };
+            TypeTrace::types(&self.misc(span), true, mismatched_ty, provided_ty)
+        };
+
         // The algorithm here is inspired by levenshtein distance and longest common subsequence.
         // We'll try to detect 4 different types of mistakes:
         // - An extra parameter has been provided that doesn't satisfy *any* of the other inputs
@@ -649,10 +673,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // A tuple wrap suggestion actually occurs within,
                         // so don't do anything special here.
                         err = self.err_ctxt().report_and_explain_type_error(
-                            TypeTrace::types(
-                                &self.misc(*lo),
-                                true,
-                                formal_and_expected_inputs[mismatch_idx.into()].1,
+                            mk_trace(
+                                *lo,
+                                formal_and_expected_inputs[mismatch_idx.into()],
                                 provided_arg_tys[mismatch_idx.into()].0,
                             ),
                             terr,
@@ -736,9 +759,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         errors.drain_filter(|error| {
                 let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) = error else { return false };
                 let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
-                let (expected_ty, _) = formal_and_expected_inputs[*expected_idx];
-                let cause = &self.misc(provided_span);
-                let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+                let trace = mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
                 if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
                     self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
                     return true;
@@ -762,8 +783,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let (formal_ty, expected_ty) = formal_and_expected_inputs[*expected_idx];
             let (provided_ty, provided_arg_span) = provided_arg_tys[*provided_idx];
-            let cause = &self.misc(provided_arg_span);
-            let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+            let trace = mk_trace(provided_arg_span, (formal_ty, expected_ty), provided_ty);
             let mut err = self.err_ctxt().report_and_explain_type_error(trace, *err);
             self.emit_coerce_suggestions(
                 &mut err,
@@ -835,8 +855,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (formal_ty, expected_ty) = formal_and_expected_inputs[expected_idx];
                     let (provided_ty, provided_span) = provided_arg_tys[provided_idx];
                     if let Compatibility::Incompatible(error) = compatibility {
-                        let cause = &self.misc(provided_span);
-                        let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+                        let trace = mk_trace(provided_span, (formal_ty, expected_ty), provided_ty);
                         if let Some(e) = error {
                             self.err_ctxt().note_type_err(
                                 &mut err,
@@ -1323,7 +1342,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Hide the outer diverging and `has_errors` flags.
         let old_diverges = self.diverges.replace(Diverges::Maybe);
-        let old_has_errors = self.has_errors.replace(false);
 
         match stmt.kind {
             hir::StmtKind::Local(l) => {
@@ -1353,7 +1371,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Combine the diverging and `has_error` flags.
         self.diverges.set(self.diverges.get() | old_diverges);
-        self.has_errors.set(self.has_errors.get() | old_has_errors);
     }
 
     pub fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
@@ -1533,11 +1550,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.diverges.set(prev_diverges);
         }
 
-        let mut ty = ctxt.coerce.unwrap().complete(self);
-
-        if self.has_errors.get() || ty.references_error() {
-            ty = self.tcx.ty_error()
-        }
+        let ty = ctxt.coerce.unwrap().complete(self);
 
         self.write_ty(blk.hir_id, ty);
 

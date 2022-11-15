@@ -1,0 +1,18 @@
+// MIR for `simple` after built
+
+fn simple(_1: i32) -> i32 {
+    let mut _0: i32;                     // return place in scope 0 at $DIR/simple_assign.rs:+0:26: +0:29
+    let mut _2: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _3: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+
+    bb0: {
+        _2 = _1;                         // scope 0 at $DIR/simple_assign.rs:+0:1: +0:29
+        goto -> bb1;                     // scope 0 at $DIR/simple_assign.rs:+0:1: +0:29
+    }
+
+    bb1: {
+        _3 = move _2;                    // scope 0 at $DIR/simple_assign.rs:+0:1: +0:29
+        _0 = _3;                         // scope 0 at $DIR/simple_assign.rs:+0:1: +0:29
+        return;                          // scope 0 at $DIR/simple_assign.rs:+0:1: +0:29
+    }
+}

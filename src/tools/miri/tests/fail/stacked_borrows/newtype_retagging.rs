@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-retag-fields
 //@error-pattern: which is protected
 struct Newtype<'a>(&'a mut i32);
 

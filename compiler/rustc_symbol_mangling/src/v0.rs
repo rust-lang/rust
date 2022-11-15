@@ -218,7 +218,7 @@ impl<'tcx> SymbolMangler<'tcx> {
         let lifetimes = regions
             .into_iter()
             .map(|br| match br {
-                ty::BrAnon(i) => i,
+                ty::BrAnon(i, _) => i,
                 _ => bug!("symbol_names: non-anonymized region `{:?}` in `{:?}`", br, value),
             })
             .max()
@@ -335,7 +335,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
             // Late-bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
-            ty::ReLateBound(debruijn, ty::BoundRegion { kind: ty::BrAnon(i), .. }) => {
+            ty::ReLateBound(debruijn, ty::BoundRegion { kind: ty::BrAnon(i, _), .. }) => {
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
                 let depth = binder.lifetime_depths.start + i;
 
@@ -654,8 +654,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                             .builtin_deref(true)
                             .expect("tried to dereference on non-ptr type")
                             .ty;
-                        let dereferenced_const =
-                            self.tcx.mk_const(ty::ConstS { kind: ct.kind(), ty: pointee_ty });
+                        let dereferenced_const = self.tcx.mk_const(ct.kind(), pointee_ty);
                         self = dereferenced_const.print(self)?;
                     }
                 }

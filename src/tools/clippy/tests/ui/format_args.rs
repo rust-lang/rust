@@ -3,6 +3,7 @@
 #![allow(unused)]
 #![allow(
     clippy::assertions_on_constants,
+    clippy::double_parens,
     clippy::eq_op,
     clippy::print_literal,
     clippy::uninlined_format_args
@@ -114,6 +115,8 @@ fn main() {
     println!("error: something failed at {}", my_other_macro!());
     // https://github.com/rust-lang/rust-clippy/issues/7903
     println!("{foo}{foo:?}", foo = "foo".to_string());
+    print!("{}", (Location::caller().to_string()));
+    print!("{}", ((Location::caller()).to_string()));
 }
 
 fn issue8643(vendor_id: usize, product_id: usize, name: &str) {

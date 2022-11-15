@@ -48,12 +48,6 @@ rustc_resolve = { path = "../rustc_resolve" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["libloaderapi"] }
-
 [dev-dependencies]
 rustc_target = { path = "../rustc_target" }
 

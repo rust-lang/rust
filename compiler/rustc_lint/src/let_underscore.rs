@@ -11,6 +11,7 @@ declare_lint! {
     /// scope.
     ///
     /// ### Example
+    ///
     /// ```rust
     /// struct SomeStruct;
     /// impl Drop for SomeStruct {

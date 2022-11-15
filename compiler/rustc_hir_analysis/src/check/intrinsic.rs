@@ -26,7 +26,7 @@ fn equate_intrinsic_type<'tcx>(
 ) {
     let (own_counts, span) = match &it.kind {
         hir::ForeignItemKind::Fn(.., generics) => {
-            let own_counts = tcx.generics_of(it.def_id.to_def_id()).own_counts();
+            let own_counts = tcx.generics_of(it.owner_id.to_def_id()).own_counts();
             (own_counts, generics.span)
         }
         _ => {
@@ -57,7 +57,7 @@ fn equate_intrinsic_type<'tcx>(
     {
         let fty = tcx.mk_fn_ptr(sig);
         let cause = ObligationCause::new(it.span, it.hir_id(), ObligationCauseCode::IntrinsicType);
-        require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.def_id)), fty);
+        require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.owner_id)), fty);
     }
 }
 
@@ -129,20 +129,23 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
 /// and in `library/core/src/intrinsics.rs`.
 pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)));
-    let intrinsic_id = it.def_id.to_def_id();
+    let intrinsic_id = it.owner_id.to_def_id();
     let intrinsic_name = tcx.item_name(intrinsic_id);
     let name_str = intrinsic_name.as_str();
 
     let bound_vars = tcx.mk_bound_variable_kinds(
-        [ty::BoundVariableKind::Region(ty::BrAnon(0)), ty::BoundVariableKind::Region(ty::BrEnv)]
-            .iter()
-            .copied(),
+        [
+            ty::BoundVariableKind::Region(ty::BrAnon(0, None)),
+            ty::BoundVariableKind::Region(ty::BrEnv),
+        ]
+        .iter()
+        .copied(),
     );
     let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
             let region = tcx.mk_region(ty::ReLateBound(
                 ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0) },
+                ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0, None) },
             ));
             let env_region = tcx.mk_region(ty::ReLateBound(
                 ty::INNERMOST,
@@ -364,7 +367,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 );
                 let discriminant_def_id = assoc_items[0];
 
-                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0) };
+                let br =
+                    ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0, None) };
                 (
                     1,
                     vec![
@@ -418,7 +422,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::nontemporal_store => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], tcx.mk_unit()),
 
             sym::raw_eq => {
-                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0) };
+                let br =
+                    ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0, None) };
                 let param_ty =
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)), param(0));
                 (1, vec![param_ty; 2], tcx.types.bool)

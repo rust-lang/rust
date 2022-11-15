@@ -59,6 +59,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
             HumanReadableErrorType::Short(ColorConfig::Never),
             None,
             false,
+            false,
         );
 
         let span = Span::with_root_ctxt(BytePos(span.0), BytePos(span.1));

@@ -43,7 +43,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// This is only meant to be invoked as part of constructing an
     /// inference context at the start of a query (see
-    /// `InferCtxtBuilder::enter_with_canonical`). It basically
+    /// `InferCtxtBuilder::build_with_canonical`). It basically
     /// brings the canonical value "into scope" within your new infcx.
     ///
     /// At the end of processing, the substitution S (once
@@ -147,12 +147,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }, ty) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
-                self.tcx
-                    .mk_const(ty::ConstS {
-                        kind: ty::ConstKind::Placeholder(placeholder_mapped),
-                        ty,
-                    })
-                    .into()
+                self.tcx.mk_const(ty::ConstKind::Placeholder(placeholder_mapped), ty).into()
             }
         }
     }

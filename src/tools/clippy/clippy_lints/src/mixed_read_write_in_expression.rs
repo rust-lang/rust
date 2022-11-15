@@ -190,10 +190,7 @@ fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
         if parent_id == cur_id {
             break;
         }
-        let parent_node = match map.find(parent_id) {
-            Some(parent) => parent,
-            None => break,
-        };
+        let Some(parent_node) = map.find(parent_id) else { break };
 
         let stop_early = match parent_node {
             Node::Expr(expr) => check_expr(vis, expr),

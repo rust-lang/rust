@@ -80,7 +80,7 @@ fn binders_to_str(binders: &[(Name, bool)], addmut: bool) -> String {
         .map(
             |(ident, ismut)| {
                 if *ismut && addmut {
-                    format!("mut {}", ident)
+                    format!("mut {ident}")
                 } else {
                     ident.to_string()
                 }
@@ -93,7 +93,7 @@ fn binders_to_str(binders: &[(Name, bool)], addmut: bool) -> String {
     } else if binders.len() == 1 {
         vars
     } else {
-        format!("({})", vars)
+        format!("({vars})")
     }
 }
 
@@ -153,7 +153,7 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
 
             let only_expr = let_else_block.statements().next().is_none();
             let branch2 = match &let_else_block.tail_expr() {
-                Some(tail) if only_expr => format!("{},", tail.syntax().text()),
+                Some(tail) if only_expr => format!("{tail},"),
                 _ => let_else_block.syntax().text().to_string(),
             };
             let replace = if binders.is_empty() {

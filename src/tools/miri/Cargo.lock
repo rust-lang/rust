@@ -320,9 +320,9 @@ dependencies = [
 
 [[package]]
 name = "libffi-sys"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab4106b7f09d7b87d021334d5618fac1dfcfb824d4c5fe111ff0074dfd242e15"
+checksum = "84e78d02e5a8eae9c24c38ce6e6026f80e16dff76adcdae4bc5c6c52c2de4a60"
 dependencies = [
  "cc",
 ]
@@ -419,6 +419,7 @@ dependencies = [
  "rand",
  "regex",
  "rustc-workspace-hack",
+ "rustc_version",
  "shell-escape",
  "smallvec",
  "ui_test",

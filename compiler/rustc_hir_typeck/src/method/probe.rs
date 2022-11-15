@@ -252,7 +252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// would result in an error (basically, the same criteria we
     /// would use to decide if a method is a plausible fit for
     /// ambiguity purposes).
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self, candidate_filter))]
     pub fn probe_for_return_type(
         &self,
         span: Span,
@@ -260,6 +260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         return_type: Ty<'tcx>,
         self_ty: Ty<'tcx>,
         scope_expr_id: hir::HirId,
+        candidate_filter: impl Fn(&ty::AssocItem) -> bool,
     ) -> Vec<ty::AssocItem> {
         let method_names = self
             .probe_op(
@@ -271,7 +272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self_ty,
                 scope_expr_id,
                 ProbeScope::AllTraits,
-                |probe_cx| Ok(probe_cx.candidate_method_names()),
+                |probe_cx| Ok(probe_cx.candidate_method_names(candidate_filter)),
             )
             .unwrap_or_default();
         method_names
@@ -474,10 +475,9 @@ fn method_autoderef_steps<'tcx>(
     let (ref infcx, goal, inference_vars) = tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &goal);
     let ParamEnvAnd { param_env, value: self_ty } = goal;
 
-    let mut autoderef =
-        Autoderef::new(infcx, param_env, hir::CRATE_HIR_ID, DUMMY_SP, self_ty, DUMMY_SP)
-            .include_raw_pointers()
-            .silence_errors();
+    let mut autoderef = Autoderef::new(infcx, param_env, hir::CRATE_HIR_ID, DUMMY_SP, self_ty)
+        .include_raw_pointers()
+        .silence_errors();
     let mut reached_raw_pointer = false;
     let mut steps: Vec<_> = autoderef
         .by_ref()
@@ -966,12 +966,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
-    fn candidate_method_names(&self) -> Vec<Ident> {
+    fn candidate_method_names(
+        &self,
+        candidate_filter: impl Fn(&ty::AssocItem) -> bool,
+    ) -> Vec<Ident> {
         let mut set = FxHashSet::default();
         let mut names: Vec<_> = self
             .inherent_candidates
             .iter()
             .chain(&self.extension_candidates)
+            .filter(|candidate| candidate_filter(&candidate.item))
             .filter(|candidate| {
                 if let Some(return_ty) = self.return_type {
                     self.matches_return_type(&candidate.item, None, return_ty)
@@ -1014,7 +1018,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         let out_of_scope_traits = match self.pick_core() {
             Some(Ok(p)) => vec![p.item.container_id(self.tcx)],
-            //Some(Ok(p)) => p.iter().map(|p| p.item.container().id()).collect(),
             Some(Err(MethodError::Ambiguity(v))) => v
                 .into_iter()
                 .map(|source| match source {
@@ -1689,7 +1692,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
 
-            let method_names = pcx.candidate_method_names();
+            let method_names = pcx.candidate_method_names(|_| true);
             pcx.allow_similar_names = false;
             let applicable_close_candidates: Vec<ty::AssocItem> = method_names
                 .iter()

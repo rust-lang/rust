@@ -1,22 +1,10 @@
-error[E0391]: cycle detected when computing type of `<impl at $DIR/issue-23305.rs:5:1: 5:21>`
+error: `Self` is not valid in the self type of an impl block
   --> $DIR/issue-23305.rs:5:16
    |
 LL | impl dyn ToNbt<Self> {}
    |                ^^^^
    |
-   = note: ...which immediately requires computing type of `<impl at $DIR/issue-23305.rs:5:1: 5:21>` again
-note: cycle used when collecting item types in top-level module
-  --> $DIR/issue-23305.rs:1:1
-   |
-LL | / pub trait ToNbt<T> {
-LL | |     fn new(val: T) -> Self;
-LL | | }
-LL | |
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
+   = note: replace `Self` with a different type
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0391`.

@@ -6,7 +6,7 @@ use crate::fmt;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr::NonNull;
 use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
-use crate::sys_common::rwlock as sys;
+use crate::sys::locks as sys;
 
 /// A reader-writer lock
 ///
@@ -78,7 +78,7 @@ use crate::sys_common::rwlock as sys;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "RwLock")]
 pub struct RwLock<T: ?Sized> {
-    inner: sys::MovableRwLock,
+    inner: sys::RwLock,
     poison: poison::Flag,
     data: UnsafeCell<T>,
 }
@@ -109,7 +109,7 @@ pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
     // `NonNull` is also covariant over `T`, just like we would have with `&T`. `NonNull`
     // is preferable over `const* T` to allow for niche optimization.
     data: NonNull<T>,
-    inner_lock: &'a sys::MovableRwLock,
+    inner_lock: &'a sys::RwLock,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -158,11 +158,7 @@ impl<T> RwLock<T> {
     #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     #[inline]
     pub const fn new(t: T) -> RwLock<T> {
-        RwLock {
-            inner: sys::MovableRwLock::new(),
-            poison: poison::Flag::new(),
-            data: UnsafeCell::new(t),
-        }
+        RwLock { inner: sys::RwLock::new(), poison: poison::Flag::new(), data: UnsafeCell::new(t) }
     }
 }
 

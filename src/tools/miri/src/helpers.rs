@@ -1,6 +1,7 @@
 pub mod convert;
 
 use std::cmp;
+use std::iter;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::time::Duration;
@@ -107,7 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Gets an instance for a path.
     fn resolve_path(&self, path: &[&str]) -> ty::Instance<'tcx> {
         self.try_resolve_path(path)
-            .unwrap_or_else(|| panic!("failed to find required Rust item: {:?}", path))
+            .unwrap_or_else(|| panic!("failed to find required Rust item: {path:?}"))
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
@@ -505,7 +506,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             RejectOpWith::WarningWithoutBacktrace => {
                 this.tcx
                     .sess
-                    .warn(&format!("{} was made to return an error due to isolation", op_name));
+                    .warn(format!("{op_name} was made to return an error due to isolation"));
                 Ok(())
             }
             RejectOpWith::Warning => {
@@ -735,6 +736,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         })
     }
 
+    /// Read a sequence of bytes until the first null terminator.
     fn read_c_str<'a>(&'a self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, &'a [u8]>
     where
         'tcx: 'a,
@@ -761,6 +763,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.read_bytes_ptr_strip_provenance(ptr, len)
     }
 
+    /// Helper function to write a sequence of bytes with an added null-terminator, which is what
+    /// the Unix APIs usually handle. This function returns `Ok((false, length))` without trying
+    /// to write if `size` is not large enough to fit the contents of `c_str` plus a null
+    /// terminator. It returns `Ok((true, length))` if the writing process was successful. The
+    /// string length returned does include the null terminator.
+    fn write_c_str(
+        &mut self,
+        c_str: &[u8],
+        ptr: Pointer<Option<Provenance>>,
+        size: u64,
+    ) -> InterpResult<'tcx, (bool, u64)> {
+        // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
+        // terminator to memory using the `ptr` pointer would cause an out-of-bounds access.
+        let string_length = u64::try_from(c_str.len()).unwrap();
+        let string_length = string_length.checked_add(1).unwrap();
+        if size < string_length {
+            return Ok((false, string_length));
+        }
+        self.eval_context_mut()
+            .write_bytes_ptr(ptr, c_str.iter().copied().chain(iter::once(0u8)))?;
+        Ok((true, string_length))
+    }
+
+    /// Read a sequence of u16 until the first null terminator.
     fn read_wide_str(&self, mut ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, Vec<u16>> {
         let this = self.eval_context_ref();
         let size2 = Size::from_bytes(2);
@@ -781,6 +807,39 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         Ok(wchars)
+    }
+
+    /// Helper function to write a sequence of u16 with an added 0x0000-terminator, which is what
+    /// the Windows APIs usually handle. This function returns `Ok((false, length))` without trying
+    /// to write if `size` is not large enough to fit the contents of `os_string` plus a null
+    /// terminator. It returns `Ok((true, length))` if the writing process was successful. The
+    /// string length returned does include the null terminator. Length is measured in units of
+    /// `u16.`
+    fn write_wide_str(
+        &mut self,
+        wide_str: &[u16],
+        ptr: Pointer<Option<Provenance>>,
+        size: u64,
+    ) -> InterpResult<'tcx, (bool, u64)> {
+        // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required
+        // 0x0000 terminator to memory would cause an out-of-bounds access.
+        let string_length = u64::try_from(wide_str.len()).unwrap();
+        let string_length = string_length.checked_add(1).unwrap();
+        if size < string_length {
+            return Ok((false, string_length));
+        }
+
+        // Store the UTF-16 string.
+        let size2 = Size::from_bytes(2);
+        let this = self.eval_context_mut();
+        let mut alloc = this
+            .get_ptr_alloc_mut(ptr, size2 * string_length, Align::from_bytes(2).unwrap())?
+            .unwrap(); // not a ZST, so we will get a result
+        for (offset, wchar) in wide_str.iter().copied().chain(iter::once(0x0000)).enumerate() {
+            let offset = u64::try_from(offset).unwrap();
+            alloc.write_scalar(alloc_range(size2 * offset, size2), Scalar::from_u16(wchar))?;
+        }
+        Ok((true, string_length))
     }
 
     /// Check that the ABI is what we expect.

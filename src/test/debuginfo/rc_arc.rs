@@ -57,7 +57,7 @@
 // cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 // cdb-command:dx slice_rc,d
-// cdb-check:slice_rc,d       : { len=3 } [Type: alloc::rc::Rc<slice$<u32> >]
+// cdb-check:slice_rc,d       : { len=3 } [Type: alloc::rc::Rc<slice2$<u32> >]
 // cdb-check:    [Length]         : 3 [Type: [...]]
 // cdb-check:    [Reference count] : 41 [Type: core::cell::Cell<usize>]
 // cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
@@ -66,7 +66,7 @@
 // cdb-check:    [2]              : 3 [Type: u32]
 
 // cdb-command:dx slice_rc_weak,d
-// cdb-check:slice_rc_weak,d  : { len=3 } [Type: alloc::rc::Weak<slice$<u32> >]
+// cdb-check:slice_rc_weak,d  : { len=3 } [Type: alloc::rc::Weak<slice2$<u32> >]
 // cdb-check:    [Length]         : 3 [Type: [...]]
 // cdb-check:    [Reference count] : 41 [Type: core::cell::Cell<usize>]
 // cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
@@ -85,7 +85,7 @@
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
 
 // cdb-command:dx slice_arc,d
-// cdb-check:slice_arc,d      : { len=3 } [Type: alloc::sync::Arc<slice$<u32> >]
+// cdb-check:slice_arc,d      : { len=3 } [Type: alloc::sync::Arc<slice2$<u32> >]
 // cdb-check:    [Length]         : 3 [Type: [...]]
 // cdb-check:    [Reference count] : 61 [Type: core::sync::atomic::AtomicUsize]
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
@@ -94,7 +94,7 @@
 // cdb-check:    [2]              : 6 [Type: u32]
 
 // cdb-command:dx slice_arc_weak,d
-// cdb-check:slice_arc_weak,d : { len=3 } [Type: alloc::sync::Weak<slice$<u32> >]
+// cdb-check:slice_arc_weak,d : { len=3 } [Type: alloc::sync::Weak<slice2$<u32> >]
 // cdb-check:    [Length]         : 3 [Type: [...]]
 // cdb-check:    [Reference count] : 61 [Type: core::sync::atomic::AtomicUsize]
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]

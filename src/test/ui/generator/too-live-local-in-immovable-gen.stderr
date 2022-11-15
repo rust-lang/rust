@@ -8,7 +8,7 @@ LL | |             // and it should also find out that `a` is not live.
 ...  |
 LL | |             let _ = &a;
 LL | |         };
-   | |__________^
+   | |_________^
    |
    = note: generators are lazy and do nothing unless resumed
    = note: `#[warn(unused_must_use)]` on by default

@@ -150,6 +150,19 @@ fn tester(fn_arg: i32) {
 
     println!(with_span!("{0} {1}" "{1} {0}"), local_i32, local_f64);
     println!("{}", with_span!(span val));
+
+    if local_i32 > 0 {
+        panic!("p1 {}", local_i32);
+    }
+    if local_i32 > 0 {
+        panic!("p2 {0}", local_i32);
+    }
+    if local_i32 > 0 {
+        panic!("p3 {local_i32}", local_i32 = local_i32);
+    }
+    if local_i32 > 0 {
+        panic!("p4 {local_i32}");
+    }
 }
 
 fn main() {

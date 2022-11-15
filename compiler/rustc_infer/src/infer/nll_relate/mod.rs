@@ -25,7 +25,9 @@ use crate::infer::combine::ConstEquateRelation;
 use crate::infer::InferCtxt;
 use crate::infer::{ConstVarValue, ConstVariableValue};
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::traits::PredicateObligation;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -91,11 +93,9 @@ pub trait TypeRelatingDelegate<'tcx> {
     );
 
     fn const_equate(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
-    fn register_opaque_type(
+    fn register_opaque_type_obligations(
         &mut self,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        a_is_expected: bool,
+        obligations: Vec<PredicateObligation<'tcx>>,
     ) -> Result<(), TypeError<'tcx>>;
 
     /// Creates a new universe index. Used when instantiating placeholders.
@@ -414,7 +414,12 @@ where
             (_, &ty::Opaque(..)) => (generalize(a, true)?, b),
             _ => unreachable!(),
         };
-        self.delegate.register_opaque_type(a, b, true)?;
+        let cause = ObligationCause::dummy_with_span(self.delegate.span());
+        let obligations = self
+            .infcx
+            .handle_opaque_type(a, b, true, &cause, self.delegate.param_env())?
+            .obligations;
+        self.delegate.register_opaque_type_obligations(obligations)?;
         trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
         Ok(a)
     }
@@ -592,7 +597,7 @@ where
             (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
 
             (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
-                infcx.commit_if_ok(|_| infcx.super_combine_tys(self, a, b)).or_else(|err| {
+                infcx.super_combine_tys(self, a, b).or_else(|err| {
                     self.tcx().sess.delay_span_bug(
                         self.delegate.span(),
                         "failure to relate an opaque to itself should result in an error later on",

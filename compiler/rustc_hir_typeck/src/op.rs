@@ -19,7 +19,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{FulfillmentError, TraitEngine, TraitEngineExt};
+use rustc_trait_selection::traits::FulfillmentError;
 use rustc_type_ir::sty::TyKind::*;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -529,8 +529,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                err.emit();
-                self.tcx.ty_error()
+                let reported = err.emit();
+                self.tcx.ty_error_with_guaranteed(reported)
             }
         };
 
@@ -772,7 +772,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match (method, trait_did) {
             (Some(ok), _) => {
                 let method = self.register_infer_ok_obligations(ok);
-                self.select_obligations_where_possible(false, |_| {});
+                self.select_obligations_where_possible(|_| {});
                 Ok(method)
             }
             (None, None) => Err(vec![]),
@@ -785,9 +785,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     other_ty_expr,
                     expected,
                 );
-                let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);
-                fulfill.register_predicate_obligation(self, obligation);
-                Err(fulfill.select_where_possible(&self.infcx))
+                Err(rustc_trait_selection::traits::fully_solve_obligation(self, obligation))
             }
         }
     }

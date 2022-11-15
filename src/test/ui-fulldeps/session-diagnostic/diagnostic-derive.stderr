@@ -261,41 +261,41 @@ LL |     #[label(label)]
    |     ^^^^^^^^^^^^^^^
 
 error: suggestion without `code = "..."`
-  --> $DIR/diagnostic-derive.rs:223:5
+  --> $DIR/diagnostic-derive.rs:224:5
    |
 LL |     #[suggestion(suggestion)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[suggestion(nonsense = ...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:231:18
+  --> $DIR/diagnostic-derive.rs:232:18
    |
 LL |     #[suggestion(nonsense = "bar")]
    |                  ^^^^^^^^^^^^^^^^
    |
-   = help: only `code` and `applicability` are valid nested attributes
+   = help: only `style`, `code` and `applicability` are valid nested attributes
 
 error: suggestion without `code = "..."`
-  --> $DIR/diagnostic-derive.rs:231:5
+  --> $DIR/diagnostic-derive.rs:232:5
    |
 LL |     #[suggestion(nonsense = "bar")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[suggestion(msg = ...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:240:18
+  --> $DIR/diagnostic-derive.rs:241:18
    |
 LL |     #[suggestion(msg = "bar")]
    |                  ^^^^^^^^^^^
    |
-   = help: only `code` and `applicability` are valid nested attributes
+   = help: only `style`, `code` and `applicability` are valid nested attributes
 
 error: suggestion without `code = "..."`
-  --> $DIR/diagnostic-derive.rs:240:5
+  --> $DIR/diagnostic-derive.rs:241:5
    |
 LL |     #[suggestion(msg = "bar")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: wrong field type for suggestion
-  --> $DIR/diagnostic-derive.rs:263:5
+  --> $DIR/diagnostic-derive.rs:264:5
    |
 LL | /     #[suggestion(suggestion, code = "This is suggested code")]
 LL | |
@@ -305,55 +305,55 @@ LL | |     suggestion: Applicability,
    = help: `#[suggestion(...)]` should be applied to fields of type `Span` or `(Span, Applicability)`
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:279:24
+  --> $DIR/diagnostic-derive.rs:280:24
    |
 LL |     suggestion: (Span, Span, Applicability),
    |                        ^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:279:18
+  --> $DIR/diagnostic-derive.rs:280:18
    |
 LL |     suggestion: (Span, Span, Applicability),
    |                  ^^^^
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:287:33
+  --> $DIR/diagnostic-derive.rs:288:33
    |
 LL |     suggestion: (Applicability, Applicability, Span),
    |                                 ^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:287:18
+  --> $DIR/diagnostic-derive.rs:288:18
    |
 LL |     suggestion: (Applicability, Applicability, Span),
    |                  ^^^^^^^^^^^^^
 
 error: `#[label = ...]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:294:5
+  --> $DIR/diagnostic-derive.rs:295:5
    |
 LL |     #[label = "bar"]
    |     ^^^^^^^^^^^^^^^^
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:445:44
+  --> $DIR/diagnostic-derive.rs:446:44
    |
 LL |     #[suggestion(suggestion, code = "...", applicability = "maybe-incorrect")]
    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:447:24
+  --> $DIR/diagnostic-derive.rs:448:24
    |
 LL |     suggestion: (Span, Applicability),
    |                        ^^^^^^^^^^^^^
 
 error: invalid applicability
-  --> $DIR/diagnostic-derive.rs:453:44
+  --> $DIR/diagnostic-derive.rs:454:44
    |
 LL |     #[suggestion(suggestion, code = "...", applicability = "batman")]
    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[label(foo)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:516:20
+  --> $DIR/diagnostic-derive.rs:517:20
    |
 LL |     #[label(label, foo)]
    |                    ^^^
@@ -361,13 +361,13 @@ LL |     #[label(label, foo)]
    = help: a diagnostic slug must be the first argument to the attribute
 
 error: `#[label(foo = ...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:524:20
+  --> $DIR/diagnostic-derive.rs:525:20
    |
 LL |     #[label(label, foo = "...")]
    |                    ^^^^^^^^^^^
 
 error: `#[label(foo(...))]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:532:20
+  --> $DIR/diagnostic-derive.rs:533:20
    |
 LL |     #[label(label, foo("..."))]
    |                    ^^^^^^^^^^
@@ -573,6 +573,24 @@ LL |     #[subdiagnostic(eager)]
    |
    = help: eager subdiagnostics are not supported on lints
 
+error: expected at least one string literal for `code(...)`
+  --> $DIR/diagnostic-derive.rs:775:18
+   |
+LL |     #[suggestion(code())]
+   |                  ^^^^^^
+
+error: `code(...)` must contain only string literals
+  --> $DIR/diagnostic-derive.rs:783:23
+   |
+LL |     #[suggestion(code(foo))]
+   |                       ^^^
+
+error: `code = "..."`/`code(...)` must contain only string literals
+  --> $DIR/diagnostic-derive.rs:791:18
+   |
+LL |     #[suggestion(code = 3)]
+   |                  ^^^^^^^^
+
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive.rs:55:3
    |
@@ -634,7 +652,7 @@ LL | #[diag(nonsense, code = "E0123")]
    |        ^^^^^^^^ not found in `rustc_errors::fluent`
 
 error[E0277]: the trait bound `Hello: IntoDiagnosticArg` is not satisfied
-  --> $DIR/diagnostic-derive.rs:338:10
+  --> $DIR/diagnostic-derive.rs:339:10
    |
 LL | #[derive(Diagnostic)]
    |          ^^^^^^^^^^ the trait `IntoDiagnosticArg` is not implemented for `Hello`
@@ -647,7 +665,7 @@ LL |         arg: impl IntoDiagnosticArg,
    |                   ^^^^^^^^^^^^^^^^^ required by this bound in `DiagnosticBuilder::<'a, G>::set_arg`
    = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 80 previous errors
+error: aborting due to 83 previous errors
 
 Some errors have detailed explanations: E0277, E0425.
 For more information about an error, try `rustc --explain E0277`.

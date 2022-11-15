@@ -50,6 +50,7 @@ use crate::hash::{Hash, Hasher};
 ///
 /// [`to_raw_parts`]: *const::to_raw_parts
 #[lang = "pointee_trait"]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
 pub trait Pointee {
     /// The type for metadata in pointers and references to `Self`.
     #[lang = "metadata_type"]

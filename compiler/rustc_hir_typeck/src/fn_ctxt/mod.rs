@@ -68,10 +68,6 @@ pub struct FnCtxt<'a, 'tcx> {
     /// any).
     pub(super) ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
 
-    /// Used exclusively to reduce cost of advanced evaluation used for
-    /// more helpful diagnostics.
-    pub(super) in_tail_expr: bool,
-
     /// First span of a return site that we find. Used in error messages.
     pub(super) ret_coercion_span: Cell<Option<Span>>,
 
@@ -112,21 +108,11 @@ pub struct FnCtxt<'a, 'tcx> {
     /// the diverges flag is set to something other than `Maybe`.
     pub(super) diverges: Cell<Diverges>,
 
-    /// Whether any child nodes have any type errors.
-    pub(super) has_errors: Cell<bool>,
-
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
     pub(super) inh: &'a Inherited<'tcx>,
 
-    /// True if the function or closure's return type is known before
-    /// entering the function/closure, i.e. if the return type is
-    /// either given explicitly or inferred from, say, an `Fn*` trait
-    /// bound. Used for diagnostic purposes only.
-    pub(super) return_type_pre_known: bool,
-
-    /// True if the return type has an Opaque type
-    pub(super) return_type_has_opaque: bool,
+    pub(super) fallback_has_occurred: Cell<bool>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -140,19 +126,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
-            in_tail_expr: false,
             ret_coercion_span: Cell::new(None),
             resume_yield_tys: None,
             ps: Cell::new(UnsafetyState::function(hir::Unsafety::Normal, hir::CRATE_HIR_ID)),
             diverges: Cell::new(Diverges::Maybe),
-            has_errors: Cell::new(false),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
                 stack: Vec::new(),
                 by_id: Default::default(),
             }),
             inh,
-            return_type_pre_known: true,
-            return_type_has_opaque: false,
+            fallback_has_occurred: Cell::new(false),
         }
     }
 
@@ -174,7 +157,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// [`InferCtxt::err_ctxt`]: infer::InferCtxt::err_ctxt
     pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
-        TypeErrCtxt { infcx: &self.infcx, typeck_results: Some(self.typeck_results.borrow()) }
+        TypeErrCtxt {
+            infcx: &self.infcx,
+            typeck_results: Some(self.typeck_results.borrow()),
+            fallback_has_occurred: self.fallback_has_occurred.get(),
+        }
     }
 
     pub fn errors_reported_since_creation(&self) -> bool {
@@ -194,8 +181,8 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.tcx
     }
 
-    fn item_def_id(&self) -> Option<DefId> {
-        None
+    fn item_def_id(&self) -> DefId {
+        self.body_id.owner.to_def_id()
     }
 
     fn get_type_parameter_bounds(

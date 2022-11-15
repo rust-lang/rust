@@ -163,6 +163,10 @@ pub(super) fn lower_generic_args(
             ast::GenericArg::AssocTypeArg(assoc_type_arg) => {
                 if let Some(name_ref) = assoc_type_arg.name_ref() {
                     let name = name_ref.as_name();
+                    let args = assoc_type_arg
+                        .generic_arg_list()
+                        .and_then(|args| lower_generic_args(lower_ctx, args))
+                        .map(Interned::new);
                     let type_ref = assoc_type_arg.ty().map(|it| TypeRef::from_ast(lower_ctx, it));
                     let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
                         l.bounds()
@@ -171,7 +175,7 @@ pub(super) fn lower_generic_args(
                     } else {
                         Vec::new()
                     };
-                    bindings.push(AssociatedTypeBinding { name, type_ref, bounds });
+                    bindings.push(AssociatedTypeBinding { name, args, type_ref, bounds });
                 }
             }
             ast::GenericArg::LifetimeArg(lifetime_arg) => {
@@ -214,6 +218,7 @@ fn lower_generic_args_from_fn_path(
         let type_ref = TypeRef::from_ast_opt(ctx, ret_type.ty());
         bindings.push(AssociatedTypeBinding {
             name: name![Output],
+            args: None,
             type_ref: Some(type_ref),
             bounds: Vec::new(),
         });
@@ -222,6 +227,7 @@ fn lower_generic_args_from_fn_path(
         let type_ref = TypeRef::Tuple(Vec::new());
         bindings.push(AssociatedTypeBinding {
             name: name![Output],
+            args: None,
             type_ref: Some(type_ref),
             bounds: Vec::new(),
         });

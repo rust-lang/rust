@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-overflowing.rs:2:36
    |
 LL |     let x: &'static (i32, bool) = &(5_i32.overflowing_add(3));
-   |            --------------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            --------------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 ...
@@ -13,7 +13,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-overflowing.rs:4:36
    |
 LL |     let y: &'static (i32, bool) = &(5_i32.overflowing_sub(3));
-   |            --------------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            --------------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 ...
@@ -24,7 +24,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-overflowing.rs:6:36
    |
 LL |     let z: &'static (i32, bool) = &(5_i32.overflowing_mul(3));
-   |            --------------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            --------------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL |

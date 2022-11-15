@@ -1110,8 +1110,8 @@ impl<T: ?Sized> Rc<T> {
 
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
-    /// Returns `true` if the two `Rc`s point to the same allocation
-    /// (in a vein similar to [`ptr::eq`]).
+    /// Returns `true` if the two `Rc`s point to the same allocation in a vein similar to
+    /// [`ptr::eq`]. See [that function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
     ///
     /// # Examples
     ///
@@ -2419,9 +2419,9 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same allocation (similar to
-    /// [`ptr::eq`]), or if both don't point to any allocation
-    /// (because they were created with `Weak::new()`).
+    /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::eq`], or if
+    /// both don't point to any allocation (because they were created with `Weak::new()`). See [that
+    /// function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
     ///
     /// # Notes
     ///

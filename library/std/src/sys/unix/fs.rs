@@ -1,3 +1,6 @@
+// miri has some special hacks here that make things unused.
+#![cfg_attr(miri, allow(unused))]
+
 use crate::os::unix::prelude::*;
 
 use crate::ffi::{CStr, OsStr, OsString};
@@ -850,7 +853,6 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox"
     )))]
-    #[cfg_attr(miri, allow(unused))]
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
     }
@@ -862,7 +864,6 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox"
     ))]
-    #[cfg_attr(miri, allow(unused))]
     fn name_cstr(&self) -> &CStr {
         &self.name
     }

@@ -4,6 +4,7 @@
 
 store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
     LintId::of(attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
+    LintId::of(casts::AS_PTR_CAST_MUT),
     LintId::of(cognitive_complexity::COGNITIVE_COMPLEXITY),
     LintId::of(copies::BRANCHES_SHARING_CODE),
     LintId::of(derive::DERIVE_PARTIAL_EQ_WITHOUT_EQ),

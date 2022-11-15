@@ -28,9 +28,9 @@ use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 
-#[allow(unused)]
+#[allow(unused, clippy::unnecessary_def_path)]
 static OPTION: [&str; 3] = ["core", "option", "Option"];
-#[allow(unused)]
+#[allow(unused, clippy::unnecessary_def_path)]
 const RESULT: &[&str] = &["core", "result", "Result"];
 
 fn _f<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, did: DefId, expr: &Expr<'_>) {
@@ -38,7 +38,7 @@ fn _f<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, did: DefId, expr: &Expr<'_>) {
     let _ = match_type(cx, ty, RESULT);
     let _ = match_type(cx, ty, &["core", "result", "Result"]);
 
-    #[allow(unused)]
+    #[allow(unused, clippy::unnecessary_def_path)]
     let rc_path = &["alloc", "rc", "Rc"];
     let _ = clippy_utils::ty::match_type(cx, ty, rc_path);
 

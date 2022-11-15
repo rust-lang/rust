@@ -80,7 +80,6 @@ pub macro unreachable_2015 {
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use unreachable!() instead")]
 #[allow_internal_unstable(core_panic)]
-#[rustc_diagnostic_item = "unreachable_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro unreachable_2021 {
     () => (

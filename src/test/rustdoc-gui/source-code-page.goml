@@ -1,30 +1,96 @@
 // Checks that the interactions with the source code pages are working as expected.
 goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+show-text: true
 // Check that we can click on the line number.
-click: ".src-line-numbers > span:nth-child(4)" // This is the span for line 4.
+click: ".src-line-numbers > a:nth-child(4)" // This is the anchor for line 4.
 // Ensure that the page URL was updated.
 assert-document-property: ({"URL": "lib.rs.html#4"}, ENDS_WITH)
 assert-attribute: ("//*[@id='4']", {"class": "line-highlighted"})
-// We now check that the good spans are highlighted
+// Ensure that the default style, with the right border, isn't used.
+assert-css: ("//*[@id='4']", {"border-right-width": "0px"})
+reload:
+assert-attribute: ("//*[@id='4']", {"class": "line-highlighted"})
+assert-css: ("//*[@id='4']", {"border-right-width": "0px"})
+// We now check that the good anchors are highlighted
 goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#4-6"
-assert-attribute-false: (".src-line-numbers > span:nth-child(3)", {"class": "line-highlighted"})
-assert-attribute: (".src-line-numbers > span:nth-child(4)", {"class": "line-highlighted"})
-assert-attribute: (".src-line-numbers > span:nth-child(5)", {"class": "line-highlighted"})
-assert-attribute: (".src-line-numbers > span:nth-child(6)", {"class": "line-highlighted"})
-assert-attribute-false: (".src-line-numbers > span:nth-child(7)", {"class": "line-highlighted"})
+assert-attribute-false: (".src-line-numbers > a:nth-child(3)", {"class": "line-highlighted"})
+assert-attribute: (".src-line-numbers > a:nth-child(4)", {"class": "line-highlighted"})
+assert-attribute: (".src-line-numbers > a:nth-child(5)", {"class": "line-highlighted"})
+assert-attribute: (".src-line-numbers > a:nth-child(6)", {"class": "line-highlighted"})
+assert-attribute-false: (".src-line-numbers > a:nth-child(7)", {"class": "line-highlighted"})
+
+define-function: (
+    "check-colors",
+    (theme, color, background_color, highlight_color, highlight_background_color),
+    [
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        ("reload"),
+        ("assert-css", (
+            ".src-line-numbers > a:not(.line-highlighted)",
+            {"color": |color|, "background-color": |background_color|},
+            ALL,
+        )),
+        ("assert-css", (
+            ".src-line-numbers > a.line-highlighted",
+            {"color": |highlight_color|, "background-color": |highlight_background_color|},
+            ALL,
+        )),
+    ],
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "rgb(92, 103, 115)",
+    "background_color": "rgba(0, 0, 0, 0)",
+    "highlight_color": "rgb(112, 128, 144)",
+    "highlight_background_color": "rgba(255, 236, 164, 0.06)",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "rgb(59, 145, 226)",
+    "background_color": "rgba(0, 0, 0, 0)",
+    "highlight_color": "rgb(59, 145, 226)",
+    "highlight_background_color": "rgb(10, 4, 47)",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "rgb(198, 126, 45)",
+    "background_color": "rgba(0, 0, 0, 0)",
+    "highlight_color": "rgb(198, 126, 45)",
+    "highlight_background_color": "rgb(253, 255, 211)",
+})
+
 // This is to ensure that the content is correctly align with the line numbers.
 compare-elements-position: ("//*[@id='1']", ".rust > code > span", ("y"))
+// Check the `href` property so that users can treat anchors as links.
+assert-property: (".src-line-numbers > a:nth-child(1)", {
+    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#1"
+})
+assert-property: (".src-line-numbers > a:nth-child(2)", {
+    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#2"
+})
+assert-property: (".src-line-numbers > a:nth-child(3)", {
+    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#3"
+})
+assert-property: (".src-line-numbers > a:nth-child(4)", {
+    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#4"
+})
+assert-property: (".src-line-numbers > a:nth-child(5)", {
+    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#5"
+})
+assert-property: (".src-line-numbers > a:nth-child(6)", {
+    "href": "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#6"
+})
 
 // Assert that the line numbers text is aligned to the right.
 assert-css: (".src-line-numbers", {"text-align": "right"})
 
 // Now let's check that clicking on something else than the line number doesn't
 // do anything (and certainly not add a `#NaN` to the URL!).
-show-text: true
 goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // We use this assert-position to know where we will click.
 assert-position: ("//*[@id='1']", {"x": 104, "y": 112})
-// We click on the left of the "1" span but still in the "src-line-number" `<pre>`.
+// We click on the left of the "1" anchor but still in the "src-line-number" `<pre>`.
 click: (103, 103)
 assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
 
@@ -36,7 +102,7 @@ assert: ".source-sidebar-expanded"
 
 // We check that the first entry of the sidebar is collapsed
 assert-property: ("#source-sidebar details:first-of-type", {"open": "false"})
-assert-text: ("#source-sidebar details:first-of-type > summary", "implementors")
+assert-text: ("#source-sidebar details:first-of-type > summary", "huge_logo")
 // We now click on it.
 click: "#source-sidebar details:first-of-type > summary"
 assert-property: ("#source-sidebar details:first-of-type", {"open": "true"})

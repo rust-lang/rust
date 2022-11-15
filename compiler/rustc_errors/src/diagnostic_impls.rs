@@ -11,8 +11,10 @@ use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use std::borrow::Cow;
 use std::fmt;
+use std::fmt::Write;
 use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
+use std::process::ExitStatus;
 
 pub struct DiagnosticArgFromDisplay<'a>(pub &'a dyn fmt::Display);
 
@@ -58,6 +60,7 @@ into_diagnostic_arg_using_display!(
     i128,
     u128,
     std::io::Error,
+    std::boxed::Box<dyn std::error::Error>,
     std::num::NonZeroU32,
     hir::Target,
     Edition,
@@ -66,7 +69,8 @@ into_diagnostic_arg_using_display!(
     ParseIntError,
     StackProtector,
     &TargetTriple,
-    SplitDebuginfo
+    SplitDebuginfo,
+    ExitStatus,
 );
 
 impl IntoDiagnosticArg for bool {
@@ -100,6 +104,12 @@ impl<'a> IntoDiagnosticArg for &'a str {
 impl IntoDiagnosticArg for String {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(self))
+    }
+}
+
+impl<'a> IntoDiagnosticArg for Cow<'a, str> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.into_owned()))
     }
 }
 
@@ -167,6 +177,37 @@ impl IntoDiagnosticArg for Level {
                 unreachable!("lints with the level of `expect` should not run this code");
             }
         }))
+    }
+}
+
+#[derive(Clone)]
+pub struct DiagnosticSymbolList(Vec<Symbol>);
+
+impl From<Vec<Symbol>> for DiagnosticSymbolList {
+    fn from(v: Vec<Symbol>) -> Self {
+        DiagnosticSymbolList(v)
+    }
+}
+
+impl IntoDiagnosticArg for DiagnosticSymbolList {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        // FIXME: replace the logic here with a real list formatter
+        let symbols = match &self.0[..] {
+            [symbol] => format!("`{symbol}`"),
+            [symbol, last] => {
+                format!("`{symbol}` and `{last}`",)
+            }
+            [symbols @ .., last] => {
+                let mut result = String::new();
+                for symbol in symbols {
+                    write!(result, "`{symbol}`, ").unwrap();
+                }
+                write!(result, "and `{last}`").unwrap();
+                result
+            }
+            [] => unreachable!(),
+        };
+        DiagnosticArgValue::Str(Cow::Owned(symbols))
     }
 }
 

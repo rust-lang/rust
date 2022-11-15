@@ -1,4 +1,5 @@
 use core::mem::*;
+use core::ptr;
 
 #[cfg(panic = "unwind")]
 use std::rc::Rc;
@@ -73,6 +74,25 @@ fn align_of_val_basic() {
     assert_eq!(align_of_val(&1u8), 1);
     assert_eq!(align_of_val(&1u16), 2);
     assert_eq!(align_of_val(&1u32), 4);
+}
+
+#[test]
+#[cfg(not(bootstrap))] // stage 0 doesn't have the fix yet, so the test fails
+fn align_of_val_raw_packed() {
+    #[repr(C, packed)]
+    struct B {
+        f: [u32],
+    }
+    let storage = [0u8; 4];
+    let b: *const B = ptr::from_raw_parts(storage.as_ptr().cast(), 1);
+    assert_eq!(unsafe { align_of_val_raw(b) }, 1);
+
+    const ALIGN_OF_VAL_RAW: usize = {
+        let storage = [0u8; 4];
+        let b: *const B = ptr::from_raw_parts(storage.as_ptr().cast(), 1);
+        unsafe { align_of_val_raw(b) }
+    };
+    assert_eq!(ALIGN_OF_VAL_RAW, 1);
 }
 
 #[test]

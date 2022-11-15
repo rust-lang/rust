@@ -65,7 +65,7 @@ declare_lint_pass!(OpaqueHiddenInferredBound => [OPAQUE_HIDDEN_INFERRED_BOUND]);
 impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         let hir::ItemKind::OpaqueTy(_) = &item.kind else { return; };
-        let def_id = item.def_id.def_id.to_def_id();
+        let def_id = item.owner_id.def_id.to_def_id();
         let infcx = &cx.tcx.infer_ctxt().build();
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
@@ -154,8 +154,9 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion_verbose(
+#[suggestion(
     lint_opaque_hidden_inferred_bound_sugg,
+    style = "verbose",
     applicability = "machine-applicable",
     code = " + {trait_ref}"
 )]

@@ -12,6 +12,10 @@ use std::str;
 use object::read::macho::FatArch;
 
 use crate::common;
+use crate::errors::{
+    ArchiveBuildFailure, DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary,
+    ErrorWritingDEFFile, UnknownArchiveKind,
+};
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
@@ -147,7 +151,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     fn build(mut self: Box<Self>, output: &Path) -> bool {
         match self.build_with_llvm(output) {
             Ok(any_members) => any_members,
-            Err(e) => self.sess.fatal(&format!("failed to build archive: {}", e)),
+            Err(e) => self.sess.emit_fatal(ArchiveBuildFailure { error: e }),
         }
     }
 }
@@ -165,10 +169,12 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         lib_name: &str,
         dll_imports: &[DllImport],
         tmpdir: &Path,
+        is_direct_dependency: bool,
     ) -> PathBuf {
+        let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
         let output_path = {
             let mut output_path: PathBuf = tmpdir.to_path_buf();
-            output_path.push(format!("{}_imports", lib_name));
+            output_path.push(format!("{}{}", lib_name, name_suffix));
             output_path.with_extension("lib")
         };
 
@@ -195,7 +201,8 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             // that loaded but crashed with an AV upon calling one of the imported
             // functions.  Therefore, use binutils to create the import library instead,
             // by writing a .DEF file to the temp dir and calling binutils's dlltool.
-            let def_file_path = tmpdir.join(format!("{}_imports", lib_name)).with_extension("def");
+            let def_file_path =
+                tmpdir.join(format!("{}{}", lib_name, name_suffix)).with_extension("def");
 
             let def_file_content = format!(
                 "EXPORTS\n{}",
@@ -214,7 +221,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             match std::fs::write(&def_file_path, def_file_content) {
                 Ok(_) => {}
                 Err(e) => {
-                    sess.fatal(&format!("Error writing .DEF file: {}", e));
+                    sess.emit_fatal(ErrorWritingDEFFile { error: e });
                 }
             };
 
@@ -236,13 +243,14 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
 
             match result {
                 Err(e) => {
-                    sess.fatal(&format!("Error calling dlltool: {}", e));
+                    sess.emit_fatal(ErrorCallingDllTool { error: e });
                 }
-                Ok(output) if !output.status.success() => sess.fatal(&format!(
-                    "Dlltool could not create import library: {}\n{}",
-                    String::from_utf8_lossy(&output.stdout),
-                    String::from_utf8_lossy(&output.stderr)
-                )),
+                Ok(output) if !output.status.success() => {
+                    sess.emit_fatal(DlltoolFailImportLibrary {
+                        stdout: String::from_utf8_lossy(&output.stdout),
+                        stderr: String::from_utf8_lossy(&output.stderr),
+                    })
+                }
                 _ => {}
             }
         } else {
@@ -290,11 +298,10 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             };
 
             if result == crate::llvm::LLVMRustResult::Failure {
-                sess.fatal(&format!(
-                    "Error creating import library for {}: {}",
+                sess.emit_fatal(ErrorCreatingImportLibrary {
                     lib_name,
-                    llvm::last_error().unwrap_or("unknown LLVM error".to_string())
-                ));
+                    error: llvm::last_error().unwrap_or("unknown LLVM error".to_string()),
+                });
             }
         };
 
@@ -305,9 +312,10 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
 impl<'a> LlvmArchiveBuilder<'a> {
     fn build_with_llvm(&mut self, output: &Path) -> io::Result<bool> {
         let kind = &*self.sess.target.archive_format;
-        let kind = kind.parse::<ArchiveKind>().map_err(|_| kind).unwrap_or_else(|kind| {
-            self.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
-        });
+        let kind = kind
+            .parse::<ArchiveKind>()
+            .map_err(|_| kind)
+            .unwrap_or_else(|kind| self.sess.emit_fatal(UnknownArchiveKind { kind }));
 
         let mut additions = mem::take(&mut self.additions);
         let mut strings = Vec::new();

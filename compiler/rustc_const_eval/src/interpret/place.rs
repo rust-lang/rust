@@ -201,7 +201,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
     }
 
@@ -316,8 +316,7 @@ where
         Ok(MPlaceTy { mplace, layout, align })
     }
 
-    /// Take an operand, representing a pointer, and dereference it to a place -- that
-    /// will always be a MemPlace.  Lives in `place.rs` because it creates a place.
+    /// Take an operand, representing a pointer, and dereference it to a place.
     #[instrument(skip(self), level = "debug")]
     pub fn deref_operand(
         &self,
@@ -331,7 +330,7 @@ where
         }
 
         let mplace = self.ref_to_mplace(&val)?;
-        self.check_mplace_access(mplace, CheckInAllocMsg::DerefTest)?;
+        self.check_mplace(mplace)?;
         Ok(mplace)
     }
 
@@ -340,7 +339,7 @@ where
         &self,
         place: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
-        assert!(!place.layout.is_unsized());
+        assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
         self.get_ptr_alloc(place.ptr, size, place.align)
@@ -351,24 +350,25 @@ where
         &mut self,
         place: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
-        assert!(!place.layout.is_unsized());
+        assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
         self.get_ptr_alloc_mut(place.ptr, size, place.align)
     }
 
     /// Check if this mplace is dereferenceable and sufficiently aligned.
-    fn check_mplace_access(
-        &self,
-        mplace: MPlaceTy<'tcx, M::Provenance>,
-        msg: CheckInAllocMsg,
-    ) -> InterpResult<'tcx> {
+    pub fn check_mplace(&self, mplace: MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
         let (size, align) = self
             .size_and_align_of_mplace(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         assert!(mplace.align <= align, "dynamic alignment less strict than static one?");
         let align = M::enforce_alignment(self).then_some(align);
-        self.check_ptr_access_align(mplace.ptr, size, align.unwrap_or(Align::ONE), msg)?;
+        self.check_ptr_access_align(
+            mplace.ptr,
+            size,
+            align.unwrap_or(Align::ONE),
+            CheckInAllocMsg::DerefTest,
+        )?;
         Ok(())
     }
 
@@ -485,7 +485,7 @@ where
         src: Immediate<M::Provenance>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        assert!(!dest.layout.is_unsized(), "Cannot write unsized data");
+        assert!(dest.layout.is_sized(), "Cannot write unsized data");
         trace!("write_immediate: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
         // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
@@ -746,7 +746,7 @@ where
         layout: TyAndLayout<'tcx>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         let ptr = self.allocate_ptr(layout.size, layout.align.abi, kind)?;
         Ok(MPlaceTy::from_aligned_ptr(ptr.into(), layout))
     }

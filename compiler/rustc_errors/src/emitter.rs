@@ -16,10 +16,10 @@ use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Styl
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, FluentBundle, Handler,
-    LazyFallbackBundle, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight, SuggestionStyle,
+    diagnostic::DiagnosticLocation, CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage,
+    FluentBundle, Handler, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
+    SubstitutionHighlight, SuggestionStyle,
 };
-
 use rustc_lint_defs::pluralize;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -64,6 +64,7 @@ impl HumanReadableErrorType {
         teach: bool,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
@@ -77,6 +78,7 @@ impl HumanReadableErrorType {
             color,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         )
     }
 }
@@ -312,7 +314,6 @@ pub trait Emitter: Translate {
 
     fn fix_multispans_in_extern_macros_and_render_macro_backtrace(
         &self,
-        source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
         children: &mut Vec<SubDiagnostic>,
         level: &Level,
@@ -338,7 +339,7 @@ pub trait Emitter: Translate {
             .collect();
 
         if !backtrace {
-            self.fix_multispans_in_extern_macros(source_map, span, children);
+            self.fix_multispans_in_extern_macros(span, children);
         }
 
         self.render_multispans_macro_backtrace(span, children, backtrace);
@@ -478,15 +479,13 @@ pub trait Emitter: Translate {
     // this will change the span to point at the use site.
     fn fix_multispans_in_extern_macros(
         &self,
-        source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
         children: &mut Vec<SubDiagnostic>,
     ) {
-        let Some(source_map) = source_map else { return };
         debug!("fix_multispans_in_extern_macros: before: span={:?} children={:?}", span, children);
-        self.fix_multispan_in_extern_macros(source_map, span);
+        self.fix_multispan_in_extern_macros(span);
         for child in children.iter_mut() {
-            self.fix_multispan_in_extern_macros(source_map, &mut child.span);
+            self.fix_multispan_in_extern_macros(&mut child.span);
         }
         debug!("fix_multispans_in_extern_macros: after: span={:?} children={:?}", span, children);
     }
@@ -494,7 +493,8 @@ pub trait Emitter: Translate {
     // This "fixes" MultiSpans that contain `Span`s pointing to locations inside of external macros.
     // Since these locations are often difficult to read,
     // we move these spans from the external macros to their corresponding use site.
-    fn fix_multispan_in_extern_macros(&self, source_map: &Lrc<SourceMap>, span: &mut MultiSpan) {
+    fn fix_multispan_in_extern_macros(&self, span: &mut MultiSpan) {
+        let Some(source_map) = self.source_map() else { return };
         // First, find all the spans in external macros and point instead at their use site.
         let replacements: Vec<(Span, Span)> = span
             .primary_spans()
@@ -542,7 +542,6 @@ impl Emitter for EmitterWriter {
         debug!("emit_diagnostic: suggestions={:?}", suggestions);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
-            &self.sm,
             &mut primary_span,
             &mut children,
             &diag.level,
@@ -557,6 +556,7 @@ impl Emitter for EmitterWriter {
             &primary_span,
             &children,
             &suggestions,
+            self.track_diagnostics.then_some(&diag.emitted_at),
         );
     }
 
@@ -650,6 +650,7 @@ pub struct EmitterWriter {
     diagnostic_width: Option<usize>,
 
     macro_backtrace: bool,
+    track_diagnostics: bool,
 }
 
 #[derive(Debug)]
@@ -669,6 +670,7 @@ impl EmitterWriter {
         teach: bool,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
@@ -681,6 +683,7 @@ impl EmitterWriter {
             ui_testing: false,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         }
     }
 
@@ -694,6 +697,7 @@ impl EmitterWriter {
         colored: bool,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst, colored),
@@ -705,6 +709,7 @@ impl EmitterWriter {
             ui_testing: false,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         }
     }
 
@@ -1327,6 +1332,7 @@ impl EmitterWriter {
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
+        emitted_at: Option<&DiagnosticLocation>,
     ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
 
@@ -1377,7 +1383,6 @@ impl EmitterWriter {
                 }
             }
         }
-
         let mut annotated_files = FileWithAnnotatedLines::collect_annotations(self, args, msp);
 
         // Make sure our primary file comes first
@@ -1651,6 +1656,12 @@ impl EmitterWriter {
                     multilines.extend(&to_add);
                 }
             }
+        }
+
+        if let Some(tracked) = emitted_at {
+            let track = format!("-Ztrack-diagnostics: created at {tracked}");
+            let len = buffer.num_lines();
+            buffer.append(len, &track, Style::NoStyle);
         }
 
         // final step: take our styled buffer, render it, then output it
@@ -1977,6 +1988,7 @@ impl EmitterWriter {
         span: &MultiSpan,
         children: &[SubDiagnostic],
         suggestions: &[CodeSuggestion],
+        emitted_at: Option<&DiagnosticLocation>,
     ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
@@ -1985,7 +1997,16 @@ impl EmitterWriter {
             num_decimal_digits(n)
         };
 
-        match self.emit_message_default(span, message, args, code, level, max_line_num_len, false) {
+        match self.emit_message_default(
+            span,
+            message,
+            args,
+            code,
+            level,
+            max_line_num_len,
+            false,
+            emitted_at,
+        ) {
             Ok(()) => {
                 if !children.is_empty()
                     || suggestions.iter().any(|s| s.style != SuggestionStyle::CompletelyHidden)
@@ -2014,6 +2035,7 @@ impl EmitterWriter {
                             &child.level,
                             max_line_num_len,
                             true,
+                            None,
                         ) {
                             panic!("failed to emit error: {}", err);
                         }
@@ -2030,6 +2052,7 @@ impl EmitterWriter {
                                 &Level::Help,
                                 max_line_num_len,
                                 true,
+                                None,
                             ) {
                                 panic!("failed to emit error: {}", e);
                             }
@@ -2187,22 +2210,45 @@ impl FileWithAnnotatedLines {
 
         if let Some(ref sm) = emitter.source_map() {
             for span_label in msp.span_labels() {
+                let fixup_lo_hi = |span: Span| {
+                    let lo = sm.lookup_char_pos(span.lo());
+                    let mut hi = sm.lookup_char_pos(span.hi());
+
+                    // Watch out for "empty spans". If we get a span like 6..6, we
+                    // want to just display a `^` at 6, so convert that to
+                    // 6..7. This is degenerate input, but it's best to degrade
+                    // gracefully -- and the parser likes to supply a span like
+                    // that for EOF, in particular.
+
+                    if lo.col_display == hi.col_display && lo.line == hi.line {
+                        hi.col_display += 1;
+                    }
+                    (lo, hi)
+                };
+
                 if span_label.span.is_dummy() {
+                    if let Some(span) = msp.primary_span() {
+                        // if we don't know where to render the annotation, emit it as a note
+                        // on the primary span.
+
+                        let (lo, hi) = fixup_lo_hi(span);
+
+                        let ann = Annotation {
+                            start_col: lo.col_display,
+                            end_col: hi.col_display,
+                            is_primary: span_label.is_primary,
+                            label: span_label
+                                .label
+                                .as_ref()
+                                .map(|m| emitter.translate_message(m, args).to_string()),
+                            annotation_type: AnnotationType::Singleline,
+                        };
+                        add_annotation_to_file(&mut output, lo.file, lo.line, ann);
+                    }
                     continue;
                 }
 
-                let lo = sm.lookup_char_pos(span_label.span.lo());
-                let mut hi = sm.lookup_char_pos(span_label.span.hi());
-
-                // Watch out for "empty spans". If we get a span like 6..6, we
-                // want to just display a `^` at 6, so convert that to
-                // 6..7. This is degenerate input, but it's best to degrade
-                // gracefully -- and the parser likes to supply a span like
-                // that for EOF, in particular.
-
-                if lo.col_display == hi.col_display && lo.line == hi.line {
-                    hi.col_display += 1;
-                }
+                let (lo, hi) = fixup_lo_hi(span_label.span);
 
                 if lo.line != hi.line {
                     let ml = MultilineAnnotation {

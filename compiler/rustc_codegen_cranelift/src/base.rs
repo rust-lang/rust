@@ -770,11 +770,7 @@ fn codegen_stmt<'tcx>(
                     lval.write_cvalue(fx, CValue::by_val(operand, box_layout));
                 }
                 Rvalue::NullaryOp(null_op, ty) => {
-                    assert!(
-                        lval.layout()
-                            .ty
-                            .is_sized(fx.tcx.at(stmt.source_info.span), ParamEnv::reveal_all())
-                    );
+                    assert!(lval.layout().ty.is_sized(fx.tcx, ParamEnv::reveal_all()));
                     let layout = fx.layout_of(fx.monomorphize(ty));
                     let val = match null_op {
                         NullOp::SizeOf => layout.size.bytes(),

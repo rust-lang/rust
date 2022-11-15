@@ -40,9 +40,9 @@ struct HelloWarn {}
 //~^ ERROR unsupported type attribute for diagnostic derive enum
 enum DiagnosticOnEnum {
     Foo,
-//~^ ERROR diagnostic slug not specified
+    //~^ ERROR diagnostic slug not specified
     Bar,
-//~^ ERROR diagnostic slug not specified
+    //~^ ERROR diagnostic slug not specified
 }
 
 #[derive(Diagnostic)]
@@ -211,9 +211,10 @@ struct LabelOnNonSpan {
 #[diag(compiletest_example, code = "E0123")]
 struct Suggest {
     #[suggestion(suggestion, code = "This is the suggested code")]
-    #[suggestion_short(suggestion, code = "This is the suggested code")]
-    #[suggestion_hidden(suggestion, code = "This is the suggested code")]
-    #[suggestion_verbose(suggestion, code = "This is the suggested code")]
+    #[suggestion(suggestion, code = "This is the suggested code", style = "normal")]
+    #[suggestion(suggestion, code = "This is the suggested code", style = "short")]
+    #[suggestion(suggestion, code = "This is the suggested code", style = "hidden")]
+    #[suggestion(suggestion, code = "This is the suggested code", style = "verbose")]
     suggestion: (Span, Applicability),
 }
 
@@ -536,8 +537,7 @@ struct LabelWithTrailingList {
 
 #[derive(LintDiagnostic)]
 #[diag(compiletest_example)]
-struct LintsGood {
-}
+struct LintsGood {}
 
 #[derive(LintDiagnostic)]
 #[diag(compiletest_example)]
@@ -683,7 +683,7 @@ struct RawIdentDiagnosticArg {
 #[diag(compiletest_example)]
 struct SubdiagnosticBad {
     #[subdiagnostic(bad)]
-//~^ ERROR `#[subdiagnostic(bad)]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic(bad)]` is not a valid attribute
     note: Note,
 }
 
@@ -691,7 +691,7 @@ struct SubdiagnosticBad {
 #[diag(compiletest_example)]
 struct SubdiagnosticBadStr {
     #[subdiagnostic = "bad"]
-//~^ ERROR `#[subdiagnostic = ...]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic = ...]` is not a valid attribute
     note: Note,
 }
 
@@ -699,7 +699,7 @@ struct SubdiagnosticBadStr {
 #[diag(compiletest_example)]
 struct SubdiagnosticBadTwice {
     #[subdiagnostic(bad, bad)]
-//~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -707,7 +707,7 @@ struct SubdiagnosticBadTwice {
 #[diag(compiletest_example)]
 struct SubdiagnosticBadLitStr {
     #[subdiagnostic("bad")]
-//~^ ERROR `#[subdiagnostic("...")]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic("...")]` is not a valid attribute
     note: Note,
 }
 
@@ -715,7 +715,7 @@ struct SubdiagnosticBadLitStr {
 #[diag(compiletest_example)]
 struct SubdiagnosticEagerLint {
     #[subdiagnostic(eager)]
-//~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -731,11 +731,7 @@ struct SubdiagnosticEagerCorrect {
 // after the `span_suggestion` call - which breaks eager translation.
 
 #[derive(Subdiagnostic)]
-#[suggestion_short(
-    use_instead,
-    applicability = "machine-applicable",
-    code = "{correct}"
-)]
+#[suggestion(use_instead, applicability = "machine-applicable", code = "{correct}")]
 pub(crate) struct SubdiagnosticWithSuggestion {
     #[primary_span]
     span: Span,
@@ -757,4 +753,49 @@ struct WithDocComment {
     /// ..and the field
     #[primary_span]
     span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionsGood {
+    #[suggestion(code("foo", "bar"))]
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionsSingleItem {
+    #[suggestion(code("foo"))]
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionsNoItem {
+    #[suggestion(code())]
+    //~^ ERROR expected at least one string literal for `code(...)`
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionsInvalidItem {
+    #[suggestion(code(foo))]
+    //~^ ERROR `code(...)` must contain only string literals
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionsInvalidLiteral {
+    #[suggestion(code = 3)]
+    //~^ ERROR `code = "..."`/`code(...)` must contain only string literals
+    sub: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(compiletest_example)]
+struct SuggestionStyleGood {
+    #[suggestion(code = "", style = "hidden")]
+    sub: Span,
 }

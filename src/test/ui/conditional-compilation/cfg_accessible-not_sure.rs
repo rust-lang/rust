@@ -46,7 +46,7 @@ const C: bool = true;
 trait Trait {}
 impl dyn Trait { fn existing() {} }
 
-// FIXME: Should be a error for edition > 2015
+// FIXME: Should be an error for edition > 2015
 #[cfg_accessible(Trait::existing)] //~ ERROR not sure
 const A: bool = true;
 #[cfg_accessible(Trait::unresolved)] //~ ERROR not sure

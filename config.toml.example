@@ -87,9 +87,10 @@ changelog-seen = 2
 # this flag will indicate that this version check should not be done.
 #version-check = true
 
-# Link libstdc++ statically into the rustc_llvm instead of relying on a
-# dynamic version to be available.
-#static-libstdcpp = true
+# When true, link libstdc++ statically into the rustc_llvm.
+# This is useful if you don't want to use the dynamic version of that
+# library provided by LLVM.
+#static-libstdcpp = false
 
 # Whether to use Ninja to build LLVM. This runs much faster than make.
 #ninja = true
@@ -290,10 +291,6 @@ changelog-seen = 2
 # Build the profiler runtime (required when compiling with options that depend
 # on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 #profiler = false
-
-# Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics.
-# Requires the LLVM submodule to be managed by bootstrap (i.e. not external).
-#optimized-compiler-builtins = false
 
 # Indicates whether the native libraries linked into Cargo will be statically
 # linked or not.

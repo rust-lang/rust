@@ -83,7 +83,7 @@ pub struct UnknownToolInScopedLint {
 pub struct BuiltinEllpisisInclusiveRangePatterns {
     #[primary_span]
     pub span: Span,
-    #[suggestion_short(code = "{replace}", applicability = "machine-applicable")]
+    #[suggestion(style = "short", code = "{replace}", applicability = "machine-applicable")]
     pub suggestion: Span,
     pub replace: String,
 }

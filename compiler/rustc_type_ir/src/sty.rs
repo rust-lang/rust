@@ -217,7 +217,7 @@ pub enum TyKind<I: Interner> {
 
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
-    Error(I::DelaySpanBugEmitted),
+    Error(I::ErrorGuaranteed),
 }
 
 impl<I: Interner> TyKind<I> {
@@ -626,7 +626,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 // This is manually implemented because a derive would require `I: Encodable`
 impl<I: Interner, E: TyEncoder> Encodable<E> for TyKind<I>
 where
-    I::DelaySpanBugEmitted: Encodable<E>,
+    I::ErrorGuaranteed: Encodable<E>,
     I::AdtDef: Encodable<E>,
     I::SubstsRef: Encodable<E>,
     I::DefId: Encodable<E>,
@@ -645,7 +645,6 @@ where
     I::BoundTy: Encodable<E>,
     I::PlaceholderType: Encodable<E>,
     I::InferTy: Encodable<E>,
-    I::DelaySpanBugEmitted: Encodable<E>,
     I::PredicateKind: Encodable<E>,
     I::AllocId: Encodable<E>,
 {
@@ -744,7 +743,7 @@ where
 // This is manually implemented because a derive would require `I: Decodable`
 impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for TyKind<I>
 where
-    I::DelaySpanBugEmitted: Decodable<D>,
+    I::ErrorGuaranteed: Decodable<D>,
     I::AdtDef: Decodable<D>,
     I::SubstsRef: Decodable<D>,
     I::DefId: Decodable<D>,
@@ -763,7 +762,6 @@ where
     I::BoundTy: Decodable<D>,
     I::PlaceholderType: Decodable<D>,
     I::InferTy: Decodable<D>,
-    I::DelaySpanBugEmitted: Decodable<D>,
     I::PredicateKind: Decodable<D>,
     I::AllocId: Decodable<D>,
 {
@@ -829,7 +827,7 @@ where
     I::ParamTy: HashStable<CTX>,
     I::PlaceholderType: HashStable<CTX>,
     I::InferTy: HashStable<CTX>,
-    I::DelaySpanBugEmitted: HashStable<CTX>,
+    I::ErrorGuaranteed: HashStable<CTX>,
 {
     #[inline]
     fn hash_stable(

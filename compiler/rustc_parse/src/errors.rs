@@ -64,7 +64,7 @@ pub(crate) struct BadQPathStage2 {
 #[diag(parser_incorrect_semicolon)]
 pub(crate) struct IncorrectSemicolon<'a> {
     #[primary_span]
-    #[suggestion_short(code = "", applicability = "machine-applicable")]
+    #[suggestion(style = "short", code = "", applicability = "machine-applicable")]
     pub span: Span,
     #[help]
     pub opt_help: Option<()>,
@@ -136,7 +136,12 @@ pub(crate) struct InvalidComparisonOperator {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidComparisonOperatorSub {
-    #[suggestion_short(use_instead, applicability = "machine-applicable", code = "{correct}")]
+    #[suggestion(
+        use_instead,
+        style = "short",
+        applicability = "machine-applicable",
+        code = "{correct}"
+    )]
     Correctable {
         #[primary_span]
         span: Span,
@@ -160,14 +165,16 @@ pub(crate) struct InvalidLogicalOperator {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidLogicalOperatorSub {
-    #[suggestion_short(
+    #[suggestion(
         use_amp_amp_for_conjunction,
+        style = "short",
         applicability = "machine-applicable",
         code = "&&"
     )]
     Conjunction(#[primary_span] Span),
-    #[suggestion_short(
+    #[suggestion(
         use_pipe_pipe_for_disjunction,
+        style = "short",
         applicability = "machine-applicable",
         code = "||"
     )]
@@ -178,7 +185,7 @@ pub(crate) enum InvalidLogicalOperatorSub {
 #[diag(parser_tilde_is_not_unary_operator)]
 pub(crate) struct TildeAsUnaryOperator(
     #[primary_span]
-    #[suggestion_short(applicability = "machine-applicable", code = "!")]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "!")]
     pub Span,
 );
 
@@ -194,22 +201,25 @@ pub(crate) struct NotAsNegationOperator {
 
 #[derive(Subdiagnostic)]
 pub enum NotAsNegationOperatorSub {
-    #[suggestion_short(
+    #[suggestion(
         parser_unexpected_token_after_not_default,
+        style = "short",
         applicability = "machine-applicable",
         code = "!"
     )]
     SuggestNotDefault(#[primary_span] Span),
 
-    #[suggestion_short(
+    #[suggestion(
         parser_unexpected_token_after_not_bitwise,
+        style = "short",
         applicability = "machine-applicable",
         code = "!"
     )]
     SuggestNotBitwise(#[primary_span] Span),
 
-    #[suggestion_short(
+    #[suggestion(
         parser_unexpected_token_after_not_logical,
+        style = "short",
         applicability = "machine-applicable",
         code = "!"
     )]
@@ -249,7 +259,7 @@ pub(crate) struct UnexpectedTokenAfterLabel {
     #[primary_span]
     #[label(parser_unexpected_token_after_label)]
     pub span: Span,
-    #[suggestion_verbose(suggestion_remove_label, code = "")]
+    #[suggestion(suggestion_remove_label, style = "verbose", code = "")]
     pub remove_label: Option<Span>,
     #[subdiagnostic]
     pub enclose_in_block: Option<UnexpectedTokenAfterLabelSugg>,
@@ -272,7 +282,7 @@ pub(crate) struct RequireColonAfterLabeledExpression {
     pub span: Span,
     #[label]
     pub label: Span,
-    #[suggestion_short(applicability = "machine-applicable", code = ": ")]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = ": ")]
     pub label_end: Span,
 }
 
@@ -354,8 +364,17 @@ pub(crate) struct IntLiteralTooLarge {
 pub(crate) struct MissingSemicolonBeforeArray {
     #[primary_span]
     pub open_delim: Span,
-    #[suggestion_verbose(applicability = "maybe-incorrect", code = ";")]
+    #[suggestion(style = "verbose", applicability = "maybe-incorrect", code = ";")]
     pub semicolon: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser_expect_dotdot_not_dotdotdot)]
+pub(crate) struct MissingDotDot {
+    #[primary_span]
+    pub token_span: Span,
+    #[suggestion(applicability = "maybe-incorrect", code = "..", style = "verbose")]
+    pub sugg_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -402,6 +421,15 @@ pub(crate) struct ExpectedExpressionFoundLet {
 }
 
 #[derive(Diagnostic)]
+#[diag(parser_expect_eq_instead_of_eqeq)]
+pub(crate) struct ExpectedEqForLetExpr {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(applicability = "maybe-incorrect", code = "=", style = "verbose")]
+    pub sugg_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parser_expected_else_block)]
 pub(crate) struct ExpectedElseBlock {
     #[primary_span]
@@ -442,9 +470,9 @@ pub(crate) struct MissingInInForLoop {
 #[derive(Subdiagnostic)]
 pub(crate) enum MissingInInForLoopSub {
     // Has been misleading, at least in the past (closed Issue #48492), thus maybe-incorrect
-    #[suggestion_short(use_in_not_of, applicability = "maybe-incorrect", code = "in")]
+    #[suggestion(use_in_not_of, style = "short", applicability = "maybe-incorrect", code = "in")]
     InNotOf(#[primary_span] Span),
-    #[suggestion_short(add_in, applicability = "maybe-incorrect", code = " in ")]
+    #[suggestion(add_in, style = "short", applicability = "maybe-incorrect", code = " in ")]
     AddIn(#[primary_span] Span),
 }
 
@@ -470,7 +498,7 @@ pub(crate) struct CatchAfterTry {
 pub(crate) struct CommaAfterBaseStruct {
     #[primary_span]
     pub span: Span,
-    #[suggestion_short(applicability = "machine-applicable", code = "")]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "")]
     pub comma: Span,
 }
 
@@ -512,7 +540,7 @@ pub(crate) struct RemoveLet {
 #[diag(parser_use_eq_instead)]
 pub(crate) struct UseEqInstead {
     #[primary_span]
-    #[suggestion_short(applicability = "machine-applicable", code = "=")]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "=")]
     pub span: Span,
 }
 
@@ -520,7 +548,7 @@ pub(crate) struct UseEqInstead {
 #[diag(parser_use_empty_block_not_semi)]
 pub(crate) struct UseEmptyBlockNotSemi {
     #[primary_span]
-    #[suggestion_hidden(applicability = "machine-applicable", code = "{{}}")]
+    #[suggestion(style = "hidden", applicability = "machine-applicable", code = "{{}}")]
     pub span: Span,
 }
 
@@ -576,7 +604,12 @@ pub(crate) struct LeadingPlusNotSupported {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[suggestion_verbose(suggestion_remove_plus, code = "", applicability = "machine-applicable")]
+    #[suggestion(
+        suggestion_remove_plus,
+        style = "verbose",
+        code = "",
+        applicability = "machine-applicable"
+    )]
     pub remove_plus: Option<Span>,
     #[subdiagnostic]
     pub add_parentheses: Option<ExprParenthesesNeeded>,
@@ -843,7 +876,7 @@ pub(crate) struct InvalidCurlyInLetElse {
 #[help]
 pub(crate) struct CompoundAssignmentExpressionInLet {
     #[primary_span]
-    #[suggestion_short(code = "=", applicability = "maybe-incorrect")]
+    #[suggestion(style = "short", code = "=", applicability = "maybe-incorrect")]
     pub span: Span,
 }
 
@@ -864,8 +897,9 @@ pub(crate) struct InvalidMetaItem {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion_verbose(
+#[suggestion(
     parser_sugg_escape_to_use_as_identifier,
+    style = "verbose",
     applicability = "maybe-incorrect",
     code = "r#"
 )]
@@ -918,6 +952,7 @@ pub(crate) struct ExpectedIdentifier {
 }
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'a rustc_errors::Handler,
@@ -963,6 +998,7 @@ pub(crate) struct ExpectedSemi {
 }
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'a rustc_errors::Handler,
@@ -1003,7 +1039,12 @@ pub(crate) enum ExpectedSemiSugg {
         applicability = "machine-applicable"
     )]
     ChangeToSemi(#[primary_span] Span),
-    #[suggestion_short(parser_sugg_add_semi, code = ";", applicability = "machine-applicable")]
+    #[suggestion(
+        parser_sugg_add_semi,
+        style = "short",
+        code = ";",
+        applicability = "machine-applicable"
+    )]
     AddSemi(#[primary_span] Span),
 }
 
@@ -1057,8 +1098,9 @@ pub(crate) struct GenericParamsWithoutAngleBracketsSugg {
 pub(crate) struct ComparisonOperatorsCannotBeChained {
     #[primary_span]
     pub span: Vec<Span>,
-    #[suggestion_verbose(
+    #[suggestion(
         parser_sugg_turbofish_syntax,
+        style = "verbose",
         code = "::",
         applicability = "maybe-incorrect"
     )]
@@ -1072,8 +1114,9 @@ pub(crate) struct ComparisonOperatorsCannotBeChained {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum ComparisonOperatorsCannotBeChainedSugg {
-    #[suggestion_verbose(
+    #[suggestion(
         sugg_split_comparison,
+        style = "verbose",
         code = " && {middle_term}",
         applicability = "maybe-incorrect"
     )]
@@ -1122,10 +1165,12 @@ pub(crate) struct ParenthesesInForHead {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(suggestion, applicability = "machine-applicable")]
 pub(crate) struct ParenthesesInForHeadSugg {
-    #[suggestion_part(code = "")]
+    #[suggestion_part(code = "{left_snippet}")]
     pub left: Span,
-    #[suggestion_part(code = "")]
+    pub left_snippet: String,
+    #[suggestion_part(code = "{right_snippet}")]
     pub right: Span,
+    pub right_snippet: String,
 }
 
 #[derive(Diagnostic)]
@@ -1155,6 +1200,14 @@ pub(crate) struct PatternMethodParamWithoutBody {
 #[derive(Diagnostic)]
 #[diag(parser_self_param_not_first)]
 pub(crate) struct SelfParamNotFirst {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser_invalid_identifier_with_leading_number)]
+pub(crate) struct InvalidIdentiferStartsWithNumber {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -1215,7 +1268,7 @@ pub(crate) enum UnexpectedConstParamDeclarationSugg {
 pub(crate) struct UnexpectedConstInGenericParam {
     #[primary_span]
     pub span: Span,
-    #[suggestion_verbose(code = "", applicability = "maybe-incorrect")]
+    #[suggestion(style = "verbose", code = "", applicability = "maybe-incorrect")]
     pub to_remove: Option<Span>,
 }
 
@@ -1223,7 +1276,7 @@ pub(crate) struct UnexpectedConstInGenericParam {
 #[diag(parser_async_move_order_incorrect)]
 pub(crate) struct AsyncMoveOrderIncorrect {
     #[primary_span]
-    #[suggestion_verbose(code = "async move", applicability = "maybe-incorrect")]
+    #[suggestion(style = "verbose", code = "async move", applicability = "maybe-incorrect")]
     pub span: Span,
 }
 
@@ -1234,4 +1287,25 @@ pub(crate) struct DoubleColonInBound {
     pub span: Span,
     #[suggestion(code = ": ", applicability = "machine-applicable")]
     pub between: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser_fn_ptr_with_generics)]
+pub(crate) struct FnPtrWithGenerics {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<FnPtrWithGenericsSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct FnPtrWithGenericsSugg {
+    #[suggestion_part(code = "{snippet}")]
+    pub left: Span,
+    pub snippet: String,
+    #[suggestion_part(code = "")]
+    pub right: Span,
+    pub arity: usize,
+    pub for_param_list_exists: bool,
 }

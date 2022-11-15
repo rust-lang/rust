@@ -1,4 +1,3 @@
-//@ignore-target-windows: Concurrency on Windows is not supported yet.
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-strict-provenance
 
 use std::sync::{Arc, Barrier, Condvar, Mutex, Once, RwLock};
@@ -225,14 +224,14 @@ fn park_unpark() {
 }
 
 fn main() {
-    check_barriers();
-    check_conditional_variables_notify_one();
-    check_conditional_variables_timed_wait_timeout();
-    check_conditional_variables_timed_wait_notimeout();
     check_mutex();
     check_rwlock_write();
     check_rwlock_read_no_deadlock();
     check_once();
     park_timeout();
     park_unpark();
+    check_barriers();
+    check_conditional_variables_notify_one();
+    check_conditional_variables_timed_wait_timeout();
+    check_conditional_variables_timed_wait_notimeout();
 }

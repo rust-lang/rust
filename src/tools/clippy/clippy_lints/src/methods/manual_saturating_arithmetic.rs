@@ -21,11 +21,7 @@ pub fn check(
         return;
     }
 
-    let mm = if let Some(mm) = is_min_or_max(cx, unwrap_arg) {
-        mm
-    } else {
-        return;
-    };
+    let Some(mm) = is_min_or_max(cx, unwrap_arg) else { return };
 
     if ty.is_signed() {
         use self::{
@@ -33,9 +29,7 @@ pub fn check(
             Sign::{Neg, Pos},
         };
 
-        let sign = if let Some(sign) = lit_sign(arith_rhs) {
-            sign
-        } else {
+        let Some(sign) = lit_sign(arith_rhs) else {
             return;
         };
 

@@ -32,8 +32,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    let deref_aliases: [&[&str]; 9] = [
-        &paths::DEREF_TRAIT_METHOD,
+    let deref_aliases: [&[&str]; 8] = [
         &paths::DEREF_MUT_TRAIT_METHOD,
         &paths::CSTRING_AS_C_STR,
         &paths::OS_STRING_AS_OS_STR,
@@ -45,12 +44,14 @@ pub(super) fn check<'tcx>(
     ];
 
     let is_deref = match map_arg.kind {
-        hir::ExprKind::Path(ref expr_qpath) => cx
-            .qpath_res(expr_qpath, map_arg.hir_id)
-            .opt_def_id()
-            .map_or(false, |fun_def_id| {
-                deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
-            }),
+        hir::ExprKind::Path(ref expr_qpath) => {
+            cx.qpath_res(expr_qpath, map_arg.hir_id)
+                .opt_def_id()
+                .map_or(false, |fun_def_id| {
+                    cx.tcx.is_diagnostic_item(sym::deref_method, fun_def_id)
+                        || deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
+                })
+        },
         hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
             let closure_body = cx.tcx.hir().body(body);
             let closure_expr = peel_blocks(closure_body.value);
@@ -68,7 +69,8 @@ pub(super) fn check<'tcx>(
                         if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
                         then {
                             let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap();
-                            deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
+                            cx.tcx.is_diagnostic_item(sym::deref_method, method_did)
+                                || deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
                         } else {
                             false
                         }

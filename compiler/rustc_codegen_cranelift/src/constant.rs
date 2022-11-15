@@ -5,7 +5,6 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
-use rustc_span::DUMMY_SP;
 
 use cranelift_module::*;
 
@@ -129,7 +128,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
     let layout = fx.layout_of(ty);
-    assert!(!layout.is_unsized(), "sized const value");
+    assert!(layout.is_sized(), "unsized const value");
 
     if layout.is_zst() {
         return CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout);
@@ -291,7 +290,7 @@ fn data_id_for_static(
     let is_mutable = if tcx.is_mutable_static(def_id) {
         true
     } else {
-        !ty.is_freeze(tcx.at(DUMMY_SP), ParamEnv::reveal_all())
+        !ty.is_freeze(tcx, ParamEnv::reveal_all())
     };
     let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
 

@@ -10,6 +10,7 @@ pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine, TraitEngineExt};
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
@@ -294,7 +295,7 @@ pub struct InferCtxt<'tcx> {
 
     /// the set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
-    pub reported_trait_errors: RefCell<FxHashMap<Span, Vec<ty::Predicate<'tcx>>>>,
+    pub reported_trait_errors: RefCell<FxIndexMap<Span, Vec<ty::Predicate<'tcx>>>>,
 
     pub reported_closure_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
@@ -425,7 +426,7 @@ pub enum SubregionOrigin<'tcx> {
 static_assert_size!(SubregionOrigin<'_>, 32);
 
 impl<'tcx> SubregionOrigin<'tcx> {
-    pub fn to_constraint_category(&self) -> ConstraintCategory {
+    pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self {
             Self::Subtype(type_trace) => type_trace.cause.to_constraint_category(),
             Self::AscribeUserTypeProvePredicate(span) => ConstraintCategory::Predicate(*span),
@@ -677,9 +678,9 @@ pub struct CombinedSnapshot<'tcx> {
 
 impl<'tcx> InferCtxt<'tcx> {
     /// Creates a `TypeErrCtxt` for emitting various inference errors.
-    /// During typeck, use `FnCtxt::infer_err` instead.
+    /// During typeck, use `FnCtxt::err_ctxt` instead.
     pub fn err_ctxt(&self) -> TypeErrCtxt<'_, 'tcx> {
-        TypeErrCtxt { infcx: self, typeck_results: None }
+        TypeErrCtxt { infcx: self, typeck_results: None, fallback_has_occurred: false }
     }
 
     /// calls `tcx.try_unify_abstract_consts` after
@@ -775,32 +776,6 @@ impl<'tcx> InferCtxt<'tcx> {
             obligations: PredicateObligations::new(),
             define_opaque_types,
         }
-    }
-
-    /// Clear the "currently in a snapshot" flag, invoke the closure,
-    /// then restore the flag to its original value. This flag is a
-    /// debugging measure designed to detect cases where we start a
-    /// snapshot, create type variables, and register obligations
-    /// which may involve those type variables in the fulfillment cx,
-    /// potentially leaving "dangling type variables" behind.
-    /// In such cases, an assertion will fail when attempting to
-    /// register obligations, within a snapshot. Very useful, much
-    /// better than grovelling through megabytes of `RUSTC_LOG` output.
-    ///
-    /// HOWEVER, in some cases the flag is unhelpful. In particular, we
-    /// sometimes create a "mini-fulfilment-cx" in which we enroll
-    /// obligations. As long as this fulfillment cx is fully drained
-    /// before we return, this is not a problem, as there won't be any
-    /// escaping obligations in the main cx. In those cases, you can
-    /// use this function.
-    pub fn save_and_restore_in_snapshot_flag<F, R>(&self, func: F) -> R
-    where
-        F: FnOnce(&Self) -> R,
-    {
-        let flag = self.in_snapshot.replace(false);
-        let result = func(self);
-        self.in_snapshot.set(flag);
-        result
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot<'tcx> {
@@ -1469,7 +1444,12 @@ impl<'tcx> InferCtxt<'tcx> {
          * except during the writeback phase.
          */
 
-        resolve::fully_resolve(self, value)
+        let value = resolve::fully_resolve(self, value);
+        assert!(
+            value.as_ref().map_or(true, |value| !value.needs_infer()),
+            "`{value:?}` is not fully resolved"
+        );
+        value
     }
 
     pub fn replace_bound_vars_with_fresh_vars<T>(
@@ -2060,13 +2040,13 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                 if ty.has_non_region_param() || ty.has_non_region_infer() {
                     bug!("const `{ct}`'s type should not reference params or types");
                 }
-                tcx.mk_const(ty::ConstS {
-                    ty,
-                    kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
+                tcx.mk_const(
+                    ty::ConstKind::Placeholder(ty::PlaceholderConst {
                         universe: ty::UniverseIndex::ROOT,
                         name: ty::BoundVar::from_usize(idx),
                     }),
-                })
+                    ty,
+                )
                 .into()
             }
             _ => arg,

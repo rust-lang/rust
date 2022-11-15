@@ -116,11 +116,6 @@ pub trait MirPass<'tcx> {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
 
-    /// If this pass causes the MIR to enter a new phase, return that phase.
-    fn phase_change(&self) -> Option<MirPhase> {
-        None
-    }
-
     fn is_mir_dump_enabled(&self) -> bool {
         true
     }
@@ -141,6 +136,77 @@ impl MirPhase {
             MirPhase::Runtime(runtime_phase) => {
                 1 + BUILT_PHASE_COUNT + ANALYSIS_PHASE_COUNT + (*runtime_phase as usize)
             }
+        }
+    }
+
+    /// Parses an `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
+    pub fn parse(dialect: String, phase: Option<String>) -> Self {
+        match &*dialect.to_ascii_lowercase() {
+            "built" => {
+                assert!(phase.is_none(), "Cannot specify a phase for `Built` MIR");
+                MirPhase::Built
+            }
+            "analysis" => Self::Analysis(AnalysisPhase::parse(phase)),
+            "runtime" => Self::Runtime(RuntimePhase::parse(phase)),
+            _ => panic!("Unknown MIR dialect {}", dialect),
+        }
+    }
+}
+
+impl AnalysisPhase {
+    pub fn parse(phase: Option<String>) -> Self {
+        let Some(phase) = phase else {
+            return Self::Initial;
+        };
+
+        match &*phase.to_ascii_lowercase() {
+            "initial" => Self::Initial,
+            "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
+            _ => panic!("Unknown analysis phase {}", phase),
+        }
+    }
+}
+
+impl RuntimePhase {
+    pub fn parse(phase: Option<String>) -> Self {
+        let Some(phase) = phase else {
+            return Self::Initial;
+        };
+
+        match &*phase.to_ascii_lowercase() {
+            "initial" => Self::Initial,
+            "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
+            "optimized" => Self::Optimized,
+            _ => panic!("Unknown runtime phase {}", phase),
+        }
+    }
+}
+
+impl Display for MirPhase {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            MirPhase::Built => write!(f, "built"),
+            MirPhase::Analysis(p) => write!(f, "analysis-{}", p),
+            MirPhase::Runtime(p) => write!(f, "runtime-{}", p),
+        }
+    }
+}
+
+impl Display for AnalysisPhase {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            AnalysisPhase::Initial => write!(f, "initial"),
+            AnalysisPhase::PostCleanup => write!(f, "post_cleanup"),
+        }
+    }
+}
+
+impl Display for RuntimePhase {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            RuntimePhase::Initial => write!(f, "initial"),
+            RuntimePhase::PostCleanup => write!(f, "post_cleanup"),
+            RuntimePhase::Optimized => write!(f, "optimized"),
         }
     }
 }
@@ -207,6 +273,9 @@ pub struct Body<'tcx> {
     /// us to see the difference and forego optimization on the inlined promoted items.
     pub phase: MirPhase,
 
+    /// How many passses we have executed since starting the current phase. Used for debug output.
+    pub pass_count: usize,
+
     pub source: MirSource<'tcx>,
 
     /// A list of source scopes; these are referenced by statements
@@ -266,6 +335,13 @@ pub struct Body<'tcx> {
     /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
     pub is_polymorphic: bool,
 
+    /// The phase at which this MIR should be "injected" into the compilation process.
+    ///
+    /// Everything that comes before this `MirPhase` should be skipped.
+    ///
+    /// This is only `Some` if the function that this body comes from was annotated with `rustc_custom_mir`.
+    pub injection_phase: Option<MirPhase>,
+
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
@@ -292,6 +368,7 @@ impl<'tcx> Body<'tcx> {
 
         let mut body = Body {
             phase: MirPhase::Built,
+            pass_count: 1,
             source,
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
@@ -311,6 +388,7 @@ impl<'tcx> Body<'tcx> {
             span,
             required_consts: Vec::new(),
             is_polymorphic: false,
+            injection_phase: None,
             tainted_by_errors,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -325,6 +403,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         let mut body = Body {
             phase: MirPhase::Built,
+            pass_count: 1,
             source: MirSource::item(CRATE_DEF_ID.to_def_id()),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),
@@ -337,6 +416,7 @@ impl<'tcx> Body<'tcx> {
             required_consts: Vec::new(),
             var_debug_info: Vec::new(),
             is_polymorphic: false,
+            injection_phase: None,
             tainted_by_errors: None,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -478,6 +558,14 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn generator_kind(&self) -> Option<GeneratorKind> {
         self.generator.as_ref().map(|generator| generator.generator_kind)
+    }
+
+    #[inline]
+    pub fn should_skip(&self) -> bool {
+        let Some(injection_phase) = self.injection_phase else {
+            return false;
+        };
+        injection_phase > self.phase
     }
 }
 
@@ -1157,6 +1245,11 @@ impl<'tcx> BasicBlockData<'tcx> {
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
         if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
     }
+
+    /// Does the block have no statements and an unreachable terminator?
+    pub fn is_empty_unreachable(&self) -> bool {
+        self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
+    }
 }
 
 impl<O> AssertKind<O> {
@@ -1448,7 +1541,7 @@ impl<'tcx> Place<'tcx> {
     /// If MirPhase >= Derefered and if projection contains Deref,
     /// It's guaranteed to be in the first place
     pub fn has_deref(&self) -> bool {
-        // To make sure this is not accidently used in wrong mir phase
+        // To make sure this is not accidentally used in wrong mir phase
         debug_assert!(
             self.projection.is_empty() || !self.projection[1..].contains(&PlaceElem::Deref)
         );
@@ -1864,6 +1957,7 @@ impl BorrowKind {
         }
     }
 
+    // FIXME: won't be used after diagnostic migration
     pub fn describe_mutability(&self) -> &str {
         match *self {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => "immutable",
@@ -2158,7 +2252,9 @@ impl<'tcx> ConstantKind<'tcx> {
                 match tcx.const_eval_resolve(param_env, uneval, None) {
                     Ok(val) => Self::Val(val, ty),
                     Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
-                    Err(_) => Self::Ty(tcx.const_error(ty)),
+                    Err(ErrorHandled::Reported(guar)) => {
+                        Self::Ty(tcx.const_error_with_guaranteed(ty, guar))
+                    }
                 }
             }
         }
@@ -2380,10 +2476,8 @@ impl<'tcx> ConstantKind<'tcx> {
                 let generics = tcx.generics_of(item_def_id.to_def_id());
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.hir().name(hir_id);
-                let ty_const = tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
-                    ty,
-                });
+                let ty_const =
+                    tcx.mk_const(ty::ConstKind::Param(ty::ParamConst::new(index, name)), ty);
                 debug!(?ty_const);
 
                 return Self::Ty(ty_const);
@@ -2875,7 +2969,7 @@ fn pretty_print_const_value<'tcx>(
 /// `Location` represents the position of the start of the statement; or, if
 /// `statement_index` equals the number of statements, then the start of the
 /// terminator.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
 pub struct Location {
     /// The block that the location is within.
     pub block: BasicBlock,

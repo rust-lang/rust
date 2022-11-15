@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted-const-drop.rs:13:26
    |
 LL |     let _: &'static A = &A();
-   |            ----------    ^^^ creates a temporary which is freed while still in use
+   |            ----------    ^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL |     let _: &'static [A] = &[C];
@@ -13,7 +13,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted-const-drop.rs:14:28
    |
 LL |     let _: &'static [A] = &[C];
-   |            ------------    ^^^ creates a temporary which is freed while still in use
+   |            ------------    ^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL | }

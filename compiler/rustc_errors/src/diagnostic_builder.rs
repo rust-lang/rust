@@ -16,8 +16,7 @@ use std::thread::panicking;
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
-#[cfg_attr(bootstrap, rustc_diagnostic_item = "SessionDiagnostic")]
-#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "IntoDiagnostic")]
+#[rustc_diagnostic_item = "IntoDiagnostic"]
 pub trait IntoDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `Handler`.
     #[must_use]
@@ -133,6 +132,7 @@ mod sealed_level_is_error {
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
+    #[track_caller]
     pub(crate) fn new_guaranteeing_error<M: Into<DiagnosticMessage>, const L: Level>(
         handler: &'a Handler,
         message: M,
@@ -196,6 +196,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
         }
     }
 
+    #[track_caller]
     fn make_diagnostic_builder(
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
@@ -209,6 +210,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
 impl<'a> DiagnosticBuilder<'a, ()> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
+    #[track_caller]
     pub(crate) fn new<M: Into<DiagnosticMessage>>(
         handler: &'a Handler,
         level: Level,
@@ -220,6 +222,7 @@ impl<'a> DiagnosticBuilder<'a, ()> {
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
+    #[track_caller]
     pub(crate) fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
         debug!("Created new diagnostic");
         Self {
@@ -308,6 +311,7 @@ impl EmissionGuarantee for Noted {
 impl<'a> DiagnosticBuilder<'a, !> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
+    #[track_caller]
     pub(crate) fn new_fatal(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
         let diagnostic = Diagnostic::new_with_code(Level::Fatal, None, message);
         Self::new_diagnostic_fatal(handler, diagnostic)
@@ -477,9 +481,9 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
     #[track_caller]
-    pub fn delay_as_bug(&mut self) {
+    pub fn delay_as_bug(&mut self) -> G {
         self.downgrade_to_delayed_bug();
-        self.emit();
+        self.emit()
     }
 
     forward!(
@@ -594,13 +598,13 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         &mut self,
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = String>,
+        suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn multipart_suggestions(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = Vec<(Span, String)>>,
+        suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion_short(

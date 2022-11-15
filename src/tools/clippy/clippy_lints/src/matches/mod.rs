@@ -1,7 +1,9 @@
 mod collapsible_match;
 mod infallible_destructuring_match;
+mod manual_filter;
 mod manual_map;
 mod manual_unwrap_or;
+mod manual_utils;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
@@ -898,6 +900,34 @@ declare_clippy_lint! {
     "reimplementation of `map`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `match` which could be implemented using `filter`
+    ///
+    /// ### Why is this bad?
+    /// Using the `filter` method is clearer and more concise.
+    ///
+    /// ### Example
+    /// ```rust
+    /// match Some(0) {
+    ///     Some(x) => if x % 2 == 0 {
+    ///                     Some(x)
+    ///                } else {
+    ///                     None
+    ///                 },
+    ///     None => None,
+    /// };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// Some(0).filter(|&x| x % 2 == 0);
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub MANUAL_FILTER,
+    complexity,
+    "reimplentation of `filter`"
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Option<RustcVersion>,
@@ -939,6 +969,7 @@ impl_lint_pass!(Matches => [
     SIGNIFICANT_DROP_IN_SCRUTINEE,
     TRY_ERR,
     MANUAL_MAP,
+    MANUAL_FILTER,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -988,6 +1019,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     if !in_constant(cx, expr.hir_id) {
                         manual_unwrap_or::check(cx, expr, ex, arms);
                         manual_map::check_match(cx, expr, ex, arms);
+                        manual_filter::check_match(cx, ex, arms, expr);
                     }
 
                     if self.infallible_destructuring_match_linted {
@@ -1014,6 +1046,14 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     }
                     if !in_constant(cx, expr.hir_id) {
                         manual_map::check_if_let(cx, expr, if_let.let_pat, if_let.let_expr, if_let.if_then, else_expr);
+                        manual_filter::check_if_let(
+                            cx,
+                            expr,
+                            if_let.let_pat,
+                            if_let.let_expr,
+                            if_let.if_then,
+                            else_expr,
+                        );
                     }
                 }
                 redundant_pattern_match::check_if_let(

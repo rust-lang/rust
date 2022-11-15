@@ -4,12 +4,16 @@ use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
+use super::metadata::search_for_section;
+
 use object::read::archive::ArchiveFile;
 
-use std::fmt::Display;
+use std::error::Error;
 use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
+
+use crate::errors::ExtractBundledLibsError;
 
 pub trait ArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a>;
@@ -25,34 +29,41 @@ pub trait ArchiveBuilderBuilder {
         lib_name: &str,
         dll_imports: &[DllImport],
         tmpdir: &Path,
+        is_direct_dependency: bool,
     ) -> PathBuf;
 
-    fn extract_bundled_libs(
-        &self,
-        rlib: &Path,
+    fn extract_bundled_libs<'a>(
+        &'a self,
+        rlib: &'a Path,
         outdir: &Path,
         bundled_lib_file_names: &FxHashSet<Symbol>,
-    ) -> Result<(), String> {
-        let message = |msg: &str, e: &dyn Display| format!("{} '{}': {}", msg, &rlib.display(), e);
+    ) -> Result<(), ExtractBundledLibsError<'_>> {
         let archive_map = unsafe {
-            Mmap::map(File::open(rlib).map_err(|e| message("failed to open file", &e))?)
-                .map_err(|e| message("failed to mmap file", &e))?
+            Mmap::map(
+                File::open(rlib)
+                    .map_err(|e| ExtractBundledLibsError::OpenFile { rlib, error: Box::new(e) })?,
+            )
+            .map_err(|e| ExtractBundledLibsError::MmapFile { rlib, error: Box::new(e) })?
         };
         let archive = ArchiveFile::parse(&*archive_map)
-            .map_err(|e| message("failed to parse archive", &e))?;
+            .map_err(|e| ExtractBundledLibsError::ParseArchive { rlib, error: Box::new(e) })?;
 
         for entry in archive.members() {
-            let entry = entry.map_err(|e| message("failed to read entry", &e))?;
+            let entry = entry
+                .map_err(|e| ExtractBundledLibsError::ReadEntry { rlib, error: Box::new(e) })?;
             let data = entry
                 .data(&*archive_map)
-                .map_err(|e| message("failed to get data from archive member", &e))?;
+                .map_err(|e| ExtractBundledLibsError::ArchiveMember { rlib, error: Box::new(e) })?;
             let name = std::str::from_utf8(entry.name())
-                .map_err(|e| message("failed to convert name", &e))?;
+                .map_err(|e| ExtractBundledLibsError::ConvertName { rlib, error: Box::new(e) })?;
             if !bundled_lib_file_names.contains(&Symbol::intern(name)) {
                 continue; // We need to extract only native libraries.
             }
+            let data = search_for_section(rlib, data, ".bundled_lib").map_err(|e| {
+                ExtractBundledLibsError::ExtractSection { rlib, error: Box::<dyn Error>::from(e) }
+            })?;
             std::fs::write(&outdir.join(&name), data)
-                .map_err(|e| message("failed to write file", &e))?;
+                .map_err(|e| ExtractBundledLibsError::WriteFile { rlib, error: Box::new(e) })?;
         }
         Ok(())
     }

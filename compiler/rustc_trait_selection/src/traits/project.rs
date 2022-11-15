@@ -647,7 +647,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn fold_const(&mut self, constant: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let tcx = self.selcx.tcx();
-        if tcx.lazy_normalization() {
+        if tcx.lazy_normalization() || !needs_normalization(&constant, self.param_env.reveal()) {
             constant
         } else {
             let constant = constant.super_fold_with(self);
@@ -831,9 +831,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderConst { universe, name: bound_const };
                 self.mapped_consts.insert(p, bound_const);
-                self.infcx
-                    .tcx
-                    .mk_const(ty::ConstS { kind: ty::ConstKind::Placeholder(p), ty: ct.ty() })
+                self.infcx.tcx.mk_const(ty::ConstKind::Placeholder(p), ct.ty())
             }
             _ => ct.super_fold_with(self),
         }
@@ -968,10 +966,7 @@ impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
                     let db = ty::DebruijnIndex::from_usize(
                         self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                     );
-                    self.tcx().mk_const(ty::ConstS {
-                        kind: ty::ConstKind::Bound(db, *replace_var),
-                        ty: ct.ty(),
-                    })
+                    self.tcx().mk_const(ty::ConstKind::Bound(db, *replace_var), ct.ty())
                 }
                 None => ct,
             }
@@ -2173,7 +2168,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             crate::traits::InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         let did = ty::WithOptConstParam::unknown(assoc_ty.item.def_id);
         let kind = ty::ConstKind::Unevaluated(ty::UnevaluatedConst::new(did, identity_substs));
-        ty.map_bound(|ty| tcx.mk_const(ty::ConstS { ty, kind }).into())
+        ty.map_bound(|ty| tcx.mk_const(kind, ty).into())
     } else {
         ty.map_bound(|ty| ty.into())
     };
@@ -2192,7 +2187,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 // Verify that the trait item and its implementation have compatible substs lists
 fn check_substs_compatible<'tcx>(
     tcx: TyCtxt<'tcx>,
-    assoc_ty: &ty::AssocItem,
+    assoc_item: &ty::AssocItem,
     substs: ty::SubstsRef<'tcx>,
 ) -> bool {
     fn check_substs_compatible_inner<'tcx>(
@@ -2224,7 +2219,10 @@ fn check_substs_compatible<'tcx>(
         true
     }
 
-    check_substs_compatible_inner(tcx, tcx.generics_of(assoc_ty.def_id), substs.as_slice())
+    let generics = tcx.generics_of(assoc_item.def_id);
+    // Chop off any additional substs (RPITIT) substs
+    let substs = &substs[0..generics.count().min(substs.len())];
+    check_substs_compatible_inner(tcx, generics, substs)
 }
 
 fn confirm_impl_trait_in_trait_candidate<'tcx>(
@@ -2253,11 +2251,27 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         };
     }
 
-    let impl_fn_def_id = leaf_def.item.def_id;
     // Rebase from {trait}::{fn}::{opaque} to {impl}::{fn}::{opaque},
     // since `data.substs` are the impl substs.
     let impl_fn_substs =
         obligation.predicate.substs.rebase_onto(tcx, tcx.parent(trait_fn_def_id), data.substs);
+    let impl_fn_substs = translate_substs(
+        selcx.infcx(),
+        obligation.param_env,
+        data.impl_def_id,
+        impl_fn_substs,
+        leaf_def.defining_node,
+    );
+
+    if !check_substs_compatible(tcx, &leaf_def.item, impl_fn_substs) {
+        let err = tcx.ty_error_with_message(
+            obligation.cause.span,
+            "impl method and trait method have different parameters",
+        );
+        return Progress { term: err.into(), obligations };
+    }
+
+    let impl_fn_def_id = leaf_def.item.def_id;
 
     let cause = ObligationCause::new(
         obligation.cause.span,

@@ -10,8 +10,8 @@ use super::{
 use crate::errors::{
     AssignmentElseNotAllowed, CompoundAssignmentExpressionInLet, ConstLetMutuallyExclusive,
     DocCommentDoesNotDocumentAnything, ExpectedStatementAfterOuterAttr, InvalidCurlyInLetElse,
-    InvalidExpressionInLetElse, InvalidVariableDeclaration, InvalidVariableDeclarationSub,
-    WrapExpressionInParentheses,
+    InvalidExpressionInLetElse, InvalidIdentiferStartsWithNumber, InvalidVariableDeclaration,
+    InvalidVariableDeclarationSub, WrapExpressionInParentheses,
 };
 use crate::maybe_whole;
 
@@ -19,7 +19,7 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::util::classify;
-use rustc_ast::{AttrStyle, AttrVec, Attribute, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
+use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
         } else if self.eat(&token::Semi) {
             // Do not attempt to parse an expression if we're done here.
-            self.error_outer_attrs(&attrs.take_for_recovery());
+            self.error_outer_attrs(attrs);
             self.mk_stmt(lo, StmtKind::Empty)
         } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts.
@@ -120,7 +120,7 @@ impl<'a> Parser<'a> {
             }
             self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         } else {
-            self.error_outer_attrs(&attrs.take_for_recovery());
+            self.error_outer_attrs(attrs);
             return Ok(None);
         }))
     }
@@ -199,8 +199,10 @@ impl<'a> Parser<'a> {
 
     /// Error on outer attributes in this context.
     /// Also error if the previous token was a doc comment.
-    fn error_outer_attrs(&self, attrs: &[Attribute]) {
-        if let [.., last] = attrs {
+    fn error_outer_attrs(&self, attrs: AttrWrapper) {
+        if !attrs.is_empty()
+        && let attrs = attrs.take_for_recovery(self.sess)
+        && let attrs @ [.., last] = &*attrs {
             if last.is_doc_comment() {
                 self.sess.emit_err(DocCommentDoesNotDocumentAnything {
                     span: last.span,
@@ -262,6 +264,7 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
+        self.report_invalid_identifier_error()?;
         let (pat, colon) = self.parse_pat_before_ty(None, RecoverComma::Yes, "`let` bindings")?;
 
         let (err, ty) = if colon {
@@ -351,6 +354,17 @@ impl<'a> Parser<'a> {
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local { ty, pat, kind, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
+    }
+
+    /// report error for `let 1x = 123`
+    pub fn report_invalid_identifier_error(&mut self) -> PResult<'a, ()> {
+        if let token::Literal(lit) = self.token.uninterpolate().kind &&
+            let Err(_) = rustc_ast::Lit::from_token(&self.token) &&
+            (lit.kind == token::LitKind::Integer || lit.kind == token::LitKind::Float) &&
+            self.look_ahead(1, |t| matches!(t.kind, token::Eq) || matches!(t.kind, token::Colon ) ) {
+                return Err(self.sess.create_err(InvalidIdentiferStartsWithNumber { span: self.token.span }));
+        }
+        Ok(())
     }
 
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
@@ -553,39 +567,46 @@ impl<'a> Parser<'a> {
         match stmt.kind {
             // Expression without semicolon.
             StmtKind::Expr(ref mut expr)
-                if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) =>
-            {
+                if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) => {
                 // Just check for errors and recover; do not eat semicolon yet.
-                if let Err(mut e) =
-                    self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)])
-                {
-                    if let TokenKind::DocComment(..) = self.token.kind {
-                        if let Ok(snippet) = self.span_to_snippet(self.token.span) {
-                            let sp = self.token.span;
-                            let marker = &snippet[..3];
-                            let (comment_marker, doc_comment_marker) = marker.split_at(2);
+                // `expect_one_of` returns PResult<'a, bool /* recovered */>
+                let replace_with_err =
+                    match self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)]) {
+                    // Recover from parser, skip type error to avoid extra errors.
+                    Ok(true) => true,
+                    Err(mut e) => {
+                        if let TokenKind::DocComment(..) = self.token.kind &&
+                            let Ok(snippet) = self.span_to_snippet(self.token.span) {
+                                let sp = self.token.span;
+                                let marker = &snippet[..3];
+                                let (comment_marker, doc_comment_marker) = marker.split_at(2);
 
-                            e.span_suggestion(
-                                sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
-                                &format!(
-                                    "add a space before `{}` to use a regular comment",
-                                    doc_comment_marker,
-                                ),
-                                format!("{} {}", comment_marker, doc_comment_marker),
-                                Applicability::MaybeIncorrect,
-                            );
+                                e.span_suggestion(
+                                    sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
+                                    &format!(
+                                        "add a space before `{}` to use a regular comment",
+                                        doc_comment_marker,
+                                    ),
+                                    format!("{} {}", comment_marker, doc_comment_marker),
+                                    Applicability::MaybeIncorrect,
+                                );
                         }
-                    }
-                    if let Err(mut e) =
-                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
-                    {
-                        if recover.no() {
-                            return Err(e);
+
+                        if let Err(mut e) =
+                            self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
+                        {
+                            if recover.no() {
+                                return Err(e);
+                            }
+                            e.emit();
+                            self.recover_stmt();
                         }
-                        e.emit();
-                        self.recover_stmt();
+                        true
                     }
-                    // Don't complain about type errors in body tail after parse error (#57383).
+                    _ => false
+                };
+                if replace_with_err {
+                    // We already emitted an error, so don't emit another type error
                     let sp = expr.span.to(self.prev_token.span);
                     *expr = self.mk_expr_err(sp);
                 }

@@ -12,5 +12,11 @@ error: `cfg_attr` is deprecated for rustfmt and got replaced by tool attributes
 LL | #[cfg_attr(rustfmt, rustfmt_skip)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `#[rustfmt::skip]`
 
-error: aborting due to 2 previous errors
+error: `cfg_attr` is deprecated for rustfmt and got replaced by tool attributes
+  --> $DIR/cfg_attr_rustfmt.rs:43:5
+   |
+LL |     #[cfg_attr(rustfmt, rustfmt::skip)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `#[rustfmt::skip]`
+
+error: aborting due to 3 previous errors
 
