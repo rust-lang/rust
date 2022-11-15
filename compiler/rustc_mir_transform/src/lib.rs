@@ -54,6 +54,7 @@ mod const_goto;
 mod const_prop;
 mod const_prop_lint;
 mod coverage;
+mod dataflow_const_prop;
 mod dead_store_elimination;
 mod deaggregator;
 mod deduce_param_attrs;
@@ -569,6 +570,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             //
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,
+            &dataflow_const_prop::DataflowConstProp,
             //
             // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
             &const_debuginfo::ConstDebugInfo,
