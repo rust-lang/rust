@@ -25,9 +25,10 @@ fn covariant(
     v: &'static Foo<for<'a> fn(&'a ())>
 ) -> &'static Foo<fn(&'static ())> {
     v
+    //~^ ERROR mismatched types
 }
 
 fn main() {
-    let y = covariant(&Foo([], PhantomData)); //~ ERROR mismatched types
+    let y = covariant(&Foo([], PhantomData));
     println!("{:?}", y.0);
 }

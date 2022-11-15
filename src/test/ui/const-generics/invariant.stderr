@@ -13,13 +13,13 @@ LL | impl SadBee for fn(&'static ()) {
    = note: `#[warn(coherence_leak_check)]` on by default
 
 error[E0308]: mismatched types
-  --> $DIR/invariant.rs:31:28
+  --> $DIR/invariant.rs:27:5
    |
-LL |     let y = covariant(&Foo([], PhantomData));
-   |                            ^^ expected `<_ as SadBee>::ASSOC`, found `<for<'a> fn(&'a ()) as SadBee>::ASSOC`
+LL |     v
+   |     ^ one type is more general than the other
    |
-   = note: expected constant `<_ as SadBee>::ASSOC`
-              found constant `<for<'a> fn(&'a ()) as SadBee>::ASSOC`
+   = note: expected reference `&Foo<fn(&())>`
+              found reference `&Foo<for<'a> fn(&'a ())>`
 
 error: aborting due to previous error; 1 warning emitted
 
