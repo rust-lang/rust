@@ -9,8 +9,8 @@ LL |     let a @ b = U;
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
-LL |     let a @ ref b = U;
-   |             +++
+LL |     let ref a @ ref b = U;
+   |         +++     +++
 
 error[E0382]: use of partially moved value
   --> $DIR/borrowck-move-and-move.rs:13:9
@@ -23,8 +23,8 @@ LL |     let a @ (b, c) = (U, U);
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
-LL |     let a @ (b, ref c) = (U, U);
-   |                 +++
+LL |     let ref a @ (b, ref c) = (U, U);
+   |         +++         +++
 
 error[E0382]: use of partially moved value
   --> $DIR/borrowck-move-and-move.rs:15:9
@@ -37,8 +37,8 @@ LL |     let a @ (b, c) = (u(), u());
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
-LL |     let a @ (b, ref c) = (u(), u());
-   |                 +++
+LL |     let ref a @ (b, ref c) = (u(), u());
+   |         +++         +++
 
 error[E0382]: use of moved value
   --> $DIR/borrowck-move-and-move.rs:18:16
@@ -81,8 +81,8 @@ LL |         xs @ [a, .., b] => {}
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
-LL |         xs @ [a, .., ref b] => {}
-   |                      +++
+LL |         ref xs @ [a, .., ref b] => {}
+   |         +++              +++
 
 error[E0382]: use of partially moved value
   --> $DIR/borrowck-move-and-move.rs:29:9
@@ -95,8 +95,8 @@ LL |         xs @ [_, ys @ .., _] => {}
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
    |
-LL |         xs @ [_, ref ys @ .., _] => {}
-   |                  +++
+LL |         ref xs @ [_, ref ys @ .., _] => {}
+   |         +++          +++
 
 error[E0382]: use of moved value
   --> $DIR/borrowck-move-and-move.rs:22:12

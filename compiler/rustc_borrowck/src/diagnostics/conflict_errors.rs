@@ -315,6 +315,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             expr_span: Span,
             expr: Option<&'hir hir::Expr<'hir>>,
             pat: Option<&'hir hir::Pat<'hir>>,
+            parent_pat: Option<&'hir hir::Pat<'hir>>,
         }
         impl<'hir> Visitor<'hir> for ExpressionFinder<'hir> {
             fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
@@ -327,10 +328,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if p.span == self.expr_span {
                     self.pat = Some(p);
                 }
-                if let hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, i, _) = p.kind
-                    && i.span == self.expr_span
-                {
-                    self.pat = Some(p);
+                if let hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, i, sub) = p.kind {
+                    if i.span == self.expr_span || p.span == self.expr_span {
+                        self.pat = Some(p);
+                    }
+                    // Check if we are in a situation of `ident @ ident` where we want to suggest
+                    // `ref ident @ ref ident` or `ref ident @ Struct { ref ident }`.
+                    if let Some(subpat) = sub && self.pat.is_none() {
+                        self.visit_pat(subpat);
+                        if self.pat.is_some() {
+                            self.parent_pat = Some(p);
+                        }
+                        return;
+                    }
                 }
                 hir::intravisit::walk_pat(self, p);
             }
@@ -349,6 +359,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 expr_span: move_span,
                 expr: None,
                 pat: None,
+                parent_pat: None,
             };
             finder.visit_expr(expr);
             if let Some(span) = span && let Some(expr) = finder.expr {
@@ -414,7 +425,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             span,
                             format!(
                                 "consider changing this parameter type in {descr} `{ident}` to \
-                                 borrow instead if ownering the value isn't necessary",
+                                 borrow instead if owning the value isn't necessary",
                             ),
                         );
                     }
@@ -434,10 +445,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             if let Some(pat) = finder.pat {
                 *in_pattern = true;
-                err.span_suggestion_verbose(
-                    pat.span.shrink_to_lo(),
+                let mut sugg = vec![(pat.span.shrink_to_lo(), "ref ".to_string())];
+                if let Some(pat) = finder.parent_pat {
+                    sugg.insert(0, (pat.span.shrink_to_lo(), "ref ".to_string()));
+                }
+                err.multipart_suggestion_verbose(
                     "borrow this binding in the pattern to avoid moving the value",
-                    "ref ".to_string(),
+                    sugg,
                     Applicability::MachineApplicable,
                 );
             }

@@ -10,8 +10,8 @@ LL |     let _moved @ _from = String::from("foo");
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
-LL |     let _moved @ ref _from = String::from("foo");
-   |                  +++
+LL |     let ref _moved @ ref _from = String::from("foo");
+   |         +++          +++
 
 error: aborting due to previous error
 

@@ -34,6 +34,11 @@ LL |         Ok(ref a @ b) | Err(b @ ref a) => {
    |                             |   value borrowed here after move
    |                             value moved into `b` here
    |                             move occurs because `b` has type `NotCopy` which does not implement the `Copy` trait
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         Ok(ref a @ b) | Err(ref b @ ref a) => {
+   |                             +++
 
 error: cannot move out of value because it is borrowed
   --> $DIR/default-binding-modes-both-sides-independent.rs:42:9
