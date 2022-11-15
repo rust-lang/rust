@@ -73,9 +73,9 @@ impl LateLintPass<'_> for SemicolonBlock {
 
 fn semicolon_inside_block(cx: &LateContext<'_>, block: &Block<'_>) {
     if !block.span.from_expansion()
-    && let Some(tail) = block.expr
-    && let Some(block_expr @ Expr { kind: ExprKind::Block(_, _), ..}) = get_parent_expr_for_hir(cx, block.hir_id)
-    && let Some(Node::Stmt(Stmt { kind: StmtKind::Semi(_), span, .. })) = get_parent_node(cx.tcx, block_expr.hir_id)
+        && let Some(tail) = block.expr
+        && let Some(block_expr @ Expr { kind: ExprKind::Block(_, _), ..}) = get_parent_expr_for_hir(cx, block.hir_id)
+        && let Some(Node::Stmt(Stmt { kind: StmtKind::Semi(_), span, .. })) = get_parent_node(cx.tcx, block_expr.hir_id)
     {
         let expr_snip = snippet_with_macro_callsite(cx, tail.span, "..");
 
@@ -101,16 +101,18 @@ fn semicolon_inside_block(cx: &LateContext<'_>, block: &Block<'_>) {
 
 fn semicolon_outside_block(cx: &LateContext<'_>, block: &Block<'_>) {
     if !block.span.from_expansion()
-    && block.expr.is_none()
-    && let [.., Stmt { kind: StmtKind::Semi(expr), .. }] = block.stmts
-    && let Some(block_expr @ Expr { kind: ExprKind::Block(_, _), ..}) = get_parent_expr_for_hir(cx,block.hir_id)
-    && let Some(Node::Stmt(Stmt { kind: StmtKind::Expr(_), .. })) = get_parent_node(cx.tcx, block_expr.hir_id) {
+        && block.expr.is_none()
+        && let [.., Stmt { kind: StmtKind::Semi(expr), .. }] = block.stmts
+        && let Some(block_expr @ Expr { kind: ExprKind::Block(_, _), ..}) = get_parent_expr_for_hir(cx,block.hir_id)
+        && let Some(Node::Stmt(Stmt { kind: StmtKind::Expr(_), .. })) = get_parent_node(cx.tcx, block_expr.hir_id)
+    {
         let expr_snip = snippet_with_macro_callsite(cx, expr.span, "..");
 
         let mut suggestion: String = snippet_with_macro_callsite(cx, block.span, "..").to_string();
 
         if let Some((expr_offset, _)) = suggestion.rmatch_indices(&*expr_snip).next()
-        && let Some(semi_offset) = suggestion[expr_offset + expr_snip.len()..].find(';') {
+            && let Some(semi_offset) = suggestion[expr_offset + expr_snip.len()..].find(';')
+        {
             suggestion.remove(expr_offset +  expr_snip.len() + semi_offset);
         } else {
             return;
