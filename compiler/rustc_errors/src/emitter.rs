@@ -773,6 +773,7 @@ impl EmitterWriter {
         draw_col_separator_no_space(buffer, line_offset, width_offset - 2);
     }
 
+    #[instrument(level = "trace", skip(self), ret)]
     fn render_source_line(
         &self,
         buffer: &mut StyledBuffer,
@@ -804,6 +805,7 @@ impl EmitterWriter {
             Some(s) => normalize_whitespace(&s),
             None => return Vec::new(),
         };
+        trace!(?source_string);
 
         let line_offset = buffer.num_lines();
 
@@ -1323,6 +1325,7 @@ impl EmitterWriter {
         }
     }
 
+    #[instrument(level = "trace", skip(self, args), ret)]
     fn emit_message_default(
         &mut self,
         msp: &MultiSpan,
@@ -1384,6 +1387,7 @@ impl EmitterWriter {
             }
         }
         let mut annotated_files = FileWithAnnotatedLines::collect_annotations(self, args, msp);
+        trace!("{annotated_files:#?}");
 
         // Make sure our primary file comes first
         let primary_span = msp.primary_span().unwrap_or_default();
@@ -1402,6 +1406,42 @@ impl EmitterWriter {
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
             if !sm.ensure_source_file_source_present(annotated_file.file.clone()) {
+                if !self.short_message {
+                    // We'll just print an unannotated message.
+                    for line in annotated_file.lines {
+                        let mut annotations = line.annotations.clone();
+                        annotations.sort_by_key(|a| Reverse(a.start_col));
+                        let mut line_idx = buffer.num_lines();
+                        buffer.append(
+                            line_idx,
+                            &format!(
+                                "{}:{}:{}",
+                                sm.filename_for_diagnostics(&annotated_file.file.name),
+                                sm.doctest_offset_line(&annotated_file.file.name, line.line_index),
+                                annotations[0].start_col + 1,
+                            ),
+                            Style::LineAndColumn,
+                        );
+                        let prefix = if annotations.len() > 1 {
+                            buffer.prepend(line_idx, "--> ", Style::LineNumber);
+                            line_idx += 1;
+                            "note: "
+                        } else {
+                            ": "
+                        };
+                        for (i, annotation) in annotations.into_iter().enumerate() {
+                            if let Some(label) = &annotation.label {
+                                let style = if annotation.is_primary {
+                                    Style::LabelPrimary
+                                } else {
+                                    Style::LabelSecondary
+                                };
+                                buffer.append(line_idx + i, prefix, style);
+                                buffer.append(line_idx + i, label, style);
+                            }
+                        }
+                    }
+                }
                 continue;
             }
 
@@ -1648,6 +1688,7 @@ impl EmitterWriter {
                     multilines.extend(&to_add);
                 }
             }
+            trace!("buffer: {:#?}", buffer.render());
         }
 
         if let Some(tracked) = emitted_at {
@@ -1971,6 +2012,7 @@ impl EmitterWriter {
         Ok(())
     }
 
+    #[instrument(level = "trace", skip(self, args, code, children, suggestions))]
     fn emit_messages_default(
         &mut self,
         level: &Level,
