@@ -1389,8 +1389,7 @@ impl EmitterWriter {
         let primary_span = msp.primary_span().unwrap_or_default();
         let (Some(sm), false) = (self.sm.as_ref(), primary_span.is_dummy()) else {
             // If we don't have span information, emit and exit
-            emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
-            return Ok(());
+            return emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message);
         };
         let primary_lo = sm.lookup_char_pos(primary_span.lo());
         if let Ok(pos) =
