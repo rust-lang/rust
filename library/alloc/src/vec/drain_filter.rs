@@ -1,5 +1,4 @@
 use crate::alloc::{Allocator, Global};
-use core::mem::{ManuallyDrop, SizedTypeProperties};
 use core::ptr;
 use core::slice;
 
@@ -20,6 +19,7 @@ use super::Vec;
 /// ```
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct DrainFilter<
     'a,
     T,
@@ -54,59 +54,6 @@ where
     #[inline]
     pub fn allocator(&self) -> &A {
         self.vec.allocator()
-    }
-
-    /// Keep unyielded elements in the source `Vec`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(drain_filter)]
-    /// #![feature(drain_keep_rest)]
-    ///
-    /// let mut vec = vec!['a', 'b', 'c'];
-    /// let mut drain = vec.drain_filter(|_| true);
-    ///
-    /// assert_eq!(drain.next().unwrap(), 'a');
-    ///
-    /// // This call keeps 'b' and 'c' in the vec.
-    /// drain.keep_rest();
-    ///
-    /// // If we wouldn't call `keep_rest()`,
-    /// // `vec` would be empty.
-    /// assert_eq!(vec, ['b', 'c']);
-    /// ```
-    #[unstable(feature = "drain_keep_rest", issue = "101122")]
-    pub fn keep_rest(self) {
-        // At this moment layout looks like this:
-        //
-        //  _____________________/-- old_len
-        // /                     \
-        // [kept] [yielded] [tail]
-        //        \_______/ ^-- idx
-        //                \-- del
-        //
-        // Normally `Drop` impl would drop [tail] (via .for_each(drop), ie still calling `pred`)
-        //
-        // 1. Move [tail] after [kept]
-        // 2. Update length of the original vec to `old_len - del`
-        //    a. In case of ZST, this is the only thing we want to do
-        // 3. Do *not* drop self, as everything is put in a consistent state already, there is nothing to do
-        let mut this = ManuallyDrop::new(self);
-
-        unsafe {
-            // ZSTs have no identity, so we don't need to move them around.
-            if !T::IS_ZST && this.idx < this.old_len && this.del > 0 {
-                let ptr = this.vec.as_mut_ptr();
-                let src = ptr.add(this.idx);
-                let dst = src.sub(this.del);
-                let tail_len = this.old_len - this.idx;
-                src.copy_to(dst, tail_len);
-            }
-
-            let new_len = this.old_len - this.del;
-            this.vec.set_len(new_len);
-        }
     }
 }
 
@@ -154,44 +101,21 @@ where
     F: FnMut(&mut T) -> bool,
 {
     fn drop(&mut self) {
-        struct BackshiftOnDrop<'a, 'b, T, F, A: Allocator>
-        where
-            F: FnMut(&mut T) -> bool,
-        {
-            drain: &'b mut DrainFilter<'a, T, F, A>,
-        }
-
-        impl<'a, 'b, T, F, A: Allocator> Drop for BackshiftOnDrop<'a, 'b, T, F, A>
-        where
-            F: FnMut(&mut T) -> bool,
-        {
-            fn drop(&mut self) {
-                unsafe {
-                    if self.drain.idx < self.drain.old_len && self.drain.del > 0 {
-                        // This is a pretty messed up state, and there isn't really an
-                        // obviously right thing to do. We don't want to keep trying
-                        // to execute `pred`, so we just backshift all the unprocessed
-                        // elements and tell the vec that they still exist. The backshift
-                        // is required to prevent a double-drop of the last successfully
-                        // drained item prior to a panic in the predicate.
-                        let ptr = self.drain.vec.as_mut_ptr();
-                        let src = ptr.add(self.drain.idx);
-                        let dst = src.sub(self.drain.del);
-                        let tail_len = self.drain.old_len - self.drain.idx;
-                        src.copy_to(dst, tail_len);
-                    }
-                    self.drain.vec.set_len(self.drain.old_len - self.drain.del);
-                }
+        unsafe {
+            if self.idx < self.old_len && self.del > 0 {
+                // This is a pretty messed up state, and there isn't really an
+                // obviously right thing to do. We don't want to keep trying
+                // to execute `pred`, so we just backshift all the unprocessed
+                // elements and tell the vec that they still exist. The backshift
+                // is required to prevent a double-drop of the last successfully
+                // drained item prior to a panic in the predicate.
+                let ptr = self.vec.as_mut_ptr();
+                let src = ptr.add(self.idx);
+                let dst = src.sub(self.del);
+                let tail_len = self.old_len - self.idx;
+                src.copy_to(dst, tail_len);
             }
-        }
-
-        let backshift = BackshiftOnDrop { drain: self };
-
-        // Attempt to consume any remaining elements if the filter predicate
-        // has not yet panicked. We'll backshift any remaining elements
-        // whether we've already panicked or if the consumption here panics.
-        if !backshift.drain.panic_flag {
-            backshift.drain.for_each(drop);
+            self.vec.set_len(self.old_len - self.del);
         }
     }
 }

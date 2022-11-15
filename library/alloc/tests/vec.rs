@@ -1608,36 +1608,7 @@ fn drain_filter_unconsumed() {
     let mut vec = vec![1, 2, 3, 4];
     let drain = vec.drain_filter(|&mut x| x % 2 != 0);
     drop(drain);
-    assert_eq!(vec, [2, 4]);
-}
-
-#[test]
-fn test_drain_filter_keep_rest() {
-    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
-    let mut drain = v.drain_filter(|&mut x| x % 2 == 0);
-    assert_eq!(drain.next(), Some(0));
-    assert_eq!(drain.next(), Some(2));
-
-    drain.keep_rest();
-    assert_eq!(v, &[1, 3, 4, 5, 6]);
-}
-
-#[test]
-fn test_drain_filter_keep_rest_all() {
-    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
-    v.drain_filter(|_| true).keep_rest();
-    assert_eq!(v, &[0, 1, 2, 3, 4, 5, 6]);
-}
-
-#[test]
-fn test_drain_filter_keep_rest_none() {
-    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
-    let mut drain = v.drain_filter(|_| true);
-
-    drain.by_ref().for_each(drop);
-
-    drain.keep_rest();
-    assert_eq!(v, &[]);
+    assert_eq!(vec, [1, 2, 3, 4]);
 }
 
 #[test]
