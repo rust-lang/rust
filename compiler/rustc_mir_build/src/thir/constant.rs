@@ -3,17 +3,22 @@ use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::{self, ParamEnv, ScalarInt, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 
-fn trunc<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, lit: &ast::LitKind, n: u128) -> Result<ScalarInt, LitToConstError> {
+fn trunc<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    lit: &ast::LitKind,
+    n: u128,
+) -> Result<ScalarInt, LitToConstError> {
     let param_ty = ParamEnv::reveal_all().and(ty);
-    let width = tcx
-        .layout_of(param_ty)
-        .map_err(|_| {
-            LitToConstError::Reported(tcx.sess.delay_span_bug(
-                DUMMY_SP,
-                format!("couldn't compute width of literal: {:?}", lit),
-            ))
-        })?
-        .size;
+    let width =
+        tcx.layout_of(param_ty)
+            .map_err(|_| {
+                LitToConstError::Reported(tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    format!("couldn't compute width of literal: {:?}", lit),
+                ))
+            })?
+            .size;
     trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
     let result = width.truncate(n);
     trace!("trunc result: {}", result);
@@ -22,7 +27,12 @@ fn trunc<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, lit: &ast::LitKind, n: u128) -> 
         .unwrap_or_else(|| bug!("expected to create ScalarInt from uint {:?}", result)))
 }
 
-fn get_valtree<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, neg: bool, lit: &ast::LitKind) -> Result<ty::ValTree<'tcx>, LitToConstError> {
+fn get_valtree<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    neg: bool,
+    lit: &ast::LitKind,
+) -> Result<ty::ValTree<'tcx>, LitToConstError> {
     Ok(match (lit, &ty.kind()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
             let str_bytes = s.as_str().as_bytes();
@@ -42,8 +52,12 @@ fn get_valtree<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, neg: bool, lit: &ast::LitK
             ty::ValTree::from_scalar_int((*n).into())
         }
         (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
-            let scalar_int =
-                trunc(tcx, ty, lit, if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n })?;
+            let scalar_int = trunc(
+                tcx,
+                ty,
+                lit,
+                if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n },
+            )?;
             ty::ValTree::from_scalar_int(scalar_int)
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int((*b).into()),
