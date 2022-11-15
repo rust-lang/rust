@@ -78,7 +78,7 @@ shift
 # macOS does not have a useful readlink/realpath so we have to use Python instead...
 MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
 # Used for rustc syncs.
-JOSH_FILTER=":at_commit=75dd959a3a40eb5b4574f8d2e23aa6efbeb33573[:prefix=src/tools/miri]:/src/tools/miri"
+JOSH_FILTER=":rev(75dd959a3a40eb5b4574f8d2e23aa6efbeb33573:prefix=src/tools/miri):/src/tools/miri"
 # Needed for `./miri bench`.
 TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
 
@@ -149,7 +149,7 @@ rustc-push)
     # and set `-o base` to a branch that holds current rustc master.
     echo "Preparing $USER/rust..."
     if git fetch https://github.com/$USER/rust $BRANCH &>/dev/null; then
-        echo "The '$BRANCH' seems to already exist in $USER/rust. Please delete it and try again."
+        echo "The branch '$BRANCH' seems to already exist in $USER/rust. Please delete it and try again."
         exit 1
     fi
     git fetch https://github.com/rust-lang/rust master
