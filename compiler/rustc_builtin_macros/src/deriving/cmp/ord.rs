@@ -22,7 +22,6 @@ pub fn expand_deriving_ord(
         path: path_std!(cmp::Ord),
         skip_path_as_bound: false,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::cmp,
