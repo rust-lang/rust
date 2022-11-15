@@ -370,8 +370,8 @@ fn test_drain_filter() {
     let mut x = BTreeSet::from([1]);
     let mut y = BTreeSet::from([1]);
 
-    x.drain_filter(|_| true);
-    y.drain_filter(|_| false);
+    x.drain_filter(|_| true).for_each(drop);
+    y.drain_filter(|_| false).for_each(drop);
     assert_eq!(x.len(), 0);
     assert_eq!(y.len(), 1);
 }
@@ -387,7 +387,7 @@ fn test_drain_filter_drop_panic_leak() {
     set.insert(b.spawn(Panic::InDrop));
     set.insert(c.spawn(Panic::Never));
 
-    catch_unwind(move || drop(set.drain_filter(|dummy| dummy.query(true)))).ok();
+    catch_unwind(move || set.drain_filter(|dummy| dummy.query(true)).for_each(drop)).ok();
 
     assert_eq!(a.queried(), 1);
     assert_eq!(b.queried(), 1);
@@ -408,7 +408,10 @@ fn test_drain_filter_pred_panic_leak() {
     set.insert(b.spawn(Panic::InQuery));
     set.insert(c.spawn(Panic::InQuery));
 
-    catch_unwind(AssertUnwindSafe(|| drop(set.drain_filter(|dummy| dummy.query(true))))).ok();
+    catch_unwind(AssertUnwindSafe(|| {
+        set.drain_filter(|dummy| dummy.query(true)).for_each(drop)
+    }))
+    .ok();
 
     assert_eq!(a.queried(), 1);
     assert_eq!(b.queried(), 1);

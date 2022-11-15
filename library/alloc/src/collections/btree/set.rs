@@ -999,7 +999,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
         T: Ord,
         F: FnMut(&T) -> bool,
     {
-        self.drain_filter(|v| !f(v));
+        self.drain_filter(|v| !f(v)).for_each(drop);
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
@@ -1084,14 +1084,11 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// yielded. If the closure returns `false`, or panics, the element remains
     /// in the set and will not be yielded.
     ///
-    /// If the iterator is only partially consumed or not consumed at all, each
-    /// of the remaining elements is still subjected to the closure and removed
-    /// and dropped if it returns `true`.
+    /// If the returned `DrainFilter` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use [`retain`] with a negated predicate if you do not need the returned iterator.
     ///
-    /// It is unspecified how many more elements will be subjected to the
-    /// closure if a panic occurs in the closure, or if a panic occurs while
-    /// dropping an element, or if the `DrainFilter` itself is leaked.
-    ///
+    /// [`retain`]: BTreeSet::retain
     /// # Examples
     ///
     /// Splitting a set into even and odd values, reusing the original set:
@@ -1277,6 +1274,7 @@ impl<'a, T, A: Allocator + Clone> IntoIterator for &'a BTreeSet<T, A> {
 
 /// An iterator produced by calling `drain_filter` on BTreeSet.
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct DrainFilter<
     'a,
     T,
@@ -1290,16 +1288,6 @@ pub struct DrainFilter<
     inner: super::map::DrainFilterInner<'a, T, SetValZST>,
     /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     alloc: A,
-}
-
-#[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<T, F, A: Allocator + Clone> Drop for DrainFilter<'_, T, F, A>
-where
-    F: FnMut(&T) -> bool,
-{
-    fn drop(&mut self) {
-        self.for_each(drop);
-    }
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]

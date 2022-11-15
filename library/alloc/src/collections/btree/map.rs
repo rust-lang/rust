@@ -1132,7 +1132,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         K: Ord,
         F: FnMut(&K, &mut V) -> bool,
     {
-        self.drain_filter(|k, v| !f(k, v));
+        self.drain_filter(|k, v| !f(k, v)).for_each(drop);
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
@@ -1395,14 +1395,11 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// The iterator also lets you mutate the value of each element in the
     /// closure, regardless of whether you choose to keep or remove it.
     ///
-    /// If the iterator is only partially consumed or not consumed at all, each
-    /// of the remaining elements is still subjected to the closure, which may
-    /// change its value and, by returning `true`, have the element removed and
-    /// dropped.
+    /// If the returned `DrainFilter` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use [`retain`] with a negated predicate if you do not need the returned iterator.
     ///
-    /// It is unspecified how many more elements will be subjected to the
-    /// closure if a panic occurs in the closure, or a panic occurs while
-    /// dropping an element, or if the `DrainFilter` value is leaked.
+    /// [`retain`]: BTreeMap::retain
     ///
     /// # Examples
     ///
@@ -1901,6 +1898,7 @@ impl<K, V> Default for Values<'_, K, V> {
 
 /// An iterator produced by calling `drain_filter` on BTreeMap.
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct DrainFilter<
     'a,
     K,
@@ -1927,16 +1925,6 @@ pub(super) struct DrainFilterInner<'a, K, V> {
     /// Empty if the map has no root, if iteration went beyond the last leaf edge,
     /// or if a panic occurred in the predicate.
     cur_leaf_edge: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
-}
-
-#[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<K, V, F, A: Allocator + Clone> Drop for DrainFilter<'_, K, V, F, A>
-where
-    F: FnMut(&K, &mut V) -> bool,
-{
-    fn drop(&mut self) {
-        self.for_each(drop);
-    }
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
