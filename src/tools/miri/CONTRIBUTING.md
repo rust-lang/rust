@@ -209,23 +209,6 @@ We described above the simplest way to get a working build environment for Miri,
 which is to use the version of rustc indicated by `rustc-version`. But
 sometimes, that is not enough.
 
-### Updating `rustc-version`
-
-The `rustc-version` file is regularly updated to keep Miri close to the latest
-version of rustc. Usually, new contributors do not have to worry about this. But
-sometimes a newer rustc is needed for a patch, and sometimes Miri needs fixing
-for changes in rustc. In both cases, `rustc-version` needs updating.
-
-To update the `rustc-version` file and install the latest rustc, you can run:
-```
-./miri toolchain HEAD
-```
-
-Now edit Miri until `./miri test` passes, and submit a PR. Generally, it is
-preferred to separate updating `rustc-version` and doing what it takes to get
-Miri working again, from implementing new features that rely on the updated
-rustc. This avoids blocking all Miri development on landing a big PR.
-
 ### Building Miri with a locally built rustc
 
 [building Miri with a locally built rustc]: #building-miri-with-a-locally-built-rustc
@@ -299,9 +282,10 @@ We assume we start on an up-to-date master branch in the Miri repo.
 
 ```sh
 # Fetch and merge rustc side of the history. Takes ca 5 min the first time.
+# This will also update the 'rustc-version' file.
 ./miri rustc-pull
-# Update toolchain reference and apply formatting.
-./miri toolchain HEAD && ./miri fmt
+# Update local toolchain and apply formatting.
+./miri toolchain && ./miri fmt
 git commit -am "rustup"
 ```
 
