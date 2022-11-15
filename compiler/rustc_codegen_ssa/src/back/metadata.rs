@@ -60,7 +60,7 @@ impl MetadataLoader for DefaultMetadataLoader {
                     let data = entry
                         .data(data)
                         .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
-                    return search_for_metadata(path, data, ".rmeta");
+                    return search_for_section(path, data, ".rmeta");
                 }
             }
 
@@ -69,11 +69,11 @@ impl MetadataLoader for DefaultMetadataLoader {
     }
 
     fn get_dylib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
-        load_metadata_with(path, |data| search_for_metadata(path, data, ".rustc"))
+        load_metadata_with(path, |data| search_for_section(path, data, ".rustc"))
     }
 }
 
-fn search_for_metadata<'a>(
+pub(super) fn search_for_section<'a>(
     path: &Path,
     bytes: &'a [u8],
     section: &str,
@@ -223,7 +223,11 @@ pub enum MetadataPosition {
 // * ELF - All other targets are similar to Windows in that there's a
 //   `SHF_EXCLUDE` flag we can set on sections in an object file to get
 //   automatically removed from the final output.
-pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> (Vec<u8>, MetadataPosition) {
+pub fn create_wrapper_file(
+    sess: &Session,
+    section_name: Vec<u8>,
+    data: &[u8],
+) -> (Vec<u8>, MetadataPosition) {
     let Some(mut file) = create_object_file(sess) else {
         // This is used to handle all "other" targets. This includes targets
         // in two categories:
@@ -241,11 +245,11 @@ pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> (Vec<u8>, MetadataP
         // WebAssembly and for targets not supported by the `object` crate
         // yet it means that work will need to be done in the `object` crate
         // to add a case above.
-        return (metadata.to_vec(), MetadataPosition::Last);
+        return (data.to_vec(), MetadataPosition::Last);
     };
     let section = file.add_section(
         file.segment_name(StandardSegment::Debug).to_vec(),
-        b".rmeta".to_vec(),
+        section_name,
         SectionKind::Debug,
     );
     match file.format() {
@@ -259,7 +263,7 @@ pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> (Vec<u8>, MetadataP
         }
         _ => {}
     };
-    file.append_section_data(section, metadata, 1);
+    file.append_section_data(section, data, 1);
     (file.write().unwrap(), MetadataPosition::First)
 }
 

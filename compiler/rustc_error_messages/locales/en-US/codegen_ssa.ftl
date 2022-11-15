@@ -182,3 +182,5 @@ codegen_ssa_extract_bundled_libs_write_file = failed to write file '{$rlib}': {$
 codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
 
 codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {error}
+
+codegen_ssa_read_file = failed to read file: {message}
