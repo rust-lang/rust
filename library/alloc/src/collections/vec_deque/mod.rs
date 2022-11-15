@@ -10,7 +10,7 @@
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::iter::{repeat_with, FromIterator};
+use core::iter::{repeat_n, repeat_with, FromIterator};
 use core::marker::PhantomData;
 use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
@@ -2833,7 +2833,12 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
-        self.resize_with(new_len, || value.clone());
+        if new_len > self.len() {
+            let extra = new_len - self.len();
+            self.extend(repeat_n(value, extra))
+        } else {
+            self.truncate(new_len);
+        }
     }
 }
 
