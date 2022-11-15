@@ -2,15 +2,26 @@ error: consider moving the `;` outside the block for consistent formatting
   --> $DIR/semicolon_outside_block.rs:42:5
    |
 LL |     { unit_fn_block(); }
-   |     ^^^^^^^^^^^^^^^^^^^^ help: put the `;` outside the block: `{ unit_fn_block() };`
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::semicolon-outside-block` implied by `-D warnings`
+help: put the `;` here
+   |
+LL -     { unit_fn_block(); }
+LL +     { unit_fn_block() };
+   |
 
 error: consider moving the `;` outside the block for consistent formatting
   --> $DIR/semicolon_outside_block.rs:43:5
    |
 LL |     unsafe { unit_fn_block(); }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: put the `;` outside the block: `unsafe { unit_fn_block() };`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: put the `;` here
+   |
+LL -     unsafe { unit_fn_block(); }
+LL +     unsafe { unit_fn_block() };
+   |
 
 error: consider moving the `;` outside the block for consistent formatting
   --> $DIR/semicolon_outside_block.rs:52:5
@@ -21,19 +32,23 @@ LL | |         unit_fn_block();
 LL | |     }
    | |_____^
    |
-help: put the `;` outside the block
+help: put the `;` here
    |
-LL ~     {
-LL +         unit_fn_block();
-LL +         unit_fn_block()
-LL +     };
+LL ~         unit_fn_block()
+LL ~     };
    |
 
 error: consider moving the `;` outside the block for consistent formatting
   --> $DIR/semicolon_outside_block.rs:62:5
    |
 LL |     { m!(()); }
-   |     ^^^^^^^^^^^ help: put the `;` outside the block: `{ m!(()) };`
+   |     ^^^^^^^^^^^
+   |
+help: put the `;` here
+   |
+LL -         ()
+LL +         (); };
+   |
 
 error: aborting due to 4 previous errors
 

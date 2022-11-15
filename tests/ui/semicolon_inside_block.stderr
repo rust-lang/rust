@@ -2,15 +2,26 @@ error: consider moving the `;` inside the block for consistent formatting
   --> $DIR/semicolon_inside_block.rs:39:5
    |
 LL |     { unit_fn_block() };
-   |     ^^^^^^^^^^^^^^^^^^^^ help: put the `;` here: `{ unit_fn_block(); }`
+   |     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::semicolon-inside-block` implied by `-D warnings`
+help: put the `;` here
+   |
+LL -     { unit_fn_block() };
+LL +     { unit_fn_block(); }
+   |
 
 error: consider moving the `;` inside the block for consistent formatting
   --> $DIR/semicolon_inside_block.rs:40:5
    |
 LL |     unsafe { unit_fn_block() };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: put the `;` here: `unsafe { unit_fn_block(); }`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: put the `;` here
+   |
+LL -     unsafe { unit_fn_block() };
+LL +     unsafe { unit_fn_block(); }
+   |
 
 error: consider moving the `;` inside the block for consistent formatting
   --> $DIR/semicolon_inside_block.rs:48:5
@@ -23,17 +34,24 @@ LL | |     };
    |
 help: put the `;` here
    |
-LL ~     {
-LL +         unit_fn_block();
-LL +         unit_fn_block();
-LL +     }
+LL ~         unit_fn_block();
+LL ~     }
    |
 
 error: consider moving the `;` inside the block for consistent formatting
   --> $DIR/semicolon_inside_block.rs:61:5
    |
 LL |     { m!(()) };
-   |     ^^^^^^^^^^^ help: put the `;` here: `{ m!(()); }`
+   |     ^^^^^^^^^^^
+   |
+help: put the `;` here
+   |
+LL ~         ();
+LL |     };
+ ...
+LL | 
+LL ~     { m!(()) }
+   |
 
 error: aborting due to 4 previous errors
 
