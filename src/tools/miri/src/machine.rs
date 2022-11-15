@@ -133,7 +133,7 @@ impl fmt::Display for MiriMemoryKind {
 }
 
 /// Pointer provenance.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum Provenance {
     Concrete {
         alloc_id: AllocId,
@@ -176,18 +176,9 @@ static_assert_size!(Pointer<Provenance>, 24);
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Scalar<Provenance>, 32);
 
-impl interpret::Provenance for Provenance {
-    /// We use absolute addresses in the `offset` of a `Pointer<Provenance>`.
-    const OFFSET_IS_ADDR: bool = true;
-
-    /// We cannot err on partial overwrites, it happens too often in practice (due to unions).
-    const ERR_ON_PARTIAL_PTR_OVERWRITE: bool = false;
-
-    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (prov, addr) = ptr.into_parts(); // address is absolute
-        write!(f, "{:#x}", addr.bytes())?;
-
-        match prov {
+impl fmt::Debug for Provenance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
             Provenance::Concrete { alloc_id, sb } => {
                 // Forward `alternate` flag to `alloc_id` printing.
                 if f.alternate() {
@@ -202,9 +193,13 @@ impl interpret::Provenance for Provenance {
                 write!(f, "[wildcard]")?;
             }
         }
-
         Ok(())
     }
+}
+
+impl interpret::Provenance for Provenance {
+    /// We use absolute addresses in the `offset` of a `Pointer<Provenance>`.
+    const OFFSET_IS_ADDR: bool = true;
 
     fn get_alloc_id(self) -> Option<AllocId> {
         match self {

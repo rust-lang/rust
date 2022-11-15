@@ -266,7 +266,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
-        alloc: ConstAllocation<'tcx, Self::Provenance, Self::AllocExtra>,
+        alloc: ConstAllocation<'tcx>,
         _static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {

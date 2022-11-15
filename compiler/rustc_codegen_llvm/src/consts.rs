@@ -28,7 +28,7 @@ use std::ops::Range;
 
 pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<'_>) -> &'ll Value {
     let alloc = alloc.inner();
-    let mut llvals = Vec::with_capacity(alloc.provenance().len() + 1);
+    let mut llvals = Vec::with_capacity(alloc.provenance().ptrs().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
 
@@ -40,9 +40,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
         alloc: &'a Allocation,
         range: Range<usize>,
     ) {
-        let chunks = alloc
-            .init_mask()
-            .range_as_init_chunks(Size::from_bytes(range.start), Size::from_bytes(range.end));
+        let chunks = alloc.init_mask().range_as_init_chunks(range.clone().into());
 
         let chunk_to_llval = move |chunk| match chunk {
             InitChunk::Init(range) => {
@@ -80,7 +78,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
     }
 
     let mut next_offset = 0;
-    for &(offset, alloc_id) in alloc.provenance().iter() {
+    for &(offset, alloc_id) in alloc.provenance().ptrs().iter() {
         let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
@@ -489,7 +487,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                     // happens to be zero. Instead, we should only check the value of defined bytes
                     // and set all undefined bytes to zero if this allocation is headed for the
                     // BSS.
-                    let all_bytes_are_zero = alloc.provenance().is_empty()
+                    let all_bytes_are_zero = alloc.provenance().ptrs().is_empty()
                         && alloc
                             .inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len())
                             .iter()
@@ -513,7 +511,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                         section.as_str().as_ptr().cast(),
                         section.as_str().len() as c_uint,
                     );
-                    assert!(alloc.provenance().is_empty());
+                    assert!(alloc.provenance().ptrs().is_empty());
 
                     // The `inspect` method is okay here because we checked for provenance, and
                     // because we are doing this access to inspect the final interpreter state (not

@@ -401,16 +401,15 @@ impl fmt::Display for UndefinedBehaviorInfo {
 pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
-    /// Overwriting parts of a pointer; the resulting state cannot be represented in our
-    /// `Allocation` data structure. See <https://github.com/rust-lang/miri/issues/2181>.
-    PartialPointerOverwrite(Pointer<AllocId>),
-    /// Attempting to `copy` parts of a pointer to somewhere else; the resulting state cannot be
-    /// represented in our `Allocation` data structure. See
-    /// <https://github.com/rust-lang/miri/issues/2181>.
-    PartialPointerCopy(Pointer<AllocId>),
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //
+    /// Overwriting parts of a pointer; without knowing absolute addresses, the resulting state
+    /// cannot be represented by the CTFE interpreter.
+    PartialPointerOverwrite(Pointer<AllocId>),
+    /// Attempting to `copy` parts of a pointer to somewhere else; without knowing absolute
+    /// addresses, the resulting state cannot be represented by the CTFE interpreter.
+    PartialPointerCopy(Pointer<AllocId>),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
     /// Accessing thread local statics
