@@ -24,7 +24,7 @@ use rustc_lint_defs::pluralize;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
-use rustc_error_messages::FluentArgs;
+use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
@@ -2202,46 +2202,28 @@ impl FileWithAnnotatedLines {
         let mut multiline_annotations = vec![];
 
         if let Some(ref sm) = emitter.source_map() {
-            for span_label in msp.span_labels() {
-                let fixup_lo_hi = |span: Span| {
-                    let lo = sm.lookup_char_pos(span.lo());
-                    let mut hi = sm.lookup_char_pos(span.hi());
-
-                    // Watch out for "empty spans". If we get a span like 6..6, we
-                    // want to just display a `^` at 6, so convert that to
-                    // 6..7. This is degenerate input, but it's best to degrade
-                    // gracefully -- and the parser likes to supply a span like
-                    // that for EOF, in particular.
-
-                    if lo.col_display == hi.col_display && lo.line == hi.line {
-                        hi.col_display += 1;
-                    }
-                    (lo, hi)
+            for SpanLabel { span, is_primary, label } in msp.span_labels() {
+                // If we don't have a useful span, pick the primary span if that exists.
+                // Worst case we'll just print an error at the top of the main file.
+                let span = match (span.is_dummy(), msp.primary_span()) {
+                    (_, None) | (false, _) => span,
+                    (true, Some(span)) => span,
                 };
 
-                if span_label.span.is_dummy() {
-                    if let Some(span) = msp.primary_span() {
-                        // if we don't know where to render the annotation, emit it as a note
-                        // on the primary span.
+                let lo = sm.lookup_char_pos(span.lo());
+                let mut hi = sm.lookup_char_pos(span.hi());
 
-                        let (lo, hi) = fixup_lo_hi(span);
+                // Watch out for "empty spans". If we get a span like 6..6, we
+                // want to just display a `^` at 6, so convert that to
+                // 6..7. This is degenerate input, but it's best to degrade
+                // gracefully -- and the parser likes to supply a span like
+                // that for EOF, in particular.
 
-                        let ann = Annotation {
-                            start_col: lo.col_display,
-                            end_col: hi.col_display,
-                            is_primary: span_label.is_primary,
-                            label: span_label
-                                .label
-                                .as_ref()
-                                .map(|m| emitter.translate_message(m, args).to_string()),
-                            annotation_type: AnnotationType::Singleline,
-                        };
-                        add_annotation_to_file(&mut output, lo.file, lo.line, ann);
-                    }
-                    continue;
+                if lo.col_display == hi.col_display && lo.line == hi.line {
+                    hi.col_display += 1;
                 }
 
-                let (lo, hi) = fixup_lo_hi(span_label.span);
+                let label = label.as_ref().map(|m| emitter.translate_message(m, args).to_string());
 
                 if lo.line != hi.line {
                     let ml = MultilineAnnotation {
@@ -2250,11 +2232,8 @@ impl FileWithAnnotatedLines {
                         line_end: hi.line,
                         start_col: lo.col_display,
                         end_col: hi.col_display,
-                        is_primary: span_label.is_primary,
-                        label: span_label
-                            .label
-                            .as_ref()
-                            .map(|m| emitter.translate_message(m, args).to_string()),
+                        is_primary,
+                        label,
                         overlaps_exactly: false,
                     };
                     multiline_annotations.push((lo.file, ml));
@@ -2262,11 +2241,8 @@ impl FileWithAnnotatedLines {
                     let ann = Annotation {
                         start_col: lo.col_display,
                         end_col: hi.col_display,
-                        is_primary: span_label.is_primary,
-                        label: span_label
-                            .label
-                            .as_ref()
-                            .map(|m| emitter.translate_message(m, args).to_string()),
+                        is_primary,
+                        label,
                         annotation_type: AnnotationType::Singleline,
                     };
                     add_annotation_to_file(&mut output, lo.file, lo.line, ann);
