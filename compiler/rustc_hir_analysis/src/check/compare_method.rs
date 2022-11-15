@@ -14,10 +14,8 @@ use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
-    self, AssocItem, DefIdTree, TraitRef, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitable,
+    self, DefIdTree, InternalSubsts, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
 };
-use rustc_middle::ty::{FnSig, InternalSubsts};
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
@@ -144,9 +142,9 @@ pub(crate) fn compare_impl_method<'tcx>(
 #[instrument(level = "debug", skip(tcx, impl_m_span, impl_trait_ref))]
 fn compare_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
-    impl_m: &AssocItem,
+    impl_m: &ty::AssocItem,
     impl_m_span: Span,
-    trait_m: &AssocItem,
+    trait_m: &ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let trait_to_impl_substs = impl_trait_ref.substs;
@@ -157,8 +155,7 @@ fn compare_predicate_entailment<'tcx>(
     // FIXME(@lcnr): remove that after removing `cause.body_id` from
     // obligations.
     let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
-    // We sometimes modify the span further down.
-    let mut cause = ObligationCause::new(
+    let cause = ObligationCause::new(
         impl_m_span,
         impl_m_hir_id,
         ObligationCauseCode::CompareImplItemObligation {
@@ -307,14 +304,13 @@ fn compare_predicate_entailment<'tcx>(
         debug!(?terr, "sub_types failed: impl ty {:?}, trait ty {:?}", impl_fty, trait_fty);
 
         let emitted = report_trait_method_mismatch(
-            tcx,
-            &mut cause,
             &infcx,
+            cause,
             terr,
             (trait_m, trait_fty),
             (impl_m, impl_fty),
-            &trait_sig,
-            &impl_trait_ref,
+            trait_sig,
+            impl_trait_ref,
         );
         return Err(emitted);
     }
@@ -360,7 +356,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
 
     let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
     let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
-    let mut cause = ObligationCause::new(
+    let cause = ObligationCause::new(
         return_span,
         impl_m_hir_id,
         ObligationCauseCode::CompareImplItemObligation {
@@ -457,14 +453,13 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
             // emit an error now because `compare_predicate_entailment` will not report the error
             // when normalization fails.
             let emitted = report_trait_method_mismatch(
-                tcx,
-                &mut cause,
                 infcx,
+                cause,
                 terr,
                 (trait_m, trait_fty),
                 (impl_m, impl_fty),
-                &trait_sig,
-                &impl_trait_ref,
+                trait_sig,
+                impl_trait_ref,
             );
             return Err(emitted);
         }
@@ -634,23 +629,21 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
 }
 
 fn report_trait_method_mismatch<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    cause: &mut ObligationCause<'tcx>,
     infcx: &InferCtxt<'tcx>,
+    mut cause: ObligationCause<'tcx>,
     terr: TypeError<'tcx>,
-    (trait_m, trait_fty): (&AssocItem, Ty<'tcx>),
-    (impl_m, impl_fty): (&AssocItem, Ty<'tcx>),
-    trait_sig: &FnSig<'tcx>,
-    impl_trait_ref: &TraitRef<'tcx>,
+    (trait_m, trait_fty): (&ty::AssocItem, Ty<'tcx>),
+    (impl_m, impl_fty): (&ty::AssocItem, Ty<'tcx>),
+    trait_sig: ty::FnSig<'tcx>,
+    impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> ErrorGuaranteed {
+    let tcx = infcx.tcx;
     let (impl_err_span, trait_err_span) =
         extract_spans_for_error_reporting(&infcx, terr, &cause, impl_m, trait_m);
 
-    cause.span = impl_err_span;
-
     let mut diag = struct_span_err!(
         tcx.sess,
-        cause.span(),
+        impl_err_span,
         E0053,
         "method `{}` has an incompatible type for trait",
         trait_m.name
@@ -721,6 +714,7 @@ fn report_trait_method_mismatch<'tcx>(
         _ => {}
     }
 
+    cause.span = impl_err_span;
     infcx.err_ctxt().note_type_err(
         &mut diag,
         &cause,
