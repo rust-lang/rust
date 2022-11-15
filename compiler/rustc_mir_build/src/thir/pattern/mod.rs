@@ -566,7 +566,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 _ => bug!("Expected ConstKind::Param"),
             },
             mir::ConstantKind::Val(_, _) => self.const_to_pat(value, id, span, false).kind,
-            mir::ConstKind::Unevaluated(_) => {
+            mir::ConstantKind::Unevaluated(..) => {
                 // If we land here it means the const can't be evaluated because it's `TooGeneric`.
                 self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
                 return PatKind::Wild;
