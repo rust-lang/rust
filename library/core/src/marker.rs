@@ -96,6 +96,7 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 #[rustc_specialization_trait]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
 pub trait Sized {
     // Empty.
 }
@@ -127,6 +128,7 @@ pub trait Sized {
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "unsize", issue = "27732")]
 #[lang = "unsize"]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
 pub trait Unsize<T: ?Sized> {
     // Empty.
 }
@@ -693,6 +695,7 @@ impl<T: ?Sized> StructuralEq for PhantomData<T> {}
     reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
 )]
 #[lang = "discriminant_kind"]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
 pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
@@ -793,6 +796,7 @@ impl<T: ?Sized> Unpin for *mut T {}
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 #[const_trait]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
 pub trait Destruct {}
 
 /// A marker for tuple types.
@@ -802,6 +806,7 @@ pub trait Destruct {}
 #[unstable(feature = "tuple_trait", issue = "none")]
 #[lang = "tuple_trait"]
 #[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
 pub trait Tuple {}
 
 /// Implementations of `Copy` for primitive types.

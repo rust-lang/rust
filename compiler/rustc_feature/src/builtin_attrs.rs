@@ -692,6 +692,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
     ),
     rustc_attr!(
+        rustc_deny_explicit_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: false,
+        "#[rustc_deny_explicit_impl] enforces that a trait can have no user-provided impls"
+    ),
+    rustc_attr!(
         rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word), ErrorFollowing,
         "#[rustc_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
          the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."
