@@ -221,7 +221,7 @@ fn insert_alignment_check<'tcx>(
                 required: Operand::Copy(alignment),
                 found: Operand::Copy(addr),
             },
-            cleanup: None,
+            unwind: UnwindAction::Terminate,
         },
     });
 }

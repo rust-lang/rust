@@ -237,10 +237,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     None,
                     StackPopCleanup::Goto {
                         ret: None,
-                        unwind: match unwind {
-                            Some(cleanup) => StackPopUnwind::Cleanup(cleanup),
-                            None => StackPopUnwind::Skip,
-                        },
+                        unwind,
                     },
                 )?;
             }
