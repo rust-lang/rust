@@ -517,16 +517,9 @@ trait UnusedDelimLint {
         right_pos: Option<BytePos>,
     ) {
         let spans = match value.kind {
-            ast::ExprKind::Block(ref block, None) if block.stmts.len() > 0 => {
-                let start = block.stmts[0].span;
-                let end = block.stmts[block.stmts.len() - 1].span;
-                if let Some(start) = start.find_ancestor_inside(value.span)
-                    && let Some(end) = end.find_ancestor_inside(value.span)
-                {
-                    Some((
-                        value.span.with_hi(start.lo()),
-                        value.span.with_lo(end.hi()),
-                    ))
+            ast::ExprKind::Block(ref block, None) if block.stmts.len() == 1 => {
+                if let Some(span) = block.stmts[0].span.find_ancestor_inside(value.span) {
+                    Some((value.span.with_hi(span.lo()), value.span.with_lo(span.hi())))
                 } else {
                     None
                 }
