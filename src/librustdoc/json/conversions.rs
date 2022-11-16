@@ -257,12 +257,12 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         StructFieldItem(f) => ItemEnum::StructField(f.into_tcx(tcx)),
         EnumItem(e) => ItemEnum::Enum(e.into_tcx(tcx)),
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
-        FunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
-        ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
+        FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), tcx)),
+        ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, false, header.unwrap(), tcx)),
         TraitItem(t) => ItemEnum::Trait((*t).into_tcx(tcx)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
-        MethodItem(m, _) => ItemEnum::Method(from_function_method(m, true, header.unwrap(), tcx)),
-        TyMethodItem(m) => ItemEnum::Method(from_function_method(m, false, header.unwrap(), tcx)),
+        MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), tcx)),
+        TyMethodItem(m) => ItemEnum::Function(from_function(m, false, header.unwrap(), tcx)),
         ImplItem(i) => ItemEnum::Impl((*i).into_tcx(tcx)),
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
@@ -618,25 +618,12 @@ impl FromWithTcx<clean::Impl> for Impl {
 
 pub(crate) fn from_function(
     function: Box<clean::Function>,
+    has_body: bool,
     header: rustc_hir::FnHeader,
     tcx: TyCtxt<'_>,
 ) -> Function {
     let clean::Function { decl, generics } = *function;
     Function {
-        decl: decl.into_tcx(tcx),
-        generics: generics.into_tcx(tcx),
-        header: from_fn_header(&header),
-    }
-}
-
-pub(crate) fn from_function_method(
-    function: Box<clean::Function>,
-    has_body: bool,
-    header: rustc_hir::FnHeader,
-    tcx: TyCtxt<'_>,
-) -> Method {
-    let clean::Function { decl, generics } = *function;
-    Method {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),
         header: from_fn_header(&header),
@@ -759,14 +746,13 @@ impl FromWithTcx<ItemType> for ItemKind {
             Struct => ItemKind::Struct,
             Union => ItemKind::Union,
             Enum => ItemKind::Enum,
-            Function => ItemKind::Function,
+            Function | TyMethod | Method => ItemKind::Function,
             Typedef => ItemKind::Typedef,
             OpaqueTy => ItemKind::OpaqueTy,
             Static => ItemKind::Static,
             Constant => ItemKind::Constant,
             Trait => ItemKind::Trait,
             Impl => ItemKind::Impl,
-            TyMethod | Method => ItemKind::Method,
             StructField => ItemKind::StructField,
             Variant => ItemKind::Variant,
             Macro => ItemKind::Macro,
