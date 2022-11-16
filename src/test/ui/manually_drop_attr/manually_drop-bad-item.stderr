@@ -1,0 +1,23 @@
+error: attribute should be applied to a struct or enum
+  --> $DIR/manually_drop-bad-item.rs:6:1
+   |
+LL | #[manually_drop]
+   | ^^^^^^^^^^^^^^^^
+LL |
+LL | fn foo() {}
+   | ----------- not a struct or enum
+   |
+note: the lint level is defined here
+  --> $DIR/manually_drop-bad-item.rs:2:11
+   |
+LL | #![forbid(unused_attributes)]
+   |           ^^^^^^^^^^^^^^^^^
+
+error: attribute should be applied to a struct or enum
+  --> $DIR/manually_drop-bad-item.rs:3:1
+   |
+LL | #![manually_drop]
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

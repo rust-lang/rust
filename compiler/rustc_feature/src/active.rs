@@ -439,6 +439,8 @@ declare_features! (
     (active, lint_reasons, "1.31.0", Some(54503), None),
     /// Give access to additional metadata about declarative macro meta-variables.
     (active, macro_metavar_expr, "1.61.0", Some(83527), None),
+    /// Allows `#[manually_drop]` on type definitions.
+    (active, manually_drop_attr, "1.64.0", Some(100344), None),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (active, marker_trait_attr, "1.30.0", Some(29864), None),
     /// A minimal, sound subset of specialization intended to be used by the

@@ -200,6 +200,7 @@
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
+#![cfg_attr(not(bootstrap), feature(manually_drop_attr))]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(negative_impls)]

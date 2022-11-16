@@ -480,6 +480,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         deprecated_safe, Normal, template!(List: r#"since = "version", note = "...""#), ErrorFollowing,
         experimental!(deprecated_safe),
     ),
+    // lang-team MCP 135
+    gated!(
+        manually_drop, Normal, template!(Word), WarnFollowing, manually_drop_attr, experimental!(manually_drop),
+    ),
 
     // `#[collapse_debuginfo]`
     gated!(

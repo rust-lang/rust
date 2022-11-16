@@ -212,10 +212,7 @@ fn drop_tys_helper<'tcx>(
     }
 
     let adt_components = move |adt_def: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>| {
-        if adt_def.is_manually_drop() {
-            debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
-            Ok(Vec::new())
-        } else if let Some(dtor_info) = adt_has_dtor(adt_def) {
+        if let Some(dtor_info) = adt_has_dtor(adt_def) {
             match dtor_info {
                 DtorType::Significant => {
                     debug!("drop_tys_helper: `{:?}` implements `Drop`", adt_def);
@@ -230,6 +227,9 @@ fn drop_tys_helper<'tcx>(
                     Ok(substs.types().collect())
                 }
             }
+        } else if adt_def.is_manually_drop() {
+            debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
+            Ok(Vec::new())
         } else if adt_def.is_union() {
             debug!("drop_tys_helper: `{:?}` is a union", adt_def);
             Ok(Vec::new())

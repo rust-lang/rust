@@ -169,6 +169,7 @@ impl CheckAttrVisitor<'_> {
                 sym::no_mangle => self.check_no_mangle(hir_id, attr, span, target),
                 sym::deprecated => self.check_deprecated(hir_id, attr, span, target),
                 sym::macro_use | sym::macro_escape => self.check_macro_use(hir_id, attr, target),
+                sym::manually_drop => self.check_manually_drop(hir_id, attr, span, target),
                 sym::path => self.check_generic_attr(hir_id, attr, target, Target::Mod),
                 sym::plugin_registrar => self.check_plugin_registrar(hir_id, attr, target),
                 sym::macro_export => self.check_macro_export(hir_id, attr, target),
@@ -2014,6 +2015,17 @@ impl CheckAttrVisitor<'_> {
     fn check_macro_export(&self, hir_id: HirId, attr: &Attribute, target: Target) {
         if target != Target::MacroDef {
             self.tcx.emit_spanned_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::MacroExport);
+        }
+    }
+
+    fn check_manually_drop(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+        if !matches!(target, Target::Struct | Target::Enum) {
+            self.tcx.emit_spanned_lint(
+                UNUSED_ATTRIBUTES,
+                hir_id,
+                attr.span,
+                errors::ManuallyDropShouldBeAppliedToStructEnum { defn_span: span },
+            );
         }
     }
 

@@ -1,0 +1,15 @@
+error[E0740]: unions cannot contain fields that may need dropping
+  --> $DIR/manually_drop-in-union.rs:14:5
+   |
+LL |     x: ManuallyDropHasDrop,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a type is guaranteed not to need dropping when it implements `Copy`, or when it is the special `ManuallyDrop<_>` type
+help: when the type does not implement `Copy`, wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped
+   |
+LL |     x: std::mem::ManuallyDrop<ManuallyDropHasDrop>,
+   |        +++++++++++++++++++++++                   +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0740`.
