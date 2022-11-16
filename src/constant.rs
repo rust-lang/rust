@@ -304,7 +304,7 @@ fn data_id_for_static(
 
         // Comment copied from https://github.com/rust-lang/rust/blob/45060c2a66dfd667f88bd8b94261b28a58d85bd5/src/librustc_codegen_llvm/consts.rs#L141
         // Declare an internal global `extern_with_linkage_foo` which
-        // is initialized with the address of `foo`.  If `foo` is
+        // is initialized with the address of `foo`. If `foo` is
         // discarded during linking (for example, if `foo` has weak
         // linkage and there are no definitions), then
         // `extern_with_linkage_foo` will instead be initialized to
