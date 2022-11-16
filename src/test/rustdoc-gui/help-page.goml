@@ -3,6 +3,7 @@ goto: "file://" + |DOC_PATH| + "/help.html"
 size: (1000, 1000) // Try desktop size first.
 wait-for: "#help"
 assert-css: ("#help", {"display": "block"})
+assert-css: ("#help dd", {"font-size": "16px"})
 click: "#help-button > a"
 assert-css: ("#help", {"display": "block"})
 compare-elements-property: (".sub", "#help", ["offsetWidth"])
@@ -18,6 +19,7 @@ size: (1000, 1000) // Only supported on desktop.
 assert-false: "#help"
 click: "#help-button > a"
 assert-css: ("#help", {"display": "block"})
+assert-css: ("#help dd", {"font-size": "16px"})
 click: "#help-button > a"
 assert-css: ("#help", {"display": "none"})
 compare-elements-property-false: (".sub", "#help", ["offsetWidth"])
