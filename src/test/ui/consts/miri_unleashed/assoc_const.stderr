@@ -13,11 +13,23 @@ LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 LL |     const F: u32 = (U::X, 42).1;
    |                               - inside `<String as Bar<Vec<u32>, String>>::F` at $DIR/assoc_const.rs:12:31
 
-error[E0080]: erroneous constant used
+note: erroneous constant used
   --> $DIR/assoc_const.rs:29:13
    |
 LL |     let y = <String as Bar<Vec<u32>, String>>::F;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: erroneous constant used
+  --> $DIR/assoc_const.rs:29:13
+   |
+LL |     let y = <String as Bar<Vec<u32>, String>>::F;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: erroneous constant used
+  --> $DIR/assoc_const.rs:29:13
+   |
+LL |     let y = <String as Bar<Vec<u32>, String>>::F;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: skipping const checks
    |
@@ -27,6 +39,6 @@ help: skipping check that does not even have a feature gate
 LL |     const F: u32 = (U::X, 42).1;
    |                    ^^^^^^^^^^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

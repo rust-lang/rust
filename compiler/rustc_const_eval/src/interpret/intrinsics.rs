@@ -177,8 +177,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::type_name => self.tcx.mk_static_str(),
                     _ => bug!(),
                 };
-                let val =
-                    self.tcx.const_eval_global_id(self.param_env, gid, Some(self.tcx.span))?;
+                let val = self.ctfe_query(None, |tcx| {
+                    tcx.const_eval_global_id(self.param_env, gid, Some(tcx.span))
+                })?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
                 self.copy_op(&val, dest, /*allow_transmute*/ false)?;
             }

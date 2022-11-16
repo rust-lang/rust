@@ -558,12 +558,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 NotConstEvaluatable::Error(reported),
                             )),
                         ),
-                        (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
-                            span_bug!(
-                                obligation.cause.span(),
-                                "ConstEquate: const_eval_resolve returned an unexpected error"
-                            )
-                        }
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
                             if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 ProcessResult::Unchanged
