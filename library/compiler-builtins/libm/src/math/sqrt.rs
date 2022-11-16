@@ -261,16 +261,20 @@ mod tests {
             assert_eq!(sqrt(f), f);
         }
     }
-    
+
     #[test]
     fn conformance_tests() {
         let values = [3.14159265359, 10000.0, f64::from_bits(0x0000000f), INFINITY];
-        let results = [4610661241675116657u64, 4636737291354636288u64,
-        2197470602079456986u64, 9218868437227405312u64];
-        
+        let results = [
+            4610661241675116657u64,
+            4636737291354636288u64,
+            2197470602079456986u64,
+            9218868437227405312u64,
+        ];
+
         for i in 0..values.len() {
             let bits = f64::to_bits(sqrt(values[i]));
             assert_eq!(results[i], bits);
-        } 
+        }
     }
 }
