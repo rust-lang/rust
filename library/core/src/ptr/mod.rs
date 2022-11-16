@@ -1591,7 +1591,6 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 ///
 /// Any questions go to @nagisa.
 #[lang = "align_offset"]
-#[rustc_do_not_const_check] // hooked by const-eval
 pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
@@ -1651,8 +1650,12 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
         inverse & m_minus_one
     }
 
-    let addr = p.addr();
     let stride = mem::size_of::<T>();
+
+    // SAFETY: At runtime, transmuting a pointer to `usize` is always safe, because they have the
+    // same layout. During const eval, we hook this function to ensure that the pointer always has
+    // an address (only the standard library can do this).
+    let addr: usize = unsafe { mem::transmute(p) };
 
     // SAFETY: `a` is a power-of-two, therefore non-zero.
     let a_minus_one = unsafe { unchecked_sub(a, 1) };

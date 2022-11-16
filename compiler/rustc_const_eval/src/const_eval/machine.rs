@@ -2,10 +2,11 @@ use rustc_hir::def::DefKind;
 use rustc_hir::LangItem;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::PointerArithmetic;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::borrow::Borrow;
 use std::hash::Hash;
+use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::IndexEntry;
@@ -20,8 +21,8 @@ use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::interpret::{
-    self, compile_time_machine, AllocId, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
-    OpTy, PlaceTy, Pointer, Scalar, StackPopUnwind,
+    self, compile_time_machine, AllocId, ConstAllocation, FnVal, Frame, ImmTy, InterpCx,
+    InterpResult, OpTy, PlaceTy, Pointer, Scalar, StackPopUnwind,
 };
 
 use super::error::*;
@@ -191,21 +192,24 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
 
             return Ok(Some(new_instance));
         } else if Some(def_id) == self.tcx.lang_items().align_offset_fn() {
-            // For align_offset, we replace the function call entirely.
-            self.align_offset(instance, args, dest, ret)?;
-            return Ok(None);
+            // For align_offset, we replace the function call if the pointer has no address.
+            match self.align_offset(instance, args, dest, ret)? {
+                ControlFlow::Continue(()) => return Ok(Some(instance)),
+                ControlFlow::Break(()) => return Ok(None),
+            }
         }
         Ok(Some(instance))
     }
 
-    /// This function replaces `align_offset(ptr, target_align)` in const eval, because the
-    /// pointer may not have an address.
+    /// `align_offset(ptr, target_align)` needs special handling in const eval, because the pointer
+    /// may not have an address.
     ///
-    /// If `ptr` does have a known address, we forward it to [`Self::align_offset_impl`].
+    /// If `ptr` does have a known address, then we return `CONTINUE` and the function call should
+    /// proceed as normal.
     ///
     /// If `ptr` doesn't have an address, but its underlying allocation's alignment is at most
-    /// `target_align`, then we call [`Self::align_offset_impl`] with an dummy address relative
-    /// to the allocation.
+    /// `target_align`, then we call the function again with an dummy address relative to the
+    /// allocation.
     ///
     /// If `ptr` doesn't have an address and `target_align` is stricter than the underlying
     /// allocation's alignment, then we return `usize::MAX` immediately.
@@ -215,103 +219,53 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, ControlFlow<()>> {
         assert_eq!(args.len(), 2);
 
         let ptr = self.read_pointer(&args[0])?;
         let target_align = self.read_scalar(&args[1])?.to_machine_usize(self)?;
 
-        let pointee_ty = instance.substs.type_at(0);
-        let stride = self.layout_of(pointee_ty)?.size.bytes();
-
         if !target_align.is_power_of_two() {
             throw_ub_format!("`align_offset` called with non-power-of-two align: {}", target_align);
         }
 
-        let mut align_offset = match self.ptr_try_get_alloc_id(ptr) {
+        match self.ptr_try_get_alloc_id(ptr) {
             Ok((alloc_id, offset, _extra)) => {
-                // Extract the address relative to a base that is definitely sufficiently aligned.
                 let (_size, alloc_align, _kind) = self.get_alloc_info(alloc_id);
 
                 if target_align <= alloc_align.bytes() {
-                    // The pointer *is* alignable in const. We use an address relative to the
-                    // allocation base that is definitely sufficiently aligned.
-                    let addr = offset.bytes();
-                    Self::align_offset_impl(addr, stride, target_align)
+                    // Extract the address relative to the allocation base that is definitely
+                    // sufficiently aligned and call `align_offset` again.
+                    let addr = ImmTy::from_uint(offset.bytes(), args[0].layout).into();
+                    let align = ImmTy::from_uint(target_align, args[1].layout).into();
+                    let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
+
+                    // We replace the entire entire function call with a "tail call".
+                    // Note that this happens before the frame of the original function
+                    // is pushed on the stack.
+                    self.eval_fn_call(
+                        FnVal::Instance(instance),
+                        (CallAbi::Rust, fn_abi),
+                        &[addr, align],
+                        /* with_caller_location = */ false,
+                        dest,
+                        ret,
+                        StackPopUnwind::NotAllowed,
+                    )?;
+                    Ok(ControlFlow::BREAK)
                 } else {
-                    // The pointer *is not* alignable in const, return `usize::MAX`.
-                    // (We clamp this to machine `usize` below.)
-                    u64::MAX
+                    // Not alignable in const, return `usize::MAX`.
+                    let usize_max = Scalar::from_machine_usize(self.machine_usize_max(), self);
+                    self.write_scalar(usize_max, dest)?;
+                    self.return_to_block(ret)?;
+                    Ok(ControlFlow::BREAK)
                 }
             }
-            Err(addr) => {
-                // The pointer has a known address.
-                Self::align_offset_impl(addr, stride, target_align)
-            }
-        };
-
-        let usize_max = self.machine_usize_max();
-        if align_offset > usize_max {
-            align_offset = usize_max;
-        }
-
-        self.write_scalar(Scalar::from_machine_usize(align_offset, self), dest)?;
-        self.return_to_block(ret)?;
-
-        Ok(())
-    }
-
-    /// Const eval implementation of `#[lang = "align_offset"]`.
-    /// See the runtime version for a detailed explanation how this works.
-    fn align_offset_impl(addr: u64, stride: u64, align: u64) -> u64 {
-        assert!(align.is_power_of_two());
-
-        let addr_mod_align = addr % align;
-
-        if addr_mod_align == 0 {
-            // The address is already sufficiently aligned.
-            return 0;
-        }
-
-        if stride == 0 {
-            // The address cannot be aligned.
-            return u64::MAX;
-        }
-
-        if align % stride == 0 {
-            let byte_offset = align - addr_mod_align;
-            if byte_offset % stride == 0 {
-                return byte_offset / stride;
-            } else {
-                return u64::MAX;
+            Err(_addr) => {
+                // The pointer has an address, continue with function call.
+                Ok(ControlFlow::CONTINUE)
             }
         }
-
-        // This only works, because `align` is a power of two.
-        let gcd = 1u64 << (stride | align).trailing_zeros();
-
-        if addr % gcd != 0 {
-            // The address cannot be aligned.
-            return u64::MAX;
-        }
-
-        // Instead of `(addr + offset * stride) % align == 0`, we solve
-        // `((addr + offset * stride) / gcd) % (align / gcd) == 0`.
-        let addr2 = addr / gcd;
-        let align2 = align / gcd;
-        let stride2 = stride / gcd;
-
-        let mut stride_inv = 1u64;
-        let mut mod_gate = 2u64;
-        let mut overflow = false;
-        while !overflow && mod_gate < align2 {
-            stride_inv =
-                stride_inv.wrapping_mul(2u64.wrapping_sub(stride2.wrapping_mul(stride_inv)));
-            (mod_gate, overflow) = mod_gate.overflowing_mul(mod_gate);
-        }
-
-        let byte_offset = align2 - addr2 % align2;
-        byte_offset.wrapping_mul(stride_inv) % align2
     }
 
     /// See documentation on the `ptr_guaranteed_cmp` intrinsic.
