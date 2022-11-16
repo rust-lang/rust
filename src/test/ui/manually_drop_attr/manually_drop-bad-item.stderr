@@ -17,7 +17,7 @@ error: attribute should be applied to a struct or enum
   --> $DIR/manually_drop-bad-item.rs:3:1
    |
 LL | #![manually_drop]
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^ not a struct or enum
 
 error: aborting due to 2 previous errors
 
