@@ -150,7 +150,8 @@ is set the `MIRI_LIB_SRC` environment variable to the `library` folder of a
 `rust-lang/rust` repository checkout. Note that changing files in that directory
 does not automatically trigger a re-build of the standard library; you have to
 clear the Miri build cache manually (on Linux, `rm -rf ~/.cache/miri`;
-and on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`).
+on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`;
+and on macOS, `rm -rf ~/Library/Caches/org.rust-lang.miri`).
 
 ### Benchmarking
 
@@ -207,23 +208,6 @@ for more information about configuring VS Code and `rust-analyzer`.
 We described above the simplest way to get a working build environment for Miri,
 which is to use the version of rustc indicated by `rustc-version`. But
 sometimes, that is not enough.
-
-### Updating `rustc-version`
-
-The `rustc-version` file is regularly updated to keep Miri close to the latest
-version of rustc. Usually, new contributors do not have to worry about this. But
-sometimes a newer rustc is needed for a patch, and sometimes Miri needs fixing
-for changes in rustc. In both cases, `rustc-version` needs updating.
-
-To update the `rustc-version` file and install the latest rustc, you can run:
-```
-./miri toolchain HEAD
-```
-
-Now edit Miri until `./miri test` passes, and submit a PR. Generally, it is
-preferred to separate updating `rustc-version` and doing what it takes to get
-Miri working again, from implementing new features that rely on the updated
-rustc. This avoids blocking all Miri development on landing a big PR.
 
 ### Building Miri with a locally built rustc
 
@@ -282,13 +266,13 @@ With this, you should now have a working development setup! See
 ## Advanced topic: Syncing with the rustc repo
 
 We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit
-changes between the rustc and Miri repositories. For now, a fork of josh needs to be built
-from source. This downloads and runs josh:
+changes between the rustc and Miri repositories. For now, the latest git version
+of josh needs to be built from source. This downloads and runs josh:
 
 ```sh
-git clone https://github.com/RalfJung/josh
+git clone https://github.com/josh-project/josh
 cd josh
-cargo run --release -p josh-proxy -- --local=$(pwd)/local --remote=https://github.com --no-background
+cargo run --release -p josh-proxy -- --local=local --remote=https://github.com --no-background
 ```
 
 ### Importing changes from the rustc repo
@@ -298,9 +282,10 @@ We assume we start on an up-to-date master branch in the Miri repo.
 
 ```sh
 # Fetch and merge rustc side of the history. Takes ca 5 min the first time.
+# This will also update the 'rustc-version' file.
 ./miri rustc-pull
-# Update toolchain reference and apply formatting.
-./miri toolchain HEAD && ./miri fmt
+# Update local toolchain and apply formatting.
+./miri toolchain && ./miri fmt
 git commit -am "rustup"
 ```
 

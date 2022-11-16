@@ -117,6 +117,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "env_logger",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
+    "fastrand",
     "filetime",
     "fixedbitset",
     "flate2",

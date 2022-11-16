@@ -432,7 +432,9 @@ Moreover, Miri recognizes some environment variables:
   must point to the `library` subdirectory of a `rust-lang/rust` repository
   checkout. Note that changing files in that directory does not automatically
   trigger a re-build of the standard library; you have to clear the Miri build
-  cache manually (on Linux, `rm -rf ~/.cache/miri`).
+  cache manually (on Linux, `rm -rf ~/.cache/miri`;
+  on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`;
+  and on macOS, `rm -rf ~/Library/Caches/org.rust-lang.miri`).
 * `MIRI_SYSROOT` (recognized by `cargo miri` and the Miri driver) indicates the sysroot to use. When
   using `cargo miri`, this skips the automatic setup -- only set this if you do not want to use the
   automatically created sysroot. For directly invoking the Miri driver, this variable (or a
@@ -568,6 +570,15 @@ extern "Rust" {
     /// program) the contents of a section of program memory, as bytes. Bytes
     /// written using this function will emerge from the interpreter's stderr.
     fn miri_write_to_stderr(bytes: &[u8]);
+
+    /// Miri-provided extern function to allocate memory from the interpreter.
+    /// 
+    /// This is useful when no fundamental way of allocating memory is
+    /// available, e.g. when using `no_std` + `alloc`.
+    fn miri_alloc(size: usize, align: usize) -> *mut u8;
+
+    /// Miri-provided extern function to deallocate memory.
+    fn miri_dealloc(ptr: *mut u8, size: usize, align: usize);
 }
 ```
 
