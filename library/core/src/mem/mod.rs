@@ -1010,8 +1010,7 @@ pub const fn copy<T: Copy>(x: &T) -> T {
 ///
 /// It is not a compile-time error if `Src` and `Dst` have different sizes, but it
 /// is highly encouraged to only invoke this function where `Src` and `Dst` have the
-/// same size. This function triggers [undefined behavior][ub] if `Dst` is larger than
-/// `Src`.
+/// same size. This function panics if `Dst` is larger than `Src`.
 ///
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
@@ -1046,7 +1045,7 @@ pub const fn copy<T: Copy>(x: &T) -> T {
 #[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
 pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
     assert!(
-        size_of::<Src>() >= size_of::<Dst>(),
+        size_of::<Src>() > size_of::<Dst>(),
         "cannot transmute_copy if Dst is larger than Src"
     );
 
