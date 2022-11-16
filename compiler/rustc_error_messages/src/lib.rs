@@ -10,6 +10,7 @@ extern crate tracing;
 
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
+use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::{fluent_messages, Decodable, Encodable};
 use rustc_span::Span;
@@ -30,8 +31,7 @@ use intl_memoizer::concurrent::IntlLangMemoizer;
 #[cfg(not(parallel_compiler))]
 use intl_memoizer::IntlLangMemoizer;
 
-pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
-
+pub use fluent_bundle::{self, types::FluentType, FluentArgs, FluentError, FluentValue};
 pub use unic_langid::{langid, LanguageIdentifier};
 
 // Generates `DEFAULT_LOCALE_RESOURCES` static and `fluent_generated` module.
@@ -541,4 +541,93 @@ impl From<Vec<Span>> for MultiSpan {
     fn from(spans: Vec<Span>) -> MultiSpan {
         MultiSpan::from_spans(spans)
     }
+}
+
+fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locid::Locale> {
+    icu_locid::Locale::try_from_bytes(lang.to_string().as_bytes()).ok()
+}
+
+pub fn fluent_value_from_str_list_sep_by_and<'source>(
+    l: Vec<Cow<'source, str>>,
+) -> FluentValue<'source> {
+    // Fluent requires 'static value here for its AnyEq usages.
+    #[derive(Clone, PartialEq, Debug)]
+    struct FluentStrListSepByAnd(Vec<String>);
+
+    impl FluentType for FluentStrListSepByAnd {
+        fn duplicate(&self) -> Box<dyn FluentType + Send> {
+            Box::new(self.clone())
+        }
+
+        fn as_string(&self, intls: &intl_memoizer::IntlLangMemoizer) -> Cow<'static, str> {
+            let result = intls
+                .with_try_get::<MemoizableListFormatter, _, _>((), |list_formatter| {
+                    list_formatter.format_to_string(self.0.iter())
+                })
+                .unwrap();
+            Cow::Owned(result)
+        }
+
+        #[cfg(not(parallel_compiler))]
+        fn as_string_threadsafe(
+            &self,
+            _intls: &intl_memoizer::concurrent::IntlLangMemoizer,
+        ) -> Cow<'static, str> {
+            unreachable!("`as_string_threadsafe` is not used in non-parallel rustc")
+        }
+
+        #[cfg(parallel_compiler)]
+        fn as_string_threadsafe(
+            &self,
+            intls: &intl_memoizer::concurrent::IntlLangMemoizer,
+        ) -> Cow<'static, str> {
+            let result = intls
+                .with_try_get::<MemoizableListFormatter, _, _>((), |list_formatter| {
+                    list_formatter.format_to_string(self.0.iter())
+                })
+                .unwrap();
+            Cow::Owned(result)
+        }
+    }
+
+    struct MemoizableListFormatter(icu_list::ListFormatter);
+
+    impl std::ops::Deref for MemoizableListFormatter {
+        type Target = icu_list::ListFormatter;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl intl_memoizer::Memoizable for MemoizableListFormatter {
+        type Args = ();
+        type Error = ();
+
+        fn construct(lang: LanguageIdentifier, _args: Self::Args) -> Result<Self, Self::Error>
+        where
+            Self: Sized,
+        {
+            let baked_data_provider = rustc_baked_icu_data::baked_data_provider();
+            let locale_fallbacker =
+                LocaleFallbacker::try_new_with_any_provider(&baked_data_provider)
+                    .expect("Failed to create fallback provider");
+            let data_provider =
+                LocaleFallbackProvider::new_with_fallbacker(baked_data_provider, locale_fallbacker);
+            let locale = icu_locale_from_unic_langid(lang)
+                .unwrap_or_else(|| rustc_baked_icu_data::supported_locales::EN);
+            let list_formatter =
+                icu_list::ListFormatter::try_new_and_with_length_with_any_provider(
+                    &data_provider,
+                    &locale.into(),
+                    icu_list::ListLength::Wide,
+                )
+                .expect("Failed to create list formatter");
+
+            Ok(MemoizableListFormatter(list_formatter))
+        }
+    }
+
+    let l = l.into_iter().map(|x| x.into_owned()).collect();
+
+    FluentValue::Custom(Box::new(FluentStrListSepByAnd(l)))
 }

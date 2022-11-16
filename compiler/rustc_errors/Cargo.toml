@@ -27,3 +27,6 @@ serde_json = "1.0.59"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = [ "handleapi", "synchapi", "winbase" ] }
+
+[features]
+rustc_use_parallel_compiler = ['rustc_error_messages/rustc_use_parallel_compiler']
