@@ -799,6 +799,51 @@ impl<T, const N: usize> [T; N] {
     }
 }
 
+impl<T, const N: usize> [MaybeUninit<T>; N] {
+    /// Extracts the values from an array of [`MaybeUninit<T>`] containers.
+    ///
+    /// This is essentially `.map(MaybeUninit::assume_init)`, but in a way
+    /// that's *much* clearer to the optimizer how to do efficiently.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that all elements of the array are
+    /// in an initialized state.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(inline_const)]
+    /// #![feature(array_maybe_uninit_assume_init)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut array = [const { MaybeUninit::<i32>::uninit() }; 3];
+    /// array[0].write(0);
+    /// array[1].write(1);
+    /// array[2].write(2);
+    ///
+    /// // SAFETY: we initialised all three elements
+    /// let array = unsafe { array.assume_init() };
+    ///
+    /// assert_eq!(array, [0, 1, 2]);
+    /// ```
+    #[unstable(feature = "array_maybe_uninit_assume_init", issue = "96097")]
+    #[rustc_const_unstable(feature = "const_array_maybe_uninit_assume_init", issue = "96097")]
+    #[inline(always)]
+    #[track_caller]
+    pub const unsafe fn assume_init(self) -> [T; N] {
+        // SAFETY:
+        // * The caller guarantees that all elements of the array are initialized
+        // * `MaybeUninit<T>` and T are guaranteed to have the same layout
+        // * `MaybeUninit` does not drop, so there are no double-frees
+        // And thus the conversion is safe
+        unsafe {
+            crate::intrinsics::assert_inhabited::<[T; N]>();
+            mem::transmute_copy(&mem::ManuallyDrop::new(self))
+        }
+    }
+}
+
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
 /// yields fewer than `N` items, this function exhibits undefined behavior.
 ///
@@ -896,7 +941,7 @@ where
 
     mem::forget(guard);
     // SAFETY: All elements of the array were populated in the loop above.
-    let output = unsafe { array.transpose().assume_init() };
+    let output = unsafe { array.assume_init() };
     Ok(Try::from_output(output))
 }
 

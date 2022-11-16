@@ -223,7 +223,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
             self.ptr = self.ptr.wrapping_byte_add(N);
             // Safety: ditto
-            return Ok(unsafe { raw_ary.transpose().assume_init() });
+            return Ok(unsafe { raw_ary.assume_init() });
         }
 
         if len < N {
@@ -241,7 +241,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         return unsafe {
             ptr::copy_nonoverlapping(self.ptr, raw_ary.as_mut_ptr() as *mut T, N);
             self.ptr = self.ptr.add(N);
-            Ok(raw_ary.transpose().assume_init())
+            Ok(raw_ary.assume_init())
         };
     }
 

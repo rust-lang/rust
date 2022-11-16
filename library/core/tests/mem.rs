@@ -194,11 +194,11 @@ fn uninit_array_assume_init() {
     array[3].write(1);
     array[4].write(5);
 
-    let array = unsafe { array.transpose().assume_init() };
+    let array = unsafe { array.assume_init() };
 
     assert_eq!(array, [3, 1, 4, 1, 5]);
 
-    let [] = unsafe { [MaybeUninit::<!>::uninit(); 0].transpose().assume_init() };
+    let [] = unsafe { [MaybeUninit::<!>::uninit(); 0].assume_init() };
 }
 
 #[test]
