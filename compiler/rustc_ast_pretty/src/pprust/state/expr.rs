@@ -537,6 +537,11 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
             }
+            ast::ExprKind::Become(result) => {
+                self.word("become");
+                self.word(" ");
+                self.print_expr_maybe_paren(result, parser::PREC_JUMP);
+            }
             ast::ExprKind::InlineAsm(a) => {
                 // FIXME: This should have its own syntax, distinct from a macro invocation.
                 self.word("asm!");

@@ -555,6 +555,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(dyn_star, "`dyn*` trait objects are experimental");
     gate_all!(const_closures, "const closures are experimental");
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
+    gate_all!(explicit_tail_calls, "`become` expression is experimental");
 
     if !visitor.features.negative_bounds {
         for &span in spans.get(&sym::negative_bounds).iter().copied().flatten() {

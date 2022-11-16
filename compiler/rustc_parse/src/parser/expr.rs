@@ -1430,6 +1430,8 @@ impl<'a> Parser<'a> {
             self.parse_expr_yield()
         } else if self.is_do_yeet() {
             self.parse_expr_yeet()
+        } else if self.eat_keyword(kw::Become) {
+            self.parse_expr_become()
         } else if self.check_keyword(kw::Let) {
             self.parse_expr_let()
         } else if self.eat_keyword(kw::Underscore) {
@@ -1742,6 +1744,16 @@ impl<'a> Parser<'a> {
 
         let span = lo.to(self.prev_token.span);
         self.sess.gated_spans.gate(sym::yeet_expr, span);
+        let expr = self.mk_expr(span, kind);
+        self.maybe_recover_from_bad_qpath(expr)
+    }
+
+    /// Parse `"become" expr`, with `"become"` token already eaten.
+    fn parse_expr_become(&mut self) -> PResult<'a, P<Expr>> {
+        let lo = self.prev_token.span;
+        let kind = ExprKind::Become(self.parse_expr()?);
+        let span = lo.to(self.prev_token.span);
+        self.sess.gated_spans.gate(sym::explicit_tail_calls, span);
         let expr = self.mk_expr(span, kind);
         self.maybe_recover_from_bad_qpath(expr)
     }

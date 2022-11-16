@@ -687,6 +687,7 @@ symbols! {
         expf32,
         expf64,
         explicit_generic_args_with_impl_trait,
+        explicit_tail_calls,
         export_name,
         expr,
         extended_key_value_attributes,
