@@ -159,7 +159,6 @@ h1.fqn {
 .main-heading {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: space-between;
 	padding-bottom: 6px;
 	margin-bottom: 15px;
 }
@@ -920,7 +919,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .popover {
-	font-size: 1rem;
 	position: absolute;
 	right: 0;
 	z-index: 2;
@@ -928,7 +926,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	margin-top: 7px;
 	border-radius: 3px;
 	border: 1px solid var(--border-color);
-	font-size: 1rem;
 	--popover-arrow-offset: 11px;
 }
 

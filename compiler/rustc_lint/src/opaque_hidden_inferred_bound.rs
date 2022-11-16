@@ -26,19 +26,23 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
+    /// trait Duh {}
+    ///
+    /// impl Duh for i32 {}
+    ///
     /// trait Trait {
-    ///     type Assoc: Send;
+    ///     type Assoc: Duh;
     /// }
     ///
     /// struct Struct;
     ///
-    /// impl Trait for Struct {
-    ///     type Assoc = i32;
+    /// impl<F: Duh> Trait for F {
+    ///     type Assoc = F;
     /// }
     ///
     /// fn test() -> impl Trait<Assoc = impl Sized> {
-    ///     Struct
+    ///     42
     /// }
     /// ```
     ///
