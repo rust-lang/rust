@@ -10,8 +10,8 @@ use rustc_middle::ty::TyCtxt;
 
 use crate::{
     borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, path_utils::*, AccessDepth,
-    Activation, ArtificialField, BorrowIndex, Deep, LocalMutationIsAllowed, Read, ReadKind,
-    ReadOrWrite, Reservation, Shallow, Write, WriteKind,
+    Activation, ArtificialField, BorrowIndex, Deep, FxHashSet, LocalMutationIsAllowed, Read,
+    ReadKind, ReadOrWrite, Reservation, Shallow, Write, WriteKind,
 };
 
 pub(super) fn generate_invalidates<'tcx>(
@@ -36,6 +36,7 @@ pub(super) fn generate_invalidates<'tcx>(
             location_table,
             body: &body,
             dominators,
+            to_skip: Default::default(),
         };
         ig.visit_body(body);
     }
@@ -48,6 +49,7 @@ struct InvalidationGenerator<'cx, 'tcx> {
     body: &'cx Body<'tcx>,
     dominators: Dominators<BasicBlock>,
     borrow_set: &'cx BorrowSet<'tcx>,
+    to_skip: FxHashSet<Location>,
 }
 
 /// Visits the whole MIR and generates `invalidates()` facts.
@@ -60,7 +62,9 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             StatementKind::Assign(box (lhs, rhs)) => {
                 self.consume_rvalue(location, rhs);
 
-                self.mutate_place(location, *lhs, Shallow(None));
+                if !self.to_skip.contains(&location) {
+                    self.mutate_place(location, *lhs, Shallow(None));
+                }
             }
             StatementKind::FakeRead(box (_, _)) => {
                 // Only relevant for initialized/liveness/safety checks.
@@ -109,22 +113,36 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { place: drop_place, target: _, unwind: _ } => {
-                self.access_place(
-                    location,
-                    *drop_place,
-                    (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
-                    LocalMutationIsAllowed::Yes,
-                );
-            }
-            TerminatorKind::DropAndReplace {
-                place: drop_place,
-                value: new_value,
-                target: _,
-                unwind: _,
-            } => {
-                self.mutate_place(location, *drop_place, Deep);
-                self.consume_operand(location, new_value);
+            TerminatorKind::Drop { place: drop_place, target, unwind, is_replace } => {
+                let next_statement = if *is_replace {
+                    self.body
+                        .basic_blocks
+                        .get(*target)
+                        .expect("MIR should be complete at this point")
+                        .statements
+                        .first()
+                } else {
+                    None
+                };
+
+                match next_statement {
+                    Some(Statement { kind: StatementKind::Assign(_), source_info: _ }) => {
+                        // this is a drop from a replace operation, for better diagnostic report
+                        // here possible conflicts and mute the assign statement errors
+                        self.to_skip.insert(Location { block: *target, statement_index: 0 });
+                        self.to_skip
+                            .insert(Location { block: unwind.unwrap(), statement_index: 0 });
+                        self.mutate_place(location, *drop_place, AccessDepth::Deep);
+                    }
+                    _ => {
+                        self.access_place(
+                            location,
+                            *drop_place,
+                            (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
+                            LocalMutationIsAllowed::Yes,
+                        );
+                    }
+                }
             }
             TerminatorKind::Call {
                 func,

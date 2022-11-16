@@ -542,8 +542,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     | TerminatorKind::Unreachable
                     | TerminatorKind::Drop { .. }
                     | TerminatorKind::Assert { .. } => {}
-                    TerminatorKind::DropAndReplace { .. }
-                    | TerminatorKind::Yield { .. }
+                    TerminatorKind::Yield { .. }
                     | TerminatorKind::GeneratorDrop
                     | TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. } => unreachable!(),

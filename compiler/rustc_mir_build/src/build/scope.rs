@@ -371,6 +371,7 @@ impl DropTree {
                         // The caller will handle this if needed.
                         unwind: None,
                         place: drop_data.0.local.into(),
+                        is_replace: false,
                     };
                     cfg.terminate(block, drop_data.0.source_info, terminator);
                 }
@@ -1072,7 +1073,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TerminatorKind::Assert { .. }
                     | TerminatorKind::Call { .. }
                     | TerminatorKind::Drop { .. }
-                    | TerminatorKind::DropAndReplace { .. }
                     | TerminatorKind::FalseUnwind { .. }
                     | TerminatorKind::InlineAsm { .. }
             ),
@@ -1118,21 +1118,35 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Utility function for *non*-scope code to build their own drops
+    /// Force a drop at this point in the MIR by creating a new block.
+    /// Should only be used for DropAndReplace.
+    /// Note that this does *not* insert the assignement in the MIR,
+    /// that should be added in the newly returned block by the caller.
     pub(crate) fn build_drop_and_replace(
         &mut self,
         block: BasicBlock,
         span: Span,
         place: Place<'tcx>,
-        value: Operand<'tcx>,
+        value: Rvalue<'tcx>,
     ) -> BlockAnd<()> {
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
 
+        let assign = self.cfg.start_new_cleanup_block();
+        self.cfg.push_assign(assign, source_info, place, value.clone());
+        self.cfg.terminate(assign, source_info, TerminatorKind::Goto { target: block });
+
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::DropAndReplace { place, value, target: next_target, unwind: None },
+            TerminatorKind::Drop {
+                place,
+                target: next_target,
+                unwind: Some(assign),
+                is_replace: true,
+            },
         );
+
         self.diverge_from(block);
 
         next_target.unit()
@@ -1234,7 +1248,12 @@ fn build_scope_drops<'tcx>(
                 cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Drop { place: local.into(), target: next, unwind: None },
+                    TerminatorKind::Drop {
+                        place: local.into(),
+                        target: next,
+                        unwind: None,
+                        is_replace: false,
+                    },
                 );
                 block = next;
             }
@@ -1413,14 +1432,18 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
     fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = &mut cfg.block_data_mut(from).terminator_mut();
         match &mut term.kind {
-            TerminatorKind::Drop { unwind, .. }
-            | TerminatorKind::DropAndReplace { unwind, .. }
-            | TerminatorKind::FalseUnwind { unwind, .. }
+            TerminatorKind::Drop { unwind, .. } => {
+                if let Some(unwind) = unwind.clone() {
+                    cfg.block_data_mut(unwind).terminator_mut().kind =
+                        TerminatorKind::Goto { target: to };
+                } else {
+                    *unwind = Some(to);
+                }
+            }
+            TerminatorKind::FalseUnwind { unwind, .. }
             | TerminatorKind::Call { cleanup: unwind, .. }
             | TerminatorKind::Assert { cleanup: unwind, .. }
-            | TerminatorKind::InlineAsm { cleanup: unwind, .. } => {
-                *unwind = Some(to);
-            }
+            | TerminatorKind::InlineAsm { cleanup: unwind, .. } => *unwind = Some(to),
             TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Resume

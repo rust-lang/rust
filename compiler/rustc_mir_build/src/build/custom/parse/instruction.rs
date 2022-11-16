@@ -47,14 +47,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     place: self.parse_place(args[0])?,
                     target: self.parse_block(args[1])?,
                     unwind: None,
-                })
-            },
-            @call("mir_drop_and_replace", args) => {
-                Ok(TerminatorKind::DropAndReplace {
-                    place: self.parse_place(args[0])?,
-                    value: self.parse_operand(args[1])?,
-                    target: self.parse_block(args[2])?,
-                    unwind: None,
+                    is_replace: false
                 })
             },
             @call("mir_call", args) => {

@@ -340,6 +340,7 @@ fn do_mir_borrowck<'tcx>(
                 next_region_name: RefCell::new(1),
                 polonius_output: None,
                 errors,
+                to_skip: Default::default(),
             };
             promoted_mbcx.report_move_errors(move_errors);
             errors = promoted_mbcx.errors;
@@ -371,6 +372,7 @@ fn do_mir_borrowck<'tcx>(
         next_region_name: RefCell::new(1),
         polonius_output,
         errors,
+        to_skip: Default::default(),
     };
 
     // Compute and report region errors, if any.
@@ -553,6 +555,8 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     polonius_output: Option<Rc<PoloniusOutput>>,
 
     errors: error::BorrowckErrors<'tcx>,
+
+    to_skip: FxHashSet<Location>,
 }
 
 // Check that:
@@ -577,8 +581,9 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
         match &stmt.kind {
             StatementKind::Assign(box (lhs, rhs)) => {
                 self.consume_rvalue(location, (rhs, span), flow_state);
-
-                self.mutate_place(location, (*lhs, span), Shallow(None), flow_state);
+                if !self.to_skip.contains(&location) {
+                    self.mutate_place(location, (*lhs, span), Shallow(None), flow_state);
+                }
             }
             StatementKind::FakeRead(box (_, place)) => {
                 // Read for match doesn't access any memory and is used to
@@ -644,29 +649,43 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
-            TerminatorKind::Drop { place, target: _, unwind: _ } => {
+            TerminatorKind::Drop { place, target, unwind, is_replace } => {
                 debug!(
                     "visit_terminator_drop \
                      loc: {:?} term: {:?} place: {:?} span: {:?}",
                     loc, term, place, span
                 );
 
-                self.access_place(
-                    loc,
-                    (*place, span),
-                    (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
-                    LocalMutationIsAllowed::Yes,
-                    flow_state,
-                );
-            }
-            TerminatorKind::DropAndReplace {
-                place: drop_place,
-                value: new_value,
-                target: _,
-                unwind: _,
-            } => {
-                self.mutate_place(loc, (*drop_place, span), Deep, flow_state);
-                self.consume_operand(loc, (new_value, span), flow_state);
+                let next_statement = if *is_replace {
+                    self.body()
+                        .basic_blocks
+                        .get(*target)
+                        .expect("MIR should be complete at this point")
+                        .statements
+                        .first()
+                } else {
+                    None
+                };
+
+                match next_statement {
+                    Some(Statement { kind: StatementKind::Assign(_), source_info: _ }) => {
+                        // this is a drop from a replace operation, for better diagnostic report
+                        // here possible conflicts and mute the assign statement errors
+                        self.to_skip.insert(Location { block: *target, statement_index: 0 });
+                        self.to_skip
+                            .insert(Location { block: unwind.unwrap(), statement_index: 0 });
+                        self.mutate_place(loc, (*place, span), AccessDepth::Deep, flow_state);
+                    }
+                    _ => {
+                        self.access_place(
+                            loc,
+                            (*place, span),
+                            (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
+                            LocalMutationIsAllowed::Yes,
+                            flow_state,
+                        );
+                    }
+                }
             }
             TerminatorKind::Call {
                 func,
@@ -782,7 +801,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ }
             | TerminatorKind::Goto { .. }
@@ -1592,7 +1610,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 (prefix, place_span.0, place_span.1),
                 mpi,
             );
-        } // Only query longest prefix with a MovePath, not further
+        }
+        // Only query longest prefix with a MovePath, not further
         // ancestors; dataflow recurs on children when parents
         // move (to support partial (re)inits).
         //

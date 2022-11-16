@@ -80,8 +80,7 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
         trace!("visit_terminator: terminator={:?} location={:?}", terminator, location);
 
         match &terminator.kind {
-            mir::TerminatorKind::Drop { place: dropped_place, .. }
-            | mir::TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+            mir::TerminatorKind::Drop { place: dropped_place, .. } => {
                 let dropped_ty = dropped_place.ty(self.body, self.tcx).ty;
                 if !NeedsNonConstDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
                     // Instead of throwing a bug, we just return here. This is because we have to

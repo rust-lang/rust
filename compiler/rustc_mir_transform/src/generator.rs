@@ -911,11 +911,14 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mut elaborator = DropShimElaborator { body, patch: MirPatch::new(body), tcx, param_env };
 
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
-        let (target, unwind, source_info) = match block_data.terminator() {
-            Terminator { source_info, kind: TerminatorKind::Drop { place, target, unwind } } => {
+        let (target, unwind, source_info, is_replace) = match block_data.terminator() {
+            Terminator {
+                source_info,
+                kind: TerminatorKind::Drop { place, target, unwind, is_replace },
+            } => {
                 if let Some(local) = place.as_local() {
                     if local == SELF_ARG {
-                        (target, unwind, source_info)
+                        (target, unwind, source_info, is_replace)
                     } else {
                         continue;
                     }
@@ -938,6 +941,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             *target,
             unwind,
             block,
+            *is_replace,
         );
     }
     elaborator.patch.apply(body);
@@ -1074,7 +1078,6 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
 
             // These may unwind.
             TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Assert { .. } => return true,
@@ -1163,8 +1166,12 @@ fn create_generator_resume_function<'tcx>(
 fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
-    let term =
-        TerminatorKind::Drop { place: Place::from(SELF_ARG), target: return_block, unwind: None };
+    let term = TerminatorKind::Drop {
+        place: Place::from(SELF_ARG),
+        target: return_block,
+        unwind: None,
+        is_replace: false,
+    };
     let source_info = SourceInfo::outermost(body.span);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
@@ -1519,7 +1526,6 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
-            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }

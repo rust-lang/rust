@@ -939,7 +939,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return OtherUse(use_span);
         }
 
-        for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
+        // drop and replace might have moved the assignment to the next block
+        let maybe_additional_statement = if let Some(Terminator {
+            kind: TerminatorKind::Drop { target: drop_target, is_replace: true, .. },
+            ..
+        }) = self.body[location.block].terminator
+        {
+            self.body[drop_target].statements.iter().take(1)
+        } else {
+            [].iter().take(0)
+        };
+
+        let statements = self.body[location.block].statements[location.statement_index + 1..]
+            .iter()
+            .chain(maybe_additional_statement);
+
+        for stmt in statements {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
                 let (&def_id, is_generator) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),

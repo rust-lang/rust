@@ -961,8 +961,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no
             // projections that cannot be `NeedsNonConstDrop`.
-            TerminatorKind::Drop { place: dropped_place, .. }
-            | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+            TerminatorKind::Drop { place: dropped_place, .. } => {
                 // If we are checking live drops after drop-elaboration, don't emit duplicate
                 // errors here.
                 if super::post_drop_elaboration::checking_enabled(self.ccx) {

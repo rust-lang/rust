@@ -164,6 +164,7 @@ where
     path: D::Path,
     succ: BasicBlock,
     unwind: Unwind,
+    is_replace: bool,
 }
 
 /// "Elaborates" a drop of `place`/`path` and patches `bb`'s terminator to execute it.
@@ -182,11 +183,12 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     succ: BasicBlock,
     unwind: Unwind,
     bb: BasicBlock,
+    is_replace: bool,
 ) where
     D: DropElaborator<'b, 'tcx>,
     'tcx: 'b,
 {
-    DropCtxt { elaborator, source_info, place, path, succ, unwind }.elaborate_drop(bb)
+    DropCtxt { elaborator, source_info, place, path, succ, unwind, is_replace }.elaborate_drop(bb)
 }
 
 impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
@@ -237,6 +239,7 @@ where
                         place: self.place,
                         target: self.succ,
                         unwind: self.unwind.into_option(),
+                        is_replace: self.is_replace,
                     },
                 );
             }
@@ -298,6 +301,7 @@ where
                 place,
                 succ,
                 unwind,
+                is_replace: self.is_replace,
             }
             .elaborated_drop_block()
         } else {
@@ -312,6 +316,7 @@ where
                 // Using `self.path` here to condition the drop on
                 // our own drop flag.
                 path: self.path,
+                is_replace: self.is_replace,
             }
             .complete_drop(succ, unwind)
         }
@@ -730,6 +735,7 @@ where
                 place: tcx.mk_place_deref(ptr),
                 target: loop_block,
                 unwind: unwind.into_option(),
+                is_replace: self.is_replace,
             },
         );
 
@@ -991,8 +997,12 @@ where
     }
 
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
-        let block =
-            TerminatorKind::Drop { place: self.place, target, unwind: unwind.into_option() };
+        let block = TerminatorKind::Drop {
+            place: self.place,
+            target,
+            unwind: unwind.into_option(),
+            is_replace: self.is_replace,
+        };
         self.new_block(unwind, block)
     }
 

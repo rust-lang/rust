@@ -83,9 +83,7 @@ fn escaping_locals(body: &Body<'_>) -> BitSet<Local> {
         fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
             // Drop implicitly calls `drop_in_place`, which takes a `&mut`.
             // This implies that `Drop` implicitly takes the address of the place.
-            if let TerminatorKind::Drop { place, .. }
-            | TerminatorKind::DropAndReplace { place, .. } = terminator.kind
-            {
+            if let TerminatorKind::Drop { place, .. } = terminator.kind {
                 if !place.is_indirect() {
                     // Raw pointers may be used to access anything inside the enclosing place.
                     self.set.insert(place.local);

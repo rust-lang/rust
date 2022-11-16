@@ -230,7 +230,7 @@ pub trait ValueAnalysis<'tcx> {
             TerminatorKind::Drop { .. } => {
                 // We don't track dropped places.
             }
-            TerminatorKind::DropAndReplace { .. } | TerminatorKind::Yield { .. } => {
+            TerminatorKind::Yield { .. } => {
                 // They would have an effect, but are not allowed in this phase.
                 bug!("encountered disallowed terminator");
             }

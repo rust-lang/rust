@@ -218,6 +218,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
                 return_block,
                 elaborate_drops::Unwind::To(resume_block),
                 START_BLOCK,
+                false,
             );
             elaborator.patch
         };
@@ -511,7 +512,12 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             self.make_clone_call(dest_field, src_field, ity, next_block, unwind);
             self.block(
                 vec![],
-                TerminatorKind::Drop { place: dest_field, target: unwind, unwind: None },
+                TerminatorKind::Drop {
+                    place: dest_field,
+                    target: unwind,
+                    unwind: None,
+                    is_replace: false,
+                },
                 true,
             );
             unwind = next_unwind;
@@ -763,7 +769,12 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(2), unwind: None },
+            TerminatorKind::Drop {
+                place: rcvr_place(),
+                target: BasicBlock::new(2),
+                unwind: None,
+                is_replace: false,
+            },
             false,
         );
     }
@@ -774,7 +785,12 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(4), unwind: None },
+            TerminatorKind::Drop {
+                place: rcvr_place(),
+                target: BasicBlock::new(4),
+                unwind: None,
+                is_replace: false,
+            },
             true,
         );
 
