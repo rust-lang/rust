@@ -59,13 +59,17 @@ pub enum Delimiter {
     Invisible,
 }
 
+// Note that the suffix is *not* considered when deciding the `LitKind` in this
+// type. This means that float literals like `1f32` are classified by this type
+// as `Int`. Only upon conversion to `ast::LitKind` will such a literal be
+// given the `Float` kind.
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
     Char,
-    Integer,
-    Float,
+    Integer, // e.g. `1`, `1u8`, `1f32`
+    Float,   // e.g. `1.`, `1.0`, `1e3f32`
     Str,
     StrRaw(u8), // raw string delimited by `n` hash symbols
     ByteStr,
@@ -79,6 +83,42 @@ pub struct Lit {
     pub kind: LitKind,
     pub symbol: Symbol,
     pub suffix: Option<Symbol>,
+}
+
+impl Lit {
+    pub fn new(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Lit {
+        Lit { kind, symbol, suffix }
+    }
+
+    /// Returns `true` if this is semantically a float literal. This includes
+    /// ones like `1f32` that have an `Integer` kind but a float suffix.
+    pub fn is_semantic_float(&self) -> bool {
+        match self.kind {
+            LitKind::Float => true,
+            LitKind::Integer => match self.suffix {
+                Some(sym) => sym == sym::f32 || sym == sym::f64,
+                None => false,
+            },
+            _ => false,
+        }
+    }
+
+    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
+    pub fn from_token(token: &Token) -> Option<Lit> {
+        match token.uninterpolate().kind {
+            Ident(name, false) if name.is_bool_lit() => {
+                Some(Lit::new(Bool, name, None))
+            }
+            Literal(token_lit) => Some(token_lit),
+            Interpolated(ref nt)
+                if let NtExpr(expr) | NtLiteral(expr) = &**nt
+                && let ast::ExprKind::Lit(token_lit) = expr.kind =>
+            {
+                Some(token_lit.clone())
+            }
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Lit {
@@ -136,12 +176,6 @@ impl LitKind {
 
     pub(crate) fn may_have_suffix(self) -> bool {
         matches!(self, Integer | Float | Err)
-    }
-}
-
-impl Lit {
-    pub fn new(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Lit {
-        Lit { kind, symbol, suffix }
     }
 }
 

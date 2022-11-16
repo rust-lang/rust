@@ -14,6 +14,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
+use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::DUMMY_SP;
@@ -84,8 +85,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ohs = self.lower_expr(ohs);
                     hir::ExprKind::Unary(op, ohs)
                 }
-                ExprKind::Lit(ref l) => {
-                    hir::ExprKind::Lit(respan(self.lower_span(l.span), l.kind.clone()))
+                ExprKind::Lit(token_lit) => {
+                    let lit_kind = match LitKind::from_token_lit(token_lit) {
+                        Ok(lit_kind) => lit_kind,
+                        Err(err) => {
+                            report_lit_error(&self.tcx.sess.parse_sess, err, token_lit, e.span);
+                            LitKind::Err
+                        }
+                    };
+                    hir::ExprKind::Lit(respan(self.lower_span(e.span), lit_kind))
                 }
                 ExprKind::IncludedBytes(ref bytes) => hir::ExprKind::Lit(respan(
                     self.lower_span(e.span),

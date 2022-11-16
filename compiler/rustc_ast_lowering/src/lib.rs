@@ -959,8 +959,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             MacArgs::Eq(eq_span, MacArgsEq::Ast(ref expr)) => {
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
-                let lit = if let ExprKind::Lit(lit) = &expr.kind {
-                    lit.clone()
+                let lit = if let ExprKind::Lit(token_lit) = expr.kind {
+                    match Lit::from_token_lit(token_lit, expr.span) {
+                        Ok(lit) => lit,
+                        Err(_err) => Lit {
+                            token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),
+                            kind: LitKind::Err,
+                            span: DUMMY_SP,
+                        },
+                    }
                 } else {
                     Lit {
                         token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),

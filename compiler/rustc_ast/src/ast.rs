@@ -1332,7 +1332,7 @@ pub enum ExprKind {
     /// A unary operation (e.g., `!x`, `*x`).
     Unary(UnOp, P<Expr>),
     /// A literal (e.g., `1`, `"foo"`).
-    Lit(Lit),
+    Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(P<Expr>, P<Ty>),
     /// A type ascription (e.g., `42: usize`).
@@ -1698,16 +1698,12 @@ pub struct StrLit {
 }
 
 impl StrLit {
-    pub fn as_lit(&self) -> Lit {
+    pub fn as_token_lit(&self) -> token::Lit {
         let token_kind = match self.style {
             StrStyle::Cooked => token::Str,
             StrStyle::Raw(n) => token::StrRaw(n),
         };
-        Lit {
-            token_lit: token::Lit::new(token_kind, self.symbol, self.suffix),
-            span: self.span,
-            kind: LitKind::Str(self.symbol_unescaped, self.style),
-        }
+        token::Lit::new(token_kind, self.symbol, self.suffix)
     }
 }
 
@@ -1733,9 +1729,10 @@ pub enum LitFloatType {
     Unsuffixed,
 }
 
-/// Literal kind.
-///
-/// E.g., `"foo"`, `42`, `12.34`, or `bool`.
+/// Note that the entire literal (including the suffix) is considered when
+/// deciding the `LitKind`. This means that float literals like `1f32` are
+/// classified by this type as `Float`. This is different to `token::LitKind`
+/// which does *not* consider the suffix.
 #[derive(Clone, Encodable, Decodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
 pub enum LitKind {
     /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
@@ -1749,10 +1746,11 @@ pub enum LitKind {
     Char(char),
     /// An integer literal (`1`).
     Int(u128, LitIntType),
-    /// A float literal (`1f64` or `1E10f64`). Stored as a symbol rather than
-    /// `f64` so that `LitKind` can impl `Eq` and `Hash`.
+    /// A float literal (`1.0`, `1f64` or `1E10f64`). The pre-suffix part is
+    /// stored as a symbol rather than `f64` so that `LitKind` can impl `Eq`
+    /// and `Hash`.
     Float(Symbol, LitFloatType),
-    /// A boolean literal.
+    /// A boolean literal (`true`, `false`).
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
     Err,

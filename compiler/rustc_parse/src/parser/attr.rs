@@ -316,8 +316,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
-        let lit = self.parse_lit()?;
-        debug!("checking if {:?} is unusuffixed", lit);
+        let lit = self.parse_ast_lit()?;
+        debug!("checking if {:?} is unsuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
             self.sess.emit_err(SuffixedLiteralInAttribute { span: lit.span });

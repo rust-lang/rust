@@ -8,8 +8,8 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use std::ascii;
 
+#[derive(Debug)]
 pub enum LitError {
-    NotLiteral,
     LexerError,
     InvalidSuffix,
     InvalidIntSuffix,
@@ -202,27 +202,10 @@ impl Lit {
         Ok(Lit { token_lit, kind: LitKind::from_token_lit(token_lit)?, span })
     }
 
-    /// Converts arbitrary token into an AST literal.
-    ///
-    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
-    pub fn from_token(token: &Token) -> Result<Lit, LitError> {
-        let lit = match token.uninterpolate().kind {
-            token::Ident(name, false) if name.is_bool_lit() => {
-                token::Lit::new(token::Bool, name, None)
-            }
-            token::Literal(lit) => lit,
-            token::Interpolated(ref nt) => {
-                if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt
-                    && let ast::ExprKind::Lit(lit) = &expr.kind
-                {
-                    return Ok(lit.clone());
-                }
-                return Err(LitError::NotLiteral);
-            }
-            _ => return Err(LitError::NotLiteral),
-        };
-
-        Lit::from_token_lit(lit, token.span)
+    /// Converts an arbitrary token into an AST literal.
+    pub fn from_token(token: &Token) -> Option<Lit> {
+        token::Lit::from_token(token)
+            .and_then(|token_lit| Lit::from_token_lit(token_lit, token.span).ok())
     }
 
     /// Attempts to recover an AST literal from semantic literal.
