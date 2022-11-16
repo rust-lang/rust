@@ -250,8 +250,7 @@ fn expand_macro<'cx>(
                 trace_macros_note(&mut cx.expansions, sp, msg);
             }
 
-            let mut p = Parser::new(sess, tts, false, None);
-            p.last_type_ascription = cx.current_expansion.prior_type_ascription;
+            let p = Parser::new(sess, tts, false, None);
 
             if is_local {
                 cx.resolver.record_macro_rule_usage(node_id, i);

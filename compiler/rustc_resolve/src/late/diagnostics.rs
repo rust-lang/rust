@@ -305,6 +305,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     /// Handles error reporting for `smart_resolve_path_fragment` function.
     /// Creates base error and amends it with one short label and possibly some longer helps/notes.
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn smart_resolve_report_errors(
         &mut self,
         path: &[Segment],
@@ -350,7 +351,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             return (err, candidates);
         }
 
-        if !self.type_ascription_suggestion(&mut err, base_error.span) {
+        if !self.suggest_missing_let(&mut err, base_error.span) {
             let mut fallback =
                 self.suggest_trait_and_bounds(&mut err, source, res, span, &base_error);
 
@@ -1823,7 +1824,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         start.to(sm.next_point(start))
     }
 
-    fn type_ascription_suggestion(&self, err: &mut Diagnostic, base_span: Span) -> bool {
+    #[instrument(level = "debug", skip(self, err))]
+    fn suggest_missing_let(&self, err: &mut Diagnostic, base_span: Span) -> bool {
         let sm = self.r.tcx.sess.source_map();
         let base_snippet = sm.span_to_snippet(base_span);
         if let Some(&sp) = self.diagnostic_metadata.current_type_ascription.last() {
@@ -1877,12 +1879,6 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 show_label = false;
                             }
                         }
-                    }
-                    if show_label {
-                        err.span_label(
-                            base_span,
-                            "expecting a type here because of type ascription",
-                        );
                     }
                     return show_label;
                 }

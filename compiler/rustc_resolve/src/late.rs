@@ -1264,14 +1264,15 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         finalize: Option<Finalize>,
     ) -> PathResult<'a> {
-        self.r.resolve_path_with_ribs(
+        let res = self.r.resolve_path_with_ribs(
             path,
             opt_ns,
             &self.parent_scope,
             finalize,
             Some(&self.ribs),
             None,
-        )
+        );
+        res
     }
 
     // AST resolution
@@ -3488,10 +3489,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         //
         // Similar thing, for types, happens in `report_errors` above.
         let report_errors_for_call = |this: &mut Self, parent_err: Spanned<ResolutionError<'a>>| {
-            if !source.is_call() {
-                return Some(parent_err);
-            }
-
             // Before we start looking for candidates, we have to get our hands
             // on the type user is trying to perform invocation on; basically:
             // we're transforming `HashMap::new` into just `HashMap`.
@@ -3721,6 +3718,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     /// Handles paths that may refer to associated items.
+    #[instrument(level = "debug", skip(self))]
     fn resolve_qpath(
         &mut self,
         qself: &Option<P<QSelf>>,
@@ -3728,11 +3726,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         ns: Namespace,
         finalize: Finalize,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
-        debug!(
-            "resolve_qpath(qself={:?}, path={:?}, ns={:?}, finalize={:?})",
-            qself, path, ns, finalize,
-        );
-
         if let Some(qself) = qself {
             if qself.position == 0 {
                 // This is a case like `<T>::B`, where there is no

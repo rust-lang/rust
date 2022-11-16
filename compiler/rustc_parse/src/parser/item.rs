@@ -443,7 +443,7 @@ impl<'a> Parser<'a> {
             Ok(args) => {
                 self.eat_semi_for_macro_if_needed(&args);
                 self.complain_if_pub_macro(vis, false);
-                Ok(MacCall { path, args, prior_type_ascription: self.last_type_ascription })
+                Ok(MacCall { path, args })
             }
 
             Err(mut err) => {

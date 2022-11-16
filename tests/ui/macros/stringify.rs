@@ -134,8 +134,7 @@ fn test_expr() {
     assert_eq!(stringify_expr!(expr as T<u8>), "expr as T<u8>");
 
     // ExprKind::Type
-    assert_eq!(stringify_expr!(expr: T), "expr: T");
-    assert_eq!(stringify_expr!(expr: T<u8>), "expr: T<u8>");
+    // There is no syntax for type ascription.
 
     // ExprKind::If
     assert_eq!(stringify_expr!(if true {}), "if true {}");

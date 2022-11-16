@@ -317,7 +317,6 @@ impl<'a> Parser<'a> {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
             let mut err = self.struct_span_err(self.token.span, &msg);
             err.span_label(self.token.span, "expected type");
-            self.maybe_annotate_with_ascription(&mut err, true);
             return Err(err);
         };
 
@@ -651,11 +650,7 @@ impl<'a> Parser<'a> {
         let path = self.parse_path_inner(PathStyle::Type, ty_generics)?;
         if self.eat(&token::Not) {
             // Macro invocation in type position
-            Ok(TyKind::MacCall(P(MacCall {
-                path,
-                args: self.parse_delim_args()?,
-                prior_type_ascription: self.last_type_ascription,
-            })))
+            Ok(TyKind::MacCall(P(MacCall { path, args: self.parse_delim_args()? })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`
             self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true)

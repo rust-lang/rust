@@ -36,7 +36,10 @@ error[E0433]: failed to resolve: use of undeclared type `I`
   --> $DIR/equality-bound.rs:9:41
    |
 LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
-   |                                         ^ use of undeclared type `I`
+   |                                         ^
+   |                                         |
+   |                                         use of undeclared type `I`
+   |                                         help: a type parameter with a similar name exists: `J`
 
 error: aborting due to 4 previous errors
 

@@ -61,7 +61,6 @@ pub fn expand_assert<'cx>(
                     delim: MacDelimiter::Parenthesis,
                     tokens,
                 }),
-                prior_type_ascription: None,
             })),
         );
         expr_if_not(cx, call_site_span, cond_expr, then, None)

@@ -1,8 +1,5 @@
 // Operator precedence of type ascription
 // Type ascription has very high precedence, the same as operator `as`
-
-#![feature(type_ascription)]
-
 use std::ops::*;
 
 struct S;
@@ -26,29 +23,27 @@ impl Deref for S {
 }
 
 fn main() {
-    &S: &S; // OK
+    &S: &S; //~ ERROR expected one of
     (&S): &S; // OK
-    &(S: &S); //~ ERROR mismatched types
+    &(S: &S);
 
     *S: Z; // OK
     (*S): Z; // OK
-    *(S: Z); //~ ERROR mismatched types
-    //~^ ERROR type `Z` cannot be dereferenced
+    *(S: Z);
 
     -S: Z; // OK
     (-S): Z; // OK
-    -(S: Z); //~ ERROR mismatched types
-    //~^ ERROR cannot apply unary operator `-` to type `Z`
+    -(S: Z);
 
     S + Z: Z; // OK
     S + (Z: Z); // OK
-    (S + Z): Z; //~ ERROR mismatched types
+    (S + Z): Z;
 
     S * Z: Z; // OK
     S * (Z: Z); // OK
-    (S * Z): Z; //~ ERROR mismatched types
+    (S * Z): Z;
 
     S .. S: S; // OK
     S .. (S: S); // OK
-    (S .. S): S; //~ ERROR mismatched types
+    (S .. S): S;
 }

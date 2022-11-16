@@ -1,5 +1,6 @@
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
+use crate::errors::PathSingleColon;
 use crate::{errors, maybe_whole};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -8,7 +9,7 @@ use rustc_ast::{
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
     Path, PathSegment, QSelf,
 };
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{pluralize, Applicability, IntoDiagnostic, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Ident};
 use std::mem;
@@ -16,7 +17,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 /// Specifies how to parse a path.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PathStyle {
     /// In some contexts, notably in expressions, paths with generic arguments are ambiguous
     /// with something else. For example, in expressions `segment < ....` can be interpreted
@@ -24,7 +25,19 @@ pub enum PathStyle {
     /// In all such contexts the non-path interpretation is preferred by default for practical
     /// reasons, but the path interpretation can be forced by the disambiguator `::`, e.g.
     /// `x<y>` - comparisons, `x::<y>` - unambiguously a path.
+    ///
+    /// Also, a path may never be followed by a `:`. This means that we can eagerly recover if
+    /// we encounter it.
     Expr,
+    /// The same as `Expr`, but may be followed by a `:`.
+    /// For example, this code:
+    /// ```rust
+    /// struct S;
+    ///
+    /// let S: S;
+    /// //  ^ Followed by a `:`
+    /// ```
+    Pat,
     /// In other contexts, notably in types, no ambiguity exists and paths can be written
     /// without the disambiguator, e.g., `x<y>` - unambiguously a path.
     /// Paths with disambiguators are still accepted, `x::<Y>` - unambiguously a path too.
@@ -36,6 +49,12 @@ pub enum PathStyle {
     /// anyway, due to macros), but it is used to avoid weird suggestions about expected
     /// tokens when something goes wrong.
     Mod,
+}
+
+impl PathStyle {
+    fn has_generic_ambiguity(&self) -> bool {
+        matches!(self, Self::Expr | Self::Pat)
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -183,7 +202,9 @@ impl<'a> Parser<'a> {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
-
+        if segments.len() > 1 {
+            //panic!("debug now ...");
+        }
         Ok(Path { segments, span: lo.to(self.prev_token.span), tokens: None })
     }
 
@@ -195,7 +216,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ()> {
         loop {
             let segment = self.parse_path_segment(style, ty_generics)?;
-            if style == PathStyle::Expr {
+            if style.has_generic_ambiguity() {
                 // In order to check for trailing angle brackets, we must have finished
                 // recursing (`parse_path_segment` can indirectly call this function),
                 // that is, the next token must be the highlighted part of the below example:
@@ -217,6 +238,29 @@ impl<'a> Parser<'a> {
             segments.push(segment);
 
             if self.is_import_coupler() || !self.eat(&token::ModSep) {
+                if style == PathStyle::Expr
+                    && self.may_recover()
+                    && self.token == token::Colon
+                    && self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
+                {
+                    // Emit a special error message for `a::b:c` to help users
+                    // otherwise, `a: c` might have meant to introduce a new binding
+                    if self.token.span.lo() == self.prev_token.span.hi()
+                        && self.look_ahead(1, |token| self.token.span.hi() == token.span.lo())
+                    {
+                        self.bump(); // bump past the colon
+                        self.sess.emit_err(PathSingleColon {
+                            span: self.prev_token.span,
+                            type_ascription: self
+                                .sess
+                                .unstable_features
+                                .is_nightly_build()
+                                .then_some(()),
+                        });
+                    }
+                    continue;
+                }
+
                 return Ok(());
             }
         }
@@ -270,8 +314,25 @@ impl<'a> Parser<'a> {
                         ty_generics,
                     )?;
                     self.expect_gt().map_err(|mut err| {
+                        // Try to recover a `:` into a `::`
+                        if self.token == token::Colon
+                            && self.look_ahead(1, |token| {
+                                token.is_ident() && !token.is_reserved_ident()
+                            })
+                        {
+                            err.cancel();
+                            err = PathSingleColon {
+                                span: self.token.span,
+                                type_ascription: self
+                                    .sess
+                                    .unstable_features
+                                    .is_nightly_build()
+                                    .then_some(()),
+                            }
+                            .into_diagnostic(self.diagnostic());
+                        }
                         // Attempt to find places where a missing `>` might belong.
-                        if let Some(arg) = args
+                        else if let Some(arg) = args
                             .iter()
                             .rev()
                             .find(|arg| !matches!(arg, AngleBracketedArg::Constraint(_)))
@@ -679,6 +740,7 @@ impl<'a> Parser<'a> {
         &mut self,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, Option<GenericArg>> {
+        debug!("pain");
         let start = self.token.span;
         let arg = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
             // Parse lifetime argument.
@@ -687,6 +749,7 @@ impl<'a> Parser<'a> {
             // Parse const argument.
             GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
+            debug!("type");
             // Parse type argument.
 
             // Proactively create a parser snapshot enabling us to rewind and try to reparse the

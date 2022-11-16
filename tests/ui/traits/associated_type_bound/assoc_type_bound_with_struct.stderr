@@ -85,6 +85,12 @@ LL | fn issue_95327() where <u8 as Unresolved>::Assoc: String {}
    |
    = note: similarly named trait `ToString` defined here
 
+error[E0433]: failed to resolve: use of undeclared type `Unresolved`
+  --> $DIR/assoc_type_bound_with_struct.rs:19:31
+   |
+LL | fn issue_95327() where <u8 as Unresolved>::Assoc: String {}
+   |                               ^^^^^^^^^^ use of undeclared type `Unresolved`
+
 error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0404, E0405.
