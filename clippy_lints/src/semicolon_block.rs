@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_then};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
@@ -96,7 +96,8 @@ impl LateLintPass<'_> for SemicolonBlock {
 }
 
 fn semicolon_inside_block(cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'_>, semi_span: Span) {
-    let insert_span = tail.span.with_lo(tail.span.hi());
+    let tail_span_end = tail.span.source_callsite().hi();
+    let insert_span = Span::with_root_ctxt(tail_span_end, tail_span_end);
     let remove_span = semi_span.with_lo(block.span.hi());
 
     span_lint_and_then(
@@ -117,6 +118,8 @@ fn semicolon_inside_block(cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'
 
 fn semicolon_outside_block(cx: &LateContext<'_>, block: &Block<'_>, tail_stmt_expr: &Expr<'_>, semi_span: Span) {
     let insert_span = block.span.with_lo(block.span.hi());
+    // account for macro calls
+    let semi_span = cx.sess().source_map().stmt_span(semi_span, block.span);
     let remove_span = semi_span.with_lo(tail_stmt_expr.span.source_callsite().hi());
 
     span_lint_and_then(

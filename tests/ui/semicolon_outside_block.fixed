@@ -21,9 +21,6 @@ macro_rules! m {
     (2) => {{
         2;
     }};
-    (stmt) => {
-        stmt;
-    };
 }
 
 fn unit_fn_block() {
@@ -42,8 +39,8 @@ fn main() {
     { unit_fn_block() };
     unsafe { unit_fn_block() };
 
-    { unit_fn_block(); }
-    unsafe { unit_fn_block(); }
+    { unit_fn_block() };
+    unsafe { unit_fn_block() };
 
     { unit_fn_block(); };
     unsafe { unit_fn_block(); };
@@ -54,20 +51,19 @@ fn main() {
     };
     {
         unit_fn_block();
-        unit_fn_block();
-    }
+        unit_fn_block()
+    };
     {
         unit_fn_block();
         unit_fn_block();
     };
 
     { m!(()) };
-    { m!(()); }
+    { m!(()) };
     { m!(()); };
     m!(0);
     m!(1);
     m!(2);
-    { m!(stmt) };
 
     for _ in [()] {
         unit_fn_block();

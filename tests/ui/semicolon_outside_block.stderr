@@ -46,8 +46,8 @@ LL |     { m!(()); }
    |
 help: put the `;` here
    |
-LL -         ()
-LL +         (); };
+LL -     { m!(()); }
+LL +     { m!(()) };
    |
 
 error: aborting due to 4 previous errors
