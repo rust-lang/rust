@@ -439,15 +439,15 @@ pub fn noop_visit_constraint<T: MutVisitor>(
 ) {
     vis.visit_id(id);
     vis.visit_ident(ident);
-    if let Some(ref mut gen_args) = gen_args {
+    if let Some(gen_args) = gen_args {
         vis.visit_generic_args(gen_args);
     }
     match kind {
-        AssocConstraintKind::Equality { ref mut term } => match term {
+        AssocConstraintKind::Equality { term } => match term {
             Term::Ty(ty) => vis.visit_ty(ty),
             Term::Const(c) => vis.visit_anon_const(c),
         },
-        AssocConstraintKind::Bound { ref mut bounds } => visit_bounds(bounds, vis),
+        AssocConstraintKind::Bound { bounds } => visit_bounds(bounds, vis),
     }
     vis.visit_span(span);
 }
@@ -880,7 +880,7 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
     let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = &mut param;
     vis.visit_id(id);
     vis.visit_ident(ident);
-    if let Some(ref mut colon_span) = colon_span {
+    if let Some(colon_span) = colon_span {
         vis.visit_span(colon_span);
     }
     visit_attrs(attrs, vis);
