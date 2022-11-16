@@ -1258,9 +1258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If we have a default, then we it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
-                            let default =
-                                tcx.bound_type_of(param.def_id).subst(tcx, substs.unwrap());
-                            self.fcx.normalize_associated_types_in(self.span, default).into()
+                            tcx.bound_type_of(param.def_id).subst(tcx, substs.unwrap()).into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
                             // This case also occurs as a result of some malformed input, e.g.
