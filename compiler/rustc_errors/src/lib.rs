@@ -466,6 +466,9 @@ pub enum StashKey {
     /// When an invalid lifetime e.g. `'2` should be reinterpreted
     /// as a char literal in the parser
     LifetimeIsChar,
+    /// Maybe there was a typo where a comma was forgotten before
+    /// FRU syntax
+    MaybeFruTypo,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}

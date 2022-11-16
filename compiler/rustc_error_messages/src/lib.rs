@@ -51,6 +51,7 @@ fluent_messages! {
     errors => "../locales/en-US/errors.ftl",
     expand => "../locales/en-US/expand.ftl",
     hir_analysis => "../locales/en-US/hir_analysis.ftl",
+    hir_typeck => "../locales/en-US/hir_typeck.ftl",
     infer => "../locales/en-US/infer.ftl",
     interface => "../locales/en-US/interface.ftl",
     lint => "../locales/en-US/lint.ftl",
