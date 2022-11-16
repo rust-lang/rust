@@ -98,7 +98,7 @@ mod c {
 
     use std::collections::{BTreeMap, HashSet};
     use std::env;
-    use std::fs::File;
+    use std::fs::{self, File};
     use std::io::Write;
     use std::path::{Path, PathBuf};
 
@@ -188,6 +188,21 @@ mod c {
             // in https://github.com/rust-lang/compiler-rt/blob/c8fbcb3/cmake/config-ix.cmake#L19.
             cfg.flag_if_supported("-fomit-frame-pointer");
             cfg.define("VISIBILITY_HIDDEN", None);
+        }
+
+        // int_util.c tries to include stdlib.h if `_WIN32` is defined,
+        // which it is when compiling UEFI targets with clang. This is
+        // at odds with compiling with `-ffreestanding`, as the header
+        // may be incompatible or not present. Create a minimal stub
+        // header to use instead.
+        if target_os == "uefi" {
+            let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+            let include_dir = out_dir.join("include");
+            if !include_dir.exists() {
+                fs::create_dir(&include_dir).unwrap();
+            }
+            fs::write(include_dir.join("stdlib.h"), "#include <stddef.h>").unwrap();
+            cfg.flag(&format!("-I{}", include_dir.to_str().unwrap()));
         }
 
         let mut sources = Sources::new();
