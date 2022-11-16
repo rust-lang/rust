@@ -465,7 +465,8 @@ mod c {
         }
 
         // Remove the assembly implementations that won't compile for the target
-        if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" {
+        if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" || target_os == "uefi"
+        {
             let mut to_remove = Vec::new();
             for (k, v) in sources.map.iter() {
                 if v.ends_with(".S") {
