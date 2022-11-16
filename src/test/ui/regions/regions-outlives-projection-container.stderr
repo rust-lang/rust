@@ -7,7 +7,7 @@ LL | fn with_assoc<'a,'b>() {
    |               lifetime `'a` defined here
 ...
 LL |     let _x: &'a WithAssoc<TheType<'b>> = loop { };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 
@@ -20,7 +20,7 @@ LL | fn without_assoc<'a,'b>() {
    |                  lifetime `'a` defined here
 ...
 LL |     let _x: &'a WithoutAssoc<TheType<'b>> = loop { };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 

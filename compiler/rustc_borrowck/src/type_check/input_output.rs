@@ -10,7 +10,7 @@
 use rustc_index::vec::Idx;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::*;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
 use crate::universal_regions::UniversalRegions;
@@ -18,6 +18,52 @@ use crate::universal_regions::UniversalRegions;
 use super::{Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
+    /// Check explicit closure signature annotation,
+    /// e.g., `|x: FxHashMap<_, &'static u32>| ...`.
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn check_signature_annotation(&mut self, body: &Body<'tcx>) {
+        let mir_def_id = body.source.def_id().expect_local();
+        if !self.tcx().is_closure(mir_def_id.to_def_id()) {
+            return;
+        }
+        let Some(user_provided_poly_sig) =
+            self.tcx().typeck(mir_def_id).user_provided_sigs.get(&mir_def_id)
+        else {
+            return;
+        };
+
+        // Instantiate the canonicalized variables from user-provided signature
+        // (e.g., the `_` in the code above) with fresh variables.
+        // Then replace the bound items in the fn sig with fresh variables,
+        // so that they represent the view from "inside" the closure.
+        let user_provided_sig = self
+            .instantiate_canonical_with_fresh_inference_vars(body.span, &user_provided_poly_sig);
+        let user_provided_sig = self.infcx.replace_bound_vars_with_fresh_vars(
+            body.span,
+            LateBoundRegionConversionTime::FnCall,
+            user_provided_sig,
+        );
+
+        for (&user_ty, arg_decl) in user_provided_sig.inputs().iter().zip(
+            // In MIR, closure args begin with an implicit `self`. Skip it!
+            body.args_iter().skip(1).map(|local| &body.local_decls[local]),
+        ) {
+            self.ascribe_user_type_skip_wf(
+                arg_decl.ty,
+                ty::UserType::Ty(user_ty),
+                arg_decl.source_info.span,
+            );
+        }
+
+        // If the user explicitly annotated the output type, enforce it.
+        let output_decl = &body.local_decls[RETURN_PLACE];
+        self.ascribe_user_type_skip_wf(
+            output_decl.ty,
+            ty::UserType::Ty(user_provided_sig.output()),
+            output_decl.source_info.span,
+        );
+    }
+
     #[instrument(skip(self, body, universal_regions), level = "debug")]
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
@@ -30,40 +76,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         debug!(?normalized_output_ty);
         debug!(?normalized_input_tys);
-
-        let mir_def_id = body.source.def_id().expect_local();
-
-        // If the user explicitly annotated the input types, extract
-        // those.
-        //
-        // e.g., `|x: FxHashMap<_, &'static u32>| ...`
-        let user_provided_sig;
-        if !self.tcx().is_closure(mir_def_id.to_def_id()) {
-            user_provided_sig = None;
-        } else {
-            let typeck_results = self.tcx().typeck(mir_def_id);
-            user_provided_sig =
-                typeck_results.user_provided_sigs.get(&mir_def_id).map(|user_provided_poly_sig| {
-                    // Instantiate the canonicalized variables from
-                    // user-provided signature (e.g., the `_` in the code
-                    // above) with fresh variables.
-                    let poly_sig = self.instantiate_canonical_with_fresh_inference_vars(
-                        body.span,
-                        &user_provided_poly_sig,
-                    );
-
-                    // Replace the bound items in the fn sig with fresh
-                    // variables, so that they represent the view from
-                    // "inside" the closure.
-                    self.infcx.replace_bound_vars_with_fresh_vars(
-                        body.span,
-                        LateBoundRegionConversionTime::FnCall,
-                        poly_sig,
-                    )
-                });
-        }
-
-        debug!(?normalized_input_tys, ?body.local_decls);
 
         // Equate expected input tys with those in the MIR.
         for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
@@ -85,28 +97,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 mir_input_ty,
                 mir_input_span,
             );
-        }
-
-        if let Some(user_provided_sig) = user_provided_sig {
-            for (argument_index, &user_provided_input_ty) in
-                user_provided_sig.inputs().iter().enumerate()
-            {
-                // In MIR, closures begin an implicit `self`, so
-                // argument N is stored in local N+2.
-                let local = Local::new(argument_index + 2);
-                let mir_input_ty = body.local_decls[local].ty;
-                let mir_input_span = body.local_decls[local].source_info.span;
-
-                // If the user explicitly annotated the input types, enforce those.
-                let user_provided_input_ty =
-                    self.normalize(user_provided_input_ty, Locations::All(mir_input_span));
-
-                self.equate_normalized_input_or_output(
-                    user_provided_input_ty,
-                    mir_input_ty,
-                    mir_input_span,
-                );
-            }
         }
 
         debug!(
@@ -154,29 +144,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 terr
             );
         };
-
-        // If the user explicitly annotated the output types, enforce those.
-        // Note that this only happens for closures.
-        if let Some(user_provided_sig) = user_provided_sig {
-            let user_provided_output_ty = user_provided_sig.output();
-            let user_provided_output_ty =
-                self.normalize(user_provided_output_ty, Locations::All(output_span));
-            if let Err(err) = self.eq_types(
-                user_provided_output_ty,
-                mir_output_ty,
-                Locations::All(output_span),
-                ConstraintCategory::BoringNoLocation,
-            ) {
-                span_mirbug!(
-                    self,
-                    Location::START,
-                    "equate_inputs_and_outputs: `{:?}=={:?}` failed with `{:?}`",
-                    mir_output_ty,
-                    user_provided_output_ty,
-                    err
-                );
-            }
-        }
     }
 
     #[instrument(skip(self), level = "debug")]

@@ -7,7 +7,7 @@ use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{ParamEnvAnd, Predicate, ToPredicate};
-use rustc_middle::ty::{UserSelfTy, UserSubsts};
+use rustc_middle::ty::{UserSelfTy, UserSubsts, UserType};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
@@ -52,13 +52,15 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     key: ParamEnvAnd<'tcx, AscribeUserType<'tcx>>,
     span: Option<Span>,
 ) -> Result<(), NoSolution> {
-    let (param_env, AscribeUserType { mir_ty, def_id, user_substs }) = key.into_parts();
-    debug!(
-        "type_op_ascribe_user_type: mir_ty={:?} def_id={:?} user_substs={:?}",
-        mir_ty, def_id, user_substs
-    );
+    let (param_env, AscribeUserType { mir_ty, user_ty }) = key.into_parts();
+    debug!("type_op_ascribe_user_type: mir_ty={:?} user_ty={:?}", mir_ty, user_ty);
     let cx = AscribeUserTypeCx { ocx, param_env, span: span.unwrap_or(DUMMY_SP) };
-    cx.relate_mir_and_user_ty(mir_ty, def_id, user_substs)?;
+    match user_ty {
+        UserType::Ty(user_ty) => cx.relate_mir_and_user_ty(mir_ty, user_ty)?,
+        UserType::TypeOf(def_id, user_substs) => {
+            cx.relate_mir_and_user_substs(mir_ty, def_id, user_substs)?
+        }
+    };
     Ok(())
 }
 
@@ -105,6 +107,25 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn relate_mir_and_user_ty(
+        &self,
+        mir_ty: Ty<'tcx>,
+        user_ty: Ty<'tcx>,
+    ) -> Result<(), NoSolution> {
+        let user_ty = self.normalize(user_ty);
+        self.eq(mir_ty, user_ty)?;
+
+        // FIXME(#xxxx): We should check well-formedness before normalization.
+        self.prove_predicate(
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(user_ty.into()))
+                .to_predicate(self.tcx()),
+            ObligationCause::dummy_with_span(self.span),
+        );
+
+        Ok(())
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn relate_mir_and_user_substs(
         &self,
         mir_ty: Ty<'tcx>,
         def_id: DefId,

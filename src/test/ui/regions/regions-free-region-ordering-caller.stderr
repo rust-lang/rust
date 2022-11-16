@@ -6,7 +6,7 @@ LL | fn call2<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          |
    |          lifetime `'a` defined here
 LL |     let z: Option<&'b &'a usize> = None;
-   |            ^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'b`
+   |            ^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
 
@@ -19,7 +19,7 @@ LL | fn call3<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          lifetime `'a` defined here
 LL |     let y: Paramd<'a> = Paramd { x: a };
 LL |     let z: Option<&'b Paramd<'a>> = None;
-   |            ^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'b`
+   |            ^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
 
@@ -31,7 +31,7 @@ LL | fn call4<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          |
    |          lifetime `'a` defined here
 LL |     let z: Option<&'a &'b usize> = None;
-   |            ^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
+   |            ^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 

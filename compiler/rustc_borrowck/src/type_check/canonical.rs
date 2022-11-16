@@ -1,13 +1,13 @@
 use std::fmt;
 
-use rustc_infer::infer::canonical::Canonical;
-use rustc_infer::traits::query::NoSolution;
+use rustc_infer::infer::{canonical::Canonical, InferOk};
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::{self, ToPredicate, TypeFoldable};
+use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
-use rustc_trait_selection::traits::query::Fallible;
+use rustc_trait_selection::traits::query::{Fallible, NoSolution};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 
 use crate::diagnostics::{ToUniverseInfo, UniverseInfo};
 
@@ -178,5 +178,75 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             span_mirbug!(self, NoSolution, "failed to normalize `{:?}`", value);
             value
         })
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn ascribe_user_type(
+        &mut self,
+        mir_ty: Ty<'tcx>,
+        user_ty: ty::UserType<'tcx>,
+        span: Span,
+    ) {
+        // FIXME: Ideally MIR types are normalized, but this is not always true.
+        let mir_ty = self.normalize(mir_ty, Locations::All(span));
+
+        self.fully_perform_op(
+            Locations::All(span),
+            ConstraintCategory::Boring,
+            self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(mir_ty, user_ty)),
+        )
+        .unwrap_or_else(|err| {
+            span_mirbug!(
+                self,
+                span,
+                "ascribe_user_type `{mir_ty:?}=={user_ty:?}` failed with `{err:?}`",
+            );
+        });
+    }
+
+    /// *Incorrectly* skips the WF checks we normally do in `ascribe_user_type`.
+    ///
+    /// FIXME(#104478, #104477): This is a hack for backward-compatibility.
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn ascribe_user_type_skip_wf(
+        &mut self,
+        mir_ty: Ty<'tcx>,
+        user_ty: ty::UserType<'tcx>,
+        span: Span,
+    ) {
+        let ty::UserType::Ty(user_ty) = user_ty else { bug!() };
+
+        // A fast path for a common case with closure input/output types.
+        if let ty::Infer(_) = user_ty.kind() {
+            self.eq_types(user_ty, mir_ty, Locations::All(span), ConstraintCategory::Boring)
+                .unwrap();
+            return;
+        }
+
+        let mir_ty = self.normalize(mir_ty, Locations::All(span));
+        let cause = ObligationCause::dummy_with_span(span);
+        let param_env = self.param_env;
+        let op = |infcx: &'_ _| {
+            let ocx = ObligationCtxt::new_in_snapshot(infcx);
+            let user_ty = ocx.normalize(cause.clone(), param_env, user_ty);
+            ocx.eq(&cause, param_env, user_ty, mir_ty)?;
+            if !ocx.select_all_or_error().is_empty() {
+                return Err(NoSolution);
+            }
+            Ok(InferOk { value: (), obligations: vec![] })
+        };
+
+        self.fully_perform_op(
+            Locations::All(span),
+            ConstraintCategory::Boring,
+            type_op::custom::CustomTypeOp::new(op, || "ascribe_user_type_skip_wf".to_string()),
+        )
+        .unwrap_or_else(|err| {
+            span_mirbug!(
+                self,
+                span,
+                "ascribe_user_type_skip_wf `{mir_ty:?}=={user_ty:?}` failed with `{err:?}`",
+            );
+        });
     }
 }
