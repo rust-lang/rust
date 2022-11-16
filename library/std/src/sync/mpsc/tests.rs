@@ -713,10 +713,11 @@ fn issue_39364() {
     let t = thread::spawn(move || {
         thread::sleep(Duration::from_millis(300));
         let _ = tx.clone();
-        crate::mem::forget(tx);
+        // Don't drop; hand back to caller.
+        tx
     });
 
     let _ = rx.recv_timeout(Duration::from_millis(500));
-    t.join().unwrap();
+    let _tx = t.join().unwrap(); // delay dropping until end of test
     let _ = rx.recv_timeout(Duration::from_millis(500));
 }
