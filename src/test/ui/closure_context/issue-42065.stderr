@@ -16,10 +16,6 @@ note: this value implements `FnOnce`, which causes it to be moved when called
    |
 LL |     debug_dump_dict();
    |     ^^^^^^^^^^^^^^^
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     debug_dump_dict.clone()();
-   |                    ++++++++
 
 error: aborting due to previous error
 

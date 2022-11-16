@@ -167,7 +167,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            self.add_moved_or_invoked_closure_note(location, used_place, &mut err);
+            let closure = self.add_moved_or_invoked_closure_note(location, used_place, &mut err);
 
             let mut is_loop_move = false;
             let mut in_pattern = false;
@@ -193,7 +193,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
 
                 if !seen_spans.contains(&move_span) {
-                    self.suggest_ref_or_clone(mpi, move_span, &mut err, &mut in_pattern);
+                    if !closure {
+                        self.suggest_ref_or_clone(mpi, move_span, &mut err, &mut in_pattern);
+                    }
 
                     self.explain_captures(
                         &mut err,
