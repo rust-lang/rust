@@ -82,6 +82,8 @@ regex = { version = "1.5.6" }
 serde_json = { version = "1.0.31", features = ["raw_value", "unbounded_depth"] }
 syn = { version = "1", features = ['full', 'visit'] }
 url = { version = "2.0", features = ['serde'] }
+# Ensure default features of rand, which are disabled in some scenarios.
+rand = { version = "0.8.5" }
 
 [target.'cfg(not(windows))'.dependencies]
 openssl = { version = "0.10.35", optional = true }

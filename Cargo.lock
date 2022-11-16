@@ -3098,6 +3098,7 @@ dependencies = [
  "bstr 0.2.17",
  "clap 3.2.20",
  "libz-sys",
+ "rand 0.8.5",
  "regex",
  "serde_json",
  "syn",
