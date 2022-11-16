@@ -376,7 +376,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .hir()
                             .expect_expr(self.tcx.hir().get_parent_node(rcvr_expr.hir_id));
                         let probe = self.lookup_probe(
-                            span,
                             item_name,
                             output_ty,
                             call_expr,
@@ -914,7 +913,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                self.check_for_inner_self(&mut err, source, span, rcvr_ty, item_name);
+                self.check_for_inner_self(&mut err, source, rcvr_ty, item_name);
 
                 bound_spans.sort();
                 bound_spans.dedup();
@@ -1321,7 +1320,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
 
                     let pick = self.probe_for_name(
-                        span,
                         Mode::MethodCall,
                         item_name,
                         IsSuggestion(true),
@@ -1500,7 +1498,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         &|_, field_ty| {
                             self.lookup_probe(
-                                span,
                                 item_name,
                                 field_ty,
                                 call_expr,
@@ -1548,7 +1545,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         source: SelfSource<'tcx>,
-        span: Span,
         actual: Ty<'tcx>,
         item_name: Ident,
     ) {
@@ -1571,15 +1567,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return None;
                         }
 
-                        self.lookup_probe(
-                            span,
-                            item_name,
-                            field_ty,
-                            call_expr,
-                            ProbeScope::TraitsInScope,
-                        )
-                        .ok()
-                        .map(|pick| (variant, field, pick))
+                        self.lookup_probe(item_name, field_ty, call_expr, ProbeScope::TraitsInScope)
+                            .ok()
+                            .map(|pick| (variant, field, pick))
                     })
                     .collect();
 
@@ -1644,12 +1634,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let [first] = ***substs else { return; };
                 let ty::GenericArgKind::Type(ty) = first.unpack() else { return; };
                 let Ok(pick) = self.lookup_probe(
-                            span,
-                            item_name,
-                            ty,
-                            call_expr,
-                            ProbeScope::TraitsInScope,
-                        )  else { return; };
+                    item_name,
+                    ty,
+                    call_expr,
+                    ProbeScope::TraitsInScope,
+                )  else { return; };
 
                 let name = self.ty_to_value_string(actual);
                 let inner_id = kind.did();
@@ -1899,7 +1888,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let SelfSource::QPath(ty) = self_source else { return; };
         for (deref_ty, _) in self.autoderef(rustc_span::DUMMY_SP, rcvr_ty).skip(1) {
             if let Ok(pick) = self.probe_for_name(
-                ty.span,
                 Mode::Path,
                 item_name,
                 IsSuggestion(true),
@@ -2107,7 +2095,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (self.tcx.mk_mut_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
                 (self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
             ] {
-                match self.lookup_probe(span, item_name, *rcvr_ty, rcvr, ProbeScope::AllTraits) {
+                match self.lookup_probe(item_name, *rcvr_ty, rcvr, ProbeScope::AllTraits) {
                     Ok(pick) => {
                         // If the method is defined for the receiver we have, it likely wasn't `use`d.
                         // We point at the method, but we just skip the rest of the check for arbitrary
@@ -2141,7 +2129,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ] {
                     if let Some(new_rcvr_t) = *rcvr_ty
                         && let Ok(pick) = self.lookup_probe(
-                            span,
                             item_name,
                             new_rcvr_t,
                             rcvr,
@@ -2522,7 +2509,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span: method_name.span,
             };
             let probe = self.lookup_probe(
-                expr.span,
                 new_name,
                 self_ty,
                 self_expr,
