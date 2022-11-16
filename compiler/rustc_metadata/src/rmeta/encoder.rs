@@ -2189,7 +2189,7 @@ impl EncodedMetadata {
 
     #[inline]
     pub fn raw_data(&self) -> &[u8] {
-        self.mmap.as_ref().map(|mmap| mmap.as_ref()).unwrap_or_default()
+        self.mmap.as_deref().unwrap_or_default()
     }
 }
 

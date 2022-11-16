@@ -2562,7 +2562,7 @@ impl<'a> Parser<'a> {
             if let [a, b] = segments {
                 let (a_span, b_span) = (a.span(), b.span());
                 let between_span = a_span.shrink_to_hi().to(b_span.shrink_to_lo());
-                if self.span_to_snippet(between_span).as_ref().map(|a| &a[..]) == Ok(":: ") {
+                if self.span_to_snippet(between_span).as_deref() == Ok(":: ") {
                     return Err(DoubleColonInBound {
                         span: path.span.shrink_to_hi(),
                         between: between_span,

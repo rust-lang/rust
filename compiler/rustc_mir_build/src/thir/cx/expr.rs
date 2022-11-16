@@ -487,7 +487,7 @@ impl<'tcx> Cx<'tcx> {
                             substs,
                             user_ty,
                             fields: self.field_refs(fields),
-                            base: base.as_ref().map(|base| FruInfo {
+                            base: base.map(|base| FruInfo {
                                 base: self.mirror_expr(base),
                                 field_types: self.typeck_results().fru_field_types()[expr.hir_id]
                                     .iter()
@@ -590,7 +590,7 @@ impl<'tcx> Cx<'tcx> {
                             InlineAsmOperand::Out {
                                 reg,
                                 late,
-                                expr: expr.as_ref().map(|expr| self.mirror_expr(expr)),
+                                expr: expr.map(|expr| self.mirror_expr(expr)),
                             }
                         }
                         hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
@@ -605,7 +605,7 @@ impl<'tcx> Cx<'tcx> {
                             reg,
                             late,
                             in_expr: self.mirror_expr(in_expr),
-                            out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
+                            out_expr: out_expr.map(|expr| self.mirror_expr(expr)),
                         },
                         hir::InlineAsmOperand::Const { ref anon_const } => {
                             let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
@@ -659,13 +659,11 @@ impl<'tcx> Cx<'tcx> {
 
                 ExprKind::Repeat { value: self.mirror_expr(v), count: *count }
             }
-            hir::ExprKind::Ret(ref v) => {
-                ExprKind::Return { value: v.as_ref().map(|v| self.mirror_expr(v)) }
-            }
+            hir::ExprKind::Ret(ref v) => ExprKind::Return { value: v.map(|v| self.mirror_expr(v)) },
             hir::ExprKind::Break(dest, ref value) => match dest.target_id {
                 Ok(target_id) => ExprKind::Break {
                     label: region::Scope { id: target_id.local_id, data: region::ScopeData::Node },
-                    value: value.as_ref().map(|value| self.mirror_expr(value)),
+                    value: value.map(|value| self.mirror_expr(value)),
                 },
                 Err(err) => bug!("invalid loop id for break: {}", err),
             },

@@ -30,7 +30,7 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
-use std::iter;
+use std::{iter, slice};
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -227,22 +227,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ] {
             let Some(trait_def_id) = opt_trait_def_id else { continue };
 
-            let opt_input_types = opt_arg_exprs.map(|arg_exprs| {
-                [self.tcx.mk_tup(arg_exprs.iter().map(|e| {
+            let opt_input_type = opt_arg_exprs.map(|arg_exprs| {
+                self.tcx.mk_tup(arg_exprs.iter().map(|e| {
                     self.next_ty_var(TypeVariableOrigin {
                         kind: TypeVariableOriginKind::TypeInference,
                         span: e.span,
                     })
-                }))]
+                }))
             });
-            let opt_input_types = opt_input_types.as_ref().map(AsRef::as_ref);
 
             if let Some(ok) = self.lookup_method_in_trait(
                 call_expr.span,
                 method_name,
                 trait_def_id,
                 adjusted_ty,
-                opt_input_types,
+                opt_input_type.as_ref().map(slice::from_ref),
             ) {
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;

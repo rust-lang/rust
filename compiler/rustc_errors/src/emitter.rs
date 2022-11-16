@@ -248,7 +248,7 @@ pub trait Emitter: Translate {
         fluent_args: &FluentArgs<'_>,
     ) -> (MultiSpan, &'a [CodeSuggestion]) {
         let mut primary_span = diag.span.clone();
-        let suggestions = diag.suggestions.as_ref().map_or(&[][..], |suggestions| &suggestions[..]);
+        let suggestions = diag.suggestions.as_deref().unwrap_or(&[]);
         if let Some((sugg, rest)) = suggestions.split_first() {
             let msg = self.translate_message(&sugg.msg, fluent_args);
             if rest.is_empty() &&

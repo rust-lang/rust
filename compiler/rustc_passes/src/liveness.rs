@@ -923,8 +923,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 //    v     v
                 //   (  succ  )
                 //
-                let else_ln =
-                    self.propagate_through_opt_expr(else_opt.as_ref().map(|e| &**e), succ);
+                let else_ln = self.propagate_through_opt_expr(else_opt.as_deref(), succ);
                 let then_ln = self.propagate_through_expr(&then, succ);
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(ln, else_ln);
@@ -967,7 +966,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::Ret(ref o_e) => {
                 // Ignore succ and subst exit_ln.
-                self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), self.exit_ln)
+                self.propagate_through_opt_expr(o_e.as_deref(), self.exit_ln)
             }
 
             hir::ExprKind::Break(label, ref opt_expr) => {
@@ -982,7 +981,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // look it up in the break loop nodes table
 
                 match target {
-                    Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
+                    Some(b) => self.propagate_through_opt_expr(opt_expr.as_deref(), b),
                     None => span_bug!(expr.span, "`break` to unknown label"),
                 }
             }
@@ -1027,7 +1026,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Array(ref exprs) => self.propagate_through_exprs(exprs, succ),
 
             hir::ExprKind::Struct(_, ref fields, ref with_expr) => {
-                let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
+                let succ = self.propagate_through_opt_expr(with_expr.as_deref(), succ);
                 fields
                     .iter()
                     .rev()

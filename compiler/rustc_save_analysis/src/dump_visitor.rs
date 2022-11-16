@@ -1029,7 +1029,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                                 trait_item.hir_id(),
                                 trait_item.ident,
                                 Some(bounds),
-                                default_ty.as_ref().map(|ty| &**ty),
+                                default_ty.as_deref(),
                                 &self.save_ctxt,
                             ),
                             attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
