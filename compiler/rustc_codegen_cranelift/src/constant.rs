@@ -47,7 +47,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
         if let Err(err) = fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
             all_constants_ok = false;
             match err {
-                ErrorHandled::Reported(_) | ErrorHandled::Linted => {
+                ErrorHandled::Reported(_) => {
                     fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
                 }
                 ErrorHandled::TooGeneric => {

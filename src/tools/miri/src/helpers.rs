@@ -117,7 +117,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_ref();
         let instance = this.resolve_path(path);
         let cid = GlobalId { instance, promoted: None };
-        let const_val = this.eval_to_allocation(cid)?;
+        // We don't give a span -- this isn't actually used directly by the program anyway.
+        let const_val = this.eval_global(cid, None)?;
         this.read_scalar(&const_val.into())
     }
 

@@ -29,7 +29,7 @@ const UNALIGNED_PTR: () = unsafe {
 };
 
 const UNALIGNED_READ: () = {
-    INNER; //[with_flag]~ERROR evaluation of constant value failed
+    INNER; //[with_flag]~ constant
     // There is an error here but its span is in the standard library so we cannot match it...
     // so we have this in a *nested* const, such that the *outer* const fails to use it.
     const INNER: () = unsafe {

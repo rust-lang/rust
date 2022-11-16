@@ -471,7 +471,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        self.ecx.const_to_op(&c.literal, None).ok()
+        // No span, we don't want errors to be shown.
+        self.ecx.eval_mir_constant(&c.literal, None, None).ok()
     }
 
     /// Returns the value, if any, of evaluating `place`.
