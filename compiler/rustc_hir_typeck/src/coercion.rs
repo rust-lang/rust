@@ -46,7 +46,7 @@ use rustc_hir::Expr;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
-use rustc_infer::traits::{Obligation, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::Obligation;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -62,8 +62,7 @@ use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::TraitEngineExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
@@ -1055,9 +1054,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let Ok(ok) = coerce.coerce(source, target) else {
                 return false;
             };
-            let mut fcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(self.tcx);
-            fcx.register_predicate_obligations(self, ok.obligations);
-            fcx.select_where_possible(&self).is_empty()
+            let ocx = ObligationCtxt::new_in_snapshot(self);
+            ocx.register_obligations(ok.obligations);
+            ocx.select_where_possible().is_empty()
         })
     }
 
