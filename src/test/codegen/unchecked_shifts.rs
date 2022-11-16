@@ -1,5 +1,6 @@
 // compile-flags: -O
 // min-llvm-version: 15.0 (LLVM 13 in CI does this differently from submodule LLVM)
+// ignore-debug (because unchecked is checked in debug)
 
 #![crate_type = "lib"]
 #![feature(unchecked_math)]
