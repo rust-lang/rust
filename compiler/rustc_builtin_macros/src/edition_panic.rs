@@ -63,7 +63,6 @@ fn expand<'cx>(
                     delim: MacDelimiter::Parenthesis,
                     tokens: tts,
                 }),
-                prior_type_ascription: None,
             })),
         ),
     )

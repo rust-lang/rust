@@ -182,7 +182,6 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     delim: MacDelimiter::Parenthesis,
                     tokens: initial.into_iter().chain(captures).collect::<TokenStream>(),
                 }),
-                prior_type_ascription: None,
             })),
         )
     }

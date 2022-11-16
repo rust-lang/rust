@@ -68,7 +68,6 @@ pub fn parse_asm_args<'a>(
                 // After a template string, we always expect *only* a comma...
                 let mut err = diag.struct_span_err(p.token.span, "expected token: `,`");
                 err.span_label(p.token.span, "expected `,`");
-                p.maybe_annotate_with_ascription(&mut err, false);
                 return Err(err);
             } else {
                 // ...after that delegate to `expect` to also include the other expected tokens.

@@ -184,7 +184,7 @@ impl<'a> Parser<'a> {
             _ => MacStmtStyle::NoBraces,
         };
 
-        let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });
+        let mac = P(MacCall { path, args });
 
         let kind = if (style == MacStmtStyle::Braces
             && self.token != token::Dot
@@ -551,7 +551,6 @@ impl<'a> Parser<'a> {
             }
             let stmt = match self.parse_full_stmt(recover) {
                 Err(mut err) if recover.yes() => {
-                    self.maybe_annotate_with_ascription(&mut err, false);
                     if let Some(ref mut snapshot) = snapshot {
                         snapshot.recover_diff_marker();
                     }

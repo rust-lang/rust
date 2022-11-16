@@ -151,9 +151,6 @@ pub struct Parser<'a> {
     /// error.
     pub(super) unclosed_delims: Vec<UnmatchedBrace>,
     last_unexpected_token_span: Option<Span>,
-    /// Span pointing at the `:` for the last type ascription the parser has seen, and whether it
-    /// looked like it could have been a mistyped path or literal `Option:Some(42)`).
-    pub last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
     capture_state: CaptureState,
@@ -168,7 +165,7 @@ pub struct Parser<'a> {
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 336);
+rustc_data_structures::static_assert_size!(Parser<'_>, 320);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -486,7 +483,6 @@ impl<'a> Parser<'a> {
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
             last_unexpected_token_span: None,
-            last_type_ascription: None,
             subparser_name,
             capture_state: CaptureState {
                 capturing: Capturing::No,
