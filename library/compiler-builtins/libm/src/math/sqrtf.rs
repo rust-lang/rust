@@ -154,9 +154,9 @@ mod tests {
     
      #[test]
     fn conformance_tests() {
-        let values = [3.14159265359f32, 10000.0f32, -1.0f32, INFINITY];
-        let results = [1071833029u32, 1120403456u32, 4290772992u32, 2139095040u32];
-        
+        let values = [3.14159265359f32, 10000.0f32, f32::from_bits(0x0000000f), INFINITY];
+        let results = [1071833029u32, 1120403456u32, 456082799u32, 2139095040u32];
+
         for i in 0..values.len() {
             let bits = f32::to_bits(sqrtf(values[i]));
             assert_eq!(results[i], bits);
