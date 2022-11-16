@@ -8,7 +8,7 @@ use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::find_native_static_library;
-use rustc_metadata::fs::{emit_wrapper_file, METADATA_FILENAME};
+use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Lto, Strip};
@@ -293,7 +293,6 @@ fn link_rlib<'a>(
         RlibFlavor::Normal => {
             let (metadata, metadata_position) =
                 create_wrapper_file(sess, b".rmeta".to_vec(), codegen_results.metadata.raw_data());
-            let metadata = emit_wrapper_file(sess, &metadata, tmpdir, METADATA_FILENAME);
             match metadata_position {
                 MetadataPosition::First => {
                     // Most of the time metadata in rlib files is wrapped in a "dummy" object
@@ -387,8 +386,8 @@ fn link_rlib<'a>(
                 let src = read(lib_path)
                     .map_err(|e| sess.emit_fatal(errors::ReadFileError { message: e }))?;
                 let (data, _) = create_wrapper_file(sess, b".bundled_lib".to_vec(), &src);
-                let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
-                packed_bundled_libs.push(wrapper_file);
+                // let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
+                packed_bundled_libs.push((data, filename));
                 continue;
             }
             ab.add_archive(&location, Box::new(|_| false)).unwrap_or_else(|error| {
@@ -446,7 +445,7 @@ fn link_rlib<'a>(
     // Add all bundled static native library dependencies.
     // Archives added to the end of .rlib archive, see comment above for the reason.
     for lib in packed_bundled_libs {
-        ab.add_file(&lib)
+        ab.add_buffer(lib.0, lib.1.as_str())
     }
 
     return Ok(ab);
