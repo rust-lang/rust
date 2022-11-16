@@ -1,4 +1,4 @@
-error: reached the recursion limit while instantiating `<(&(&(&(&(&(&(&(&(&(&(&(&(&(&(&(.....), ...), ...) as Foo>::recurse`
+error: reached the recursion limit while instantiating `<(&(&(_, _), _), _) as Foo>::recurse`
   --> $DIR/issue-37311.rs:17:9
    |
 LL |         (self, self).recurse();
