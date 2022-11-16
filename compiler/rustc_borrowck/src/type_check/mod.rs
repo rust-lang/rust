@@ -38,7 +38,6 @@ use rustc_middle::ty::{
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
-use rustc_trait_selection::traits::query::type_op;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -197,6 +196,8 @@ pub(crate) fn type_check<'mir, 'tcx>(
     }
 
     checker.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
+    checker.check_signature_annotation(&body);
+
     liveness::generate(
         &mut checker,
         body,
@@ -391,23 +392,14 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         check_err(self, promoted_body, ty, promoted_ty);
                     }
                 } else {
-                    if let Err(terr) = self.cx.fully_perform_op(
-                        locations,
-                        ConstraintCategory::Boring,
-                        self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                            constant.literal.ty(),
+                    self.cx.ascribe_user_type(
+                        constant.literal.ty(),
+                        UserType::TypeOf(
                             uv.def.did,
                             UserSubsts { substs: uv.substs, user_self_ty: None },
-                        )),
-                    ) {
-                        span_mirbug!(
-                            self,
-                            constant,
-                            "bad constant type {:?} ({:?})",
-                            constant,
-                            terr
-                        );
-                    }
+                        ),
+                        locations.span(&self.cx.body),
+                    );
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
                 let unnormalized_ty = tcx.type_of(static_def_id);
@@ -1041,58 +1033,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!(?self.user_type_annotations);
         for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
-            let inferred_ty = self.normalize(inferred_ty, Locations::All(span));
             let annotation = self.instantiate_canonical_with_fresh_inference_vars(span, user_ty);
-            debug!(?annotation);
-            match annotation {
-                UserType::Ty(mut ty) => {
-                    ty = self.normalize(ty, Locations::All(span));
-
-                    if let Err(terr) = self.eq_types(
-                        ty,
-                        inferred_ty,
-                        Locations::All(span),
-                        ConstraintCategory::BoringNoLocation,
-                    ) {
-                        span_mirbug!(
-                            self,
-                            user_annotation,
-                            "bad user type ({:?} = {:?}): {:?}",
-                            ty,
-                            inferred_ty,
-                            terr
-                        );
-                    }
-
-                    self.prove_predicate(
-                        ty::Binder::dummy(ty::PredicateKind::WellFormed(inferred_ty.into())),
-                        Locations::All(span),
-                        ConstraintCategory::TypeAnnotation,
-                    );
-                }
-                UserType::TypeOf(def_id, user_substs) => {
-                    if let Err(terr) = self.fully_perform_op(
-                        Locations::All(span),
-                        ConstraintCategory::BoringNoLocation,
-                        self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                            inferred_ty,
-                            def_id,
-                            user_substs,
-                        )),
-                    ) {
-                        span_mirbug!(
-                            self,
-                            user_annotation,
-                            "bad user type AscribeUserType({:?}, {:?} {:?}, type_of={:?}): {:?}",
-                            inferred_ty,
-                            def_id,
-                            user_substs,
-                            self.tcx().type_of(def_id),
-                            terr,
-                        );
-                    }
-                }
-            }
+            self.ascribe_user_type(inferred_ty, annotation, span);
         }
     }
 
