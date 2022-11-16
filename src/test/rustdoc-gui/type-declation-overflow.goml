@@ -41,3 +41,20 @@ goto: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLon
 store-property: (scrollWidth, ".mobile-topbar h2", "scrollWidth")
 assert-property: (".mobile-topbar h2", {"clientWidth": |scrollWidth|})
 assert-css: (".mobile-topbar h2", {"overflow-x": "hidden"})
+
+// Check wrapping for top main-heading h1 and out-of-band.
+// On desktop, they wrap when too big.
+size: (1100, 800)
+goto: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
+compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ("y"))
+goto: "file://" + |DOC_PATH| + "/lib2/index.html"
+compare-elements-position: (".main-heading h1", ".main-heading .out-of-band", ("y"))
+// make sure there is a gap between them
+compare-elements-position-near-false: (".main-heading h1", ".main-heading .out-of-band", {"x": 550})
+
+// On mobile, they always wrap.
+size: (600, 600)
+goto: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
+compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ("y"))
+goto: "file://" + |DOC_PATH| + "/lib2/index.html"
+compare-elements-position-false: (".main-heading h1", ".main-heading .out-of-band", ("y"))
