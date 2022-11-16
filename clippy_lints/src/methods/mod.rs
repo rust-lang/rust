@@ -3077,7 +3077,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// use std::fs::File;
     /// use std::io::{self, Write, Seek, SeekFrom};
     ///
@@ -3090,7 +3090,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```rust,no_run
     /// use std::fs::File;
     /// use std::io::{self, Write, Seek, SeekFrom};
     ///
