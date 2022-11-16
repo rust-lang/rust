@@ -503,8 +503,8 @@ impl<'a> Parser<'a> {
         parser
     }
 
-    pub fn forbid_recovery(mut self) -> Self {
-        self.recovery = Recovery::Forbidden;
+    pub fn recovery(mut self, recovery: Recovery) -> Self {
+        self.recovery = recovery;
         self
     }
 

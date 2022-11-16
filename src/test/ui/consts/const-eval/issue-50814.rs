@@ -18,7 +18,7 @@ impl<A: Unsigned, B: Unsigned> Unsigned for Sum<A, B> {
 
 fn foo<T>(_: T) -> &'static u8 {
     &Sum::<U8, U8>::MAX
-    //~^ ERROR evaluation of `foo::<i32>` failed [E0080]
+    //~^ constant
 }
 
 fn main() {

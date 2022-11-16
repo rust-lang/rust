@@ -255,7 +255,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
         return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs).map_err(|error| {
             let span = tcx.def_span(def_id);
             let error = ConstEvalErr { error: error.into_kind(), stacktrace: vec![], span };
-            error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
+            error.report(tcx.at(span), "could not evaluate nullary intrinsic")
         });
     }
 
@@ -333,7 +333,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 }
             };
 
-            Err(err.report_as_error(ecx.tcx.at(err.span), &msg))
+            Err(err.report(ecx.tcx.at(err.span), &msg))
         }
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.
@@ -358,7 +358,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             if let Err(error) = validation {
                 // Validation failed, report an error. This is always a hard error.
                 let err = ConstEvalErr::new(&ecx, error, None);
-                Err(err.struct_error(
+                Err(err.report_decorated(
                     ecx.tcx,
                     "it is undefined behavior to use this value",
                     |diag| {

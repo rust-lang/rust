@@ -16,7 +16,5 @@ impl<T> S<T> {
 }
 
 fn main() {
-    black_box((S::<i32>::FOO, S::<u32>::FOO));
-    //~^ ERROR erroneous constant
-    //~| ERROR erroneous constant
+    black_box((S::<i32>::FOO, S::<u32>::FOO)); //~ constant
 }

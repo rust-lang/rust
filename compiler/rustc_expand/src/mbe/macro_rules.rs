@@ -22,7 +22,7 @@ use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
 use rustc_lint_defs::BuiltinLintDiagnostics;
-use rustc_parse::parser::Parser;
+use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -219,6 +219,8 @@ pub(super) trait Tracker<'matcher> {
 
     /// For tracing.
     fn description() -> &'static str;
+
+    fn recovery() -> Recovery;
 }
 
 /// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization.
@@ -229,6 +231,9 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
     fn after_arm(&mut self, _: &NamedParseResult) {}
     fn description() -> &'static str {
         "none"
+    }
+    fn recovery() -> Recovery {
+        Recovery::Forbidden
     }
 }
 
@@ -330,7 +335,12 @@ fn expand_macro<'cx>(
     let mut tracker = CollectTrackerAndEmitter::new(cx, sp);
 
     let try_success_result = try_match_macro(sess, name, &arg, lhses, &mut tracker);
-    assert!(try_success_result.is_err(), "Macro matching returned a success on the second try");
+
+    if try_success_result.is_ok() {
+        // Nonterminal parser recovery might turn failed matches into successful ones,
+        // but for that it must have emitted an error already
+        tracker.cx.sess.delay_span_bug(sp, "Macro matching returned a success on the second try");
+    }
 
     if let Some(result) = tracker.result {
         // An irrecoverable error occurred and has been emitted.
@@ -338,7 +348,7 @@ fn expand_macro<'cx>(
     }
 
     let Some((token, label, remaining_matcher)) = tracker.best_failure else {
-        return tracker.result.expect("must have encountered Error or ErrorReported");
+        return DummyResult::any(sp);
     };
 
     let span = token.span.substitute_dummy(sp);
@@ -360,7 +370,7 @@ fn expand_macro<'cx>(
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
         for lhs in lhses {
-            let parser = parser_from_cx(sess, arg.clone());
+            let parser = parser_from_cx(sess, arg.clone(), Recovery::Allowed);
             let mut tt_parser = TtParser::new(name);
 
             if let Success(_) =
@@ -406,7 +416,12 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
     fn after_arm(&mut self, result: &NamedParseResult) {
         match result {
             Success(_) => {
-                unreachable!("should not collect detailed info for successful macro match");
+                // Nonterminal parser recovery might turn failed matches into successful ones,
+                // but for that it must have emitted an error already
+                self.cx.sess.delay_span_bug(
+                    self.root_span,
+                    "should not collect detailed info for successful macro match",
+                );
             }
             Failure(token, msg) => match self.best_failure {
                 Some((ref best_token, _, _)) if best_token.span.lo() >= token.span.lo() => {}
@@ -431,6 +446,10 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
 
     fn description() -> &'static str {
         "detailed"
+    }
+
+    fn recovery() -> Recovery {
+        Recovery::Allowed
     }
 }
 
@@ -477,7 +496,7 @@ fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     // 68836 suggests a more comprehensive but more complex change to deal with
     // this situation.)
     // FIXME(Nilstrieb): Stop recovery from happening on this parser and retry later with recovery if the macro failed to match.
-    let parser = parser_from_cx(sess, arg.clone());
+    let parser = parser_from_cx(sess, arg.clone(), T::recovery());
     // Try each arm's matchers.
     let mut tt_parser = TtParser::new(name);
     for (i, lhs) in lhses.iter().enumerate() {
@@ -1559,8 +1578,8 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-fn parser_from_cx(sess: &ParseSess, tts: TokenStream) -> Parser<'_> {
-    Parser::new(sess, tts, true, rustc_parse::MACRO_ARGUMENTS)
+fn parser_from_cx(sess: &ParseSess, tts: TokenStream, recovery: Recovery) -> Parser<'_> {
+    Parser::new(sess, tts, true, rustc_parse::MACRO_ARGUMENTS).recovery(recovery)
 }
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For

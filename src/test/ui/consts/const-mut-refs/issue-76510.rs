@@ -9,7 +9,7 @@ const S: &'static mut str = &mut " hello ";
 
 const fn trigger() -> [(); unsafe {
         let s = transmute::<(*const u8, usize), &ManuallyDrop<str>>((S.as_ptr(), 3));
-        //~^ ERROR evaluation of constant value failed
+        //~^ constant
         0
     }] {
     [(); 0]

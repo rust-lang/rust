@@ -501,8 +501,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     throw_unsup!(ReadExternStatic(def_id));
                 }
 
-                // Use a precise span for better cycle errors.
-                (self.tcx.at(self.cur_span()).eval_static_initializer(def_id)?, Some(def_id))
+                // We don't give a span -- statics don't need that, they cannot be generic or associated.
+                let val = self.ctfe_query(None, |tcx| tcx.eval_static_initializer(def_id))?;
+                (val, Some(def_id))
             }
         };
         M::before_access_global(*self.tcx, &self.machine, id, alloc, def_id, is_write)?;

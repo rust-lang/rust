@@ -226,7 +226,7 @@ impl<'tcx> ConstKind<'tcx> {
                         // (which may be identity substs, see above),
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ValTree(val?))),
-                        Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => None,
+                        Err(ErrorHandled::TooGeneric) => None,
                         Err(ErrorHandled::Reported(e)) => Some(Err(e)),
                     }
                 }
@@ -237,7 +237,7 @@ impl<'tcx> ConstKind<'tcx> {
                         // (which may be identity substs, see above),
                         // can leak through `val` into the const we return.
                         Ok(val) => Some(Ok(EvalResult::ConstVal(val))),
-                        Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => None,
+                        Err(ErrorHandled::TooGeneric) => None,
                         Err(ErrorHandled::Reported(e)) => Some(Err(e)),
                     }
                 }

@@ -82,18 +82,18 @@ const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
 // bad data *inside* the slice
 const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
 //~^ ERROR it is undefined behavior to use this value
-//~| ERROR evaluation of constant value failed
+//~| constant
 
 // good MySliceBool
 const MYSLICE_GOOD: &MySliceBool = &MySlice(true, [false]);
 // bad: sized field is not okay
 const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
 //~^ ERROR it is undefined behavior to use this value
-//~| ERROR evaluation of constant value failed
+//~| constant
 // bad: unsized part is not okay
 const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
 //~^ ERROR it is undefined behavior to use this value
-//~| ERROR evaluation of constant value failed
+//~| constant
 
 // # raw slice
 const RAW_SLICE_VALID: *const [u8] = unsafe { mem::transmute((&42u8, 1usize)) }; // ok

@@ -504,7 +504,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // method lookup.
             let Ok(pick) = self
             .probe_for_name(
-                call_expr.span,
                 Mode::MethodCall,
                 segment.ident,
                 IsSuggestion(true),

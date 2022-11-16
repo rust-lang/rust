@@ -802,7 +802,6 @@ table,
 	align-items: baseline;
 }
 #crate-search-div {
-	display: inline-block;
 	/* ensures that 100% in properties of #crate-search-div:after
 	are relative to the size of this div */
 	position: relative;
@@ -1048,7 +1047,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .rightside {
 	padding-left: 12px;
-	padding-right: 2px;
 	float: right;
 }
 
