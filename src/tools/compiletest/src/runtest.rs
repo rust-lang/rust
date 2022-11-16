@@ -3536,6 +3536,8 @@ impl<'test> TestCx<'test> {
             Some(self.config.sysroot_base.join("lib").join("rustlib").join("src").join("rust")),
             // Virtual `/rustc/$sha` remapped paths (if `remap-debuginfo` is enabled):
             option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from),
+            // Virtual `/rustc/$sha` coming from download-rustc:
+            std::env::var_os("FAKE_DOWNLOAD_RUSTC_PREFIX").map(PathBuf::from),
         ];
         for base_dir in source_bases {
             if let Some(base_dir) = base_dir {

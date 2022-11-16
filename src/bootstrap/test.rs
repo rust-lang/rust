@@ -1671,6 +1671,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.arg("--channel").arg(&builder.config.channel);
 
+        if let Some(commit) = builder.config.download_rustc_commit() {
+            cmd.env("FAKE_DOWNLOAD_RUSTC_PREFIX", format!("/rustc/{commit}"));
+        }
+
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 
         builder.info(&format!(

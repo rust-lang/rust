@@ -1506,19 +1506,25 @@ impl Config {
 
     /// Return whether we will use a downloaded, pre-compiled version of rustc, or just build from source.
     pub(crate) fn download_rustc(&self) -> bool {
-        static DOWNLOAD_RUSTC: OnceCell<bool> = OnceCell::new();
+        self.download_rustc_commit().is_some()
+    }
+
+    pub(crate) fn download_rustc_commit(&self) -> Option<&'static str> {
+        static DOWNLOAD_RUSTC: OnceCell<Option<String>> = OnceCell::new();
         if self.dry_run() && DOWNLOAD_RUSTC.get().is_none() {
             // avoid trying to actually download the commit
-            return false;
+            return None;
         }
 
-        *DOWNLOAD_RUSTC.get_or_init(|| match &self.download_rustc_commit {
-            None => false,
-            Some(commit) => {
-                self.download_ci_rustc(commit);
-                true
-            }
-        })
+        DOWNLOAD_RUSTC
+            .get_or_init(|| match &self.download_rustc_commit {
+                None => None,
+                Some(commit) => {
+                    self.download_ci_rustc(commit);
+                    Some(commit.clone())
+                }
+            })
+            .as_deref()
     }
 
     pub(crate) fn initial_rustfmt(&self) -> Option<PathBuf> {
