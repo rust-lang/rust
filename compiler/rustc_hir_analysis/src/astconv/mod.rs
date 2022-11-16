@@ -1917,17 +1917,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
 
             // see if we can satisfy using an inherent associated type
-            for impl_ in tcx.inherent_impls(adt_def.did()) {
-                let assoc_ty = tcx.associated_items(impl_).find_by_name_and_kind(
-                    tcx,
-                    assoc_ident,
-                    ty::AssocKind::Type,
-                    *impl_,
-                );
-                if let Some(assoc_ty) = assoc_ty {
-                    let ty = tcx.type_of(assoc_ty.def_id);
-                    return Ok((ty, DefKind::AssocTy, assoc_ty.def_id));
-                }
+            for &impl_ in tcx.inherent_impls(adt_def.did()) {
+                let Some(assoc_ty_did) = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, impl_) else {
+                    continue;
+                };
+                // FIXME(inherent_associated_types): This does not substitute parameters.
+                let ty = tcx.type_of(assoc_ty_did);
+                return Ok((ty, DefKind::AssocTy, assoc_ty_did));
             }
         }
 
@@ -2014,36 +2010,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
 
         let trait_did = bound.def_id();
-        let (assoc_ident, def_scope) =
-            tcx.adjust_ident_and_get_scope(assoc_ident, trait_did, hir_ref_id);
-
-        // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
-        // of calling `filter_by_name_and_kind`.
-        let item = tcx.associated_items(trait_did).in_definition_order().find(|i| {
-            i.kind.namespace() == Namespace::TypeNS
-                && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
-        });
-        // Assume that if it's not matched, there must be a const defined with the same name
-        // but it was used in a type position.
-        let Some(item) = item else {
+        let Some(assoc_ty_did) = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, trait_did) else {
+            // Assume that if it's not matched, there must be a const defined with the same name
+            // but it was used in a type position.
             let msg = format!("found associated const `{assoc_ident}` when type was expected");
             let guar = tcx.sess.struct_span_err(span, &msg).emit();
             return Err(guar);
         };
 
-        let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, assoc_segment, bound);
+        let ty = self.projected_ty_from_poly_trait_ref(span, assoc_ty_did, assoc_segment, bound);
         let ty = self.normalize_ty(span, ty);
-
-        let kind = DefKind::AssocTy;
-        if !item.visibility(tcx).is_accessible_from(def_scope, tcx) {
-            let kind = kind.descr(item.def_id);
-            let msg = format!("{} `{}` is private", kind, assoc_ident);
-            tcx.sess
-                .struct_span_err(span, &msg)
-                .span_label(span, &format!("private {}", kind))
-                .emit();
-        }
-        tcx.check_stability(item.def_id, Some(hir_ref_id), span, None);
 
         if let Some(variant_def_id) = variant_resolution {
             tcx.struct_span_lint_hir(
@@ -2063,7 +2039,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     };
 
                     could_refer_to(DefKind::Variant, variant_def_id, "");
-                    could_refer_to(kind, item.def_id, " also");
+                    could_refer_to(DefKind::AssocTy, assoc_ty_did, " also");
 
                     lint.span_suggestion(
                         span,
@@ -2076,7 +2052,40 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 },
             );
         }
-        Ok((ty, kind, item.def_id))
+        Ok((ty, DefKind::AssocTy, assoc_ty_did))
+    }
+
+    fn lookup_assoc_ty(
+        &self,
+        ident: Ident,
+        block: hir::HirId,
+        span: Span,
+        scope: DefId,
+    ) -> Option<DefId> {
+        let tcx = self.tcx();
+        let (ident, def_scope) = tcx.adjust_ident_and_get_scope(ident, scope, block);
+
+        // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
+        // of calling `find_by_name_and_kind`.
+        let item = tcx.associated_items(scope).in_definition_order().find(|i| {
+            i.kind.namespace() == Namespace::TypeNS
+                && i.ident(tcx).normalize_to_macros_2_0() == ident
+        })?;
+
+        let kind = DefKind::AssocTy;
+        if !item.visibility(tcx).is_accessible_from(def_scope, tcx) {
+            let kind = kind.descr(item.def_id);
+            let msg = format!("{kind} `{ident}` is private");
+            let def_span = self.tcx().def_span(item.def_id);
+            tcx.sess
+                .struct_span_err_with_code(span, &msg, rustc_errors::error_code!(E0624))
+                .span_label(span, &format!("private {kind}"))
+                .span_label(def_span, &format!("{kind} defined here"))
+                .emit();
+        }
+        tcx.check_stability(item.def_id, Some(block), span, None);
+
+        Some(item.def_id)
     }
 
     fn qpath_to_ty(
