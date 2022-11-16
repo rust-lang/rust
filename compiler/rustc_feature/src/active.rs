@@ -506,6 +506,8 @@ declare_features! (
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
     /// Allows lints part of the strict provenance effort.
     (active, strict_provenance, "1.61.0", Some(95228), None),
+    /// Allows string patterns to dereference values to match them.
+    (active, string_deref_patterns, "CURRENT_RUSTC_VERSION", Some(87121), None),
     /// Allows the use of `#[target_feature]` on safe functions.
     (active, target_feature_11, "1.45.0", Some(69098), None),
     /// Allows using `#[thread_local]` on `static` items.

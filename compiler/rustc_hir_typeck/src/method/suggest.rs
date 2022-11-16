@@ -818,10 +818,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ty.is_str()
                                     || matches!(
                                         ty.kind(),
-                                        ty::Adt(adt, _) if self.tcx.is_diagnostic_item(sym::String, adt.did())
+                                        ty::Adt(adt, _) if Some(adt.did()) == self.tcx.lang_items().string()
                                     )
                             }
-                            ty::Adt(adt, _) => self.tcx.is_diagnostic_item(sym::String, adt.did()),
+                            ty::Adt(adt, _) => Some(adt.did()) == self.tcx.lang_items().string(),
                             _ => false,
                         };
                         if is_string_or_ref_str && item_name.name == sym::iter {

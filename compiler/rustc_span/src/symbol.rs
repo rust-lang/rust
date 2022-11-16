@@ -1405,6 +1405,7 @@ symbols! {
         str_trim_end,
         str_trim_start,
         strict_provenance,
+        string_deref_patterns,
         stringify,
         struct_field_attributes,
         struct_inherit,
