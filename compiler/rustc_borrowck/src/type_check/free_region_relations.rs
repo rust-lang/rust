@@ -98,7 +98,7 @@ impl UniversalRegionRelations<'_> {
         let upper_bounds = self.non_local_upper_bounds(fr);
 
         // In case we find more than one, reduce to one for
-        // convenience.  This is to prevent us from generating more
+        // convenience. This is to prevent us from generating more
         // complex constraints, but it will cause spurious errors.
         let post_dom = self.inverse_outlives.mutual_immediate_postdominator(upper_bounds);
 
@@ -128,7 +128,7 @@ impl UniversalRegionRelations<'_> {
         let lower_bounds = self.non_local_bounds(&self.outlives, fr);
 
         // In case we find more than one, reduce to one for
-        // convenience.  This is to prevent us from generating more
+        // convenience. This is to prevent us from generating more
         // complex constraints, but it will cause spurious errors.
         let post_dom = self.outlives.mutual_immediate_postdominator(lower_bounds);
 

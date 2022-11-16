@@ -370,7 +370,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         //   in the types are about to print
         // - Meanwhile, the `maybe_highlighting_region` calls set up
         //   highlights so that, if they do appear, we will replace
-        //   them `'0` and whatever.  (This replacement takes place
+        //   them `'0` and whatever. (This replacement takes place
         //   inside the closure given to `maybe_highlighting_region`.)
         //
         // There is some duplication between the calls -- i.e., the

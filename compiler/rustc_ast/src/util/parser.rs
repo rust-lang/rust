@@ -304,7 +304,7 @@ impl ExprPrecedence {
             | ExprPrecedence::Yeet => PREC_JUMP,
 
             // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
-            // parse, instead of parsing as `(x .. x) = x`.  Giving `Range` a lower precedence
+            // parse, instead of parsing as `(x .. x) = x`. Giving `Range` a lower precedence
             // ensures that `pprust` will add parentheses in the right places to get the desired
             // parse.
             ExprPrecedence::Range => PREC_RANGE,

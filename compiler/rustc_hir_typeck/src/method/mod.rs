@@ -413,7 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Register obligations for the parameters. This will include the
         // `Self` parameter, which in turn has a bound of the main trait,
-        // so this also effectively registers `obligation` as well.  (We
+        // so this also effectively registers `obligation` as well. (We
         // used to register `obligation` explicitly, but that resulted in
         // double error messages being reported.)
         //

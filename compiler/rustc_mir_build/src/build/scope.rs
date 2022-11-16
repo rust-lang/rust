@@ -53,7 +53,7 @@ loop {
 ```
 
 When processing the `let x`, we will add one drop to the scope for
-`x`.  The break will then insert a drop for `x`. When we process `let
+`x`. The break will then insert a drop for `x`. When we process `let
 y`, we will add another drop (in fact, to a subscope, but let's ignore
 that for now); any later drops would also drop `y`.
 
@@ -757,7 +757,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if self.tcx.sess.opts.unstable_opts.maximal_hir_to_mir_coverage {
                 // Some consumers of rustc need to map MIR locations back to HIR nodes. Currently the
                 // the only part of rustc that tracks MIR -> HIR is the `SourceScopeLocalData::lint_root`
-                // field that tracks lint levels for MIR locations.  Normally the number of source scopes
+                // field that tracks lint levels for MIR locations. Normally the number of source scopes
                 // is limited to the set of nodes with lint annotations. The -Zmaximal-hir-to-mir-coverage
                 // flag changes this behavior to maximize the number of source scopes, increasing the
                 // granularity of the MIR->HIR mapping.

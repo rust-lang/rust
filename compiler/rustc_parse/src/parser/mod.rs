@@ -542,9 +542,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Expect next token to be edible or inedible token.  If edible,
+    /// Expect next token to be edible or inedible token. If edible,
     /// then consume it; if inedible, then return without consuming
-    /// anything.  Signal a fatal error if next token is unexpected.
+    /// anything. Signal a fatal error if next token is unexpected.
     pub fn expect_one_of(
         &mut self,
         edible: &[TokenKind],

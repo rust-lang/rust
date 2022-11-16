@@ -490,8 +490,8 @@ impl<K: DepKind> DepGraph<K> {
     /// This is used to remove cycles during type-checking const generic parameters.
     ///
     /// As usual in the query system, we consider the current state of the calling query
-    /// only depends on the list of dependencies up to now.  As a consequence, the value
-    /// that this query gives us can only depend on those dependencies too.  Therefore,
+    /// only depends on the list of dependencies up to now. As a consequence, the value
+    /// that this query gives us can only depend on those dependencies too. Therefore,
     /// it is sound to use the current dependency set for the created node.
     ///
     /// During replay, the order of the nodes is relevant in the dependency graph.
@@ -510,9 +510,9 @@ impl<K: DepKind> DepGraph<K> {
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> DepNodeIndex {
         if let Some(data) = self.data.as_ref() {
-            // The caller query has more dependencies than the node we are creating.  We may
+            // The caller query has more dependencies than the node we are creating. We may
             // encounter a case where this created node is marked as green, but the caller query is
-            // subsequently marked as red or recomputed.  In this case, we will end up feeding a
+            // subsequently marked as red or recomputed. In this case, we will end up feeding a
             // value to an existing node.
             //
             // For sanity, we still check that the loaded stable hash and the new one match.
@@ -980,7 +980,7 @@ rustc_index::newtype_index! {
 /// graph: they are only added.
 ///
 /// The nodes in it are identified by a `DepNodeIndex`. We avoid keeping the nodes
-/// in memory.  This is important, because these graph structures are some of the
+/// in memory. This is important, because these graph structures are some of the
 /// largest in the compiler.
 ///
 /// For this reason, we avoid storing `DepNode`s more than once as map

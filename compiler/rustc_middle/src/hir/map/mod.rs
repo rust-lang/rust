@@ -582,10 +582,10 @@ impl<'hir> Map<'hir> {
 
     /// Visits all item-likes in the crate in some deterministic (but unspecified) order. If you
     /// need to process every item-like, and don't care about visiting nested items in a particular
-    /// order then this method is the best choice.  If you do care about this nesting, you should
+    /// order then this method is the best choice. If you do care about this nesting, you should
     /// use the `tcx.hir().walk_toplevel_module`.
     ///
-    /// Note that this function will access HIR for all the item-likes in the crate.  If you only
+    /// Note that this function will access HIR for all the item-likes in the crate. If you only
     /// need to access some of them, it is usually better to manually loop on the iterators
     /// provided by `tcx.hir_crate_items(())`.
     ///

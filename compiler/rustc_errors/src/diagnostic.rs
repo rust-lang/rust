@@ -114,9 +114,9 @@ pub struct Diagnostic {
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
     args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue<'static>>,
 
-    /// This is not used for highlighting or rendering any error message.  Rather, it can be used
-    /// as a sort key to sort a buffer of diagnostics.  By default, it is the primary span of
-    /// `span` if there is one.  Otherwise, it is `DUMMY_SP`.
+    /// This is not used for highlighting or rendering any error message. Rather, it can be used
+    /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
+    /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
     pub sort_span: Span,
 
     /// If diagnostic is from Lint, custom hash function ignores notes

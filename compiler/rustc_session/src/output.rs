@@ -29,9 +29,9 @@ pub fn out_filename(
     out_filename
 }
 
-/// Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
+/// Make sure files are writeable. Mac, FreeBSD, and Windows system linkers
 /// check this already -- however, the Linux linker will happily overwrite a
-/// read-only file.  We should be consistent.
+/// read-only file. We should be consistent.
 pub fn check_file_is_writeable(file: &Path, sess: &Session) {
     if !is_writeable(file) {
         sess.emit_fatal(FileIsNotWriteable { file });

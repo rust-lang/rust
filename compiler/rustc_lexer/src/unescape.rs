@@ -299,7 +299,7 @@ where
         let tail = &tail[first_non_space..];
         if let Some(c) = tail.chars().nth(0) {
             // For error reporting, we would like the span to contain the character that was not
-            // skipped.  The +1 is necessary to account for the leading \ that started the escape.
+            // skipped. The +1 is necessary to account for the leading \ that started the escape.
             let end = start + first_non_space + c.len_utf8() + 1;
             if c.is_whitespace() {
                 callback(start..end, Err(EscapeError::UnskippedWhitespaceWarning));

@@ -196,7 +196,7 @@ impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
         }
     }
 
-    /// Overwrite the local.  If the local can be overwritten in place, return a reference
+    /// Overwrite the local. If the local can be overwritten in place, return a reference
     /// to do so; otherwise return the `MemPlace` to consult instead.
     ///
     /// Note: This may only be invoked from the `Machine::access_local_mut` hook and not from
@@ -592,7 +592,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
 
                 // Recurse to get the size of the dynamically sized field (must be
-                // the last field).  Can't have foreign types here, how would we
+                // the last field). Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1);
                 let Some((unsized_size, mut unsized_align)) = self.size_and_align_of(metadata, &field)? else {

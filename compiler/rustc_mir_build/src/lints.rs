@@ -60,7 +60,7 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
     /// Returns `true` if `func` refers to the function we are searching in.
     fn is_recursive_call(&self, func: &Operand<'tcx>, args: &[Operand<'tcx>]) -> bool {
         let Search { tcx, body, trait_substs, .. } = *self;
-        // Resolving function type to a specific instance that is being called is expensive.  To
+        // Resolving function type to a specific instance that is being called is expensive. To
         // avoid the cost we check the number of arguments first, which is sufficient to reject
         // most of calls as non-recursive.
         if args.len() != body.arg_count {

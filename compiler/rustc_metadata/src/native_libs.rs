@@ -433,10 +433,10 @@ impl<'tcx> Collector<'tcx> {
         }
 
         // Update kind and, optionally, the name of all native libraries
-        // (there may be more than one) with the specified name.  If any
+        // (there may be more than one) with the specified name. If any
         // library is mentioned more than once, keep the latest mention
         // of it, so that any possible dependent libraries appear before
-        // it.  (This ensures that the linker is able to see symbols from
+        // it. (This ensures that the linker is able to see symbols from
         // all possible dependent libraries before linking in the library
         // in question.)
         for passed_lib in &self.tcx.sess.opts.libs {

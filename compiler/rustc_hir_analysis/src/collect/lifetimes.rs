@@ -1,9 +1,9 @@
 //! Resolution of early vs late bound lifetimes.
 //!
-//! Name resolution for lifetimes is performed on the AST and embedded into HIR.  From this
+//! Name resolution for lifetimes is performed on the AST and embedded into HIR. From this
 //! information, typechecking needs to transform the lifetime parameters into bound lifetimes.
-//! Lifetimes can be early-bound or late-bound.  Construction of typechecking terms needs to visit
-//! the types in HIR to identify late-bound lifetimes and assign their Debruijn indices.  This file
+//! Lifetimes can be early-bound or late-bound. Construction of typechecking terms needs to visit
+//! the types in HIR to identify late-bound lifetimes and assign their Debruijn indices. This file
 //! is also responsible for assigning their semantics to implicit lifetimes in trait objects.
 
 use rustc_ast::walk_list;
@@ -70,7 +70,7 @@ impl RegionExt for Region {
 /// that it corresponds to.
 ///
 /// FIXME. This struct gets converted to a `ResolveLifetimes` for
-/// actual use. It has the same data, but indexed by `LocalDefId`.  This
+/// actual use. It has the same data, but indexed by `LocalDefId`. This
 /// is silly.
 #[derive(Debug, Default)]
 struct NamedRegionMap {
@@ -1283,7 +1283,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         // We may fail to resolve higher-ranked lifetimes that are mentioned by APIT.
         // AST-based resolution does not care for impl-trait desugaring, which are the
-        // responibility of lowering.  This may create a mismatch between the resolution
+        // responibility of lowering. This may create a mismatch between the resolution
         // AST found (`region_def_id`) which points to HRTB, and what HIR allows.
         // ```
         // fn foo(x: impl for<'a> Trait<'a, Assoc = impl Copy + 'a>) {}
@@ -1434,7 +1434,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         DefKind::ConstParam => Some(ObjectLifetimeDefault::Empty),
                         DefKind::TyParam => Some(self.tcx.object_lifetime_default(param.def_id)),
                         // We may also get a `Trait` or `TraitAlias` because of how generics `Self` parameter
-                        // works.  Ignore it because it can't have a meaningful lifetime default.
+                        // works. Ignore it because it can't have a meaningful lifetime default.
                         DefKind::LifetimeParam | DefKind::Trait | DefKind::TraitAlias => None,
                         dk => bug!("unexpected def_kind {:?}", dk),
                     }

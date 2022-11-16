@@ -445,7 +445,7 @@ pub(crate) fn inline_asm_call<'ll>(
             };
 
             // Store mark in a metadata node so we can map LLVM errors
-            // back to source locations.  See #17552.
+            // back to source locations. See #17552.
             let key = "srcloc";
             let kind = llvm::LLVMGetMDKindIDInContext(
                 bx.llcx,

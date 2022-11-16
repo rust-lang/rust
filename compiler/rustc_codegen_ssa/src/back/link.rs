@@ -445,7 +445,7 @@ fn link_rlib<'a>(
 /// Extract all symbols defined in raw-dylib libraries, collated by library name.
 ///
 /// If we have multiple extern blocks that specify symbols defined in the same raw-dylib library,
-/// then the CodegenResults value contains one NativeLib instance for each block.  However, the
+/// then the CodegenResults value contains one NativeLib instance for each block. However, the
 /// linker appears to expect only a single import library for each library used, so we need to
 /// collate the symbols together by library name before generating the import libraries.
 fn collate_raw_dylibs<'a, 'b>(
@@ -1197,7 +1197,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                         if cfg!(any(target_os = "solaris", target_os = "illumos")) {
                             // On historical Solaris systems, "cc" may have
                             // been Sun Studio, which is not flag-compatible
-                            // with "gcc".  This history casts a long shadow,
+                            // with "gcc". This history casts a long shadow,
                             // and many modern illumos distributions today
                             // ship GCC as "gcc" without also making it
                             // available as "cc".

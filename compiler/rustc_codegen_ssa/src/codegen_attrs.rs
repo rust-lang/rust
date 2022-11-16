@@ -658,13 +658,13 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
         sole_meta_list
     {
         // According to the table at https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header,
-        // the ordinal must fit into 16 bits.  Similarly, the Ordinal field in COFFShortExport (defined
+        // the ordinal must fit into 16 bits. Similarly, the Ordinal field in COFFShortExport (defined
         // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import information
         // to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
         //
         // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for this:
         // both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that specifies
-        // a zero ordinal.  However, llvm-dlltool is perfectly happy to generate an import library
+        // a zero ordinal. However, llvm-dlltool is perfectly happy to generate an import library
         // for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an import
         // library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I don't know yet
         // if the resulting EXE runs, as I haven't yet built the necessary DLL -- see earlier comment

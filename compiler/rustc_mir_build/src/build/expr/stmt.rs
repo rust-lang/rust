@@ -57,7 +57,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // question raised here -- should we "freeze" the
                 // value of the lhs here?  I'm inclined to think not,
                 // since it seems closer to the semantics of the
-                // overloaded version, which takes `&mut self`.  This
+                // overloaded version, which takes `&mut self`. This
                 // only affects weird things like `x += {x += 1; x}`
                 // -- is that equal to `x + (x + 1)` or `2*(x+1)`?
 

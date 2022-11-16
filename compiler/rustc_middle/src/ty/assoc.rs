@@ -72,7 +72,7 @@ impl AssocItem {
             ty::AssocKind::Fn => {
                 // We skip the binder here because the binder would deanonymize all
                 // late-bound regions, and we don't want method signatures to show up
-                // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
+                // `as for<'r> fn(&'r MyType)`. Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
                 tcx.fn_sig(self.def_id).skip_binder().to_string()
             }

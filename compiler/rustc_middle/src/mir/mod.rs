@@ -2483,7 +2483,7 @@ impl<'tcx> ConstantKind<'tcx> {
 
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
         // does not provide the parents generics to anonymous constants. We still allow generic const
-        // parameters by themselves however, e.g. `N`.  These constants would cause an ICE if we were to
+        // parameters by themselves however, e.g. `N`. These constants would cause an ICE if we were to
         // ever try to substitute the generic parameters in their bodies.
         //
         // While this doesn't happen as these constants are always used as `ty::ConstKind::Param`, it does
