@@ -8,4 +8,8 @@
 // CHECK: !DICompositeType({{.*"}}MyType{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
 pub struct MyType;
 
-pub fn foo(_: MyType) {}
+pub fn foo(_: MyType) {
+    // CHECK: !DICompositeType({{.*"[{]}}closure_env#0{{[}]".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
+    let closure = |x| x;
+    closure(0);
+}

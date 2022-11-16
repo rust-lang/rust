@@ -1212,6 +1212,14 @@ fn build_closure_env_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, def_id);
     let type_name = compute_debuginfo_type_name(cx.tcx, closure_env_type, false);
 
+    let closure_span = cx.tcx.def_span(def_id);
+    let (file_metadata, line_number) = if !closure_span.is_dummy() {
+        let loc = cx.lookup_debug_loc(closure_span.lo());
+        (file_metadata(cx, &loc.file), loc.line)
+    } else {
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+    };
+
     type_map::build_type_with_children(
         cx,
         type_map::stub(
@@ -1219,8 +1227,8 @@ fn build_closure_env_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &type_name,
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            file_metadata,
+            line_number,
             cx.size_and_align_of(closure_env_type),
             Some(containing_scope),
             DIFlags::FlagZero,
