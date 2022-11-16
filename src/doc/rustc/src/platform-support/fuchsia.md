@@ -675,12 +675,18 @@ run the tests on our emulator. To run the full `src/test/ui` test suite:
     test src/test/ui                                                          \
     --target x86_64-fuchsia                                                   \
     --run=always --jobs 1                                                     \
-    --test-args --target-rustcflags -L                                        \
-    --test-args --target-rustcflags ${SDK_PATH}/arch/{x64|arm64}/sysroot/lib  \
-    --test-args --target-rustcflags -L                                        \
-    --test-args --target-rustcflags ${SDK_PATH}/arch/{x64|arm64}/lib          \
-    --test-args --target-rustcflags -Cpanic=abort                             \
-    --test-args --target-rustcflags -Zpanic_abort_tests                       \
+    --test-args --target-rustcflags                                           \
+    --test-args -L                                                            \
+    --test-args --target-rustcflags                                           \
+    --test-args ${SDK_PATH}/arch/{x64|arm64}/sysroot/lib                      \
+    --test-args --target-rustcflags                                           \
+    --test-args -L                                                            \
+    --test-args --target-rustcflags                                           \
+    --test-args ${SDK_PATH}/arch/{x64|arm64}/lib                              \
+    --test-args --target-rustcflags                                           \
+    --test-args -Cpanic=abort                                                 \
+    --test-args --target-rustcflags                                           \
+    --test-args -Zpanic_abort_tests                                           \
     --test-args --remote-test-client                                          \
     --test-args src/ci/docker/scripts/fuchsia-test-runner.py                  \
 )
