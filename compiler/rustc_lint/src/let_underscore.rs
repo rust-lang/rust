@@ -57,7 +57,7 @@ declare_lint! {
     /// of at end of scope, which is typically incorrect.
     ///
     /// ### Example
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// use std::sync::{Arc, Mutex};
     /// use std::thread;
     /// let data = Arc::new(Mutex::new(0));
