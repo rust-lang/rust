@@ -407,6 +407,10 @@ impl Step for SharedAssets {
                 .replace("VERSION", &builder.rust_release())
                 .replace("SHORT_HASH", builder.rust_info().sha_short().unwrap_or(""))
                 .replace("STAMP", builder.rust_info().sha().unwrap_or(""));
+
+            if let Some(parent) = version_info.parent() {
+                t!(std::fs::create_dir_all(parent));
+            }
             t!(fs::write(&version_info, &info));
         }
 
