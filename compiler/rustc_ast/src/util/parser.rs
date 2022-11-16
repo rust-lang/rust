@@ -245,6 +245,7 @@ pub enum ExprPrecedence {
     Ret,
     Yield,
     Yeet,
+    Become,
 
     Range,
 
@@ -298,7 +299,8 @@ impl ExprPrecedence {
             | ExprPrecedence::Continue
             | ExprPrecedence::Ret
             | ExprPrecedence::Yield
-            | ExprPrecedence::Yeet => PREC_JUMP,
+            | ExprPrecedence::Yeet
+            | ExprPrecedence::Become => PREC_JUMP,
 
             // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
             // parse, instead of parsing as `(x .. x) = x`. Giving `Range` a lower precedence
