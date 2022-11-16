@@ -47,10 +47,8 @@ function blurHandler(event, parentElem, hideCallback) {
     }
 }
 
-(function() {
-    window.rootPath = getVar("root-path");
-    window.currentCrate = getVar("current-crate");
-}());
+window.rootPath = getVar("root-path");
+window.currentCrate = getVar("current-crate");
 
 function setMobileTopbar() {
     // FIXME: It would be nicer to generate this text content directly in HTML,
