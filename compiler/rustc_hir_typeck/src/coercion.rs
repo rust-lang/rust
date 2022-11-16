@@ -775,7 +775,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Check the obligations of the cast -- for example, when casting
         // `usize` to `dyn* Clone + 'static`:
-        let obligations = predicates
+        let mut obligations: Vec<_> = predicates
             .iter()
             .map(|predicate| {
                 // For each existential predicate (e.g., `?Self: Clone`) substitute
@@ -785,15 +785,33 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let predicate = predicate.with_self_ty(self.tcx, a);
                 Obligation::new(self.cause.clone(), self.param_env, predicate)
             })
-            // Enforce the region bound (e.g., `usize: 'static`, in our example).
-            .chain([Obligation::new(
+            .chain([
+                // Enforce the region bound (e.g., `usize: 'static`, in our example).
+                Obligation::new(
+                    self.cause.clone(),
+                    self.param_env,
+                    ty::Binder::dummy(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
+                        a, b_region,
+                    )))
+                    .to_predicate(self.tcx),
+                ),
+            ])
+            .collect();
+
+        // Enforce that the type is `usize`/pointer-sized. For now, only those
+        // can be coerced to `dyn*`, except for `dyn* -> dyn*` upcasts.
+        if !a.is_dyn_star() {
+            obligations.push(Obligation::new(
                 self.cause.clone(),
                 self.param_env,
-                self.tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
-                    ty::OutlivesPredicate(a, b_region),
-                ))),
-            )])
-            .collect();
+                ty::Binder::dummy(ty::TraitRef::new(
+                    self.tcx.require_lang_item(hir::LangItem::PointerSized, Some(self.cause.span)),
+                    self.tcx.mk_substs_trait(a, &[]),
+                ))
+                .to_poly_trait_predicate()
+                .to_predicate(self.tcx),
+            ));
+        }
 
         Ok(InferOk {
             value: (vec![Adjustment { kind: Adjust::DynStar, target: b }], b),

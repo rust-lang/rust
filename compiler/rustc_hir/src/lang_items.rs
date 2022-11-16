@@ -270,6 +270,8 @@ language_item_table! {
     TryTraitBranch,          sym::branch,              branch_fn,                  Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     TryTraitFromYeet,        sym::from_yeet,           from_yeet_fn,               Target::Fn,             GenericRequirement::None;
 
+    PointerSized,            sym::pointer_sized,       pointer_sized,              Target::Trait,          GenericRequirement::Exact(0);
+
     PollReady,               sym::Ready,               poll_ready_variant,         Target::Variant,        GenericRequirement::None;
     PollPending,             sym::Pending,             poll_pending_variant,       Target::Variant,        GenericRequirement::None;
 
