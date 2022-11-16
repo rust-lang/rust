@@ -1080,10 +1080,7 @@ pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movemask_ps)
 #[inline]
 #[target_feature(enable = "sse")]
-// FIXME: LLVM9 trunk has the following bug:
-// https://github.com/rust-lang/stdarch/issues/794
-// so we only temporarily test this on i686 and x86_64 but not on i586:
-#[cfg_attr(all(test, target_feature = "sse2"), assert_instr(movmskps))]
+#[cfg_attr(test, assert_instr(movmskps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
     movmskps(a)
