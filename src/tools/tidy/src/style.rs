@@ -60,7 +60,7 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
 // Intentionally written in decimal rather than hex
 const PROBLEMATIC_CONSTS: &[u32] = &[
     184594741, 2880289470, 2881141438, 2965027518, 2976579765, 3203381950, 3405691582, 3405697037,
-    3735927486, 4027431614, 4276992702,
+    3735927486, 3735932941, 4027431614, 4276992702,
 ];
 
 /// Parser states for `line_is_url`.
