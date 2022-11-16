@@ -118,6 +118,7 @@ fn stmt_to_expr<'tcx>(stmt: &Stmt<'tcx>) -> Option<(&'tcx Expr<'tcx>, Option<&'t
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: HirId) -> NeverLoopResult {
     match expr.kind {
         ExprKind::Box(e)
@@ -170,7 +171,7 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
             }
         },
         ExprKind::Block(b, l) => {
-            if let Some(_) = l {
+            if l.is_some() {
                 ignore_ids.push(b.hir_id);
             }
             let ret = never_loop_block(b, ignore_ids, main_loop_id);
@@ -187,6 +188,7 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
                 NeverLoopResult::AlwaysBreak
             }
         },
+        // checks if break targets a block instead of a loop
         ExprKind::Break(Destination { target_id: Ok(t), .. }, e) if ignore_ids.contains(&t) => e
             .map_or(NeverLoopResult::Otherwise, |e| {
                 combine_seq(never_loop_expr(e, ignore_ids, main_loop_id), NeverLoopResult::Otherwise)
