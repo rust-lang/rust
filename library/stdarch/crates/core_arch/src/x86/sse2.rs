@@ -1378,7 +1378,9 @@ pub unsafe fn _mm_insert_epi16<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
 #[cfg_attr(test, assert_instr(pmovmskb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movemask_epi8(a: __m128i) -> i32 {
-    simd_bitmask::<_, u16>(a.as_i8x16()) as u32 as i32
+    let z = i8x16::splat(0);
+    let m: i8x16 = simd_lt(a.as_i8x16(), z);
+    simd_bitmask::<_, u16>(m) as u32 as i32
 }
 
 /// Shuffles 32-bit integers in `a` using the control in `IMM8`.
