@@ -423,7 +423,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-util"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "core-foundation",
@@ -900,7 +900,7 @@ dependencies = [
 
 [[package]]
 name = "crates-io"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "anyhow",
  "curl",
