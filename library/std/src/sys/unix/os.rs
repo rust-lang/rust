@@ -471,6 +471,46 @@ pub fn current_exe() -> io::Result<PathBuf> {
     if !path.is_absolute() { getcwd().map(|cwd| cwd.join(path)) } else { Ok(path) }
 }
 
+#[cfg(target_os) = "aix")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    use crate::io::ErrorKind;
+
+    #[cfg(test)]
+    use realstd::env;
+
+    #[cfg(not(test))]
+    use crate::env;
+
+    let exe_path = env::args().next().ok_or(io::const_io_error!(
+        ErrorKind::Uncategorized,
+        "an executable path was not found because no arguments were provided through argv"
+    ))?;
+    let path = PathBuf::from(exe_path);
+    if path.is_absolute() {
+        return path.canonicalize();
+    }
+    // Search PWD to infer current_exe.
+    if let Some(pstr) = path.to_str() && pstr.contains("/") {
+        return getcwd().map(|cwd| cwd.join(path))?.canonicalize();
+    }
+    // Search PATH to infer current_exe.
+    if let Some(p) = getenv(OsStr::from_bytes("PATH".as_bytes())) {
+        for search_path in split_paths(&p) {
+            let pb = search_path.join(&path);
+            if pb.is_file() && let Ok(metadata) = crate::fs::metadata(&pb) {
+                if metadata.permissions().mode() & 0o111 != 0 {
+                    return pb.canonicalize();
+                }
+            } else {
+                continue;
+            }
+        }
+    }
+    return Err(io::const_io_error!(
+        ErrorKind::Uncategorized,
+        "an executable path was not found"));
+}
+
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
 }
