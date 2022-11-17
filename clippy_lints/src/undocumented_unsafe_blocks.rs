@@ -82,7 +82,7 @@ declare_clippy_lint! {
     ///
     /// let ptr = NonNull::new(a).unwrap();
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub UNNECESSARY_SAFETY_COMMENT,
     restriction,
     "creating an unsafe block without explaining why it is safe"
@@ -136,6 +136,7 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
 
         let item_has_safety_comment = item_has_safety_comment(cx, item);
         match (&item.kind, item_has_safety_comment) {
+            // lint unsafe impl without safety comment
             (hir::ItemKind::Impl(impl_), HasSafetyComment::No) if impl_.unsafety == hir::Unsafety::Unsafe => {
                 if !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, item.hir_id())
                     && !is_unsafe_from_proc_macro(cx, item.span)
@@ -157,6 +158,7 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
                     );
                 }
             },
+            // lint safe impl with unnecessary safety comment
             (hir::ItemKind::Impl(impl_), HasSafetyComment::Yes(pos)) if impl_.unsafety == hir::Unsafety::Normal => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
                     let (span, help_span) = mk_spans(pos);
@@ -172,6 +174,7 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
                 }
             },
             (hir::ItemKind::Impl(_), _) => {},
+            // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
             (&hir::ItemKind::Const(.., body) | &hir::ItemKind::Static(.., body), HasSafetyComment::Yes(pos)) => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
                     let body = cx.tcx.hir().body(body);
@@ -192,6 +195,8 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
                     }
                 }
             },
+            // Aside from unsafe impls and consts/statics with an unsafe block, items in general
+            // do not have safety invariants that need to be documented, so lint those.
             (_, HasSafetyComment::Yes(pos)) => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
                     let (span, help_span) = mk_spans(pos);

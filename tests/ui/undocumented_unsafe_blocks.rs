@@ -472,6 +472,19 @@ mod unsafe_impl_invalid_comment {
     unsafe impl Interference for () {}
 }
 
+mod unsafe_items_invalid_comment {
+    // SAFETY:
+    const CONST: u32 = 0;
+    // SAFETY:
+    static STATIC: u32 = 0;
+    // SAFETY:
+    struct Struct;
+    // SAFETY:
+    enum Enum {}
+    // SAFETY:
+    mod module {}
+}
+
 unsafe trait ImplInFn {}
 
 fn impl_in_fn() {

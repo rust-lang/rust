@@ -260,8 +260,68 @@ LL |     unsafe impl Interference for () {}
    |
    = help: consider adding a safety comment on the preceding line
 
-error: unsafe impl missing a safety comment
+error: constant item has unnecessary safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:477:5
+   |
+LL |     const CONST: u32 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:476:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+
+error: static item has unnecessary safety comment
   --> $DIR/undocumented_unsafe_blocks.rs:479:5
+   |
+LL |     static STATIC: u32 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:478:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+
+error: struct has unnecessary safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:481:5
+   |
+LL |     struct Struct;
+   |     ^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:480:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+
+error: enum has unnecessary safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:483:5
+   |
+LL |     enum Enum {}
+   |     ^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:482:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+
+error: module has unnecessary safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:485:5
+   |
+LL |     mod module {}
+   |     ^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:484:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+
+error: unsafe impl missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:492:5
    |
 LL |     unsafe impl ImplInFn for () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -269,7 +329,7 @@ LL |     unsafe impl ImplInFn for () {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:488:1
+  --> $DIR/undocumented_unsafe_blocks.rs:501:1
    |
 LL | unsafe impl CrateRoot for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -277,7 +337,7 @@ LL | unsafe impl CrateRoot for () {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:498:9
+  --> $DIR/undocumented_unsafe_blocks.rs:511:9
    |
 LL |         unsafe {};
    |         ^^^^^^^^^
@@ -285,7 +345,7 @@ LL |         unsafe {};
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:502:12
+  --> $DIR/undocumented_unsafe_blocks.rs:515:12
    |
 LL |         if unsafe { true } {
    |            ^^^^^^^^^^^^^^^
@@ -293,12 +353,12 @@ LL |         if unsafe { true } {
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:505:23
+  --> $DIR/undocumented_unsafe_blocks.rs:518:23
    |
 LL |             let bar = unsafe {};
    |                       ^^^^^^^^^
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 35 previous errors
+error: aborting due to 40 previous errors
 
