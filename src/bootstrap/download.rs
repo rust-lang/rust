@@ -11,17 +11,17 @@ use once_cell::sync::OnceCell;
 use xz2::bufread::XzDecoder;
 
 use crate::{
-    config::RustfmtMetadata,
     llvm::detect_llvm_sha,
+    min_config::RustfmtMetadata,
     t,
-    util::{check_run, exe, program_out_of_date, try_run},
-    Config,
+    util::{check_run, exe, output, program_out_of_date, try_run},
+    Config, MinimalConfig,
 };
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceCell<bool> = OnceCell::new();
 
 /// Generic helpers that are useful anywhere in bootstrap.
-impl Config {
+impl MinimalConfig {
     pub fn is_verbose(&self) -> bool {
         self.verbose > 0
     }
@@ -329,6 +329,29 @@ impl Config {
         }
         return verified;
     }
+
+    /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
+    /// Return the version it would have used for the given commit.
+    ///
+    /// NOTE: this currently doesn't support tarballs, use `Config::artifact_version_part` if you need that support.
+    pub(crate) fn git_artifact_version_part(&self, commit: &str) -> String {
+        let (channel, version) = {
+            let mut channel = self.git();
+            channel.arg("show").arg(format!("{}:src/ci/channel", commit));
+            let channel = output(&mut channel);
+            let mut version = self.git();
+            version.arg("show").arg(format!("{}:src/version", commit));
+            let version = output(&mut version);
+            (channel.trim().to_owned(), version.trim().to_owned())
+        };
+
+        match channel.as_str() {
+            "stable" => version,
+            "beta" => channel,
+            "nightly" => channel,
+            other => unreachable!("{:?} is not recognized as a valid channel", other),
+        }
+    }
 }
 
 enum DownloadSource {
@@ -476,7 +499,102 @@ impl Config {
     /// Download a single component of a CI-built toolchain (not necessarily a published nightly).
     // NOTE: intentionally takes an owned string to avoid downloading multiple times by accident
     fn download_ci_component(&self, filename: String, prefix: &str, commit: &str) {
-        Self::download_component(self, DownloadSource::CI, filename, prefix, commit, "ci-rustc")
+        self.download_component(DownloadSource::CI, filename, prefix, commit, "ci-rustc")
+    }
+
+    pub(crate) fn maybe_download_ci_llvm(&self) {
+        if !self.llvm_from_ci {
+            return;
+        }
+        let llvm_root = self.ci_llvm_root();
+        let llvm_stamp = llvm_root.join(".llvm-stamp");
+        let llvm_sha = detect_llvm_sha(&self, self.rust_info.is_managed_git_subrepository());
+        let key = format!("{}{}", llvm_sha, self.llvm_assertions);
+        if program_out_of_date(&llvm_stamp, &key) && !self.dry_run() {
+            self.download_ci_llvm(&llvm_sha);
+
+            if self.should_fix_bins_and_dylibs() {
+                for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
+                    self.fix_bin_or_dylib(&t!(entry).path());
+                }
+
+                let llvm_lib = llvm_root.join("lib");
+                for entry in t!(fs::read_dir(&llvm_lib)) {
+                    let lib = t!(entry).path();
+                    if lib.extension().map_or(false, |ext| ext == "so") {
+                        self.fix_bin_or_dylib(&lib);
+                    }
+                }
+            }
+
+            // Update the timestamp of llvm-config to force rustc_llvm to be
+            // rebuilt. This is a hacky workaround for a deficiency in Cargo where
+            // the rerun-if-changed directive doesn't handle changes very well.
+            // https://github.com/rust-lang/cargo/issues/10791
+            // Cargo only compares the timestamp of the file relative to the last
+            // time `rustc_llvm` build script ran. However, the timestamps of the
+            // files in the tarball are in the past, so it doesn't trigger a
+            // rebuild.
+            let now = filetime::FileTime::from_system_time(std::time::SystemTime::now());
+            let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
+            t!(filetime::set_file_times(&llvm_config, now, now));
+
+            t!(fs::write(llvm_stamp, key));
+        }
+    }
+
+    fn download_ci_llvm(&self, llvm_sha: &str) {
+        let llvm_assertions = self.llvm_assertions;
+
+        let cache_prefix = format!("llvm-{}-{}", llvm_sha, llvm_assertions);
+        let cache_dst = self.out.join("cache");
+        let rustc_cache = cache_dst.join(cache_prefix);
+        if !rustc_cache.exists() {
+            t!(fs::create_dir_all(&rustc_cache));
+        }
+        let base = if llvm_assertions {
+            &self.stage0_metadata.config.artifacts_with_llvm_assertions_server
+        } else {
+            &self.stage0_metadata.config.artifacts_server
+        };
+        let version = self.artifact_version_part(llvm_sha);
+        let filename = format!("rust-dev-{}-{}.tar.xz", version, self.build.triple);
+        let tarball = rustc_cache.join(&filename);
+        if !tarball.exists() {
+            let help_on_error = "error: failed to download llvm from ci
+
+    help: old builds get deleted after a certain time
+    help: if trying to compile an old commit of rustc, disable `download-ci-llvm` in config.toml:
+
+    [llvm]
+    download-ci-llvm = false
+    ";
+            self.download_file(&format!("{base}/{llvm_sha}/{filename}"), &tarball, help_on_error);
+        }
+        let llvm_root = self.ci_llvm_root();
+        self.unpack(&tarball, &llvm_root, "rust-dev");
+    }
+}
+
+impl MinimalConfig {
+    pub fn download_bootstrap(&self, commit: &str) -> PathBuf {
+        self.verbose(&format!("downloading bootstrap from CI (commit {commit})"));
+        let host = self.build.triple;
+        let bin_root = self.out.join(host).join("bootstrap");
+        let stamp = bin_root.join(".bootstrap-stamp");
+        let bootstrap_bin = bin_root.join("bin").join("bootstrap");
+
+        if !bootstrap_bin.exists() || program_out_of_date(&stamp, commit) {
+            let version = self.git_artifact_version_part(commit);
+            let filename = format!("bootstrap-{version}-{host}.tar.xz");
+            self.download_component(DownloadSource::CI, filename, "bootstrap", commit, "");
+            if self.should_fix_bins_and_dylibs() {
+                self.fix_bin_or_dylib(&bootstrap_bin);
+            }
+            t!(fs::write(stamp, commit));
+        }
+
+        bootstrap_bin
     }
 
     fn download_component(
@@ -559,79 +677,5 @@ download-rustc = false
         }
 
         self.unpack(&tarball, &bin_root, prefix);
-    }
-
-    pub(crate) fn maybe_download_ci_llvm(&self) {
-        if !self.llvm_from_ci {
-            return;
-        }
-        let llvm_root = self.ci_llvm_root();
-        let llvm_stamp = llvm_root.join(".llvm-stamp");
-        let llvm_sha = detect_llvm_sha(&self, self.rust_info.is_managed_git_subrepository());
-        let key = format!("{}{}", llvm_sha, self.llvm_assertions);
-        if program_out_of_date(&llvm_stamp, &key) && !self.dry_run() {
-            self.download_ci_llvm(&llvm_sha);
-            if self.should_fix_bins_and_dylibs() {
-                for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
-                    self.fix_bin_or_dylib(&t!(entry).path());
-                }
-            }
-
-            // Update the timestamp of llvm-config to force rustc_llvm to be
-            // rebuilt. This is a hacky workaround for a deficiency in Cargo where
-            // the rerun-if-changed directive doesn't handle changes very well.
-            // https://github.com/rust-lang/cargo/issues/10791
-            // Cargo only compares the timestamp of the file relative to the last
-            // time `rustc_llvm` build script ran. However, the timestamps of the
-            // files in the tarball are in the past, so it doesn't trigger a
-            // rebuild.
-            let now = filetime::FileTime::from_system_time(std::time::SystemTime::now());
-            let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
-            t!(filetime::set_file_times(&llvm_config, now, now));
-
-            if self.should_fix_bins_and_dylibs() {
-                let llvm_lib = llvm_root.join("lib");
-                for entry in t!(fs::read_dir(&llvm_lib)) {
-                    let lib = t!(entry).path();
-                    if lib.extension().map_or(false, |ext| ext == "so") {
-                        self.fix_bin_or_dylib(&lib);
-                    }
-                }
-            }
-
-            t!(fs::write(llvm_stamp, key));
-        }
-    }
-
-    fn download_ci_llvm(&self, llvm_sha: &str) {
-        let llvm_assertions = self.llvm_assertions;
-
-        let cache_prefix = format!("llvm-{}-{}", llvm_sha, llvm_assertions);
-        let cache_dst = self.out.join("cache");
-        let rustc_cache = cache_dst.join(cache_prefix);
-        if !rustc_cache.exists() {
-            t!(fs::create_dir_all(&rustc_cache));
-        }
-        let base = if llvm_assertions {
-            &self.stage0_metadata.config.artifacts_with_llvm_assertions_server
-        } else {
-            &self.stage0_metadata.config.artifacts_server
-        };
-        let version = self.artifact_version_part(llvm_sha);
-        let filename = format!("rust-dev-{}-{}.tar.xz", version, self.build.triple);
-        let tarball = rustc_cache.join(&filename);
-        if !tarball.exists() {
-            let help_on_error = "error: failed to download llvm from ci
-
-    help: old builds get deleted after a certain time
-    help: if trying to compile an old commit of rustc, disable `download-ci-llvm` in config.toml:
-
-    [llvm]
-    download-ci-llvm = false
-    ";
-            self.download_file(&format!("{base}/{llvm_sha}/{filename}"), &tarball, help_on_error);
-        }
-        let llvm_root = self.ci_llvm_root();
-        self.unpack(&tarball, &llvm_root, "rust-dev");
     }
 }

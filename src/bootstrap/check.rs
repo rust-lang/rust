@@ -448,7 +448,9 @@ tool_check_step!(Rls, "src/tools/rls", SourceType::InTree);
 tool_check_step!(Rustfmt, "src/tools/rustfmt", SourceType::InTree);
 tool_check_step!(MiroptTestTools, "src/tools/miropt-test-tools", SourceType::InTree);
 
+// FIXME: currently  these are marked as ToolRustc, but they should be ToolBootstrap instead to avoid having to build the compiler first
 tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);
+tool_check_step!(BootstrapShim, "src/bootstrap/bin/bootstrap-shim", SourceType::InTree, false);
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.

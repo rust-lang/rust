@@ -98,7 +98,7 @@ fn handle_result(result: io::Result<ExitStatus>, cmd: Command) {
     }
 }
 
-fn main() {
+pub fn main() {
     match env::args().skip(1).next().as_deref() {
         Some("--wrapper-version") => {
             let version = env!("CARGO_PKG_VERSION");

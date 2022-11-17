@@ -2314,6 +2314,41 @@ impl Step for Bootstrap {
     }
 }
 
+/// Tarball intended for being able to run `rustup component add bootstrap-shim`.
+/// Not stable, but user-facing.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct BootstrapShim {
+    pub target: TargetSelection,
+}
+
+impl Step for BootstrapShim {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        // Create this even with only `dist bootstrap` to avoid having to update all CI builders.
+        run.alias("bootstrap-shim")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(BootstrapShim { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        let target = self.target;
+        let mut tarball = Tarball::new(builder, "bootstrap-shim", &target.triple);
+        let bootstrap_outdir = &builder.bootstrap_out;
+        tarball.add_file(
+            bootstrap_outdir.join(exe("bootstrap-shim", target)),
+            tarball.image_dir().join("bin"),
+            0o755,
+        );
+        tarball.is_preview(true);
+        Some(tarball.generate())
+    }
+}
+
 /// Tarball containing a prebuilt version of the build-manifest tool, intended to be used by the
 /// release process to avoid cloning the monorepo and building stuff.
 ///

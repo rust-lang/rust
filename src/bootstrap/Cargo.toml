@@ -15,6 +15,11 @@ path = "bin/main.rs"
 test = false
 
 [[bin]]
+name = "bootstrap-shim"
+path = "bin/bootstrap-shim.rs"
+test = false
+
+[[bin]]
 name = "rustc"
 path = "bin/rustc.rs"
 test = false
@@ -35,6 +40,7 @@ build_helper = { path = "../tools/build_helper" }
 cmake = "0.1.38"
 filetime = "0.2"
 cc = "1.0.69"
+getopts = "0.2"
 libc = "0.2"
 hex = "0.4"
 object = { version = "0.29.0", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }

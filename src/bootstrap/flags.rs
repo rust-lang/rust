@@ -8,7 +8,8 @@ use std::path::{Path, PathBuf};
 use clap::{CommandFactory, Parser, ValueEnum};
 
 use crate::builder::{Builder, Kind};
-use crate::config::{target_selection_list, Config, TargetSelectionList};
+use crate::config::Config;
+use crate::min_config::{target_selection_list, TargetSelectionList};
 use crate::setup::Profile;
 use crate::{Build, DocTests};
 

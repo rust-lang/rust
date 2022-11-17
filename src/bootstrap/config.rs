@@ -10,8 +10,8 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fmt;
 use std::fs;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
@@ -22,11 +22,15 @@ use crate::cc_detect::{ndk_compiler, Language};
 use crate::channel::{self, GitInfo};
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags, Warnings};
+use crate::min_config::get_toml;
 use crate::util::{exe, output, t};
+use crate::MinimalConfig;
 use once_cell::sync::OnceCell;
 use semver::Version;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
+
+pub use crate::min_config::{DryRun, Stage0Metadata, TargetSelection, TargetSelectionList};
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
@@ -36,17 +40,6 @@ macro_rules! check_ci_llvm {
             stringify!($name)
         );
     };
-}
-
-#[derive(Clone, Default)]
-pub enum DryRun {
-    /// This isn't a dry run.
-    #[default]
-    Disabled,
-    /// This is a dry run enabled by bootstrap itself, so it can verify that no work is done.
-    SelfCheck,
-    /// This is a dry run enabled by the `--dry-run` flag.
-    UserSelected,
 }
 
 /// Global configuration for the entire build and/or bootstrap.
@@ -63,7 +56,6 @@ pub struct Config {
     pub ccache: Option<String>,
     /// Call Build::ninja() instead of this.
     pub ninja_in_file: bool,
-    pub verbose: usize,
     pub submodules: Option<bool>,
     pub compiler_docs: bool,
     pub library_docs_private_items: bool,
@@ -84,8 +76,6 @@ pub struct Config {
     pub json_output: bool,
     pub test_compare_mode: bool,
     pub color: Color,
-    pub patch_binaries_for_nix: bool,
-    pub stage0_metadata: Stage0Metadata,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -94,9 +84,6 @@ pub struct Config {
     pub stage: u32,
     pub keep_stage: Vec<u32>,
     pub keep_stage_std: Vec<u32>,
-    pub src: PathBuf,
-    /// defaults to `config.toml`
-    pub config: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
@@ -183,7 +170,6 @@ pub struct Config {
     pub llvm_bolt_profile_generate: bool,
     pub llvm_bolt_profile_use: Option<String>,
 
-    pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
     pub targets: Vec<TargetSelection>,
     pub local_rebuild: bool,
@@ -227,7 +213,6 @@ pub struct Config {
     pub reuse: Option<PathBuf>,
     pub cargo_native_static: bool,
     pub configure_args: Vec<String>,
-    pub out: PathBuf,
     pub rust_info: channel::GitInfo,
 
     // These are either the stage0 downloaded binaries or the locally installed ones.
@@ -240,33 +225,24 @@ pub struct Config {
     pub initial_rustfmt: RefCell<RustfmtState>,
 
     pub paths: Vec<PathBuf>,
+
+    #[cfg(test)]
+    pub minimal_config: MinimalConfig,
+    #[cfg(not(test))]
+    minimal_config: MinimalConfig,
 }
 
-#[derive(Default, Deserialize, Clone)]
-pub struct Stage0Metadata {
-    pub compiler: CompilerMetadata,
-    pub config: Stage0Config,
-    pub checksums_sha256: HashMap<String, String>,
-    pub rustfmt: Option<RustfmtMetadata>,
-}
-#[derive(Default, Deserialize, Clone)]
-pub struct CompilerMetadata {
-    pub date: String,
-    pub version: String,
+impl Deref for Config {
+    type Target = MinimalConfig;
+    fn deref(&self) -> &Self::Target {
+        &self.minimal_config
+    }
 }
 
-#[derive(Default, Deserialize, Clone)]
-pub struct Stage0Config {
-    pub dist_server: String,
-    pub artifacts_server: String,
-    pub artifacts_with_llvm_assertions_server: String,
-    pub git_merge_commit_email: String,
-    pub nightly_branch: String,
-}
-#[derive(Default, Deserialize, Clone)]
-pub struct RustfmtMetadata {
-    pub date: String,
-    pub version: String,
+impl DerefMut for Config {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.minimal_config
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -370,83 +346,6 @@ impl std::str::FromStr for RustcLto {
             "off" => Ok(RustcLto::Off),
             _ => Err(format!("Invalid value for rustc LTO: {}", s)),
         }
-    }
-}
-
-#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TargetSelection {
-    pub triple: Interned<String>,
-    file: Option<Interned<String>>,
-}
-
-/// Newtype over `Vec<TargetSelection>` so we can implement custom parsing logic
-#[derive(Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct TargetSelectionList(Vec<TargetSelection>);
-
-pub fn target_selection_list(s: &str) -> Result<TargetSelectionList, String> {
-    Ok(TargetSelectionList(
-        s.split(",").filter(|s| !s.is_empty()).map(TargetSelection::from_user).collect(),
-    ))
-}
-
-impl TargetSelection {
-    pub fn from_user(selection: &str) -> Self {
-        let path = Path::new(selection);
-
-        let (triple, file) = if path.exists() {
-            let triple = path
-                .file_stem()
-                .expect("Target specification file has no file stem")
-                .to_str()
-                .expect("Target specification file stem is not UTF-8");
-
-            (triple, Some(selection))
-        } else {
-            (selection, None)
-        };
-
-        let triple = INTERNER.intern_str(triple);
-        let file = file.map(|f| INTERNER.intern_str(f));
-
-        Self { triple, file }
-    }
-
-    pub fn rustc_target_arg(&self) -> &str {
-        self.file.as_ref().unwrap_or(&self.triple)
-    }
-
-    pub fn contains(&self, needle: &str) -> bool {
-        self.triple.contains(needle)
-    }
-
-    pub fn starts_with(&self, needle: &str) -> bool {
-        self.triple.starts_with(needle)
-    }
-
-    pub fn ends_with(&self, needle: &str) -> bool {
-        self.triple.ends_with(needle)
-    }
-}
-
-impl fmt::Display for TargetSelection {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.triple)?;
-        if let Some(file) = self.file {
-            write!(f, "({})", file)?;
-        }
-        Ok(())
-    }
-}
-
-impl fmt::Debug for TargetSelection {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl PartialEq<&str> for TargetSelection {
-    fn eq(&self, other: &&str) -> bool {
-        self.triple == *other
     }
 }
 
@@ -862,32 +761,32 @@ impl Config {
         config
     }
 
-    pub fn parse(args: &[String]) -> Config {
-        #[cfg(test)]
-        let get_toml = |_: &_| TomlConfig::default();
-        #[cfg(not(test))]
-        let get_toml = |file: &Path| {
-            let contents =
-                t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
-            // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
-            // TomlConfig and sub types to be monomorphized 5x by toml.
-            match toml::from_str(&contents)
-                .and_then(|table: toml::Value| TomlConfig::deserialize(table))
-            {
-                Ok(table) => table,
-                Err(err) => {
-                    eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
-                    crate::detail_exit(2);
-                }
+    pub(crate) fn test_args(&self) -> Vec<&str> {
+        let mut test_args = match self.cmd {
+            Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
+                test_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
+            _ => vec![],
         };
-
-        Self::parse_inner(args, get_toml)
+        test_args.extend(self.free_args.iter().map(|s| s.as_str()));
+        test_args
     }
 
-    fn parse_inner<'a>(args: &[String], get_toml: impl 'a + Fn(&Path) -> TomlConfig) -> Config {
+    pub(crate) fn args(&self) -> Vec<&str> {
+        let mut args = match self.cmd {
+            Subcommand::Run { ref args, .. } => {
+                args.iter().flat_map(|s| s.split_whitespace()).collect()
+            }
+            _ => vec![],
+        };
+        args.extend(self.free_args.iter().map(|s| s.as_str()));
+        args
+    }
+
+    pub fn parse(args: &[String]) -> Config {
         let mut flags = Flags::parse(&args);
         let mut config = Config::default_opts();
+        config.minimal_config = MinimalConfig::parse(flags.config.clone());
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
@@ -917,44 +816,6 @@ impl Config {
         }
 
         // Infer the rest of the configuration.
-
-        // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
-        // running on a completely machine from where it was compiled.
-        let mut cmd = Command::new("git");
-        // NOTE: we cannot support running from outside the repository because the only path we have available
-        // is set at compile time, which can be wrong if bootstrap was downloaded from source.
-        // We still support running outside the repository if we find we aren't in a git directory.
-        cmd.arg("rev-parse").arg("--show-toplevel");
-        // Discard stderr because we expect this to fail when building from a tarball.
-        let output = cmd
-            .stderr(std::process::Stdio::null())
-            .output()
-            .ok()
-            .and_then(|output| if output.status.success() { Some(output) } else { None });
-        if let Some(output) = output {
-            let git_root = String::from_utf8(output.stdout).unwrap();
-            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes.
-            let git_root = PathBuf::from(git_root.trim()).canonicalize().unwrap();
-            let s = git_root.to_str().unwrap();
-
-            // Bootstrap is quite bad at handling /? in front of paths
-            let src = match s.strip_prefix("\\\\?\\") {
-                Some(p) => PathBuf::from(p),
-                None => PathBuf::from(git_root),
-            };
-            // If this doesn't have at least `stage0.json`, we guessed wrong. This can happen when,
-            // for example, the build directory is inside of another unrelated git directory.
-            // In that case keep the original `CARGO_MANIFEST_DIR` handling.
-            //
-            // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
-            // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
-            if src.join("src").join("stage0.json").exists() {
-                config.src = src;
-            }
-        } else {
-            // We're building from a tarball, not git sources.
-            // We don't support pre-downloaded bootstrap in this case.
-        }
 
         if cfg!(test) {
             // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
@@ -1329,17 +1190,19 @@ impl Config {
         }
 
         if config.llvm_from_ci {
-            let triple = &config.build.triple;
+            let build_target_selection = config.build;
             let ci_llvm_bin = config.ci_llvm_root().join("bin");
             let build_target = config
                 .target_config
                 .entry(config.build)
-                .or_insert_with(|| Target::from_triple(&triple));
+                .or_insert_with(|| Target::from_triple(&build_target_selection.triple));
 
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
-            build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", config.build)));
-            build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", config.build)));
+            build_target.llvm_config =
+                Some(ci_llvm_bin.join(exe("llvm-config", build_target_selection)));
+            build_target.llvm_filecheck =
+                Some(ci_llvm_bin.join(exe("FileCheck", build_target_selection)));
         }
 
         if let Some(t) = toml.dist {
@@ -1446,44 +1309,6 @@ impl Config {
         }
 
         config
-    }
-
-    pub(crate) fn dry_run(&self) -> bool {
-        match self.dry_run {
-            DryRun::Disabled => false,
-            DryRun::SelfCheck | DryRun::UserSelected => true,
-        }
-    }
-
-    /// A git invocation which runs inside the source directory.
-    ///
-    /// Use this rather than `Command::new("git")` in order to support out-of-tree builds.
-    pub(crate) fn git(&self) -> Command {
-        let mut git = Command::new("git");
-        git.current_dir(&self.src);
-        git
-    }
-
-    pub(crate) fn test_args(&self) -> Vec<&str> {
-        let mut test_args = match self.cmd {
-            Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
-                test_args.iter().flat_map(|s| s.split_whitespace()).collect()
-            }
-            _ => vec![],
-        };
-        test_args.extend(self.free_args.iter().map(|s| s.as_str()));
-        test_args
-    }
-
-    pub(crate) fn args(&self) -> Vec<&str> {
-        let mut args = match self.cmd {
-            Subcommand::Run { ref args, .. } => {
-                args.iter().flat_map(|s| s.split_whitespace()).collect()
-            }
-            _ => vec![],
-        };
-        args.extend(self.free_args.iter().map(|s| s.as_str()));
-        args
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -1632,12 +1457,6 @@ impl Config {
         }
     }
 
-    pub fn verbose(&self, msg: &str) {
-        if self.verbose > 0 {
-            println!("{}", msg);
-        }
-    }
-
     pub fn sanitizers_enabled(&self, target: TargetSelection) -> bool {
         self.target_config.get(&target).map(|t| t.sanitizers).flatten().unwrap_or(self.sanitizers)
     }
@@ -1730,52 +1549,7 @@ impl Config {
             }
         };
 
-        // Handle running from a directory other than the top level
-        let top_level = output(self.git().args(&["rev-parse", "--show-toplevel"]));
-        let top_level = top_level.trim_end();
-        let compiler = format!("{top_level}/compiler/");
-        let library = format!("{top_level}/library/");
-
-        // Look for a version to compare to based on the current commit.
-        // Only commits merged by bors will have CI artifacts.
-        let merge_base = output(
-            self.git()
-                .arg("rev-list")
-                .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
-                .args(&["-n1", "--first-parent", "HEAD"]),
-        );
-        let commit = merge_base.trim_end();
-        if commit.is_empty() {
-            println!("error: could not find commit hash for downloading rustc");
-            println!("help: maybe your repository history is too shallow?");
-            println!("help: consider disabling `download-rustc`");
-            println!("help: or fetch enough history to include one upstream commit");
-            crate::detail_exit(1);
-        }
-
-        // Warn if there were changes to the compiler or standard library since the ancestor commit.
-        let has_changes = !t!(self
-            .git()
-            .args(&["diff-index", "--quiet", &commit, "--", &compiler, &library])
-            .status())
-        .success();
-        if has_changes {
-            if if_unchanged {
-                if self.verbose > 0 {
-                    println!(
-                        "warning: saw changes to compiler/ or library/ since {commit}; \
-                            ignoring `download-rustc`"
-                    );
-                }
-                return None;
-            }
-            println!(
-                "warning: `download-rustc` is enabled, but there are changes to \
-                    compiler/ or library/"
-            );
-        }
-
-        Some(commit.to_string())
+        self.last_modified_commit(&["compiler", "library"], "download-rustc", if_unchanged)
     }
 }
 

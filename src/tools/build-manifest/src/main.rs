@@ -183,7 +183,8 @@ static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"
 
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
-static NIGHTLY_ONLY_COMPONENTS: &[PkgType] = &[PkgType::Miri, PkgType::JsonDocs];
+static NIGHTLY_ONLY_COMPONENTS: &[PkgType] =
+    &[PkgType::Miri, PkgType::JsonDocs, PkgType::BootstrapShim];
 
 macro_rules! t {
     ($e:expr) => {
@@ -414,7 +415,8 @@ impl Builder {
                 | PkgType::Rustfmt
                 | PkgType::LlvmTools
                 | PkgType::RustAnalysis
-                | PkgType::JsonDocs => {
+                | PkgType::JsonDocs
+                | PkgType::BootstrapShim => {
                     extensions.push(host_component(pkg));
                 }
                 PkgType::RustcDev | PkgType::RustcDocs => {

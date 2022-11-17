@@ -55,6 +55,7 @@ mod format;
 mod install;
 mod llvm;
 mod metadata;
+mod min_config;
 mod render_tests;
 mod run;
 mod sanity;
@@ -90,6 +91,7 @@ pub use crate::builder::PathSet;
 use crate::cache::{Interned, INTERNER};
 pub use crate::config::Config;
 pub use crate::flags::Subcommand;
+pub use crate::min_config::MinimalConfig;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 
 const LLVM_TOOLS: &[&str] = &[
