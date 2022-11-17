@@ -1,6 +1,10 @@
+use std::ops::ControlFlow;
+
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::walk_span_to_context;
+use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
 use clippy_utils::{get_parent_node, is_lint_allowed};
+use hir::HirId;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::{Block, BlockCheckMode, ItemKind, Node, UnsafeSource};
@@ -90,8 +94,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UndocumentedUnsafeBlocks => [UNDOCUMENTED_UNSAFE_BLOCKS, UNNECESSARY_SAFETY_COMMENT]);
 
-impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
-    fn check_block(&mut self, cx: &LateContext<'_>, block: &'_ Block<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
             && !in_external_macro(cx.tcx.sess, block.span)
             && !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, block.hir_id)
@@ -113,6 +117,45 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
                 "unsafe block missing a safety comment",
                 None,
                 "consider adding a safety comment on the preceding line",
+            );
+        }
+
+        if let Some(tail) = block.expr
+            && !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, tail.hir_id)
+            && !in_external_macro(cx.tcx.sess, tail.span)
+            && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, tail.span, tail.hir_id)
+            && let Some(help_span) = expr_has_unnecessary_safety_comment(cx, tail, pos)
+        {
+            span_lint_and_help(
+                cx,
+                UNNECESSARY_SAFETY_COMMENT,
+                tail.span,
+                "expression has unnecessary safety comment",
+                Some(help_span),
+                "consider removing the safety comment",
+            );
+        }
+    }
+
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &hir::Stmt<'tcx>) {
+        let expr = match stmt.kind {
+            hir::StmtKind::Local(&hir::Local { init: Some(expr), .. })
+            | hir::StmtKind::Expr(expr)
+            | hir::StmtKind::Semi(expr) => expr,
+            _ => return,
+        };
+        if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, stmt.hir_id)
+            && !in_external_macro(cx.tcx.sess, stmt.span)
+            && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, stmt.span, stmt.hir_id)
+            && let Some(help_span) = expr_has_unnecessary_safety_comment(cx, expr, pos)
+        {
+            span_lint_and_help(
+                cx,
+                UNNECESSARY_SAFETY_COMMENT,
+                stmt.span,
+                "statement has unnecessary safety comment",
+                Some(help_span),
+                "consider removing the safety comment",
             );
         }
     }
@@ -214,6 +257,36 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
             _ => (),
         }
     }
+}
+
+fn expr_has_unnecessary_safety_comment<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+    comment_pos: BytePos,
+) -> Option<Span> {
+    // this should roughly be the reverse of `block_parents_have_safety_comment`
+    if for_each_expr_with_closures(cx, expr, |expr| match expr.kind {
+        hir::ExprKind::Block(
+            Block {
+                rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
+                ..
+            },
+            _,
+        ) => ControlFlow::Break(()),
+        // statements will be handled by check_stmt itself again
+        hir::ExprKind::Block(..) => ControlFlow::Continue(Descend::No),
+        _ => ControlFlow::Continue(Descend::Yes),
+    })
+    .is_some()
+    {
+        return None;
+    }
+
+    let source_map = cx.tcx.sess.source_map();
+    let span = Span::new(comment_pos, comment_pos, SyntaxContext::root(), None);
+    let help_span = source_map.span_extend_to_next_char(span, '\n', true);
+
+    Some(help_span)
 }
 
 fn is_unsafe_from_proc_macro(cx: &LateContext<'_>, span: Span) -> bool {
@@ -327,6 +400,55 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
             let source_map = cx.sess().source_map();
             if let Some(comment_start) = comment_start
                 && let Ok(unsafe_line) = source_map.lookup_line(item.span.lo())
+                && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
+                && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
+                && let Some(src) = unsafe_line.sf.src.as_deref()
+            {
+                unsafe_line.sf.lines(|lines| {
+                    if comment_start_line.line >= unsafe_line.line {
+                        HasSafetyComment::No
+                    } else {
+                        match text_has_safety_comment(
+                            src,
+                            &lines[comment_start_line.line + 1..=unsafe_line.line],
+                            unsafe_line.sf.start_pos.to_usize(),
+                        ) {
+                            Some(b) => HasSafetyComment::Yes(b),
+                            None => HasSafetyComment::No,
+                        }
+                    }
+                })
+            } else {
+                // Problem getting source text. Pretend a comment was found.
+                HasSafetyComment::Maybe
+            }
+        } else {
+            // No parent node. Pretend a comment was found.
+            HasSafetyComment::Maybe
+        }
+    } else {
+        HasSafetyComment::No
+    }
+}
+
+/// Checks if the lines immediately preceding the item contain a safety comment.
+#[allow(clippy::collapsible_match)]
+fn stmt_has_safety_comment(cx: &LateContext<'_>, span: Span, hir_id: HirId) -> HasSafetyComment {
+    match span_from_macro_expansion_has_safety_comment(cx, span) {
+        HasSafetyComment::Maybe => (),
+        has_safety_comment => return has_safety_comment,
+    }
+
+    if span.ctxt() == SyntaxContext::root() {
+        if let Some(parent_node) = get_parent_node(cx.tcx, hir_id) {
+            let comment_start = match parent_node {
+                Node::Block(block) => walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo),
+                _ => return HasSafetyComment::Maybe,
+            };
+
+            let source_map = cx.sess().source_map();
+            if let Some(comment_start) = comment_start
+                && let Ok(unsafe_line) = source_map.lookup_line(span.lo())
                 && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
                 && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
                 && let Some(src) = unsafe_line.sf.src.as_deref()

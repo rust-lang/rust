@@ -344,6 +344,24 @@ LL |         unsafe {};
    |
    = help: consider adding a safety comment on the preceding line
 
+error: statement has unnecessary safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:514:5
+   |
+LL | /     let _ = {
+LL | |         if unsafe { true } {
+LL | |             todo!();
+LL | |         } else {
+...  |
+LL | |         }
+LL | |     };
+   | |______^
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:513:5
+   |
+LL |     // SAFETY: this is more than one level away, so it should warn
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: unsafe block missing a safety comment
   --> $DIR/undocumented_unsafe_blocks.rs:515:12
    |
@@ -360,5 +378,45 @@ LL |             let bar = unsafe {};
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 40 previous errors
+error: impl has unnecessary safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:541:13
+   |
+LL |             impl T for $t {}
+   |             ^^^^^^^^^^^^^^^^
+...
+LL |     with_safety_comment!(i32);
+   |     ------------------------- in this macro invocation
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:540:13
+   |
+LL |             // Safety: unnecessary
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `with_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expression has unnecessary safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:553:5
+   |
+LL |     24
+   |     ^^
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:552:5
+   |
+LL |     // SAFETY: unnecessary
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: statement has unnecessary safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:550:5
+   |
+LL |     let num = 42;
+   |     ^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:549:5
+   |
+LL |     // SAFETY: unnecessary
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 44 previous errors
 

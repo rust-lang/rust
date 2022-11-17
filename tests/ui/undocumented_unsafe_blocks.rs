@@ -522,4 +522,35 @@ fn issue_9142() {
     };
 }
 
+mod unnecessary_from_macro {
+    trait T {}
+
+    macro_rules! no_safety_comment {
+        ($t:ty) => {
+            impl T for $t {}
+        };
+    }
+
+    // FIXME: This is not caught
+    // Safety: unnecessary
+    no_safety_comment!(());
+
+    macro_rules! with_safety_comment {
+        ($t:ty) => {
+            // Safety: unnecessary
+            impl T for $t {}
+        };
+    }
+
+    with_safety_comment!(i32);
+}
+
+fn unnecessary_on_stmt_and_expr() -> u32 {
+    // SAFETY: unnecessary
+    let num = 42;
+
+    // SAFETY: unnecessary
+    24
+}
+
 fn main() {}
