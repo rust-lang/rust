@@ -548,8 +548,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     }
 
     fn mark_ambiguous(&mut self) {
-        // The generalizer always compares types against themselves,
-        // and thus doesn't really take part in coherence.
+        self.infcx.tcx.sess.delay_span_bug(self.cause.span, "opaque types are handled in `tys`");
     }
 
     fn binders<T>(
