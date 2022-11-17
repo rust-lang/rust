@@ -402,9 +402,7 @@ pub fn fully_solve_obligation<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: PredicateObligation<'tcx>,
 ) -> Vec<FulfillmentError<'tcx>> {
-    let ocx = ObligationCtxt::new(infcx);
-    ocx.register_obligation(obligation);
-    ocx.select_all_or_error()
+    fully_solve_obligations(infcx, [obligation])
 }
 
 /// Process a set of obligations (and any nested obligations that come from them)
@@ -428,9 +426,16 @@ pub fn fully_solve_bound<'tcx>(
     ty: Ty<'tcx>,
     bound: DefId,
 ) -> Vec<FulfillmentError<'tcx>> {
-    let ocx = ObligationCtxt::new(infcx);
-    ocx.register_bound(cause, param_env, ty, bound);
-    ocx.select_all_or_error()
+    let tcx = infcx.tcx;
+    let trait_ref = ty::TraitRef { def_id: bound, substs: tcx.mk_substs_trait(ty, []) };
+    let obligation = Obligation {
+        cause,
+        recursion_depth: 0,
+        param_env,
+        predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
+    };
+
+    fully_solve_obligation(infcx, obligation)
 }
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this
