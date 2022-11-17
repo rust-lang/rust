@@ -15,8 +15,8 @@ use std::str::FromStr;
 
 use crate::builder::TaskPath;
 use crate::cache::{Interned, INTERNER};
-use crate::channel::{self, GitInfo};
 use crate::cc_detect::{ndk_compiler, Language};
+use crate::channel::{self, GitInfo};
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
 use crate::util::{exe, output, t};
