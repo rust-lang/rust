@@ -94,7 +94,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns a transparent wrapper for `TyCtxt` which uses
     /// `span` as the location of queries performed through it.
     #[inline(always)]
-    pub fn at(self, span: Span) -> TyCtxtAt<'tcx> {
+    pub fn at(mut self, span: Span) -> TyCtxtAt<'tcx> {
         self.span = span;
         TyCtxtAt { tcx: self }
     }
