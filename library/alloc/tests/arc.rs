@@ -210,3 +210,18 @@ fn weak_may_dangle() {
     // `val` dropped here while still borrowed
     // borrow might be used here, when `val` is dropped and runs the `Drop` code for type `std::sync::Weak`
 }
+
+#[test]
+fn arc_from_vec_opt() {
+    let mut v = Vec::with_capacity(64);
+    v.push(0usize);
+    let addr = v.as_ptr().cast::<u8>();
+    let arc: Arc<[_]> = v.into();
+    unsafe {
+        assert_eq!(
+            arc.as_ptr().cast::<u8>().offset_from(addr),
+            (std::mem::size_of::<usize>() * 2) as isize,
+            "Vector allocation not reused"
+        );
+    }
+}
