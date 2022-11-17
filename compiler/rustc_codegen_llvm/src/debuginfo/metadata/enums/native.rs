@@ -142,7 +142,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &coroutine_type_name,
-            None,
+            Some(coroutine_def_id),
             size_and_align_of(coroutine_type_and_layout),
             Some(containing_scope),
             DIFlags::FlagZero,

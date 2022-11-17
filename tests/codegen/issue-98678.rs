@@ -2,6 +2,7 @@
 //
 // compile-flags: -C debuginfo=2
 #![crate_type = "lib"]
+#![feature(generators, stmt_expr_attributes)]
 
 // The use of CHECK-DAG here is because the C++-like enum is emitted before the `DIFile` node
 
@@ -31,4 +32,8 @@ pub fn foo(_: MyType, _: MyUnion, _: MyNativeEnum, _: MyCppLikeEnum) {
     // CHECK: !DICompositeType({{.*"[{]}}closure_env#0{{[}]".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
     let closure = |x| x;
     closure(0);
+
+    // CHECK: !DICompositeType({{.*"[{]}}generator_env#1{{[}]".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
+    let generator = #[coroutine]
+    || yield 1;
 }

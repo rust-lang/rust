@@ -263,6 +263,9 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let coroutine_type = unique_type_id.expect_ty();
+    let &ty::Coroutine(coroutine_def_id, _, _) = coroutine_type.kind() else {
+        bug!("build_coroutine_di_node() called with non-coroutine type: `{:?}`", coroutine_type)
+    };
     let coroutine_type_and_layout = cx.layout_of(coroutine_type);
     let coroutine_type_name = compute_debuginfo_type_name(cx.tcx, coroutine_type, false);
 
@@ -275,7 +278,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
             type_map::Stub::Union,
             unique_type_id,
             &coroutine_type_name,
-            None,
+            Some(coroutine_def_id),
             size_and_align_of(coroutine_type_and_layout),
             NO_SCOPE_METADATA,
             DIFlags::FlagZero,
