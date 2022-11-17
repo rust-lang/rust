@@ -37,8 +37,7 @@ click: "#settings-menu"
 wait-for: "#settings"
 
 // We check that the "Use system theme" is disabled.
-assert-property: ("#use-system-theme", {"checked": "false"})
-assert: "//*[@class='setting-line']//span[text()='Use system theme']"
+assert-property: ("#theme-system-preference", {"checked": "false"})
 // Meaning that only the "theme" menu is showing up.
 assert: ".setting-line:not(.hidden) #theme"
 assert: ".setting-line.hidden #preferred-dark-theme"
@@ -115,13 +114,6 @@ assert-css: (
         "border-color": "rgb(221, 221, 221)",
     },
 )
-assert-css: (
-    "#use-system-theme",
-    {
-        "background-color": "rgba(0, 0, 0, 0)",
-        "border-color": "rgb(221, 221, 221)",
-    }
-)
 // Let's start with the hover for toggles.
 move-cursor-to: "#auto-hide-large-items"
 assert-css: (
@@ -131,14 +123,6 @@ assert-css: (
         "border-color": "rgb(33, 150, 243)",
     },
 )
-move-cursor-to: "#use-system-theme"
-assert-css: (
-    "#use-system-theme",
-    {
-        "background-color": "rgba(0, 0, 0, 0)",
-        "border-color": "rgb(33, 150, 243)",
-    }
-)
 move-cursor-to: "#settings-menu > a"
 // Let's now check with the focus for toggles.
 focus: "#auto-hide-large-items"
@@ -146,15 +130,6 @@ assert-css: (
     "#auto-hide-large-items",
     {
         "background-color": "rgb(33, 150, 243)",
-        "border-color": "rgb(221, 221, 221)",
-        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
-    },
-)
-focus: "#use-system-theme"
-assert-css: (
-    "#use-system-theme",
-    {
-        "background-color": "rgba(0, 0, 0, 0)",
         "border-color": "rgb(221, 221, 221)",
         "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
     },
@@ -170,24 +145,12 @@ assert-css: (
         "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
     },
 )
-move-cursor-to: "#use-system-theme"
-focus: "#use-system-theme"
-assert-css: (
-    "#use-system-theme",
-    {
-        "background-color": "rgba(0, 0, 0, 0)",
-        "border-color": "rgb(33, 150, 243)",
-        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
-    },
-)
 
 // We now switch the display.
-click: "#use-system-theme"
+click: "#theme-system-preference"
 // Wait for the hidden element to show up.
 wait-for: ".setting-line:not(.hidden) #preferred-dark-theme"
 assert: ".setting-line:not(.hidden) #preferred-light-theme"
-// Check that the theme picking is hidden.
-assert: ".setting-line.hidden #theme"
 
 // We check their text as well.
 assert-text: ("#preferred-dark-theme .setting-name", "Preferred dark theme")
