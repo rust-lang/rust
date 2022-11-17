@@ -70,7 +70,7 @@ pub fn codegen_select_candidate<'tcx>(
         for err in errors {
             match err.code {
                 FulfillmentErrorCode::CodeOverflow => {
-                    infcx.err_ctxt().report_overflow_error(&err.obligation, true)
+                    infcx.err_ctxt().report_overflow_error(&err.root_obligation, true)
                 }
                 FulfillmentErrorCode::CodeCycle(cycle) => {
                     infcx.err_ctxt().report_overflow_error_cycle(&cycle)

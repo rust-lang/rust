@@ -1536,7 +1536,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             FulfillmentErrorCode::CodeOverflow => {
                 let predicate = self.resolve_vars_if_possible(error.obligation.predicate);
                 if !predicate.references_error() {
-                    self.report_overflow_error(&error.obligation, true);
+                    self.report_overflow_error(&error.root_obligation, true);
                 }
             }
         }
