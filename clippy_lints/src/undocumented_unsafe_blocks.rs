@@ -363,72 +363,60 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
         has_safety_comment => return has_safety_comment,
     }
 
-    if item.span.ctxt() == SyntaxContext::root() {
-        if let Some(parent_node) = get_parent_node(cx.tcx, item.hir_id()) {
-            let comment_start = match parent_node {
-                Node::Crate(parent_mod) => {
-                    comment_start_before_item_in_mod(cx, parent_mod, parent_mod.spans.inner_span, item)
-                },
-                Node::Item(parent_item) => {
-                    if let ItemKind::Mod(parent_mod) = &parent_item.kind {
-                        comment_start_before_item_in_mod(cx, parent_mod, parent_item.span, item)
-                    } else {
-                        // Doesn't support impls in this position. Pretend a comment was found.
-                        return HasSafetyComment::Maybe;
-                    }
-                },
-                Node::Stmt(stmt) => {
-                    if let Some(stmt_parent) = get_parent_node(cx.tcx, stmt.hir_id) {
-                        match stmt_parent {
-                            Node::Block(block) => walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo),
-                            _ => {
-                                // Doesn't support impls in this position. Pretend a comment was found.
-                                return HasSafetyComment::Maybe;
-                            },
-                        }
-                    } else {
-                        // Problem getting the parent node. Pretend a comment was found.
-                        return HasSafetyComment::Maybe;
-                    }
-                },
-                _ => {
+    if item.span.ctxt() != SyntaxContext::root() {
+        return HasSafetyComment::No;
+    }
+    if let Some(parent_node) = get_parent_node(cx.tcx, item.hir_id()) {
+        let comment_start = match parent_node {
+            Node::Crate(parent_mod) => {
+                comment_start_before_item_in_mod(cx, parent_mod, parent_mod.spans.inner_span, item)
+            },
+            Node::Item(parent_item) => {
+                if let ItemKind::Mod(parent_mod) = &parent_item.kind {
+                    comment_start_before_item_in_mod(cx, parent_mod, parent_item.span, item)
+                } else {
                     // Doesn't support impls in this position. Pretend a comment was found.
                     return HasSafetyComment::Maybe;
-                },
-            };
+                }
+            },
+            Node::Stmt(stmt) => {
+                if let Some(Node::Block(block)) = get_parent_node(cx.tcx, stmt.hir_id) {
+                    walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo)
+                } else {
+                    // Problem getting the parent node. Pretend a comment was found.
+                    return HasSafetyComment::Maybe;
+                }
+            },
+            _ => {
+                // Doesn't support impls in this position. Pretend a comment was found.
+                return HasSafetyComment::Maybe;
+            },
+        };
 
-            let source_map = cx.sess().source_map();
-            if let Some(comment_start) = comment_start
-                && let Ok(unsafe_line) = source_map.lookup_line(item.span.lo())
-                && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
-                && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
-                && let Some(src) = unsafe_line.sf.src.as_deref()
-            {
-                unsafe_line.sf.lines(|lines| {
-                    if comment_start_line.line >= unsafe_line.line {
-                        HasSafetyComment::No
-                    } else {
-                        match text_has_safety_comment(
-                            src,
-                            &lines[comment_start_line.line + 1..=unsafe_line.line],
-                            unsafe_line.sf.start_pos.to_usize(),
-                        ) {
-                            Some(b) => HasSafetyComment::Yes(b),
-                            None => HasSafetyComment::No,
-                        }
+        let source_map = cx.sess().source_map();
+        if let Some(comment_start) = comment_start
+            && let Ok(unsafe_line) = source_map.lookup_line(item.span.lo())
+            && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
+            && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
+            && let Some(src) = unsafe_line.sf.src.as_deref()
+        {
+            return unsafe_line.sf.lines(|lines| {
+                if comment_start_line.line >= unsafe_line.line {
+                    HasSafetyComment::No
+                } else {
+                    match text_has_safety_comment(
+                        src,
+                        &lines[comment_start_line.line + 1..=unsafe_line.line],
+                        unsafe_line.sf.start_pos.to_usize(),
+                    ) {
+                        Some(b) => HasSafetyComment::Yes(b),
+                        None => HasSafetyComment::No,
                     }
-                })
-            } else {
-                // Problem getting source text. Pretend a comment was found.
-                HasSafetyComment::Maybe
-            }
-        } else {
-            // No parent node. Pretend a comment was found.
-            HasSafetyComment::Maybe
+                }
+            });
         }
-    } else {
-        HasSafetyComment::No
     }
+    HasSafetyComment::Maybe
 }
 
 /// Checks if the lines immediately preceding the item contain a safety comment.
@@ -439,45 +427,40 @@ fn stmt_has_safety_comment(cx: &LateContext<'_>, span: Span, hir_id: HirId) -> H
         has_safety_comment => return has_safety_comment,
     }
 
-    if span.ctxt() == SyntaxContext::root() {
-        if let Some(parent_node) = get_parent_node(cx.tcx, hir_id) {
-            let comment_start = match parent_node {
-                Node::Block(block) => walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo),
-                _ => return HasSafetyComment::Maybe,
-            };
-
-            let source_map = cx.sess().source_map();
-            if let Some(comment_start) = comment_start
-                && let Ok(unsafe_line) = source_map.lookup_line(span.lo())
-                && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
-                && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
-                && let Some(src) = unsafe_line.sf.src.as_deref()
-            {
-                unsafe_line.sf.lines(|lines| {
-                    if comment_start_line.line >= unsafe_line.line {
-                        HasSafetyComment::No
-                    } else {
-                        match text_has_safety_comment(
-                            src,
-                            &lines[comment_start_line.line + 1..=unsafe_line.line],
-                            unsafe_line.sf.start_pos.to_usize(),
-                        ) {
-                            Some(b) => HasSafetyComment::Yes(b),
-                            None => HasSafetyComment::No,
-                        }
-                    }
-                })
-            } else {
-                // Problem getting source text. Pretend a comment was found.
-                HasSafetyComment::Maybe
-            }
-        } else {
-            // No parent node. Pretend a comment was found.
-            HasSafetyComment::Maybe
-        }
-    } else {
-        HasSafetyComment::No
+    if span.ctxt() != SyntaxContext::root() {
+        return HasSafetyComment::No;
     }
+
+    if let Some(parent_node) = get_parent_node(cx.tcx, hir_id) {
+        let comment_start = match parent_node {
+            Node::Block(block) => walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo),
+            _ => return HasSafetyComment::Maybe,
+        };
+
+        let source_map = cx.sess().source_map();
+        if let Some(comment_start) = comment_start
+            && let Ok(unsafe_line) = source_map.lookup_line(span.lo())
+            && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
+            && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
+            && let Some(src) = unsafe_line.sf.src.as_deref()
+        {
+            return unsafe_line.sf.lines(|lines| {
+                if comment_start_line.line >= unsafe_line.line {
+                    HasSafetyComment::No
+                } else {
+                    match text_has_safety_comment(
+                        src,
+                        &lines[comment_start_line.line + 1..=unsafe_line.line],
+                        unsafe_line.sf.start_pos.to_usize(),
+                    ) {
+                        Some(b) => HasSafetyComment::Yes(b),
+                        None => HasSafetyComment::No,
+                    }
+                }
+            });
+        }
+    }
+    HasSafetyComment::Maybe
 }
 
 fn comment_start_before_item_in_mod(
