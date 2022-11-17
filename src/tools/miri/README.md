@@ -1,10 +1,5 @@
 # Miri
 
-[![Actions build status][actions-badge]][actions-url]
-
-[actions-badge]: https://github.com/rust-lang/miri/workflows/CI/badge.svg?branch=master
-[actions-url]: https://github.com/rust-lang/miri/actions
-
 An experimental interpreter for [Rust][rust]'s
 [mid-level intermediate representation][mir] (MIR). It can run binaries and
 test suites of cargo projects and detect certain classes of
