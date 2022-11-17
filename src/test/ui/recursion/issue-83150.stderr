@@ -14,7 +14,7 @@ error[E0275]: overflow evaluating the requirement `<std::ops::Range<u8> as Itera
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_83150`)
    = note: required for `Map<&mut std::ops::Range<u8>, [closure@$DIR/issue-83150.rs:12:24: 12:27]>` to implement `Iterator`
    = note: 64 redundant requirements hidden
-   = note: required for `&mut Map<&mut Map<&mut Map<_, _>, _>, _>` to implement `Iterator`
+   = note: required for `&mut Map<&mut Map<&mut Map<..., ...>, ...>, ...>` to implement `Iterator`
    = note: the full type name has been written to '$TEST_BUILD_DIR/recursion/issue-83150/issue-83150.long-type-hash.txt'
 
 error: aborting due to previous error; 1 warning emitted

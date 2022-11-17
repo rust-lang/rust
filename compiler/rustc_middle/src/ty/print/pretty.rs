@@ -1765,11 +1765,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             self.pretty_print_type(ty)
         } else {
             self.truncated = true;
-            if let ty::Adt(_, substs) = ty.kind() && substs.len() > 0 {
-                write!(self, "...")?;
-            } else {
-                write!(self, "_")?;
-            }
+            write!(self, "...")?;
             Ok(self)
         }
     }
