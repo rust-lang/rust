@@ -250,7 +250,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let ref_str_ty = tcx.mk_imm_ref(re_erased, tcx.types.str_);
                     let ref_str = self.temp(ref_str_ty, test.span);
                     let deref = tcx.require_lang_item(LangItem::Deref, None);
-                    let method = trait_method(tcx, deref, sym::deref, ty, &[]);
+                    let method = trait_method(tcx, deref, sym::deref, ty, []);
                     let eq_block = self.cfg.start_new_block();
                     self.cfg.push_assign(block, source_info, ref_string, Rvalue::Ref(re_erased, BorrowKind::Shared, place));
                     self.cfg.terminate(
@@ -444,8 +444,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             bug!("non_scalar_compare called on non-reference type: {}", ty);
         };
 
-        let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, None);
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, deref_ty, &[deref_ty.into()]);
+        let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
+        let method = trait_method(self.tcx, eq_def_id, sym::eq, deref_ty, [deref_ty.into()]);
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
@@ -838,9 +838,9 @@ fn trait_method<'tcx>(
     trait_def_id: DefId,
     method_name: Symbol,
     self_ty: Ty<'tcx>,
-    params: &[GenericArg<'tcx>],
+    params: impl IntoIterator<Item = GenericArg<'tcx>, IntoIter: ExactSizeIterator>,
 ) -> ConstantKind<'tcx> {
-    let substs = tcx.mk_substs_trait(self_ty, params.iter().copied());
+    let substs = tcx.mk_substs_trait(self_ty, params);
 
     // The unhygienic comparison here is acceptable because this is only
     // used on known traits.
@@ -850,8 +850,7 @@ fn trait_method<'tcx>(
         .find(|item| item.kind == ty::AssocKind::Fn)
         .expect("trait method not found");
 
-    let method_ty = tcx.bound_type_of(item.def_id);
-    let method_ty = method_ty.subst(tcx, substs);
+    let method_ty = tcx.mk_fn_def(item.def_id, substs);
 
     ConstantKind::zero_sized(method_ty)
 }
