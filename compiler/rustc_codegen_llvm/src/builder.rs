@@ -556,15 +556,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn write_operand_repeatedly(
-        mut self,
+        &mut self,
         cg_elem: OperandRef<'tcx, &'ll Value>,
         count: u64,
         dest: PlaceRef<'tcx, &'ll Value>,
-    ) -> Self {
+    ) {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
-        let start = dest.project_index(&mut self, zero).llval;
-        let end = dest.project_index(&mut self, count).llval;
+        let start = dest.project_index(self, zero).llval;
+        let end = dest.project_index(self, count).llval;
 
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
@@ -592,7 +592,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         body_bx.br(header_bb);
         header_bx.add_incoming_to_phi(current, next, body_bb);
 
-        Self::build(self.cx, next_bb)
+        *self = Self::build(self.cx, next_bb);
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
