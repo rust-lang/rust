@@ -2734,10 +2734,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 parent_trait_pred.remap_constness_diag(param_env);
                 let parent_def_id = parent_trait_pred.def_id();
                 let (self_ty, file) =
-                    match self.tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty()) {
-                        Ok(self_ty) => (self_ty, None),
-                        Err((self_ty, file)) => (self_ty, Some(file)),
-                    };
+                    self.tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty());
                 let msg = format!(
                     "required for `{self_ty}` to implement `{}`",
                     parent_trait_pred.print_modifiers_and_trait_path()
@@ -2815,10 +2812,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         pluralize!(count)
                     ));
                     let (self_ty, file) =
-                        match self.tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty()) {
-                            Ok(self_ty) => (self_ty, None),
-                            Err((self_ty, file)) => (self_ty, Some(file)),
-                        };
+                        self.tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty());
                     err.note(&format!(
                         "required for `{self_ty}` to implement `{}`",
                         parent_trait_pred.print_modifiers_and_trait_path()

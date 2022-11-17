@@ -990,7 +990,7 @@ fn foo(&self) -> Self::T { String::new() }
         false
     }
 
-    pub fn short_ty_string(self, ty: Ty<'tcx>) -> Result<String, (String, PathBuf)> {
+    pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
         let length_limit = 50;
         let type_limit = 4;
         let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
@@ -998,7 +998,7 @@ fn foo(&self) -> Self::T { String::new() }
             .expect("could not write to `String`")
             .into_buffer();
         if regular.len() <= length_limit {
-            return Ok(regular);
+            return (regular, None);
         }
         let short = FmtPrinter::new_with_limit(
             self,
@@ -1009,7 +1009,7 @@ fn foo(&self) -> Self::T { String::new() }
         .expect("could not write to `String`")
         .into_buffer();
         if regular == short {
-            return Ok(regular);
+            return (regular, None);
         }
         // Multiple types might be shortened in a single error, ensure we create a file for each.
         let mut s = DefaultHasher::new();
@@ -1017,8 +1017,8 @@ fn foo(&self) -> Self::T { String::new() }
         let hash = s.finish();
         let path = self.output_filenames(()).temp_path_ext(&format!("long-type-{hash}.txt"), None);
         match std::fs::write(&path, &regular) {
-            Ok(_) => Err((short, path)),
-            Err(_) => Ok(regular),
+            Ok(_) => (short, Some(path)),
+            Err(_) => (regular, None),
         }
     }
 
