@@ -65,6 +65,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--test-arrow-hover-background-color: rgba(57, 175, 215, 0.368);
 	--target-background-color: rgba(255, 236, 164, 0.06);
 	--target-border-color: rgba(255, 180, 76, 0.85);
+	--tooltip-background-color: #314559;
+	--tooltip-color: #c5c5c5;
 	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
@@ -158,15 +160,6 @@ details.rustdoc-toggle > summary::before {
 
 .result-name .primitive > i, .result-name .keyword > i {
 	color: #788797;
-}
-
-.tooltip::after {
-	background-color: #314559;
-	color: #c5c5c5;
-}
-
-.tooltip::before {
-	border-color: transparent #314559 transparent transparent;
 }
 
 #titles > button.selected {
