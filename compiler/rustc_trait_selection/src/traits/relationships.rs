@@ -1,8 +1,8 @@
 use crate::infer::InferCtxt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{ObligationCause, PredicateObligation};
+use crate::traits::PredicateObligation;
 use rustc_infer::traits::TraitEngine;
-use rustc_middle::ty::{self, ToPredicate};
+use rustc_middle::ty;
 
 pub(crate) fn update<'tcx, T>(
     engine: &mut T,
@@ -25,9 +25,7 @@ pub(crate) fn update<'tcx, T>(
 
         // Then construct a new obligation with Self = () added
         // to the ParamEnv, and see if it holds.
-        let o = rustc_infer::traits::Obligation::new(
-            ObligationCause::dummy(),
-            obligation.param_env,
+        let o = obligation.with(infcx.tcx,
             obligation
                 .predicate
                 .kind()
@@ -38,8 +36,7 @@ pub(crate) fn update<'tcx, T>(
                         constness: tpred.constness,
                         polarity: tpred.polarity,
                     })
-                )
-                .to_predicate(infcx.tcx),
+                ),
         );
         // Don't report overflow errors. Otherwise equivalent to may_hold.
         if let Ok(result) = infcx.probe(|_| infcx.evaluate_obligation(&o)) && result.may_apply() {

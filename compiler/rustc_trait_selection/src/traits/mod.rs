@@ -440,7 +440,7 @@ pub fn impossible_predicates<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
     let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);
     for predicate in predicates {
-        let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
+        let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);
         ocx.register_obligation(obligation);
     }
     let errors = ocx.select_all_or_error();
@@ -530,6 +530,7 @@ fn is_impossible_method<'tcx>(
     let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
         if pred.visit_with(&mut visitor).is_continue() {
             Some(Obligation::new(
+                tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
                 ty::EarlyBinder(*pred).subst(tcx, impl_trait_ref.substs),
