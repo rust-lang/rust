@@ -811,6 +811,10 @@ impl<'tcx> TraitRef<'tcx> {
         TraitRef { def_id, substs }
     }
 
+    pub fn with_self_type(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        tcx.mk_trait_ref(self.def_id, self_ty, &self.substs[1..])
+    }
+
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
     /// are the parameters defined on trait.
     pub fn identity(tcx: TyCtxt<'tcx>, def_id: DefId) -> Binder<'tcx, TraitRef<'tcx>> {

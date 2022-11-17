@@ -852,6 +852,10 @@ impl<'tcx> TraitPredicate<'tcx> {
         }
     }
 
+    pub fn with_self_type(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        Self { trait_ref: self.trait_ref.with_self_type(tcx, self_ty), ..self }
+    }
+
     pub fn def_id(self) -> DefId {
         self.trait_ref.def_id
     }
