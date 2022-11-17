@@ -1,6 +1,7 @@
 use rustc_errors::DelayDm;
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::{self, Field};
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
@@ -226,6 +227,13 @@ impl<'tcx> ConstToPat<'tcx> {
         // using `PartialEq::eq` in this scenario in the past.)
         let partial_eq_trait_id =
             self.tcx().require_lang_item(hir::LangItem::PartialEq, Some(self.span));
+        let any_ty = self
+            .infcx
+            .next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::MiscVariable,
+                span: self.span,
+            })
+            .into();
         let obligation: PredicateObligation<'_> = predicate_for_trait_def(
             self.tcx(),
             self.param_env,
@@ -233,7 +241,7 @@ impl<'tcx> ConstToPat<'tcx> {
             partial_eq_trait_id,
             0,
             ty,
-            &[],
+            &[any_ty],
         );
         // FIXME: should this call a `predicate_must_hold` variant instead?
 

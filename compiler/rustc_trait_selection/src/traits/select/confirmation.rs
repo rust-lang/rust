@@ -632,9 +632,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             output_ty,
             &mut nested,
         );
-        let tr = ty::Binder::dummy(ty::TraitRef::new(
+        let tr = ty::Binder::dummy(self.tcx().mk_trait_ref(
             self.tcx().require_lang_item(LangItem::Sized, None),
-            self.tcx().mk_substs_trait(output_ty, &[]),
+            output_ty,
+            &[],
         ));
         nested.push(Obligation::new(
             self.infcx.tcx,
@@ -996,9 +997,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
 
                 // We can only make objects from sized types.
-                let tr = ty::Binder::dummy(ty::TraitRef::new(
+                let tr = ty::Binder::dummy(tcx.mk_trait_ref(
                     tcx.require_lang_item(LangItem::Sized, None),
-                    tcx.mk_substs_trait(source, &[]),
+                    source,
+                    &[],
                 ));
                 nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
 
@@ -1253,10 +1255,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         cause.clone(),
                         obligation.recursion_depth + 1,
                         self_ty.rebind(ty::TraitPredicate {
-                            trait_ref: ty::TraitRef {
-                                def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
-                                substs: self.tcx().mk_substs_trait(nested_ty, &[]),
-                            },
+                            trait_ref: self.tcx().mk_trait_ref(
+                                self.tcx().require_lang_item(LangItem::Destruct, None),
+                                nested_ty,
+                                &[],
+                            ),
                             constness: ty::BoundConstness::ConstIfConst,
                             polarity: ty::ImplPolarity::Positive,
                         }),
@@ -1277,10 +1280,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // or it's an ADT (and we need to check for a custom impl during selection)
                 _ => {
                     let predicate = self_ty.rebind(ty::TraitPredicate {
-                        trait_ref: ty::TraitRef {
-                            def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
-                            substs: self.tcx().mk_substs_trait(nested_ty, &[]),
-                        },
+                        trait_ref: self.tcx().mk_trait_ref(
+                            self.tcx().require_lang_item(LangItem::Destruct, None),
+                            nested_ty,
+                            &[],
+                        ),
                         constness: ty::BoundConstness::ConstIfConst,
                         polarity: ty::ImplPolarity::Positive,
                     });

@@ -347,16 +347,13 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 });
-                let substs = self.tcx.mk_substs_trait(ty.skip_binder(), &[var.into()]);
+                let trait_ref =
+                    self.tcx.mk_trait_ref(trait_def_id, ty.skip_binder(), &[var.into()]);
                 let obligation = Obligation::new(
                     self.tcx,
                     ObligationCause::dummy(),
                     param_env,
-                    ty.rebind(ty::TraitPredicate {
-                        trait_ref: ty::TraitRef::new(trait_def_id, substs),
-                        constness,
-                        polarity,
-                    }),
+                    ty.rebind(ty::TraitPredicate { trait_ref, constness, polarity }),
                 );
                 let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new_in_snapshot(self.tcx);
                 fulfill_cx.register_predicate_obligation(self, obligation);
@@ -1002,7 +999,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             && self.fallback_has_occurred
                         {
                             let predicate = trait_predicate.map_bound(|mut trait_pred| {
-                                trait_pred.trait_ref.substs = self.tcx.mk_substs_trait(
+                                trait_pred.trait_ref = self.tcx.mk_trait_ref(
+                                    trait_pred.trait_ref.def_id,
                                     self.tcx.mk_unit(),
                                     &trait_pred.trait_ref.substs[1..],
                                 );
@@ -2029,10 +2027,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_ref_and_ty: ty::Binder<'tcx, (ty::TraitPredicate<'tcx>, Ty<'tcx>)>,
     ) -> PredicateObligation<'tcx> {
         let trait_pred = trait_ref_and_ty.map_bound_ref(|(tr, new_self_ty)| ty::TraitPredicate {
-            trait_ref: ty::TraitRef {
-                substs: self.tcx.mk_substs_trait(*new_self_ty, &tr.trait_ref.substs[1..]),
-                ..tr.trait_ref
-            },
+            trait_ref: self.tcx.mk_trait_ref(
+                tr.trait_ref.def_id,
+                *new_self_ty,
+                &tr.trait_ref.substs[1..],
+            ),
             ..*tr
         });
 

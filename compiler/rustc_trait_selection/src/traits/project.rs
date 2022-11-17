@@ -1710,9 +1710,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         if selcx.infcx().predicate_must_hold_modulo_regions(
                             &obligation.with(
                                 selcx.tcx(),
-                                ty::Binder::dummy(ty::TraitRef::new(
+                                ty::Binder::dummy(selcx.tcx().mk_trait_ref(
                                     selcx.tcx().require_lang_item(LangItem::Sized, None),
-                                    selcx.tcx().mk_substs_trait(self_ty, &[]),
+                                    self_ty, &[],
                                 ))
                                 .without_const(),
                             ),
@@ -1966,9 +1966,10 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
         )
     });
     if check_is_sized {
-        let sized_predicate = ty::Binder::dummy(ty::TraitRef::new(
+        let sized_predicate = ty::Binder::dummy(tcx.mk_trait_ref(
             tcx.require_lang_item(LangItem::Sized, None),
-            tcx.mk_substs_trait(self_ty, &[]),
+            self_ty,
+            &[],
         ))
         .without_const();
         obligations.push(obligation.with(tcx, sized_predicate));

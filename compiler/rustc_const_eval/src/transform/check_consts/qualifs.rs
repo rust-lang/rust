@@ -160,10 +160,7 @@ impl Qualif for NeedsNonConstDrop {
             ObligationCause::dummy(),
             cx.param_env,
             ty::Binder::dummy(ty::TraitPredicate {
-                trait_ref: ty::TraitRef {
-                    def_id: destruct,
-                    substs: cx.tcx.mk_substs_trait(ty, &[]),
-                },
+                trait_ref: cx.tcx.mk_trait_ref(destruct, ty, &[]),
                 constness: ty::BoundConstness::ConstIfConst,
                 polarity: ty::ImplPolarity::Positive,
             }),

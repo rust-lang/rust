@@ -143,8 +143,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     def_id: DefId,
     span: Span,
 ) -> bool {
-    let trait_ref =
-        ty::Binder::dummy(ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) });
+    let trait_ref = ty::Binder::dummy(infcx.tcx.mk_trait_ref(def_id, ty, &[]));
     pred_known_to_hold_modulo_regions(infcx, param_env, trait_ref.without_const(), span)
 }
 
@@ -903,10 +902,7 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
     // this has been typecked-before, so diagnostics is not really needed.
     let unsize_trait_did = tcx.require_lang_item(LangItem::Unsize, None);
 
-    let trait_ref = ty::TraitRef {
-        def_id: unsize_trait_did,
-        substs: tcx.mk_substs_trait(source, &[target.into()]),
-    };
+    let trait_ref = tcx.mk_trait_ref(unsize_trait_did, source, &[target.into()]);
 
     match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), ty::Binder::dummy(trait_ref))) {
         Ok(ImplSource::TraitUpcasting(implsrc_traitcasting)) => {

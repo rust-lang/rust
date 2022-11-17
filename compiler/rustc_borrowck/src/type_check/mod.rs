@@ -547,10 +547,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
             let tcx = self.tcx();
-            let trait_ref = ty::TraitRef {
-                def_id: tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
-                substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-            };
+            let trait_ref = tcx.mk_trait_ref(
+                tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
+                place_ty.ty,
+                &[],
+            );
 
             // To have a `Copy` operand, the type `T` of the
             // value must be `Copy`. Note that we prove that `T: Copy`,
@@ -1273,10 +1274,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 self.check_rvalue(body, rv, location);
                 if !self.unsized_feature_enabled() {
-                    let trait_ref = ty::TraitRef {
-                        def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                        substs: tcx.mk_substs_trait(place_ty, &[]),
-                    };
+                    let trait_ref = tcx.mk_trait_ref(
+                        tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
+                        place_ty,
+                        &[],
+                    );
                     self.prove_trait_ref(
                         trait_ref,
                         location.to_locations(),
@@ -1865,9 +1867,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             // Make sure that repeated elements implement `Copy`.
                             let span = body.source_info(location).span;
                             let ty = place.ty(body, tcx).ty;
-                            let trait_ref = ty::TraitRef::new(
+                            let trait_ref = tcx.mk_trait_ref(
                                 tcx.require_lang_item(LangItem::Copy, Some(span)),
-                                tcx.mk_substs_trait(ty, &[]),
+                                ty,
+                                &[],
                             );
 
                             self.prove_trait_ref(
@@ -1881,10 +1884,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                    substs: tcx.mk_substs_trait(ty, &[]),
-                };
+                let trait_ref = tcx.mk_trait_ref(
+                    tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
+                    ty,
+                    &[],
+                );
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1896,10 +1900,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::ShallowInitBox(operand, ty) => {
                 self.check_operand(operand, location);
 
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                    substs: tcx.mk_substs_trait(*ty, &[]),
-                };
+                let trait_ref = tcx.mk_trait_ref(
+                    tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
+                    *ty,
+                    &[],
+                );
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1996,11 +2001,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     CastKind::Pointer(PointerCast::Unsize) => {
                         let &ty = ty;
-                        let trait_ref = ty::TraitRef {
-                            def_id: tcx
-                                .require_lang_item(LangItem::CoerceUnsized, Some(self.last_span)),
-                            substs: tcx.mk_substs_trait(op.ty(body, tcx), &[ty.into()]),
-                        };
+                        let trait_ref = tcx.mk_trait_ref(
+                            tcx.require_lang_item(LangItem::CoerceUnsized, Some(self.last_span)),
+                            op.ty(body, tcx),
+                            &[ty.into()],
+                        );
 
                         self.prove_trait_ref(
                             trait_ref,

@@ -117,10 +117,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         params: SubstsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult {
-        let trait_ref = ty::TraitRef {
-            def_id: trait_def_id,
-            substs: self.tcx.mk_substs_trait(self_ty, params),
-        };
+        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, self_ty, params);
 
         debug_assert_eq!(
             self.tcx.generics_of(trait_def_id).count() - 1,

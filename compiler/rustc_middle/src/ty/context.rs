@@ -2532,6 +2532,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_fn_def(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        debug_assert_eq!(
+            self.generics_of(def_id).count(),
+            substs.len(),
+            "wrong number of generic parameters for {def_id:?}: {substs:?}",
+        );
         self.mk_ty(FnDef(def_id, substs))
     }
 
@@ -2552,6 +2557,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_projection(self, item_def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        debug_assert_eq!(
+            self.generics_of(item_def_id).count(),
+            substs.len(),
+            "wrong number of generic parameters for {item_def_id:?}: {substs:?}",
+        );
         self.mk_ty(Projection(ProjectionTy { item_def_id, substs }))
     }
 
@@ -2801,6 +2811,21 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+    }
+
+    pub fn mk_trait_ref(
+        self,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+        rest: &[GenericArg<'tcx>],
+    ) -> ty::TraitRef<'tcx> {
+        debug_assert_eq!(
+            self.generics_of(trait_def_id).count() - 1,
+            rest.len(),
+            "wrong number of generic parameters for {trait_def_id:?} on self type {self_ty:?}: {rest:?} \nDid you accidentally include the self-type in the params list?"
+        );
+        let substs = self.mk_substs_trait(self_ty, rest);
+        ty::TraitRef::new(trait_def_id, substs)
     }
 
     pub fn mk_bound_variable_kinds<

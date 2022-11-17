@@ -3068,17 +3068,20 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Ensure all fields impl the trait.
                 adt.all_fields().all(|field| {
                     let field_ty = field.ty(self.tcx, substs);
-                    let trait_substs = match diagnostic_name {
+                    let trait_substs;
+                    let trait_substs: &[_] = match diagnostic_name {
                         sym::PartialEq | sym::PartialOrd => {
-                            self.tcx.mk_substs_trait(field_ty, &[field_ty.into()])
+                            trait_substs = [field_ty.into()];
+                            &trait_substs
                         }
-                        _ => self.tcx.mk_substs_trait(field_ty, &[]),
+                        _ => &[],
                     };
                     let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
-                        trait_ref: ty::TraitRef {
-                            substs: trait_substs,
-                            ..trait_pred.skip_binder().trait_ref
-                        },
+                        trait_ref: self.tcx.mk_trait_ref(
+                            trait_pred.def_id(),
+                            field_ty,
+                            trait_substs,
+                        ),
                         ..*tr
                     });
                     let field_obl = Obligation::new(
