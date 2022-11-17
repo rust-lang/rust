@@ -471,7 +471,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     if !path.is_absolute() { getcwd().map(|cwd| cwd.join(path)) } else { Ok(path) }
 }
 
-#[cfg(target_os) = "aix")]
+#[cfg(target_os = "aix")]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
 
