@@ -1712,7 +1712,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                 selcx.tcx(),
                                 ty::Binder::dummy(selcx.tcx().mk_trait_ref(
                                     selcx.tcx().require_lang_item(LangItem::Sized, None),
-                                    self_ty, &[],
+                                    self_ty, [],
                                 ))
                                 .without_const(),
                             ),
@@ -1969,7 +1969,7 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
         let sized_predicate = ty::Binder::dummy(tcx.mk_trait_ref(
             tcx.require_lang_item(LangItem::Sized, None),
             self_ty,
-            &[],
+            [],
         ))
         .without_const();
         obligations.push(obligation.with(tcx, sized_predicate));

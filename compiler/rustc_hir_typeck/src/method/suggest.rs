@@ -71,7 +71,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let trait_ref = tcx.mk_trait_ref(
                             fn_once,
                             ty,
-                            &[self
+                            [self
                                 .next_ty_var(TypeVariableOrigin {
                                     kind: TypeVariableOriginKind::MiscVariable,
                                     span,

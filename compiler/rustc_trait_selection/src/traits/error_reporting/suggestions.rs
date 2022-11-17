@@ -2985,7 +2985,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.tcx.mk_projection(
                         item_def_id,
                         // Future::Output has no substs
-                        self.tcx.mk_substs_trait(trait_pred.self_ty(), &[]),
+                        self.tcx.mk_substs_trait(trait_pred.self_ty(), []),
                     )
                 });
                 let projection_ty = normalize_to(
@@ -3068,13 +3068,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Ensure all fields impl the trait.
                 adt.all_fields().all(|field| {
                     let field_ty = field.ty(self.tcx, substs);
-                    let trait_substs;
-                    let trait_substs: &[_] = match diagnostic_name {
+                    let trait_substs = match diagnostic_name {
                         sym::PartialEq | sym::PartialOrd => {
-                            trait_substs = [field_ty.into()];
-                            &trait_substs
+                            Some(field_ty.into())
                         }
-                        _ => &[],
+                        _ => None,
                     };
                     let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
                         trait_ref: self.tcx.mk_trait_ref(

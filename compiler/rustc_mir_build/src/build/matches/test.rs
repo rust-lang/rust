@@ -840,7 +840,7 @@ fn trait_method<'tcx>(
     self_ty: Ty<'tcx>,
     params: &[GenericArg<'tcx>],
 ) -> ConstantKind<'tcx> {
-    let substs = tcx.mk_substs_trait(self_ty, params);
+    let substs = tcx.mk_substs_trait(self_ty, params.iter().copied());
 
     // The unhygienic comparison here is acceptable because this is only
     // used on known traits.

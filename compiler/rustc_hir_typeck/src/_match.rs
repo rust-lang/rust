@@ -545,9 +545,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             ty::PredicateKind::Projection(mut proj_pred) => {
                                 assert_eq!(proj_pred.projection_ty.self_ty(), opaque_ty);
-                                proj_pred.projection_ty.substs = self
-                                    .tcx
-                                    .mk_substs_trait(ty, &proj_pred.projection_ty.substs[1..]);
+                                proj_pred.projection_ty.substs = self.tcx.mk_substs_trait(
+                                    ty,
+                                    proj_pred.projection_ty.substs.iter().skip(1),
+                                );
                                 ty::PredicateKind::Projection(proj_pred)
                             }
                             _ => continue,

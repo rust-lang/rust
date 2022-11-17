@@ -241,7 +241,7 @@ pub fn predicate_for_trait_def<'tcx>(
     self_ty: Ty<'tcx>,
     params: &[GenericArg<'tcx>],
 ) -> PredicateObligation<'tcx> {
-    let trait_ref = tcx.mk_trait_ref(trait_def_id, self_ty, params);
+    let trait_ref = tcx.mk_trait_ref(trait_def_id, self_ty, params.iter().copied());
     predicate_for_trait_ref(tcx, cause, param_env, trait_ref, recursion_depth)
 }
 
@@ -304,7 +304,7 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
         TupleArgumentsFlag::Yes => tcx.intern_tup(sig.skip_binder().inputs()),
     };
     debug_assert!(!self_ty.has_escaping_bound_vars());
-    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, self_ty, &[arguments_tuple.into()]);
+    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, self_ty, [arguments_tuple.into()]);
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 
@@ -316,7 +316,7 @@ pub fn generator_trait_ref_and_outputs<'tcx>(
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
     debug_assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref =
-        tcx.mk_trait_ref(fn_trait_def_id, self_ty, &[sig.skip_binder().resume_ty.into()]);
+        tcx.mk_trait_ref(fn_trait_def_id, self_ty, [sig.skip_binder().resume_ty.into()]);
     sig.map_bound(|sig| (trait_ref, sig.yield_ty, sig.return_ty))
 }
 

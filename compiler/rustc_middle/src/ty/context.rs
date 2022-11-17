@@ -2809,20 +2809,26 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_place_elems(xs))
     }
 
-    pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
-        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+    pub fn mk_substs_trait(
+        self,
+        self_ty: Ty<'tcx>,
+        rest: impl IntoIterator<Item = GenericArg<'tcx>>,
+    ) -> SubstsRef<'tcx> {
+        self.mk_substs(iter::once(self_ty.into()).chain(rest))
     }
 
     pub fn mk_trait_ref(
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        rest: &[GenericArg<'tcx>],
+        rest: impl IntoIterator<Item = GenericArg<'tcx>, IntoIter: ExactSizeIterator>,
     ) -> ty::TraitRef<'tcx> {
+        let rest = rest.into_iter();
         debug_assert_eq!(
             self.generics_of(trait_def_id).count() - 1,
             rest.len(),
-            "wrong number of generic parameters for {trait_def_id:?} on self type {self_ty:?}: {rest:?} \nDid you accidentally include the self-type in the params list?"
+            "wrong number of generic parameters for {trait_def_id:?} on self type {self_ty:?}: {:?} \nDid you accidentally include the self-type in the params list?",
+            rest.collect::<Vec<_>>(),
         );
         let substs = self.mk_substs_trait(self_ty, rest);
         ty::TraitRef::new(trait_def_id, substs)

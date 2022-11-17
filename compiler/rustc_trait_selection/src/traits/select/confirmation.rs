@@ -635,7 +635,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tr = ty::Binder::dummy(self.tcx().mk_trait_ref(
             self.tcx().require_lang_item(LangItem::Sized, None),
             output_ty,
-            &[],
+            [],
         ));
         nested.push(Obligation::new(
             self.infcx.tcx,
@@ -1000,7 +1000,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let tr = ty::Binder::dummy(tcx.mk_trait_ref(
                     tcx.require_lang_item(LangItem::Sized, None),
                     source,
-                    &[],
+                    [],
                 ));
                 nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
 
@@ -1258,7 +1258,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             trait_ref: self.tcx().mk_trait_ref(
                                 self.tcx().require_lang_item(LangItem::Destruct, None),
                                 nested_ty,
-                                &[],
+                                [],
                             ),
                             constness: ty::BoundConstness::ConstIfConst,
                             polarity: ty::ImplPolarity::Positive,
@@ -1283,7 +1283,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         trait_ref: self.tcx().mk_trait_ref(
                             self.tcx().require_lang_item(LangItem::Destruct, None),
                             nested_ty,
-                            &[],
+                            [],
                         ),
                         constness: ty::BoundConstness::ConstIfConst,
                         polarity: ty::ImplPolarity::Positive,

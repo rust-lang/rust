@@ -550,7 +550,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             let trait_ref = tcx.mk_trait_ref(
                 tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
                 place_ty.ty,
-                &[],
+                [],
             );
 
             // To have a `Copy` operand, the type `T` of the
@@ -1277,7 +1277,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let trait_ref = tcx.mk_trait_ref(
                         tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                         place_ty,
-                        &[],
+                        [],
                     );
                     self.prove_trait_ref(
                         trait_ref,
@@ -1870,7 +1870,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             let trait_ref = tcx.mk_trait_ref(
                                 tcx.require_lang_item(LangItem::Copy, Some(span)),
                                 ty,
-                                &[],
+                                [],
                             );
 
                             self.prove_trait_ref(
@@ -1887,7 +1887,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let trait_ref = tcx.mk_trait_ref(
                     tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                     ty,
-                    &[],
+                    [],
                 );
 
                 self.prove_trait_ref(
@@ -1903,7 +1903,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let trait_ref = tcx.mk_trait_ref(
                     tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                     *ty,
-                    &[],
+                    [],
                 );
 
                 self.prove_trait_ref(
@@ -2004,7 +2004,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let trait_ref = tcx.mk_trait_ref(
                             tcx.require_lang_item(LangItem::CoerceUnsized, Some(self.last_span)),
                             op.ty(body, tcx),
-                            &[ty.into()],
+                            [ty.into()],
                         );
 
                         self.prove_trait_ref(

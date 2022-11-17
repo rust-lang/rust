@@ -1263,7 +1263,7 @@ fn replace_types<'tcx>(
                     let item_def_id = projection_predicate.projection_ty.item_def_id;
                     let assoc_item = cx.tcx.associated_item(item_def_id);
                     let projection = cx.tcx
-                        .mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(new_ty, &[]));
+                        .mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(new_ty, []));
 
                     if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
                         && substs[term_param_ty.index as usize] != ty::GenericArg::from(projected_ty)

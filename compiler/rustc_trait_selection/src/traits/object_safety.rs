@@ -688,7 +688,7 @@ fn receiver_is_dispatchable<'tcx>(
         let unsize_predicate = ty::Binder::dummy(tcx.mk_trait_ref(
             unsize_did,
             tcx.types.self_param,
-            &[unsized_self_ty.into()],
+            [unsized_self_ty.into()],
         ))
         .without_const()
         .to_predicate(tcx);
@@ -724,7 +724,7 @@ fn receiver_is_dispatchable<'tcx>(
         let predicate = ty::Binder::dummy(tcx.mk_trait_ref(
             dispatch_from_dyn_did,
             receiver_ty,
-            &[unsized_receiver_ty.into()],
+            [unsized_receiver_ty.into()],
         ))
         .without_const();
 
