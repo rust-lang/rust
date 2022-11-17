@@ -548,7 +548,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     }
 
     fn mark_ambiguous(&mut self) {
-        self.infcx.tcx.sess.delay_span_bug(self.cause.span, "we only generalize opaque types in situations where we already error for them elsewhere in coherence");
+        span_bug!(self.cause.span, "opaque types are handled in `tys`");
     }
 
     fn binders<T>(
@@ -674,6 +674,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 // integer/floating-point types must be equal to be
                 // relatable.
                 Ok(t)
+            }
+            ty::Opaque(def_id, substs) => {
+                let s = self.relate(substs, substs)?;
+                Ok(if s == substs { t } else { self.infcx.tcx.mk_opaque(def_id, s) })
             }
             _ => relate::super_relate_tys(self, t, t),
         }?;
