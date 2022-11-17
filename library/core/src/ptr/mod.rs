@@ -436,22 +436,40 @@ mod mut_ptr;
 ///
 /// # Safety
 ///
-/// Behavior is undefined if any of the following conditions are violated:
+/// Immediately upon executing, `drop_in_place` takes out a mutable borrow on the
+/// pointed-to-value. Effectively, this function is implemented like so:
+///
+/// ```
+/// # struct Foo { x: i32 }
+/// fn drop_in_place(to_drop: *mut Foo) {
+///     let mut value = &mut *to_drop;
+///     // ... drop the fields of `value` ...
+/// }
+/// ```
+///
+/// This implies that the behavior is undefined if any of the following
+/// conditions are violated:
 ///
 /// * `to_drop` must be [valid] for both reads and writes.
 ///
-/// * `to_drop` must be properly aligned.
+/// * `to_drop` must be properly aligned, even if T has size 0.
 ///
-/// * The value `to_drop` points to must be valid for dropping, which may mean it must uphold
-///   additional invariants - this is type-dependent.
+/// * `to_drop` must be nonnull, even if T has size 0.
+///
+/// * The value `to_drop` points to must be valid for dropping, which may mean
+///   it must uphold additional invariants. These invariants depend on the type
+///   of the value being dropped. For instance, when dropping a Box, the box's
+///   pointer to the heap must be valid.
+///
+/// * While `drop_in_place` is executing, the only way to access parts of
+///   `to_drop` is through the `&mut self` references supplied to the
+///   `Drop::drop` methods that `drop_in_place` invokes.
 ///
 /// Additionally, if `T` is not [`Copy`], using the pointed-to value after
 /// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
 /// foo` counts as a use because it will cause the value to be dropped
 /// again. [`write()`] can be used to overwrite data without causing it to be
 /// dropped.
-///
-/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
 ///
 /// [valid]: self#safety
 ///
