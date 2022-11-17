@@ -153,14 +153,12 @@ impl Qualif for NeedsNonConstDrop {
             return false;
         }
 
-        let destruct = cx.tcx.require_lang_item(LangItem::Destruct, None);
-
         let obligation = Obligation::new(
             cx.tcx,
-            ObligationCause::dummy(),
+            ObligationCause::dummy_with_span(cx.body.span),
             cx.param_env,
             ty::Binder::dummy(ty::TraitPredicate {
-                trait_ref: cx.tcx.mk_trait_ref(destruct, ty, []),
+                trait_ref: cx.tcx.at(cx.body.span).mk_trait_ref(LangItem::Destruct, ty, []),
                 constness: ty::BoundConstness::ConstIfConst,
                 polarity: ty::ImplPolarity::Positive,
             }),

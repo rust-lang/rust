@@ -1722,7 +1722,7 @@ fn receiver_is_valid<'tcx>(
     // The first type is `receiver_ty`, which we know its not equal to `self_ty`; skip it.
     autoderef.next();
 
-    let receiver_trait_def_id = tcx.require_lang_item(LangItem::Receiver, None);
+    let receiver_trait_def_id = tcx.require_lang_item(LangItem::Receiver, Some(span));
 
     // Keep dereferencing `receiver_ty` until we get to `self_ty`.
     loop {

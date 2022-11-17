@@ -2990,6 +2990,16 @@ impl<'tcx> TyCtxtAt<'tcx> {
     pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {
         self.tcx.ty_error_with_message(self.span, msg)
     }
+
+    pub fn mk_trait_ref(
+        self,
+        trait_lang_item: LangItem,
+        self_ty: Ty<'tcx>,
+        rest: impl IntoIterator<Item = ty::GenericArg<'tcx>, IntoIter: ExactSizeIterator>,
+    ) -> ty::TraitRef<'tcx> {
+        let trait_def_id = self.require_lang_item(trait_lang_item, Some(self.span));
+        self.tcx.mk_trait_ref(trait_def_id, self_ty, rest)
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead

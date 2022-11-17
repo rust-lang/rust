@@ -60,10 +60,10 @@ impl<'tcx> Bounds<'tcx> {
     {
         // If it could be sized, and is, add the `Sized` predicate.
         let sized_predicate = self.implicitly_sized.and_then(|span| {
-            tcx.lang_items().sized_trait().map(move |sized| {
-                let trait_ref = ty::Binder::dummy(tcx.mk_trait_ref(sized, param_ty, []));
-                (trait_ref.without_const().to_predicate(tcx), span)
-            })
+            // FIXME: use tcx.at(span).mk_trait_ref(LangItem::Sized) here? This may make no-core code harder to write.
+            let sized = tcx.lang_items().sized_trait()?;
+            let trait_ref = ty::Binder::dummy(tcx.mk_trait_ref(sized, param_ty, []));
+            Some((trait_ref.without_const().to_predicate(tcx), span))
         });
 
         let region_preds = self.region_bounds.iter().map(move |&(region_bound, span)| {

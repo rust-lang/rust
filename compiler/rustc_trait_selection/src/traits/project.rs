@@ -1710,8 +1710,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         if selcx.infcx().predicate_must_hold_modulo_regions(
                             &obligation.with(
                                 selcx.tcx(),
-                                ty::Binder::dummy(selcx.tcx().mk_trait_ref(
-                                    selcx.tcx().require_lang_item(LangItem::Sized, None),
+                                ty::Binder::dummy(selcx.tcx().at(obligation.cause.span).mk_trait_ref(
+                                    LangItem::Sized,
                                     self_ty, [],
                                 ))
                                 .without_const(),
@@ -1966,8 +1966,8 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
         )
     });
     if check_is_sized {
-        let sized_predicate = ty::Binder::dummy(tcx.mk_trait_ref(
-            tcx.require_lang_item(LangItem::Sized, None),
+        let sized_predicate = ty::Binder::dummy(tcx.at(obligation.cause.span).mk_trait_ref(
+            LangItem::Sized,
             self_ty,
             [],
         ))
@@ -1976,7 +1976,7 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
     }
 
     let substs = tcx.mk_substs([self_ty.into()].iter());
-    let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
+    let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, Some(obligation.cause.span));
 
     let predicate = ty::ProjectionPredicate {
         projection_ty: ty::ProjectionTy { substs, item_def_id: metadata_def_id },

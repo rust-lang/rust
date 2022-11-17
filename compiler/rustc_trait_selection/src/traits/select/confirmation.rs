@@ -632,8 +632,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             output_ty,
             &mut nested,
         );
-        let tr = ty::Binder::dummy(self.tcx().mk_trait_ref(
-            self.tcx().require_lang_item(LangItem::Sized, None),
+        let tr = ty::Binder::dummy(self.tcx().at(cause.span).mk_trait_ref(
+            LangItem::Sized,
             output_ty,
             [],
         ));
@@ -997,11 +997,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
 
                 // We can only make objects from sized types.
-                let tr = ty::Binder::dummy(tcx.mk_trait_ref(
-                    tcx.require_lang_item(LangItem::Sized, None),
-                    source,
-                    [],
-                ));
+                let tr =
+                    ty::Binder::dummy(tcx.at(cause.span).mk_trait_ref(LangItem::Sized, source, []));
                 nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
 
                 // If the type is `Foo + 'a`, ensure that the type
@@ -1255,8 +1252,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         cause.clone(),
                         obligation.recursion_depth + 1,
                         self_ty.rebind(ty::TraitPredicate {
-                            trait_ref: self.tcx().mk_trait_ref(
-                                self.tcx().require_lang_item(LangItem::Destruct, None),
+                            trait_ref: self.tcx().at(cause.span).mk_trait_ref(
+                                LangItem::Destruct,
                                 nested_ty,
                                 [],
                             ),
@@ -1280,8 +1277,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // or it's an ADT (and we need to check for a custom impl during selection)
                 _ => {
                     let predicate = self_ty.rebind(ty::TraitPredicate {
-                        trait_ref: self.tcx().mk_trait_ref(
-                            self.tcx().require_lang_item(LangItem::Destruct, None),
+                        trait_ref: self.tcx().at(cause.span).mk_trait_ref(
+                            LangItem::Destruct,
                             nested_ty,
                             [],
                         ),
