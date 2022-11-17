@@ -96,8 +96,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             PolyTraitRef::to_poly_trait_predicate,
             PolyTraitRef::to_poly_trait_predicate_negative_polarity,
         ] {
-            let result =
-                selcx.select(&Obligation::new(ObligationCause::dummy(), orig_env, f(&trait_pred)));
+            let result = selcx.select(&Obligation::new(
+                tcx,
+                ObligationCause::dummy(),
+                orig_env,
+                f(&trait_pred),
+            ));
             if let Ok(Some(ImplSource::UserDefined(_))) = result {
                 debug!(
                     "find_auto_trait_generics({:?}): \
@@ -280,8 +284,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             // Call `infcx.resolve_vars_if_possible` to see if we can
             // get rid of any inference variables.
-            let obligation =
-                infcx.resolve_vars_if_possible(Obligation::new(dummy_cause.clone(), new_env, pred));
+            let obligation = infcx.resolve_vars_if_possible(Obligation::new(
+                tcx,
+                dummy_cause.clone(),
+                new_env,
+                pred,
+            ));
             let result = select.select(&obligation);
 
             match result {
@@ -706,7 +714,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // and turn them into an explicit negative impl for our type.
                     debug!("Projecting and unifying projection predicate {:?}", predicate);
 
-                    match project::poly_project_and_unify_type(select, &obligation.with(p)) {
+                    match project::poly_project_and_unify_type(
+                        select,
+                        &obligation.with(self.tcx, p),
+                    ) {
                         ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                             debug!(
                                 "evaluate_nested_obligations: Unable to unify predicate \

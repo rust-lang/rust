@@ -2150,6 +2150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ),
                         );
                         let obligation = traits::Obligation::new(
+                            self.tcx,
                             traits::ObligationCause::dummy(),
                             self.param_env,
                             ty::Binder::dummy(ty::TraitPredicate {

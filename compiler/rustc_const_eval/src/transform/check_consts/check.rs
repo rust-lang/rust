@@ -732,7 +732,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         polarity: ty::ImplPolarity::Positive,
                     });
                     let obligation =
-                        Obligation::new(ObligationCause::dummy(), param_env, poly_trait_pred);
+                        Obligation::new(tcx, ObligationCause::dummy(), param_env, poly_trait_pred);
 
                     let implsrc = {
                         let infcx = tcx.infer_ctxt().build();
@@ -816,6 +816,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                             if !nonconst_call_permission {
                                 let obligation = Obligation::new(
+                                    tcx,
                                     ObligationCause::dummy_with_span(*fn_span),
                                     param_env,
                                     tcx.mk_predicate(

@@ -723,10 +723,9 @@ fn receiver_is_dispatchable<'tcx>(
             def_id: dispatch_from_dyn_did,
             substs: tcx.mk_substs_trait(receiver_ty, &[unsized_receiver_ty.into()]),
         })
-        .without_const()
-        .to_predicate(tcx);
+        .without_const();
 
-        Obligation::new(ObligationCause::dummy(), param_env, predicate)
+        Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
     };
 
     let infcx = tcx.infer_ctxt().build();
