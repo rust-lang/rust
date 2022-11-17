@@ -7,12 +7,12 @@ use core::marker::PhantomData;
 
 fn main() {
     test::<MaskedStorage<GenericComp<Pos>>>(make());
-    //~^ ERROR evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), [])) = Ok(EvaluatedToOk)
-    //~| ERROR evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), [])) = Ok(EvaluatedToOk)
+    //~^ ERROR evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), [])) = EvaluatedToOk
+    //~| ERROR evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), [])) = EvaluatedToOk
 
     test::<MaskedStorage<GenericComp2<Pos>>>(make());
-    //~^ ERROR evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), [])) = Ok(EvaluatedToOkModuloRegions)
-    //~| ERROR evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), [])) = Ok(EvaluatedToOkModuloRegions)
+    //~^ ERROR evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), [])) = EvaluatedToOkModuloRegions
+    //~| ERROR evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), [])) = EvaluatedToOkModuloRegions
 }
 
 #[rustc_evaluate_where_clauses]
