@@ -2516,7 +2516,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(Tuple(self.intern_type_list(&ts)))
     }
 
-    pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I) -> I::Output {
+    pub fn mk_tup<I: InternAs<Ty<'tcx>, Ty<'tcx>>>(self, iter: I) -> I::Output {
         iter.intern_with(|ts| self.mk_ty(Tuple(self.intern_type_list(&ts))))
     }
 
@@ -2776,7 +2776,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_poly_existential_predicates<
-        I: InternAs<[PolyExistentialPredicate<'tcx>], &'tcx List<PolyExistentialPredicate<'tcx>>>,
+        I: InternAs<PolyExistentialPredicate<'tcx>, &'tcx List<PolyExistentialPredicate<'tcx>>>,
     >(
         self,
         iter: I,
@@ -2784,25 +2784,25 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_poly_existential_predicates(xs))
     }
 
-    pub fn mk_predicates<I: InternAs<[Predicate<'tcx>], &'tcx List<Predicate<'tcx>>>>(
+    pub fn mk_predicates<I: InternAs<Predicate<'tcx>, &'tcx List<Predicate<'tcx>>>>(
         self,
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_predicates(xs))
     }
 
-    pub fn mk_type_list<I: InternAs<[Ty<'tcx>], &'tcx List<Ty<'tcx>>>>(self, iter: I) -> I::Output {
+    pub fn mk_type_list<I: InternAs<Ty<'tcx>, &'tcx List<Ty<'tcx>>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_type_list(xs))
     }
 
-    pub fn mk_substs<I: InternAs<[GenericArg<'tcx>], &'tcx List<GenericArg<'tcx>>>>(
+    pub fn mk_substs<I: InternAs<GenericArg<'tcx>, &'tcx List<GenericArg<'tcx>>>>(
         self,
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_substs(xs))
     }
 
-    pub fn mk_place_elems<I: InternAs<[PlaceElem<'tcx>], &'tcx List<PlaceElem<'tcx>>>>(
+    pub fn mk_place_elems<I: InternAs<PlaceElem<'tcx>, &'tcx List<PlaceElem<'tcx>>>>(
         self,
         iter: I,
     ) -> I::Output {
@@ -2835,7 +2835,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_bound_variable_kinds<
-        I: InternAs<[ty::BoundVariableKind], &'tcx List<ty::BoundVariableKind>>,
+        I: InternAs<ty::BoundVariableKind, &'tcx List<ty::BoundVariableKind>>,
     >(
         self,
         iter: I,
