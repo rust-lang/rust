@@ -51,7 +51,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
             } else if tcx.lazy_normalization() {
-                if let Some(param_id) = tcx.hir().opt_const_param_default_param_hir_id(hir_id) {
+                if let Some(param_id) = tcx.hir().opt_const_param_default_param_def_id(hir_id) {
                     // If the def_id we are calling generics_of on is an anon ct default i.e:
                     //
                     // struct Foo<const N: usize = { .. }>;
@@ -77,8 +77,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                     // This has some implications for how we get the predicates available to the anon const
                     // see `explicit_predicates_of` for more information on this
                     let generics = tcx.generics_of(parent_def_id.to_def_id());
-                    let param_def = tcx.hir().local_def_id(param_id).to_def_id();
-                    let param_def_idx = generics.param_def_id_to_index[&param_def];
+                    let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
                     let params = generics.params[..param_def_idx as usize].to_owned();
                     let param_def_id_to_index =
@@ -241,7 +240,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
         name: param.name.ident().name,
         index: own_start + i as u32,
-        def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
+        def_id: param.def_id.to_def_id(),
         pure_wrt_drop: param.pure_wrt_drop,
         kind: ty::GenericParamDefKind::Lifetime,
     }));
@@ -286,7 +285,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             Some(ty::GenericParamDef {
                 index: next_index(),
                 name: param.name.ident().name,
-                def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
+                def_id: param.def_id.to_def_id(),
                 pure_wrt_drop: param.pure_wrt_drop,
                 kind,
             })
@@ -303,7 +302,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             Some(ty::GenericParamDef {
                 index: next_index(),
                 name: param.name.ident().name,
-                def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
+                def_id: param.def_id.to_def_id(),
                 pure_wrt_drop: param.pure_wrt_drop,
                 kind: ty::GenericParamDefKind::Const { has_default: default.is_some() },
             })

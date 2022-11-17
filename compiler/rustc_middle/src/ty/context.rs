@@ -41,7 +41,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::intravisit::Visitor;
@@ -443,7 +443,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Stores the canonicalized types provided by the user. See also
     /// `AscribeUserType` statement in MIR.
-    pub user_provided_sigs: DefIdMap<CanonicalPolyFnSig<'tcx>>,
+    pub user_provided_sigs: LocalDefIdMap<CanonicalPolyFnSig<'tcx>>,
 
     adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 

@@ -10,7 +10,7 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, List, Ty, TyCtxt};
+use crate::ty::{self, DefIdTree, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
@@ -2523,12 +2523,10 @@ impl<'tcx> ConstantKind<'tcx> {
             ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
                 // Find the name and index of the const parameter by indexing the generics of
                 // the parent item and construct a `ParamConst`.
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                let item_id = tcx.hir().get_parent_node(hir_id);
-                let item_def_id = tcx.hir().local_def_id(item_id);
-                let generics = tcx.generics_of(item_def_id.to_def_id());
+                let item_def_id = tcx.parent(def_id);
+                let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                let name = tcx.hir().name(hir_id);
+                let name = tcx.item_name(def_id);
                 let ty_const =
                     tcx.mk_const(ty::ConstKind::Param(ty::ParamConst::new(index, name)), ty);
                 debug!(?ty_const);

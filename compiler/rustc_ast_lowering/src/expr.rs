@@ -643,6 +643,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `static |_task_context| -> <ret_ty> { body }`:
         let generator_kind = {
             let c = self.arena.alloc(hir::Closure {
+                def_id: self.local_def_id(closure_node_id),
                 binder: hir::ClosureBinder::Default,
                 capture_clause,
                 bound_generic_params: &[],
@@ -895,6 +896,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let fn_decl = self.lower_fn_decl(decl, None, fn_decl_span, FnDeclKind::Closure, None);
 
         let c = self.arena.alloc(hir::Closure {
+            def_id: self.local_def_id(closure_id),
             binder: binder_clause,
             capture_clause,
             bound_generic_params,
@@ -999,6 +1001,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_fn_decl(&outer_decl, None, fn_decl_span, FnDeclKind::Closure, None);
 
         let c = self.arena.alloc(hir::Closure {
+            def_id: self.local_def_id(closure_id),
             binder: binder_clause,
             capture_clause,
             bound_generic_params,

@@ -358,9 +358,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                 const_stab_inherit = InheritConstStability::Yes;
             }
             hir::ItemKind::Struct(ref sd, _) => {
-                if let Some(ctor_hir_id) = sd.ctor_hir_id() {
+                if let Some(ctor_def_id) = sd.ctor_def_id() {
                     self.annotate(
-                        self.tcx.hir().local_def_id(ctor_hir_id),
+                        ctor_def_id,
                         i.span,
                         None,
                         AnnotationKind::Required,
@@ -435,7 +435,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>) {
         self.annotate(
-            self.tcx.hir().local_def_id(var.id),
+            var.def_id,
             var.span,
             None,
             AnnotationKind::Required,
@@ -443,9 +443,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             InheritConstStability::No,
             InheritStability::Yes,
             |v| {
-                if let Some(ctor_hir_id) = var.data.ctor_hir_id() {
+                if let Some(ctor_def_id) = var.data.ctor_def_id() {
                     v.annotate(
-                        v.tcx.hir().local_def_id(ctor_hir_id),
+                        ctor_def_id,
                         var.span,
                         None,
                         AnnotationKind::Required,
@@ -463,7 +463,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
     fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
         self.annotate(
-            self.tcx.hir().local_def_id(s.hir_id),
+            s.def_id,
             s.span,
             None,
             AnnotationKind::Required,
@@ -500,7 +500,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         };
 
         self.annotate(
-            self.tcx.hir().local_def_id(p.hir_id),
+            p.def_id,
             p.span,
             None,
             kind,
@@ -601,15 +601,15 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>) {
-        self.check_missing_stability(self.tcx.hir().local_def_id(var.id), var.span);
-        if let Some(ctor_hir_id) = var.data.ctor_hir_id() {
-            self.check_missing_stability(self.tcx.hir().local_def_id(ctor_hir_id), var.span);
+        self.check_missing_stability(var.def_id, var.span);
+        if let Some(ctor_def_id) = var.data.ctor_def_id() {
+            self.check_missing_stability(ctor_def_id, var.span);
         }
         intravisit::walk_variant(self, var);
     }
 
     fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
-        self.check_missing_stability(self.tcx.hir().local_def_id(s.hir_id), s.span);
+        self.check_missing_stability(s.def_id, s.span);
         intravisit::walk_field_def(self, s);
     }
 

@@ -432,7 +432,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         ty::Const::from_opt_const_arg_anon_const(
                             tcx,
                             ty::WithOptConstParam {
-                                did: tcx.hir().local_def_id(ct.value.hir_id),
+                                did: ct.value.def_id,
                                 const_param_did: Some(param.def_id),
                             },
                         )
@@ -570,8 +570,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty).into())
                         }
                         hir::Term::Const(ref c) => {
-                            let local_did = self.tcx().hir().local_def_id(c.hir_id);
-                            let c = Const::from_anon_const(self.tcx(), local_did);
+                            let c = Const::from_anon_const(self.tcx(), c.def_id);
                             ConvertedBindingKind::Equality(c.into())
                         }
                     },
@@ -856,7 +855,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         bounds: &mut Bounds<'hir>,
         ast_bounds: &'hir [hir::GenericBound<'hir>],
-        self_ty_where_predicates: Option<(hir::HirId, &'hir [hir::WherePredicate<'hir>])>,
+        self_ty_where_predicates: Option<(LocalDefId, &'hir [hir::WherePredicate<'hir>])>,
         span: Span,
     ) {
         let tcx = self.tcx();
@@ -876,10 +875,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
         search_bounds(ast_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
-            let self_ty_def_id = tcx.hir().local_def_id(self_ty).to_def_id();
             for clause in where_clause {
                 if let hir::WherePredicate::BoundPredicate(pred) = clause {
-                    if pred.is_param_bound(self_ty_def_id) {
+                    if pred.is_param_bound(self_ty.to_def_id()) {
                         search_bounds(pred.bounds);
                     }
                 }
@@ -2722,8 +2720,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let length = match length {
                     &hir::ArrayLen::Infer(_, span) => self.ct_infer(tcx.types.usize, None, span),
                     hir::ArrayLen::Body(constant) => {
-                        let length_def_id = tcx.hir().local_def_id(constant.hir_id);
-                        ty::Const::from_anon_const(tcx, length_def_id)
+                        ty::Const::from_anon_const(tcx, constant.def_id)
                     }
                 };
 
@@ -2731,7 +2728,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.normalize_ty(ast_ty.span, array_ty)
             }
             hir::TyKind::Typeof(ref e) => {
-                let ty_erased = tcx.type_of(tcx.hir().local_def_id(e.hir_id));
+                let ty_erased = tcx.type_of(e.def_id);
                 let ty = tcx.fold_regions(ty_erased, |r, _| {
                     if r.is_erased() { tcx.lifetimes.re_static } else { r }
                 });

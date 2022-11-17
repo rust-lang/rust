@@ -219,18 +219,6 @@ impl CheckAttrVisitor<'_> {
             return;
         }
 
-        // FIXME(@lcnr): this doesn't belong here.
-        if matches!(
-            target,
-            Target::Closure
-                | Target::Fn
-                | Target::Method(_)
-                | Target::ForeignFn
-                | Target::ForeignStatic
-        ) {
-            self.tcx.ensure().codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
-        }
-
         self.check_repr(attrs, span, target, item, hir_id);
         self.check_used(attrs, target);
     }
@@ -423,8 +411,7 @@ impl CheckAttrVisitor<'_> {
         if let Some(generics) = tcx.hir().get_generics(tcx.hir().local_def_id(hir_id)) {
             for p in generics.params {
                 let hir::GenericParamKind::Type { .. } = p.kind else { continue };
-                let param_id = tcx.hir().local_def_id(p.hir_id);
-                let default = tcx.object_lifetime_default(param_id);
+                let default = tcx.object_lifetime_default(p.def_id);
                 let repr = match default {
                     ObjectLifetimeDefault::Empty => "BaseDefault".to_owned(),
                     ObjectLifetimeDefault::Static => "'static".to_owned(),
@@ -2150,7 +2137,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_variant(&mut self, variant: &'tcx hir::Variant<'tcx>) {
-        self.check_attributes(variant.id, variant.span, Target::Variant, None);
+        self.check_attributes(variant.hir_id, variant.span, Target::Variant, None);
         intravisit::walk_variant(self, variant)
     }
 

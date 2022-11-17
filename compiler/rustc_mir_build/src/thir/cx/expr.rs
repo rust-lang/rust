@@ -608,24 +608,22 @@ impl<'tcx> Cx<'tcx> {
                             out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
                         },
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
                             let value = mir::ConstantKind::from_anon_const(
                                 tcx,
-                                anon_const_def_id,
+                                anon_const.def_id,
                                 self.param_env,
                             );
-                            let span = tcx.hir().span(anon_const.hir_id);
+                            let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
                             let value = mir::ConstantKind::from_anon_const(
                                 tcx,
-                                anon_const_def_id,
+                                anon_const.def_id,
                                 self.param_env,
                             );
-                            let span = tcx.hir().span(anon_const.hir_id);
+                            let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::SymFn { value, span }
                         }
@@ -640,7 +638,7 @@ impl<'tcx> Cx<'tcx> {
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let ty = self.typeck_results().node_type(anon_const.hir_id);
-                let did = tcx.hir().local_def_id(anon_const.hir_id).to_def_id();
+                let did = anon_const.def_id.to_def_id();
                 let typeck_root_def_id = tcx.typeck_root_def_id(did);
                 let parent_substs =
                     tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
@@ -859,9 +857,7 @@ impl<'tcx> Cx<'tcx> {
 
             Res::Def(DefKind::ConstParam, def_id) => {
                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                let item_id = self.tcx.hir().get_parent_node(hir_id);
-                let item_def_id = self.tcx.hir().local_def_id(item_id);
-                let generics = self.tcx.generics_of(item_def_id);
+                let generics = self.tcx.generics_of(hir_id.owner);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = self.tcx.hir().name(hir_id);
                 let param = ty::ParamConst::new(index, name);

@@ -251,7 +251,7 @@ fn typeck_with_fallback<'tcx>(
                 param_env,
                 fn_sig,
             );
-            check_fn(&inh, param_env, fn_sig, decl, id, body, None).0
+            check_fn(&inh, param_env, fn_sig, decl, def_id, body, None).0
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
             let expected_type = body_ty

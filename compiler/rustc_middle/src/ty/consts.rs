@@ -1,6 +1,6 @@
 use crate::mir::interpret::LitToConstInput;
 use crate::mir::ConstantKind;
-use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::{self, DefIdTree, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -131,12 +131,10 @@ impl<'tcx> Const<'tcx> {
             ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
                 // Find the name and index of the const parameter by indexing the generics of
                 // the parent item and construct a `ParamConst`.
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                let item_id = tcx.hir().get_parent_node(hir_id);
-                let item_def_id = tcx.hir().local_def_id(item_id);
-                let generics = tcx.generics_of(item_def_id.to_def_id());
+                let item_def_id = tcx.parent(def_id);
+                let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                let name = tcx.hir().name(hir_id);
+                let name = tcx.item_name(def_id);
                 Some(tcx.mk_const(ty::ConstKind::Param(ty::ParamConst::new(index, name)), ty))
             }
             _ => None,
@@ -268,9 +266,9 @@ impl<'tcx> Const<'tcx> {
 pub fn const_param_default<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Const<'tcx> {
     let default_def_id = match tcx.hir().get_by_def_id(def_id.expect_local()) {
         hir::Node::GenericParam(hir::GenericParam {
-            kind: hir::GenericParamKind::Const { ty: _, default: Some(ac) },
+            kind: hir::GenericParamKind::Const { default: Some(ac), .. },
             ..
-        }) => tcx.hir().local_def_id(ac.hir_id),
+        }) => ac.def_id,
         _ => span_bug!(
             tcx.def_span(def_id),
             "`const_param_default` expected a generic parameter with a constant"

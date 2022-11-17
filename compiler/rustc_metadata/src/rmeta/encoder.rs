@@ -1558,9 +1558,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Encode def_ids for each field and method
                 // for methods, write all the stuff get_trait_method
                 // needs to know
-                let ctor = struct_def
-                    .ctor_hir_id()
-                    .map(|ctor_hir_id| self.tcx.hir().local_def_id(ctor_hir_id).local_def_index);
+                let ctor = struct_def.ctor_def_id().map(|ctor_def_id| ctor_def_id.local_def_index);
 
                 let variant = adt_def.non_enum_variant();
                 record!(self.tables.variant_data[def_id] <- VariantData {
@@ -1685,8 +1683,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let def = self.tcx.adt_def(item.owner_id.to_def_id());
                 // If the struct has a constructor, encode it.
-                if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
-                    let ctor_def_id = self.tcx.hir().local_def_id(ctor_hir_id);
+                if let Some(ctor_def_id) = struct_def.ctor_def_id() {
                     self.encode_struct_ctor(def, ctor_def_id.to_def_id());
                 }
             }
@@ -1708,12 +1705,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_info_for_closure(&mut self, hir_id: hir::HirId) {
-        let def_id = self.tcx.hir().local_def_id(hir_id);
-        debug!("EncodeContext::encode_info_for_closure({:?})", def_id);
+    #[instrument(level = "debug", skip(self))]
+    fn encode_info_for_closure(&mut self, def_id: LocalDefId) {
         // NOTE(eddyb) `tcx.type_of(def_id)` isn't used because it's fully generic,
         // including on the signature, which is inferred in `typeck.
         let typeck_result: &'tcx ty::TypeckResults<'tcx> = self.tcx.typeck(def_id);
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let ty = typeck_result.node_type(hir_id);
         match ty.kind() {
             ty::Generator(..) => {
@@ -2101,11 +2098,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EncodeContext<'a, 'tcx> {
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_generics(&mut self, generics: &hir::Generics<'tcx>) {
         for param in generics.params {
-            let def_id = self.tcx.hir().local_def_id(param.hir_id);
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. } => {}
                 hir::GenericParamKind::Const { ref default, .. } => {
-                    let def_id = def_id.to_def_id();
+                    let def_id = param.def_id.to_def_id();
                     if default.is_some() {
                         record!(self.tables.const_param_default[def_id] <- self.tcx.const_param_default(def_id))
                     }
@@ -2115,8 +2111,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_expr(&mut self, expr: &hir::Expr<'_>) {
-        if let hir::ExprKind::Closure { .. } = expr.kind {
-            self.encode_info_for_closure(expr.hir_id);
+        if let hir::ExprKind::Closure(closure) = expr.kind {
+            self.encode_info_for_closure(closure.def_id);
         }
     }
 }

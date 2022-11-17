@@ -2125,7 +2125,7 @@ fn clean_maybe_renamed_item<'tcx>(
 
 fn clean_variant<'tcx>(variant: &hir::Variant<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let kind = VariantItem(clean_variant_data(&variant.data, &variant.disr_expr, cx));
-    Item::from_hir_id_and_parts(variant.id, Some(variant.ident.name), kind, cx)
+    Item::from_hir_id_and_parts(variant.hir_id, Some(variant.ident.name), kind, cx)
 }
 
 fn clean_impl<'tcx>(

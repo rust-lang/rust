@@ -219,7 +219,7 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::Enum(def, ..) = &item.kind {
                 for variant in def.variants {
-                    collector.check_for_lang(Target::Variant, variant.id);
+                    collector.check_for_lang(Target::Variant, variant.hir_id);
                 }
             }
         }

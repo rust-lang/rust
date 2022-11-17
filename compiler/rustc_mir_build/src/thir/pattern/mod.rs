@@ -565,8 +565,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
     ) -> PatKind<'tcx> {
-        let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
-        let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const_def_id);
+        let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const.def_id);
 
         // Evaluate early like we do in `lower_path`.
         let value = value.eval(self.tcx, self.param_env);

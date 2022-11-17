@@ -514,7 +514,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (&def_id, c_sig) in fcx_typeck_results.user_provided_sigs.iter() {
             if cfg!(debug_assertions) && c_sig.needs_infer() {
                 span_bug!(
-                    self.fcx.tcx.hir().span_if_local(def_id).unwrap(),
+                    self.fcx.tcx.def_span(def_id),
                     "writeback: `{:?}` has inference variables",
                     c_sig
                 );

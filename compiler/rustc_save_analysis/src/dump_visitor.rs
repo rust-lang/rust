@@ -527,9 +527,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                     let value = format!("{}::{} {{ {} }}", enum_data.name, name, fields_str);
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_hir_id(variant.id, &self.save_ctxt);
+                        let id = id_from_hir_id(variant.hir_id, &self.save_ctxt);
                         let parent = Some(id_from_def_id(item.owner_id.to_def_id()));
-                        let attrs = self.tcx.hir().attrs(variant.id);
+                        let attrs = self.tcx.hir().attrs(variant.hir_id);
 
                         self.dumper.dump_def(
                             &access,
@@ -552,7 +552,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 }
                 ref v => {
                     let mut value = format!("{}::{}", enum_data.name, name);
-                    if let hir::VariantData::Tuple(fields, _) = v {
+                    if let hir::VariantData::Tuple(fields, _, _) = v {
                         value.push('(');
                         value.push_str(
                             &fields
@@ -565,9 +565,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                     }
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_hir_id(variant.id, &self.save_ctxt);
+                        let id = id_from_hir_id(variant.hir_id, &self.save_ctxt);
                         let parent = Some(id_from_def_id(item.owner_id.to_def_id()));
-                        let attrs = self.tcx.hir().attrs(variant.id);
+                        let attrs = self.tcx.hir().attrs(variant.hir_id);
 
                         self.dumper.dump_def(
                             &access,
@@ -591,7 +591,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             }
 
             for field in variant.data.fields() {
-                self.process_struct_field_def(field, variant.id);
+                self.process_struct_field_def(field, variant.hir_id);
                 self.visit_ty(field.ty);
             }
         }

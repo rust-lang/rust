@@ -1086,10 +1086,10 @@ impl<'hir> Map<'hir> {
 
     /// Returns the HirId of `N` in `struct Foo<const N: usize = { ... }>` when
     /// called with the HirId for the `{ ... }` anon const
-    pub fn opt_const_param_default_param_hir_id(self, anon_const: HirId) -> Option<HirId> {
+    pub fn opt_const_param_default_param_def_id(self, anon_const: HirId) -> Option<LocalDefId> {
         match self.get(self.get_parent_node(anon_const)) {
             Node::GenericParam(GenericParam {
-                hir_id: param_id,
+                def_id: param_id,
                 kind: GenericParamKind::Const { .. },
                 ..
             }) => Some(*param_id),
@@ -1198,20 +1198,7 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
 fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
     let id_str = format!(" (hir_id={})", id);
 
-    let path_str = || {
-        // This functionality is used for debugging, try to use `TyCtxt` to get
-        // the user-friendly path, otherwise fall back to stringifying `DefPath`.
-        crate::ty::tls::with_opt(|tcx| {
-            if let Some(tcx) = tcx {
-                let def_id = map.local_def_id(id);
-                tcx.def_path_str(def_id.to_def_id())
-            } else if let Some(path) = map.def_path_from_hir_id(id) {
-                path.data.into_iter().map(|elem| elem.to_string()).collect::<Vec<_>>().join("::")
-            } else {
-                String::from("<missing path>")
-            }
-        })
-    };
+    let path_str = |def_id: LocalDefId| map.tcx.def_path_str(def_id.to_def_id());
 
     let span_str = || map.tcx.sess.source_map().span_to_snippet(map.span(id)).unwrap_or_default();
     let node_str = |prefix| format!("{} {}{}", prefix, span_str(), id_str);
@@ -1243,18 +1230,19 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ItemKind::TraitAlias(..) => "trait alias",
                 ItemKind::Impl { .. } => "impl",
             };
-            format!("{} {}{}", item_str, path_str(), id_str)
+            format!("{} {}{}", item_str, path_str(item.owner_id.def_id), id_str)
         }
-        Some(Node::ForeignItem(_)) => format!("foreign item {}{}", path_str(), id_str),
-        Some(Node::ImplItem(ii)) => match ii.kind {
-            ImplItemKind::Const(..) => {
-                format!("assoc const {} in {}{}", ii.ident, path_str(), id_str)
-            }
-            ImplItemKind::Fn(..) => format!("method {} in {}{}", ii.ident, path_str(), id_str),
-            ImplItemKind::Type(_) => {
-                format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
-            }
-        },
+        Some(Node::ForeignItem(item)) => {
+            format!("foreign item {}{}", path_str(item.owner_id.def_id), id_str)
+        }
+        Some(Node::ImplItem(ii)) => {
+            let kind = match ii.kind {
+                ImplItemKind::Const(..) => "assoc const",
+                ImplItemKind::Fn(..) => "method",
+                ImplItemKind::Type(_) => "assoc type",
+            };
+            format!("{} {} in {}{}", kind, ii.ident, path_str(ii.owner_id.def_id), id_str)
+        }
         Some(Node::TraitItem(ti)) => {
             let kind = match ti.kind {
                 TraitItemKind::Const(..) => "assoc constant",
@@ -1262,13 +1250,13 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 TraitItemKind::Type(..) => "assoc type",
             };
 
-            format!("{} {} in {}{}", kind, ti.ident, path_str(), id_str)
+            format!("{} {} in {}{}", kind, ti.ident, path_str(ti.owner_id.def_id), id_str)
         }
         Some(Node::Variant(ref variant)) => {
-            format!("variant {} in {}{}", variant.ident, path_str(), id_str)
+            format!("variant {} in {}{}", variant.ident, path_str(variant.def_id), id_str)
         }
         Some(Node::Field(ref field)) => {
-            format!("field {} in {}{}", field.ident, path_str(), id_str)
+            format!("field {} in {}{}", field.ident, path_str(field.def_id), id_str)
         }
         Some(Node::AnonConst(_)) => node_str("const"),
         Some(Node::Expr(_)) => node_str("expr"),
@@ -1285,9 +1273,15 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Some(Node::Block(_)) => node_str("block"),
         Some(Node::Infer(_)) => node_str("infer"),
         Some(Node::Local(_)) => node_str("local"),
-        Some(Node::Ctor(..)) => format!("ctor {}{}", path_str(), id_str),
+        Some(Node::Ctor(ctor)) => format!(
+            "ctor {}{}",
+            ctor.ctor_def_id().map_or("<missing path>".into(), |def_id| path_str(def_id)),
+            id_str
+        ),
         Some(Node::Lifetime(_)) => node_str("lifetime"),
-        Some(Node::GenericParam(ref param)) => format!("generic_param {:?}{}", param, id_str),
+        Some(Node::GenericParam(ref param)) => {
+            format!("generic_param {}{}", path_str(param.def_id), id_str)
+        }
         Some(Node::Crate(..)) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
     }
@@ -1407,13 +1401,13 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     }
 
     fn visit_anon_const(&mut self, c: &'hir AnonConst) {
-        self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
+        self.body_owners.push(c.def_id);
         intravisit::walk_anon_const(self, c)
     }
 
     fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
-        if matches!(ex.kind, ExprKind::Closure { .. }) {
-            self.body_owners.push(self.tcx.hir().local_def_id(ex.hir_id));
+        if let ExprKind::Closure(closure) = ex.kind {
+            self.body_owners.push(closure.def_id);
         }
         intravisit::walk_expr(self, ex)
     }

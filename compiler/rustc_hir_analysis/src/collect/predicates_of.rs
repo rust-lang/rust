@@ -199,7 +199,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     &icx,
                     &mut bounds,
                     &[],
-                    Some((param.hir_id, ast_generics.predicates)),
+                    Some((param.def_id, ast_generics.predicates)),
                     param.span,
                 );
                 trace!(?bounds);
@@ -316,10 +316,9 @@ fn const_evaluatable_predicates_of<'tcx>(
 
     impl<'tcx> intravisit::Visitor<'tcx> for ConstCollector<'tcx> {
         fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
-            let def_id = self.tcx.hir().local_def_id(c.hir_id);
-            let ct = ty::Const::from_anon_const(self.tcx, def_id);
+            let ct = ty::Const::from_anon_const(self.tcx, c.def_id);
             if let ty::ConstKind::Unevaluated(_) = ct.kind() {
-                let span = self.tcx.hir().span(c.hir_id);
+                let span = self.tcx.def_span(c.def_id);
                 self.preds.insert((
                     ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct))
                         .to_predicate(self.tcx),
@@ -429,7 +428,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
             let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
             let parent_def_id = tcx.hir().get_parent_item(hir_id);
 
-            if tcx.hir().opt_const_param_default_param_hir_id(hir_id).is_some() {
+            if tcx.hir().opt_const_param_default_param_def_id(hir_id).is_some() {
                 // In `generics_of` we set the generics' parent to be our parent's parent which means that
                 // we lose out on the predicates of our actual parent if we dont return those predicates here.
                 // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
@@ -531,7 +530,7 @@ pub(super) fn super_predicates_that_define_assoc_type(
         let is_trait_alias = tcx.is_trait_alias(trait_def_id);
         let superbounds2 = icx.type_parameter_bounds_in_generics(
             generics,
-            item.hir_id(),
+            item.owner_id.def_id,
             self_param_ty,
             OnlySelfBounds(!is_trait_alias),
             assoc_name,
@@ -641,7 +640,7 @@ pub(super) fn type_param_predicates(
     let extra_predicates = extend.into_iter().chain(
         icx.type_parameter_bounds_in_generics(
             ast_generics,
-            param_id,
+            def_id,
             ty,
             OnlySelfBounds(true),
             Some(assoc_name),
@@ -666,13 +665,11 @@ impl<'tcx> ItemCtxt<'tcx> {
     fn type_parameter_bounds_in_generics(
         &self,
         ast_generics: &'tcx hir::Generics<'tcx>,
-        param_id: hir::HirId,
+        param_def_id: LocalDefId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
         assoc_name: Option<Ident>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
-        let param_def_id = self.tcx.hir().local_def_id(param_id).to_def_id();
-        trace!(?param_def_id);
         ast_generics
             .predicates
             .iter()
@@ -681,7 +678,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                 _ => None,
             })
             .flat_map(|bp| {
-                let bt = if bp.is_param_bound(param_def_id) {
+                let bt = if bp.is_param_bound(param_def_id.to_def_id()) {
                     Some(ty)
                 } else if !only_self_bounds.0 {
                     Some(self.to_ty(bp.bounded_ty))

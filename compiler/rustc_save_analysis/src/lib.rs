@@ -319,7 +319,7 @@ impl<'tcx> SaveContext<'tcx> {
                     qualname,
                     value,
                     parent: None,
-                    children: def.variants.iter().map(|v| id_from_hir_id(v.id, self)).collect(),
+                    children: def.variants.iter().map(|v| id_from_hir_id(v.hir_id, self)).collect(),
                     decl_id: None,
                     docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),

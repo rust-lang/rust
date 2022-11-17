@@ -186,9 +186,8 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
         // If it's a struct, we also have to check the fields' types
         match it.kind {
             hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
-                for struct_field in struct_def.fields() {
-                    let def_id = cx.tcx.hir().local_def_id(struct_field.hir_id);
-                    self.check_heap_type(cx, struct_field.span, cx.tcx.type_of(def_id));
+                for field in struct_def.fields() {
+                    self.check_heap_type(cx, field.span, cx.tcx.type_of(field.def_id));
                 }
             }
             _ => (),
@@ -674,13 +673,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, sf: &hir::FieldDef<'_>) {
         if !sf.is_positional() {
-            let def_id = cx.tcx.hir().local_def_id(sf.hir_id);
-            self.check_missing_docs_attrs(cx, def_id, "a", "struct field")
+            self.check_missing_docs_attrs(cx, sf.def_id, "a", "struct field")
         }
     }
 
     fn check_variant(&mut self, cx: &LateContext<'_>, v: &hir::Variant<'_>) {
-        self.check_missing_docs_attrs(cx, cx.tcx.hir().local_def_id(v.id), "a", "variant");
+        self.check_missing_docs_attrs(cx, v.def_id, "a", "variant");
     }
 }
 
@@ -1425,11 +1423,10 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         let map = cx.tcx.hir();
-        let def_id = map.local_def_id(field.hir_id);
         if matches!(map.get(map.get_parent_node(field.hir_id)), Node::Variant(_)) {
             return;
         }
-        self.perform_lint(cx, "field", def_id, field.vis_span, false);
+        self.perform_lint(cx, "field", field.def_id, field.vis_span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {

@@ -320,7 +320,7 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     }
 
     fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
-        self.add_id(v.id);
+        self.add_id(v.hir_id);
         intravisit::walk_variant(self, v);
     }
 
@@ -392,7 +392,7 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'
     }
 
     fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
-        self.add_id(v.id);
+        self.add_id(v.hir_id);
         intravisit::walk_variant(self, v);
     }
 

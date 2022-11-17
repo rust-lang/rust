@@ -488,9 +488,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match length {
             &hir::ArrayLen::Infer(_, span) => self.ct_infer(self.tcx.types.usize, None, span),
             hir::ArrayLen::Body(anon_const) => {
-                let const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
-                let span = self.tcx.hir().span(anon_const.hir_id);
-                let c = ty::Const::from_anon_const(self.tcx, const_def_id);
+                let span = self.tcx.def_span(anon_const.def_id);
+                let c = ty::Const::from_anon_const(self.tcx, anon_const.def_id);
                 self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
                 self.normalize_associated_types_in(span, c)
             }
@@ -502,10 +501,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ast_c: &hir::AnonConst,
         param_def_id: DefId,
     ) -> ty::Const<'tcx> {
-        let const_def = ty::WithOptConstParam {
-            did: self.tcx.hir().local_def_id(ast_c.hir_id),
-            const_param_did: Some(param_def_id),
-        };
+        let const_def =
+            ty::WithOptConstParam { did: ast_c.def_id, const_param_did: Some(param_def_id) };
         let c = ty::Const::from_opt_const_arg_anon_const(self.tcx, const_def);
         self.register_wf_obligation(
             c.into(),

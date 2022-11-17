@@ -26,10 +26,12 @@ pub(super) fn check_fn<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     fn_sig: ty::FnSig<'tcx>,
     decl: &'tcx hir::FnDecl<'tcx>,
-    fn_id: hir::HirId,
+    fn_def_id: LocalDefId,
     body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
 ) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
+    let fn_id = inherited.tcx.hir().local_def_id_to_hir_id(fn_def_id);
+
     // Create the function context. This is either derived from scratch or,
     // in the case of closures, based on the outer context.
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.hir_id);
