@@ -49,7 +49,7 @@ pub trait InferCtxtExt<'tcx> {
     /// - the parameter environment
     ///
     /// Invokes `evaluate_obligation`, so in the event that evaluating
-    /// `Ty: Trait` causes overflow, EvaluatedToRecur (or EvaluatedToUnknown)
+    /// `Ty: Trait` causes overflow, EvaluatedToRecur (or EvaluatedToOverflow)
     /// will be returned.
     fn type_implements_trait(
         &self,
@@ -126,7 +126,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             recursion_depth: 0,
             predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(self.tcx),
         };
-        self.evaluate_obligation(&obligation).unwrap_or(traits::EvaluationResult::EvaluatedToErr)
+        self.evaluate_obligation(&obligation)
     }
 }
 

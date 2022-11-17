@@ -3,6 +3,7 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 use crate::infer::canonical::Canonical;
+use crate::traits::Overflow;
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
@@ -2070,10 +2071,10 @@ impl<'tcx> Ty<'tcx> {
     pub fn ptr_metadata_ty(
         self,
         tcx: TyCtxt<'tcx>,
-        normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
-    ) -> (Ty<'tcx>, bool) {
-        let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
-        match tail.kind() {
+        normalize: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, Overflow>,
+    ) -> Result<(Ty<'tcx>, bool), Overflow> {
+        let tail = tcx.struct_tail_with_normalize(self, normalize, || {})?;
+        Ok(match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
@@ -2116,7 +2117,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`ptr_metadata_ty` applied to unexpected type: {:?} (tail = {:?})", self, tail)
             }
-        }
+        })
     }
 
     /// When we create a closure, we record its kind (i.e., what trait

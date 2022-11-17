@@ -107,6 +107,12 @@ pub trait ObligationProcessor {
         obligation: &mut Self::Obligation,
     ) -> ProcessResult<Self::Obligation, Self::Error>;
 
+    fn update_obligation_depth(
+        &mut self,
+        obligation: &Self::Obligation,
+        child: &mut Self::Obligation,
+    );
+
     /// As we do the cycle check, we invoke this callback when we
     /// encounter an actual cycle. `cycle` is an iterator that starts
     /// at the start of the cycle in the stack and walks **toward the
@@ -375,13 +381,16 @@ impl<O: ForestObligation> ObligationForest<O> {
     }
 
     /// Converts all remaining obligations to the given error.
-    pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
+    pub fn to_errors<E>(&mut self, mut mk_error: impl FnMut(&O) -> E) -> Vec<Error<O, E>> {
         let errors = self
             .nodes
             .iter()
             .enumerate()
             .filter(|(_index, node)| node.state.get() == NodeState::Pending)
-            .map(|(index, _node)| Error { error: error.clone(), backtrace: self.error_at(index) })
+            .map(|(index, node)| Error {
+                error: mk_error(&node.obligation),
+                backtrace: self.error_at(index),
+            })
             .collect();
 
         self.compress(|_| assert!(false));
@@ -447,10 +456,14 @@ impl<O: ForestObligation> ObligationForest<O> {
                     ProcessResult::Unchanged => {
                         // No change in state.
                     }
-                    ProcessResult::Changed(children) => {
+                    ProcessResult::Changed(mut children) => {
                         // We are not (yet) stalled.
                         has_changed = true;
                         node.state.set(NodeState::Success);
+
+                        for child in &mut children {
+                            processor.update_obligation_depth(&node.obligation, child);
+                        }
 
                         for child in children {
                             let st = self.register_obligation_at(child, Some(index));

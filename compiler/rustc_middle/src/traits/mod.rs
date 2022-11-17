@@ -26,13 +26,16 @@ use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 
-pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
+pub use self::select::{EvaluationCache, EvaluationResult, SelectionCache};
 
 pub type CanonicalChalkEnvironmentAndGoal<'tcx> = Canonical<'tcx, ChalkEnvironmentAndGoal<'tcx>>;
 
 pub use self::ObligationCauseCode::*;
 
 pub use self::chalk::{ChalkEnvironmentAndGoal, RustInterner as ChalkRustInterner};
+
+#[derive(Debug)]
+pub struct Overflow;
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
@@ -571,8 +574,6 @@ pub enum SelectionError<'tcx> {
     TraitNotObjectSafe(DefId),
     /// A given constant couldn't be evaluated.
     NotConstEvaluatable(NotConstEvaluatable),
-    /// Exceeded the recursion depth during type projection.
-    Overflow(OverflowError),
     /// Signaling that an error has already been emitted, to avoid
     /// multiple errors being shown.
     ErrorReporting,
@@ -585,7 +586,7 @@ pub enum SelectionError<'tcx> {
 /// - `Ok(None)`: could not definitely determine anything, usually due
 ///   to inconclusive type inference.
 /// - `Err(e)`: error `e` occurred
-pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
+pub type SelectionResult<'tcx, T> = Result<Result<T, bool>, SelectionError<'tcx>>;
 
 /// Given the successful resolution of an obligation, the `ImplSource`
 /// indicates where the impl comes from.

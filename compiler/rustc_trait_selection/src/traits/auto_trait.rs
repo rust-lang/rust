@@ -98,7 +98,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         ] {
             let result =
                 selcx.select(&Obligation::new(ObligationCause::dummy(), orig_env, f(&trait_pred)));
-            if let Ok(Some(ImplSource::UserDefined(_))) = result {
+            if let Ok(Ok(ImplSource::UserDefined(_))) = result {
                 debug!(
                     "find_auto_trait_generics({:?}): \
                  manual impl found, bailing out",
@@ -285,7 +285,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             let result = select.select(&obligation);
 
             match result {
-                Ok(Some(ref impl_source)) => {
+                Ok(Ok(ref impl_source)) => {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
 
@@ -318,7 +318,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         return None;
                     }
                 }
-                Ok(None) => {}
+                Ok(Err(_overflow)) => {}
                 Err(SelectionError::Unimplemented) => {
                     if self.is_param_no_infer(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
@@ -712,6 +712,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 "evaluate_nested_obligations: Unable to unify predicate \
                                  '{:?}' '{:?}', bailing out",
                                 ty, e
+                            );
+                            return false;
+                        }
+                        ProjectAndUnifyResult::Overflow => {
+                            debug!(
+                                "evaluate_nested_obligations: overflow for projection predicate"
                             );
                             return false;
                         }

@@ -3,6 +3,7 @@ use crate::traits;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::traits::Overflow;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_span::Span;
@@ -21,7 +22,8 @@ pub fn obligations<'tcx>(
     recursion_depth: usize,
     arg: GenericArg<'tcx>,
     span: Span,
-) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+    fatal_overflow: bool,
+) -> Result<Option<Vec<traits::PredicateObligation<'tcx>>>, Overflow> {
     // Handle the "livelock" case (see comment above) by bailing out if necessary.
     let arg = match arg.unpack() {
         GenericArgKind::Type(ty) => {
@@ -30,7 +32,7 @@ pub fn obligations<'tcx>(
                     let resolved_ty = infcx.shallow_resolve(ty);
                     if resolved_ty == ty {
                         // No progress, bail out to prevent "livelock".
-                        return None;
+                        return Ok(None);
                     } else {
                         resolved_ty
                     }
@@ -45,7 +47,7 @@ pub fn obligations<'tcx>(
                     let resolved = infcx.shallow_resolve(ct);
                     if resolved == ct {
                         // No progress.
-                        return None;
+                        return Ok(None);
                     } else {
                         resolved
                     }
@@ -55,7 +57,7 @@ pub fn obligations<'tcx>(
             .into()
         }
         // There is nothing we have to do for lifetimes.
-        GenericArgKind::Lifetime(..) => return Some(Vec::new()),
+        GenericArgKind::Lifetime(..) => return Ok(Some(Vec::new())),
     };
 
     let mut wf = WfPredicates {
@@ -66,13 +68,14 @@ pub fn obligations<'tcx>(
         out: vec![],
         recursion_depth,
         item: None,
+        fatal_overflow,
     };
     wf.compute(arg);
     debug!("wf::obligations({:?}, body_id={:?}) = {:?}", arg, body_id, wf.out);
 
-    let result = wf.normalize(infcx);
+    let result = wf.normalize(infcx)?;
     debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", arg, body_id, result);
-    Some(result)
+    Ok(Some(result))
 }
 
 /// Returns the obligations that make this trait reference
@@ -95,10 +98,11 @@ pub fn trait_obligations<'tcx>(
         out: vec![],
         recursion_depth: 0,
         item: Some(item),
+        fatal_overflow: true,
     };
     wf.compute_trait_pred(trait_pred, Elaborate::All);
     debug!(obligations = ?wf.out);
-    wf.normalize(infcx)
+    wf.normalize(infcx).unwrap()
 }
 
 #[instrument(skip(infcx), ret)]
@@ -117,6 +121,7 @@ pub fn predicate_obligations<'tcx>(
         out: vec![],
         recursion_depth: 0,
         item: None,
+        fatal_overflow: true,
     };
 
     // It's ok to skip the binder here because wf code is prepared for it
@@ -160,7 +165,7 @@ pub fn predicate_obligations<'tcx>(
         }
     }
 
-    wf.normalize(infcx)
+    wf.normalize(infcx).unwrap()
 }
 
 struct WfPredicates<'tcx> {
@@ -171,6 +176,7 @@ struct WfPredicates<'tcx> {
     out: Vec<traits::PredicateObligation<'tcx>>,
     recursion_depth: usize,
     item: Option<&'tcx hir::Item<'tcx>>,
+    fatal_overflow: bool,
 }
 
 /// Controls whether we "elaborate" supertraits and so forth on the WF
@@ -272,7 +278,10 @@ impl<'tcx> WfPredicates<'tcx> {
         traits::ObligationCause::new(self.span, self.body_id, code)
     }
 
-    fn normalize(self, infcx: &InferCtxt<'tcx>) -> Vec<traits::PredicateObligation<'tcx>> {
+    fn normalize(
+        self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> Result<Vec<traits::PredicateObligation<'tcx>>, Overflow> {
         let cause = self.cause(traits::WellFormed(None));
         let param_env = self.param_env;
         let mut obligations = Vec::with_capacity(self.out.len());
@@ -289,11 +298,12 @@ impl<'tcx> WfPredicates<'tcx> {
                 self.recursion_depth,
                 obligation.predicate,
                 &mut obligations,
-            );
+                self.fatal_overflow,
+            )?;
             obligation.predicate = normalized_predicate;
             obligations.push(obligation);
         }
-        obligations
+        Ok(obligations)
     }
 
     /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.

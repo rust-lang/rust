@@ -1,8 +1,10 @@
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{Obligation, Overflow};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::query::{
     normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution,
 };
@@ -26,14 +28,20 @@ fn normalize_projection_ty<'tcx>(
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
             let mut obligations = vec![];
-            let answer = traits::normalize_projection_type(
+            let answer = match traits::normalize_projection_type(
                 selcx,
                 param_env,
                 goal,
                 cause,
                 0,
                 &mut obligations,
-            );
+            ) {
+                Ok(value) => value,
+                Err(Overflow) => ocx.infcx.err_ctxt().report_overflow_error(
+                    &Obligation::new(ObligationCause::dummy(), param_env, goal),
+                    true,
+                ),
+            };
             ocx.register_obligations(obligations);
             // FIXME(associated_const_equality): All users of normalize_projection_ty expected
             // a type, but there is the possibility it could've been a const now. Maybe change

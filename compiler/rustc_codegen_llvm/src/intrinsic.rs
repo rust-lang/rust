@@ -1745,9 +1745,11 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 
         match in_elem.kind() {
             ty::RawPtr(p) => {
-                let (metadata, check_sized) = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
-                });
+                let (metadata, check_sized) =
+                    p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+                        Ok(bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty))
+                    })
+                    .unwrap();
                 assert!(!check_sized); // we are in codegen, so we shouldn't see these types
                 require!(metadata.is_unit(), "cannot cast fat pointer `{}`", in_elem)
             }
@@ -1755,9 +1757,11 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         }
         match out_elem.kind() {
             ty::RawPtr(p) => {
-                let (metadata, check_sized) = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
-                });
+                let (metadata, check_sized) =
+                    p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+                        Ok(bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty))
+                    })
+                    .unwrap();
                 assert!(!check_sized); // we are in codegen, so we shouldn't see these types
                 require!(metadata.is_unit(), "cannot cast to fat pointer `{}`", out_elem)
             }

@@ -43,8 +43,9 @@ pub fn codegen_select_candidate<'tcx>(
         Obligation::new(obligation_cause, param_env, trait_ref.to_poly_trait_predicate());
 
     let selection = match selcx.select(&obligation) {
-        Ok(Some(selection)) => selection,
-        Ok(None) => return Err(CodegenObligationError::Ambiguity),
+        Ok(Ok(selection)) => selection,
+        Ok(Err(true)) => infcx.err_ctxt().report_overflow_error(&obligation, true),
+        Ok(Err(false)) => return Err(CodegenObligationError::Ambiguity),
         Err(Unimplemented) => return Err(CodegenObligationError::Unimplemented),
         Err(e) => {
             bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
@@ -66,15 +67,17 @@ pub fn codegen_select_candidate<'tcx>(
     // optimization to stop iterating early.
     let errors = fulfill_cx.select_all_or_error(&infcx);
     if !errors.is_empty() {
-        // `rustc_monomorphize::collector` assumes there are no type errors.
-        // Cycle errors are the only post-monomorphization errors possible; emit them now so
-        // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
         for err in errors {
-            if let FulfillmentErrorCode::CodeCycle(cycle) = err.code {
-                infcx.err_ctxt().report_overflow_error_cycle(&cycle);
+            match err.code {
+                FulfillmentErrorCode::CodeOverflow => {
+                    infcx.err_ctxt().report_overflow_error(&err.obligation, true)
+                }
+                FulfillmentErrorCode::CodeCycle(cycle) => {
+                    infcx.err_ctxt().report_overflow_error_cycle(&cycle)
+                }
+                _ => {}
             }
         }
-        return Err(CodegenObligationError::FulfillmentError);
     }
 
     let impl_source = infcx.resolve_vars_if_possible(impl_source);

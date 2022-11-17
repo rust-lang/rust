@@ -1,6 +1,7 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::traits::Overflow;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
     self, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -201,7 +202,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// if input `ty` is not a structure at all.
     pub fn struct_tail_without_normalization(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let tcx = self;
-        tcx.struct_tail_with_normalize(ty, |ty| ty, || {})
+        tcx.struct_tail_with_normalize(ty, |ty| Ok(ty), || {}).unwrap()
     }
 
     /// Returns the deeply last field of nested structures, or the same type if
@@ -217,7 +218,12 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self;
-        tcx.struct_tail_with_normalize(ty, |ty| tcx.normalize_erasing_regions(param_env, ty), || {})
+        tcx.struct_tail_with_normalize(
+            ty,
+            |ty| Ok(tcx.normalize_erasing_regions(param_env, ty)),
+            || {},
+        )
+        .unwrap()
     }
 
     /// Returns the deeply last field of nested structures, or the same type if
@@ -233,19 +239,19 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn struct_tail_with_normalize(
         self,
         mut ty: Ty<'tcx>,
-        mut normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+        mut normalize: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, Overflow>,
         // This is currently used to allow us to walk a ValTree
         // in lockstep with the type in order to get the ValTree branch that
         // corresponds to an unsized field.
         mut f: impl FnMut() -> (),
-    ) -> Ty<'tcx> {
+    ) -> Result<Ty<'tcx>, Overflow> {
         let recursion_limit = self.recursion_limit();
         for iteration in 0.. {
             if !recursion_limit.value_within_limit(iteration) {
-                return self.ty_error_with_message(
+                return Ok(self.ty_error_with_message(
                     DUMMY_SP,
                     &format!("reached the recursion limit finding the struct tail for {}", ty),
-                );
+                ));
             }
             match *ty.kind() {
                 ty::Adt(def, substs) => {
@@ -269,9 +275,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(_) => break,
 
                 ty::Projection(_) | ty::Opaque(..) => {
-                    let normalized = normalize(ty);
+                    let normalized = normalize(ty)?;
                     if ty == normalized {
-                        return ty;
+                        return Ok(ty);
                     } else {
                         ty = normalized;
                     }
@@ -282,7 +288,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
             }
         }
-        ty
+        Ok(ty)
     }
 
     /// Same as applying `struct_tail` on `source` and `target`, but only

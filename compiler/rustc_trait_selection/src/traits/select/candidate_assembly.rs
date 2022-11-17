@@ -5,28 +5,36 @@
 //! candidates. See the [rustc dev guide] for more details.
 //!
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
+use crate::traits;
+use crate::traits::coherence::Conflict;
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::Unimplemented;
+use crate::traits::{util, SelectionResult};
 use hir::LangItem;
 use rustc_errors::DelayDm;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_infer::traits::ObligationCause;
-use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
+use rustc_infer::traits::{EvaluationResult, ObligationCause, Overflow};
+use rustc_infer::traits::{Obligation, TraitObligation};
 use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
 use rustc_target::spec::abi::Abi;
 
-use crate::traits;
-use crate::traits::coherence::Conflict;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{util, SelectionResult};
-use crate::traits::{ErrorReporting, Overflow, Unimplemented};
-
 use super::BuiltinImplConditions;
 use super::IntercrateAmbiguityCause;
-use super::OverflowError;
 use super::SelectionCandidate::{self, *};
 use super::{EvaluatedCandidate, SelectionCandidateSet, SelectionContext, TraitObligationStack};
+
+/// `?` except that it targets the inner `Option`, i.e. returns `Ok(None)`.
+macro_rules! try_nested {
+    ($e:expr) => {
+        match $e {
+            Some(ok) => ok,
+            None => return Ok(None),
+        }
+    };
+}
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
@@ -34,9 +42,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
-        // Watch out for overflow. This intentionally bypasses (and does
-        // not update) the cache.
-        self.check_recursion_limit(&stack.obligation, &stack.obligation)?;
+        if !self.infcx.tcx.recursion_limit().value_within_limit(stack.obligation.recursion_depth) {
+            return Ok(Err(true));
+        }
 
         // Check the cache. Note that we freshen the trait-ref
         // separately rather than using `stack.fresh_trait_ref` --
@@ -85,7 +93,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let mut no_candidates_apply = true;
 
                     for c in candidate_set.vec.iter() {
-                        if self.evaluate_candidate(stack, &c)?.may_apply() {
+                        if self.evaluate_candidate(stack, &c).may_apply() {
                             no_candidates_apply = false;
                             break;
                         }
@@ -113,14 +121,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
             }
-            return Ok(None);
+            return Ok(Err(false));
         }
 
-        let candidate_set = self.assemble_candidates(stack)?;
+        let candidate_set = match self.assemble_candidates(stack) {
+            Ok(result) => result,
+            Err(Overflow) => return Ok(Err(true)),
+        };
 
         if candidate_set.ambiguous {
             debug!("candidate set contains ambig");
-            return Ok(None);
+            return Ok(Err(false));
         }
 
         let candidates = candidate_set.vec;
@@ -160,17 +171,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // is needed for specialization. Propagate overflow if it occurs.
         let mut candidates = candidates
             .into_iter()
-            .map(|c| match self.evaluate_candidate(stack, &c) {
-                Ok(eval) if eval.may_apply() => {
-                    Ok(Some(EvaluatedCandidate { candidate: c, evaluation: eval }))
-                }
-                Ok(_) => Ok(None),
-                Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
-                Err(OverflowError::ErrorReporting) => Err(ErrorReporting),
-                Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
+            .map(|c| {
+                let evaluation = self.evaluate_candidate(stack, &c);
+                EvaluatedCandidate { candidate: c, evaluation }
             })
-            .flat_map(Result::transpose)
-            .collect::<Result<Vec<_>, _>>()?;
+            .filter(|c| c.evaluation.may_apply())
+            .collect::<Vec<_>>();
 
         debug!(?stack, ?candidates, "winnowed to {} candidates", candidates.len());
 
@@ -199,8 +205,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // If there are *STILL* multiple candidates, give up
                     // and report ambiguity.
                     if i > 1 {
-                        debug!("multiple matches, ambig");
-                        return Ok(None);
+                        let due_to_overflow = candidates
+                            .iter()
+                            .any(|c| c.evaluation == EvaluationResult::EvaluatedToOverflow);
+                        if due_to_overflow {
+                            debug!("multiple matches, overflow");
+                            return Ok(Err(true));
+                        } else {
+                            debug!("multiple matches, ambig");
+                            return Ok(Err(false));
+                        }
                     }
                 }
             }
@@ -222,7 +236,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // to have emitted at least one.
             if stack.obligation.predicate.references_error() {
                 debug!(?stack.obligation.predicate, "found error type in predicate, treating as ambiguous");
-                return Ok(None);
+                return Ok(Err(false));
             }
             return Err(Unimplemented);
         }
@@ -235,7 +249,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub(super) fn assemble_candidates<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
-    ) -> Result<SelectionCandidateSet<'tcx>, SelectionError<'tcx>> {
+    ) -> Result<SelectionCandidateSet<'tcx>, Overflow> {
         let TraitObligationStack { obligation, .. } = *stack;
         let obligation = &Obligation {
             param_env: obligation.param_env,
@@ -295,7 +309,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let sized_conditions = self.sized_conditions(obligation);
                 self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
             } else if lang_items.unsize_trait() == Some(def_id) {
-                self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+                self.assemble_candidates_for_unsizing(obligation, &mut candidates)?;
             } else if lang_items.destruct_trait() == Some(def_id) {
                 self.assemble_const_destruct_candidates(obligation, &mut candidates);
             } else if lang_items.transmute_trait() == Some(def_id) {
@@ -320,7 +334,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_from_object_ty(obligation, &mut candidates);
             }
 
-            self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
+            self.assemble_candidates_from_projected_tys(obligation, &mut candidates)?;
             self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
             // Auto implementations have lower priority, so we only
             // consider triggering a default if there is no other impl that can apply.
@@ -337,7 +351,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
-    ) {
+    ) -> Result<(), Overflow> {
         // Before we go into the whole placeholder thing, just
         // quickly check if the self-type is a projection at all.
         match obligation.predicate.skip_binder().trait_ref.self_ty().kind() {
@@ -348,16 +362,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     "Self=_ should have been handled by assemble_candidates"
                 );
             }
-            _ => return,
+            _ => return Ok(()),
         }
 
         let result = self
             .infcx
-            .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
+            .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation))?;
 
         candidates
             .vec
             .extend(result.into_iter().map(|(idx, constness)| ProjectionCandidate(idx, constness)));
+        Ok(())
     }
 
     /// Given an obligation like `<SomeTrait for T>`, searches the obligations that the caller
@@ -369,7 +384,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
-    ) -> Result<(), SelectionError<'tcx>> {
+    ) -> Result<(), Overflow> {
         debug!(?stack.obligation);
 
         let all_bounds = stack
@@ -387,8 +402,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for bound in matching_bounds {
             // FIXME(oli-obk): it is suspicious that we are dropping the constness and
             // polarity here.
-            let wc = self.where_clause_may_apply(stack, bound.map_bound(|t| t.trait_ref))?;
-            if wc.may_apply() {
+            let wc = self.where_clause_may_apply(stack, bound.map_bound(|t| t.trait_ref));
+            if wc.is_overflow() {
+                return Err(Overflow);
+            } else if wc.may_apply() {
                 candidates.vec.push(ParamCandidate(bound));
             }
         }
@@ -705,15 +722,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
-    ) -> Option<(Ty<'tcx>, DefId)> {
+    ) -> Result<Option<(Ty<'tcx>, DefId)>, Overflow> {
         let tcx = self.tcx();
         if tcx.features().trait_upcasting {
-            return None;
+            return Ok(None);
         }
 
         // <ty as Deref>
         let trait_ref = ty::TraitRef {
-            def_id: tcx.lang_items().deref_trait()?,
+            def_id: try_nested!(tcx.lang_items().deref_trait()),
             substs: tcx.mk_substs_trait(ty, &[]),
         };
 
@@ -723,14 +740,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
         );
         if !self.infcx.predicate_may_hold(&obligation) {
-            return None;
+            return Ok(None);
         }
 
         let ty = traits::normalize_projection_type(
             self,
             param_env,
             ty::ProjectionTy {
-                item_def_id: tcx.lang_items().deref_target()?,
+                item_def_id: try_nested!(tcx.lang_items().deref_target()),
                 substs: trait_ref.substs,
             },
             cause.clone(),
@@ -738,15 +755,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // We're *intentionally* throwing these away,
             // since we don't actually use them.
             &mut vec![],
-        )
+        )?
         .ty()
         .unwrap();
 
-        if let ty::Dynamic(data, ..) = ty.kind() {
-            Some((ty, data.principal_def_id()?))
+        Ok(if let ty::Dynamic(data, ..) = ty.kind() {
+            data.principal_def_id().map(|def| (ty, def))
         } else {
             None
-        }
+        })
     }
 
     /// Searches for unsizing that might apply to `obligation`.
@@ -754,7 +771,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
-    ) {
+    ) -> Result<(), Overflow> {
         // We currently never consider higher-ranked obligations e.g.
         // `for<'a> &'a T: Unsize<Trait+'a>` to be implemented. This is not
         // because they are a priori invalid, and we could potentially add support
@@ -771,7 +788,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // obligation above. Should be possible to extend this in the future.
         let Some(source) = obligation.self_ty().no_bound_vars() else {
             // Don't add any candidates if there are bound regions.
-            return;
+            return Ok(());
         };
         let target = obligation.predicate.skip_binder().trait_ref.substs.type_at(1);
 
@@ -811,7 +828,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 source,
                                 obligation.param_env,
                                 &obligation.cause,
-                            )
+                            )?
                         {
                             if deref_output_trait_did == target_trait_did {
                                 self.tcx().struct_span_lint_hir(
@@ -824,7 +841,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     )),
                                     |lint| lint,
                                 );
-                                return;
+                                return Ok(());
                             }
                         }
 
@@ -873,6 +890,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             _ => {}
         };
+
+        Ok(())
     }
 
     #[instrument(level = "debug", skip(self, obligation, candidates))]

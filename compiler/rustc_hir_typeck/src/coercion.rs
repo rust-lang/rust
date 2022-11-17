@@ -671,7 +671,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             };
             match selcx.select(&obligation.with(trait_pred)) {
                 // Uncertain or unimplemented.
-                Ok(None) => {
+                Ok(Err(true)) => self.err_ctxt().report_overflow_error(&obligation, true),
+                Ok(Err(false)) => {
                     if trait_pred.def_id() == unsize_did {
                         let trait_pred = self.resolve_vars_if_possible(trait_pred);
                         let self_ty = trait_pred.skip_binder().self_ty();
@@ -712,7 +713,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // be silent, as it causes a type mismatch later.
                 }
 
-                Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
+                Ok(Ok(impl_source)) => queue.extend(impl_source.nested_obligations()),
             }
         }
 

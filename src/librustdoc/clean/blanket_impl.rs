@@ -80,11 +80,9 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         param_env,
                         predicate,
                     );
-                    match infcx.evaluate_obligation(&obligation) {
-                        Ok(eval_result) if eval_result.may_apply() => {}
-                        Err(traits::OverflowError::Canonical) => {}
-                        Err(traits::OverflowError::ErrorReporting) => {}
-                        _ => continue 'blanket_impls,
+
+                    if !infcx.evaluate_obligation(&obligation).may_apply() {
+                        continue 'blanket_impls;
                     }
                 }
                 debug!(

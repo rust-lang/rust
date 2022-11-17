@@ -267,7 +267,7 @@ fn implicit_negative<'cx, 'tcx>(
             predicate: p,
         })
         .chain(obligations)
-        .find(|o| !selcx.predicate_may_hold_fatal(o));
+        .find(|o| !selcx.evaluate_root_obligation(&o).may_apply());
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);

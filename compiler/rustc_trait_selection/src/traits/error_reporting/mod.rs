@@ -4,8 +4,8 @@ pub mod suggestions;
 
 use super::{
     FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation, ObligationCause,
-    ObligationCauseCode, OutputTypeParameterMismatch, Overflow, PredicateObligation,
-    SelectionContext, SelectionError, TraitNotObjectSafe,
+    ObligationCauseCode, OutputTypeParameterMismatch, PredicateObligation, SelectionContext,
+    SelectionError, TraitNotObjectSafe,
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -30,7 +30,7 @@ use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::TypeTrace;
 use rustc_infer::traits::TraitEngine;
-use rustc_middle::traits::select::OverflowError;
+use rustc_middle::traits::Overflow;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
@@ -1312,14 +1312,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 self.tcx.sess.delay_span_bug(span, "`ErrorGuaranteed` without an error");
                 return;
             }
-            // Already reported.
-            Overflow(OverflowError::Error(_)) => {
-                self.tcx.sess.delay_span_bug(span, "`OverflowError` has been reported");
-                return;
-            }
-            Overflow(_) => {
-                bug!("overflow should be handled before the `report_selection_error` path");
-            }
             SelectionError::ErrorReporting => {
                 bug!("ErrorReporting Overflow should not reach `report_selection_err` call")
             }
@@ -1541,6 +1533,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             FulfillmentErrorCode::CodeCycle(ref cycle) => {
                 self.report_overflow_error_cycle(cycle);
             }
+            FulfillmentErrorCode::CodeOverflow => {
+                let predicate = self.resolve_vars_if_possible(error.obligation.predicate);
+                if !predicate.references_error() {
+                    self.report_overflow_error(&error.obligation, true);
+                }
+            }
         }
     }
 
@@ -1580,7 +1578,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     obligation.cause.clone(),
                     0,
                     &mut obligations,
-                );
+                )
+                .unwrap_or_else(|Overflow| self.report_overflow_error(obligation, true));
 
                 debug!(?obligation.cause, ?obligation.param_env);
 
@@ -2105,12 +2104,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     obligation.param_env,
                     trait_ref.to_poly_trait_predicate(),
                 );
-                let mut selcx = SelectionContext::with_query_mode(
-                    &self,
-                    crate::traits::TraitQueryMode::Standard,
-                );
+                let mut selcx = SelectionContext::new(self);
                 match selcx.select_from_obligation(&obligation) {
-                    Ok(None) => {
+                    Ok(Err(false)) => {
                         let impls = ambiguity::recompute_applicable_impls(self.infcx, &obligation);
                         let has_non_region_infer =
                             trait_ref.skip_binder().substs.types().any(|t| !t.is_ty_infer());

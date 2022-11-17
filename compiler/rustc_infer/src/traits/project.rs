@@ -90,6 +90,7 @@ impl<'tcx> ProjectionCacheKey<'tcx> {
 pub enum ProjectionCacheEntry<'tcx> {
     InProgress,
     Ambiguous,
+    Overflow,
     Recur,
     Error,
     NormalizedTy {
@@ -184,7 +185,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
             key, value
         );
         let mut map = self.map();
-        if let Some(ProjectionCacheEntry::Recur) = map.get(&key) {
+        if let Some(ProjectionCacheEntry::Recur | ProjectionCacheEntry::Overflow) = map.get(&key) {
             debug!("Not overwriting Recur");
             return;
         }
@@ -221,6 +222,11 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
             ProjectionCacheEntry::NormalizedTy { ty: _, complete } => *complete,
             _ => None,
         })
+    }
+
+    pub fn overflow(&mut self, key: ProjectionCacheKey<'tcx>) {
+        let fresh = self.map().insert(key, ProjectionCacheEntry::Overflow);
+        assert!(!fresh, "never started projecting `{:?}", key);
     }
 
     /// Indicates that trying to normalize `key` resulted in

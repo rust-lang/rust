@@ -237,30 +237,18 @@ pub enum Certainty {
     /// canonical form will be different, making this a distinct
     /// query.
     Ambiguous,
-}
-
-impl Certainty {
-    pub fn is_proven(&self) -> bool {
-        match self {
-            Certainty::Proven => true,
-            Certainty::Ambiguous => false,
-        }
-    }
+    Overflow,
 }
 
 impl<'tcx, R> QueryResponse<'tcx, R> {
-    pub fn is_proven(&self) -> bool {
-        self.certainty.is_proven()
+    pub fn certainty(&self) -> Certainty {
+        self.certainty
     }
 }
 
 impl<'tcx, R> Canonical<'tcx, QueryResponse<'tcx, R>> {
-    pub fn is_proven(&self) -> bool {
-        self.value.is_proven()
-    }
-
-    pub fn is_ambiguous(&self) -> bool {
-        !self.is_proven()
+    pub fn certainty(&self) -> Certainty {
+        self.value.certainty()
     }
 }
 

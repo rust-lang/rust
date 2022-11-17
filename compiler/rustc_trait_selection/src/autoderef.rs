@@ -1,8 +1,9 @@
 use crate::errors::AutoDerefReachedRecursionLimit;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{self, TraitEngine, TraitEngineExt};
+use crate::traits::{self, SelectionContext, TraitEngineExt};
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::{Normalized, TraitEngine};
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
 use rustc_middle::ty::{ToPredicate, TypeVisitable};
 use rustc_session::Limit;
@@ -139,16 +140,17 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
-        let normalized_ty = fulfillcx.normalize_projection_type(
-            &self.infcx,
+        let mut fulfillcx = <dyn TraitEngine<'_>>::new_in_snapshot(tcx);
+        let mut selcx = SelectionContext::new(&self.infcx);
+        let Normalized { value: normalized_ty, obligations } = traits::normalize(
+            &mut selcx,
             self.param_env,
-            ty::ProjectionTy {
-                item_def_id: tcx.lang_items().deref_target()?,
-                substs: trait_ref.substs,
-            },
             cause,
+            tcx.mk_projection(tcx.lang_items().deref_target()?, trait_ref.substs),
         );
+        for obl in obligations {
+            fulfillcx.register_predicate_obligation(&self.infcx, obl);
+        }
         let errors = fulfillcx.select_where_possible(&self.infcx);
         if !errors.is_empty() {
             // This shouldn't happen, except for evaluate/fulfill mismatches,

@@ -3,27 +3,25 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
-use rustc_infer::traits::ProjectionCacheKey;
-use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
+use rustc_infer::traits::{Obligation, Overflow, ProjectionCacheKey};
+use rustc_infer::traits::{SelectionError, TraitEngine, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ToPredicate;
-use rustc_middle::ty::{self, Binder, Const, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Binder, Const, TypeVisitable};
 use std::marker::PhantomData;
 
 use super::const_evaluatable;
 use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::wf;
-use super::CodeAmbiguity;
-use super::CodeProjectionError;
-use super::CodeSelectionError;
 use super::EvaluationResult;
+use super::FulfillmentErrorCode::*;
+use super::PredicateObligation;
 use super::Unimplemented;
 use super::{FulfillmentError, FulfillmentErrorCode};
-use super::{ObligationCause, PredicateObligation};
 
 use crate::traits::project::PolyProjectionObligation;
 use crate::traits::project::ProjectionCacheKeyExt as _;
@@ -127,42 +125,6 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
 }
 
 impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
-    /// "Normalize" a projection type `<SomeType as SomeTrait>::X` by
-    /// creating a fresh type variable `$0` as well as a projection
-    /// predicate `<SomeType as SomeTrait>::X == $0`. When the
-    /// inference engine runs, it will attempt to find an impl of
-    /// `SomeTrait` or a where-clause that lets us unify `$0` with
-    /// something concrete. If this fails, we'll unify `$0` with
-    /// `projection_ty` again.
-    #[instrument(level = "debug", skip(self, infcx, param_env, cause))]
-    fn normalize_projection_type(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        projection_ty: ty::ProjectionTy<'tcx>,
-        cause: ObligationCause<'tcx>,
-    ) -> Ty<'tcx> {
-        debug_assert!(!projection_ty.has_escaping_bound_vars());
-
-        // FIXME(#20304) -- cache
-
-        let mut selcx = SelectionContext::new(infcx);
-        let mut obligations = vec![];
-        let normalized_ty = project::normalize_projection_type(
-            &mut selcx,
-            param_env,
-            projection_ty,
-            cause,
-            0,
-            &mut obligations,
-        );
-        self.register_predicate_obligations(infcx, obligations);
-
-        debug!(?normalized_ty);
-
-        normalized_ty.ty().unwrap()
-    }
-
     fn register_predicate_obligation(
         &mut self,
         infcx: &InferCtxt<'tcx>,
@@ -190,7 +152,18 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             }
         }
 
-        self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
+        let limit = infcx.tcx.recursion_limit();
+        self.predicates
+            .to_errors(|obligation| {
+                if limit.value_within_limit(obligation.obligation.recursion_depth) {
+                    CodeAmbiguity
+                } else {
+                    CodeOverflow
+                }
+            })
+            .into_iter()
+            .map(to_fulfillment_error)
+            .collect()
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
@@ -272,9 +245,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         pending_obligation.stalled_on.truncate(0);
 
+        let infcx = self.selcx.infcx();
         let obligation = &mut pending_obligation.obligation;
 
         debug!(?obligation, "pre-resolve");
+        if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
+            return ProcessResult::Unchanged;
+        }
 
         if obligation.predicate.has_non_region_infer() {
             obligation.predicate =
@@ -283,23 +260,35 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
         let obligation = &pending_obligation.obligation;
 
-        let infcx = self.selcx.infcx();
-
         if obligation.predicate.has_projections() {
             let mut obligations = Vec::new();
-            let predicate = crate::traits::project::try_normalize_with_depth_to(
+            let predicate = match crate::traits::project::try_normalize_with_depth_to(
                 &mut self.selcx,
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
                 obligation.predicate,
                 &mut obligations,
-            );
+            ) {
+                Ok(value) => value,
+                Err(Overflow) => {
+                    // HACK: Emit a nested obligation at the maximum depth to get an
+                    // overflow fulfillment error.
+                    let obligation_at_limit = Obligation::with_depth(
+                        obligation.cause.clone(),
+                        infcx.tcx.recursion_limit().0 + 1,
+                        obligation.param_env,
+                        obligation.predicate,
+                    );
+                    return ProcessResult::Changed(mk_pending(vec![obligation_at_limit]));
+                }
+            };
             if predicate != obligation.predicate {
                 obligations.push(obligation.with(predicate));
                 return ProcessResult::Changed(mk_pending(obligations));
             }
         }
+
         let binder = obligation.predicate.kind();
         match binder.no_bound_vars() {
             None => match binder.skip_binder() {
@@ -369,8 +358,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     ProcessResult::Changed(vec![])
                 }
 
-                ty::PredicateKind::Projection(ref data) => {
-                    let project_obligation = obligation.with(Binder::dummy(*data));
+                ty::PredicateKind::Projection(data) => {
+                    let project_obligation = obligation.with(Binder::dummy(data));
 
                     self.process_projection_obligation(
                         obligation,
@@ -408,13 +397,21 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         obligation.recursion_depth + 1,
                         arg,
                         obligation.cause.span,
+                        false,
                     ) {
-                        None => {
+                        Err(Overflow) => {
+                            pending_obligation.stalled_on.clear();
+                            pending_obligation
+                                .stalled_on
+                                .extend(TyOrConstInferVar::maybe_from_generic_arg(arg));
+                            ProcessResult::Unchanged
+                        }
+                        Ok(None) => {
                             pending_obligation.stalled_on =
                                 vec![TyOrConstInferVar::maybe_from_generic_arg(arg).unwrap()];
                             ProcessResult::Unchanged
                         }
-                        Some(os) => ProcessResult::Changed(mk_pending(os)),
+                        Ok(Some(os)) => ProcessResult::Changed(mk_pending(os)),
                     }
                 }
 
@@ -579,6 +576,15 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
         }
     }
 
+    fn update_obligation_depth(
+        &mut self,
+        obligation: &Self::Obligation,
+        child: &mut Self::Obligation,
+    ) {
+        child.obligation.recursion_depth =
+            child.obligation.recursion_depth.max(obligation.obligation.recursion_depth + 1);
+    }
+
     #[inline(never)]
     fn process_backedge<'c, I>(
         &mut self,
@@ -620,11 +626,11 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         }
 
         match self.selcx.select(&trait_obligation) {
-            Ok(Some(impl_source)) => {
+            Ok(Ok(impl_source)) => {
                 debug!("selecting trait at depth {} yielded Ok(Some)", obligation.recursion_depth);
                 ProcessResult::Changed(mk_pending(impl_source.nested_obligations()))
             }
-            Ok(None) => {
+            Ok(Err(_overflow)) => {
                 debug!("selecting trait at depth {} yielded Ok(None)", obligation.recursion_depth);
 
                 // This is a bit subtle: for the most part, the
@@ -659,8 +665,6 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         project_obligation: PolyProjectionObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
-        let tcx = self.selcx.tcx();
-
         if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
@@ -687,7 +691,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
 
         match project::poly_project_and_unify_type(&mut self.selcx, &project_obligation) {
             ProjectAndUnifyResult::Holds(os) => ProcessResult::Changed(mk_pending(os)),
-            ProjectAndUnifyResult::FailedNormalization => {
+            ProjectAndUnifyResult::Overflow | ProjectAndUnifyResult::FailedNormalization => {
                 stalled_on.clear();
                 stalled_on.extend(substs_infer_vars(
                     &self.selcx,
@@ -697,7 +701,8 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
             }
             // Let the caller handle the recursion
             ProjectAndUnifyResult::Recursive => ProcessResult::Changed(mk_pending(vec![
-                project_obligation.with(project_obligation.predicate.to_predicate(tcx)),
+                project_obligation
+                    .with(project_obligation.predicate.to_predicate(self.selcx.tcx())),
             ])),
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                 ProcessResult::Error(CodeProjectionError(e))

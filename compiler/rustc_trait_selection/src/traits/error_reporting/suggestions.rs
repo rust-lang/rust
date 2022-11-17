@@ -1342,9 +1342,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     obligation.param_env,
                     trait_pred_and_suggested_ty,
                 );
-                let suggested_ty_would_satisfy_obligation = self
-                    .evaluate_obligation_no_overflow(&new_obligation)
-                    .must_apply_modulo_regions();
+                let suggested_ty_would_satisfy_obligation =
+                    self.evaluate_obligation(&new_obligation).must_apply_modulo_regions();
                 if suggested_ty_would_satisfy_obligation {
                     let sp = self
                         .tcx
@@ -2315,10 +2314,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             GeneratorInteriorOrUpvar::Upvar(upvar_span) => {
                 // `Some(ref_ty)` if `target_ty` is `&T` and `T` fails to impl `Sync`
                 let refers_to_non_sync = match target_ty.kind() {
-                    ty::Ref(_, ref_ty, _) => match self.evaluate_obligation(&obligation) {
-                        Ok(eval) if !eval.may_apply() => Some(ref_ty),
-                        _ => None,
-                    },
+                    ty::Ref(_, ref_ty, _) if self.evaluate_obligation(&obligation).may_apply() => {
+                        Some(ref_ty)
+                    }
                     _ => None,
                 };
 

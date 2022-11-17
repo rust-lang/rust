@@ -70,6 +70,8 @@ where
         true
     }
 
+    fn update_obligation_depth(&mut self, _: &Self::Obligation, _: &mut Self::Obligation) {}
+
     fn process_obligation(
         &mut self,
         obligation: &mut Self::Obligation,
@@ -256,7 +258,7 @@ fn to_errors_no_throw() {
     ));
     assert_eq!(ok.len(), 0);
     assert_eq!(err.len(), 0);
-    let errors = forest.to_errors(());
+    let errors = forest.to_errors(|_| ());
     assert_eq!(errors[0].backtrace, vec!["A.1", "A"]);
     assert_eq!(errors[1].backtrace, vec!["A.2", "A"]);
     assert_eq!(errors[2].backtrace, vec!["A.3", "A"]);
@@ -308,7 +310,7 @@ fn diamond() {
     assert_eq!(ok, vec!["A", "A.1", "A.2", "D"]);
     assert_eq!(err.len(), 0);
 
-    let errors = forest.to_errors(());
+    let errors = forest.to_errors(|_| ());
     assert_eq!(errors.len(), 0);
 
     forest.register_obligation("A'");
@@ -353,7 +355,7 @@ fn diamond() {
         vec![super::Error { error: "operation failed", backtrace: vec!["D'", "A'.1", "A'"] }]
     );
 
-    let errors = forest.to_errors(());
+    let errors = forest.to_errors(|_| ());
     assert_eq!(errors.len(), 0);
 }
 
@@ -446,7 +448,7 @@ fn orphan() {
     assert_eq!(ok.len(), 0);
     assert_eq!(err, vec![super::Error { error: "D is dead", backtrace: vec!["D"] }]);
 
-    let errors = forest.to_errors(());
+    let errors = forest.to_errors(|_| ());
     assert_eq!(errors.len(), 0);
 }
 

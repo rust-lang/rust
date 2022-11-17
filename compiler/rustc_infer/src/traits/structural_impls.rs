@@ -35,23 +35,6 @@ impl<'tcx> fmt::Debug for traits::FulfillmentError<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            super::CodeSelectionError(ref e) => write!(f, "{:?}", e),
-            super::CodeProjectionError(ref e) => write!(f, "{:?}", e),
-            super::CodeSubtypeError(ref a, ref b) => {
-                write!(f, "CodeSubtypeError({:?}, {:?})", a, b)
-            }
-            super::CodeConstEquateError(ref a, ref b) => {
-                write!(f, "CodeConstEquateError({:?}, {:?})", a, b)
-            }
-            super::CodeAmbiguity => write!(f, "Ambiguity"),
-            super::CodeCycle(ref cycle) => write!(f, "Cycle({:?})", cycle),
-        }
-    }
-}
-
 impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "MismatchedProjectionTypes({:?})", self.err)

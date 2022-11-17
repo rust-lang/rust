@@ -111,7 +111,7 @@ pub struct FulfillmentError<'tcx> {
     pub root_obligation: PredicateObligation<'tcx>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only if it is already implemented.
     CodeCycle(Vec<Obligation<'tcx, ty::Predicate<'tcx>>>),
@@ -120,6 +120,7 @@ pub enum FulfillmentErrorCode<'tcx> {
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
     CodeConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
     CodeAmbiguity,
+    CodeOverflow,
 }
 
 impl<'tcx, O> Obligation<'tcx, O> {

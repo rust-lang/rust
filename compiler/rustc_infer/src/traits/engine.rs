@@ -8,14 +8,6 @@ use super::FulfillmentError;
 use super::{ObligationCause, PredicateObligation};
 
 pub trait TraitEngine<'tcx>: 'tcx {
-    fn normalize_projection_type(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        projection_ty: ty::ProjectionTy<'tcx>,
-        cause: ObligationCause<'tcx>,
-    ) -> Ty<'tcx>;
-
     /// Requires that `ty` must implement the trait with `def_id` in
     /// the given environment. This trait must not have any type
     /// parameters (except for `Self`).

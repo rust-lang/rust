@@ -4,8 +4,7 @@
 
 use self::EvaluationResult::*;
 
-use super::{SelectionError, SelectionResult};
-use rustc_errors::ErrorGuaranteed;
+use super::SelectionResult;
 
 use crate::ty;
 
@@ -169,7 +168,7 @@ pub enum SelectionCandidate<'tcx> {
 ///
 /// The evaluation results are ordered:
 ///     - `EvaluatedToOk` implies `EvaluatedToOkModuloRegions`
-///       implies `EvaluatedToAmbig` implies `EvaluatedToUnknown`
+///       implies `EvaluatedToAmbig` implies `EvaluatedToOverflow`
 ///     - `EvaluatedToErr` implies `EvaluatedToRecur`
 ///     - the "union" of evaluation results is equal to their maximum -
 ///     all the "potential success" candidates can potentially succeed,
@@ -197,7 +196,7 @@ pub enum EvaluationResult {
     /// know the real result.
     ///
     /// This can't be trivially cached for the same reason as `EvaluatedToRecur`.
-    EvaluatedToUnknown,
+    EvaluatedToOverflow,
     /// Evaluation failed because we encountered an obligation we are already
     /// trying to prove on this branch.
     ///
@@ -265,7 +264,7 @@ impl EvaluationResult {
             | EvaluatedToOk
             | EvaluatedToOkModuloRegions
             | EvaluatedToAmbig
-            | EvaluatedToUnknown => true,
+            | EvaluatedToOverflow => true,
 
             EvaluatedToErr | EvaluatedToRecur => false,
         }
@@ -273,41 +272,26 @@ impl EvaluationResult {
 
     pub fn is_stack_dependent(self) -> bool {
         match self {
-            EvaluatedToUnknown | EvaluatedToRecur => true,
+            EvaluatedToRecur => true,
 
             EvaluatedToOkModuloOpaqueTypes
             | EvaluatedToOk
             | EvaluatedToOkModuloRegions
             | EvaluatedToAmbig
+            | EvaluatedToOverflow
             | EvaluatedToErr => false,
         }
     }
-}
 
-/// Indicates that trait evaluation caused overflow and in which pass.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable)]
-pub enum OverflowError {
-    Error(ErrorGuaranteed),
-    Canonical,
-    ErrorReporting,
-}
-
-impl From<ErrorGuaranteed> for OverflowError {
-    fn from(e: ErrorGuaranteed) -> OverflowError {
-        OverflowError::Error(e)
-    }
-}
-
-TrivialTypeTraversalAndLiftImpls! {
-    OverflowError,
-}
-
-impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
-    fn from(overflow_error: OverflowError) -> SelectionError<'tcx> {
-        match overflow_error {
-            OverflowError::Error(e) => SelectionError::Overflow(OverflowError::Error(e)),
-            OverflowError::Canonical => SelectionError::Overflow(OverflowError::Canonical),
-            OverflowError::ErrorReporting => SelectionError::ErrorReporting,
+    pub fn is_overflow(self) -> bool {
+        match self {
+            EvaluatedToOverflow => true,
+            EvaluatedToOk
+            | EvaluatedToOkModuloRegions
+            | EvaluatedToOkModuloOpaqueTypes
+            | EvaluatedToAmbig
+            | EvaluatedToRecur
+            | EvaluatedToErr => false,
         }
     }
 }

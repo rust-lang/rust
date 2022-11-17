@@ -1447,7 +1447,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .define_opaque_types(false)
                     .sup(candidate.xform_self_ty, self_ty);
                 match self.select_trait_candidate(trait_ref) {
-                    Ok(Some(traits::ImplSource::UserDefined(ref impl_data))) => {
+                    Ok(Ok(traits::ImplSource::UserDefined(ref impl_data))) => {
                         // If only a single impl matches, make the error message point
                         // to that impl.
                         CandidateSource::Impl(impl_data.impl_def_id)
@@ -1566,7 +1566,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if self.probe(|_| {
                             match self.select_trait_candidate(trait_ref) {
                                 Err(_) => return true,
-                                Ok(Some(impl_source))
+                                Ok(Ok(impl_source))
                                     if !impl_source.borrow_nested_obligations().is_empty() =>
                                 {
                                     for obligation in impl_source.borrow_nested_obligations() {

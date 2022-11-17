@@ -170,7 +170,7 @@ impl Qualif for NeedsNonConstDrop {
 
         let infcx = cx.tcx.infer_ctxt().build();
         let mut selcx = SelectionContext::new(&infcx);
-        let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
+        let Ok(Ok(impl_src)) = selcx.select(&obligation) else {
             // If we couldn't select a const destruct candidate, then it's bad
             return true;
         };

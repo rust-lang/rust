@@ -1907,7 +1907,7 @@ rustc_queries! {
     /// `infcx.predicate_must_hold()` instead.
     query evaluate_obligation(
         goal: CanonicalPredicateGoal<'tcx>
-    ) -> Result<traits::EvaluationResult, traits::OverflowError> {
+    ) -> traits::EvaluationResult {
         desc { "evaluating trait selection obligation `{}`", goal.value.value }
     }
 

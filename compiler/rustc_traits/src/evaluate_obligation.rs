@@ -4,7 +4,7 @@ use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_trait_selection::traits::query::CanonicalPredicateGoal;
 use rustc_trait_selection::traits::{
-    EvaluationResult, Obligation, ObligationCause, OverflowError, SelectionContext, TraitQueryMode,
+    EvaluationResult, Obligation, ObligationCause, SelectionContext,
 };
 
 pub(crate) fn provide(p: &mut Providers) {
@@ -14,7 +14,7 @@ pub(crate) fn provide(p: &mut Providers) {
 fn evaluate_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonical_goal: CanonicalPredicateGoal<'tcx>,
-) -> Result<EvaluationResult, OverflowError> {
+) -> EvaluationResult {
     debug!("evaluate_obligation(canonical_goal={:#?})", canonical_goal);
     // HACK This bubble is required for this tests to pass:
     // impl-trait/issue99642.rs
@@ -25,7 +25,7 @@ fn evaluate_obligation<'tcx>(
     debug!("evaluate_obligation: goal={:#?}", goal);
     let ParamEnvAnd { param_env, value: predicate } = goal;
 
-    let mut selcx = SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);
+    let mut selcx = SelectionContext::new(&infcx);
     let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
 
     selcx.evaluate_root_obligation(&obligation)

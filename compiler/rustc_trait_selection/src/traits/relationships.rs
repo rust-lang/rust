@@ -42,7 +42,7 @@ pub(crate) fn update<'tcx, T>(
                 .to_predicate(infcx.tcx),
         );
         // Don't report overflow errors. Otherwise equivalent to may_hold.
-        if let Ok(result) = infcx.probe(|_| infcx.evaluate_obligation(&o)) && result.may_apply() {
+        if infcx.evaluate_obligation(&o).may_apply() {
             engine.relationships().entry(ty).or_default().self_in_trait = true;
         }
     }

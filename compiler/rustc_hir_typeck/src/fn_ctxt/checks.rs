@@ -2159,7 +2159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }),
                         );
                         match SelectionContext::new(&self).select(&obligation) {
-                            Ok(Some(traits::ImplSource::UserDefined(impl_source))) => {
+                            Ok(Ok(traits::ImplSource::UserDefined(impl_source))) => {
                                 Some(impl_source.impl_def_id)
                             }
                             _ => None,

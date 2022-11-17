@@ -770,14 +770,14 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     match implsrc {
-                        Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
+                        Ok(Ok(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
                             debug!(
                                 "const_trait_impl: provided {:?} via where-clause in {:?}",
                                 trait_ref, param_env
                             );
                             return;
                         }
-                        Ok(Some(ImplSource::UserDefined(data))) => {
+                        Ok(Ok(ImplSource::UserDefined(data))) => {
                             let callee_name = tcx.item_name(callee);
                             if let Some(&did) = tcx
                                 .associated_item_def_ids(data.impl_def_id)

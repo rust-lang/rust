@@ -74,6 +74,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::specialization_graph::Node;
+use rustc_infer::traits::Overflow;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
@@ -377,7 +378,9 @@ fn check_predicates<'tcx>(
             0,
             arg,
             span,
+            true,
         )
+        .unwrap_or_else(|Overflow| bug!("impossible non-fatal overflow"))
         .unwrap();
 
         assert!(!obligations.needs_infer());

@@ -4,11 +4,12 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
 use crate::traits::query::NoSolution;
 use crate::traits::{
-    ChalkEnvironmentAndGoal, FulfillmentError, FulfillmentErrorCode, ObligationCause,
-    PredicateObligation, SelectionError, TraitEngine,
+    ChalkEnvironmentAndGoal, FulfillmentError, FulfillmentErrorCode, PredicateObligation,
+    SelectionError, TraitEngine,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_middle::ty::{self, Ty, TypeVisitable};
+use rustc_infer::infer::canonical::Certainty;
+use rustc_middle::ty::{self, TypeVisitable};
 
 pub struct FulfillmentContext<'tcx> {
     obligations: FxIndexSet<PredicateObligation<'tcx>>,
@@ -33,16 +34,6 @@ impl FulfillmentContext<'_> {
 }
 
 impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
-    fn normalize_projection_type(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        _param_env: ty::ParamEnv<'tcx>,
-        projection_ty: ty::ProjectionTy<'tcx>,
-        _cause: ObligationCause<'tcx>,
-    ) -> Ty<'tcx> {
-        infcx.tcx.mk_ty(ty::Projection(projection_ty))
-    }
-
     fn register_predicate_obligation(
         &mut self,
         infcx: &InferCtxt<'tcx>,
@@ -108,35 +99,39 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
                 match infcx.tcx.evaluate_goal(canonical_goal) {
                     Ok(response) => {
-                        if response.is_proven() {
-                            making_progress = true;
-
-                            match infcx.instantiate_query_response_and_region_obligations(
-                                &obligation.cause,
-                                obligation.param_env,
-                                &orig_values,
-                                &response,
-                            ) {
-                                Ok(infer_ok) => next_round.extend(
-                                    infer_ok.obligations.into_iter().map(|obligation| {
-                                        assert!(!infcx.is_in_snapshot());
-                                        infcx.resolve_vars_if_possible(obligation)
-                                    }),
-                                ),
-
-                                Err(_err) => errors.push(FulfillmentError {
-                                    obligation: obligation.clone(),
-                                    code: FulfillmentErrorCode::CodeSelectionError(
-                                        SelectionError::Unimplemented,
-                                    ),
-                                    // FIXME - does Chalk have a notation of 'root obligation'?
-                                    // This is just for diagnostics, so it's okay if this is wrong
-                                    root_obligation: obligation,
-                                }),
+                        match response.certainty() {
+                            Certainty::Proven => {}
+                            Certainty::Ambiguous => {
+                                next_round.insert(obligation);
+                                continue;
                             }
-                        } else {
-                            // Ambiguous: retry at next round.
-                            next_round.insert(obligation);
+                            Certainty::Overflow => bug!("overflow in chalk fulfill"),
+                        }
+
+                        making_progress = true;
+
+                        match infcx.instantiate_query_response_and_region_obligations(
+                            &obligation.cause,
+                            obligation.param_env,
+                            &orig_values,
+                            &response,
+                        ) {
+                            Ok(infer_ok) => next_round.extend(
+                                infer_ok.obligations.into_iter().map(|obligation| {
+                                    assert!(!infcx.is_in_snapshot());
+                                    infcx.resolve_vars_if_possible(obligation)
+                                }),
+                            ),
+
+                            Err(_err) => errors.push(FulfillmentError {
+                                obligation: obligation.clone(),
+                                code: FulfillmentErrorCode::CodeSelectionError(
+                                    SelectionError::Unimplemented,
+                                ),
+                                // FIXME - does Chalk have a notation of 'root obligation'?
+                                // This is just for diagnostics, so it's okay if this is wrong
+                                root_obligation: obligation,
+                            }),
                         }
                     }
 

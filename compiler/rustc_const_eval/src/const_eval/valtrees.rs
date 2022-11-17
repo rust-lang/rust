@@ -177,15 +177,17 @@ fn get_info_on_unsized_field<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> (Ty<'tcx>, usize) {
     let mut last_valtree = valtree;
-    let tail = tcx.struct_tail_with_normalize(
-        ty,
-        |ty| ty,
-        || {
-            let branches = last_valtree.unwrap_branch();
-            last_valtree = branches[branches.len() - 1];
-            debug!(?branches, ?last_valtree);
-        },
-    );
+    let tail = tcx
+        .struct_tail_with_normalize(
+            ty,
+            |ty| Ok(ty),
+            || {
+                let branches = last_valtree.unwrap_branch();
+                last_valtree = branches[branches.len() - 1];
+                debug!(?branches, ?last_valtree);
+            },
+        )
+        .unwrap();
     let unsized_inner_ty = match tail.kind() {
         ty::Slice(t) => *t,
         ty::Str => tail,

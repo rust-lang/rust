@@ -160,7 +160,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     let mut selcx = SelectionContext::new(&infcx);
                     let implsrc = selcx.select(&obligation);
 
-                    if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
+                    if let Ok(Ok(ImplSource::UserDefined(data))) = implsrc {
                         let span = tcx.def_span(data.impl_def_id);
                         err.span_note(span, "impl defined here, but it is not `const`");
                     }

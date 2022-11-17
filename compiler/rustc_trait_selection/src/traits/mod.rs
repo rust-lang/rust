@@ -59,7 +59,7 @@ pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::project::{normalize, normalize_projection_type, normalize_to};
 pub use self::select::{EvaluationCache, SelectionCache, SelectionContext};
-pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
+pub use self::select::{EvaluationResult, IntercrateAmbiguityCause};
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
@@ -99,19 +99,6 @@ impl SkipLeakCheck {
     fn is_yes(self) -> bool {
         self == SkipLeakCheck::Yes
     }
-}
-
-/// The mode that trait queries run in.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum TraitQueryMode {
-    /// Standard/un-canonicalized queries get accurate
-    /// spans etc. passed in and hence can do reasonable
-    /// error reporting on their own.
-    Standard,
-    /// Canonicalized queries get dummy spans and hence
-    /// must generally propagate errors to
-    /// pre-canonicalization callsites.
-    Canonical,
 }
 
 /// Creates predicate obligations from the generic bounds.
@@ -542,9 +529,7 @@ fn is_impossible_method<'tcx>(
     let infcx = tcx.infer_ctxt().ignoring_regions().build();
     for obligation in predicates_for_trait {
         // Ignore overflow error, to be conservative.
-        if let Ok(result) = infcx.evaluate_obligation(&obligation)
-            && !result.may_apply()
-        {
+        if infcx.evaluate_obligation(&obligation).may_apply() {
             return true;
         }
     }
