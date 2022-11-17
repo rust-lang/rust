@@ -15,6 +15,11 @@ path = "bin/main.rs"
 test = false
 
 [[bin]]
+name = "bootstrap-shim"
+path = "bin/bootstrap-shim.rs"
+test = false
+
+[[bin]]
 name = "rustc"
 path = "bin/rustc.rs"
 test = false

@@ -141,6 +141,7 @@ mod flags;
 mod format;
 mod install;
 mod metadata;
+mod min_config;
 mod native;
 mod run;
 mod sanity;
@@ -175,6 +176,7 @@ pub use crate::builder::PathSet;
 use crate::cache::{Interned, INTERNER};
 pub use crate::config::Config;
 pub use crate::flags::Subcommand;
+pub use crate::min_config::MinimalConfig;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report

@@ -656,7 +656,8 @@ impl<'a> Builder<'a> {
                 check::Rls,
                 check::RustAnalyzer,
                 check::Rustfmt,
-                check::Bootstrap
+                check::Bootstrap,
+                check::BootstrapShim,
             ),
             Kind::Test => describe!(
                 crate::toolstate::ToolStateCheck,
@@ -761,6 +762,7 @@ impl<'a> Builder<'a> {
                 dist::LlvmTools,
                 dist::RustDev,
                 dist::Bootstrap,
+                dist::BootstrapShim,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
                 // perceive their dependencies (see #93033) which would invalidate fingerprints
