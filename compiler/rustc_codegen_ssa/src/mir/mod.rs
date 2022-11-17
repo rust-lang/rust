@@ -166,7 +166,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut start_bx = Bx::build(cx, start_llbb);
 
-    if mir.basic_blocks.iter().any(|bb| bb.is_cleanup) {
+    if mir.basic_blocks.iter().any(|bb| {
+        bb.is_cleanup || matches!(bb.terminator().unwind(), Some(mir::UnwindAction::Terminate))
+    }) {
         start_bx.set_personality_fn(cx.eh_personality());
     }
 

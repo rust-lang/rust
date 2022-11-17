@@ -1615,7 +1615,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cp_llbb = Bx::append_block(self.cx, self.llfn, "cp_terminate");
 
                 let mut cs_bx = Bx::build(self.cx, llbb);
-                let cs = cs_bx.catch_switch(None, None, &[llbb]);
+                let cs = cs_bx.catch_switch(None, None, &[cp_llbb]);
 
                 // The "null" here is actually a RTTI type descriptor for the
                 // C++ personality function, but `catch (...)` has no type so
