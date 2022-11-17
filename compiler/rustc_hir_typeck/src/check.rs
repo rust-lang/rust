@@ -102,7 +102,7 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     inherited.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
-    if let ty::Dynamic(..) = declared_ret_ty.kind() {
+    if let ty::Dynamic(_, _, ty::Dyn) = declared_ret_ty.kind() {
         // FIXME: We need to verify that the return type is `Sized` after the return expression has
         // been evaluated so that we have types available for all the nodes being returned, but that
         // requires the coerced evaluated type to be stored. Moving `check_return_expr` before this
