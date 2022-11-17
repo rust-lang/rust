@@ -238,7 +238,7 @@ fn compare_predicate_entailment<'tcx>(
                 kind: impl_m.kind,
             },
         );
-        ocx.register_obligation(traits::Obligation::new(cause, param_env, predicate));
+        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, predicate));
     }
 
     // We now need to check that the signature of the impl method is
@@ -611,6 +611,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
                 );
 
                 self.ocx.register_obligation(traits::Obligation::new(
+                    self.tcx(),
                     ObligationCause::new(
                         self.span,
                         self.body_id,
@@ -1585,7 +1586,7 @@ fn compare_type_predicate_entailment<'tcx>(
             },
         );
         ocx.register_obligations(obligations);
-        ocx.register_obligation(traits::Obligation::new(cause, param_env, predicate));
+        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, predicate));
     }
 
     // Check that all obligations are satisfied by the implementation's
@@ -1790,7 +1791,7 @@ pub fn check_type_bounds<'tcx>(
         .subst_iter_copied(tcx, rebased_substs)
         .map(|(concrete_ty_bound, span)| {
             debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
-            traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)
+            traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
         })
         .collect();
     debug!("check_type_bounds: item_bounds={:?}", obligations);

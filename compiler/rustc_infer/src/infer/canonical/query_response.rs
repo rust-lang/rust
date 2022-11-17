@@ -581,9 +581,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 span_bug!(cause.span, "unexpected const outlives {:?}", predicate);
             }
         };
-        let predicate = predicate.0.rebind(atom).to_predicate(self.tcx);
+        let predicate = predicate.0.rebind(atom);
 
-        Obligation::new(cause, param_env, predicate)
+        Obligation::new(self.tcx, cause, param_env, predicate)
     }
 
     /// Given two sets of values for the same set of canonical variables, unify them.

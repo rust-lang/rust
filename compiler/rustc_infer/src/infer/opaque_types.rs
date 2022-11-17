@@ -595,7 +595,12 @@ impl<'tcx> InferCtxt<'tcx> {
             }
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
-            obligations.push(traits::Obligation::new(cause.clone(), param_env, predicate));
+            obligations.push(traits::Obligation::new(
+                self.tcx,
+                cause.clone(),
+                param_env,
+                predicate,
+            ));
         }
         Ok(InferOk { value: (), obligations })
     }

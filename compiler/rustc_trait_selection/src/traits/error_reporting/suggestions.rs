@@ -301,7 +301,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
-        T: fmt::Display;
+        T: fmt::Display + ToPredicate<'tcx, T>;
 
     /// Suggest to await before try: future? => future.await?
     fn suggest_await_before_try(
@@ -334,7 +334,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     );
 }
 
-fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
+fn predicate_constraint(generics: &hir::Generics<'_>, pred: ty::Predicate<'_>) -> (Span, String) {
     (
         generics.tail_span_for_predicate_suggestion(),
         format!("{} {}", generics.add_where_or_trailing_comma(), pred),
@@ -416,7 +416,7 @@ fn suggest_restriction<'tcx>(
             },
             // `fn foo(t: impl Trait)`
             //                       ^ suggest `where <T as Trait>::A: Bound`
-            predicate_constraint(hir_generics, trait_pred.to_predicate(tcx).to_string()),
+            predicate_constraint(hir_generics, trait_pred.to_predicate(tcx)),
         ];
         sugg.extend(ty_spans.into_iter().map(|s| (s, type_param_name.to_string())));
 
@@ -440,9 +440,7 @@ fn suggest_restriction<'tcx>(
                 .find(|p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: true, .. })),
             super_traits,
         ) {
-            (_, None) => {
-                predicate_constraint(hir_generics, trait_pred.to_predicate(tcx).to_string())
-            }
+            (_, None) => predicate_constraint(hir_generics, trait_pred.to_predicate(tcx)),
             (None, Some((ident, []))) => (
                 ident.span.shrink_to_hi(),
                 format!(": {}", trait_pred.print_modifiers_and_trait_path()),
@@ -1162,7 +1160,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         for predicate in predicates.iter() {
             if !self.predicate_must_hold_modulo_regions(
-                &obligation.with(predicate.with_self_ty(self.tcx, self_ref_ty)),
+                &obligation.with(self.tcx, predicate.with_self_ty(self.tcx, self_ref_ty)),
             ) {
                 return;
             }
@@ -1523,7 +1521,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let self_ty_satisfies_dyn_predicates = |self_ty| {
                             predicates.iter().all(|predicate| {
                                 let pred = predicate.with_self_ty(self.tcx, self_ty);
-                                let obl = Obligation::new(cause.clone(), param_env, pred);
+                                let obl = Obligation::new(self.tcx, cause.clone(), param_env, pred);
                                 self.predicate_may_hold(&obl)
                             })
                         };
@@ -2704,7 +2702,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                 obligated_types.push(ty);
 
-                let parent_predicate = parent_trait_ref.to_predicate(tcx);
+                let parent_predicate = parent_trait_ref;
                 if !self.is_recursive_obligation(obligated_types, &data.parent_code) {
                     // #74711: avoid a stack overflow
                     ensure_sufficient_stack(|| {
@@ -2766,7 +2764,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     _ => err.note(&msg),
                 };
 
-                let mut parent_predicate = parent_trait_pred.to_predicate(tcx);
+                let mut parent_predicate = parent_trait_pred;
                 let mut data = &data.derived;
                 let mut count = 0;
                 seen_requirements.insert(parent_def_id);
@@ -2826,7 +2824,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::DerivedObligation(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
-                let parent_predicate = parent_trait_ref.to_predicate(tcx);
+                let parent_predicate = parent_trait_ref;
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
@@ -3070,9 +3068,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         ..*tr
                     });
                     let field_obl = Obligation::new(
+                        self.tcx,
                         obligation.cause.clone(),
                         obligation.param_env,
-                        trait_pred.to_predicate(self.tcx),
+                        trait_pred,
                     );
                     self.predicate_must_hold_modulo_regions(&field_obl)
                 })

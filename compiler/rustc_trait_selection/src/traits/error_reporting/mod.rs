@@ -344,14 +344,14 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 });
                 let substs = self.tcx.mk_substs_trait(ty.skip_binder(), &[var.into()]);
                 let obligation = Obligation::new(
+                    self.tcx,
                     ObligationCause::dummy(),
                     param_env,
                     ty.rebind(ty::TraitPredicate {
                         trait_ref: ty::TraitRef::new(trait_def_id, substs),
                         constness,
                         polarity,
-                    })
-                    .to_predicate(self.tcx),
+                    }),
                 );
                 let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new_in_snapshot(self.tcx);
                 fulfill_cx.register_predicate_obligation(self, obligation);
@@ -984,7 +984,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 );
                                 trait_pred
                             });
-                            let unit_obligation = obligation.with(predicate.to_predicate(tcx));
+                            let unit_obligation = obligation.with(tcx, predicate);
                             if self.predicate_may_hold(&unit_obligation) {
                                 err.note(
                                     "this error might have been caused by changes to \
@@ -2012,7 +2012,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ..*tr
         });
 
-        Obligation::new(ObligationCause::dummy(), param_env, trait_pred.to_predicate(self.tcx))
+        Obligation::new(self.tcx, ObligationCause::dummy(), param_env, trait_pred)
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -2100,11 +2100,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 };
 
-                let obligation = Obligation::new(
-                    obligation.cause.clone(),
-                    obligation.param_env,
-                    trait_ref.to_poly_trait_predicate(),
-                );
+                let obligation = obligation.with(self.tcx, trait_ref.to_poly_trait_predicate());
                 let mut selcx = SelectionContext::with_query_mode(
                     &self,
                     crate::traits::TraitQueryMode::Standard,
@@ -2534,11 +2530,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             )
             .value;
 
-            let obligation = Obligation::new(
-                ObligationCause::dummy(),
-                param_env,
-                cleaned_pred.to_predicate(selcx.tcx()),
-            );
+            let obligation =
+                Obligation::new(self.tcx, ObligationCause::dummy(), param_env, cleaned_pred);
 
             self.predicate_may_hold(&obligation)
         })

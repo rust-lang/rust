@@ -9,7 +9,6 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Binder, Const, Ty, TypeVisitable};
 use std::marker::PhantomData;
 
@@ -296,7 +295,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 &mut obligations,
             );
             if predicate != obligation.predicate {
-                obligations.push(obligation.with(predicate));
+                obligations.push(obligation.with(infcx.tcx, predicate));
                 return ProcessResult::Changed(mk_pending(obligations));
             }
         }
@@ -307,7 +306,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 // This means we need to pass it the bound version of our
                 // predicate.
                 ty::PredicateKind::Trait(trait_ref) => {
-                    let trait_obligation = obligation.with(binder.rebind(trait_ref));
+                    let trait_obligation = obligation.with(infcx.tcx, binder.rebind(trait_ref));
 
                     self.process_trait_obligation(
                         obligation,
@@ -316,7 +315,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     )
                 }
                 ty::PredicateKind::Projection(data) => {
-                    let project_obligation = obligation.with(binder.rebind(data));
+                    let project_obligation = obligation.with(infcx.tcx, binder.rebind(data));
 
                     self.process_projection_obligation(
                         obligation,
@@ -335,9 +334,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::ConstEquate(..) => {
                     let pred =
                         ty::Binder::dummy(infcx.replace_bound_vars_with_placeholders(binder));
-                    ProcessResult::Changed(mk_pending(vec![
-                        obligation.with(pred.to_predicate(self.selcx.tcx())),
-                    ]))
+                    ProcessResult::Changed(mk_pending(vec![obligation.with(infcx.tcx, pred)]))
                 }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
@@ -345,7 +342,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
             },
             Some(pred) => match pred {
                 ty::PredicateKind::Trait(data) => {
-                    let trait_obligation = obligation.with(Binder::dummy(data));
+                    let trait_obligation = obligation.with(infcx.tcx, Binder::dummy(data));
 
                     self.process_trait_obligation(
                         obligation,
@@ -370,7 +367,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::Projection(ref data) => {
-                    let project_obligation = obligation.with(Binder::dummy(*data));
+                    let project_obligation = obligation.with(infcx.tcx, Binder::dummy(*data));
 
                     self.process_projection_obligation(
                         obligation,
@@ -697,7 +694,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
             }
             // Let the caller handle the recursion
             ProjectAndUnifyResult::Recursive => ProcessResult::Changed(mk_pending(vec![
-                project_obligation.with(project_obligation.predicate.to_predicate(tcx)),
+                project_obligation.with(tcx, project_obligation.predicate),
             ])),
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                 ProcessResult::Error(CodeProjectionError(e))

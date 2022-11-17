@@ -3,8 +3,8 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
-use rustc_middle::ty::{ToPredicate, TypeVisitable};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Span;
@@ -130,9 +130,10 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
 
         let obligation = traits::Obligation::new(
+            tcx,
             cause.clone(),
             self.param_env,
-            ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
+            ty::Binder::dummy(trait_ref).without_const(),
         );
         if !self.infcx.predicate_may_hold(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
