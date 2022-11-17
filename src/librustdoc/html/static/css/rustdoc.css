@@ -217,10 +217,7 @@ h1 a,
 .search-results a,
 .module-item .stab,
 .import-item .stab,
-.result-name .primitive > i, .result-name .keyword > i,
-.method .where,
-.fn .where,
-.where.fmt-newline {
+.result-name .primitive > i, .result-name .keyword > i {
 	color: var(--main-color);
 }
 
