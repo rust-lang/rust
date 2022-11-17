@@ -192,13 +192,13 @@ fn do_mir_borrowck<'tcx>(
         }
     }
 
-    let mut errors = error::BorrowckErrors::new();
+    let mut errors = error::BorrowckErrors::new(infcx.tcx);
 
     // Gather the upvars of a closure, if any.
     let tables = tcx.typeck_opt_const_arg(def);
-    if let Some(ErrorGuaranteed { .. }) = tables.tainted_by_errors {
+    if let Some(e) = tables.tainted_by_errors {
         infcx.set_tainted_by_errors();
-        errors.set_tainted_by_errors();
+        errors.set_tainted_by_errors(e);
     }
     let upvars: Vec<_> = tables
         .closure_min_captures_flattened(def.did)
@@ -2260,6 +2260,7 @@ mod error {
     use super::*;
 
     pub struct BorrowckErrors<'tcx> {
+        tcx: TyCtxt<'tcx>,
         /// This field keeps track of move errors that are to be reported for given move indices.
         ///
         /// There are situations where many errors can be reported for a single move out (see #53807)
@@ -2282,19 +2283,20 @@ mod error {
         tainted_by_errors: Option<ErrorGuaranteed>,
     }
 
-    impl BorrowckErrors<'_> {
-        pub fn new() -> Self {
+    impl<'tcx> BorrowckErrors<'tcx> {
+        pub fn new(tcx: TyCtxt<'tcx>) -> Self {
             BorrowckErrors {
+                tcx,
                 buffered_move_errors: BTreeMap::new(),
                 buffered: Default::default(),
                 tainted_by_errors: None,
             }
         }
 
-        // FIXME(eddyb) this is a suboptimal API because `tainted_by_errors` is
-        // set before any emission actually happens (weakening the guarantee).
         pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
-            self.tainted_by_errors = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+            self.tainted_by_errors = Some(
+                self.tcx.sess.delay_span_bug(t.span.clone(), "diagnostic buffered but not emitted"),
+            );
             t.buffer(&mut self.buffered);
         }
 
@@ -2302,8 +2304,8 @@ mod error {
             t.buffer(&mut self.buffered);
         }
 
-        pub fn set_tainted_by_errors(&mut self) {
-            self.tainted_by_errors = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+        pub fn set_tainted_by_errors(&mut self, e: ErrorGuaranteed) {
+            self.tainted_by_errors = Some(e);
         }
     }
 
