@@ -119,12 +119,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     ) -> traits::EvaluationResult {
         let trait_ref = self.tcx.mk_trait_ref(trait_def_id, self_ty, params);
 
-        debug_assert_eq!(
-            self.tcx.generics_of(trait_def_id).count() - 1,
-            params.len(),
-            "wrong number of generic parameters for {trait_def_id:?}, did you accidentally include the self-type in the params list?"
-        );
-
         let obligation = traits::Obligation {
             cause: traits::ObligationCause::dummy(),
             param_env,
