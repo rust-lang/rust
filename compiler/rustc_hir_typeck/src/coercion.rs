@@ -55,7 +55,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeAndMut};
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{self, BytePos, DesugaringKind, Span};
@@ -278,13 +278,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             for &source_ty in &[a, b] {
                 if source_ty != target_ty {
                     obligations.push(Obligation::new(
+                        self.tcx(),
                         self.cause.clone(),
                         self.param_env,
                         ty::Binder::dummy(ty::PredicateKind::Coerce(ty::CoercePredicate {
                             a: source_ty,
                             b: target_ty,
-                        }))
-                        .to_predicate(self.tcx()),
+                        })),
                     ));
                 }
             }
@@ -669,7 +669,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     continue;
                 }
             };
-            match selcx.select(&obligation.with(trait_pred)) {
+            match selcx.select(&obligation.with(selcx.tcx(), trait_pred)) {
                 // Uncertain or unimplemented.
                 Ok(None) => {
                     if trait_pred.def_id() == unsize_did {
@@ -783,10 +783,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // and then require that the resulting predicate (e.g., `usize: Clone`)
                 // holds (it does).
                 let predicate = predicate.with_self_ty(self.tcx, a);
-                Obligation::new(self.cause.clone(), self.param_env, predicate)
+                Obligation::new(self.tcx, self.cause.clone(), self.param_env, predicate)
             })
             // Enforce the region bound (e.g., `usize: 'static`, in our example).
             .chain([Obligation::new(
+                self.tcx,
                 self.cause.clone(),
                 self.param_env,
                 self.tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::TypeOutlives(

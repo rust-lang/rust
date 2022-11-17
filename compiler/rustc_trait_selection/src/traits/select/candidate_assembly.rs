@@ -13,7 +13,7 @@ use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_target::spec::abi::Abi;
 
 use crate::traits;
@@ -718,9 +718,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let obligation = traits::Obligation::new(
+            tcx,
             cause.clone(),
             param_env,
-            ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
+            ty::Binder::dummy(trait_ref).without_const(),
         );
         if !self.infcx.predicate_may_hold(&obligation) {
             return None;

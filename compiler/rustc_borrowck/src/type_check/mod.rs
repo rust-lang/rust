@@ -33,8 +33,7 @@ use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, Dynamic,
-    OpaqueHiddenType, OpaqueTypeKey, RegionVid, ToPredicate, Ty, TyCtxt, UserType,
-    UserTypeAnnotationIndex,
+    OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, DUMMY_SP};
@@ -1069,8 +1068,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     self.prove_predicate(
-                        ty::Binder::dummy(ty::PredicateKind::WellFormed(inferred_ty.into()))
-                            .to_predicate(self.tcx()),
+                        ty::Binder::dummy(ty::PredicateKind::WellFormed(inferred_ty.into())),
                         Locations::All(span),
                         ConstraintCategory::TypeAnnotation,
                     );

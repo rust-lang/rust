@@ -1090,14 +1090,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(into_def_id) = self.tcx.get_diagnostic_item(sym::Into)
             && self.predicate_must_hold_modulo_regions(&traits::Obligation::new(
+                self.tcx,
                 self.misc(expr.span),
                 self.param_env,
                 ty::Binder::dummy(ty::TraitRef {
                     def_id: into_def_id,
                     substs: self.tcx.mk_substs_trait(expr_ty, &[expected_ty.into()]),
                 })
-                .to_poly_trait_predicate()
-                .to_predicate(self.tcx),
+                .to_poly_trait_predicate(),
             ))
         {
             let sugg = if expr.precedence().order() >= PREC_POSTFIX {
