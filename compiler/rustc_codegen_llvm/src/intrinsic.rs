@@ -1165,42 +1165,24 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
     ) -> Result<&'ll Value, ()> {
-        #[allow(unused_macro_rules)]
-        macro_rules! emit_error {
-            ($msg: tt) => {
-                emit_error!($msg, )
-            };
-            ($msg: tt, $($fmt: tt)*) => {
-                span_invalid_monomorphization_error(
-                    bx.sess(), span,
-                    &format!(concat!("invalid monomorphization of `{}` intrinsic: ", $msg),
-                             name, $($fmt)*));
-            }
-        }
-        macro_rules! return_error {
-            ($($fmt: tt)*) => {
-                {
-                    emit_error!($($fmt)*);
-                    return Err(());
-                }
-            }
-        }
-
         let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
             let elem_ty = bx.cx.type_float_from_ty(*f);
             match f.bit_width() {
                 32 => ("f32", elem_ty),
                 64 => ("f64", elem_ty),
                 _ => {
-                    return_error!(
-                        "unsupported element type `{}` of floating-point vector `{}`",
-                        f.name_str(),
-                        in_ty
-                    );
+                    bx.sess().emit_err(InvalidMonomorphization::FloatingPointVector {
+                        span,
+                        name,
+                        f_ty: *f,
+                        in_ty,
+                    });
+                    return Err(());
                 }
             }
         } else {
-            return_error!("`{}` is not a floating-point type", in_ty);
+            bx.sess().emit_err(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
+            return Err(());
         };
 
         let vec_ty = bx.type_vector(elem_ty, in_len);
@@ -1222,7 +1204,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
-            _ => return_error!("unrecognized intrinsic `{}`", name),
+            _ => {
+                bx.sess().emit_err(InvalidMonomorphization::UnrecognizedIntrinsic { span, name });
+                return Err(());
+            }
         };
         let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
         let f = bx.declare_cfn(llvm_name, llvm::UnnamedAddr::No, fn_ty);

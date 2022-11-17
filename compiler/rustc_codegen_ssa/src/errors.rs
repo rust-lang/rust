@@ -8,6 +8,7 @@ use rustc_errors::{
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
+use rustc_type_ir::FloatTy;
 use std::borrow::Cow;
 use std::io::Error;
 use std::path::{Path, PathBuf};
@@ -630,5 +631,29 @@ pub enum InvalidMonomorphization<'tcx> {
         #[primary_span]
         span: Span,
         ty: Ty<'tcx>,
+    },
+
+    #[diag(codegen_ssa_invalid_monomorphization_floating_point_vector, code = "E0511")]
+    FloatingPointVector {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        f_ty: FloatTy,
+        in_ty: Ty<'tcx>,
+    },
+
+    #[diag(codegen_ssa_invalid_monomorphization_floating_point_type, code = "E0511")]
+    FloatingPointType {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        in_ty: Ty<'tcx>,
+    },
+
+    #[diag(codegen_ssa_invalid_monomorphization_unrecognized_intrinsic, code = "E0511")]
+    UnrecognizedIntrinsic {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
     },
 }

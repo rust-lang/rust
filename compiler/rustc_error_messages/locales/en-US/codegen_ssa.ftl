@@ -219,3 +219,9 @@ codegen_ssa_invalid_monomorphization_basic_integer_type = invalid monomorphizati
 codegen_ssa_invalid_monomorphization_basic_float_type = invalid monomorphization of `{$name}` intrinsic: expected basic float type, found `{$ty}`
 
 codegen_ssa_invalid_monomorphization_float_to_int_unchecked = invalid monomorphization of `float_to_int_unchecked` intrinsic: expected basic float type, found `{$ty}`
+
+codegen_ssa_invalid_monomorphization_floating_point_vector = invalid monomorphization of `{$name}` intrinsic: unsupported element type `{$f_ty}` of floating-point vector `{$in_ty}`
+
+codegen_ssa_invalid_monomorphization_floating_point_type = invalid monomorphization of `{$name}` intrinsic: `{$in_ty}` is not a floating-point type
+
+codegen_ssa_invalid_monomorphization_unrecognized_intrinsic = invalid monomorphization of `{$name}` intrinsic: unrecognized intrinsic `{$name}`
