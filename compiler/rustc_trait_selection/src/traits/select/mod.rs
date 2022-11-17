@@ -2030,8 +2030,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.infcx.tcx.sess.delay_span_bug(
                     obligation.cause.span,
                     &format!(
-                        "Impl {:?} was matchable against {:?} but now is not",
-                        impl_def_id, obligation
+                        "Impl {:?} ({:?}) was matchable against {:?} but now is not",
+                        impl_def_id, impl_trait_ref, obligation
                     ),
                 );
                 let value = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);

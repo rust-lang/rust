@@ -566,8 +566,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 self.infcx.probe(|_| {
-                    if let Ok(_substs) = self.match_impl(impl_def_id, impl_trait_ref, obligation) {
-                        candidates.vec.push(ImplCandidate(impl_def_id));
+                    match self.match_impl(impl_def_id, impl_trait_ref, obligation) {
+                        Ok(Ok(_substs)) => candidates.vec.push(ImplCandidate(impl_def_id)),
+                        Ok(Err(())) => {}
+                        // Subtle: in case of overflow, we still add the candidate so
+                        // that the overflow is correctly propagated. Otherwise caching
+                        // would incorrectly consider this candidate to never apply, even
+                        // if there's only overflow at a specific depth.
+                        Err(Overflow) => candidates.vec.push(ImplCandidate(impl_def_id)),
                     }
                 });
             },
